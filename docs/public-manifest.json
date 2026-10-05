@@ -1,0 +1,52 @@
+{
+  "release": "v13.2",
+  "createdAt": "2026-09-30T07:01:37.328692+00:00",
+  "files": [
+    {
+      "path": "_headers",
+      "bytes": 327,
+      "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+    },
+    {
+      "path": "_worker.js",
+      "bytes": 24933,
+      "sha256": "3bf80119fa4afe519befa84da2d25296282c0645abe1b254d7f872ddac77e48f"
+    },
+    {
+      "path": "icon.svg",
+      "bytes": 220,
+      "sha256": "fa9fdf8f1f28bd387149f445f5943748be3d20a997c3abebb1eef4cf9e03abc1"
+    },
+    {
+      "path": "index.html",
+      "bytes": 25951,
+      "sha256": "56ba174bca5a11f4e4dd2f19b6dc7094d108349e8cb40e36afcc1975b7b73bd9"
+    },
+    {
+      "path": "public.js",
+      "bytes": 7820571,
+      "sha256": "11ce51d4ae39a435f5b375f2a84624eccf04f3591a949f38e0501b1b4be4726f"
+    },
+    {
+      "path": "style.css",
+      "bytes": 66665,
+      "sha256": "c2c3a8b217623936b5fc88955bd29227d29f062e33d95406fa60c1c54d296f6a"
+    }
+  ],
+  "counts": {
+    "radar": 974,
+    "library": 1219,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 3,
+    "radar_archive_titles": 12541,
+    "titles_zh": 14556
+  },
+  "excludes": [
+    "PDFs",
+    "local paths",
+    "private notes",
+    "database",
+    "credentials"
+  ],
+  "deployed": false
+}

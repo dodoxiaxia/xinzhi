@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-09-30T01:10:59.904929+00:00",
+  "project": "dryz-xinzhi",
+  "customDomain": "learn.dryz.info",
+  "localRelease": "v7.0",
+  "liveRelease": "v6",
+  "productionDeploymentBeforeV7": "19930e09-046d-423b-9d02-324d1b514c34",
+  "deployed": false,
+  "packageReady": true,
+  "publicPackageZip": "outputs/xinzhi-public-v7.zip",
+  "counts": {
+    "radar": 974,
+    "library": 1219,
+    "checkedGuides": 12,
+    "uncheckedAIQuicklooks": 3
+  },
+  "weeklyCurrentIssuePublished": false,
+  "doctorFinalReview": false,
+  "publicationBlocker": "ChatGPT Chrome extension does not yet permit file URL access; user chose to enable it manually before upload",
+  "note": "deployed is the status of local v7 release, not whether the pre-existing website is online. Earlier history is archived separately."
+}

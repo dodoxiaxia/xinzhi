@@ -1,0 +1,15 @@
+.local/
+.DS_Store
+__pycache__/
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+*.zip
+# 私有数据与构建产物不进 main:由 state 分支保存
+data/
+public/
+work/
+
+docs/*.png
+.git-broken/

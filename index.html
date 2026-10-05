@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>心知 AIHOT-Med · 心血管与AI医疗前沿文献情报台</title>
+  <meta name="description" content="面向科室同事的心血管与 AI 医疗每日精选、每周精读与文献雷达。所有导读均标注核对范围，仅供学习讨论。">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <a href="./" class="brand-logo" id="brandLogo" aria-label="心知 AIHOT-Med 首页">
+          <span class="brand-mark" aria-hidden="true">心知</span>
+          <span class="brand-text">
+            <span class="logo-title">AIHOT-Med</span>
+            <small>心血管 × AI 医疗文献</small>
+          </span>
+        </a>
+      </div>
+
+      <nav class="header-nav" aria-label="核心视角导航">
+        <button class="nav-tab-btn active" data-mode="curated">每日精选 <span class="badge" id="curatedCountBadge">0</span></button>
+        <button class="nav-tab-btn" data-mode="weekly">本周精读</button>
+        <button class="nav-tab-btn" data-mode="candidates">文献雷达 <span class="badge" id="candCountBadge">0</span></button>
+        <button class="nav-tab-btn" data-mode="library">文献库 <span class="badge" id="libCountBadge">0</span></button>
+      </nav>
+
+      <div class="header-actions">
+        <div class="search-wrapper">
+          <input type="search" id="globalSearch" class="search-input" placeholder="搜房颤、心衰、大模型、DOI…" aria-label="搜索文献（支持中文关键词）" autocomplete="off">
+          <kbd class="search-shortcut">/</kbd>
+        </div>
+
+        <div class="style-picker" id="stylePicker">
+          <button class="icon-btn style-btn" id="styleBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="styleMenu" title="界面风格" aria-label="切换界面风格">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
+            <span class="style-btn-label" id="styleBtnLabel">风格</span>
+          </button>
+          <div class="style-menu" id="styleMenu" role="menu" aria-label="界面风格" hidden></div>
+        </div>
+
+        <button class="icon-btn" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+        </button>
+
+        <button class="huddle-btn" id="openHuddleBtn" aria-label="打开晨会清单">
+          <span>晨会清单</span>
+          <span class="huddle-counter" id="huddleCounter">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- App Main Layout -->
+  <div class="app-container">
+
+    <!-- Left Faceted Filter Sidebar -->
+    <aside class="sidebar" id="appSidebar" aria-label="筛选条件">
+      <div class="sheet-head"><b>筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
+      <!-- Clinical Tier Matrix -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">
+          <span>信源分组</span>
+          <button class="sidebar-reset-btn" id="resetTierBtn">重置</button>
+        </div>
+        <ul class="filter-list" id="tierFilterList">
+          <!-- Dynamically populated -->
+        </ul>
+      </div>
+
+      <!-- Publishers & Journals Tree -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">
+          <span>按出版方浏览</span>
+          <button class="sidebar-reset-btn" id="resetPubBtn">全部</button>
+        </div>
+        <div id="publisherAccordion">
+          <!-- Dynamically populated with Accordion groups -->
+        </div>
+      </div>
+
+      <!-- Study Design Filter -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">
+          <span>研究设计 <small class="heuristic-note" title="按题名/摘要关键词自动判断，未经人工核验">自动判断</small></span>
+          <button class="sidebar-reset-btn" id="resetDesignBtn">重置</button>
+        </div>
+        <ul class="filter-list" id="designFilterList">
+          <!-- Dynamically populated -->
+        </ul>
+      </div>
+
+      <!-- Clinical & Modality Tags Cloud -->
+      <div class="sidebar-card">
+        <div class="sidebar-title">
+          <span>主题标签</span>
+          <button class="sidebar-reset-btn" id="resetTagBtn">重置</button>
+        </div>
+        <div class="tags-cloud" id="tagsCloud">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- Stream Section (for Candidates, Curated, Library) -->
+      <section id="streamSection">
+        <!-- Stream Toolbar -->
+        <ol class="home-intro" id="homeIntro" hidden>
+          <li><b>每日精选</b><span>摘要已核对的中文导读</span></li>
+          <li><b>本周精读</b><span>周五更新，须先核验全文</span></li>
+          <li><b>晨会清单</b><span>任意文献点“加入晨会单”，汇总后复制或导出</span></li>
+        </ol>
+        <div class="mode-note" id="modeNote" role="note"></div>
+        <div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div>
+        <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
+        <div class="browse-bar" id="browseBar" hidden>
+          <label class="journal-picker">期刊 / 信源<select id="journalSelect" aria-label="选择期刊或信源"></select></label>
+          <button class="btn-sm" id="favoriteJournalBtn" aria-pressed="false">☆ 关注期刊</button>
+          <button class="btn-sm" id="favoritesOnlyBtn" aria-pressed="false" title="关注清单仅保存在此浏览器，不会同步给同事">我的期刊</button>
+          <label class="reading-picker">可读内容<select id="readingSelect" aria-label="按可读内容筛选"><option value="">全部</option><option value="abstract">有公开摘要</option><option value="guide">已核对导读</option><option value="quicklook">AI 速览（未核对）</option></select></label>
+          <p id="rangeExplanation" class="browse-help"></p>
+        </div>
+        <div class="ai-digest" id="aiDigest" hidden></div>
+        <div class="stream-toolbar">
+          <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">筛选</button>
+          <div class="active-filters-bar" id="activeFiltersBar">
+            <span class="results-meta">共找到 <b id="resultsTotalCount">0</b> 篇文献</span>
+          </div>
+
+          <div class="stream-controls">
+            <label for="sortSelector" class="sr-only">排序方式</label>
+            <select id="sortSelector" class="sort-select">
+              <option value="date-desc">按时间：最新在前</option>
+              <option value="date-asc">按时间：最早在前</option>
+              <option value="journal-date">按期刊分组（各刊最新在前）</option>
+              <option value="smart">推荐（导读/摘要优先）</option>
+            </select>
+
+            <div class="view-toggle">
+              <button class="view-toggle-btn active" id="viewCardsBtn" title="卡片视图">详细</button>
+              <button class="view-toggle-btn" id="viewCompactBtn" title="紧凑列表">列表</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Articles Stream -->
+        <div id="articlesStream" class="articles-stream">
+          <!-- Dynamic cards or compact rows -->
+        </div>
+
+        <!-- Load More Button -->
+        <button id="loadMoreBtn" class="load-more-btn" hidden>显示更多</button>
+      </section>
+
+      <!-- Weekly Deep Read Section (Journal Club) -->
+      <section id="weeklySection" class="weekly-container" hidden>
+        <div class="weekly-status" id="weeklyStatus" role="note"></div>
+        <div class="issue-list" id="issueList" aria-label="精读期次"></div>
+        <div class="next-candidates" id="nextCandidates"></div>
+        <div class="weekly-hero">
+          <span class="design-pill design-rct">第 01 期 · 全文精读示范</span> <span class="tag-pill">论文发表于 2025-02 · 用作精读体例示范，非当周新文</span>
+          <h2>AI 指导的持续性房颤消融：获益与临床边界</h2>
+          <p class="text-secondary">TAILORED-AF 多中心随机对照试验 · <i>Nature Medicine</i> (2025-02)</p>
+          <a href="https://doi.org/10.1038/s41591-025-03517-w" target="_blank" rel="noopener">官方期刊原文链接 ↗</a>
+        </div>
+
+        <div class="evidence-grid">
+          <div class="evidence-stat">
+            <strong>370 例</strong>
+            <span>难治性持续性房颤患者</span>
+          </div>
+          <div class="evidence-stat">
+            <strong>12 个月</strong>
+            <span>主要疗效终点随访</span>
+          </div>
+          <div class="evidence-stat">
+            <strong>88% vs 70%</strong>
+            <span>1年无房颤率（精读正文见统计范围）</span>
+          </div>
+          <div class="evidence-stat">
+            <strong>约 2.0 倍</strong>
+            <span>个体化组手术与消融耗时</span>
+          </div>
+        </div>
+
+        <div class="weekly-full-report" style="margin-top:24px; line-height:1.75;">
+          <nav class="weekly-toc" aria-label="精读目录"><a href="#wk1">背景</a><a href="#wk2">AI 环节</a><a href="#wk3">设计与人群</a><a href="#wk4">结果与安全性</a><a href="#wk5">局限</a></nav>
+          <div class="editorial-box">
+            <p><b>AI 辅助全文学习报告：</b>由 AI 通读 24 页主 PDF，并交叉核查关键图表与统计量；独立补充附件未获取。未经科室医生终审，仅用于科室文献研讨，不构成诊疗建议。</p>
+          </div>
+
+          <div class="drawer-section" style="margin-top:20px;">
+            <h3 id="wk1">一、 临床问题与背景：持续性房颤基质消融的探索瓶颈</h3>
+            <p>肺静脉隔离（PVI）单独实施时，仅在约半数持续性房颤（persAF）患者中获得长期成功。过去十余年间，经验性解剖线性消融、左房后壁隔离（CAPLA 试验，JAMA 2023）、碎裂电位消融（STAR AF II 试验，NEJM 2015）以及 MRI 纤维化引导消融（DECAAF II 试验，JAMA 2022）等“PVI+”策略在多中心 RCT 中均未能证实额外获益。</p>
+            <p>这反映出当前心房基质消融的核心瓶颈：<b>缺乏客观、可重复的基质识别与量化标准</b>。基于心内电图（EGM）时空离散度（spatio-temporal dispersion）的手术策略此前在单中心研究中提示过潜在价值，但在人工视觉判读下，不同术者间的一致性较差。TAILORED-AF 试验（NCT04702451）旨在评估引入确定性 AI 辅助系统标测时空离散度并指导消融，是否优于单纯解剖 PVI 策略。</p>
+          </div>
+
+          <div class="drawer-section">
+            <h3 id="wk2">二、 AI 介入环节：双模型集成与术中闭环工作流</h3>
+            <p>本研究评估的系统为法国 Volta Medical 开发的 <b>Volta AF-Xplorer</b>（早期代号 VX1），为锁定版商用医疗软件：</p>
+            <ul style="padding-left:20px; margin: 10px 0;">
+              <li><b>算法架构：</b>集成二分类模型，结合了基于人工特征提取的 XGBoost 分类器与端到端卷积神经网络（CNN）。</li>
+              <li><b>训练与标定：</b>基于 275,020 条多极心内电图离线训练；独立测试集（113,920 条 EGM）ROC-AUC 为 0.94；在 5 位国际专家标注的 14,490 条验证集中，模型预测概率与专家共识程度正相关（0 人认可时中位概率 0.02，5 人一致时升至 0.83）。该算法模型于 2020 年正式冻结。</li>
+              <li><b>术中指导：</b>系统推理耗时 &lt;100 ms，实时在 Carto3、EnSite 或 Rhythmia 等主流三维系统上呈现离散区。工作流规定：在房颤律下先行双房离散区标测并消融，消融灶连接至瓣环或肺静脉等中性结构；消融直至房颤终止或离散区完全清除；若转为房速（AT）则进一步标测并根治；最后补齐标准的肺静脉前庭隔离（PVI）。</li>
+            </ul>
+          </div>
+
+          <div class="drawer-section">
+            <h3 id="wk3">三、 RCT 设计与分析集拆解：盲法、资质与受试者流转</h3>
+            <p>本研究在欧美 26 家高容量中心由 51 位术者完成。其试验设计与人群流转如下：</p>
+            <ol style="padding-left:20px; margin: 10px 0;">
+              <li><b>盲法设计与监管属性：</b>试验设计为受试者和终点评估者双盲；由于术者必须依据 AI 标测执行个体化消融，术者不设盲。试验由器械厂商 Volta Medical 资助。由于在美国使用该 AI 系统指导消融属于试验阶段，试验获得了美国 FDA 的试验用器械豁免（IDE）。</li>
+              <li><b>筛选与入组：</b>筛选 391 例，14 例筛选失败，入组 377 例。</li>
+              <li><b>随机化与安全性分析集：</b>3 例手术取消，374 例按 1:1 分层随机分配（Tailored 组 188 例 vs Anatomical 组 186 例）。消融前 4 例撤回知情，<b>实际接受首次消融的手术安全性分析集为 370 例（187 例 vs 183 例）</b>。</li>
+              <li><b>改良意向性治疗集（mITT，主疗效集）：</b>370 例消融患者中，术后 3 个月空白期内退出或无随访数据者共计 13 例。<b>因此 mITT 分析集为 357 例（Tailored 组 180 例 vs 对照组 177 例；即 370 - 13 = 357）</b>。</li>
+              <li><b>符合方案集（PP）：</b>在 mITT 基础上排除 88 例方案违背，<b>PP 人群为 269 例（Tailored 组 137 例 vs 对照组 132 例）</b>。</li>
+            </ol>
+            <p>随访采用 3、6、12 个月 24 小时动态心电图（依从率 91.0%）结合便携式 6 导联 Kardia 仪每周打卡（依从率 83.6%），独立盲态核心实验室判读。</p>
+          </div>
+
+          <div class="drawer-section">
+            <h3 id="wk4">四、 主要结果与安全性：数据与统计呈现</h3>
+            <h4>1. 疗效终点结果</h4>
+            <ul style="padding-left:20px; margin: 10px 0;">
+              <li><b>主要终点（单次手术 12 个月无 AF）：</b>mITT 人群（n=357）中，单次消融后 12 个月无 &gt;30 秒记录房颤的 Kaplan–Meier 估计成功率，Tailored 组为 <b>88%</b>，Anatomical 组为 <b>70%</b>（HR 0.34, 95% CI 0.21–0.57, log-rank P &lt; 0.0001）。PP 人群中 HR 为 0.29（P &lt; 0.0001）。12 个月末停用 AADs 受试者中成功率为 86% vs 68%（HR 0.35, P &lt; 0.001）。</li>
+              <li><b>病程亚组：</b>病程 ≥6 个月亚组（mITT n=196）估计成功率为 88% vs 65%（差值 23%, HR 0.29, P = 5.9×10<sup>-5</sup>）。</li>
+              <li><b>次要终点（单次手术无任何房性心律失常）：</b>终点纳入房速与房扑后，<b>mITT 人群两组估计率均为 60% vs 60%（HR 0.94, 95% CI 0.68–1.31, log-rank P = 0.16），组间未见统计学显著差异</b>。</li>
+              <li><b>多次手术后终点：</b>经历 1–2 次消融后，mITT 人群全心律失常自由率为 76% vs 71%（HR 0.77, 95% CI 0.51–1.16, log-rank P = 0.07，未达统计学显著）。</li>
+            </ul>
+
+            <h4 style="margin-top:16px;">2. 手术特征与心律失常演变</h4>
+            <p>Tailored 组总手术时间 178 ± 60 min vs 92 ± 36 min（P &lt; 2.2×10<sup>-16</sup>），总射频放电时间 42 ± 17 min vs 20 ± 11 min（P &lt; 2.2×10<sup>-16</sup>），左房消融面积占比 31 ± 14% vs 17 ± 8%（P &lt; 2.2×10<sup>-16</sup>）。术中急性房颤终止率 Tailored 组显著高于对照组（66% vs 15%）；终止的 122 例中，78% 转为规整性房速（AT）。</p>
+
+            <h4 style="margin-top:16px;">3. 安全性与并发症明细</h4>
+            <p>严重并发症受试者两组各为 5 例（Tailored 组 5/187 [2.7%] vs 对照组 5/183 [2.7%], P &gt; 0.99）。主要复合安全性终点发生率为 8/187 例（4.3%）vs 5/183 例（2.7%），P &gt; 0.05。试验组记录到 2 例死亡（经评定与消融无关）。轻度手术并发症 Tailored 组记录到 15 例（8.0%），对照组为 6 例（3.3%），其中心包积液与体液超负荷例数在试验组较高。</p>
+          </div>
+
+          <div class="drawer-section">
+            <h3 id="wk5">五、 局限与外推性考量（重点说不好）</h3>
+            <ol style="padding-left:20px; margin: 10px 0;">
+              <li><b>终点维度的临床审视：</b>主要终点仅针对房颤，Tailored 组显示优势；但当纳入房速与房扑后，单次消融在 mITT 分析集中未见统计学显著差异（60% vs 60%, P = 0.16）。不能将“未见显著差异”等同于“证明等效”，客观反映出单次消融全心律失常未能检出优效。</li>
+              <li><b>基质识别特异性与房速机制：</b>较广泛的消融（31% vs 17%）可能人为创造慢传导峡部，诱发大折返性房速，增加术后二次消融复杂度。</li>
+              <li><b>算法冻结与闭源属性：</b>系统于 2020 年冻结代码，属于专有商用医疗器械，代码未公开，外部无法审计算法内部特征权重及不同硬件平台间的校准细节。</li>
+              <li><b>中心外推性：</b>试验由 51 位高容量中心顶级专家实施，推广至中低容量中心时，其手术耗时翻倍带来的疲劳度与并发症风险需审慎评估。</li>
+            </ol>
+          </div>
+
+          <div class="drawer-section">
+            <h3>关键图表速查表</h3>
+            <div style="overflow-x:auto; margin-top:10px;">
+              <table class="weekly-table" style="width:100%; border-collapse:collapse; font-size:12.5px;">
+                <thead>
+                  <tr style="background:var(--bg-secondary); border-bottom:2px solid var(--border);">
+                    <th style="padding:8px 12px; text-align:left;">图表编号</th>
+                    <th style="padding:8px 12px; text-align:left;">核心内容</th>
+                    <th style="padding:8px 12px; text-align:left;">客观数据与关键说明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px 12px;"><b>Figure 1</b></td>
+                    <td style="padding:8px 12px;">受试者流转 CONSORT 图</td>
+                    <td style="padding:8px 12px;">筛选 391 → 入组 377 → 随机 374 → 实际消融安全集 370 → mITT 357 → PP 269。</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px 12px;"><b>Figure 2</b></td>
+                    <td style="padding:8px 12px;">主要终点（无 AF）K-M 曲线</td>
+                    <td style="padding:8px 12px;">单次手术无 AF：mITT 为 88% vs 70%（HR 0.34, P &lt; 0.0001）；仅指房颤。</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px 12px;"><b>Figure 3</b></td>
+                    <td style="padding:8px 12px;">次要终点（全心律失常）K-M 曲线</td>
+                    <td style="padding:8px 12px;">全图 a–d 均为 PP 人群。单次消融 mITT 为 60% vs 60%（HR 0.94, P = 0.16，未见显著差异）。</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px 12px;"><b>Table 2</b></td>
+                    <td style="padding:8px 12px;">术中程序特征比较</td>
+                    <td style="padding:8px 12px;">Tailored 组手术时长（178 vs 92 min）、射频时间（42 vs 20 min）、左房消融面积（31% vs 17%）显著增加。</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px 12px;"><b>Table 3</b></td>
+                    <td style="padding:8px 12px;">安全性终点与并发症明细</td>
+                    <td style="padding:8px 12px;">严重并发症受试者两组各 5 例（受试者人数比较 P &gt; 0.99）；主要复合终点发生率为 8/187（4%）vs 5/183（3%）。</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="clinical-question-box" style="margin-top:24px;">
+            <b>科室晨会讨论思考三问：</b>
+            <p>1. 终点迁移：“无房颤”达标而“无任何房性心律失常”两组未见显著差异（60% vs 60%，不能据此认定等效），在指导患者术后抗凝停药与症状缓解上有何本质差别？</p>
+            <p>2. 代价权衡：当总手术时长增加 86 分钟、射频放电翻倍时，是否会抵消消融团队的日间手术周转效率与液体负荷风险？</p>
+            <p>3. 脉冲电场（PFA）时代外推：该系统基于射频能量开发，若结合局灶型 PFA 导管，其消融深度、透壁性与房速转化率是否会发生颠覆？</p>
+          </div>
+
+          <div style="margin-top: 24px; display:flex; gap:12px; flex-wrap:wrap;">
+            <a class="btn-sm btn-primary" target="_blank" rel="noopener" href="https://doi.org/10.1038/s41591-025-03517-w">
+              前往 Nature Medicine 官方原文 ↗
+            </a>
+            
+          </div>
+        </div>
+      </section>
+
+      <!-- Sources Observability Section -->
+      <section id="sourcesSection" hidden>
+        <div class="stream-toolbar">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 600;">学术订阅健康监测</h3>
+            <p id="sourcesHealthMeta" class="results-meta">正在统计信源可用率...</p>
+          </div>
+        </div>
+        <p class="text-muted" style="font-size:12px;margin-bottom:10px;">此页供维护者排查抓取问题；来源状态为最近一次自动检查结果，与文献内容质量无关。</p>
+        <div class="sources-grid" id="sourcesHealthGrid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <p><b>使用须知</b>：本站为面向科室学习的公开文献导读，不构成诊疗建议。导读由 AI 辅助撰写，仅依据期刊公开摘要或标注的核对范围，<b>未经医生终审</b>，请以期刊原文为准。「研究设计」「信源分组」等标签按关键词自动判断，可能有误。</p>
+    <p class="site-footer-meta">界面与聚合思路参考开源项目 <a href="https://github.com/kkkkhazix/aihot" target="_blank" rel="noopener">AI HOT</a>（数字生命卡兹克），在此基础上按心血管科需求改造。 · <span data-release="v7.0" id="siteUpdated"></span> · <button class="link-btn" data-mode="sources">信源状态</button></p>
+  </footer>
+
+  <!-- Slide-over Reader Drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="reader-drawer" id="readerDrawer" aria-modal="true" aria-hidden="true" tabindex="-1" role="dialog" aria-label="文献阅读台">
+    <div class="drawer-header">
+      <div id="drawerJournalBadges"></div>
+      <button class="drawer-close-btn" id="drawerCloseBtn" title="关闭 (Esc)" aria-label="关闭">&times;</button>
+    </div>
+
+    <div class="drawer-body" id="drawerBody">
+      <!-- Populated dynamically -->
+    </div>
+
+    <div class="drawer-footer">
+      <button class="btn-sm btn-share" id="drawerCopyShareBtn">复制微信群文案</button>
+      <button class="btn-sm" id="drawerHuddleToggleBtn">加入晨会单</button>
+      <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerExternalLink">前往官方原文 ↗</a>
+    </div>
+  </aside>
+
+  <!-- Morning Huddle Modal -->
+  <div class="modal-backdrop" id="huddleModalBackdrop">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-label="晨会清单">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 600;">今日晨会文献研讨清单</h3>
+        <button class="drawer-close-btn" id="closeHuddleModalBtn" aria-label="关闭">&times;</button>
+      </div>
+
+      <div class="modal-body" id="huddleModalBody">
+        <!-- List of selected articles -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-sm" id="clearHuddleBtn">清空清单</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-sm btn-share" id="copyHuddleSummaryBtn">复制晨会汇总</button>
+          <button class="btn-sm btn-primary" id="exportHuddleMdBtn">导出 Markdown</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Toast -->
+  <div id="toast" role="status">已更新</div>
+
+  <!-- App Data & Scripts -->
+  <script src="data/library.js"></script>
+  <script src="data/candidates.js"></script>
+  <script src="data/source-health.js"></script>
+  <script src="data/curated.js"></script>
+  <script src="data/quicklooks.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

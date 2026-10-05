@@ -1,0 +1,37 @@
+import json,tempfile,unittest
+from pathlib import Path
+from unittest.mock import patch
+import build_public as b
+class PublicBuildTests(unittest.TestCase):
+ def test_private_unknown_fields_never_pass(self):
+  p={'id':'one','title':'Public paper','url':'javascript:alert(1)','privateNotes':'secret','api_key':'secret','copies':2,'quantitativeMetrics':{'trialId':'NCT001','private':'secret'},'draftData':{'summary':'draft','source_checked':False},'hasDraft':True}
+  out=b.public_paper(p);self.assertNotIn('api_key',out);self.assertNotIn('privateNotes',out);self.assertNotIn('copies',out);self.assertNotIn('draftData',out);self.assertNotIn('private',out['quantitativeMetrics']);self.assertEqual(out['url'],'')
+ def test_checked_archive_survives_radar_expiry_and_date(self):
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d);(r/'data').mkdir();(r/'editorial').mkdir();draft={'doi':'10.1/test','source_checked':True,'summary':'Checked','source_date':'2026-09-01'}
+   (r/'editorial/source_checked_drafts.json').write_text(json.dumps({'prepared_on':'2026-09-29','articles':[draft]}))
+   (r/'data/curated-archive.json').write_text(json.dumps({'papers':[{'id':'p','title':'Title','doi':'10.1/test','hasDraft':True,'draftData':dict(draft,published='2026-09-29')}]}))
+   with patch.object(b,'ROOT',r):
+    one=b.make_archive([],[]);self.assertEqual(len(one),1);self.assertEqual(one[0]['draftData']['published'],'2026-09-29')
+    (r/'editorial/source_checked_drafts.json').write_text(json.dumps({'prepared_on':'2026-10-01','articles':[draft]}));two=b.make_archive([],[]);self.assertEqual(two[0]['draftData']['published'],'2026-09-29')
+ def test_missing_checked_metadata_fails_instead_of_dropping(self):
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d);(r/'editorial').mkdir();(r/'editorial/source_checked_drafts.json').write_text(json.dumps({'articles':[{'doi':'10.1/missing','source_checked':True}]}))
+   with patch.object(b,'ROOT',r),self.assertRaises(ValueError):b.make_archive([],[])
+ def test_public_directory_extra_file_blocks_build(self):
+  with tempfile.TemporaryDirectory() as d:
+   dest=Path(d);(dest/'secret.txt').write_text('secret')
+   with patch.object(b,'DEST',dest),self.assertRaises(ValueError):b.main()
+ def test_private_paths_stop_publication(self):
+  for text in ['/Users/someone/file.pdf','{"api_key":"test"}','.local/llm.json']:
+   with self.assertRaises(ValueError):b.validate_public(text)
+ def test_replacing_editorial_with_latest_only_blocks_archive_loss(self):
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d);(r/'data').mkdir();(r/'editorial').mkdir()
+   (r/'data/curated-archive.json').write_text(json.dumps({'papers':[{'id':'old','doi':'10.1/old','hasDraft':True,'draftData':{'source_checked':True}}]}))
+   (r/'editorial/source_checked_drafts.json').write_text(json.dumps({'articles':[]}))
+   with patch.object(b,'ROOT',r),self.assertRaisesRegex(ValueError,'withdrawal'):b.make_archive([],[])
+ def test_quicklook_provenance_is_preserved_but_private_fields_are_not(self):
+  item={'abstractSource':'PubMed','abstractSourceUrl':'https://pubmed.ncbi.nlm.nih.gov/1/','api_key':'private','findings':[{'text':'claim','quote':'source','privateNotes':'secret'}]}
+  out=b.public_quicklook(item);self.assertEqual(out['abstractSource'],'PubMed');self.assertEqual(out['abstractSourceUrl'],item['abstractSourceUrl']);self.assertNotIn('api_key',out);self.assertNotIn('privateNotes',out['findings'][0])
+if __name__=='__main__':unittest.main()

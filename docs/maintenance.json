@@ -1,0 +1,12 @@
+{
+  "automationId": "automation",
+  "schedule": "Daily 08:00 local time (Asia/Shanghai); Friday includes full-paper reading",
+  "status": "ACTIVE; saved automation.toml verified",
+  "execution": "Codex desktop heartbeat; requires available local execution environment and connected browser session for deployment",
+  "firstScheduledRunVerified": false,
+  "candidateRefreshCommand": "python3 scripts/refresh_daily.py",
+  "publicBuildCommand": "python3 scripts/build_public.py",
+  "packageCommand": "python3 scripts/package_release.py",
+  "internalWorkspace": "Google Doc with owner-only permission for user-specified dryz@dryz.info",
+  "futureMemberPolicy": "Only individually specified Google accounts; no public or whole-domain share"
+}

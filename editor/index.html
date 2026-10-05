@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>心知 · 编辑与内容管理台</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="editor.css">
+  <link rel="icon" href="../icon.svg" type="image/svg+xml">
+</head>
+<body>
+  <!-- 顶端运行状态与架构边界警示 -->
+  <div class="editor-notice-banner">
+    <div>
+      <strong>本机编辑台</strong>
+      <span>私有资料仅登录后可见；尚未开放云端编辑。</span>
+    </div>
+    <div id="authStatusText">检查登录状态...</div>
+  </div>
+
+  <header>
+    <a href="../" class="brand" aria-label="心知首页">
+      <span class="mark">心</span>
+      <span>心知<small>临床视野 · 本地编辑台</small></span>
+    </a>
+    <nav id="topNav" style="display:none;">
+      <button data-tab="articles" class="active">候选与文章库</button>
+      <button data-tab="notes">内部共读记录</button>
+      <button data-tab="github-library">GitHub文献库</button>
+      <button data-tab="preview">公开日报预览</button>
+    </nav>
+    <div style="display:flex; align-items:center; gap:15px;">
+      <span class="edition" id="editionInfo">本地运行模式</span>
+      <button id="btnLogout" class="outline" style="display:none;">退出登录</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 登录面板 (未登录时显示) -->
+    <div id="loginView" class="login-card">
+      <h2>登录心知编辑台</h2>
+      <p>请输入服务启动时在控制台输出的本地管理员口令（或环境变量 <code>XINZHI_ADMIN_TOKEN</code> 设定的口令）。</p>
+      
+      <div id="loginAlert" class="alert-box alert-error" style="display:none;" role="alert"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="adminTokenInput">管理员口令 (Admin Token)</label>
+          <input type="password" id="adminTokenInput" placeholder="输入 .local/admin-token 文件中的口令" required autocomplete="current-password">
+          <div class="hint">为防密码泄露，终端仅打印密码文件的绝对路径，请在本地终端使用 cat 命令查看。</div>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; margin-top:10px;">登录编辑台</button>
+      </form>
+    </div>
+
+    <!-- 主工作区 (登录后显示) -->
+    <div id="dashboardView" style="display:none; padding: 25px 0 60px;">
+      
+      <!-- 选项卡 1：候选与文章库 -->
+      <section id="tab-articles" class="tab-panel">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">EDITORIAL DESK / CANDIDATE POOL</div>
+            <h2>文献候选与发布管理</h2>
+          </div>
+          <button id="btnRefreshArticles" class="outline">刷新列表 ⟳</button>
+        </div>
+
+        <div class="note">
+          编辑与发布门禁：仅可修改中文题名、导读、局限性、研究类型、依据与审核人；发布前必须勾选完成来源核对，且依据不能仅为索引元数据。
+        </div>
+
+        <div class="filter-row">
+          <input type="search" id="articleSearch" placeholder="搜索英文原题、中文题名、期刊或 DOI...">
+          
+          <select id="statusFilter" aria-label="筛选发布状态">
+            <option value="all">全部状态</option>
+            <option value="candidate">待编辑候选 (Candidate)</option>
+            <option value="draft">已编辑草稿 (Draft)</option>
+            <option value="published">已发布公开 (Published)</option>
+            <option value="withdrawn">已撤回下架 (Withdrawn)</option>
+          </select>
+
+          <select id="categoryFilter" aria-label="筛选研究方向">
+            <option value="all">全部方向</option>
+            <option value="AI医疗">AI医疗</option>
+            <option value="心血管">心血管</option>
+            <option value="交叉研究">交叉研究</option>
+          </select>
+
+          <span id="articleCountText" class="muted" style="margin-left:auto;">加载中...</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="editor-table" id="articlesTable">
+            <thead>
+              <tr>
+                <th style="width:75px;">状态</th>
+                <th>文献题名 / 信源</th>
+                <th style="width:90px;">方向</th>
+                <th style="width:110px;">证据依据</th>
+                <th style="width:90px;">来源核对</th>
+                <th style="width:90px;">审核人</th>
+                <th style="width:110px; text-align:center;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="articlesTbody">
+              <tr><td colspan="7" class="empty">正在获取文献候选...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 选项卡 2：内部共读记录 -->
+      <section id="tab-notes" class="tab-panel" style="display:none;">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">CLINICAL STUDY CLUB / INTERNAL NOTES</div>
+            <h2>科室每周共读研讨记录</h2>
+          </div>
+        </div>
+
+        <div class="note" style="border-left-color:var(--amber);">
+          内部记录独立存储于 SQLite 本地库 <code>notes</code> 表中。公开 API 与静态读取层严禁返回任何共读记录。
+        </div>
+
+        <div class="weekly-grid" style="margin-top:20px;">
+          <div>
+            <div class="form-group">
+              <label for="noteKeySelect">选择或创建共读记录 Key</label>
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="noteKeyInput" value="weekly-2026-w39" placeholder="例如 weekly-2026-w39">
+                <button id="btnLoadNote" class="outline">载入 ↵</button>
+              </div>
+              <div class="hint">Key 仅限字母、数字、点与下划线中划线，用于版本追溯与存档。</div>
+            </div>
+
+            <div class="form-group">
+              <label for="noteTitleInput">共读主题 / 核心临床问题</label>
+              <input type="text" id="noteTitleInput" placeholder="例如：AI 指导房颤消融，获益究竟体现在哪里？">
+            </div>
+
+            <div class="form-group">
+              <label for="noteReviewerInput">领读人 / 记录人</label>
+              <input type="text" id="noteReviewerInput" placeholder="填写姓名或科室小组">
+            </div>
+
+            <div class="form-group">
+              <label for="noteContentTextarea">共读研讨详细记录（要点、争论与下一步）</label>
+              <textarea id="noteContentTextarea" rows="12" placeholder="建议记录：
+1. 临床问题与研究设计核验：
+2. 终点定义两面性（如复发判定标准）：
+3. 偏倚、局限性与本院临床适用范围：
+4. 下一步行动或验证计划："></textarea>
+            </div>
+
+            <button id="btnSaveNote" class="btn-primary">保存内部共读记录</button>
+          </div>
+
+          <aside>
+            <div class="side-label">STORED NOTES</div>
+            <h3>已保存的共读记录</h3>
+            <p class="muted">点击快速切换编辑已有归档记录：</p>
+            <div id="notesHistoryList" style="margin-top:15px;"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="tab-github-library" class="tab-panel" style="display:none;">
+        <div class="section-head">
+          <div>
+            <h2>GitHub文献库</h2>
+          </div>
+        </div>
+        <div class="note">
+          先检索索引，再由维护流程取单篇全文；索引不代表已读全文。题名与日期来自原索引，选文时需对照期刊或PDF核验。
+          文献库维护流程更新索引后，这里才会显示新题录。此页不会自动下载或公开发布，公开网站不展示这些私有资料。
+        </div>
+        <form id="githubLibrarySearchForm" class="filter-row github-library-search">
+          <label for="githubLibraryQuery" class="github-library-query">检索题名、期刊或 DOI
+            <input type="search" id="githubLibraryQuery" maxlength="500" placeholder="输入题名关键词、期刊或 DOI">
+          </label>
+          <label for="githubLibraryLimit">显示条数
+            <select id="githubLibraryLimit"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
+          </label>
+          <button type="submit" class="outline">搜索</button>
+        </form>
+        <p id="githubLibraryStatus" role="status" aria-live="polite" class="github-library-status">打开此页后显示已有索引。</p>
+        <div id="githubLibraryMeta" class="meta-box github-library-meta" hidden></div>
+        <div id="githubLibraryResults" class="github-library-results"></div>
+      </section>
+
+      <!-- 选项卡：公开日报预览 -->
+      <section id="tab-preview" class="tab-panel" style="display:none;">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">PUBLIC FEED PREVIEW / SANITIZED</div>
+            <h2>今日公开日报接口与视图预览</h2>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <label for="previewDateInput" style="margin:0; font-size:12px;">查看日期:</label>
+            <input type="date" id="previewDateInput" style="width:auto; padding:6px 10px;">
+            <button id="btnRefreshPreview" class="outline">刷新预览 ⟳</button>
+          </div>
+        </div>
+
+        <div class="note">
+          公开接口 <code>/api/public/briefings</code> 仅返回已通过安全门禁发布的白名单字段。审核人、核对标记、内部共读日志均被严格过滤。
+        </div>
+
+        <div id="previewArticlesContainer" style="margin-top:20px;">
+          <div class="empty">正在加载公开日报数据...</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- 文章编辑弹窗 (Modal) -->
+  <div id="editModal" class="modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <span class="badge" id="modalStatusBadge">状态</span>
+          <h3 id="modalTitle" style="margin-top:6px;">编辑导读与审核</h3>
+        </div>
+        <button class="btn-close" id="btnModalClose" aria-label="关闭">&times;</button>
+      </div>
+
+      <div id="modalAlert" class="alert-box" style="display:none;" role="alert"></div>
+
+      <!-- 原始只读元数据 -->
+      <div class="meta-box">
+        <p><strong>原始题名：</strong><span id="modalOrigTitle"></span></p>
+        <p><strong>信源/期刊：</strong><span id="modalOrigSource"></span> &nbsp;|&nbsp; <strong>来源日期：</strong><span id="modalOrigDate"></span></p>
+        <p><strong>原文链接：</strong><a id="modalOrigUrl" href="#" target="_blank" rel="noopener noreferrer">访问期刊原文 ↗</a></p>
+        <p><strong>DOI：</strong><span id="modalOrigDoi"></span></p>
+      </div>
+
+      <!-- 可编辑表单 -->
+      <form id="editForm">
+        <div class="form-group">
+          <label for="inputTitleZh">中文学术题名 <span style="color:var(--amber);">*</span></label>
+          <input type="text" id="inputTitleZh" placeholder="精准确切的中文学术表述，不使用耸动标题党">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div class="form-group">
+            <label for="selectStudyType">研究设计与类型</label>
+            <select id="selectStudyType">
+              <option value="">未指定</option>
+              <option value="RCT">随机对照试验 (RCT)</option>
+              <option value="前瞻性队列研究">前瞻性队列研究</option>
+              <option value="回顾性队列研究">回顾性队列研究</option>
+              <option value="诊断准确性试验">诊断准确性试验</option>
+              <option value="系统评价与Meta分析">系统评价与Meta分析</option>
+              <option value="算法开发与验证">算法开发与验证</option>
+              <option value="观察性研究">观察性研究</option>
+              <option value="专家共识/述评">专家共识/述评</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="selectEvidenceBasis">证据依据等级 <span style="color:var(--amber);">* (发布不可为 index)</span></label>
+            <select id="selectEvidenceBasis">
+              <option value="index">仅索引元数据 (index · 待编辑核验)</option>
+              <option value="abstract">已核对期刊摘要 (abstract)</option>
+              <option value="fulltext">已系统精读全文 (fulltext)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="inputSummary">核心导读与研究结果摘要 <span style="color:var(--amber);">*</span></label>
+          <textarea id="inputSummary" rows="4" placeholder="客观阐述主要研究问题、入组人群、主要疗效与安全性终点数值，不凭空引申结论。"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="inputLimitations">临床局限性与警示 <span style="color:var(--amber);">*</span></label>
+          <textarea id="inputLimitations" rows="3" placeholder="明确指出研究局限性（如单中心、随访时间、对照组设计、缺失数据、算法泛化性不足等）。"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="inputReviewer">审核人姓名 / 代号 <span style="color:var(--amber);">*</span></label>
+          <input type="text" id="inputReviewer" placeholder="例如：夏老师 / ddx">
+          <div class="hint">审核人仅在编辑端留档追溯，公开 API 永不返回此字段。</div>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="checkboxSourceChecked">
+          <label for="checkboxSourceChecked" style="margin:0; cursor:pointer;">
+            <strong>已完成信源与原文真实性核对</strong>
+            <span class="muted" style="display:block; font-size:11px;">确认已打开原文链接核验题名、作者、发表日期真实无误。</span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <div>
+            <button type="button" id="btnWithdrawArticle" class="btn-amber" style="display:none;">撤回下架</button>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button type="button" id="btnCancelEdit" class="outline">取消</button>
+            <button type="submit" id="btnSaveDraft" class="outline" style="border-color:var(--teal); color:var(--teal);">保存草稿</button>
+            <button type="button" id="btnPublishArticle" class="btn-teal">审核并通过发布</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" role="status" hidden></div>
+
+  <footer>
+    <span>心知 · 本地编辑台（单编辑账号版）</span>
+    <span>所有操作均记录本地审计日志</span>
+  </footer>
+
+  <script src="editor.js"></script>
+</body>
+</html>

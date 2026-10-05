@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": "checked-4b57162000b88830",
+      "doi": "10.1038/s41746-026-03282-1",
+      "url": "https://www.nature.com/articles/s41746-026-03282-1",
+      "title": "从芬兰病历中提取临床信息：高准确率仍不等于没有重要错误",
+      "journal": "npj Digital Medicine",
+      "date": "2026-09-28",
+      "category": "AI医疗",
+      "basis": "官方摘要核对；中文题名为原创导读题名"
+    },
+    {
+      "id": "checked-a762c60c31fbd3e2",
+      "doi": "10.1038/s41746-026-03312-y",
+      "url": "https://www.nature.com/articles/s41746-026-03312-y",
+      "title": "高血压远程监测：服务已经有了，为何患者覆盖仍有限？",
+      "journal": "npj Digital Medicine",
+      "date": "2026-09-26",
+      "category": "AI医疗",
+      "basis": "官方摘要核对；中文题名为原创导读题名"
+    },
+    {
+      "id": "checked-12e4c45e090bd891",
+      "doi": "10.1093/ehjdh/ztag149",
+      "url": "https://academic.oup.com/ehjdh/advance-article/doi/10.1093/ehjdh/ztag149/8829872?searchresult=1",
+      "title": "用多地区心电图预测年龄：外部验证之外，还要问临床用途",
+      "journal": "European Heart Journal – Digital Health",
+      "date": "2026-09-23",
+      "category": "交叉研究",
+      "basis": "官方摘要核对；中文题名为原创导读题名"
+    }
+  ]
+}

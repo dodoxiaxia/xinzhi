@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-29T08:09:17.070487+00:00",
+  "requirements": {
+    "department_learning_site": "company domain live, public search and share button verified",
+    "AI_medical_CV_general_sources": "79 working RSS sources plus PubMed; 713 dated deduplicated candidates",
+    "daily_selections": "3 source checked original guides live",
+    "weekly_close_reading": "24-page primary PDF, two AGY revision rounds, host core figure review; company domain expanded study text verified",
+    "original_fulltext_workflow": "3 current selections have existing PDFs; 1 official OA download verified by title DOI and 15 pages",
+    "internal_records": "Google Doc permissions freshly read: owner only dryz@dryz.info, shared false",
+    "low_cost_model": "GLM-5.3-Flash real abstract draft generated and exact support quotations validated",
+    "automated_maintenance": "ACTIVE local thread daily 08:00 plus Friday close reading; future scheduled invocation not yet observed",
+    "privacy": "5-file public archive excludes PDFs credentials internal records and local paths",
+    "validation": "13 service and 10 pipeline/generation tests passed; live public UI verified"
+  },
+  "limitations": [
+    "independent study supplements unavailable",
+    "no medical owner signoff",
+    "local scheduled task requires Codex/network/login; no cloud scheduler claimed"
+  ],
+  "site_delivery_status": "delivered",
+  "scheduled_first_run": "not yet observed; recurring task remains ACTIVE"
+}

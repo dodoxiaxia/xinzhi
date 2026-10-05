@@ -1,0 +1,10 @@
+{
+  "provider": "BigModel",
+  "model": "glm-5.3-flash",
+  "credential_storage": "private local configuration, excluded from release",
+  "connectivity_test": "HTTP 200, returned glm-5.3-flash, 54 total tokens",
+  "draft_test": "Real candidate abstract draft generated successfully; verbatim evidence snippets validated, scientific review still required",
+  "routing": "routine preparation via GLM; source verification via primary agent",
+  "automatic_paid_fallback": false,
+  "reasoning_effort": "low"
+}

@@ -1,0 +1,32 @@
+{
+  "startedAt": "2026-09-30T00:02:51.626069+00:00",
+  "steps": [
+    {
+      "script": "scripts/refresh_feeds.py",
+      "exitCode": 0,
+      "output": "\": 45\n    },\n    {\n      \"source\": \"Europace\",\n      \"url\": \"https://academic.oup.com/rss/site_5374/advanceAccess_3235.xml\",\n      \"ok\": true,\n      \"items\": 3\n    },\n    {\n      \"source\": \"Cardiovascular Research\",\n      \"url\": \"https://academic.oup.com/rss/site_5369/3230.xml\",\n      \"ok\": true,\n      \"items\": 13\n    },\n    {\n      \"source\": \"EHJ - Cardiovascular Pharmacotherapy\",\n      \"url\": \"https://academic.oup.com/rss/site_5377/3238.xml\",\n      \"ok\": true,\n      \"items\": 13\n    },\n    {\n      \"source\": \"EHJ: Current Issue\",\n      \"url\": \"https://academic.oup.com/rss/site_5375/3236.xml\",\n      \"ok\": true,\n      \"items\": 21\n    },\n    {\n      \"source\": \"EHJ: Advance Access\",\n      \"url\": \"https://academic.oup.com/rss/site_5375/advanceaccess_3236.xml\",\n      \"ok\": true,\n      \"items\": 1\n    },\n    {\n      \"source\": \"Euro J Heart Failure\",\n      \"url\": \"https://pubmed.ncbi.nlm.nih.gov/rss/search/1d_GL0BNbn9xkgqK6ovWzap1X2bqxKTxsjiOt7eW5iu1AKNYDj/?limit=50&utm_campaign=pubmed-2&fc=20260929052638\",\n      \"ok\": true,\n      \"items\": 50\n    }\n  ],\n  \"candidateCount\": 662,\n  \"excluded\": {\n    \"undated\": 837,\n    \"future\": 0,\n    \"olderThan14Days\": 2603\n  },\n  \"allFetchedCount\": 4102\n}\n",
+      "error": ""
+    },
+    {
+      "script": "scripts/fetch_pubmed.py",
+      "exitCode": 0,
+      "output": "\"journals\": [\"Circulation\", \"Circulation Research\", \"Circulation Heart Failure\", \"Circulation Cardiovascular Imaging\", \"Circulation Cardiovascular Interventions\", \"Circulation Arrhythmia and Electrophysiology\", \"Circulation Genomic and Precision Medicine\", \"Hypertension\", \"Journal of the American Heart Association\", \"Stroke\", \"JACC\", \"JACC: Heart Failure\", \"JACC: Cardiovascular Interventions\", \"JACC: Clinical Electrophysiology\", \"JACC: Cardiovascular Imaging\", \"JACC: Advances\", \"European Heart Journal\", \"European Heart Journal - Digital Health\", \"European Heart Journal - Cardiovascular Pharmacotherapy\", \"European Heart Journal - Cardiovascular Imaging\", \"Europace\", \"Cardiovascular Research\", \"European Journal of Heart Failure\", \"Heart Rhythm\", \"Journal of Cardiovascular Electrophysiology\", \"Heart\", \"N Engl J Med\", \"NEJM AI\", \"NEJM Evid\", \"The Lancet\", \"The Lancet Digital Health\", \"JAMA\", \"JAMA Cardiology\", \"JAMA Internal Medicine\", \"JAMA Network Open\", \"Nature Medicine\", \"npj Digital Medicine\", \"Cardiovascular Diabetology\", \"BMJ Digital Health & AI\"], \"note\": \"Indexing may lag publisher publication; zero hits does not prove the journal has no new articles. Structured XML parsed.\"}\n",
+      "error": ""
+    },
+    {
+      "script": "scripts/merge_candidates.py",
+      "exitCode": 0,
+      "output": "Enriched 974 candidates with quantitative metrics and clinical appraisal.\nEnriched 1219 library papers.\nMerged candidates: 974 PubMed fetched: 1500 RSS export: 81\n",
+      "error": ""
+    },
+    {
+      "script": "service/import_data.py",
+      "exitCode": 0,
+      "output": "[XINZHI IMPORT] 正在从 /Users/shijun/Documents/Codex/2026-09-29/https-github-com-kkkkhazix-aihot/outputs/xinzhi/data/candidates.json 导入候选文章到 /Users/shijun/Documents/Codex/2026-09-29/https-github-com-kkkkhazix-aihot/outputs/xinzhi/.local/xinzhi.db ...\n[XINZHI IMPORT] 导入完成！新增候选 379 篇，保留已存在/已编辑 595 篇，总计处理 974 篇。\n",
+      "error": ""
+    }
+  ],
+  "publicSiteChanged": false,
+  "ok": true,
+  "finishedAt": "2026-09-30T00:04:02.277973+00:00"
+}

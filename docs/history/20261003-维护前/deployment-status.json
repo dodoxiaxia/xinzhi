@@ -1,0 +1,75 @@
+{
+  "checkedAt": "2026-10-01T00:18:28.250960+00:00",
+  "localRelease": "v13.2",
+  "liveRelease": "v13.2 (four static content hashes verified)",
+  "liveStaticContentVerified": true,
+  "verifiedStaticFiles": [
+    "index.html (canonical /)",
+    "public.js",
+    "style.css",
+    "icon.svg"
+  ],
+  "responseHeadersVerified": [
+    "Content-Security-Policy",
+    "X-Content-Type-Options",
+    "Referrer-Policy"
+  ],
+  "workerByteIdentityVerified": false,
+  "workerConfigurationPresenceVerified": true,
+  "cloudModelCallVerified": false,
+  "publicationPerformedByThisRun": false,
+  "deployed": null,
+  "sourceManifestDeployedFlag": false,
+  "publicFileCount": 6,
+  "authorizedPublishFileCount": 5,
+  "publicationBlockedBy": "Existing five-file publishing boundary differs from current Worker-containing six-file bundle; preserve existing live version pending explicit synchronization.",
+  "actionsEnabled": false,
+  "existingDailyAutomation": "automation",
+  "proof": "work/proof/20261001-live-start.json",
+  "dailyPreparation": {
+    "preparedOn": "2026-10-01",
+    "candidateCount": 970,
+    "newGuidesPrepared": 3,
+    "productionGuides": 12,
+    "isolatedCandidateGuides": 15,
+    "publicationPerformed": false,
+    "receiptPath": ".local/maintenance/20261001/reviewed-ready.json",
+    "scope": "Official public abstracts only; AI-assisted source review, no fulltext or doctor final review",
+    "candidateQAPassed": true,
+    "candidatePackageSha256": "79f46d654991d106fa3db8fff0767540b24822ea399905f0883b89ae85456a55",
+    "mustRebuildActualDateBeforeUpload": true
+  },
+  "localChecks": {
+    "pythonTests": 103,
+    "readingLogicAssertions": 20,
+    "metadataFix": "Thousands-separated participant counts and cohort/case-control labels",
+    "productionPublicUnchanged": true
+  },
+  "internalPermissionsCheckedAt": "2026-10-01",
+  "internalPermissionsPublicSharing": false,
+  "finalLiveRecheckProof": ".local/maintenance/20261001/live-final-check.json",
+  "lastRoutineCheck": {
+    "checkedAt": "2026-10-02T00:30:33.126021+00:00",
+    "date": "2026-10-02",
+    "liveUnchanged": true,
+    "fourStaticFilesMatchCurrentManifest": true,
+    "publicationPerformed": false,
+    "currentCandidates": 868,
+    "newModelCallsGLM": 0,
+    "proof": ".local/maintenance/20261002/live-and-scheduler.json",
+    "integrityProof": ".local/maintenance/20261002/final-integrity.json",
+    "finalProof": ".local/maintenance/20261002/live-final-check.json",
+    "automationReadbackProof": ".local/maintenance/20261002/automation-readback.json"
+  },
+  "weeklyPreparation": {
+    "preparedOn": "2026-10-02",
+    "targetWeekStart": "2026-09-28",
+    "targetWeekEnd": "2026-10-04",
+    "doi": "10.1038/s41746-026-03282-1",
+    "reviewStatus": "reviewed",
+    "doctorFinalReview": false,
+    "published": false,
+    "receiptPath": ".local/maintenance/20261002/weekly-ready.json",
+    "websiteEditingAndBuildRequired": true
+  }
+}

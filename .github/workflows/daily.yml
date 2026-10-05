@@ -1,0 +1,70 @@
+name: daily-refresh
+
+on:
+  schedule:
+    - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
+    - cron: '7,37 * * * *'  # 每半小时:轻量刷新,内容有变化才发布
+  workflow_dispatch:
+
+concurrency:
+  group: daily-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      XINZHI_LLM_ENDPOINT: ${{ vars.XINZHI_LLM_ENDPOINT }}
+      XINZHI_LLM_MODEL: ${{ vars.XINZHI_LLM_MODEL }}
+      XINZHI_LLM_API_KEY: ${{ secrets.XINZHI_LLM_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 恢复数据(state 分支:data/ public/ 等私有数据,不含历史)
+        run: |
+          if git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
+            git fetch --depth=1 origin state
+            git archive FETCH_HEAD | tar -x -C .
+          else
+            echo "::error::没有 state 分支,请先运行 scripts/seed_state.sh 播种一次"; exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 抓取 / 补摘要 / 翻译 / 构建
+        id: refresh
+        run: python3 scripts/ci_daily.py ${{ (github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') && '--fast' || '' }}
+
+      - name: 保存数据到 state 分支(覆盖式,不累积历史)
+        if: steps.refresh.outcome == 'success' && steps.refresh.outputs.deploy == 'true'
+        run: |
+          set -e
+          T=$(mktemp -d)
+          mkdir -p "$T/s/docs"
+          cp -r data public "$T/s/"
+          cp docs/public-manifest.json docs/last-refresh.json "$T/s/docs/" 2>/dev/null || true
+          cd "$T/s"
+          git init -q -b state
+          git config user.name "xinzhi-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          git commit -qm "state $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
+
+      - uses: actions/setup-node@v4
+        if: steps.refresh.outputs.deploy == 'true'
+        with:
+          node-version: '20'
+
+      - name: 发布到 Cloudflare Pages
+        if: steps.refresh.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@3 pages deploy public --project-name dryz-xinzhi --branch main --commit-dirty=true
