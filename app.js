@@ -1510,7 +1510,7 @@
     if (status) {
       status.innerHTML = thisWeek.length
         ? `本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）精读已发布：第 ${String(thisWeek[0].no).padStart(2, '0')} 期。`
-        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）</b>下方「近 7 天精读榜」每天自动更新；全文精读（需先取得可核验全文）按期发布，目前第 01 期仅作体例示范（选用 2025 年论文）。`;
+        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）</b>下方「近 7 天精读榜」随每次内容刷新（约每 2 小时）自动更新；全文精读（需先取得可核验全文）按期发布，第 01 期仅作体例示范，已折叠在榜单下方。`;
     }
     renderWeeklyAuto();
     if (list) {
@@ -1522,7 +1522,10 @@
     const el = $('#weeklyAuto'); if (!el) return;
     const items = FEEDS.items.filter(p => p.weeklyPick).sort((a, b) => a.weeklyPick - b.weeklyPick);
     if (!items.length) { el.innerHTML = ''; return; }
-    el.innerHTML = `<h3 class="next-title">近 7 天精读榜 <small>每天自动更新；按专科相关性、研究类型、期刊与媒体关注度规则排序，AI 速览未经人工核验，请以原文为准。</small></h3>` +
+    const at = items.map(p => p.weeklyAt).filter(Boolean)[0];
+    let upd = '';
+    if (at) { try { upd = new Date(at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { upd = ''; } }
+    el.innerHTML = `<h3 class="next-title">近 7 天精读榜 <small>${upd ? '更新于 ' + upd + '（北京时间）；' : ''}随每次刷新自动更新；按专科相关性、研究类型、期刊与媒体关注度规则排序，AI 速览未经人工核验，请以原文为准。</small></h3>` +
       items.map((p, i) => {
         const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
         const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');

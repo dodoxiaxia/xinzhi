@@ -863,3 +863,8 @@ html[data-style="c"] .site-footer { border-top: 0; }
 .weekly-auto-en { margin-top: 2px; font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
 .weekly-auto-line { margin-top: 6px; font-size: 14.5px; line-height: 1.7; color: var(--text-secondary); }
 .tag-pill.auto-pick-pill { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: 999px; font-size: 12px; line-height: 1.7; background: var(--accent-light); color: var(--accent); border: 0; }
+
+.weekly-demo { margin-top: 20px; border-top: 1px solid var(--border, rgba(127,127,127,.25)); padding-top: 12px; }
+.weekly-demo > summary { cursor: pointer; font-size: 13.5px; color: var(--text-muted); padding: 6px 0; list-style: none; }
+.weekly-demo > summary::before { content: '▸ '; }
+.weekly-demo[open] > summary::before { content: '▾ '; }

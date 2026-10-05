@@ -204,6 +204,14 @@ def checked_keys(editorial):
     return {key for p in editorial.get('articles', []) if isinstance(p, dict) and p.get('source_checked') is True for key in identity_keys(p)}
 
 
+def picked_ids():
+    try:
+        pk = json.loads((__import__('pathlib').Path(__file__).resolve().parents[1] / 'data/picks.json').read_text(encoding='utf-8'))
+        return set(pk.get('weekly', [])) | {i for ids in pk.get('daily', {}).values() for i in ids}
+    except (OSError, ValueError):
+        return set()
+
+
 def eligible_papers(papers, have, miss, checked, today):
     cutoff = today - datetime.timedelta(days=RECENT_DAYS)
     miss_cutoff = (today - datetime.timedelta(days=MISS_DAYS)).isoformat()
@@ -227,7 +235,8 @@ def eligible_papers(papers, have, miss, checked, today):
         if miss.get(key, {}).get('first', today.isoformat()) < miss_cutoff and not local_abstract(p):
             continue
         todo.append(p)
-    return sorted(todo, key=lambda p: p.get('date', ''), reverse=True)
+    picked = picked_ids()
+    return sorted(todo, key=lambda p: (p.get('id') in picked, p.get('date', '')), reverse=True)  # 精选/周榜条目优先补速览
 
 
 def nums(s):

@@ -133,7 +133,7 @@ def main():
             for i,x in enumerate(ids):
                 if x in byid:byid[x]['autoPick']={'d':d,'r':i+1}
         for i,x in enumerate(picks.get('weekly',[])):
-            if x in byid:byid[x]['weeklyPick']=i+1
+            if x in byid:byid[x]['weeklyPick']=i+1;byid[x]['weeklyAt']=picks.get('updatedAt')
         print('auto picks:',sum(1 for q in candidates['items'] if q.get('autoPick')),'weekly:',len(picks.get('weekly',[])))
     fullp=ROOT/'data/archive-full.json'
     if fullp.exists():
@@ -161,7 +161,7 @@ def main():
     (ROOT/'data/quicklooks.js').write_text(js('QUICKLOOKS',ql))
     manifest=[{'path':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(DEST.iterdir())]
     assert {p['path'] for p in manifest}==PUBLIC
-    meta={'release':'v13.3','createdAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'files':manifest,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz)},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    meta={'release':'v13.4','createdAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'files':manifest,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz)},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
     print(json.dumps({'built':len(manifest),'release':meta['release'],'counts':meta['counts']},ensure_ascii=False))
 if __name__=='__main__':main()

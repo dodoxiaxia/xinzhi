@@ -5,7 +5,7 @@
 import datetime, json
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-DAILY_N, WEEKLY_N, DAYS = 6, 5, 7
+DAILY_N, WEEKLY_N, DAYS = 6, 8, 7
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 AIMED = {'AI医疗与数字医学'}
 GOOD_DESIGN = {'RCT': 3, 'Meta/系统综述': 3, 'Meta/综述': 3, '指南共识': 3, '队列研究': 2, '方法/模型验证': 2}

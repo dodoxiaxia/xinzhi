@@ -1,6 +1,6 @@
 {
-  "release": "v13.3",
-  "createdAt": "2026-10-05T01:46:27.985067+00:00",
+  "release": "v13.4",
+  "createdAt": "2026-10-05T08:26:28.865945+00:00",
   "files": [
     {
       "path": "_headers",
@@ -19,18 +19,18 @@
     },
     {
       "path": "index.html",
-      "bytes": 26041,
-      "sha256": "7e31192b43d0f0a45adcf37a295a736376d444a15e812e1432197944ffc61936"
+      "bytes": 26208,
+      "sha256": "ebe5e7ebbe1b77bb833e43cc487c3ae8117d0799d0d160efc29a46101df1c9c0"
     },
     {
       "path": "public.js",
-      "bytes": 7623858,
-      "sha256": "e8f3229ffa27edf5dbcf59939ac762089a47bc9edffcf1af0c9d362a894ee112"
+      "bytes": 7624656,
+      "sha256": "be28a8121627f507d9db05be1d4ff51df0ab87fbb389109a509175fa78bb512f"
     },
     {
       "path": "style.css",
-      "bytes": 67781,
-      "sha256": "9ef22455105b4da81140aa448f7cc763a427848bb540548539150027ba98e9eb"
+      "bytes": 68129,
+      "sha256": "71f2bc1bb8c69f85305f3be3ed1f988dab245df82288fd184e0728e26d0799c6"
     }
   ],
   "counts": {
