@@ -3,7 +3,7 @@ name: daily-refresh
 on:
   schedule:
     - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
-    - cron: '7,37 * * * *'  # 每半小时:轻量刷新,内容有变化才发布
+    - cron: '7 */2 * * *'   # 每 2 小时:轻量刷新,内容有变化才发布
   workflow_dispatch:
 
 concurrency:
