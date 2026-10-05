@@ -235,7 +235,7 @@
     const seen = new Set();
     const out = [];
     [...CURATED, ...FEEDS.items, ...LIBRARY.papers].forEach(p => {
-      if (!p.hasDraft || !p.draftData) return;
+      if (!(p.hasDraft && p.draftData) && !p.autoPick) return;
       const key = (p.doi || p.id || '').toLowerCase();
       if (seen.has(key)) return;
       seen.add(key);
@@ -433,6 +433,7 @@
   }
 
   function publishedDate(p) {
+    if (p.autoPick && !(p.draftData && (p.draftData.published || p.draftData.source_date))) return p.autoPick.d;
     return ((p.draftData && (p.draftData.published || p.draftData.source_date)) || '日期待核验').slice(0, 10);
   }
 
@@ -454,7 +455,7 @@
   }
 
   const MODE_NOTES = {
-    curated: '以下为已对照期刊摘要核对来源的导读：给出证据边界与共读问题，<b>非全文精读，未经医生终审</b>。',
+    curated: '带“摘要核对”标记的是已对照期刊摘要核对来源的导读，<b>非全文精读，未经医生终审</b>；带“自动精选”标记的是每天由规则从新文献中选出、附 AI 速览，<b>未经人工核验，请以原文为准</b>。',
     candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
     library: '文献档案：按期刊与时间检索既有题录；本站不提供 PDF。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
   };
@@ -813,6 +814,7 @@
             <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
             <span class="design-pill ${designClass}">${esc(p.studyDesign || '研究类型待核验')}</span>
             ${p.kind ? `<span class="tag-pill kind-pill">${esc(p.kind)}</span>` : ''}
+            ${p.autoPick && !p.hasDraft ? `<span class="tag-pill auto-pick-pill" title="由规则从当日新文献中自动选出，AI 速览未经人工核验">自动精选</span>` : ''}
             ${p.clinicalTier ? `<span class="tag-pill" style="border:none; background:transparent; font-weight:500;">${esc(p.clinicalTier)}</span>` : ''}
             ${p.media && p.media.length ? p.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('') : ''}
           </div>
@@ -1508,11 +1510,27 @@
     if (status) {
       status.innerHTML = thisWeek.length
         ? `本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）精读已发布：第 ${String(thisWeek[0].no).padStart(2, '0')} 期。`
-        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）精读尚未发布</b>，计划周五更新（需先取得可核验全文）。下方为最近一期：第 01 期仅作精读体例示范（选用 2025 年论文），共 ${ISSUES.length} 期，尚处试运行。`;
+        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）</b>下方「近 7 天精读榜」每天自动更新；全文精读（需先取得可核验全文）按期发布，目前第 01 期仅作体例示范（选用 2025 年论文）。`;
     }
+    renderWeeklyAuto();
     if (list) {
       list.innerHTML = ISSUES.map(i => `<button class="issue-card" data-issue="${i.no}"><b>第 ${String(i.no).padStart(2, '0')} 期 · ${esc(i.published)}</b>${esc(i.title)}<br><small>${esc(i.meta)}</small></button>`).join('');
     }
+  }
+
+  function renderWeeklyAuto() {
+    const el = $('#weeklyAuto'); if (!el) return;
+    const items = FEEDS.items.filter(p => p.weeklyPick).sort((a, b) => a.weeklyPick - b.weeklyPick);
+    if (!items.length) { el.innerHTML = ''; return; }
+    el.innerHTML = `<h3 class="next-title">近 7 天精读榜 <small>每天自动更新；按专科相关性、研究类型、期刊与媒体关注度规则排序，AI 速览未经人工核验，请以原文为准。</small></h3>` +
+      items.map((p, i) => {
+        const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
+        const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
+        return `<div class="next-item weekly-auto-item"><span class="weekly-rank">${i + 1}</span><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span>` +
+          `<div class="weekly-auto-title"><a href="${esc(p.url || ('https://doi.org/' + p.doi))}" target="_blank" rel="noopener noreferrer">${esc(zh || p.title)}</a></div>` +
+          (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
+          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览</span>${esc(q.one_line)}</div>` : '') + `</div></div>`;
+      }).join('');
   }
 
   function renderNextCandidates() {

@@ -1,0 +1,12 @@
+{
+  "note": "媒体/新闻源仅作为『热度信号』:只取标题、链接、日期,用来给文献加权与角标,不转载正文。weight 越大加权越高。",
+  "sources": [
+    {"id": "tctmd", "name": "TCTMD", "url": "https://www.tctmd.com/rss", "weight": 3, "enabled": true, "verified": "2026-09-30"},
+    {"id": "cvbusiness", "name": "Cardiovascular Business", "url": "https://cardiovascularbusiness.com/rss.xml", "weight": 2, "enabled": true, "verified": "2026-09-30"},
+    {"id": "medscape", "name": "Medscape", "url": "https://www.medscape.com/cx/rssfeeds/2701.xml", "weight": 3, "enabled": false, "note": "2026-09-30 返回 402(需登录/付费),暂不可用;找到可用的公开订阅地址后改 enabled"},
+    {"id": "nejmcatalyst", "name": "NEJM Catalyst", "url": "https://catalyst.nejm.org/action/showFeed?type=etoc&feed=rss&jc=cat", "weight": 2, "enabled": false, "note": "robots.txt 禁止抓取,暂不接入;可改用其邮件/官方授权渠道"},
+    {"id": "jwatch", "name": "NEJM Journal Watch (Cardiology)", "url": "https://www.jwatch.org/rss/cardiology.xml", "weight": 3, "enabled": false, "note": "地址未验证"},
+    {"id": "medpage", "name": "MedPage Today Cardiology", "url": "https://www.medpagetoday.com/rss/cardiology.xml", "weight": 2, "enabled": false, "note": "2026-09-30 被拦截,待验证"},
+    {"id": "healio", "name": "Healio Cardiology", "url": "https://www.healio.com/rss/cardiology", "weight": 2, "enabled": false, "note": "2026-09-30 返回 403"}
+  ]
+}

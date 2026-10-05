@@ -15,7 +15,7 @@ REQUIRED = [
     ['scripts/fetch_pubmed.py'],
     ['scripts/merge_candidates.py'],
 ]
-ALWAYS_OPTIONAL = [(['scripts/media_signals.py'], 300)]  # 媒体热度信号:轻量,每次都跑
+ALWAYS_OPTIONAL = [(['scripts/media_signals.py'], 300), (['scripts/auto_picks.py'], 120), (['scripts/generate_quicklooks.py', '--call-model', '--limit', '8', '--lookup-limit', '16'], 600), (['scripts/auto_picks.py'], 120)]  # 选稿 -> 补 AI 速览 -> 再选稿  # 媒体热度信号:轻量,每次都跑
 OPTIONAL = [  # (argv, timeout seconds)
     (['scripts/fetch_archive.py', '--incremental'], 1500),
     (['scripts/archive_details.py', '--fill'], 1800),

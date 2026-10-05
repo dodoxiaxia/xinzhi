@@ -1,6 +1,6 @@
 {
-  "release": "v13.2",
-  "createdAt": "2026-09-30T07:01:37.328692+00:00",
+  "release": "v13.3",
+  "createdAt": "2026-10-05T01:46:27.985067+00:00",
   "files": [
     {
       "path": "_headers",
@@ -19,26 +19,26 @@
     },
     {
       "path": "index.html",
-      "bytes": 25951,
-      "sha256": "56ba174bca5a11f4e4dd2f19b6dc7094d108349e8cb40e36afcc1975b7b73bd9"
+      "bytes": 26041,
+      "sha256": "7e31192b43d0f0a45adcf37a295a736376d444a15e812e1432197944ffc61936"
     },
     {
       "path": "public.js",
-      "bytes": 7820571,
-      "sha256": "11ce51d4ae39a435f5b375f2a84624eccf04f3591a949f38e0501b1b4be4726f"
+      "bytes": 7623858,
+      "sha256": "e8f3229ffa27edf5dbcf59939ac762089a47bc9edffcf1af0c9d362a894ee112"
     },
     {
       "path": "style.css",
-      "bytes": 66665,
-      "sha256": "c2c3a8b217623936b5fc88955bd29227d29f062e33d95406fa60c1c54d296f6a"
+      "bytes": 67781,
+      "sha256": "9ef22455105b4da81140aa448f7cc763a427848bb540548539150027ba98e9eb"
     }
   ],
   "counts": {
-    "radar": 974,
+    "radar": 841,
     "library": 1219,
     "checked_guides": 12,
     "ai_quicklooks_unchecked": 3,
-    "radar_archive_titles": 12541,
+    "radar_archive_titles": 12700,
     "titles_zh": 14556
   },
   "excludes": [

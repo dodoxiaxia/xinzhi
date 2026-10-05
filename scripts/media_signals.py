@@ -60,7 +60,7 @@ def match(items, news):
     return res
 
 def main():
-    cfg = json.loads((ROOT / 'data/media_sources.json').read_text(encoding='utf-8'))
+    cfg = json.loads((ROOT / 'config/media_sources.json').read_text(encoding='utf-8'))
     news, reports = [], []
     for s in cfg['sources']:
         if not s.get('enabled'):
