@@ -7,6 +7,9 @@
 //   变量     LLM_ENDPOINT, LLM_MODEL, 可选 AI_ENABLED("off" 关闭生成), DAILY_CAP(默认150), IP_CAP(默认20)
 // POST /api/ai {task:'translate',pmid|doi} 摘要中英对照翻译；GET /api/ai?task=translate&k=… 读缓存
 // POST /api/ai {task:'brief',mode:'huddle'|'digest',items:[{pmid|doi}…2-8]} 多篇讨论提纲/综述；同一组文献缓存复用
+// GET /api/pdf?id=公开文献ID：显示口令表单；POST 同址逐次验证口令后，精确匹配并校验单篇 PDF。
+// PDF 下载默认关闭；需 PDF_DOWNLOAD_ENABLED=true、GITHUB_LIBRARY_TOKEN（Contents 只读）；
+// 可选 Secret PDF_DOWNLOAD_PASSPHRASE 覆盖默认口令、PDF_GITHUB_COMMIT 固定版本，否则解析 main commit。
 // POST /api/ai {task:'study',pmid|doi} / {task:'compare',items:[{pmid|doi}…2-4]} 公开摘要证据拆解
 // GET /api/ai?task=study&k=… / ?task=compare&keys=["pmid:…",…] 仅读已有缓存，不调用模型
 // 其余请求原样交给静态资源。密钥只存在 Cloudflare 环境变量里，不进网页、不进公开包。
@@ -20,6 +23,240 @@ const PROMPT = '你为心血管科室撰写“AI 速览”。用户消息里的�
 const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extra }
 });
+
+// Build replaces this public ID -> {doi,title} map. Never include private paths or credentials.
+const PDF_LIBRARY = {};
+const PDF_REPOSITORY = 'dodoxiaxia/AI-';
+const PDF_INDEX_PATH = '文献索引/文献索引.csv';
+const PDF_MAX_BYTES = 20 * 1024 * 1024;
+const PDF_MAX_INDEX_BYTES = 4 * 1024 * 1024;
+const PDF_NETWORK_TIMEOUT_MS = 12000;
+const PDF_MAX_FORM_BYTES = 2048;
+// Only the default digest is stored in source; never expose submitted or configured plaintext.
+const PDF_DEFAULT_PASSPHRASE_SHA256 = '09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab';
+
+class PdfFailure extends Error {
+  constructor(code, status) { super(code); this.code = code; this.status = status; }
+}
+const pdfFail = (code, status = 502) => { throw new PdfFailure(code, status); };
+const pdfDoi = value => {
+  const doi = String(value || '').trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '').toLowerCase();
+  return /^10\.\d{4,9}\/[^\s\x00-\x1f\x7f]{1,200}$/.test(doi) ? doi : '';
+};
+// Unicode case-fold exceptions after toLowerCase; titles are matched exactly, never fuzzily.
+const PDF_CASE_FOLD = {"µ":"μ","ß":"ss","ŉ":"ʼn","ſ":"s","ǰ":"ǰ","ͅ":"ι","ΐ":"ΐ","ΰ":"ΰ","ς":"σ","ϐ":"β","ϑ":"θ","ϕ":"φ","ϖ":"π","ϰ":"κ","ϱ":"ρ","ϵ":"ε","և":"եւ","ꭰ":"Ꭰ","ꭱ":"Ꭱ","ꭲ":"Ꭲ","ꭳ":"Ꭳ","ꭴ":"Ꭴ","ꭵ":"Ꭵ","ꭶ":"Ꭶ","ꭷ":"Ꭷ","ꭸ":"Ꭸ","ꭹ":"Ꭹ","ꭺ":"Ꭺ","ꭻ":"Ꭻ","ꭼ":"Ꭼ","ꭽ":"Ꭽ","ꭾ":"Ꭾ","ꭿ":"Ꭿ","ꮀ":"Ꮀ","ꮁ":"Ꮁ","ꮂ":"Ꮂ","ꮃ":"Ꮃ","ꮄ":"Ꮄ","ꮅ":"Ꮅ","ꮆ":"Ꮆ","ꮇ":"Ꮇ","ꮈ":"Ꮈ","ꮉ":"Ꮉ","ꮊ":"Ꮊ","ꮋ":"Ꮋ","ꮌ":"Ꮌ","ꮍ":"Ꮍ","ꮎ":"Ꮎ","ꮏ":"Ꮏ","ꮐ":"Ꮐ","ꮑ":"Ꮑ","ꮒ":"Ꮒ","ꮓ":"Ꮓ","ꮔ":"Ꮔ","ꮕ":"Ꮕ","ꮖ":"Ꮖ","ꮗ":"Ꮗ","ꮘ":"Ꮘ","ꮙ":"Ꮙ","ꮚ":"Ꮚ","ꮛ":"Ꮛ","ꮜ":"Ꮜ","ꮝ":"Ꮝ","ꮞ":"Ꮞ","ꮟ":"Ꮟ","ꮠ":"Ꮠ","ꮡ":"Ꮡ","ꮢ":"Ꮢ","ꮣ":"Ꮣ","ꮤ":"Ꮤ","ꮥ":"Ꮥ","ꮦ":"Ꮦ","ꮧ":"Ꮧ","ꮨ":"Ꮨ","ꮩ":"Ꮩ","ꮪ":"Ꮪ","ꮫ":"Ꮫ","ꮬ":"Ꮬ","ꮭ":"Ꮭ","ꮮ":"Ꮮ","ꮯ":"Ꮯ","ꮰ":"Ꮰ","ꮱ":"Ꮱ","ꮲ":"Ꮲ","ꮳ":"Ꮳ","ꮴ":"Ꮴ","ꮵ":"Ꮵ","ꮶ":"Ꮶ","ꮷ":"Ꮷ","ꮸ":"Ꮸ","ꮹ":"Ꮹ","ꮺ":"Ꮺ","ꮻ":"Ꮻ","ꮼ":"Ꮼ","ꮽ":"Ꮽ","ꮾ":"Ꮾ","ꮿ":"Ꮿ","ᏸ":"Ᏸ","ᏹ":"Ᏹ","ᏺ":"Ᏺ","ᏻ":"Ᏻ","ᏼ":"Ᏼ","ᏽ":"Ᏽ","ᲀ":"в","ᲁ":"д","ᲂ":"о","ᲃ":"с","ᲄ":"т","ᲅ":"т","ᲆ":"ъ","ᲇ":"ѣ","ᲈ":"ꙋ","ẖ":"ẖ","ẗ":"ẗ","ẘ":"ẘ","ẙ":"ẙ","ẚ":"aʾ","ẛ":"ṡ","ὐ":"ὐ","ὒ":"ὒ","ὔ":"ὔ","ὖ":"ὖ","ᾀ":"ἀι","ᾁ":"ἁι","ᾂ":"ἂι","ᾃ":"ἃι","ᾄ":"ἄι","ᾅ":"ἅι","ᾆ":"ἆι","ᾇ":"ἇι","ᾐ":"ἠι","ᾑ":"ἡι","ᾒ":"ἢι","ᾓ":"ἣι","ᾔ":"ἤι","ᾕ":"ἥι","ᾖ":"ἦι","ᾗ":"ἧι","ᾠ":"ὠι","ᾡ":"ὡι","ᾢ":"ὢι","ᾣ":"ὣι","ᾤ":"ὤι","ᾥ":"ὥι","ᾦ":"ὦι","ᾧ":"ὧι","ᾲ":"ὰι","ᾳ":"αι","ᾴ":"άι","ᾶ":"ᾶ","ᾷ":"ᾶι","ι":"ι","ῂ":"ὴι","ῃ":"ηι","ῄ":"ήι","ῆ":"ῆ","ῇ":"ῆι","ῒ":"ῒ","ΐ":"ΐ","ῖ":"ῖ","ῗ":"ῗ","ῢ":"ῢ","ΰ":"ΰ","ῤ":"ῤ","ῦ":"ῦ","ῧ":"ῧ","ῲ":"ὼι","ῳ":"ωι","ῴ":"ώι","ῶ":"ῶ","ῷ":"ῶι","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ﬅ":"st","ﬆ":"st","ﬓ":"մն","ﬔ":"մե","ﬕ":"մի","ﬖ":"վն","ﬗ":"մխ"};
+const pdfTitle = value => Array.from(String(value || '').trim().replace(/\s+/gu, ' ').toLowerCase(), char => PDF_CASE_FOLD[char] || char).join('');
+const pdfEscape = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+function pdfOfficialLink(doi) {
+  return doi ? '<p><a href="' + pdfEscape('https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/')) + '" target="_blank" rel="noopener noreferrer">前往官网原文</a></p>' : '';
+}
+function pdfHtml(body, status = 200) {
+  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · PDF 下载</title><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>PDF 下载</h1>' + body + '<p><a href="/?mode=library">返回文献库</a></p></main></body></html>', {
+    status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
+  });
+}
+function pdfPassphraseForm(id, doi, invalid = false) {
+  const notice = invalid ? '<p role="alert">下载口令不正确，请重新输入。</p>' : '<p>输入下载口令即可获取这篇文献的 PDF。</p>';
+  return pdfHtml(notice + '<form method="post" action="/api/pdf?id=' + pdfEscape(encodeURIComponent(id)) + '"><p><label for="passphrase">下载口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">下载 PDF</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200);
+}
+function pdfError(request, code, status, doi = '') {
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:false, error:code }, status);
+  const messages = {
+    pdf_disabled:'PDF 下载尚未启用。', pdf_not_configured:'PDF 下载服务尚未完成配置。',
+    pdf_passphrase_invalid:'下载口令不正确，请重新输入。', pdf_bad_form:'口令提交格式无效，请重新打开下载页面。',
+    pdf_origin:'请在本站下载页面提交口令。',
+    pdf_content_type:'请通过下载页面的口令表单提交。', pdf_body_too_large:'口令提交内容超过大小限制。',
+    pdf_bad_id:'文献标识无效。', pdf_not_found:'这篇文献暂未提供可下载的 PDF。',
+    pdf_index_invalid:'文献索引暂时无法用于下载。', pdf_ambiguous:'索引中的文献对应关系需要核验。',
+    pdf_integrity:'PDF 完整性校验未通过，请稍后重试。', pdf_too_large:'PDF 或索引超过下载服务的大小限制。',
+    pdf_timeout:'下载源响应超时，请稍后重试。', pdf_upstream:'暂时无法读取下载源，请稍后重试。',
+    pdf_method:'下载仅支持 GET 和 POST 请求。', pdf_server:'下载服务暂时不可用。'
+  };
+  return pdfHtml('<p>' + pdfEscape(messages[code] || messages.pdf_server) + '</p>' + pdfOfficialLink(doi), status);
+}
+async function pdfReadPassphrase(request) {
+  if (!/^application\/x-www-form-urlencoded(?:;|$)/i.test(request.headers.get('content-type') || '')) pdfFail('pdf_content_type', 415);
+  const declared = request.headers.get('content-length');
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > PDF_MAX_FORM_BYTES)) pdfFail('pdf_body_too_large', 413);
+  const reader = request.body && request.body.getReader();
+  if (!reader) pdfFail('pdf_bad_form', 400);
+  const chunks = []; let length = 0;
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      length += result.value.byteLength;
+      if (length > PDF_MAX_FORM_BYTES) { await reader.cancel(); pdfFail('pdf_body_too_large', 413); }
+      chunks.push(result.value);
+    }
+  } catch (error) { if (error instanceof PdfFailure) throw error; pdfFail('pdf_bad_form', 400); }
+  const bytes = new Uint8Array(length); let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  let form;
+  try { form = new URLSearchParams(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); }
+  catch { pdfFail('pdf_bad_form', 400); }
+  const values = form.getAll('passphrase');
+  if (values.length !== 1 || [...form.keys()].some(key => key !== 'passphrase')) pdfFail('pdf_bad_form', 400);
+  if (!values[0] || values[0].length > 256) pdfFail('pdf_passphrase_invalid', 403);
+  return values[0];
+}
+async function pdfVerifyPassphrase(passphrase, env) {
+  let expected = PDF_DEFAULT_PASSPHRASE_SHA256;
+  if (env.PDF_DOWNLOAD_PASSPHRASE !== undefined) {
+    if (typeof env.PDF_DOWNLOAD_PASSPHRASE !== 'string' || !env.PDF_DOWNLOAD_PASSPHRASE || env.PDF_DOWNLOAD_PASSPHRASE.length > 256) pdfFail('pdf_not_configured', 503);
+    expected = await pdfDigest('SHA-256', new TextEncoder().encode(env.PDF_DOWNLOAD_PASSPHRASE));
+  }
+  const actual = await pdfDigest('SHA-256', new TextEncoder().encode(passphrase));
+  let difference = 0;
+  for (let index = 0; index < 64; index++) difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
+  if (difference) pdfFail('pdf_passphrase_invalid', 403);
+}
+
+// Timeout covers headers AND the streamed body. Authorization is sent only to api.github.com.
+async function pdfRead(url, maxBytes, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PDF_NETWORK_TIMEOUT_MS);
+  try {
+    let current = new URL(url), response;
+    for (let hop = 0; hop < 2; hop++) {
+      const headers = { accept:options.accept || 'application/json', 'user-agent':'XinZhiPdfDownload/1.0', 'x-github-api-version':'2022-11-28' };
+      if (options.token && current.hostname === 'api.github.com') headers.authorization = 'Bearer ' + options.token;
+      response = await fetch(current.href, { method:'GET', headers, redirect:'manual', signal:controller.signal });
+      if (![301,302,303,307,308].includes(response.status)) break;
+      const location = response.headers.get('location');
+      if (hop || !options.rawPath || !location || current.hostname !== 'api.github.com') pdfFail('pdf_upstream');
+      const next = new URL(location, current);
+      let redirectedPath;
+      try { redirectedPath = decodeURIComponent(next.pathname); } catch { pdfFail('pdf_upstream'); }
+      if (next.protocol !== 'https:' || next.hostname !== 'raw.githubusercontent.com' || next.port || next.username || next.password || next.hash || redirectedPath !== options.rawPath) pdfFail('pdf_upstream');
+      if (response.body) await response.body.cancel();
+      current = next; // The next request deliberately has no GitHub Authorization header.
+    }
+    if (!response.ok) {
+      if (response.body) await response.body.cancel();
+      pdfFail(response.status === 404 && options.file ? 'pdf_not_found' : 'pdf_upstream', response.status === 404 && options.file ? 404 : 502);
+    }
+    const declared = response.headers.get('content-length');
+    if (declared && (!/^\d+$/.test(declared) || Number(declared) > maxBytes)) {
+      if (response.body) await response.body.cancel();
+      pdfFail('pdf_too_large', 413);
+    }
+    const reader = response.body && response.body.getReader();
+    if (!reader) pdfFail('pdf_upstream');
+    const chunks = []; let length = 0;
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      length += result.value.byteLength;
+      if (length > maxBytes) { await reader.cancel(); pdfFail('pdf_too_large', 413); }
+      chunks.push(result.value);
+    }
+    const bytes = new Uint8Array(length); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    return bytes;
+  } catch (error) {
+    if (error instanceof PdfFailure) throw error;
+    pdfFail(controller.signal.aborted ? 'pdf_timeout' : 'pdf_upstream', controller.signal.aborted ? 504 : 502);
+  } finally { clearTimeout(timer); }
+}
+function pdfJson(bytes, code = 'pdf_upstream') {
+  try { return JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); }
+  catch { pdfFail(code); }
+}
+// RFC 4180-style CSV: quoted commas, escaped quotes, and embedded newlines are data.
+function pdfCsv(bytes) {
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal:true }).decode(bytes).replace(/^\uFEFF/, ''); }
+  catch { pdfFail('pdf_index_invalid'); }
+  const rows = []; let row = [], value = '', quoted = false, closed = false;
+  const cell = () => { if (value.length > 8192 || row.length >= 64) pdfFail('pdf_index_invalid'); row.push(value); value = ''; closed = false; };
+  const line = () => { cell(); if (row.some(item => item !== '')) rows.push(row); row = []; if (rows.length > 20000) pdfFail('pdf_index_invalid'); };
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"') { if (text[index + 1] === '"') { value += '"'; index++; } else { quoted = false; closed = true; } }
+      else value += char;
+    } else if (char === ',') cell();
+    else if (char === '\n' || char === '\r') { line(); if (char === '\r' && text[index + 1] === '\n') index++; }
+    else if (char === '"' && !value && !closed) quoted = true;
+    else { if (closed || char === '"') pdfFail('pdf_index_invalid'); value += char; }
+    if (value.length > 8192) pdfFail('pdf_index_invalid');
+  }
+  if (quoted) pdfFail('pdf_index_invalid');
+  if (value || row.length || closed) line();
+  if (!rows.length) pdfFail('pdf_index_invalid');
+  const headers = rows.shift().map(item => item.trim());
+  if (new Set(headers).size !== headers.length || !['题名','DOI','期刊','实际出版日期','日期来源','当前路径','SHA256'].every(name => headers.includes(name))) pdfFail('pdf_index_invalid');
+  return rows.map(cells => { if (cells.length !== headers.length) pdfFail('pdf_index_invalid'); return Object.fromEntries(headers.map((name, index) => [name, cells[index]])); });
+}
+function pdfSafePath(value) {
+  if (typeof value !== 'string' || !value || value !== value.trim() || value.length > 1024 || /[\\\x00-\x1f\x7f]/.test(value) || value.startsWith('/') || value.split('/').some(part => !part || part === '.' || part === '..') || value.split('/')[0].includes(':') || !/\.pdf$/i.test(value)) pdfFail('pdf_index_invalid');
+  return value;
+}
+const pdfContentsUrl = (path, commit) => 'https://api.github.com/repos/' + PDF_REPOSITORY + '/contents/' + path.split('/').map(encodeURIComponent).join('/') + '?ref=' + commit;
+const pdfRawPath = (path, commit) => '/' + PDF_REPOSITORY + '/' + commit + '/' + path;
+async function pdfDigest(algorithm, bytes) {
+  return [...new Uint8Array(await crypto.subtle.digest(algorithm, bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+async function handlePdf(request, env) {
+  let doi = '', id = '';
+  try {
+    if (!['GET','POST'].includes(request.method)) pdfFail('pdf_method', 405);
+    const url = new URL(request.url), ids = url.searchParams.getAll('id');
+    if (ids.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'id') || !/^[A-Za-z0-9_.:-]{1,160}$/.test(ids[0])) pdfFail('pdf_bad_id', 400);
+    if (!Object.prototype.hasOwnProperty.call(PDF_LIBRARY, ids[0])) pdfFail('pdf_not_found', 404);
+    id = ids[0];
+    const identity = PDF_LIBRARY[id];
+    const declaredDoi = typeof identity === 'string' ? identity : identity && identity.doi;
+    doi = pdfDoi(declaredDoi);
+    const title = typeof identity === 'object' && identity ? pdfTitle(identity.title) : '';
+    if ((declaredDoi && !doi) || (!doi && !title)) pdfFail('pdf_not_found', 404);
+    if (request.method === 'GET') return pdfPassphraseForm(id, doi);
+    const fetchSite = request.headers.get('sec-fetch-site');
+    if (fetchSite && !['same-origin','none'].includes(fetchSite)) pdfFail('pdf_origin', 403);
+    const origin = request.headers.get('origin');
+    if (origin) {
+      let sourceOrigin;
+      try { sourceOrigin = new URL(origin).origin; } catch { pdfFail('pdf_origin', 403); }
+      if (sourceOrigin !== url.origin) pdfFail('pdf_origin', 403);
+    }
+    await pdfVerifyPassphrase(await pdfReadPassphrase(request), env); // No GitHub request before successful password verification.
+    if (env.PDF_DOWNLOAD_ENABLED !== 'true') pdfFail('pdf_disabled', 503);
+    if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT && !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT))) pdfFail('pdf_not_configured', 503);
+    const token = env.GITHUB_LIBRARY_TOKEN;
+    let commit = env.PDF_GITHUB_COMMIT;
+    if (!commit) {
+      const latest = pdfJson(await pdfRead('https://api.github.com/repos/' + PDF_REPOSITORY + '/commits/main', 262144, { token }));
+      commit = latest && latest.sha;
+      if (typeof commit !== 'string' || !/^[a-f0-9]{40}$/i.test(commit)) pdfFail('pdf_upstream');
+    }
+    commit = commit.toLowerCase();
+    const entries = pdfCsv(await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) }));
+    const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitle(entry['题名']) === title);
+    if (!matching.length) pdfFail('pdf_not_found', 404);
+    if (matching.length !== 1) pdfFail('pdf_ambiguous', 409);
+    const entry = matching[0], path = pdfSafePath(entry['当前路径']);
+    const checksum = entry.SHA256.trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(checksum)) pdfFail('pdf_index_invalid');
+    const endpoint = pdfContentsUrl(path, commit);
+    const metadata = pdfJson(await pdfRead(endpoint, 2 * 1024 * 1024, { token, file:true, accept:'application/vnd.github+json' }));
+    if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || typeof metadata.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(metadata.sha) || !Number.isInteger(metadata.size) || metadata.size < 8) pdfFail('pdf_integrity');
+    if (metadata.size > PDF_MAX_BYTES) pdfFail('pdf_too_large', 413);
+    const bytes = await pdfRead(endpoint, PDF_MAX_BYTES, { token, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
+    if (bytes.byteLength !== metadata.size || bytes.byteLength < 8 || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') pdfFail('pdf_integrity');
+    if (await pdfDigest('SHA-256', bytes) !== checksum) pdfFail('pdf_integrity');
+    const prefix = new TextEncoder().encode('blob ' + bytes.byteLength + '\0'), blob = new Uint8Array(prefix.length + bytes.length);
+    blob.set(prefix); blob.set(bytes, prefix.length);
+    if (await pdfDigest('SHA-1', blob) !== metadata.sha.toLowerCase()) pdfFail('pdf_integrity');
+    const downloadTitle = Array.from(String(entry['题名'] || 'article').replace(/[\x00-\x1f\x7f\/\\":<>|?*]/g, ' ').trim()).slice(0, 120).join('') || 'article';
+    const filename = downloadTitle.replace(/\.pdf$/i, '') + '.pdf';
+    const encodedFilename = encodeURIComponent(filename).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase());
+    return new Response(bytes, { headers:{ 'content-type':'application/pdf', 'content-disposition':"attachment; filename=\"article.pdf\"; filename*=UTF-8''" + encodedFilename, 'content-length':String(bytes.byteLength), 'cache-control':'private, no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'no-referrer', 'content-security-policy':"default-src 'none'; frame-ancestors 'none'" } });
+  } catch (error) {
+    if (error instanceof PdfFailure && error.code === 'pdf_passphrase_invalid' && id && (request.headers.get('accept') || '').includes('text/html')) return pdfPassphraseForm(id, doi, true);
+    return pdfError(request, error instanceof PdfFailure ? error.code : 'pdf_server', error instanceof PdfFailure ? error.status : 500, doi);
+  }
+}
 
 function normKey(pmid, doi) {
   if (pmid && /^\d{1,9}$/.test(String(pmid))) return 'pmid:' + pmid;
@@ -839,6 +1076,7 @@ async function handleAI(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/pdf') return handlePdf(request, env);
     if (url.pathname === '/api/ql') {
       try { return await handle(request, env); } catch (e) { return json({ ok: false, error: 'server' }, 500); }
     }

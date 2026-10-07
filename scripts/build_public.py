@@ -16,6 +16,23 @@ def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
 def safe_url(v):
     return v if isinstance(v,str) and re.match(r'^https?://',v,re.I) else ''
+def pdf_library_registry(papers):
+    """Only published IDs, DOIs and titles go into the server's download allowlist."""
+    registry={}
+    for paper in papers:
+        paper_id=str(paper.get('id') or '')
+        doi=re.sub(r'^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)','',str(paper.get('doi') or '').strip(),flags=re.I).lower()
+        title=str(paper.get('title') or '').strip()
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}',paper_id) or paper_id in ('__proto__','constructor','prototype'):
+            continue
+        if doi and not re.fullmatch(r'10\.\d{4,9}/[^\s\x00-\x1f\x7f]+',doi):
+            continue
+        if not doi and not title:continue
+        identity={'doi':doi,'title':title}
+        if paper_id in registry and registry[paper_id]!=identity:
+            raise ValueError('Conflicting PDF library identity')
+        registry[paper_id]=identity
+    return registry
 def public_paper(p):
     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
     out['url']=safe_url(out.get('url',''))
@@ -168,7 +185,11 @@ def main():
     status=content_status(candidates,health,archive,ql,built_at)
     bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status)]+([js('RADAR',radar)] if radar else [])+[(ROOT/'app.js').read_text()])
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
-    files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':(ROOT/'edge/_worker.js').read_text()}
+    worker=(ROOT/'edge/_worker.js').read_text()
+    placeholder='const PDF_LIBRARY = {};'
+    if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
+    worker=worker.replace(placeholder,'const PDF_LIBRARY = '+json.dumps(pdf_library_registry(library['papers']),ensure_ascii=False,separators=(',',':'))+';')
+    files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     for name,value in files.items():(DEST/name).write_text(value,encoding='utf-8')
     # Local generated assets use the same sanitized archive/quicklooks as the public build.

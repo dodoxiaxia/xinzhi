@@ -11,7 +11,9 @@ Python 3.9+ 标准库与 SQLite 实现。
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
+import hmac
 import http.cookies
 import http.server
 import json
@@ -79,6 +81,55 @@ except ImportError:
 
 MAX_BODY_SIZE = 1024 * 1024  # 1MB 请求体限制
 GITHUB_LIBRARY_MAX_LIMIT = 100
+PUBLIC_LIBRARY_MAX_BYTES = 16 * 1024 * 1024
+PDF_FORM_MAX_BYTES = 2048
+DEFAULT_PDF_PASSPHRASE_SHA256 = "09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab"
+
+
+def verify_pdf_passphrase(value: str) -> bool:
+    """Shared download phrase, independent of the editor account and its session."""
+    if not isinstance(value, str) or not 0 < len(value) <= 256:
+        return False
+    configured = os.environ.get("PDF_DOWNLOAD_PASSPHRASE")
+    if configured is not None and not 0 < len(configured) <= 256:
+        raise ValueError("Invalid PDF passphrase configuration")
+    expected = (hashlib.sha256(configured.encode("utf-8")).hexdigest()
+                if configured is not None else DEFAULT_PDF_PASSPHRASE_SHA256)
+    return hmac.compare_digest(hashlib.sha256(value.encode("utf-8")).hexdigest(), expected)
+
+
+def pdf_library_doi(value: Any) -> str:
+    """Normalize the DOI stored in the public/private indexes for exact equality."""
+    if not isinstance(value, str) or len(value) > 500:
+        return ""
+    value = re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", "", value.strip(), flags=re.I).lower()
+    if not re.fullmatch(r"10\.[0-9]{4,9}/[^\s\x00-\x1f\x7f]+", value):
+        return ""
+    return value
+
+
+def pdf_library_title(value: Any) -> str:
+    """Titles may substitute for absent DOIs only through complete equality."""
+    return " ".join(value.split()).casefold() if isinstance(value, str) else ""
+
+
+def public_pdf_paper(root: Path, paper_id: str) -> Optional[Dict[str, Any]]:
+    """Read only the fixed public catalog; no user-controlled file paths."""
+    path = root / "data" / "library.json"
+    if (root / "data").is_symlink() or path.is_symlink():
+        raise ValueError("Invalid public catalog")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(fd, "rb") as stream:
+        raw = stream.read(PUBLIC_LIBRARY_MAX_BYTES + 1)
+    if len(raw) > PUBLIC_LIBRARY_MAX_BYTES:
+        raise ValueError("Invalid public catalog")
+    catalog = json.loads(raw)
+    if not isinstance(catalog, dict) or not isinstance(catalog.get("papers"), list):
+        raise ValueError("Invalid public catalog")
+    matches = [paper for paper in catalog["papers"] if isinstance(paper, dict) and paper.get("id") == paper_id]
+    if len(matches) > 1:
+        raise ValueError("Ambiguous public paper ID")
+    return matches[0] if matches else None
 
 
 def github_library_relative_path(value: Any) -> str:
@@ -424,6 +475,10 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def handle_api_get(self, path: str, query: Dict[str, List[str]]) -> None:
         """处理所有 GET API 请求"""
+        if path == "/api/pdf":
+            self.api_get_pdf()
+            return
+
         # --- 公开接口 (无需鉴权) ---
         if path == "/api/public/articles":
             self.api_get_public_articles()
@@ -485,6 +540,219 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         self.send_error_json(404, "接口不存在")
+
+    def send_pdf_error(self, status: int, code: str, message: str) -> None:
+        """Fixed diagnostics only; ordinary download links get a readable page."""
+        headers = {"Cache-Control": "no-store"}
+        if "text/html" not in self.headers.get("Accept", "").lower():
+            body = {"error": message, "code": code}
+            self.send_json(status, body, extra_headers=headers)
+            return
+        payload = (
+            '<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>心知 · PDF 下载</title><body><main>'
+            '<h1>PDF 下载暂不可用</h1><p>' + html.escape(message) + '</p>'
+            + '<p><a href="/?mode=library">返回文献库</a>，可通过“官网原文”访问文章。</p>'
+            '</main></body></html>'
+        ).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def pdf_paper_id(self) -> Optional[str]:
+        """The query accepts one public ID and never accepts a phrase or path."""
+        raw_query = urllib.parse.urlsplit(self.path).query
+        try:
+            if len(raw_query) > 512:
+                raise ValueError("Oversized query")
+            query = urllib.parse.parse_qs(raw_query, keep_blank_values=True, strict_parsing=True, max_num_fields=2)
+            ids = query.get("id", [])
+            if set(query) != {"id"} or len(ids) != 1 or not re.fullmatch(r"[0-9a-f]{16}", ids[0]):
+                raise ValueError("Invalid ID")
+        except ValueError:
+            self.send_pdf_error(400, "invalid_paper_id", "请从文献库选择文章下载。")
+            return None
+        return ids[0]
+
+    def send_pdf_form(self, paper_id: str, status: int = 200, message: str = "", title: str = "") -> None:
+        """No download sessions: each article submits its phrase by same-origin POST."""
+        accept = self.headers.get("Accept", "").lower()
+        if "application/json" in accept and "text/html" not in accept:
+            self.send_json(401 if status == 200 else status, {
+                "error": message or "请输入下载口令。",
+                "code": "passphrase_required" if status == 200 else "invalid_passphrase",
+                "download_url": "/api/pdf?id=" + paper_id,
+            }, extra_headers={"Cache-Control": "no-store"})
+            return
+        payload = (
+            '<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>心知 · PDF 下载</title><body><main><h1>下载 PDF</h1>'
+            + ('<p>' + html.escape(title[:200]) + '</p>' if title else '')
+            + ('<p role="alert">' + html.escape(message) + '</p>' if message else '')
+            + '<form method="post" action="/api/pdf?id=' + paper_id + '">'
+            '<p><label for="passphrase">下载口令</label></p>'
+            '<p><input id="passphrase" name="passphrase" type="password" '
+            'required maxlength="256" autocomplete="current-password" autofocus></p>'
+            '<button type="submit">验证并下载 PDF</button></form>'
+            '<p><a href="/?mode=library">返回文献库</a></p></main></body></html>'
+        ).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "same-origin")
+        self.send_header("Content-Security-Policy", "default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def api_get_pdf(self) -> None:
+        """GET displays the public phrase form without reading any private index."""
+        paper_id = self.pdf_paper_id()
+        if paper_id is None:
+            return
+        try:
+            paper = public_pdf_paper(self.static_base_dir, paper_id)
+        except (OSError, ValueError):
+            self.send_pdf_error(503, "public_library_unavailable", "文献库暂不可用，请稍后重试。")
+            return
+        if paper is None:
+            self.send_pdf_error(404, "pdf_not_found", "文献库中未找到对应文章。")
+            return
+        title = paper.get("title") if isinstance(paper.get("title"), str) else ""
+        self.send_pdf_form(paper_id, title=title)
+
+    def api_post_pdf(self) -> None:
+        """Check the shared phrase before accessing private metadata or GitHub."""
+        paper_id = self.pdf_paper_id()
+        if paper_id is None:
+            return
+        origins = self.headers.get_all("Origin", [])
+        fetch_site = self.headers.get("Sec-Fetch-Site", "").lower()
+        origin_valid = (fetch_site in ("", "same-origin", "none")
+                        and len(origins) <= 1 and self.check_csrf(None))
+        if origins and origin_valid:
+            try:
+                origin = urllib.parse.urlsplit(origins[0])
+                host = urllib.parse.urlsplit("http://" + self.headers.get("Host", ""))
+                origin_valid = (origin.scheme == "http" and origin.hostname == host.hostname
+                                and (origin.port or 80) == (host.port or 80)
+                                and not origin.path and not origin.query and not origin.fragment
+                                and origin.username is None and origin.password is None)
+            except ValueError:
+                origin_valid = False
+        if not origin_valid:
+            self.send_pdf_error(403, "invalid_origin", "请从本站提交下载口令。")
+            return
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        lengths = self.headers.get_all("Content-Length", [])
+        if content_type != "application/x-www-form-urlencoded":
+            self.send_pdf_error(415, "invalid_form", "请使用下载页面提交口令。")
+            return
+        try:
+            if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not re.fullmatch(r"[0-9]+", lengths[0]):
+                raise ValueError("Invalid length")
+            length = int(lengths[0])
+            if length > PDF_FORM_MAX_BYTES:
+                self.close_connection = True
+                self.send_pdf_error(413, "form_too_large", "下载口令过长，请重新输入。")
+                return
+            raw = self.rfile.read(length)
+            if len(raw) != length:
+                raise ValueError("Incomplete form")
+            form = urllib.parse.parse_qs(raw.decode("utf-8"), keep_blank_values=True,
+                                        strict_parsing=True, max_num_fields=2, errors="strict")
+            phrases = form.get("passphrase", [])
+            if set(form) != {"passphrase"} or len(phrases) != 1 or len(phrases[0]) > 256:
+                raise ValueError("Invalid form")
+        except (ValueError, UnicodeError):
+            self.send_pdf_error(400, "invalid_form", "请只输入一个下载口令。")
+            return
+        try:
+            valid_phrase = verify_pdf_passphrase(phrases[0])
+        except ValueError:
+            self.send_pdf_error(503, "pdf_not_configured", "PDF 下载配置暂不可用，请联系文献库维护者。")
+            return
+        if not valid_phrase:
+            self.send_pdf_form(paper_id, 403, "下载口令错误，请重新输入。")
+            return
+        self.api_download_pdf(paper_id)
+
+    def api_download_pdf(self, paper_id: str) -> None:
+        """Verified phrase -> public ID -> exact DOI/title -> pinned private PDF."""
+        try:
+            paper = public_pdf_paper(self.static_base_dir, paper_id)
+        except (OSError, ValueError):
+            self.send_pdf_error(503, "public_library_unavailable", "文献库暂不可用，请稍后重试。")
+            return
+        doi = pdf_library_doi(paper.get("doi")) if paper else ""
+        title = pdf_library_title(paper.get("title")) if paper else ""
+        raw_doi = paper.get("doi") if paper else ""
+        has_doi = bool(raw_doi.strip()) if isinstance(raw_doi, str) else bool(raw_doi)
+        if not paper or (not doi and not title) or (has_doi and not doi):
+            self.send_pdf_error(404, "pdf_not_found", "文献库中未找到对应 PDF，可访问官网原文。")
+            return
+        try:
+            from scripts.github_library import DEFAULT_REPO, fetch_pdf, load_snapshot, read_verified_pdf
+            snapshot = load_snapshot(root=self.static_base_dir)
+            if snapshot is None:
+                self.send_pdf_error(404, "pdf_not_found", "PDF 索引尚未更新，可访问官网原文。")
+                return
+            if snapshot["repository"]["full_name"].casefold() != DEFAULT_REPO.casefold():
+                self.send_pdf_error(503, "snapshot_unavailable", "PDF 索引暂不可用，请联系文献库维护者。")
+                return
+            matches = [item for item in snapshot["papers"]
+                       if (pdf_library_doi(item["doi"]) == doi if doi else pdf_library_title(item["title"]) == title)]
+            if not matches:
+                self.send_pdf_error(404, "pdf_not_found", "尚未收录这篇文章的 PDF，可访问官网原文。")
+                return
+            if len(matches) != 1:
+                self.send_pdf_error(409, "pdf_ambiguous", "这篇文章有多个 PDF 记录，需核对后才能下载，可访问官网原文。")
+                return
+            selected = matches[0]
+            if selected["pdf_sha256_status"] != "valid":
+                self.send_pdf_error(422, "pdf_integrity_failed", "PDF 校验信息缺失或异常，需核对后才能下载，可访问官网原文。")
+                return
+            receipt = fetch_pdf(self.static_base_dir, selected["id"])
+            # A sync between DOI selection and fetch must not change the selected source.
+            if (receipt.get("paper_id") != selected["id"] or receipt.get("commit") != snapshot["snapshot"]["commit"]
+                    or receipt.get("repository") != snapshot["repository"]["full_name"]
+                    or receipt.get("repo_path") != selected["repo_path"]
+                    or receipt.get("index_fingerprint") != snapshot["snapshot"]["fingerprint"]):
+                self.send_pdf_error(503, "snapshot_changed", "PDF 索引刚刚更新，请重新尝试下载。")
+                return
+            content = read_verified_pdf(self.static_base_dir, receipt)
+        except (OSError, ValueError, ImportError) as error:
+            # Never return exception text, GitHub stderr, credentials or private paths.
+            code = getattr(error, "code", "")
+            if code in ("paper_not_found", "snapshot_missing", "repository_file_missing"):
+                self.send_pdf_error(404, "pdf_not_found", "未找到这篇文章的 PDF，可访问官网原文。")
+            elif code.startswith(("pdf_", "index_pdf_", "repository_blob_", "repository_size_")) or code == "unsafe_cache_path":
+                self.send_pdf_error(422, "pdf_integrity_failed", "PDF 校验失败，暂不能下载，可访问官网原文。")
+            elif code.startswith(("github_", "gh_")):
+                self.send_pdf_error(502, "pdf_upstream_unavailable", "PDF 来源暂不可用，请稍后重试或访问官网原文。")
+            else:
+                self.send_pdf_error(503, "pdf_unavailable", "PDF 下载暂不可用，请稍后重试或访问官网原文。")
+            return
+
+        title = paper.get("title") if isinstance(paper.get("title"), str) else ""
+        title = re.sub(r"[\x00-\x1f\x7f/\\]", "_", title).strip(" .")[:120] or paper_id
+        filename = title + ".pdf"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Content-Disposition", 'attachment; filename="paper-' + paper_id + '.pdf"; filename*=UTF-8\'\'' + urllib.parse.quote(filename, safe=""))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(content)
 
     def api_get_editor_github_library(self, query: Dict[str, List[str]]) -> None:
         """Authenticated downstream view of an existing private index; no sync/download."""
@@ -559,6 +827,9 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def handle_api_post(self, path: str) -> None:
         """处理所有 POST API 请求"""
+        if path == "/api/pdf":
+            self.api_post_pdf()
+            return
         client_ip = self.client_address[0]
 
         # 1. 登录接口 (无需会话，但需要 Origin 与限流校验)

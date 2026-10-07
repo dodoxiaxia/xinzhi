@@ -8,6 +8,7 @@
   // Global Data
   const FEEDS = window.FEEDS || { items: [] };
   const LIBRARY = window.LIBRARY || { papers: [] };
+  const PDF_LIBRARY_IDS = new Set(LIBRARY.papers.filter(p => p.doi || p.title).map(p => String(p.id)));
   const CURATED = window.CURATED || [];
   const HEALTH = window.SOURCE_HEALTH || { sources: [] };
   const CONTENT_STATUS = window.CONTENT_STATUS || {};
@@ -595,6 +596,13 @@
     const val=p.url || (p.doi?'https://doi.org/'+p.doi:'');
     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
   }
+  function pdfDownloadUrl(p) {
+    return p && PDF_LIBRARY_IDS.has(String(p.id)) ? '/api/pdf?id=' + encodeURIComponent(p.id) : '';
+  }
+  function pdfDownloadLink(p) {
+    const url = pdfDownloadUrl(p);
+    return url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>` : '';
+  }
   function inLane(p, lane) {
     if (lane === 'all') return true;
     if (lane === 'crossai') return isCrossAI(p);
@@ -677,7 +685,7 @@
   const MODE_NOTES = {
     curated: '带“摘要核对”标记的是已对照期刊摘要核对来源的导读，<b>非全文精读，未经医生终审</b>；带“自动精选”标记的是每天由规则从新文献中选出、附 AI 速览，<b>未经人工核验，请以原文为准</b>。',
     candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
-    library: '文献档案：按期刊与时间检索既有题录；本站不提供 PDF。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
+    library: '文献档案：按期刊与时间检索既有题录。输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
   };
 
   function renderModeNote() {
@@ -1063,7 +1071,8 @@
 
           <div style="display:flex; align-items:center; gap:10px;">
             ${p.doi ? `<span class="doi-link">DOI: ${esc(p.doi)}</span>` : ''}
-            ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm">原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
+            ${pdfDownloadLink(p)}
+            ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm">官网原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
           </div>
         </div>
       </article>
@@ -1096,6 +1105,7 @@
           <button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="速读">速读</button>
           ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}" title="复制微信文案">文案</button>` : ''}
           <button class="btn-sm ${isHuddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" title="晨会清单">${isHuddled ? '已入' : '晨会'}</button>
+          ${pdfDownloadLink(p)}
           ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm" title="官网原文">↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
         </div>
       </div>
@@ -1433,6 +1443,11 @@
     const extLink = $('#drawerExternalLink');
     if (extLink) {
       extLink.href = doiUrl; extLink.hidden=doiUrl==='#';
+    }
+    const pdfLink = $('#drawerPdfLink');
+    if (pdfLink) {
+      const pdfUrl = pdfDownloadUrl(paper);
+      pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
     }
 
     if (!drawer.classList.contains('open')) lastFocus = document.activeElement;

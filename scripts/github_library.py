@@ -488,6 +488,32 @@ def fetch_pdf(root, paper_id):
     return {**receipt, 'cache_hit': False}
 
 
+def read_verified_pdf(root, receipt):
+    """Read one fetched PDF again before serving it, without exposing a cache path."""
+    if not isinstance(receipt, dict) or any(field not in receipt for field in PDF_RECEIPT_FIELDS):
+        raise LibraryError('pdf_cache_invalid', 'PDF provenance is incomplete')
+    paper_id = receipt.get('paper_id')
+    if not isinstance(paper_id, str) or not re.fullmatch(r'gh-[0-9a-f]{24}', paper_id):
+        raise LibraryError('pdf_cache_invalid', 'PDF provenance is invalid')
+    commit = _hex(receipt.get('commit'), 40, 'pdf_cache_invalid')
+    _repo_name(receipt.get('repository'))
+    _relative_path(receipt.get('repo_path'), pdf=True)
+    _hex(receipt.get('index_fingerprint'), 64, 'pdf_cache_invalid')
+    checksum = _hex(receipt.get('content_sha256'), 64, 'pdf_cache_invalid')
+    blob = _hex(receipt.get('blob_sha'), 40, 'pdf_cache_invalid')
+    relative = 'pdf-cache/' + paper_id + '-' + commit + '.pdf'
+    if receipt.get('cache_file') != relative or type(receipt.get('bytes')) is not int:
+        raise LibraryError('pdf_cache_invalid', 'PDF cache location is invalid')
+    try:
+        data = _read_private(_cache_file(_private_root(root), relative), MAX_PDF_BYTES)
+    except OSError:
+        raise LibraryError('pdf_cache_invalid', 'PDF cache is unreadable') from None
+    _verify_pdf(data, checksum)
+    if len(data) != receipt['bytes'] or _git_blob_sha(data) != blob:
+        raise LibraryError('pdf_cache_invalid', 'PDF cache does not match its provenance')
+    return data
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=ROOT, help='project root; cache always stays under .local')
