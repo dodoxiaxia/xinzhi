@@ -1,0 +1,168 @@
+{
+  "papers": [
+    {
+      "rank": 14,
+      "paperID": "doi:10.1038/s41591-026-04674-2",
+      "doi": "10.1038/s41591-026-04674-2",
+      "pmid": "42823485",
+      "sourceHash": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+      "translate": {
+        "title_zh": "司美格鲁肽对2型糖尿病肾脏疾病的影响：随机安慰剂对照试验",
+        "abstract_zh": "GLP-1受体激动剂司美格鲁肽可保护2型糖尿病合并慢性肾脏病患者的肾功能，但其潜在机制尚不清楚。本文报告一项为期52周的随机试验，比较每周一次皮下注射司美格鲁肽1 mg与安慰剂，纳入2型糖尿病合并慢性肾脏病患者（n = 106，其中女性n = 25、男性n = 81）。为识别司美格鲁肽在肾脏中的特异性作用机制，我们对具有治疗前后测量结果的配对样本开展了整合性多参数肾脏磁共振成像和组织学活检（n = 33），并进行了单核转录组学（n = 22）及空间转录组学（n = 13）分析。与安慰剂治疗相比，司美格鲁肽未使共同主要磁共振成像结局（以R2*评估的氧合、整体灌注，以及以T1映射评估的组织炎症）发生显著变化。次要结局显示，与安慰剂相比，司美格鲁肽治疗与肾动脉阻力指数显著降低、表观扩散系数保持稳定相关，提示预防了纤维化进展。此外，次要转录组学结局显示司美格鲁肽对肾小球内皮细胞有明显影响，与空间分析所显示的这些内皮细胞附近免疫细胞数量减少的结果一致。本试验结果提示，司美格鲁肽的肾脏保护机制可能包括降低血管阻力、预防纤维化，以及改善促进内皮细胞健康的潜在分子程序。ClinicalTrials.gov标识符：NCT04865770。"
+      },
+      "quicklook": {
+        "title_zh": "司美格鲁肽对2型糖尿病肾脏疾病的影响：随机安慰剂对照试验",
+        "one_line": "司美格鲁肽试验的主要影像结局未显著改变，次要结果提供肾保护机制线索。",
+        "design": "慢性肾脏病患者的随机安慰剂对照试验；含配对影像和组织分析",
+        "findings": [
+          {
+            "text": "共同主要影像结局中，氧合、整体灌注和组织炎症均未显著改变。",
+            "quote": "Coprimary magnetic resonance imaging outcomes (oxygenation by R2*, global perfusion and tissue inflammation by T1 mapping) were not significantly altered by semaglutide versus placebo treatment."
+          },
+          {
+            "text": "司美格鲁肽与肾动脉阻力指数显著降低及表观扩散系数稳定相关。",
+            "quote": "Secondary outcomes revealed that semaglutide treatment, as compared to placebo, was associated with a significantly reduced renal artery resistive index and stabilization of the apparent diffusion coefficient, indicating prevention of fibrosis progression."
+          },
+          {
+            "text": "转录组学发现肾小球内皮细胞变化；空间分析显示其附近免疫细胞减少。",
+            "quote": "Moreover, secondary transcriptomic outcomes revealed pronounced effects of semaglutide on glomerular endothelial cells, consistent with the results of spatial analyses indicating reduced numbers of immune cells in the proximity of these endothelial cells."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解主要影像结局与次要组织、转录组学结果之间的证据层次。"
+      }
+    },
+    {
+      "rank": 15,
+      "paperID": "doi:10.1001/jamainternmed.2026.4894",
+      "doi": "10.1001/jamainternmed.2026.4894",
+      "pmid": "42832241",
+      "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+      "translate": {
+        "title_zh": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+        "abstract_zh": "重要性：COVID-19大流行对自身免疫和风湿性疾病患者的影响尤为严重。了解某些药物是否影响SARS-CoV-2补充剂次疫苗接种的应答，对为接受靶向免疫调节药物的患者提供咨询和治疗至关重要。在COVID-19疫苗接种前后暂停这些药物对免疫原性和风湿性疾病结局的影响，尚未得到充分研究。\n目的：评估炎症性关节炎患者在COVID-19补充剂次疫苗接种后，暂时停用生物制剂或靶向合成改善病情抗风湿药是否提高体液免疫原性，并评估这种中断是否使疾病活动度恶化。\n设计、地点及参与者：COVID-19疫苗应答（COVER）试验是一项多中心随机实用性临床试验，于2021年11月至2024年5月开展。研究对象为在风湿病学卓越网络——创新诊疗与高影响力研究（ENRICH）诊疗实践网络中接受诊疗的类风湿关节炎、银屑病关节炎和中轴型脊柱关节炎患者。数据分析于2024年6月至2026年4月进行。\n干预：患者已完成初始信使RNA COVID-19疫苗系列接种，并正在接受稳定的免疫调节治疗，包括抗肿瘤坏死因子药物、抗白细胞介素-17药物、阿巴西普和Janus激酶抑制剂（JAKi）。患者随机分组，在下一次COVID-19补充剂次疫苗接种后继续治疗或停药2周。\n主要结局及测量：主要结局是从基线至6周随访时针对SARS-CoV-2刺突蛋白的免疫球蛋白G水平变化，以几何平均倍数升高（GMFR）表示。主要分析遵循意向性治疗（ITT）原则，采用多重插补处理缺失结局。此外还开展了符合方案的敏感性分析。次要结局包括疾病发作和疫苗相关不良事件。\n结果：在840名随机分组的参与者中，继续治疗组有319名女性（76%），平均年龄（标准差）为60.0（12.9）岁；停药组有336名女性（80%），平均年龄（标准差）为59.1（12.9）岁。从基线至接种后访视，各组的SARS-CoV-2刺突蛋白免疫球蛋白G抗体水平均大幅升高。在主要ITT分析中，GMFR比值（停药/继续治疗）为0.96（95% CI，0.36–2.56），表明两组体液免疫原性无显著差异。结果在不同药物亚组及药物半衰期类别中一致。停药显著增加疾病发作风险（比值比2.27；95% CI，1.41–3.65），在使用JAKi的患者中尤为明显；风湿病结局测量类风湿关节炎发作问卷证实了这一疫苗接种前后的信号（恶化≥10分者分别为256人中的54人［21.1%］与253人中的23人［9.1%］；风险差12.0%；95% CI，5.9%–18.1%），两组均在6周随访时完全恢复。各用药组间不良事件相近，且停药组的不良事件更为频繁。\n结论及意义：这项随机临床试验发现，炎症性关节炎患者在COVID-19补充剂次疫苗接种时停用所选生物制剂或JAKi治疗2周，未显著增强体液免疫原性，并与短暂但具有临床意义的疾病发作相关。作者认为，在COVID-19剂次接种时常规中断这些治疗可能并无必要。\n试验注册：ClinicalTrials.gov标识符：NCT05080218。"
+      },
+      "quicklook": {
+        "title_zh": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+        "one_line": "停药未显著增强疫苗体液免疫原性，并与短暂的疾病发作相关。",
+        "design": "炎症性关节炎患者的多中心随机实用性临床试验",
+        "findings": [
+          {
+            "text": "主要ITT分析中，停药/继续治疗的GMFR比值为0.96，95% CI为0.36–2.56，差异不显著。",
+            "quote": "In the primary ITT analysis, the GMFR ratio (hold/continue) was 0.96 (95% CI, 0.36-2.56), indicating no significant difference in humoral immunogenicity between arms."
+          },
+          {
+            "text": "停药组疾病发作风险较高：比值比2.27，95% CI为1.41–3.65，在JAKi使用者中尤为明显。",
+            "quote": "Holding therapy significantly increased disease flare risk (odds ratio, 2.27; 95% CI, 1.41-3.65), which was most pronounced among those who used JAKi"
+          },
+          {
+            "text": "两组在6周随访时均完全恢复；停药组不良事件更频繁。",
+            "quote": "with full recovery in both arms by 6-week follow-up. Adverse events were comparable between medication arms and were more frequent in the hold group."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "评估疫苗体液免疫应答与暂停免疫调节治疗相关的疾病活动变化。"
+      }
+    },
+    {
+      "rank": 16,
+      "paperID": "doi:10.1038/s41591-026-04713-y",
+      "doi": "10.1038/s41591-026-04713-y",
+      "pmid": "42834229",
+      "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+      "translate": {
+        "title_zh": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+        "abstract_zh": "Safiglipron是一种口服小分子胰高血糖素样肽-1（GLP-1）受体激动剂，服用时无需空腹或饮食限制。我们在OUTSTAND-2试验中评估其相对于达格列净的疗效和安全性；这是一项在中国98个中心开展的3期、多中心、随机、双盲、双模拟、阳性药物对照试验。我们将810名成人（平均糖化血红蛋白A1C［HbA1c］8.60%，糖尿病病程中位数5.0年，女性占35.7%）随机分配至safiglipron 30 mg组（n = 202）、safiglipron 60 mg组（n = 203）、safiglipron 90 mg组（n = 203）或达格列净10 mg组（n = 202），治疗32周，随后进行20周的活性药物治疗延长期。\n在主要终点方面，按主要非劣效性估计目标，safiglipron 30 mg、60 mg和90 mg组第32周HbA1c相对基线变化与达格列净的治疗差异分别为-0.30%（95%置信区间［CI］：-0.51至-0.09）、-0.22%（-0.44至-0.01）及-0.40%（-0.62至-0.19），确立了全部三种剂量的非劣效性（所有P < 0.0001；非劣效性界值0.4%）。按治疗策略估计目标，90 mg达到预先设定的优效性统计标准（差异-0.25%；95% CI：-0.45至-0.05；单侧P = 0.0067），而60 mg未达到（P = 0.0789），随后停止固定顺序检验。Safiglipron与达格列净的HbA1c达标率分别为：HbA1c <7.0%时，54.9–63.5%与36.5%；HbA1c ≤6.5%时，38.9–48.6%与16.1%。Safiglipron 30 mg、safiglipron 60 mg、safiglipron 90 mg及达格列净组的平均体重变化分别为-2.35%、-3.55%、-4.17%和-3.60%。Safiglipron和达格列净两种治疗下，空腹血糖、七点自测血糖谱、腰围、HOMA-β、HOMA-IR及治疗满意度变化均显示较基线有不同程度的改善。两者接受救援治疗的参与者比例分别为0.5–1.5%与0%。Safiglipron组胃肠道不良事件更频繁，且大多为轻度或中度；各组分别有4.0%、4.0%、3.9%和1.5%的参与者因不良事件停止治疗。Safiglipron为使用二甲双胍控制不佳的2型糖尿病成人提供了一种有效的口服治疗选择。ClinicalTrials.gov标识符：NCT06589765。"
+      },
+      "quicklook": {
+        "title_zh": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+        "one_line": "各剂量达到降糖非劣效性标准，高剂量达到优效性标准，胃肠道不良事件较多。",
+        "design": "中国多中心随机、双盲、双模拟、阳性药物对照试验",
+        "findings": [
+          {
+            "text": "safiglipron 30 mg、60 mg和90 mg均达到非劣效性；所有P < 0.0001，界值0.4%。",
+            "quote": "for safiglipron 30 mg, 60 mg and 90 mg, respectively, establishing non-inferiority for all three doses (all P < 0.0001; non-inferiority margin 0.4%)."
+          },
+          {
+            "text": "治疗策略估计目标下，90 mg达到优效性标准，60 mg未达到，随后停止固定顺序检验。",
+            "quote": "Under the treatment policy estimand, 90 mg met the prespecified statistical criterion for superiority (difference -0.25%; 95% CI: -0.45 to -0.05; one-sided P = 0.0067), whereas 60 mg did not (P = 0.0789), after which fixed-sequence testing stopped."
+          },
+          {
+            "text": "HbA1c <7.0%的达标率为safiglipron 54.9–63.5%、达格列净36.5%。",
+            "quote": "HbA1c target attainment rates with safiglipron versus dapagliflozin were 54.9-63.5% versus 36.5% for HbA1c <7.0%"
+          },
+          {
+            "text": "胃肠道不良事件在safiglipron组更频繁，多为轻中度；各组因不良事件停药比例依次为4.0%、4.0%、3.9%和1.5%。",
+            "quote": "Gastrointestinal adverse events were more frequent with safiglipron and mostly mild or moderate; adverse events led to treatment discontinuation in 4.0%, 4.0%, 3.9% and 1.5% of participants, respectively."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "比较口服小分子受体激动剂与达格列净的降糖结果及耐受性。"
+      }
+    },
+    {
+      "rank": 17,
+      "paperID": "doi:10.1038/s41746-026-03361-3",
+      "doi": "10.1038/s41746-026-03361-3",
+      "pmid": "42823464",
+      "sourceHash": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+      "translate": {
+        "title_zh": "医生与消费者人口统计学特征对初级诊疗中AI使用惩罚的影响：情景模拟研究",
+        "abstract_zh": "我们研究了初级诊疗环境中，医生和消费者的人口统计学特征如何影响“AI使用惩罚”，即披露使用AI的医生被更负面地看待。参与者（N = 1030）评估了在AI使用情况及人口统计学特征方面存在不同的虚构家庭医生广告。与声明从不使用AI的医生相比，声明使用AI的医生被评价为更缺乏亲和力和胜任能力，参与者预约就诊的意愿也更低。这些效应在较年轻的参与者中更强，但基本不受医生人口统计学特征影响。"
+      },
+      "quicklook": {
+        "title_zh": "医生与消费者人口统计学特征对初级诊疗中AI使用惩罚的影响：情景模拟研究",
+        "one_line": "虚构家庭医生广告中，披露使用AI与较低的亲和力、胜任能力评价及预约意愿相关。",
+        "design": "以虚构家庭医生广告为材料的情景模拟研究",
+        "findings": [
+          {
+            "text": "1030名参与者评估了AI使用情况及人口统计学特征不同的虚构家庭医生广告。",
+            "quote": "Participants (N = 1030) assessed fictitious family doctor advertisements varying in AI-use and demographics."
+          },
+          {
+            "text": "声明使用AI的医生获得较低的亲和力和胜任能力评价，预约意愿也较低。",
+            "quote": "Physicians stating that they use (vs. never use) AI were rated as less warm and competent, with reduced appointment willingness."
+          },
+          {
+            "text": "这些效应在较年轻参与者中更强，基本不受医生人口统计学特征影响。",
+            "quote": "Effects were stronger among younger participants but largely independent of physician demographics."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解AI使用披露与初级诊疗消费者评价之间的关系。"
+      }
+    },
+    {
+      "rank": 18,
+      "paperID": "doi:10.1038/s41467-026-78143-2",
+      "doi": "10.1038/s41467-026-78143-2",
+      "pmid": "42834055",
+      "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+      "translate": {
+        "title_zh": "ProFormer：用深度学习对单细胞及血浆蛋白质组进行可泛化分类",
+        "abstract_zh": "蛋白质是细胞功能和疾病的主要驱动因素，因此蛋白质组学是发现生物标志物和确定细胞身份的有力技术。当前技术虽能对数千种蛋白质进行分析并达到单细胞灵敏度，但有限的通量限制了其应用，例如对大型生物学或临床队列进行稳健分类。为弥补这一不足，我们提出一种直接分析质谱（MS）数据的深度学习（DL）方法，将蛋白质组谱归属至样本身份。具体而言，我们引入ProFormer，这是一个基于transformer的流程，利用肽离子衍生的表格形式MS1层级特征对样本分类，从而无需耗时的数据解读。ProFormer优于传统机器学习和基于图像的卷积神经网络（CNN），在评估的14种架构中展现出更好的分类与泛化表现。我们进一步详细解析了ProFormer如何动态聚合MS1数据，同时保留信号贡献，并在单肽分辨率上实现可解释AI。在多种LC-MS数据集上应用时，ProFormer能够根据细胞类型、细胞周期阶段或分化轨迹，准确分类单细胞蛋白质组，也能根据血浆蛋白质组分类患者的疾病状态。因此，ProFormer为蛋白质组数据分类提供了一个通用且快速的框架，对患者分层、早期检测和单细胞分析具有重要意义。"
+      },
+      "quicklook": {
+        "title_zh": "ProFormer：用深度学习对单细胞及血浆蛋白质组进行可泛化分类",
+        "one_line": "ProFormer直接分析质谱特征，在多类蛋白质组任务中展示分类与泛化能力。",
+        "design": "深度学习分类方法研究；比较架构并应用于多种LC-MS数据集",
+        "findings": [
+          {
+            "text": "ProFormer使用肽离子衍生的表格形式MS1层级特征分类样本，省去耗时的数据解读。",
+            "quote": "Specifically, we introduce the ProFormer, a transformer pipeline that classifies samples by tabular MS1-level features derived from peptide ions, eliminating the need for time-consuming data interpretation."
+          },
+          {
+            "text": "与传统机器学习和基于图像的CNN相比，ProFormer在评估的14种架构中分类与泛化表现更好。",
+            "quote": "The ProFormer outperforms traditional machine-learning and image-based convolutional neural networks (CNNs), demonstrating enhanced classification and generalization over 14 evaluated architectures."
+          },
+          {
+            "text": "应用涵盖按细胞类型、周期阶段或分化轨迹分类单细胞蛋白质组，以及按疾病状态分类血浆蛋白质组。",
+            "quote": "Applied to diverse LC-MS data sets, the ProFormer accurately classified single-cell proteomes by cell type, cycle stage or differentiation trajectory, as well as patient disease status from plasma proteomes."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "关注直接质谱分类、可解释AI与蛋白质组任务间泛化的研究思路。"
+      }
+    }
+  ]
+}

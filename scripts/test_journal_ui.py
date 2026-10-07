@@ -105,7 +105,9 @@ def main():
                 page.locator(f'.weekly-card-actions [data-action="open-drawer"][data-paper-id="{ready_id}"]').click()
                 if cached_id:
                     cached = page.evaluate("id=>{const p=window.FEEDS.items.find(p=>p.id===id);return window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()].translation.abstract_zh}", ready_id)
-                    expect(page.locator('.abstract-translation')).to_contain_text(cached)
+                    # Paragraph elements do not insert newlines into textContent.
+                    # Compare each complete cached paragraph, including order.
+                    expect(page.locator('.abstract-translation .tr-box > p:not(.translation-note)')).to_have_text([p for p in cached.split('\n') if p.strip()])
                     check(page.locator('.abstract-paired').count() == 1, f'{width}: actual cached translation uses paired reading')
                 else:
                     expect(page.locator('.abstract-translation-status')).to_have_text('译文待预生成')

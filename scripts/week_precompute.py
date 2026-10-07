@@ -440,7 +440,9 @@ def main(argv=None):
   if report.get('stopped'):pass
   elif args.read_runtime_cache or (args.run and args.provider=='runtime'):report=acquire_runtime(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,args.run,checkpoint=checkpoint)
   elif args.run:report=configured_batch(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,checkpoint=checkpoint)
-  result=board(selected,window,cache,report,read(ROOT/'data/translations.json',{}));atomic(args.output,result)
+  result=board(selected,window,cache,report,read(ROOT/'data/translations.json',{}))
+  from public_editorial_overlay import apply_board, load_board
+  result=apply_board(result,load_board(ROOT));atomic(args.output,result)
   print(json.dumps({'window':window,'coverage':result['coverage'],'run':report},ensure_ascii=False))
   return 1 if report.get('stopped') else 0
  finally:lock.unlink(missing_ok=True)

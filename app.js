@@ -491,7 +491,7 @@
     const k = qlKey(p), embedded = preGeneratedOf(p)?.quicklook;
     const valid = embedded && typeof embedded.one_line === 'string' && embedded.one_line.trim()
       && Array.isArray(embedded.findings) && embedded.findings.every(f => f && typeof f.text === 'string' && typeof f.quote === 'string');
-    return (window.QUICKLOOKS || {})[k] || (valid ? embedded : null) || LIVE_QL[k] || null;
+    return (valid ? embedded : null) || (window.QUICKLOOKS || {})[k] || LIVE_QL[k] || null;
   }
   // 一键 AI 解读：后端 /api/ql（Cloudflare _worker.js）。本地静态预览没有后端时自动隐藏按钮。
   function aiApiCheck(paper) {
@@ -561,7 +561,8 @@
   }
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
-    if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">机器翻译，未经人工核对；以英文原文为准。</p></div>`;
+    const editorial = preGeneratedOf(paper)?.meta?.generationMeta?.translate?.origin === 'sol-session-public-abstract';
+    if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">${editorial ? 'Sol 会话依据公开摘要整理译文，未经人工医学终审；以英文原文为准。' : '机器翻译，未经人工核对；以英文原文为准。'}</p></div>`;
     if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
     if (paper._trState === 'loading') return '<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…</p></div>';
     if (!(paper.pmid || paper.doi)) return '<p class="ql-meta" role="status">缺少文献标识，暂无法翻译。</p>';
@@ -1619,6 +1620,7 @@
 
       // AI 速览 (daily batch, labelled unreviewed) + its stored public abstract
       const ql = quicklookOf(paper);
+      const editorialQuicklook = ql === preGeneratedOf(paper)?.quicklook && preGeneratedOf(paper)?.meta?.generationMeta?.quicklook?.origin === 'sol-session-public-abstract';
       if (ql && ql.abstract && !paper.summary && !(paper.abstractSections && paper.abstractSections.length)) {
         paper.abstractSections = [{ label: '', text: ql.abstract }];
         paper._absFetched = true;
@@ -1626,7 +1628,7 @@
       }
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
-          <div class="drawer-section-title">AI 速览 <small class="ql-flag">模型根据公开摘要生成 · 未经人工核对</small></div>
+          <div class="drawer-section-title">AI 速览 <small class="ql-flag">${editorialQuicklook ? 'Sol 会话根据公开摘要整理 · 未经人工医学终审' : '模型根据公开摘要生成 · 未经人工核对'}</small></div>
           <p class="ql-line"><strong>${esc(ql.one_line)}</strong></p>
           <p class="ql-meta"><span>${esc(ql.design)}</span></p>
           <ul class="ql-findings">${ql.findings.map(f => `<li>${esc(f.text)}<blockquote>${esc(f.quote)}</blockquote></li>`).join('')}</ul>

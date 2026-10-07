@@ -1,0 +1,131 @@
+{
+  "sourceMainSha": "7dbe94c5465e7acca4097ac0282ef8ff78e4a48f",
+  "sourceStateSha": "6135056e3d544816ff3554a8e6241f60e3274698",
+  "sourceRepairSha": "69a46b6a6479773a725a742310e10b280ff29cf3",
+  "window": {
+    "start": "2026-10-01",
+    "end": "2026-10-07",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 92,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 69,
+      "综合医学": 21,
+      "AI医疗": 1,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 288,
+      "no_complete_public_abstract": 61,
+      "low_relevance": 49,
+      "correction_comment_letter": 19,
+      "outside_window": 359
+    },
+    "shortfallReason": null
+  },
+  "schemaVersion": 1,
+  "branch": "codex/week-precompute-20261007",
+  "firstBatchCommit": "cb5d53de305fc3ad266273f01fdc452375dd2f3a",
+  "coverage": {
+    "title": 24,
+    "translate": 24,
+    "study": 0,
+    "quicklook": 24
+  },
+  "categories": [
+    {
+      "key": "心血管",
+      "count": 16,
+      "eligible": 69,
+      "reason": null
+    },
+    {
+      "key": "综合医学",
+      "count": 6,
+      "eligible": 21,
+      "reason": null
+    },
+    {
+      "key": "AI医疗",
+      "count": 1,
+      "eligible": 1,
+      "reason": "本类在严格出版窗口、完整公开摘要与相关性筛选后仅有1条；未用旧稿或低相关条目补数。"
+    },
+    {
+      "key": "AI前沿",
+      "count": 1,
+      "eligible": 1,
+      "reason": "本类在严格出版窗口、完整公开摘要与相关性筛选后仅有1条；未用旧稿或低相关条目补数。"
+    }
+  ],
+  "cacheEntries": 48,
+  "validatedTasks": 48,
+  "independentlyReviewedPapers": 24,
+  "independentReviewFiles": [
+    "reviews/batch-01-review.json",
+    "reviews/remaining-04-10.json",
+    "reviews/remaining-11-17.json",
+    "reviews/remaining-18-24.json"
+  ],
+  "allReviewFileBindingsVerified": true,
+  "sourceQualityReview": "reviews/source-quality-review.json",
+  "sourceQuality": "saved public abstracts locally checked; not new online verification",
+  "originalEnglishTitleAndAbstractRetained": true,
+  "cacheOrigin": "sol-session-public-abstract",
+  "requestedAgentModel": "gpt-6.1-sol",
+  "actualBackendModelVerified": false,
+  "cacheModelVersion": "sol-session-model-unobserved",
+  "generationPromptVersion": "unobserved",
+  "generationVersionKnown": false,
+  "providerUsage": null,
+  "externalModelApiRequests": 0,
+  "scope": "public-abstract",
+  "humanReview": false,
+  "medicalFinalReview": false,
+  "fullTextReviewed": false,
+  "productionWrites": 0,
+  "deployed": false,
+  "ledgerSha256Before": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "ledgerSha256After": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "reservedAttempts": 4,
+  "reservedOutputTokens": 3800,
+  "ledgerStillPaused": true,
+  "accountBudgetVerified": false,
+  "localTrialCeiling": {
+    "attemptsPerUtcDay": 8,
+    "outputTokensPerUtcDay": 9600,
+    "isAccountQuota": false
+  },
+  "regressionTests": {
+    "file": "scripts/test_sol_public_overlay.py",
+    "passed": 9
+  },
+  "sourceCaveats": [
+    {
+      "rank": 7,
+      "issue": "LGE group marker ambiguous in one original sentence; explicitly qualified; quicklook findings avoid it"
+    },
+    {
+      "rank": 12,
+      "issue": "Source 1519 (74.9%) denominator unspecified; preserved without invented denominator"
+    },
+    {
+      "rank": 15,
+      "issue": "Full translation retains both adverse-event comparisons; optional quicklook completeness suggestion recorded"
+    }
+  ],
+  "remainingBlockers": [
+    "Prior provider/site path failure and account usage remain unresolved; no additional API or live site validation attempted.",
+    "Study task remains missing for all 24; receipt covers complete translations and abstract quicklooks only."
+  ],
+  "integrationConstraints": [
+    "Apply scoped artifacts and adapter to current main; do not merge the whole older handoff branch.",
+    "Recheck all 24 current DOI/PMID/title/abstract hashes; changed source invalidates overlay.",
+    "Overlay takes priority only in memory; runtime cache and ledger unchanged.",
+    "Only sole integration owner may adopt board into state and publish.",
+    "No frontend automatic paid fallback."
+  ]
+}

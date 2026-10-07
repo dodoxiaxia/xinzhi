@@ -1,0 +1,459 @@
+{
+  "schemaVersion": 1,
+  "reviewType": "independent-agent-public-abstract-editorial-review",
+  "createdAt": "2026-10-07T15:40:38.738207+00:00",
+  "reviewerRequestedModel": "gpt-6.1-sol",
+  "actualBackendModelVerified": false,
+  "modelVerificationNote": "请求模型为gpt-6.1-sol；当前会话工具未提供可核验实际后端模型，不作实际模型身份声明。",
+  "scope": {
+    "ranks": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "sourceFile": "sources.json",
+    "draftFiles": [
+      "drafts/batch-02.json",
+      "drafts/batch-03.json"
+    ],
+    "publicAbstractOnly": true,
+    "reviewed": "完整中文摘要、中文标题及全部quicklook字段与逐字英文quote；身份、数字、单位、分母、阴性结果、研究设计和关联/因果措辞。",
+    "noNetworkOrExternalApiUsed": true,
+    "noPrivatePdfOrFullTextUsed": true,
+    "onlyOutputFileWritten": "reviews/remaining-04-10.json",
+    "sourceDraftsAndLedgerNotModifiedByReviewer": true
+  },
+  "fileBindings": [
+    {
+      "path": "/workspace/week-sol-public-20261007/editorial/sol-public-abstract-20261007/sources.json",
+      "relativePath": "sources.json",
+      "sha256": "8c20d1a3e4af2edf9bb617ffd1f8079dbaaf89113de71ce485b9104bff161754",
+      "bytes": 77107
+    },
+    {
+      "path": "/workspace/week-sol-public-20261007/editorial/sol-public-abstract-20261007/drafts/batch-02.json",
+      "relativePath": "drafts/batch-02.json",
+      "sha256": "86c61f6c0ffc8e732f7056e2a2b7e677c34a98b4543418b8ecc4e4c37cfba6ad",
+      "bytes": 19226
+    },
+    {
+      "path": "/workspace/week-sol-public-20261007/editorial/sol-public-abstract-20261007/drafts/batch-03.json",
+      "relativePath": "drafts/batch-03.json",
+      "sha256": "a4bf1e71c9f8ddcb1910abd16a3692b359fa1dbe2aa23c72446876932621b16f",
+      "bytes": 20856
+    }
+  ],
+  "items": [
+    {
+      "rank": 4,
+      "draftFile": "drafts/batch-02.json",
+      "paperID": "doi:10.1161/circulationaha.126.080404",
+      "doi": "10.1161/circulationaha.126.080404",
+      "pmid": "42836281",
+      "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+      "pass": true,
+      "issues": [],
+      "corrections": [],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "中文标题保留中国、多中心前瞻性登记研究；源标题没有需保留的数字。",
+        "numbersUnitsDenominators": "核对≥18岁、2019-07-01至2020-12-31、37院/29省、17 602例、中位66岁/65.5%男性、每1000例入院每年4.1例；6569/37.3%、2380/13.5%、16 872/95.9%/1分钟；及时除颤或肾上腺素按初始可电击/不可电击组分别为71.4%/84.4%；持续ROSC 6200/35.2%，222/3.6%和320/5.2%的分母为6200；30天或出院1610/9.1%、神经结局1241/7.1%，12个月1075/6.1%、986/5.6%以全体为百分比分母。",
+        "designAndInterpretation": "登记队列、主要与次要结局及过程指标均保留；系统/文化因素仅表述为可能影响，未改成确定因果。",
+        "negativeResultsAndLimits": "源摘要无明确局限段；速读如实注明。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1024,
+          "sourceEndCharacterExclusive": 1145,
+          "quote": "Among 17 602 patients (median age, 66 years; 65.5% male), the annual incidence of adult IHCA was 4.1 per 1000 admissions.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1262,
+          "sourceEndCharacterExclusive": 1352,
+          "quote": "Among all patients, 16 872 (95.9%) received cardiopulmonary resuscitation within 1 minute;",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1683,
+          "sourceEndCharacterExclusive": 1804,
+          "quote": "Overall, 1610 (9.1%) patients survived to 30 days or discharge, with 1241 (7.1%) having a favorable neurological outcome.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 4,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1805,
+          "sourceEndCharacterExclusive": 1908,
+          "quote": "At 12 months, 1075 (6.1%) patients remained alive, and 986 (5.6%) had a favorable neurological outcome.",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    },
+    {
+      "rank": 5,
+      "draftFile": "drafts/batch-02.json",
+      "paperID": "doi:10.1016/j.jacadv.2026.103298",
+      "doi": "10.1016/j.jacadv.2026.103298",
+      "pmid": "42832923",
+      "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+      "pass": true,
+      "issues": [],
+      "corrections": [],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "PCI后替格瑞洛单药或阿司匹林联合普拉格雷及网状Meta分析均保留；标题无数字。",
+        "numbersUnitsDenominators": "核对2025/2023指南、12个月DAPT、7项RCT/27,225例、62岁、23.2%女性/31.7%糖尿病/98.6%ACS；MACCE IRR 1.09/95% CI 0.86–1.38、非劣效P=0.33；大出血IRR 0.54/0.37–0.80；交互Pint=0.04与注册号CRD420261322968。",
+        "designAndInterpretation": "频率学派随机效应网络合并及经替格瑞洛DAPT间接比较明确；未写成直接头对头试验。",
+        "negativeResultsAndLimits": "保留临床意义的MACCE风险增高不能排除、非劣效性未达到及需要直接随机比较；糖尿病交互未增加源摘要没有的方向。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1198,
+          "sourceEndCharacterExclusive": 1303,
+          "quote": "Ticagrelor monotherapy and aspirin plus prasugrel were compared indirectly through ticagrelor-based DAPT.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1304,
+          "sourceEndCharacterExclusive": 1516,
+          "quote": "Ticagrelor monotherapy showed similar MACCE compared with aspirin plus prasugrel (IRR: 1.09; 95% CI: 0.86-1.38), although a clinically meaningful increase in risk cannot be excluded (P for noninferiority = 0.33);",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1517,
+          "sourceEndCharacterExclusive": 1601,
+          "quote": "major bleeding was lower with ticagrelor monotherapy (IRR: 0.54; 95% CI: 0.37-0.80).",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 4,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1602,
+          "sourceEndCharacterExclusive": 1707,
+          "quote": "An interaction between P2Y12 inhibitor strategy and diabetes status was observed for MACCE (Pint = 0.04).",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    },
+    {
+      "rank": 6,
+      "draftFile": "drafts/batch-02.json",
+      "paperID": "doi:10.1016/j.jacadv.2026.103306",
+      "doi": "10.1016/j.jacadv.2026.103306",
+      "pmid": "42832922",
+      "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+      "pass": true,
+      "issues": [],
+      "corrections": [],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "难治性或未控制高血压、治疗比较、随机试验网状Meta分析均保留；标题无数字。",
+        "numbersUnitsDenominators": "核对≥2种药、检索至2025年11月、系统综述35项/8,648例/12治疗与网络分析30项/8,187例/10治疗；诊室SBP变化、螺内酯MD -12.43 mm Hg/95%可信区间-17.68至-7.18，射频肾去神经MD -8.74/-12.96至-4.52，CINeMA均中等。",
+        "designAndInterpretation": "贝叶斯随机效应、主要结局及难治性/较广未控制人群均保留；相对于基线治疗的效应与附加治疗之间的比较区分清楚。",
+        "negativeResultsAndLimits": "明确头对头比较未见显著差异/多数仍包括无效可能；未从排名推出治疗优越性。结论列baxdrostat来自原文。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 856,
+          "sourceEndCharacterExclusive": 1038,
+          "quote": "We included 35 trials (8,648 patients and 12 individual treatments) in the systematic review and 30 trials (8,187 patients and 10 individual treatments) in the network meta-analysis.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1039,
+          "sourceEndCharacterExclusive": 1396,
+          "quote": "In patients with resistant hypertension, spironolactone (mean difference: -12.43 mm Hg; 95% credible interval: -17.68 to -7.18; CINeMA moderate) and radiofrequency renal denervation (mean difference: -8.74 mm Hg; 95% credible interval: -12.96 to -4.52; CINeMA moderate) were more effective than baseline treatment in reducing office systolic blood pressure.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1397,
+          "sourceEndCharacterExclusive": 1471,
+          "quote": "Similar findings were observed in patients with uncontrolled hypertension.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 4,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1472,
+          "sourceEndCharacterExclusive": 1608,
+          "quote": "No intervention demonstrated clear superiority over another because most head-to-head comparisons included the possibility of no effect.",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    },
+    {
+      "rank": 7,
+      "draftFile": "drafts/batch-02.json",
+      "paperID": "doi:10.1016/j.jacadv.2026.103295",
+      "doi": "10.1016/j.jacadv.2026.103295",
+      "pmid": "42822410",
+      "sourceHash": "5cfb05d07f46ea9f65499bb18cf255aed45c6fb716dede341f9b202071ab93db",
+      "pass": true,
+      "issues": [],
+      "corrections": [
+        {
+          "field": "translate.abstract_zh / quicklook.limits",
+          "status": "verifiedAppliedByParent",
+          "reason": "源句“LGE cases”组别标记歧义必须显式提示，不能自行补负号。",
+          "verifiedText": "LGE病例（原文此处未明确阴性或阳性）",
+          "quicklookResolution": "三条finding均未引用或依赖0.8% vs 21.1%的歧义句，limits明确披露。",
+          "sourceAmbiguityRemains": true
+        }
+      ],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "无纤维化、NICM、CRT预后及系统综述/Meta分析均保留；标题无数字。",
+        "numbersUnitsDenominators": "核对10研究、CRT应答9项/n=831、心律失常6项/745例；78.7% vs 50.7%与P<0.001；0.8% vs 21.1%与P<0.001保留源歧义句并加括注；OR 3.52/95% CI 2.54–4.88及OR 0.06/0.02–0.15与各P<0.001均一致。",
+        "designAndInterpretation": "明确观察性研究汇总与关联；CRT-D相对CRT-P增量获益仅保留“可能有限”，未宣称已证实器械等效或无益。",
+        "negativeResultsAndLimits": "原文“LGE cases”没有阴性/阳性标记；最终译文显式括注未明确阴性或阳性，未补负号。速读所有引文来自无歧义句，limits披露该歧义且注明未依该句取结论。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1118,
+          "sourceEndCharacterExclusive": 1234,
+          "quote": "CRT response was significantly higher in patients without LGE than in patients with LGE (78.7% vs 50.7%; P < 0.001).",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1369,
+          "sourceEndCharacterExclusive": 1550,
+          "quote": "The absence of LGE was strongly associated with higher CRT response (OR: 3.52; 95% CI: 2.54-4.88; P < 0.001) and much lower arrhythmic risk (OR: 0.06; 95% CI: 0.02-0.15; P < 0.001).",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1709,
+          "sourceEndCharacterExclusive": 1802,
+          "quote": "In this subgroup the incremental benefit of CRT with defibrillator over CRT-P may be limited.",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    },
+    {
+      "rank": 8,
+      "draftFile": "drafts/batch-02.json",
+      "paperID": "doi:10.1161/strokeaha.126.057089",
+      "doi": "10.1161/strokeaha.126.057089",
+      "pmid": "42817893",
+      "sourceHash": "7cbf94dfefe41f905b51dfe332626975f1188e028d531e40d5000eb5216e9729",
+      "pass": true,
+      "issues": [],
+      "corrections": [],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "更新Meta分析、LAAC与口服抗凝、房颤卒中预防均保留；标题无数字。",
+        "numbersUnitsDenominators": "核对90%左房血栓、2026两试验使随机证据超过翻倍、检索至2026-04-15；6 RCT/2014–2026/358中心/7028例、华法林2试验/DOAC4试验、高出血风险2试验/消融后1试验；总体卒中OR 1.10/0.78–1.56，缺血性卒中1.41/1.07–1.86，非操作出血0.58/0.35–0.96，注册号CRD420261370546。",
+        "designAndInterpretation": "随机效应合并累积发生率的比值比、预测区间、预设亚组与试验序贯分析保留；总体卒中相近未写成卒中预防等效。",
+        "negativeResultsAndLimits": "缺血性卒中信息量不足、仅非操作出血达到充分信息量、获益未见于高出血风险组及人群适用范围均保留。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1293,
+          "sourceEndCharacterExclusive": 1379,
+          "quote": "Overall stroke rates were similar between arms (odds ratio, 1.10 [95% CI, 0.78-1.56]).",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1380,
+          "sourceEndCharacterExclusive": 1511,
+          "quote": "Ischemic stroke was more frequent with LAAC (odds ratio, 1.41 [95% CI, 1.07-1.86]) but did not reach the required information size.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1512,
+          "sourceEndCharacterExclusive": 1722,
+          "quote": "Nonprocedural bleeding was lower with LAAC (odds ratio, 0.58 [95% CI, 0.35-0.96]), the only outcome reaching a sufficient information size, in standard-risk and postablation but not high-bleeding-risk patients.",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    },
+    {
+      "rank": 9,
+      "draftFile": "drafts/batch-03.json",
+      "paperID": "doi:10.1093/eurheartj/ehag699",
+      "doi": "10.1093/eurheartj/ehag699",
+      "pmid": "42834810",
+      "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+      "pass": true,
+      "issues": [],
+      "corrections": [],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "AF合并HF、房室结消融后两种起搏方式及CONDUCT-AF均保留；标题无数字。",
+        "numbersUnitsDenominators": "核对10欧洲中心、LVEF<50%、QRS≤120 ms、NT-proBNP>600 ng/L、1:1、6个月；82例、72±7岁、46%男性；CSP LVEF36%(CI33–39)至46%(44–49)，BVP34%(31–36)至46%(43–49)，均P<.001；组间.4%(CI-3.1–3.8)/非劣效P=.002，起搏QRS平均差-14 ms(CI-19至-9)/P<.001。",
+        "designAndInterpretation": "研究者发起、多中心随机非劣效设计、独立核心实验室、意向性原则及左束支区域CSP均保留；非劣效结论限定6个月LVEF改善。源文用“.4%”，稿件逐字数字和单位保留，未擅自改换效应量。",
+        "negativeResultsAndLimits": "临床/超声指标及复合终点相当为源摘要表述，未写成总体优效或已证实等效；摘要无明确局限段。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1238,
+          "sourceEndCharacterExclusive": 1323,
+          "quote": "The between-group difference was .4% (95% CI -3.1-3.8; P = .002 for non-inferiority).",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1324,
+          "sourceEndCharacterExclusive": 1476,
+          "quote": "Changes in left ventricular volumes, clinical parameters, and composite endpoint of worsening HF or cardiovascular death were comparable between groups.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1477,
+          "sourceEndCharacterExclusive": 1632,
+          "quote": "Paced QRS [mean difference -14 ms (95% CI -19 to -9; P < .001)] and procedural and fluoroscopy times were significantly shorter with CSP compared with BVP.",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    },
+    {
+      "rank": 10,
+      "draftFile": "drafts/batch-03.json",
+      "paperID": "doi:10.1111/jce.70518",
+      "doi": "10.1111/jce.70518",
+      "pmid": "42836688",
+      "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+      "pass": true,
+      "issues": [],
+      "corrections": [],
+      "identityChecks": {
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "translationAndQuicklookTitleMatch": true,
+      "checks": {
+        "title": "复发及QoL预测因素、台湾多中心登记及24个月随访均保留；中文摘要标题及quicklook标题都保留24个月。",
+        "numbersUnitsDenominators": "核对4中心/2018–2023、≥30秒/90天空白期/12个月QoL；298例/63.7±11.8岁/60%男性、282/94.6%阵发AF、2.0%并发症、58/19%复发(37于90–365天/21于>365天)；间歇监测KM约90%@12月、62%@24月且18月后CI宽；时间aHR1.050/年(CI1.007–1.096)/p=.023，LVEF aHR.970/1%(CI.942–1.000)/p=.052；QoL配对205/298、EQ-5D-3L p=.672、VAS中高21.5%至10.2%、70/205=34%达≥10分改善。",
+        "designAndInterpretation": "登记、连续入组、间歇ECG/Holter/事件记录器/临床指征评估、Cox及QoL配对完整病例均保留；诊断至消融时间为复发相关/预测指标，未主张缩短等待必然减少复发。",
+        "negativeResultsAndLimits": "无心脏压塞/房食管瘘、EQ-5D-3L无显著变化、LVEF边缘负关联p=.052、QoL缺失及稀少事件/准完全分离致模型不稳定、无法确认稳健VAS独立预测因素均保留。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1004,
+          "sourceEndCharacterExclusive": 1174,
+          "quote": "Kaplan-Meier recurrence-free survival under intermittent monitoring was approximately 90% at 12 months and 62% at 24 months, with wider confidence bands beyond 18 months.",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1175,
+          "sourceEndCharacterExclusive": 1339,
+          "quote": "In multivariable analysis, longer time from AF diagnosis to ablation independently predicted recurrence (adjusted HR 1.050 per year, 95% CI 1.007-1.096; p = 0.023);",
+          "chineseClaimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "exactSubstringMatch": true,
+          "sourceStartCharacter": 1474,
+          "sourceEndCharacterExclusive": 1670,
+          "quote": "QoL analyses in 205/298 patients with paired data showed no significant change in EQ-5D-3L index (p = 0.672), but VAS categories shifted toward lower symptom burden (moderate/high 21.5% to 10.2%).",
+          "chineseClaimSupported": true
+        }
+      ],
+      "quicklookAllFieldsReviewed": true,
+      "completeChineseAbstractReviewed": true
+    }
+  ],
+  "quoteCount": 24,
+  "allQuotesExact": true,
+  "overallPass": true,
+  "unresolvedIssues": [],
+  "sourceCaveats": [
+    {
+      "rank": 7,
+      "detail": "源公开摘要局部LGE组标记仍歧义；最终稿加括注且quicklook未依赖该句，因此不要求猜测/改源。"
+    }
+  ]
+}

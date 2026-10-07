@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-07T15:25:52.741446+00:00",
+  "reviewType": "independent-sol-session-public-abstract-semantic-review",
+  "reviewer": {
+    "agentTask": "/root/sol_contract_audit",
+    "requestedModel": "gpt-6.1-sol",
+    "actualModelVersion": "unobserved",
+    "humanReview": false,
+    "medicalFinalReview": false
+  },
+  "scope": "Public English title and abstract versus complete Chinese translation and quicklook only; no full text or external knowledge supplementation.",
+  "inputs": {
+    "sources": "editorial/sol-public-abstract-20261007/sources.json",
+    "sourcesFileSha256": "8c20d1a3e4af2edf9bb617ffd1f8079dbaaf89113de71ce485b9104bff161754",
+    "draft": "editorial/sol-public-abstract-20261007/drafts/batch-01.json",
+    "draftFileSha256": "7f334c786d0dd22b655d104161f98d8110a9e8300df5a84b0a3175b5daaaa80a",
+    "cache": "editorial/sol-public-abstract-20261007/batch-01-cache.json",
+    "cacheFileSha256": "f6809189fd333089f6097d3ec43ebb4fc86abf931c9ae98f417c769920024e6a"
+  },
+  "method": "Independent direct rereading of all three current complete Chinese translations and quicklooks against the fixed public English titles and abstracts. Current source hashes and all literal quotes checked locally; six production Node validations rerun and checked against the current six cache values.",
+  "networkCalls": 0,
+  "providerApiCalls": 0,
+  "overallPass": true,
+  "gateStatus": "passed-for-fixed-batch-01",
+  "papers": [
+    {
+      "rank": 1,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37545",
+      "doi": "10.1001/jamanetworkopen.2026.37545",
+      "pmid": "42826016",
+      "sourceHash": "1bee850359b6eed3b26a3bb3b931ebfb386352f923eb53021184288997ef5d54",
+      "pass": true,
+      "issues": [],
+      "confirmed": [
+        "All source sections and outcome estimates are represented in the complete translation.",
+        "36 studies, 2 617 942 women, cohort/comparator mean ages and SDs, 16.0-year follow-up and 4.8–36.0 range retain correct units and assignments.",
+        "All-cause mortality, cardiovascular events, coronary disease and stroke PHRs and CIs remain attached to the correct outcomes.",
+        "Before-age-45 mortality excess and null estimates at or after age 45 are preserved.",
+        "The composite-outcome meta-regression is explicitly post hoc; 5-year increment, HR 0.89, CI 0.83–0.97, 37 estimates and 11 populations are preserved.",
+        "Quicklook retains association wording and the age-stratified mortality qualifier; finding quotes occur literally in this source.",
+        "The revised final conclusion now explicitly says older age is associated with progressively lower risk; association and post hoc meta-regression boundaries remain intact."
+      ],
+      "resolvedIssues": [
+        {
+          "severity": "moderate",
+          "gateBlocking": true,
+          "field": "translate.abstract_zh",
+          "kind": "association_qualifier_omission",
+          "draftText": "医源性绝经年龄越大，心血管疾病发生和死亡风险越低",
+          "sourceQuote": "Older age at iatrogenic menopause was associated with progressively lower risk of cardiovascular morbidity and mortality",
+          "reason": "The concluding Chinese sentence drops the explicit association qualifier and may read as an unqualified risk relation. Keep the source association wording, including in the conclusion.",
+          "suggestedReplacement": "医源性绝经年龄越大，与心血管疾病发生和死亡风险逐渐降低相关",
+          "status": "resolved",
+          "resolution": "Current draft contains the suggested qualifier and was independently reread against the fixed public abstract."
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "paperID": "doi:10.1093/ehjcvp/pvag089",
+      "doi": "10.1093/ehjcvp/pvag089",
+      "pmid": "42839766",
+      "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+      "pass": true,
+      "issues": [],
+      "confirmed": [
+        "The parent trial is randomized and a 100-patient pilot; the presented HCE analysis is explicitly post hoc.",
+        "Short-term corticosteroid therapy, prednisone, and acute heart failure remain correctly identified.",
+        "The hierarchy retains 90-day death, 90-day HF readmission, 30-day worsening HF and 30-day baseline EQ-VAS change.",
+        "Site stratification and baseline EQ-VAS adjustment remain distinct from the endpoint hierarchy.",
+        "Win ratio 1.82 and win odds 1.71, both p<0.05, 10% ties, and 26.1% overall win difference are preserved.",
+        "Little EQ-VAS effect and no substantial change in estimated win odds after adjustment are retained.",
+        "A positive pilot signal is framed as supporting further examination, without a confirmatory efficacy claim.",
+        "Quicklook finding quotes occur literally in this source and preserve the statistical and design qualifiers."
+      ],
+      "resolvedIssues": []
+    },
+    {
+      "rank": 3,
+      "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+      "doi": "10.1016/j.hrthm.2026.09.051",
+      "pmid": "42838320",
+      "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+      "pass": true,
+      "issues": [],
+      "confirmed": [
+        "The complete translation retains intravenous routes, emergency-department presentation, recent-onset paroxysmal AF, documented CAD and absence of residual or active ischemia.",
+        "Investigator-initiated, multicenter, open-label randomization and 1:1 allocation are preserved.",
+        "Primary efficacy is within 6 hours; primary safety is the specified 6-hour composite, including bradycardia below 50 bpm; 24-hour ECG monitoring remains distinct.",
+        "Eighty-seven randomized patients, 42 flecainide and 45 amiodarone, remain correctly assigned; Chinese words preserve the source spelled-out total.",
+        "Six-hour conversion 85.7% versus 40.0%, median 20 versus 244 minutes, admission 14.3% versus 60.0%, and associated P<0.001 values remain correctly assigned.",
+        "No ventricular proarrhythmic events within 24 hours and no deaths through 30 days are preserved with their separate windows.",
+        "The conclusion and quicklook limits explicitly retain the hypothesis-generating interpretation of the short-term no-serious-ventricular-proarrhythmia finding.",
+        "No claim of established long-term safety or a clinical recommendation is added; finding quotes occur literally in this source.",
+        "The revised standalone one-line summary now retains absence of residual or active ischemia, matching the selected population."
+      ],
+      "resolvedIssues": [
+        {
+          "severity": "moderate",
+          "gateBlocking": true,
+          "field": "quicklook.one_line",
+          "kind": "selected_population_qualifier_omission",
+          "draftText": "所选无活动性缺血的冠心病房颤患者中，氟卡尼的急性复律比例较高。",
+          "sourceQuote": "in patients with documented CAD without residual or active ischemia",
+          "reason": "The independently displayed one-line summary drops absence of residual ischemia and may broaden the selected population. The limits field retains it, but the standalone one-line claim should do so too.",
+          "suggestedReplacement": "所选无残余或活动性缺血的冠心病房颤患者中，氟卡尼的急性复律比例较高。",
+          "status": "resolved",
+          "resolution": "Current draft contains the suggested qualifier and was independently reread against the fixed public abstract."
+        }
+      ]
+    }
+  ],
+  "limitations": "This is a second model review, not human or medical final review. No fabricated provider usage or exact actual model identity is asserted.",
+  "writeScope": "Only this review JSON updated; current drafts, sources, cache and ledger unchanged by reviewer.",
+  "priorReview": {
+    "reviewedAt": "2026-10-07T15:24:11.135942+00:00",
+    "draftFileSha256": "ada058c4bf75b30c0e7d56df0fec6b59b969af16f3025784dcdbe9921e886e19",
+    "overallPass": false,
+    "gateStatus": "revision-required-before-expansion",
+    "blockingIssueCount": 2
+  },
+  "expansionGateUnlocked": true,
+  "mechanicalValidation": {
+    "tasksValidated": 6,
+    "sourceHashBindingsChecked": 3,
+    "literalFindingQuotesChecked": 9,
+    "cacheValuesMatchValidatedCurrentDraft": true,
+    "providerCalls": 0
+  },
+  "sourcePolicy": "Only the fixed current 24-paper sources snapshot is used; the two historical source-repair identities are absent from this snapshot and were not supplemented or reused in this review. Acceptance is tied to the recorded source hashes and file hashes."
+}

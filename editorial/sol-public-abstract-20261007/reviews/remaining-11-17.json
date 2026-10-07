@@ -1,0 +1,892 @@
+{
+  "schemaVersion": 1,
+  "reviewType": "independent_public_abstract_source_comparison",
+  "reviewerRequestedModel": "gpt-6.1-sol",
+  "actualBackendModel": "unverifiable",
+  "modelDisclosure": "请求的复核模型为gpt-6.1-sol；本会话工具不提供可核验的实际后端模型标识，不据此宣称实际运行模型。",
+  "reviewedAtUtc": "2026-10-07T15:41:05.707379+00:00",
+  "scope": {
+    "ranks": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "publicAbstractOnly": true,
+    "inputs": [
+      "sources.json",
+      "drafts/batch-03.json",
+      "drafts/batch-04.json"
+    ],
+    "networkUsed": false,
+    "apiUsed": false,
+    "privatePdfUsed": false,
+    "fullTextReviewed": false,
+    "draftsModified": false,
+    "sourcesModified": false,
+    "ledgerModified": false,
+    "note": "仅依据所列本地公开摘要源与草稿进行独立AI复核；不代表人工审核、医学审查或全文审查。"
+  },
+  "inputSha256": {
+    "sources.json": "8c20d1a3e4af2edf9bb617ffd1f8079dbaaf89113de71ce485b9104bff161754",
+    "drafts/batch-03.json": "a4bf1e71c9f8ddcb1910abd16a3692b359fa1dbe2aa23c72446876932621b16f",
+    "drafts/batch-04.json": "d3f60f6a9d6fe48ef901418206dbef566cbb44ce5966a0194bb6775ba70890ea"
+  },
+  "overallPass": true,
+  "summary": {
+    "papersReviewed": 7,
+    "papersPassed": 7,
+    "blockingIssues": 0,
+    "optionalImprovements": 1,
+    "sourceAmbiguitiesRetained": 1,
+    "quotesReviewed": 22,
+    "exactQuotesPassed": 22,
+    "note": "七项当前草稿未发现阻断性事实偏差；R12源文分母不明已记录，R15 quicklook并列AE比较完整性建议为非阻断。"
+  },
+  "papers": [
+    {
+      "rank": 11,
+      "pass": true,
+      "sourceHash": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+      "draftFile": "drafts/batch-03.json",
+      "draftFileSha256": "a4bf1e71c9f8ddcb1910abd16a3692b359fa1dbe2aa23c72446876932621b16f",
+      "identifiers": {
+        "rank": {
+          "source": 11,
+          "draft": 11,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1001/jamanetworkopen.2026.36741",
+          "draft": "doi:10.1001/jamanetworkopen.2026.36741",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1001/jamanetworkopen.2026.36741",
+          "draft": "10.1001/jamanetworkopen.2026.36741",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42832201",
+          "draft": "42832201",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+          "draft": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "A Policy-Based Intervention for Physical Activity and Screen Time in Childcare Outside School Hours: A Cluster Randomized Clinical Trial.",
+        "translationTitle": "校外时段儿童照护中针对身体活动与屏幕时间的政策干预：整群随机临床试验",
+        "quicklookTitle": "校外时段儿童照护中针对身体活动与屏幕时间的政策干预：整群随机临床试验",
+        "sourceDigitTokens": [],
+        "translationDigitTokens": [],
+        "quicklookDigitTokens": [],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "197家机构按1:1整群随机；101/96分组，182家完成12个月随访（90/92）；ITT与符合方案分析明确区分。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "3州、2022-08-01至2024-12-31、基线/3/12个月、197/101/96/182/92%/90/92、48/101及源文48%、OR 1.72/1.21/1.16/7.35/5.63/3.00、发生率比1.23及全部95% CI均保留。48/101的源文四舍五入48%未自行改写。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "ITT对指南遵循和儿童活动无显著影响保留；获认证机构改善归于符合方案分析，quicklook limits明确指出分析来源，未把符合方案结果冒充总体随机比较。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "背景、目的、场所与时间、干预、主次终点、全部结果、结论和注册号均有对应译文。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "Intention-to-treat analyses showed no significant effects for guideline adherence or children's activity levels.",
+          "exactSubstring": true,
+          "startOffset": 1815,
+          "endOffsetExclusive": 1927,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "Of the 101 services in the intervention group, 48 (48%) achieved accreditation within 12 months.",
+          "exactSubstring": true,
+          "startOffset": 1718,
+          "endOffsetExclusive": 1814,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "In per-protocol analyses, accredited services were more likely than controls to meet all guidelines (OR, 7.35; 95% CI, 1.39-38.86), with improved after-school screen time adherence (OR, 5.63; 95% CI, 1.16-27.22).",
+          "exactSubstring": true,
+          "startOffset": 2264,
+          "endOffsetExclusive": 2476,
+          "claimSupported": true
+        }
+      ],
+      "issues": [],
+      "corrections": []
+    },
+    {
+      "rank": 12,
+      "pass": true,
+      "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+      "draftFile": "drafts/batch-03.json",
+      "draftFileSha256": "a4bf1e71c9f8ddcb1910abd16a3692b359fa1dbe2aa23c72446876932621b16f",
+      "identifiers": {
+        "rank": {
+          "source": 12,
+          "draft": 12,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1001/jama.2026.17192",
+          "draft": "doi:10.1001/jama.2026.17192",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1001/jama.2026.17192",
+          "draft": "10.1001/jama.2026.17192",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42832220",
+          "draft": "42832220",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+          "draft": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "Smoking Cessation Among Underserved Patients Referred for Lung Cancer Screening: A Randomized Clinical Trial.",
+        "translationTitle": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+        "quicklookTitle": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+        "sourceDigitTokens": [],
+        "translationDigitTokens": [],
+        "quicklookDigitTokens": [],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "4个美国医疗系统/5中心的4组随机临床试验；9963名评估、3259名随机、3220名主要分析严格区分；干预逐组累加组成保留。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "入组和随访日期、最高600美元、6个月、61.1岁及IQR、1948/60.3%、823/25.5%、287/8.9%、1251/38.8%、1519/74.9%、1792/55.5%、每天超过10支、各组4.3%/5.1%/8.8%/7.2%、校正差值4.6%/4.1%/0.5%及全部CI/P均与源文一致。未给1519(74.9%)添加分母，也未据3220反算改写。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "免费药物加用不优于询问-劝戒-转介，CI跨零且P=.66保留。移动工具组7.2%未被解读成额外获益；经济激励的校正差值未误写成原始率差。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "背景、目的、入组标准、干预四组、可替宁/新烟碱/碳氧血红蛋白、结果、结论和注册号均有对应译文。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "Sustained tobacco abstinence rates through 6 months were 4.3% with usual care, 5.1% with the addition of pharmacotherapy, 8.8% with the addition of financial incentives, and 7.2% with the addition of mobile health tool.",
+          "exactSubstring": true,
+          "startOffset": 1991,
+          "endOffsetExclusive": 2210,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "Adding financial incentives increased the adjusted rate of sustained tobacco abstinence compared with usual care (difference, 4.6% [95% CI, 2.1%-7.0%]; P < .001) and usual care plus free pharmacotherapy (difference, 4.1% [95% CI, 1.7%-6.4%]; P < .001).",
+          "exactSubstring": true,
+          "startOffset": 2211,
+          "endOffsetExclusive": 2463,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "Adding free pharmacotherapy to ask-advise-refer was not superior to ask-advise-refer alone (difference, 0.5% [95% CI, -1.7% to 2.6%]; P = .66).",
+          "exactSubstring": true,
+          "startOffset": 2464,
+          "endOffsetExclusive": 2607,
+          "claimSupported": true
+        }
+      ],
+      "issues": [
+        {
+          "id": "R12-source-denominator-unspecified",
+          "severity": "information",
+          "blocking": false,
+          "field": "translate.abstract_zh",
+          "type": "source_ambiguity",
+          "detail": "源文列1519 (74.9%)为低社会经济地位，但没有说明该比例的分母；1519/3220也不等于74.9%。草稿忠实保留源文数字且未补写分母，这不是草稿错误。",
+          "sourceEvidence": "1519 (74.9%) had low socioeconomic status"
+        }
+      ],
+      "corrections": []
+    },
+    {
+      "rank": 13,
+      "pass": true,
+      "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+      "draftFile": "drafts/batch-03.json",
+      "draftFileSha256": "a4bf1e71c9f8ddcb1910abd16a3692b359fa1dbe2aa23c72446876932621b16f",
+      "identifiers": {
+        "rank": {
+          "source": 13,
+          "draft": 13,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1038/s41591-026-04675-1",
+          "draft": "doi:10.1038/s41591-026-04675-1",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1038/s41591-026-04675-1",
+          "draft": "10.1038/s41591-026-04675-1",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42827131",
+          "draft": "42827131",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+          "draft": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "Small quantity lipid-based nutritional supplementation and measles vaccination coverage in children aged 6-23 months: a pragmatic cluster-randomized trial.",
+        "translationTitle": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+        "quicklookTitle": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+        "sourceDigitTokens": [
+          "6",
+          "23"
+        ],
+        "translationDigitTokens": [
+          "6",
+          "23"
+        ],
+        "quicklookDigitTokens": [
+          "6",
+          "23"
+        ],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "尼日利亚北部20个地理整群、2个地方政府辖区、1:1实用性整群随机；基线与12个月终期为家庭横断面调查，未写成同一儿童纵向随访。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "干预对象6–23月龄、主要结局对象12–23月龄严格保留；终期1604（801/803）、48%为干预整群受调查儿童；OR 2.08及CI 1.30–3.35/P=.004与覆盖率差20.1个百分点及CI 13.7–26.5/P<.0001区分。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "OR被译为odds/优势比，未解释为接种概率翻倍；20.1保留百分点而非相对20.1%；结论限定类似环境。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "全部源文内容与2030目标、注册号保留；quicklook为源文支持的精选结果。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "The endline survey included 1,604 children (801 control, 803 NutriVax); 48% of children surveyed in intervention clusters had ever received SQ-LNS.",
+          "exactSubstring": true,
+          "startOffset": 1044,
+          "endOffsetExclusive": 1191,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "The odds of receiving card-verified MCV1 were two times higher in the NutriVax arm than in the control arm (odds ratio = 2.08, 95% confidence interval (CI): 1.30-3.35, P = 0.004).",
+          "exactSubstring": true,
+          "startOffset": 1192,
+          "endOffsetExclusive": 1371,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "The difference-in-differences, cluster conditional analysis indicated a 20.1 percentage-point (pp) increase in MCV1 coverage from baseline (95% CI: 13.7-26.5 pp, P < 0.0001) relative to the control arm.",
+          "exactSubstring": true,
+          "startOffset": 1372,
+          "endOffsetExclusive": 1574,
+          "claimSupported": true
+        }
+      ],
+      "issues": [],
+      "corrections": []
+    },
+    {
+      "rank": 14,
+      "pass": true,
+      "sourceHash": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+      "draftFile": "drafts/batch-04.json",
+      "draftFileSha256": "d3f60f6a9d6fe48ef901418206dbef566cbb44ce5966a0194bb6775ba70890ea",
+      "identifiers": {
+        "rank": {
+          "source": 14,
+          "draft": 14,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1038/s41591-026-04674-2",
+          "draft": "doi:10.1038/s41591-026-04674-2",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1038/s41591-026-04674-2",
+          "draft": "10.1038/s41591-026-04674-2",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42823485",
+          "draft": "42823485",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+          "draft": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "Effects of semaglutide on kidney disease in type 2 diabetes: a randomized placebo-controlled trial.",
+        "translationTitle": "司美格鲁肽对2型糖尿病肾脏疾病的影响：随机安慰剂对照试验",
+        "quicklookTitle": "司美格鲁肽对2型糖尿病肾脏疾病的影响：随机安慰剂对照试验",
+        "sourceDigitTokens": [
+          "2"
+        ],
+        "translationDigitTokens": [
+          "2"
+        ],
+        "quicklookDigitTokens": [
+          "2"
+        ],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "52周随机安慰剂对照试验，每周皮下注射1 mg；106总样本、25女性/81男性与配对MRI/活检33、单核22、空间转录组13分析样本分别保留。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "2型糖尿病、52周、1 mg每周一次、n=106/25/81/33/22/13，R2*、T1及注册号均保留，无未给定效应量或CI。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "共同主要MRI结局氧合/整体灌注/组织炎症均无显著变化明确保留；次要血管、扩散与转录组结果明确标为次要；肾保护机制用可能/线索，未改成主要终点成功。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "全部源文段落与机制不确定性保留；quicklook首条突出共同主要结局阴性。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "Coprimary magnetic resonance imaging outcomes (oxygenation by R2*, global perfusion and tissue inflammation by T1 mapping) were not significantly altered by semaglutide versus placebo treatment.",
+          "exactSubstring": true,
+          "startOffset": 689,
+          "endOffsetExclusive": 883,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "Secondary outcomes revealed that semaglutide treatment, as compared to placebo, was associated with a significantly reduced renal artery resistive index and stabilization of the apparent diffusion coefficient, indicating prevention of fibrosis progression.",
+          "exactSubstring": true,
+          "startOffset": 884,
+          "endOffsetExclusive": 1140,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "Moreover, secondary transcriptomic outcomes revealed pronounced effects of semaglutide on glomerular endothelial cells, consistent with the results of spatial analyses indicating reduced numbers of immune cells in the proximity of these endothelial cells.",
+          "exactSubstring": true,
+          "startOffset": 1141,
+          "endOffsetExclusive": 1396,
+          "claimSupported": true
+        }
+      ],
+      "issues": [],
+      "corrections": []
+    },
+    {
+      "rank": 15,
+      "pass": true,
+      "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+      "draftFile": "drafts/batch-04.json",
+      "draftFileSha256": "d3f60f6a9d6fe48ef901418206dbef566cbb44ce5966a0194bb6775ba70890ea",
+      "identifiers": {
+        "rank": {
+          "source": 15,
+          "draft": 15,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1001/jamainternmed.2026.4894",
+          "draft": "doi:10.1001/jamainternmed.2026.4894",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1001/jamainternmed.2026.4894",
+          "draft": "10.1001/jamainternmed.2026.4894",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42832241",
+          "draft": "42832241",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+          "draft": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "Temporary Cessation of DMARD Therapy and COVID-19 Supplemental Dose Vaccine Immunogenicity in Patients With Inflammatory Arthritis: The COVER Randomized Clinical Trial.",
+        "translationTitle": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+        "quicklookTitle": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+        "sourceDigitTokens": [
+          "19"
+        ],
+        "translationDigitTokens": [
+          "19"
+        ],
+        "quicklookDigitTokens": [
+          "19"
+        ],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "多中心随机实用性试验；初始mRNA系列已完成、稳定用药、补充剂次后继续或停药2周；6周免疫学终点、ITT/多重插补/符合方案敏感性分析均保留。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "840随机；两组女性319/76%与336/80%，年龄60.0(12.9)/59.1(12.9)；GMFR停药/继续0.96及CI .36–2.56；OR 2.27及CI 1.41–3.65；54/256(21.1%)与23/253(9.1%)、≥10分、风险差12.0%及CI 5.9%–18.1%、6周恢复均保留。未将全部840用作发作问卷分母。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "免疫原性无显著差异保留，停药增加发作与短暂恢复保留；全文译文同时保留用药组间AE相近及hold组AE更多，两种比较未强行统一。quicklook省略前半相近比较属于可精选范围，现有hold更多断言有原文支持。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "全部结构化摘要、日期、药物类别、结论与注册号保留；quicklook第3项可增加并列的相近结果以更完整呈现安全性。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "In the primary ITT analysis, the GMFR ratio (hold/continue) was 0.96 (95% CI, 0.36-2.56), indicating no significant difference in humoral immunogenicity between arms.",
+          "exactSubstring": true,
+          "startOffset": 2429,
+          "endOffsetExclusive": 2595,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "Holding therapy significantly increased disease flare risk (odds ratio, 2.27; 95% CI, 1.41-3.65), which was most pronounced among those who used JAKi",
+          "exactSubstring": true,
+          "startOffset": 2673,
+          "endOffsetExclusive": 2822,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "with full recovery in both arms by 6-week follow-up. Adverse events were comparable between medication arms and were more frequent in the hold group.",
+          "exactSubstring": true,
+          "startOffset": 3035,
+          "endOffsetExclusive": 3184,
+          "claimSupported": true
+        }
+      ],
+      "issues": [
+        {
+          "id": "R15-quicklook-AE-parallel-comparison",
+          "severity": "low",
+          "blocking": false,
+          "field": "quicklook.findings[2].text",
+          "type": "optional_completeness",
+          "detail": "完整中文摘要已保留用药组间AE相近与hold组AE更多。quicklook第3项中文只保留hold组更多，而同条quote含两种并列比较。现有文字并未反转源文，且quicklook可精选要点；建议补回用药组间相近，使该条安全性结果更完整。",
+          "sourceEvidence": "Adverse events were comparable between medication arms and were more frequent in the hold group."
+        }
+      ],
+      "corrections": [
+        {
+          "issueId": "R15-quicklook-AE-parallel-comparison",
+          "required": false,
+          "field": "quicklook.findings[2].text",
+          "current": "两组在6周随访时均完全恢复；停药组不良事件更频繁。",
+          "suggested": "两组在6周随访时均完全恢复；各用药组间不良事件相近，且停药组不良事件更频繁。",
+          "rationale": "保留源文两种并列比较，不为源文自行消除或解释表面张力；无需改quote。"
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "pass": true,
+      "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+      "draftFile": "drafts/batch-04.json",
+      "draftFileSha256": "d3f60f6a9d6fe48ef901418206dbef566cbb44ce5966a0194bb6775ba70890ea",
+      "identifiers": {
+        "rank": {
+          "source": 16,
+          "draft": 16,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1038/s41591-026-04713-y",
+          "draft": "doi:10.1038/s41591-026-04713-y",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1038/s41591-026-04713-y",
+          "draft": "10.1038/s41591-026-04713-y",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42834229",
+          "draft": "42834229",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+          "draft": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "Oral small-molecule GLP-1RA safiglipron versus dapagliflozin in type 2 diabetes: a randomized, double-blind, active-comparator-controlled phase 3 trial.",
+        "translationTitle": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+        "quicklookTitle": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+        "sourceDigitTokens": [
+          "1",
+          "2",
+          "3"
+        ],
+        "translationDigitTokens": [
+          "1",
+          "2",
+          "3"
+        ],
+        "quicklookDigitTokens": [
+          "1",
+          "2",
+          "3"
+        ],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "中国98中心、3期随机双盲双模拟阳性对照；810分至202/203/203/202，32周加20周活性治疗延长；主要非劣估计目标与治疗策略估计目标分开。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "基线HbA1c 8.60%、病程5年/女性35.7%、safiglipron 30/60/90 mg对达格列净10 mg；主要差值-.30/-.22/-.40%及全部CI、P<.0001/界值.4%；90 mg优效-.25%及CI/单侧P=.0067、60 mg P=.0789；HbA1c两种阈值达标率、四组体重变化%、救援.5–1.5%对0%、停药4.0/4.0/3.9/1.5%全部保留，未换算成kg。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "60 mg未达优效且固定顺序检验停止保留，未泛化为全部剂量优效；GI更多且轻中度及AE停药率保留。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "全部源文内容、饮食限制、其他指标与二甲双胍控制不佳人群、注册号均保留。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "for safiglipron 30 mg, 60 mg and 90 mg, respectively, establishing non-inferiority for all three doses (all P < 0.0001; non-inferiority margin 0.4%).",
+          "exactSubstring": true,
+          "startOffset": 909,
+          "endOffsetExclusive": 1058,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "Under the treatment policy estimand, 90 mg met the prespecified statistical criterion for superiority (difference -0.25%; 95% CI: -0.45 to -0.05; one-sided P = 0.0067), whereas 60 mg did not (P = 0.0789), after which fixed-sequence testing stopped.",
+          "exactSubstring": true,
+          "startOffset": 1059,
+          "endOffsetExclusive": 1307,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "HbA1c target attainment rates with safiglipron versus dapagliflozin were 54.9-63.5% versus 36.5% for HbA1c <7.0%",
+          "exactSubstring": true,
+          "startOffset": 1308,
+          "endOffsetExclusive": 1420,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 3,
+          "field": "quicklook.findings[3].quote",
+          "quote": "Gastrointestinal adverse events were more frequent with safiglipron and mostly mild or moderate; adverse events led to treatment discontinuation in 4.0%, 4.0%, 3.9% and 1.5% of participants, respectively.",
+          "exactSubstring": true,
+          "startOffset": 1943,
+          "endOffsetExclusive": 2147,
+          "claimSupported": true
+        }
+      ],
+      "issues": [],
+      "corrections": []
+    },
+    {
+      "rank": 17,
+      "pass": true,
+      "sourceHash": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+      "draftFile": "drafts/batch-04.json",
+      "draftFileSha256": "d3f60f6a9d6fe48ef901418206dbef566cbb44ce5966a0194bb6775ba70890ea",
+      "identifiers": {
+        "rank": {
+          "source": 17,
+          "draft": 17,
+          "pass": true
+        },
+        "paperID": {
+          "source": "doi:10.1038/s41746-026-03361-3",
+          "draft": "doi:10.1038/s41746-026-03361-3",
+          "pass": true
+        },
+        "doi": {
+          "source": "10.1038/s41746-026-03361-3",
+          "draft": "10.1038/s41746-026-03361-3",
+          "pass": true
+        },
+        "pmid": {
+          "source": "42823464",
+          "draft": "42823464",
+          "pass": true
+        },
+        "sourceHash": {
+          "source": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+          "draft": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+          "pass": true
+        }
+      },
+      "sourceHashVerification": {
+        "algorithm": "sha256(UTF-8(title + \"\\n\" + abstract))",
+        "computed": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+        "pass": true
+      },
+      "titleChecks": {
+        "sourceTitle": "Influence of physician and consumer demographics on AI-use penalties in primary care: a vignette-based study.",
+        "translationTitle": "医生与消费者人口统计学特征对初级诊疗中AI使用惩罚的影响：情景模拟研究",
+        "quicklookTitle": "医生与消费者人口统计学特征对初级诊疗中AI使用惩罚的影响：情景模拟研究",
+        "sourceDigitTokens": [],
+        "translationDigitTokens": [],
+        "quicklookDigitTokens": [],
+        "pass": true
+      },
+      "checks": {
+        "design": {
+          "pass": true,
+          "note": "虚构家庭医生广告的情景模拟研究；参与者N=1030在摘要与quicklook第1项均保留，未声称临床RCT或真实预约行为。"
+        },
+        "numbersUnitsDenominators": {
+          "pass": true,
+          "note": "源文唯一研究人数N=1030完整保留；源文未给效应量或CI，草稿未补造。"
+        },
+        "negativeResultsAndCausality": {
+          "pass": true,
+          "note": "AI披露与亲和力/胜任能力评分和预约意愿关系保留；较年轻参与者效应更强、基本不受医生人口统计学特征影响保留。quicklook使用相关，未推断实际就诊或医疗质量受损。"
+        },
+        "completeness": {
+          "pass": true,
+          "note": "四句完整源摘要均译出；标题保留初级诊疗与情景模拟设计。"
+        }
+      },
+      "quicklookChecks": {
+        "allFieldsReviewed": [
+          "title_zh",
+          "one_line",
+          "design",
+          "findings.text",
+          "findings.quote",
+          "limits",
+          "why_read"
+        ],
+        "pass": true,
+        "note": "所选发现、设计、局限与阅读理由均有源摘要依据；“摘要未提供明确局限”未添加未给定局限。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 0,
+          "field": "quicklook.findings[0].quote",
+          "quote": "Participants (N = 1030) assessed fictitious family doctor advertisements varying in AI-use and demographics.",
+          "exactSubstring": true,
+          "startOffset": 180,
+          "endOffsetExclusive": 288,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 1,
+          "field": "quicklook.findings[1].quote",
+          "quote": "Physicians stating that they use (vs. never use) AI were rated as less warm and competent, with reduced appointment willingness.",
+          "exactSubstring": true,
+          "startOffset": 289,
+          "endOffsetExclusive": 417,
+          "claimSupported": true
+        },
+        {
+          "findingIndex": 2,
+          "field": "quicklook.findings[2].quote",
+          "quote": "Effects were stronger among younger participants but largely independent of physician demographics.",
+          "exactSubstring": true,
+          "startOffset": 418,
+          "endOffsetExclusive": 517,
+          "claimSupported": true
+        }
+      ],
+      "issues": [],
+      "corrections": []
+    }
+  ]
+}
