@@ -39,7 +39,7 @@ GitHub 只读凭据通过 GitHub/Cloudflare 的受保护界面配置，不写入
 
 配置入口与权限依据：[GitHub 令牌和模板说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)、[Cloudflare Pages 变量与 Secret 说明](https://developers.cloudflare.com/pages/functions/bindings/#secrets)。
 
-2026-10-07 配置检查：现有 GitHub 连接能访问私有 `AI-`，但读取 `xinzhi` 的 Actions Secret 名称时返回 `HTTP 403: Resource not accessible by integration`；环境没有配置 Cloudflare 凭据，插件目录搜索也未找到 Cloudflare 配置连接。没有生成或安装运行时令牌。账号界面中的令牌生成和上述 Secret 保存仍需由账号持有人完成。
+2026-10-07 配置已完成：账号持有人已生成所需 GitHub 凭据，并直接保存为 `dryz-xinzhi` Production 环境的 `GITHUB_LIBRARY_TOKEN` Secret；`PDF_DOWNLOAD_ENABLED=true` 已启用。令牌没有写入聊天、源码或公开包。生产下载验收已通过，见下方记录。
 
 ## 本地使用与验证
 
@@ -60,7 +60,7 @@ python3 scripts/package_release.py
 
 上线后确认表单可打开、错误口令不读取私有文件、正确口令可保存 PDF；缺少全文、校验异常和服务端凭据缺失须给出明确提示。保持现有唯一发布流程，不另建自动化。
 
-## 验证记录（尚未上线）
+## 本地验证记录
 
 之前已实际从私有 GitHub 固定 commit `7d1d0fac70a2c4e866068d941c4c34e85d7163f9` 取得截图中 `10.1136/bmjdh-2026-000098` 的 PDF，700,176 字节，首页题名、DOI、文件头、Git blob 和索引 SHA-256 校验通过。仅验证文件对应与完整性，不代表新增全文医学审查。
 
@@ -71,4 +71,9 @@ python3 scripts/package_release.py
 - 真实浏览器检查发现并修复表单来源策略：初次与重输表单使用 `Referrer-Policy: same-origin`，确保浏览器正确提交同源 Origin；仍拒绝 `Origin:null`。
 - 构建和打包通过，公开目录恰好六文件，保留文献库 1,219 条与已有 12 篇导读，静态目录没有 PDF。
 
-尚未配置 GitHub 下载凭据或启用生产开关，不把本地验证记作上线。
+## 生产上线验收（2026-10-07）
+
+- 已合并 [下载功能 PR #1](https://github.com/dodoxiaxia/xinzhi/pull/1)，保留主分支的新 study/compare 功能；合并后原 Worker、研读服务与 UI、PDF、阅读逻辑、公开构建和打包检查通过。
+- 部署代码为 `b4808cd41afaa345c8a50c23e7564c43779f7708`。[daily-refresh 发布记录](https://github.com/dodoxiaxia/xinzhi/actions/runs/37593501961)的 Cloudflare 发布与 state 保存步骤均成功。生产包仍为六文件，包含 1,219 条文献与 12 篇已核对导读，不包含私有 PDF 或 GitHub Secret。
+- [生产文献库](https://learn.dryz.info/?mode=library)中的下载按钮可打开真实口令页。GET 返回 200、`no-store`、`Referrer-Policy: same-origin`；错误口令 POST 返回 403；正确口令返回 200、`application/pdf`、attachment 与 `private, no-store`。
+- Chromium 在 390×844 窗口从文献库搜索结果点击“下载 PDF”，错误口令可重新输入；正确口令实际保存 `Contested futures of AI ethics for global population health.pdf`，700,176 字节，SHA-256 为 `73ab73688db1e860879df3ab0f66ec9f5d3b9bd04ac57b0ca004407dcc32b532`，与此前 GitHub 核验记录一致。下载 URL 仅含公开文献 ID。
