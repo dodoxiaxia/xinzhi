@@ -290,22 +290,37 @@
   // ---- 摘要翻译 / 多篇综述（同一后端 /api/ai，结果服务器端缓存、全站共享）----
   const LIVE_TR = {}; const BRIEFS = {}; let AI_AVAIL = null;
   const trKeyOf = p => p.pmid ? 'pmid:' + p.pmid : (p.doi ? 'doi:' + String(p.doi).toLowerCase() : '');
-  function trCheck(paper) {
+  function validTranslation(tr) {
+    return !!(tr && typeof tr.abstract_zh === 'string' && tr.abstract_zh.trim());
+  }
+  function translationCanGenerate(paper) {
+    return typeof paper._trCanGenerate === 'boolean' ? paper._trCanGenerate : AI_AVAIL;
+  }
+  function trCheck(paper, retry = false) {
     const k = trKeyOf(paper);
-    if (!k || paper._trChecked || AI_AVAIL === false) return;
+    if (!k || paper._trLookupState === 'loading' || (paper._trChecked && !retry)) return;
     paper._trChecked = 1;
+    paper._trLookupState = 'loading';
     fetch('/api/ai?task=translate&k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(j => { if (j && j.found && j.tr) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; if (state.activeDrawerPaper === paper) openReaderDrawer(paper); } })
-      .catch(() => {});
+      .then(j => {
+        if (!j || j.ok === false) throw new Error('Translation lookup unavailable');
+        paper._trLookupState = 'done';
+        // The current translate GET contract returns cache only. Availability
+        // comes from the existing /api/ql probe unless a future response supplies it.
+        paper._trCanGenerate = typeof j.canGenerate === 'boolean' ? j.canGenerate : undefined;
+        if (j.found && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; }
+      })
+      .catch(() => { paper._trLookupState = 'error'; })
+      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
   function aiTranslate(paper) {
-    const k = trKeyOf(paper); if (!k || paper._trState === 'loading') return;
+    const k = trKeyOf(paper); if (!k || paper._trState === 'loading' || translationCanGenerate(paper) !== true) return;
     paper._trState = 'loading'; openReaderDrawer(paper);
     fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'translate', pmid: paper.pmid || '', doi: paper.doi || '' }) })
       .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { if (j.ok && j.tr) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
-      .catch(() => { paper._trState = 'error'; paper._trMsg = '网络错误，请稍后重试。'; })
+      .then(j => { if (j.ok && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
+      .catch(() => { paper._trState = 'error'; paper._trMsg = '网络中断，译文未生成。请重试。'; })
       .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
   function aiTitle(paper) {
@@ -319,10 +334,14 @@
   }
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
-    if (tr) return `<div class="tr-box"><div class="tr-head"><span class="content-label">机器翻译 · 中文对照</span></div>${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="text-muted" style="font-size:11.5px;">由模型翻译公开摘要，未经人工核对；以英文原文为准。</p></div>`;
-    if (AI_AVAIL === false || !(paper.pmid || paper.doi)) return '';
-    if (paper._trState === 'loading') return '<div class="tr-box"><p class="ql-meta">正在翻译摘要，请稍候…</p></div>';
-    return `<div class="tr-box">${paper._trState === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._trMsg || '')}</p>` : ''}<button class="btn-sm" data-action="ai-translate" data-paper-id="${esc(paper.id)}">翻译摘要（中英对照）</button></div>`;
+    if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">机器翻译，未经人工核对；以英文原文为准。</p></div>`;
+    if (paper._trState === 'loading') return '<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…</p></div>';
+    if (!(paper.pmid || paper.doi)) return '<p class="ql-meta" role="status">缺少文献标识，暂无法翻译。</p>';
+    if (paper._trLookupState === 'error') return `<div class="tr-box"><p class="ql-meta" role="status">译文读取失败。</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}">重新读取译文</button></div>`;
+    if (paper._trLookupState !== 'done') return '<div class="tr-box"><p class="ql-meta" role="status">正在读取已有译文…</p></div>';
+    if (translationCanGenerate(paper) === null) return '<div class="tr-box"><p class="ql-meta" role="status">正在检查翻译服务…</p></div>';
+    if (!translationCanGenerate(paper)) return '<div class="tr-box"><p class="ql-meta" role="status">暂无译文，翻译服务暂不可用。</p></div>';
+    return `<div class="tr-box">${paper._trState === 'error' ? `<p class="translation-error" role="status">${esc(paper._trMsg || '译文未生成，请重试。')}</p>` : '<p class="ql-meta">暂无中文译文。</p>'}<button class="btn-sm" data-action="ai-translate" data-paper-id="${esc(paper.id)}">${paper._trState === 'error' ? '重试翻译' : '翻译摘要（中英对照）'}</button></div>`;
   }
   function briefItems(list) { return list.filter(p => p.pmid || p.doi).slice(0, 8).map(p => ({ pmid: p.pmid || '', doi: p.doi || '' })); }
   function briefKey(mode, items) { return mode + '|' + items.map(x => x.pmid || x.doi).sort().join(','); }
@@ -651,7 +670,6 @@
     const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
     const lb = $('#libCountBadge'); if (lb) lb.textContent = LIBRARY.papers.length;
 
-    renderContentStatus();
   }
 
   function contentDate(value) {
@@ -664,16 +682,6 @@
     const time = Date.parse(value || '');
     return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
   }
-  function renderContentStatus() {
-    const el = $('#contentStatus'); if (!el) return;
-    const radar = CONTENT_STATUS.radarUpdatedAt || FEEDS.updatedAt;
-    const ai = CONTENT_STATUS.quicklookLatestAt;
-    el.innerHTML = `<span><b>自动查新</b> ${esc(contentDate(radar))}${olderThan(radar,6) ? ' · 更新待确认' : ''}</span>` +
-      `<span><b>摘要核对导读</b> ${esc(contentDate(CONTENT_STATUS.guideLatestPublishedAt))}</span>` +
-      `<span><b>AI 速览</b> ${esc(contentDate(ai))}${olderThan(ai,48) ? ' · 补充中' : ''} · 未经人工核验</span>` +
-      `<span><b>全文精读</b> ${currentWeekIssues().length ? '本周已发布' : '本周尚未发布'}</span>`;
-  }
-
   const MODE_NOTES = {
     curated: '带“摘要核对”标记的是已对照期刊摘要核对来源的导读，<b>非全文精读，未经医生终审</b>；带“自动精选”标记的是每天由规则从新文献中选出、附 AI 速览，<b>未经人工核验，请以原文为准</b>。',
     candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
@@ -1405,13 +1413,14 @@
 
         ${quickBox}${aiBox}
 
-        <div class="drawer-section">
-          <div class="drawer-section-title">公开摘要 · 原文</div>
-          <div class="structured-abstract">
-            ${abstractHtml}${absSource}
+        <section class="drawer-section abstract-reader" aria-label="公开摘要中英对照">
+          <div class="drawer-section-title">公开摘要 <small>${hasAbstract ? '中英对照' : '原文'}</small></div>
+          <div class="abstract-columns${hasAbstract ? '' : ' abstract-only'}">
+            <div class="abstract-original" lang="en"><h3 class="abstract-column-title">英文原文</h3><div class="structured-abstract">${abstractHtml}</div></div>
+            ${hasAbstract ? `<div class="abstract-translation" lang="zh-CN"><h3 class="abstract-column-title">中文对照</h3>${trBoxHtml(paper)}</div>` : ''}
           </div>
-          ${hasAbstract ? trBoxHtml(paper) : ''}
-        </div>
+          ${absSource}
+        </section>
 
         ${studyBoxHtml(paper)}
 
@@ -1651,32 +1660,30 @@
     const sources = HEALTH.sources || [];
     const successful = s => ['ok','empty_feed','filtered_empty'].includes(s.status);
     const okCount = sources.filter(successful).length;
+    const summary = $('#sourcesHealthSummary');
+    if (summary) summary.innerHTML = `<div><strong>${sources.length}</strong><span>订阅信源</span></div><div><strong>${okCount}</strong><span>本轮获取成功</span></div><div class="${sources.length > okCount ? 'source-summary-attention' : ''}"><strong>${sources.length - okCount}</strong><span>需要关注</span></div>`;
 
     if (meta) {
-      meta.textContent = `信源共 ${sources.length} 个 · 本轮获取成功 ${okCount} 个 · 最近自检：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
+      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
+      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6));
     }
 
-    grid.innerHTML = sources.map(s => {
+    grid.innerHTML = [...sources].sort((a, b) => Number(successful(a)) - Number(successful(b))).map(s => {
       const isOk = successful(s);
       const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '近 14 天无新条目' : isOk ? '获取成功' :
         s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
       return `
-        <div class="source-item">
-          <div class="source-item-name">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(s.name)}</span>
+        <article class="source-item${isOk ? '' : ' source-needs-attention'}">
+          <div class="source-item-head">
+            <h3 class="source-item-name">${esc(s.name)}</h3>
             <span class="source-status-badge ${isOk ? 'source-status-ok' : 'source-status-err'}">
               ${esc(statusLabel)}
             </span>
           </div>
-          <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
-            <span>原始条数: ${isOk ? (s.rawItems ?? s.items ?? 0) : '未获取'} · 近 14 天: ${s.eligibleItems ?? '待统计'}</span>
-            <span>含摘要: ${s.itemsWithAbstracts || 0}</span>
-          </div>
-          ${s.cachedItems ? `<small>保留 ${esc(s.cachedItems)} 条旧缓存 · 最近缓存 ${esc(contentDate(s.lastCachedFetchAt || s.lastSuccessfulAt))}</small>` : ''}
-          <a href="${esc(s.url)}" target="_blank" rel="noopener" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent);">
-            ${esc(s.url)} ↗
-          </a>
-        </div>
+          <dl class="source-counts"><div><dt>原始条目</dt><dd>${isOk ? esc(s.rawItems ?? s.items ?? 0) : '未获取'}</dd></div><div><dt>近 14 天</dt><dd>${esc(s.eligibleItems ?? '待统计')}</dd></div><div><dt>含摘要</dt><dd>${isOk ? esc(s.itemsWithAbstracts || 0) : '未获取'}</dd></div></dl>
+          ${s.cachedItems ? `<p class="source-cache-note">保留 ${esc(s.cachedItems)} 条旧缓存 · 最近缓存 ${esc(contentDate(s.lastCachedFetchAt || s.lastSuccessfulAt))}</p>` : ''}
+          <div class="source-item-foot"><span>检查 ${esc(contentDate(s.checkedAt || HEALTH.checkedAt))}</span>${safeSourceUrl({url:s.url}) ? `<a href="${esc(safeSourceUrl({url:s.url}))}" target="_blank" rel="noopener">查看订阅源 ↗</a>` : ''}</div>
+        </article>
       `;
     }).join('');
   }
@@ -1711,6 +1718,8 @@
     const appContainer = $('.app-container');
     if (appContainer) {
       appContainer.classList.toggle('full-width-layout', noSidebar);
+      appContainer.classList.toggle('weekly-layout', newMode === 'weekly');
+      appContainer.classList.toggle('sources-layout', newMode === 'sources');
     }
     window.scrollTo({ top: 0 });
 
@@ -1744,21 +1753,12 @@
   }
 
   function renderWeeklyHeader() {
-    const status = $('#weeklyStatus');
     const list = $('#issueList');
-    const now = new Date(beijingToday() + 'T12:00:00');
-    const ws = isoWeekStart(now);
-    const we = new Date(ws); we.setDate(we.getDate() + 7);
-    const fmt = d => d.toISOString ? `${d.getMonth() + 1}/${d.getDate()}` : '';
-    const thisWeek = currentWeekIssues();
-    if (status) {
-      status.innerHTML = thisWeek.length
-        ? `本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）精读已发布：第 ${String(thisWeek[0].no).padStart(2, '0')} 期。`
-        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）全文精读尚未发布。</b>下方「近 7 天文献榜」随内容刷新（约每 2 小时）自动更新，可阅读已取得的原摘要；全文精读需取得全文并完成审查后发布，第 01 期为体例示范。`;
-    }
     renderWeeklyAuto();
     if (list) {
-      list.innerHTML = ISSUES.map(i => `<button class="issue-card" data-issue="${i.no}"><b>第 ${String(i.no).padStart(2, '0')} 期 · ${esc(i.published)}</b>${esc(i.title)}<br><small>${esc(i.meta)}</small></button>`).join('');
+      const published = ISSUES.filter(i => !i.demo);
+      list.hidden = !published.length;
+      list.innerHTML = published.map(i => `<button class="issue-card" data-issue="${i.no}"><b>第 ${String(i.no).padStart(2, '0')} 期 · ${esc(i.published)}</b>${esc(i.title)}<br><small>${esc(i.meta)}</small></button>`).join('');
     }
   }
 
@@ -1766,19 +1766,16 @@
     const el = $('#weeklyAuto'); if (!el) return;
     const items = FEEDS.items.filter(p => p.weeklyPick).sort((a, b) => a.weeklyPick - b.weeklyPick);
     if (!items.length) { el.innerHTML = ''; return; }
-    const at = items.map(p => p.weeklyAt).filter(Boolean)[0];
-    let upd = '';
-    if (at) { try { upd = new Date(at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { upd = ''; } }
-    el.innerHTML = `<h3 class="next-title">近 7 天文献榜 <small>${upd ? '更新于 ' + upd + '（北京时间）；' : ''}按专科相关性、研究类型、期刊与媒体关注度规则排序；原摘要与 AI 速览分别标注，请以原文为准。</small></h3>` +
+    el.innerHTML = `<h3 class="next-title">近 7 天文献榜 <small>按专科相关性、研究类型、期刊与媒体关注度规则排序，未经逐篇质量评审。</small></h3><div class="weekly-card-grid">` +
       items.map((p, i) => {
         const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
         const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
-        return `<div class="next-item weekly-auto-item"><span class="weekly-rank">${i + 1}</span><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span>` +
+        return `<article class="next-item weekly-auto-item"><span class="weekly-rank">${i + 1}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div>` +
           `<div class="weekly-auto-title"><a href="${esc(p.url || ('https://doi.org/' + p.doi))}" target="_blank" rel="noopener noreferrer">${esc(zh || p.title)}</a></div>` +
           (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
           (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
-          ((p.abstractSections?.length || p.summary) ? `<details class="weekly-abstract"><summary>阅读原摘要</summary><p>${esc(p.abstractSections?.length ? p.abstractSections.map(s => (s.label ? s.label + ': ' : '') + s.text).join('\n\n') : p.summary)}</p></details>` : '<small>摘要待补充</small>') + `</div></div>`;
-      }).join('');
+          `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${hasAbstract(p) ? '阅读原摘要 · 中英对照' : '获取公开摘要'}</button><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button></div></div></article>`;
+      }).join('') + '</div>';
   }
 
   function renderNextCandidates() {
@@ -2075,6 +2072,8 @@
     if (ttAction) { const paper = allPapersMap.get(ttAction.dataset.paperId); if (paper) aiTitle(paper); return; }
     const trAction = e.target.closest('[data-action="ai-translate"]');
     if (trAction) { const paper = allPapersMap.get(trAction.dataset.paperId); if (paper) aiTranslate(paper); return; }
+    const trCheckAction = e.target.closest('[data-action="tr-check"]');
+    if (trCheckAction) { const paper = allPapersMap.get(trCheckAction.dataset.paperId); if (paper) { trCheck(paper, true); openReaderDrawer(paper); } return; }
     const studyAction = e.target.closest('[data-action="ai-study"]');
     if (studyAction) { const paper = allPapersMap.get(studyAction.dataset.paperId); if (paper) aiStudy(paper); return; }
     const studyCheckAction = e.target.closest('[data-action="study-check"]');
@@ -2135,7 +2134,7 @@
       }
       updateHuddleCounter();
       renderStream();
-      if (state.mode === 'weekly') renderNextCandidates();
+      if (state.mode === 'weekly') { renderWeeklyAuto(); renderNextCandidates(); }
       if (state.activeDrawerPaper?.id === paperId) {
         openReaderDrawer(state.activeDrawerPaper);
       }
@@ -2177,6 +2176,7 @@
       }
       updateHuddleCounter();
       renderStream();
+      if (state.mode === 'weekly') { renderWeeklyAuto(); renderNextCandidates(); }
       openReaderDrawer(state.activeDrawerPaper);
     }
   });
@@ -2220,7 +2220,8 @@
   if (searchInput && state.search) searchInput.value = state.search;
   switchMode(state.mode, true);
   fetch('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } }).then(r => r.ok ? r.json() : Promise.reject())
-    .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); }).catch(() => { AI_AVAIL = false; });
+    .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
+    .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
 
   if (urlParams.get('drawer') === 'first') {
     const list = getFilteredArticles();
