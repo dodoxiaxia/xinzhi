@@ -105,6 +105,7 @@ header.app-header {
   font-family: var(--font-serif); font-size: 24px; font-weight: 700; letter-spacing: .02em; line-height: 1;
   color: var(--accent);
 }
+.brand-image { display: block; width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; padding-left: 10px; border-left: 1px solid var(--border-subtle); }
 .logo-title { font-size: 13px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
 .brand-text small { font-size: 11px; color: var(--text-muted); letter-spacing: .02em; margin-top: 2px; }

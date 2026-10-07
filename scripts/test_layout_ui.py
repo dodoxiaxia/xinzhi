@@ -6,9 +6,12 @@ Screenshots/results go to ignored .local/layout-qa; no production writes.
 """
 import argparse
 import functools
+import base64
+import hashlib
 import json
 import shutil
 import threading
+import xml.etree.ElementTree as ET
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -42,6 +45,12 @@ def main():
     def check(value, label):
         assert value, label
         checks.append(label)
+
+    icon = ET.fromstring((ROOT / 'public/icon.svg').read_text())
+    logo_image = icon.find('{http://www.w3.org/2000/svg}image')
+    check(logo_image is not None, 'Public icon embeds the user logo')
+    logo_bytes = base64.b64decode(logo_image.attrib['href'].split(',', 1)[1], validate=True)
+    check(hashlib.sha256(logo_bytes).hexdigest() == '8afd21b439f6e1e3ab49ae3cc8127926fc61311df6ce88b878dd145ec07dd6c5', 'Embedded logo preserves exact user PNG bytes')
 
     def mock(route):
         request = route.request
@@ -114,6 +123,12 @@ def main():
                         label = f'{style}/{width}/{mode}'
                         page.goto(base + f'?mode={mode}&view=compact&style={style}', wait_until='load')
                         expect(page.locator('#weeklySection' if mode == 'weekly' else '#sourcesSection')).to_be_visible()
+                        logo = page.locator('#brandLogo .brand-image')
+                        expect(logo).to_be_visible()
+                        check(logo.evaluate('(i) => i.complete && i.naturalWidth > 0'), label + ': logo loaded')
+                        size = logo.bounding_box()
+                        check(abs(size['width'] - size['height']) < 1 and size['width'] == 44, label + ': square logo ratio retained')
+                        expect(page.locator('#brandLogo .logo-title')).to_have_text('AIHOT-Med')
                         overflow(page, label)
                         check(page.locator('#contentStatus').count() == 0, label + ': no top timestamp strip')
                         huddle, source = page.locator('#openHuddleBtn').bounding_box(), page.locator('#sourceStatusBtn').bounding_box()
