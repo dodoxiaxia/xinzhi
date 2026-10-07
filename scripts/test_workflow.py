@@ -151,7 +151,10 @@ class StateWorkflowTests(unittest.TestCase):
 
     def test_explicit_lease_rejects_an_unseen_concurrent_state_write(self):
         source = WORKFLOW.read_text()
-        self.assertIn('--force-with-lease=refs/heads/state:${{ steps.restore_state.outputs.sha }}', source)
+        self.assertIn("STATE_EXPECTED_SHA='${{ steps.restore_state.outputs.sha }}'", source)
+        self.assertIn('--force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA"', source)
+        self.assertIn('STATE_EXPECTED_SHA=$(cat .local/week-checkpoint-head)', source)
+        self.assertIn('XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT }}', source)
         self.assertNotIn('git push -f ', source)
         self.git(self.repo, 'checkout', 'state')
         (self.repo / 'data' / 'feeds.json').write_text('{"items": ["concurrent"]}')

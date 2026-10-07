@@ -21,7 +21,7 @@ def synthetic_root(root):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
                  'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
-                 'publication_dates.py'):
+                 'publication_dates.py', 'journal_metrics.py'):
         shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
     for module in (snapshot_apply, library_sync):
         source = Path(module.__file__)
@@ -30,6 +30,10 @@ def synthetic_root(root):
                     root / 'editorial/legacy_published_guides.json')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'config/public_library_adjudications.json',
                     root / 'config/public_library_adjudications.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/journal-metrics.json',
+                    root / 'config/journal-metrics.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
+                    root / 'journal-metrics.js')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
