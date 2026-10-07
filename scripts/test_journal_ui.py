@@ -47,7 +47,20 @@ def main():
         check(page.locator('button details.journal-metrics-details, a details.journal-metrics-details').count() == 0, label + ': no nested interactive details')
 
     def badge_text(locator):
+        if locator.count() == 0:
+            return ''
         return locator.evaluate("e => [...e.children].map(x=>x.textContent).join(' · ')")
+
+    def check_badges(selector, label):
+        valid = page.locator(selector).evaluate_all(r'''nodes=>nodes.every(e=>{
+          const id=e.dataset.paperId || e.querySelector('[data-paper-id]')?.dataset.paperId;
+          const p=[...window.FEEDS.items,...window.LIBRARY.papers].find(p=>p.id===id);
+          const journal=e.querySelector('.journal-badge,.source-item-name,.huddle-item-meta span,small')?.textContent;
+          const expected=window.JournalMetrics.badgeText(p || journal);
+          const badges=[...e.querySelectorAll('.journal-metrics-badge')];
+          return expected ? badges.length===1 && [...badges[0].children].map(x=>x.textContent).join(' · ')===expected : badges.length===0;
+        })''')
+        check(valid, label + ': only verified card values, with exact data year')
 
     try:
         with sync_playwright() as p:
@@ -64,7 +77,7 @@ def main():
                 expect(page.locator('.weekly-auto-item')).to_have_count(len(rows))
                 check(20 <= len(rows) <= 30, f'{width}: actual board contains 20–30 source-selected papers')
                 for group in page.locator('.weekly-group').all():
-                    check(group.locator('.weekly-auto-item .journal-metrics-badge').count() == group.locator('.weekly-auto-item').count(), f'{width}: all classified picks include metrics')
+                    check_badges('.weekly-auto-item', f'{width}: classified picks')
                 check(page.locator('[data-journal-metrics="Nature Medicine"] .journal-metrics-badge').count() == 3, f'{width}: static journal references populated')
                 summary = page.locator('.weekly-demo > summary')
                 summary.click()
@@ -76,14 +89,21 @@ def main():
                 summary.click()
                 page.screenshot(path=str(out / f'weekly-real-{width}.png'))
 
-                ready_id = page.evaluate("() => window.FEEDS.items.find(p=>p.weeklyPick && window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()]?.translation?.abstract_zh)?.id")
-                check(bool(ready_id), f'{width}: actual cached translation available')
+                cached_id = page.evaluate("() => window.FEEDS.items.find(p=>p.weeklyPick && window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()]?.translation?.abstract_zh)?.id")
+                ready_id = cached_id or rows[0]['id']
                 before = len(calls)
                 page.locator(f'.weekly-card-actions [data-action="open-drawer"][data-paper-id="{ready_id}"]').click()
-                cached = page.evaluate("id=>{const p=window.FEEDS.items.find(p=>p.id===id);return window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()].translation.abstract_zh}", ready_id)
-                expect(page.locator('.abstract-translation')).to_contain_text(cached)
+                if cached_id:
+                    cached = page.evaluate("id=>{const p=window.FEEDS.items.find(p=>p.id===id);return window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()].translation.abstract_zh}", ready_id)
+                    expect(page.locator('.abstract-translation')).to_contain_text(cached)
+                    check(page.locator('.abstract-paired').count() == 1, f'{width}: actual cached translation uses paired reading')
+                else:
+                    expect(page.locator('.abstract-translation-status')).to_have_text('译文待预生成')
+                    check(page.locator('.abstract-pending').count() == 1, f'{width}: actual missing translation has no empty column')
+                    check(page.locator('.study-box, .quicklook').count() == 0, f'{width}: absent analysis has no placeholder panels')
                 expected = page.evaluate('id=>window.JournalMetrics.compactText(window.FEEDS.items.find(p=>p.id===id))', ready_id)
-                check(badge_text(page.locator('#drawerJournalBadges .journal-metrics-badge')) == expected, f'{width}: reader uses registry value/year/status')
+                expected_badge = page.evaluate('id=>window.JournalMetrics.badgeText(window.FEEDS.items.find(p=>p.id===id))', ready_id)
+                check(badge_text(page.locator('#drawerJournalBadges .journal-metrics-badge')) == expected_badge, f'{width}: reader badge shows verified values; full status remains in details')
                 page.locator('#drawerBody .journal-metrics-details > summary').first.click()
                 expect(page.locator('#drawerBody .journal-metrics-details').first).to_contain_text('单篇')
                 overflow(page, f'{width}/reader')
@@ -99,7 +119,7 @@ def main():
                 second.click()
                 controls['compare'] = page.evaluate("ids=>({schemaVersion:1,scope:'public-abstract',papers:ids.map(id=>{const p=window.FEEDS.items.find(p=>p.id===id);return {title:p.title,journal:p.cleanJournal||p.journal,key:p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase(),status:'unavailable',reason:'no_abstract'}}),checklist:[],generatedBy:'metadata-only',caveat:'离线对照界面测试，未运行模型。'})", [ready_id, second_id])
                 page.locator('#openHuddleBtn').click()
-                expect(page.locator('.huddle-item .journal-metrics-badge')).to_have_count(2)
+                check_badges('.huddle-item', f'{width}: selected list')
                 page.locator('#copyHuddleSummaryBtn').click()
                 check('期刊指标：' + expected in page.evaluate('window.__copied'), f'{width}: huddle copy includes metric note')
                 with page.expect_download() as downloaded:
@@ -109,10 +129,10 @@ def main():
                 check('**期刊指标**：' + expected in markdown.read_text(), f'{width}: Markdown has separate metric note')
                 page.locator('[data-action="compare-select"]').nth(0).check()
                 page.locator('[data-action="compare-select"]').nth(1).check()
-                expect(page.locator('.study-table th .journal-metrics-badge')).to_have_count(2)
+                check_badges('.study-table thead th:not(:first-child)', f'{width}: comparison headers')
                 expect(page.locator('.study-table')).to_contain_text('摘要来源')
                 page.locator('.study-table .journal-metrics-details > summary').first.click()
-                check(badge_text(page.locator('.study-table th .journal-metrics-badge').first) == expected, f'{width}: comparison header uses same registry')
+                check_badges('.study-table thead th:not(:first-child)', f'{width}: comparison uses same registry')
                 page.locator('[data-action="study-copy"][data-task="compare"]').click()
                 check('期刊指标：' + expected in page.evaluate('window.__copied'), f'{width}: comparison copy includes metric note')
                 overflow(page, f'{width}/huddle')
@@ -120,7 +140,7 @@ def main():
 
                 page.goto(base + '?mode=candidates&style=a&range=all', wait_until='networkidle')
                 expect(page.locator('#articlesStream .article-card').first).to_be_visible()
-                check(page.locator('#articlesStream .article-card .journal-metrics-badge').count() == page.locator('#articlesStream .article-card').count(), f'{width}: detailed cards include metrics')
+                check_badges('#articlesStream .article-card', f'{width}: detailed cards')
                 if width <= 1000:
                     page.locator('#filterToggleBtn').click()
                 page.locator('.accordion-header').first.click()
@@ -138,15 +158,16 @@ def main():
                 compact = page.evaluate('j=>window.JournalMetrics.compactText(j)', journal)
                 check(compact in option, f'{width}: option uses pure-text metrics')
                 page.locator('#journalSelect').select_option(journal)
-                expect(page.locator('.filter-badge-active .journal-metrics-badge')).to_be_visible()
+                verified = page.evaluate('j=>window.JournalMetrics.badgeText(j)', journal)
+                expect(page.locator('.filter-badge-active .journal-metrics-badge')).to_have_count(1 if verified else 0)
                 page.locator('#favoriteJournalBtn').click()
                 expect(page.locator('#favoriteJournalBtn')).to_have_attribute('aria-pressed', 'true')
                 check(page.locator('#journalSelect option:checked').get_attribute('value') == journal, f'{width}: canonical journal filter retained after favorite')
                 page.locator('#viewCompactBtn').click()
                 expect(page.locator('#articlesStream .compact-row').first).to_be_visible()
-                check(page.locator('#articlesStream .compact-row .journal-metrics-badge').count() == page.locator('#articlesStream .compact-row').count(), f'{width}: compact rows include metrics')
+                check_badges('#articlesStream .compact-row', f'{width}: compact rows')
                 page.locator('#sortSelector').select_option('journal-date')
-                expect(page.locator('.day-heading .journal-metrics-badge').first).to_be_visible()
+                expect(page.locator('.day-heading')).to_be_visible()
                 overflow(page, f'{width}/filters-compact-group')
                 page.goto(base + '?mode=library&style=a&view=cards&range=all&reading=guide', wait_until='networkidle')
                 share = page.locator('[data-action="share-wechat"]').first
@@ -154,7 +175,7 @@ def main():
                 share.click()
                 check('期刊指标：' + expected_share in page.evaluate('window.__copied'), f'{width}: article share has separate metric note')
                 page.locator('#sourceStatusBtn').click()
-                check(page.locator('.source-item .journal-metrics-badge').count() == page.locator('.source-item').count(), f'{width}: every source has explicit metric status')
+                check_badges('.source-item', f'{width}: source cards')
                 page.locator('.source-item .journal-metrics-details > summary').first.click()
                 overflow(page, f'{width}/source')
                 page.screenshot(path=str(out / f'sources-{width}.png'))
@@ -164,7 +185,7 @@ def main():
             browser.close()
     finally:
         server.shutdown()
-        (out / 'results.json').write_text(json.dumps({'assertions': len(checks), 'checks': checks, 'api_calls': calls, 'page_errors': errors, 'data_notice': 'Unmodified source-selected board and the one actually cached translation; no invented translations or model generation.'}, ensure_ascii=False, indent=2) + '\n')
+        (out / 'results.json').write_text(json.dumps({'assertions': len(checks), 'checks': checks, 'api_calls': calls, 'page_errors': errors, 'data_notice': 'Source-selected board with only actually available cached translations; no invented translations or model generation.'}, ensure_ascii=False, indent=2) + '\n')
     print(f'{len(checks)} journal/real-weekly UI integration assertions passed.')
 
 

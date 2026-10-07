@@ -1,5 +1,7 @@
 # 期刊指标补丁与集成交接（2026-10-07）
 
+**下文为上午初版交接，14 刊数字是该版快照。最新增量与实际页面覆盖见 [40 分钟检查点](journal-public-checkpoint-20261007.md)：94 刊 JIF、2 刊完整当前官方 JCR；各批旧表保留原版快照。**
+
 本任务只实现可审计注册表、统一组件和构建接线。`app.js`、`style.css`、`index.html` 未修改，所有页面展示点仍需布局任务 01a1153c 与唯一集成任务 01a11479 接入。没有部署、推送 main/state、创建调度或改凭据。
 
 基线为 main `03e2c7c98b2ba80583962df2e6da29d110e67c99`、固定 state `652e67852f87ffdacab1582f8e5723cab32ab3b9`。工作目录 `/workspace/journal-metrics`，分支 `codex/journal-metrics-20261007`。最新 xinzhi 无自身 AGENTS.md 或 .agents/skills；相邻 AI- 的指引属于另一文献归档仓库，未进行该库的同步/下载工作。

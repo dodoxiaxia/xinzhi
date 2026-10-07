@@ -1,0 +1,208 @@
+{
+  "scope": "existing_site_journals_only",
+  "observations": [
+    {
+      "name": "JAMA Neurology",
+      "sourceId": "public-ovid-jama-neurology-262",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-neurology-262",
+      "label": "JAMA Neurology: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 23.6,
+      "year": 2025,
+      "issns": [
+        "2168-6149"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Oncology",
+      "sourceId": "public-ovid-jama-oncology-13521",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-oncology-13521",
+      "label": "JAMA Oncology: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 23.9,
+      "year": 2025,
+      "issns": [
+        "2374-2437"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Ophthalmology",
+      "sourceId": "public-ovid-jama-ophthalmology-604",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-ophthalmology-604",
+      "label": "JAMA Ophthalmology: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 10.5,
+      "year": 2025,
+      "issns": [
+        "2168-6165"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Pediatrics",
+      "sourceId": "public-ovid-jama-pediatrics-335",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-pediatrics-335",
+      "label": "JAMA Pediatrics: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 17.1,
+      "year": 2025,
+      "issns": [
+        "2168-6203"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Psychiatry",
+      "sourceId": "public-ovid-jama-psychiatry-263",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-psychiatry-263",
+      "label": "JAMA Psychiatry: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 18,
+      "year": 2025,
+      "issns": [
+        "2168-622X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Surgery",
+      "sourceId": "public-ovid-jama-surgery-602",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-surgery-602",
+      "label": "JAMA Surgery: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 15.6,
+      "year": 2025,
+      "issns": [
+        "2168-6254"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Annals of Internal Medicine",
+      "sourceId": "public-ovid-annals-of-internal-medicine-506",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/annals-of-internal-medicine-506",
+      "label": "Annals of Internal Medicine: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 17.2,
+      "year": 2025,
+      "issns": [
+        "0003-4819"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "NEJM Evidence",
+      "sourceId": "public-ovid-nejm-evidence-16062",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/nejm-evidence-16062",
+      "label": "NEJM Evidence: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 11.6,
+      "year": 2025,
+      "issns": [
+        "2766-5526"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Otolaryngology-Head & Neck Surgery",
+      "sourceId": "public-ovid-jama-otolaryngology--head--neck-surgery-603",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-otolaryngology--head--neck-surgery-603",
+      "label": "JAMA Otolaryngology-Head & Neck Surgery: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 7,
+      "year": 2025,
+      "issns": [
+        "2168-6181"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Medicine",
+      "sourceId": "public-ovid-medicine-626",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/medicine-626",
+      "label": "Medicine: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 2,
+      "year": 2025,
+      "issns": [
+        "0025-7974"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Journal of Cardiovascular Electrophysiology",
+      "sourceId": "public-ovid-journal-of-cardiovascular-electrophysiology-2642",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/journal-of-cardiovascular-electrophysiology-2642",
+      "label": "Journal of Cardiovascular Electrophysiology: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 2.4,
+      "year": 2025,
+      "issns": [
+        "1045-3873"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Health Forum",
+      "sourceId": "public-ovid-jama-health-forum-15636",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-health-forum-15636",
+      "label": "JAMA Health Forum: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 12.5,
+      "year": 2025,
+      "issns": [
+        "2689-0186"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Medical Journal of Australia",
+      "sourceId": "public-ovid-medical-journal-of-australia-14682",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/medical-journal-of-australia-14682",
+      "label": "Medical Journal of Australia: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 6.8,
+      "year": 2025,
+      "issns": [
+        "0025-729X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Pacing and Clinical Electrophysiology",
+      "sourceId": "public-ovid-pacing-and-clinical-electrophysiology-2657",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/pacing-and-clinical-electrophysiology-2657",
+      "label": "Pacing and Clinical Electrophysiology: Wolters Kluwer Ovid official public catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:40:57Z",
+      "value": 1.3,
+      "year": 2025,
+      "issns": [
+        "0147-8389"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    }
+  ],
+  "identityOnly": {
+    "name": "NEJM AI",
+    "url": "https://www.wolterskluwer.com/en/solutions/ovid/nejm-ai-16597",
+    "issn": "2836-9386",
+    "verifiedAt": "2026-10-07T14:40:57Z",
+    "metricGap": "The official public catalogue lists ISSN but no JIF/year or JCR category quartiles; absence on this page does not prove absence in JCR."
+  }
+}

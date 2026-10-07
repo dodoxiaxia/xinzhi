@@ -216,11 +216,14 @@ def main():
                 print(f'Curated reading-column checks passed: style {style}', flush=True)
 
             check(len(posts) == 0, 'Opening/navigating pages never generates paid content')
-            for width in [1440, 320]:
+            for width in [1440, 320, 375, 390]:
                 for mode in ['curated', 'candidates', 'library']:
                     page.set_viewport_size({'width': width, 'height': 900})
                     page.goto(base + f'?mode={mode}&style=a', wait_until='load')
                     overflow(page, f'header/{mode}/{width}')
+                    if width < 721:
+                        check(page.locator('.header-nav .nav-tab-btn').evaluate_all('nodes=>nodes.length===4 && nodes.every(e=>{const r=e.getBoundingClientRect();return r.x>=0&&r.right<=innerWidth&&e.scrollWidth<=e.clientWidth+1})'), f'{mode}/{width}: all four navigation entries fit without clipping')
+                        check(page.locator('#openHuddleBtn').bounding_box()['width'] < 90, f'{mode}/{width}: selected list does not consume a full header row')
                     page.locator('#sourceStatusBtn').click()
                     expect(page.locator('#sourcesSection')).to_be_visible()
                     expect(page.locator('#sourceStatusBtn')).to_have_attribute('aria-pressed', 'true')

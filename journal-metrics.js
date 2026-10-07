@@ -42,19 +42,30 @@
     function tokens(input) {
       const row = resolve(input), jif = row.jif, jcr = row.jcr;
       if (jif.status === 'not_applicable' && jcr.status === 'not_applicable') return ['IF/JCR 不适用'];
-      const impact = jif.status === 'verified' ? `IF ${Number(jif.value).toFixed(1)} (${jif.year})` : 'IF 未核实';
+      const impact = jif.status === 'verified' ? `IF ${Number(jif.value).toFixed(1)} (${jif.year} 数据)` : 'IF 未核实';
       const quartiles = [...new Set((jcr.categories || []).map(c => c.quartile).filter(q => /^Q[1-4]$/.test(q)))].sort();
       const partial = jcr.status !== 'verified' || jcr.categoryCoverage !== 'complete';
-      const quartile = quartiles.length ? `JCR ${quartiles.join('/')}${partial ? '*' : ''} (${jcr.releaseYear})` : `JCR 未核实${jcr.releaseYear ? ` (${jcr.releaseYear})` : ''}`;
+      const quartile = quartiles.length ? `JCR ${quartiles.join('/')}${partial ? '*' : ''}${jcr.releaseYear ? ` (${jcr.releaseYear} 版)` : ''}` : `JCR 未核实${jcr.releaseYear ? ` (${jcr.releaseYear} 版)` : ''}`;
       const historical = historicalReferences(input)[0];
-      if (!quartiles.length && historical) return [impact, `JCR ${historical.dataYear} ${historical.quartile}`, '用户提供参考表', '待官方核对'];
+      if (!quartiles.length && historical) return [impact, `JCR ${historical.quartile} (${historical.dataYear} 数据 / ${historical.releaseYear} 版)`, '用户提供参考表', '待官方核对'];
       return [impact, quartile];
     }
     function compactText(input) { return tokens(input).join(' · '); }
+    function badgeTokens(input) {
+      const row = resolve(input), out = [];
+      if (row.jif.status === 'verified') out.push(`IF ${Number(row.jif.value).toFixed(1)} (${row.jif.year} 数据)`);
+      if (row.jcr.status === 'verified') {
+        const q = [...new Set((row.jcr.categories || []).map(c => c.quartile).filter(q => /^Q[1-4]$/.test(q)))].sort();
+        if (q.length) out.push(`JCR ${q.join('/')}${row.jcr.categoryCoverage === 'complete' ? '' : '*'}${row.jcr.releaseYear ? ` (${row.jcr.releaseYear} 版)` : ''}`);
+      }
+      return out;
+    }
+    function badgeText(input) { return badgeTokens(input).join(' · '); }
     function detailText(input) {
       const row = resolve(input), jif = row.jif, jcr = row.jcr;
       const parts = [row.name || '期刊未标注', compactText(input)];
-      if (jcr.dataYear) parts.push(`JIF 数据年 ${jcr.dataYear}；JCR 发布版 ${jcr.releaseYear}`);
+      if (jif.year) parts.push(`IF 数据年 ${jif.year}`);
+      if (jcr.dataYear) parts.push(`JCR 分区数据年 ${jcr.dataYear}；JCR 发布版 ${jcr.releaseYear || '未核实'}`);
       for (const c of jcr.categories || []) parts.push(`${c.name}：${c.quartile || '分区未核实'}${c.rank ? `；JIF 排名 ${c.rank}/${c.total}` : ''}`);
       if (jcr.categoryCoverage === 'publisher_reported') parts.push('仅覆盖出版社公开的学科；全部 JCR 学科未核实');
       for (const h of historicalReferences(input)) {
@@ -70,8 +81,10 @@
     }
     function renderBadge(input) {
       const row = resolve(input);
+      const display = badgeTokens(input);
+      if (!display.length) return '';
       // Noninteractive: safe inside a filter button or beside a journal link.
-      return `<span class="journal-metrics-badge" data-journal-id="${escape(row.id || '')}" title="${escape(detailText(input))}">${tokens(input).map(t => `<span class="journal-metric-token">${escape(t)}</span>`).join('')}</span>`;
+      return `<span class="journal-metrics-badge" data-journal-id="${escape(row.id || '')}" title="${escape(detailText(input))}">${display.map(t => `<span class="journal-metric-token">${escape(t)}</span>`).join('')}</span>`;
     }
     function renderDetails(input) {
       const row = resolve(input), jcr = row.jcr;
@@ -83,7 +96,7 @@
       }).join('');
       return `<details class="journal-metrics-details"><summary>${escape(compactText(input))} · 指标来源</summary><p>${escape(detailText(input))}</p>${row.issns?.length ? `<p>ISSN ${row.issns.map(escape).join(' / ')}</p>` : ''}${links ? `<ul>${links}</ul>` : ''}</details>`;
     }
-    return {resolve, historicalReferences, compactText, detailText, renderBadge, renderDetails, create};
+    return {resolve, historicalReferences, compactText, badgeText, detailText, renderBadge, renderDetails, create};
   }
   const api = create(root.JOURNAL_METRICS);
   root.JournalMetrics = api;

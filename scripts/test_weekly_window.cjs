@@ -11,6 +11,9 @@ const ctx=vm.createContext({Date:FixedDate,Intl,$:()=>node,FEEDS:{items:[]},stat
  esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
  contentDate:value=>value,quicklookOf:()=>null,getPublisherClass:()=>'',getDesignClass:()=>'',hasAbstract:()=>true,
  journalMetricBadge:()=>'',preGeneratedOf:()=>null,validTranslation:tr=>!!tr?.abstract_zh,LIVE_TR:{},trKeyOf:()=>''});
+const designStart=src.indexOf('  // Study design badge class');
+const designEnd=src.indexOf('  //',designStart+5);
+vm.runInContext(src.slice(designStart,designEnd),ctx);
 vm.runInContext(code,ctx);
 let checks=0;const eq=(a,b,label)=>{assert.deepStrictEqual(a,b,label);checks++;};
 const plain=x=>JSON.parse(JSON.stringify(x));
@@ -49,12 +52,17 @@ eq(html.includes('尚未发布'),false,'no fulltext placeholder');
 eq(html.includes('来源更新于'),true,'fallback is labelled source freshness');
 eq(html.includes('更新已超过 6 小时'),false,'fresh source update');
 html=render([paper('2026-09-30T16:00:00Z',{weeklyAt:'2026-10-06T00:00:00Z'})],'2026-10-07T01:00:00Z');
+eq(ctx.designBadgeHtml({studyDesign:'RCT'}).includes('design-unverified'),true,'automatic study type has distinct unverified styling');
+eq(ctx.designBadgeHtml({studyDesign:'RCT'}).includes('design-rct'),false,'unverified RCT is never a checked solid badge');
+eq(ctx.designBadgeHtml({studyDesign:'RCT',hasDraft:true,draftData:{source_checked:true}}).includes('design-checked'),true,'source-checked design remains distinct');
 eq(html.includes('<span class="date-badge">2026-10-01</span>'),true,'display normalized publication date');
 eq(html.includes('榜单更新于 2026-10-06T00:00:00Z'),true,'pick metadata wins over fresher source');
 eq(html.includes('更新已超过 6 小时，时效待确认'),true,'six-hour stale board warning');
 eq(html.includes('阅读原摘要'),true,'original reader button preserved');
 eq(html.includes('阅读摘要 · 中英对照'),false,'missing translation is not advertised as bilingual');
 eq(html.includes('加入精选清单'),true,'saved selection button preserved with updated visible name');
+eq(html.includes('weekly-prep-note'),false,'no per-card missing AI placeholder');
+eq(html.includes('中文摘要 0/1'),true,'missing translation coverage is still transparently reported once');
 html=render([paper('2026-10-07',{weeklyAt:'2026-10-06T20:00:00Z'})]);
 eq(html.includes('更新已超过 6 小时'),false,'exact six hours remains within threshold');
 html=render([paper('2026-10-07',{weeklyAt:'2026-10-06T19:59:59Z'})]);

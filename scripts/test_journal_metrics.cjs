@@ -12,7 +12,7 @@ assert.match(api.detailText({journal:'Nature Medicine',issn:'2398-6352'}), /身�
 assert.equal(api.compactText('Nature News'), 'IF/JCR 不适用');
 assert.equal(api.compactText('arXiv'), 'IF/JCR 不适用');
 assert.equal(api.compactText('NEJM AI'), 'IF 未核实 · JCR 未核实');
-assert.equal(api.compactText('npj Digital Medicine'), 'IF 18.0 (2025) · JCR 未核实 (2026)');
+assert.equal(api.compactText('npj Digital Medicine'), 'IF 18.0 (2025 数据) · JCR 未核实 (2026 版)');
 assert.equal(api.resolve('Unknown Heart JAMA Nature').id, null);
 assert.equal(api.resolve({journal:'Unverified',url:'https://www.nature.com/nm/'}).id, null);
 assert.match(api.detailText('European Heart Journal - Cardiovascular Imaging'), /Radiology, Nuclear Medicine & Medical Imaging/);
@@ -27,12 +27,17 @@ const row = synthetic.journals.find(r => r.name === 'European Heart Journal - Ca
 row.jcr.categories[0].quartile = 'Q1';
 row.jcr.categories[1].quartile = 'Q3';
 row.jcr.status = 'verified'; row.jcr.categoryCoverage = 'complete';
-assert.match(create(synthetic).compactText(row.name), /JCR Q1\/Q3 \(2026\)/);
+assert.match(create(synthetic).compactText(row.name), /JCR Q1\/Q3 \(2026 版\)/);
 row.jcr.status = 'unverified'; row.jcr.categoryCoverage = 'publisher_reported';
 assert.match(create(synthetic).compactText(row.name), /Q1\/Q3\*/);
 const hostile = api.renderBadge('<img src=x onerror=alert(1)>');
 assert.doesNotMatch(hostile, /<img/);
-assert.match(hostile, /&lt;img/);
+assert.equal(hostile, '');
+assert.match(api.renderDetails('<img src=x onerror=alert(1)>'), /&lt;img/);
+assert.equal(api.renderBadge('NEJM AI'), '');
+assert.equal(api.badgeText('npj Digital Medicine'), 'IF 18.0 (2025 数据)');
+assert.doesNotMatch(api.badgeText('European Heart Journal'), /未核实|参考表|JCR Q1/);
+assert.match(api.renderDetails('European Heart Journal'), /未核实|参考表/);
 assert.doesNotMatch(api.renderBadge('Nature Medicine'), /<(?:button|details|a)\b/);
 const details = api.renderDetails('Nature Medicine');
 assert.match(details, /^<details/); assert.match(details, /<summary>/);
@@ -42,7 +47,7 @@ synthetic.sources.nm.url = 'javascript:alert(1)';
 assert.doesNotMatch(create(synthetic).renderDetails('Nature Medicine'), /href="javascript/);
 
 // Historical user references retain their own year and never replace official JIF.
-assert.equal(api.compactText('European Heart Journal'), 'IF 45.6 (2025) · JCR 2024 Q1 · 用户提供参考表 · 待官方核对');
+assert.equal(api.compactText('European Heart Journal'), 'IF 45.6 (2025 数据) · JCR Q1 (2024 数据 / 2025 版) · 用户提供参考表 · 待官方核对');
 assert.equal(api.historicalReferences('European Heart Journal')[0].releaseYear, 2025);
 assert.equal(api.resolve('European Heart Journal').jcr.dataYear, 2025);
 assert.equal(api.resolve('European Heart Journal').jcr.categories[0].quartile, null);
@@ -58,9 +63,19 @@ assert.equal(api.historicalReferences({journal:'European Heart Journal',issn:'23
 const current = structuredClone(registry);
 const ehj = current.journals.find(r => r.name === 'European Heart Journal');
 ehj.jcr.categories[0].quartile = 'Q2'; ehj.jcr.status = 'verified'; ehj.jcr.categoryCoverage = 'complete';
-assert.equal(create(current).compactText(ehj.name), 'IF 45.6 (2025) · JCR Q2 (2026)');
+assert.equal(create(current).compactText(ehj.name), 'IF 45.6 (2025 数据) · JCR Q2 (2026 版)');
 assert.match(create(current).detailText(ehj.name), /历史参考：JCR 2024 Q1/);
 const maliciousHistory = structuredClone(registry);
 maliciousHistory.sources['user-jcr-2025-reference'].label = '<img src=x onerror=alert(1)>';
 assert.doesNotMatch(create(maliciousHistory).renderDetails('European Heart Journal'), /<img/);
-console.log('journal metrics: 43 identity, evidence, history, rendering and multi-category assertions passed');
+const differingYears = structuredClone(current);
+differingYears.journals.find(r=>r.name==='European Heart Journal').jif.year=2024;
+assert.match(create(differingYears).detailText('European Heart Journal'), /IF 数据年 2024；JCR 分区数据年 2025；JCR 发布版 2026/);
+
+assert.match(api.compactText('JMIR Medical Informatics'), /IF 5.0 \(2025 数据\).*JCR Q2 \(2026 版\)/);
+assert.match(api.compactText('JMIR AI'), /IF 6.1 \(2025 数据\).*JCR Q1 \(2026 版\)/);
+assert.match(api.detailText('JMIR AI'), /Health Care Sciences &amp; Services|Health Care Sciences & Services/);
+assert.match(api.detailText('JMIR AI'), /Medical Informatics/);
+assert.match(api.compactText('Circulation'), /IF 41.3 \(2025 数据\)/);
+assert.match(api.compactText('JACC Advances'), /IF 5.5 \(2025 数据\)/);
+console.log('journal metrics: identity, evidence, year, history, rendering and multi-category checks passed');

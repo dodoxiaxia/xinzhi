@@ -1,0 +1,208 @@
+﻿name,kind,jif_status,jif,jif_data_year,jcr_release_year,jcr_status,category_coverage,all_categories_and_quartiles,source_urls,verified_at,issns,picks,radar,library,jif_gap,jcr_gap
+ACM会议稿,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+AI Agent Trends,unknown,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+AI Co-Clinician,unknown,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+AI评论,blog,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+AMIA会议稿,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+American Heart Journal,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+American Journal of Physiology - Heart and Circulatory Physiology,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Annals of Internal Medicine,journal,verified,17.2,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/annals-of-internal-medicine-506,2026-10-07T14:40:57Z,0003-4819,0,0,10,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Arabian Journal for Science and Engineering,journal,verified,3.1,2025,2026,unverified,unverified,,https://link.springer.com/journal/13369,2026-10-07T14:44:19Z,2191-4281; 2193-567X,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Archivos de Bronconeumología,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+"Arteriosclerosis, Thrombosis, and Vascular Biology",journal,verified,8.8,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/arteriosclerosis-thrombosis-and-vascular-biology-504,2026-10-07T14:34:13Z,1079-5642,0,5,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Artificial Intelligence,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+BMC Cardiovascular Disorders,journal,verified,3.1,2025,2026,unverified,unverified,,https://link.springer.com/journal/12872,2026-10-07T14:37:01Z,1471-2261,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+BMC Medical Education,journal,verified,4.2,2025,2026,unverified,unverified,,https://link.springer.com/journal/12909,2026-10-07T14:37:01Z,1472-6920,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+BMC Medical Informatics and Decision Making,journal,verified,5.5,2025,2026,unverified,unverified,,https://link.springer.com/journal/12911,2026-10-07T14:37:01Z,1472-6947,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+BMC Medicine,journal,verified,8.7,2025,2026,unverified,unverified,,https://link.springer.com/journal/12916,2026-10-07T14:37:01Z,1741-7015,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+BMJ Digital Health & AI,journal,unverified,,,,unverified,unverified,,,,,0,9,22,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+BMJ Evidence-Based Medicine,journal,verified,10.8,2025,2026,unverified,unverified,,https://info.bmj.com/view/1051614497,2026-10-07T14:37:01Z,2515-4478,0,0,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+BMJ Open,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Cardiovascular Diabetology,journal,verified,15.6,2025,2026,unverified,unverified,,https://link.springer.com/journal/12933,2026-10-07T14:37:01Z,1475-2840,0,1,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Cardiovascular Research,journal,verified,12.5,2025,2026,unverified,publisher_reported,Cardiac & Cardiovascular Systems: None (12/237),https://academic.oup.com/cardiovascres/pages/about,2026-10-07T09:24:05Z,1755-3245,0,17,1,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+Cell Reports Medicine,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Circulation,journal,verified,41.3,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-455,2026-10-07T14:28:04Z,0009-7322,3,27,6,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Circulation Research,journal,verified,18,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-research-454,2026-10-07T14:28:04Z,0009-7330,0,11,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Circulation: Arrhythmia and Electrophysiology,journal,verified,9.3,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-arrhythmia-and-electrophysiology-4564,2026-10-07T14:28:04Z,1941-3149,1,6,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Circulation: Cardiovascular Imaging,journal,verified,9.1,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-cardiovascular-imaging-4609,2026-10-07T14:28:04Z,1941-9651,0,10,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Circulation: Cardiovascular Interventions,journal,verified,7.2,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-cardiovascular-interventions-4566,2026-10-07T14:28:04Z,1941-7640,0,8,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Circulation: Cardiovascular Quality and Outcomes,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Circulation: Genomic and Precision Medicine,journal,verified,6.1,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-genomic-and-precision-medicine-5359,2026-10-07T14:28:04Z,2574-8300,0,13,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Circulation: Heart Failure,journal,verified,8.3,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/circulation-heart-failure-4565,2026-10-07T14:28:04Z,1941-3289,0,0,2,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Clinician of the Future,unknown,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Communications Medicine,journal,verified,7.4,2025,2026,unverified,unverified,,https://www.nature.com/commsmed/journal-impact,2026-10-07T09:24:05Z,2730-664X,0,15,16,,出版社公开 JIF；未公开完整 JCR 学科与分区
+Communications Psychology,journal,verified,6.4,2025,2026,unverified,unverified,,https://www.nature.com/commspsychol/journal-impact,2026-10-07T14:28:04Z,2731-9121,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Computers in Biology and Medicine,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Diagnostics,journal,unverified,,,,unverified,unverified,,,,,0,0,2,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+EMNLP,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+Europace,journal,verified,10.2,2025,2026,unverified,publisher_reported,Cardiac & Cardiovascular Systems: None (17/237),https://academic.oup.com/europace/pages/About,2026-10-07T09:24:05Z,1532-2092,0,11,2,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+European Heart Journal,journal,verified,45.6,2025,2026,unverified,publisher_reported,Cardiac & Cardiovascular Systems: None (2/237),https://academic.oup.com/eurheartj/pages/About,2026-10-07T09:24:05Z,0195-668X; 1522-9645,2,36,19,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+European Heart Journal - Cardiovascular Imaging,journal,verified,6.1,2025,2026,unverified,publisher_reported,"Radiology, Nuclear Medicine & Medical Imaging: None (20/217); Cardiac & Cardiovascular Systems: None (37/237)",https://academic.oup.com/ehjcimaging/pages/About,2026-10-07T09:24:05Z,2047-2412,0,18,0,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+European Heart Journal - Cardiovascular Pharmacotherapy,journal,verified,8.2,2025,2026,unverified,publisher_reported,Pharmacology & Pharmacy: None (20/356); Cardiac & Cardiovascular Systems: None (28/237),https://academic.oup.com/ehjcvp,2026-10-07T09:24:05Z,2055-6845,1,10,2,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+European Heart Journal - Digital Health,journal,verified,5.3,2025,2026,unverified,publisher_reported,Cardiac & Cardiovascular Systems: None (50/237),https://academic.oup.com/ehjdh/pages/about,2026-10-07T09:24:05Z,2634-3916,0,2,21,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+European Heart Journal Supplements,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+European Journal of Clinical Nutrition,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+European Journal of Heart Failure,journal,verified,10.3,2025,2026,unverified,publisher_reported,Cardiac & Cardiovascular Systems: None (16/237),https://academic.oup.com/eurjhf/pages/about,2026-10-07T14:28:04Z,1879-0844; 1388-9842,1,11,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Frontiers in Digital Health,journal,verified,5.2,2025,2026,unverified,unverified,,https://www.frontiersin.org/about/impact,2026-10-07T14:37:01Z,2673-253X,0,0,1,,出版社 2026 年版汇总表列出 JIF 分区，但未列逐学科类别、各类别分区及汇总选择规则，不能据单个汇总 Q 代表完整 JCR。
+Heart,journal,verified,4.4,2025,2026,unverified,unverified,,https://info.bmj.com/view/1051614497,2026-10-07T14:37:01Z,1468-201X,1,14,2,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Heart Rhythm,journal,unverified,,,,unverified,unverified,,,,,2,28,5,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Heart Rhythm O2,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Hypertension,journal,verified,9.8,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/hypertension-427,2026-10-07T14:28:04Z,0194-911X,0,7,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+IEEE International Conference on Healthcare Informatics,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+IJCAI,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+Infection,journal,verified,3.9,2025,2026,unverified,unverified,,https://link.springer.com/journal/15010,2026-10-07T14:44:19Z,1439-0973; 0300-8126,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Informatics in Medicine Unlocked,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Information Fusion,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Intelligent Medicine,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Intelligent Systems with Applications,journal,unverified,,,,unverified,unverified,,,,,0,0,7,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+International Journal of Cardiology,journal,unverified,,,,unverified,unverified,,,,,0,26,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+International Journal of Medical Informatics,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+International Journal of Telemedicine and Applications,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+JACC,journal,verified,22.3,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,0,0,13,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC Asia,journal,verified,6.1,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC: Advances,journal,verified,5.5,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,3,30,3,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC: Basic to Translational Science,journal,verified,8.4,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,0,0,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC: Cardiovascular Imaging,journal,verified,19,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,0,6,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC: Cardiovascular Interventions,journal,verified,12.7,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,1,1,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC: Case Reports,journal,unverified,,,,unverified,unverified,,,,,0,0,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+JACC: Clinical Electrophysiology,journal,verified,7.2,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,0,5,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JACC: Heart Failure,journal,verified,11.9,2025,2026,unverified,unverified,,https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced,2026-10-07T14:28:04Z,,2,8,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA,journal,verified,65.4,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-journal-of-the-american-medical-association-645,2026-10-07T14:28:04Z,0098-7484,0,117,34,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Cardiology,journal,verified,15.2,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-cardiology-13841,2026-10-07T14:34:13Z,2380-6583,0,15,4,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Health Forum,journal,verified,12.5,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-health-forum-15636,2026-10-07T14:40:57Z,2689-0186,0,0,3,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Internal Medicine,journal,verified,26.3,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-internal-medicine-505,2026-10-07T14:34:13Z,2168-6106,0,48,9,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Network Open,journal,verified,11.7,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-network-open-14871,2026-10-07T14:28:04Z,2574-3805,2,42,21,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Neurology,journal,verified,23.6,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-neurology-262,2026-10-07T14:40:57Z,2168-6149,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Oncology,journal,verified,23.9,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-oncology-13521,2026-10-07T14:40:57Z,2374-2437,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Ophthalmology,journal,verified,10.5,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-ophthalmology-604,2026-10-07T14:40:57Z,2168-6165,0,0,2,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Otolaryngology-Head & Neck Surgery,journal,verified,7,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-otolaryngology--head--neck-surgery-603,2026-10-07T14:40:57Z,2168-6181,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Pediatrics,journal,verified,17.1,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-pediatrics-335,2026-10-07T14:40:57Z,2168-6203,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Psychiatry,journal,verified,18,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-psychiatry-263,2026-10-07T14:40:57Z,2168-622X,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JAMA Surgery,journal,verified,15.6,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/jama-surgery-602,2026-10-07T14:40:57Z,2168-6254,0,0,2,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+JMIR AI,journal,verified,6.1,2025,2026,verified,complete,Health Care Sciences & Services: Q1 (21/194); Medical Informatics: Q1 (13/54),https://ai.jmir.org/about-journal/indexing-and-impact-factor,2026-10-07T14:28:04Z,2817-1705,0,0,1,,
+JMIR Biomedical Engineering,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+JMIR Medical Informatics,journal,verified,5,2025,2026,verified,complete,Medical Informatics: Q2 (17/54),https://medinform.jmir.org/about-journal/indexing-and-impact-factor,2026-10-07T14:28:04Z,2291-9694,0,0,1,,
+JN Learning,collection,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,11,该标签不是可唯一识别的期刊,不适用期刊分区
+Journal of Arrhythmia,journal,unverified,,,,unverified,unverified,,,,,0,0,2,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Journal of Biomedical Informatics,journal,unverified,,,,unverified,unverified,,,,,0,0,2,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Journal of Cardiovascular Electrophysiology,journal,verified,2.4,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/journal-of-cardiovascular-electrophysiology-2642,2026-10-07T14:40:57Z,1045-3873,1,18,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Journal of Clinical Medicine,journal,unverified,,,,unverified,unverified,,,,,0,0,2,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Journal of Imaging Informatics in Medicine,journal,verified,3.1,2025,2026,unverified,unverified,,https://link.springer.com/journal/10278,2026-10-07T14:37:01Z,2948-2933,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Journal of Thoracic Disease,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Journal of the American Heart Association,journal,unverified,,,,unverified,unverified,,,,2047-9980,2,58,0,当前 Wiley 公开页核到 ISSN，但未列 JIF 数字或数据年；AHA 当前期刊主页本次访问返回 403，尚未得到可核实的官方年版值。,当前 Wiley 公开页未列逐学科 JCR 分区；官方 About 搜索摘要中的旧 IF 6.106 没有数据年，不作为当前指标。
+Journal of the American Medical Informatics Association,journal,verified,7.1,2025,2026,unverified,unverified,,https://academic.oup.com/jamia/pages/About,2026-10-07T09:24:05Z,1527-974X,0,7,2,,出版社公开 JIF；未公开完整 JCR 学科与分区
+KDD,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,2,该标签不是可唯一识别的期刊,不适用期刊分区
+Leukemia,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Life,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Medical Journal of Australia,journal,verified,6.8,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/medical-journal-of-australia-14682,2026-10-07T14:40:57Z,0025-729X,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Medicina,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Medicine,journal,verified,2,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/medicine-626,2026-10-07T14:40:57Z,0025-7974,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+NEJM AI,journal,unverified,,,,unverified,unverified,,,,2836-9386,0,0,107,官方 Ovid 公开目录已核实 ISSN，但未列 JIF 数字或数据年；NEJM 自身 about 页在本次访问中返回 403，尚未获得官方年版指标。,所读官方公开目录未列 JCR 学科/分区；不能因目录没有指标便断言该刊没有 JCR。
+NEJM Catalyst,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+NEJM Evidence,journal,verified,11.6,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/nejm-evidence-16062,2026-10-07T14:40:57Z,2766-5526,0,1,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+National Science Review,journal,verified,18.1,2025,2026,unverified,publisher_reported,Multidisciplinary Sciences: None (8/140),https://academic.oup.com/nsr/pages/About,2026-10-07T09:24:05Z,2053-714X; 2095-5138,0,0,1,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+Nature,journal,verified,56.1,2025,2026,unverified,unverified,,https://www.nature.com/nature/journal-impact,2026-10-07T14:28:04Z,1476-4687; 0028-0836,0,1,29,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Aging,journal,verified,25,2025,2026,unverified,unverified,,https://www.nature.com/nataging/journal-impact,2026-10-07T14:28:04Z,2662-8465,0,1,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Biomedical Engineering,journal,verified,26.3,2025,2026,unverified,unverified,,https://www.nature.com/natbiomedeng/journal-impact,2026-10-07T14:28:04Z,2157-846X,0,0,21,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Biotechnology,journal,verified,44.5,2025,2026,unverified,unverified,,https://www.nature.com/nbt/journal-impact,2026-10-07T14:28:04Z,1546-1696; 1087-0156,0,0,3,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Cancer,journal,verified,28,2025,2026,unverified,unverified,,https://www.nature.com/natcancer/journal-impact,2026-10-07T14:28:04Z,2662-1347,0,1,8,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Cardiovascular Research,journal,verified,12.6,2025,2026,unverified,unverified,,https://www.nature.com/natcardiovascres/journal-impact,2026-10-07T14:28:04Z,2731-0590,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Communications,journal,verified,18.1,2025,2026,unverified,unverified,,https://www.nature.com/ncomms/journal-impact,2026-10-07T14:28:04Z,2041-1723,0,3,13,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Computational Science,journal,verified,20.3,2025,2026,unverified,unverified,,https://www.nature.com/natcomputsci/journal-impact,2026-10-07T14:28:04Z,2662-8457,0,0,5,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Electronics,journal,verified,42.3,2025,2026,unverified,unverified,,https://www.nature.com/natelectron/journal-impact,2026-10-07T14:28:04Z,2520-1131,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Health,journal,unverified,,,,unverified,unverified,,,,,0,0,17,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Nature Human Behaviour,journal,verified,17.5,2025,2026,unverified,unverified,,https://www.nature.com/nathumbehav/journal-impact,2026-10-07T14:28:04Z,2397-3374,0,0,2,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Machine Intelligence,journal,verified,29.8,2025,2026,unverified,unverified,,https://www.nature.com/natmachintell/journal-impact,2026-10-07T09:24:05Z,2522-5839,0,6,137,,出版社公开 JIF；未公开完整 JCR 学科与分区
+Nature Materials,journal,verified,38,2025,2026,unverified,unverified,,https://www.nature.com/nmat/journal-impact,2026-10-07T14:28:04Z,1476-4660; 1476-1122,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Medicine,journal,verified,52.5,2025,2026,unverified,unverified,,https://www.nature.com/nm/journal-impact,2026-10-07T09:24:05Z,1546-170X; 1078-8956,0,30,54,,出版社公开 JIF；未公开完整 JCR 学科与分区
+Nature Mental Health,journal,verified,9.3,2025,2026,unverified,unverified,,https://www.nature.com/natmentalhealth/journal-impact,2026-10-07T14:28:04Z,2731-6076,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Metabolism,journal,verified,27.5,2025,2026,unverified,unverified,,https://www.nature.com/natmetab/journal-impact,2026-10-07T14:28:04Z,2522-5812,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Methods,journal,verified,28.3,2025,2026,unverified,unverified,,https://www.nature.com/nmeth/journal-impact,2026-10-07T14:28:04Z,1548-7105; 1548-7091,0,0,3,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Microbiology,journal,verified,18.7,2025,2026,unverified,unverified,,https://www.nature.com/nmicrobiol/journal-impact,2026-10-07T14:28:04Z,2058-5276,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature News,news,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,27,该标签不是可唯一识别的期刊,不适用期刊分区
+Nature Protocols,journal,verified,18.4,2025,2026,unverified,unverified,,https://www.nature.com/nprot/journal-impact,2026-10-07T14:28:04Z,1750-2799; 1754-2189,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Bioengineering,journal,verified,42.7,2025,2026,unverified,unverified,,https://www.nature.com/natrevbioeng/journal-impact,2026-10-07T14:28:04Z,2731-6092,0,0,6,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Cancer,journal,verified,60.7,2025,2026,unverified,unverified,,https://www.nature.com/nrc/journal-impact,2026-10-07T14:28:04Z,1474-1768; 1474-175X,0,0,3,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Cardiology,journal,verified,50.2,2025,2026,unverified,unverified,,https://www.nature.com/nrcardio/journal-impact,2026-10-07T09:24:05Z,1759-5010; 1759-5002,0,2,6,,出版社公开 JIF；未公开完整 JCR 学科与分区
+Nature Reviews Clinical Oncology,journal,verified,94.6,2025,2026,unverified,unverified,,https://www.nature.com/nrclinonc/journal-impact,2026-10-07T14:28:04Z,1759-4782; 1759-4774,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Gastroenterology & Hepatology,journal,verified,57.5,2025,2026,unverified,unverified,,https://www.nature.com/nrgastro/journal-impact,2026-10-07T14:28:04Z,1759-5053; 1759-5045,0,0,3,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Neurology,journal,verified,31.2,2025,2026,unverified,unverified,,https://www.nature.com/nrneurol/journal-impact,2026-10-07T14:28:04Z,1759-4766; 1759-4758,0,0,2,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Psychology,journal,verified,22,2025,2026,unverified,unverified,,https://www.nature.com/nrpsychol/journal-impact,2026-10-07T14:28:04Z,2731-0574,0,0,19,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Nature Reviews Urology,journal,verified,13.6,2025,2026,unverified,unverified,,https://www.nature.com/nrurol/journal-impact,2026-10-07T14:28:04Z,1759-4820; 1759-4812,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Neural Computing and Applications,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+New England Journal of Medicine,journal,verified,84.5,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/new-england-journal-of-medicine-624,2026-10-07T14:28:04Z,0028-4793,0,25,41,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+News Center,news,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,2,该标签不是可唯一识别的期刊,不适用期刊分区
+OpenAI News,news,not_applicable,,,,not_applicable,not_applicable,,,,,0,24,0,该标签不是可唯一识别的期刊,不适用期刊分区
+PNAS,journal,verified,9.5,2025,2026,unverified,publisher_reported,Multidisciplinary Sciences: None (14/140),https://www.pnas.org/about/article-journal-metrics,2026-10-07T14:44:19Z,1091-6490,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+PNAS Nexus,journal,verified,4.8,2025,2026,unverified,publisher_reported,"Social Sciences, Interdisciplinary: None (9/275); Multidisciplinary Sciences: None (23/140)",https://academic.oup.com/pnasnexus/pages/About,2026-10-07T09:24:05Z,2752-6542,0,0,1,,出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算
+Pacing and Clinical Electrophysiology,journal,verified,1.3,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/pacing-and-clinical-electrophysiology-2657,2026-10-07T14:40:57Z,0147-8389,0,0,1,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Postgraduate Medical Journal,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Progress in Cardiovascular Diseases,journal,unverified,,,,unverified,unverified,,,,,0,0,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+PubMed: 中国心血管病报告,collection,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,0,该标签不是可唯一识别的期刊,不适用期刊分区
+PubMed: 丹麦房颤队列追踪,collection,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,0,该标签不是可唯一识别的期刊,不适用期刊分区
+PubMed: 安贞团队论文追踪,collection,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,0,该标签不是可唯一识别的期刊,不适用期刊分区
+PubMed: 房颤专病追踪,collection,not_applicable,,,,not_applicable,not_applicable,,,,,1,21,0,该标签不是可唯一识别的期刊,不适用期刊分区
+Science,journal,unverified,,,,unverified,unverified,,,,,0,0,30,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Science Advances,journal,unverified,,,,unverified,unverified,,,,,0,2,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Science Robotics,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Scientific Reports,journal,verified,4.9,2025,2026,unverified,unverified,,https://www.nature.com/srep/about,2026-10-07T14:28:04Z,2045-2322,0,0,16,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Springer图书,book,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+State of Generative AI,unknown,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Stroke,journal,verified,11.1,2025,2026,unverified,unverified,,https://www.wolterskluwer.com/en/solutions/ovid/stroke-404,2026-10-07T14:28:04Z,0039-2499,1,17,0,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+Stroke and Vascular Neurology,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+TechRxiv,preprint,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,2,该标签不是可唯一识别的期刊,不适用期刊分区
+Technological Forecasting and Social Change,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The BMJ,journal,verified,55.1,2025,2026,unverified,unverified,,https://info.bmj.com/view/1051614497,2026-10-07T14:37:01Z,1756-1833,0,6,15,,该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。
+The Clinical Teacher,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet,journal,unverified,,,,unverified,unverified,,,,,0,30,18,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Diabetes & Endocrinology,journal,unverified,,,,unverified,unverified,,,,,0,11,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Digital Health,journal,unverified,,,,unverified,unverified,,,,,0,5,43,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Global Health,journal,unverified,,,,unverified,unverified,,,,,0,13,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Healthy Longevity,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Neurology,journal,unverified,,,,unverified,unverified,,,,,0,2,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Oncology,journal,unverified,,,,unverified,unverified,,,,,0,10,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Primary Care,journal,unverified,,,,unverified,unverified,,,,,0,0,4,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Public Health,journal,unverified,,,,unverified,unverified,,,,,0,2,0,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+The Lancet Rheumatology,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Trends in Cardiovascular Medicine,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Unknown,unknown,unverified,,,,unverified,unverified,,,,,0,0,6,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Working Papers,preprint,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+arXiv,preprint,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,76,该标签不是可唯一识别的期刊,不适用期刊分区
+eClinicalMedicine,journal,unverified,,,,unverified,unverified,,,,,0,3,4,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+eLife,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+medRxiv,preprint,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+nejm系列,collection,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+npj Artificial Intelligence,journal,unverified,,,,unverified,unverified,,,,,0,0,13,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+npj Cardiovascular Health,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+npj Digital Medicine,journal,verified,18.0,2025,2026,unverified,unverified,,https://www.nature.com/npjdigitalmed/journal-impact,2026-10-07T09:24:05Z,2398-6352,1,12,129,,出版社公开 JIF；未公开完整 JCR 学科与分区
+npj Gut and Liver,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+npj Health Systems,journal,unverified,,,,unverified,unverified,,,,,0,0,15,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华传染病杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华健康管理学杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华儿科杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,2,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华内科杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,6,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华医学教育杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,2,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华医学杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华围产医学杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华外科杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华心血管病杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,7,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华放射肿瘤学杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华病理学杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华眼科杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华精神科杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华结核和呼吸杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,3,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华胸部外科电子杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华药械研究与临床,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中华行为医学与脑科学杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中国全科医学,journal,unverified,,,,unverified,unverified,,,,,0,0,8,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中国卫生政策研究,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中国小儿急救医学,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+中国科学：信息科学,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+会议与会议稿,conference,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,4,该标签不是可唯一识别的期刊,不适用期刊分区
+医学信息学研究稿,unknown,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+博客与评论,blog,not_applicable,,,,not_applicable,not_applicable,,,,,0,0,1,该标签不是可唯一识别的期刊,不适用期刊分区
+国际麻醉学与复苏杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+实用心脑肺血管病杂志,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+计算机辅助设计与图形学学报,journal,unverified,,,,unverified,unverified,,,,,0,0,1,未核实官方 JIF 年份和值,未核实完整 JCR 学科与分区
+Frontiers in Medicine,journal,verified,3.6,2025,2026,unverified,unverified,,https://www.frontiersin.org/about/impact,2026-10-07T14:37:01Z,,0,0,1,,出版社 2026 年版汇总表列出 JIF 分区，但未列逐学科类别、各类别分区及汇总选择规则，不能据单个汇总 Q 代表完整 JCR。
+Frontiers in Physiology,journal,verified,4.3,2025,2026,unverified,unverified,,https://www.frontiersin.org/about/impact,2026-10-07T14:37:01Z,1664-042X,0,0,1,,出版社 2026 年版汇总表列出 JIF 分区，但未列逐学科类别、各类别分区及汇总选择规则，不能据单个汇总 Q 代表完整 JCR。
