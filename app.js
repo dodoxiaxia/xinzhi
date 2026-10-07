@@ -471,10 +471,6 @@
     const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
     const lb = $('#libCountBadge'); if (lb) lb.textContent = LIBRARY.papers.length;
 
-    const up = $('#siteUpdated');
-    if (up) {
-      up.textContent = `${CONTENT_STATUS.release || ''} · 雷达 ${contentDate(FEEDS.updatedAt)} · 计划每 2 小时查新，内容变化时发布`;
-    }
     renderContentStatus();
   }
 
@@ -1501,6 +1497,7 @@
     $$('.nav-tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.mode === newMode);
     });
+    $('#sourceStatusBtn')?.setAttribute('aria-pressed', String(newMode === 'sources'));
 
     // Toggle main sections
     const streamSection = $('#streamSection');
