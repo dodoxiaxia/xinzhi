@@ -109,6 +109,18 @@ class ParserTests(OfflineTests):
         self.assertEqual(value['rawItems'], 1)
         self.assertEqual(value['items'], [])
 
+    def test_malformed_article_link_does_not_discard_valid_sibling(self):
+        raw = (b'<rss><channel><item><title>Cardiac AI invalid link</title>'
+               b'<link>https://[invalid/article</link><description>Invalid article abstract</description></item>'
+               b'<item><title>Cardiac AI valid link</title><link>https://example.org/valid</link>'
+               b'<description>Valid article abstract</description></item></channel></rss>')
+        value = feeds.parse_feed(raw, SOURCE, checked_at=CHECKED)
+        self.assertEqual(value['rawItems'], 2)
+        self.assertEqual(value['itemsWithLinks'], 1)
+        self.assertEqual(len(value['items']), 1)
+        self.assertEqual(value['items'][0]['url'], 'https://example.org/valid')
+        self.assertEqual(value['items'][0]['summary'], 'Valid article abstract')
+
     def test_safe_simple_system_and_public_doctype_ignore_without_resolution(self):
         declarations = [('<!DOCTYPE rss>', 'simple'),
                         ('<!DOCTYPE rss SYSTEM "https://never-request.example/external.dtd">', 'external_system'),

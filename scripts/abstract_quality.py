@@ -125,6 +125,10 @@ def normalize_paper(p, evidence=None):
     # Never infer missing text boundaries from a concatenated legacy paragraph.
     if re.search(r'<(?:[a-z-]+:)?(?:p|div|sec|section|abstract|title|h[1-6]|funding-group|award-group|contrib-group|permissions)(?=\s|>)', summary, re.I):
         fields = abstract_fields(summary)
+        # A successful parse replaces the whole abstract representation. Keeping
+        # old sections would make the reader show text absent from this source.
+        if fields['abstractStatus'] != 'unverified':
+            fields['abstractSections'] = fields.get('abstractSections', [])
         out.update(fields)
     return out
 

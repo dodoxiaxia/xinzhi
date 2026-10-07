@@ -390,12 +390,12 @@ def parse_feed(raw, source, *, checked_at=None):
         except ValueError:
             valid_link = False
         links += bool(valid_link)
+        if not title or not valid_link:
+            continue
         abstract = normalize_paper({'title': title, 'doi': extract_doi(link, entry),
                                     **abstract_fields(abstract_text(entry))})
         description = abstract['summary']
         abstracts += bool(description) and abstract.get('abstractStatus') != 'unverified'
-        if not title or not valid_link:
-            continue
         category = classify(title, source['name'])
         if category == '待分类':
             continue

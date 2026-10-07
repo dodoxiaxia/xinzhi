@@ -88,6 +88,46 @@ class AbstractQualityTests(unittest.TestCase):
         self.assertEqual(out,{'summary':raw,'abstractStatus':'unverified'})
         self.assertFalse(aq.readable_abstract(out))
 
+    def test_plain_markup_replaces_stale_sections_without_changing_the_source(self):
+        p={'title':'Cardiac cohort', 'doi':'10.1000/plain',
+           'summary':'<p>Among 120 patients.</p><p>HR 2.34.</p>',
+           'abstractSections':[{'label':'Old results','text':'An obsolete result.'}]}
+        before=copy.deepcopy(p)
+        out=aq.normalize_paper(p)
+        self.assertEqual(p,before)
+        self.assertEqual(out['summary'],'Among 120 patients.\n\nHR 2.34.')
+        self.assertEqual(out['abstractSections'],[])
+        self.assertEqual(out['abstractStatus'],'available')
+        self.assertNotIn('obsolete',json.dumps(build_public.public_paper(p)))
+        self.assertEqual(aq.normalize_paper(out),out)
+
+    def test_funding_only_markup_clears_stale_sections_in_the_public_reader(self):
+        p={'title':'Cardiac priorities', 'doi':'10.1000/funding',
+           'summary':'<funding-group><award-group><funding-source>NIHR</funding-source><award-id>NIHR304448</award-id></award-group></funding-group>',
+           'abstractSections':[{'label':'Old results','text':'An obsolete result.'}]}
+        out=aq.normalize_paper(p)
+        self.assertEqual(out['summary'],'')
+        self.assertEqual(out['abstractSections'],[])
+        self.assertEqual(out['abstractStatus'],'non_abstract_metadata')
+        self.assertEqual(out['nonAbstractMetadata'],[{'kind':'funding-group','text':'NIHRNIHR304448'}])
+        self.assertFalse(aq.readable_abstract(out))
+        self.assertFalse(auto_picks.has_content(p))
+        self.assertIsNone(week_precompute.public_abstract(p))
+        public=build_public.public_paper(p)
+        self.assertEqual(public['abstractSections'],[])
+        self.assertEqual(public['nonAbstractMetadata'],out['nonAbstractMetadata'])
+        self.assertNotIn('obsolete',json.dumps(public))
+
+    def test_unverified_markup_preserves_the_previous_representation(self):
+        p={'title':'Cardiac cohort', 'doi':'10.1000/incomplete',
+           'summary':'<funding-group><award-group>NIHR304448',
+           'abstractSections':[{'label':'Previous','text':'Previously obtained text.'}]}
+        out=aq.normalize_paper(p)
+        self.assertEqual(out['summary'],p['summary'])
+        self.assertEqual(out['abstractSections'],p['abstractSections'])
+        self.assertEqual(out['abstractStatus'],'unverified')
+        self.assertFalse(aq.readable_abstract(out))
+
     def test_encoded_angle_tags_are_not_decoded_and_reparsed(self):
         out=aq.abstract_fields('<p>Literal &lt;sup&gt;2&lt;/sup&gt; and &lt;5 &gt;6.</p>')
         self.assertEqual(out['summary'],'Literal <sup>2</sup> and <5 >6.')
