@@ -1,0 +1,48 @@
+{
+  "requestUrl": "https://3f577b35.dryz-xinzhi.pages.dev/public-data/3e5ac332ce377ae7a0254e49e987ee1f32455f5d609f135328339c23dda40267/FEEDS.json",
+  "method": "GET",
+  "startedAt": "2026-10-07T23:54:21.512981+00:00",
+  "requestAttempts": 1,
+  "redirectsFollowed": 0,
+  "authenticationAdded": false,
+  "cookiesAdded": false,
+  "customUserAgent": false,
+  "proxyChanges": false,
+  "configWrites": 0,
+  "deploymentsCreated": 0,
+  "resourceGatePassed": false,
+  "status": 403,
+  "headers": {
+    "date": "Wed, 07 Oct 2026 23:54:21 GMT",
+    "content-type": "text/plain; charset=UTF-8",
+    "content-length": "17",
+    "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
+    "server": "cloudflare",
+    "cf-ray": "a470d49d4c81c47e-LAX"
+  },
+  "responseUrl": "https://3f577b35.dryz-xinzhi.pages.dev/public-data/3e5ac332ce377ae7a0254e49e987ee1f32455f5d609f135328339c23dda40267/FEEDS.json",
+  "errorBodyPrefix": "error code: 1010\n",
+  "retainedRawPrefixBytes": 17,
+  "stopAfterResponse": true,
+  "endedAt": "2026-10-07T23:54:21.658805+00:00",
+  "wallMs": 145.82,
+  "sourceRun": {
+    "runId": 37704860910,
+    "jobId": 113076679549,
+    "commit": "953362de38db93a784c368f1488eacba83cb590c",
+    "runtime": "GitHub ubuntu-latest; Python 3.11 as original probe",
+    "logTimestamp": "2026-10-07T23:54:21.6608517Z"
+  },
+  "classification": {
+    "observed": "Cloudflare HTTP403 with error1010 and CF-Ray",
+    "officialMeaning": "Client/browser-signature access denial",
+    "inference": "Strong evidence of Cloudflare edge-security refusal for this diagnostic request; not the reviewed application's explicit error response",
+    "exactRule": "not-read; no claim of a specific WAF rule or Browser Integrity Check setting",
+    "firstOriginalRequest": "original response not retained; this later diagnostic cannot prove the exact original rule",
+    "runtimeGate": "not-passed; no successful payload/concurrency/CPU/memory evidence"
+  },
+  "officialSource": "https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1010/",
+  "productionMain": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+  "heldCandidate": "53bee6b1f5b5b9cd1f5cca4bcede8921806e4b10"
+}
+
