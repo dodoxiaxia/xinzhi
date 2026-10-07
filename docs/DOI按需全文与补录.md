@@ -39,7 +39,7 @@ Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行�
 
 ## v14.2 后台下载与回传
 
-提交后立即保存 `library:job:` 任务及 `library:queue:` 指针，不等待外部文献源。后台 `fulltext.yml` 约每 5 分钟检查队列，也可在 GitHub Actions 手动运行；GitHub 调度可能延迟。每批最多 5 篇，工作流串行执行，不与网站日更共享并发组。
+提交后立即保存 `library:job:` 任务及 `library:queue:` 指针，不等待外部文献源。既有 Cloudflare `xinzhi-cron` 约每 5 分钟读取只含有无任务信号的 `/api/fulltext-pending`，仅在任务已到执行时间且没有正在运行的下载工作流时触发 `fulltext.yml`。空队列不启动 GitHub runner；也可在 GitHub Actions 手动运行。实际启动可能延迟。每批最多 5 篇，工作流串行执行，不与网站日更共享并发组。
 
 任务状态为排队、获取中、已取得全文、无可用全文、需核验或失败。获取页每 15 秒通过 GET 更新；原网站精确 DOI 搜索也只读轮询，在页面隐藏时暂停，返回后恢复，连续轮询最多 1 小时。关闭页面不取消任务。取得文件后沿用题录合并、文件校验和口令下载接口；补录不改既有题录 ID、已审日期、HOLD、导读或医生审核字段。
 
@@ -47,8 +47,10 @@ Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行�
 
 GitHub job 使用 `id-token: write` 临时身份调用 `/api/fulltext-worker`，固定验证 GitHub issuer/JWKS、RS256 签名、audience、本仓库名称和 numeric ID、main 分支、指定 `fulltext.yml`、GitHub 托管 runner、有效期和事件类型。它不使用或接收用户口令、GitHub PDF 凭据、PDF 正文或模型 Secret。文件检索仍在网站受保护后台执行，PDF 存入原 QL_KV，由网站供下载；不新建 GitHub 私有库写入或 Mac/Drive 归档流程。
 
-此方案不新增长期 Secret，不扩大现有 `GITHUB_LIBRARY_TOKEN` 只读权限。后台短时 OIDC 身份只能领取和运行任务，不能提交任意文件、外部 URL 或题录。读者口令不能访问工作接口。队列指针与记录允许 KV 同步延迟，领取的 lease 有界，失联任务可恢复；跨地区软去重与限制不作为严格原子保证。
+此方案复用 `xinzhi-cron` 既有 `GH_TOKEN`（仅本仓库 Actions 读写），不新增长期 Secret，不扩大现有 `GITHUB_LIBRARY_TOKEN` 的 AI- Contents 只读权限。原调度器重复触发轻量刷新已由日更门禁忽略，现改为按需触发全文队列；日更原有 GitHub 两小时和每日调度保留。发布入口先更新调度器、确认既有受保护配置仍可用，再发布六文件网站；调度器更新失败会阻止网站升级。
+
+后台短时 OIDC 身份只能领取和运行任务，不能提交任意文件、外部 URL 或题录。读者口令不能访问工作接口。队列指针与记录允许 KV 同步延迟，领取的 lease 有界，失联任务可恢复；跨地区软去重与限制不作为严格原子保证。
 
 可选 `FULLTEXT_ASYNC_ENABLED=false` 将新提交回退到 v14.1.2 的即时处理模式，已有队列仍可完成。正常 Production 不需新增此变量。后台下载只能取得可访问的来源，机构登录会话未迁移到云端，排队不保证能取得所有有效 DOI 的全文。
 
-验证入口：`node scripts/test_fulltext_jobs.cjs`、`node scripts/test_doi_library_worker.cjs`、`node scripts/test_doi_library_ui.cjs`。前两项及 UI helper 在网站发布前运行，完整浏览器流程在本地执行。
+验证入口：`node scripts/test_fulltext_jobs.cjs`、`node scripts/test_fulltext_dispatcher.cjs`、`node scripts/test_doi_library_worker.cjs`、`node scripts/test_doi_library_ui.cjs`。Worker、调度器及 UI helper 在网站发布前运行，完整浏览器流程在本地执行。

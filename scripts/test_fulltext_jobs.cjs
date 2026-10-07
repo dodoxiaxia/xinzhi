@@ -33,14 +33,19 @@ async function claimRun(h) {
  keypair=await webcrypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
  jwk={...await webcrypto.subtle.exportKey('jwk',keypair.publicKey),kid:'00000000-0000-4000-8000-000000000001',use:'sig',alg:'RS256'};
  let h=await setup();
+ const signal=async h=>{const response=await h.request('/api/fulltext-pending',{method:'GET',query:''});assert.equal(response.status,200);return response.json();};
+ assert.deepEqual(await signal(h),{ok:true,pending:false});assert.equal(h.writes.length,0);assert.equal(h.calls.length,0);
+ assert.equal((await h.request('/api/fulltext-pending',{query:''})).status,405);assert.equal(h.writes.length,0);
  const wrong=await h.request('/api/acquire',{passphrase:'wrong'});assert.equal(wrong.status,403);assert.equal(h.writes.length,0);assert.equal(h.reads.length,0);assert.equal(h.calls.length,0);
  const queued=await enqueue(h);assert.equal(queued.state,'queued');assert.equal(h.calls.length,0,'submitting never contacts metadata, PDF sources or a model');
  const writes=h.writes.length;const duplicate=await enqueue(h);assert.equal(duplicate.id,queued.id);assert.equal(h.writes.length,writes,'duplicate request reuses task');
+ assert.deepEqual(await signal(h),{ok:true,pending:true});assert.equal(h.writes.length,writes);assert.equal(h.calls.length,0,'aggregate signal never starts acquisition or exposes task details');
  const lookup=await (await h.request('/api/library',{method:'GET'})).json();assert.equal(lookup.found,false);assert.equal(lookup.job.state,'queued');
  const page=await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}});assert.equal(page.status,202);const html=await page.text();assert(html.includes('本页每 15 秒只更新状态'));assert(html.includes('http-equiv="refresh"'));assert(!html.includes('<form'));assert(!html.includes('synthetic-private-token'));
  const completed=await claimRun(h);assert.equal(completed.state,'available');assert.equal(completed.attempts,1);
  const stored=JSON.parse(h.values.get('library:paper:'+doi));assert.equal(stored.pdf.sha256,hash(pdf));assert(h.values.has(stored.pdf.key));
  assert.equal([...h.values.keys()].filter(k=>k.startsWith('library:queue:')).length,0);
+ assert.deepEqual(await signal(h),{ok:true,pending:false});
  const calls=h.calls.length;const ready=await h.request('/api/fulltext');assert.equal(ready.status,200);assert.deepEqual(Buffer.from(await ready.arrayBuffer()),pdf);
  assert.equal(h.calls.length,calls);assert.equal((await (await h.request()).json()).cached,true);
  const publicPaper=await (await h.request('/api/library',{method:'GET'})).json();assert.equal(publicPaper.paper.fulltextStatus,'available');assert(!JSON.stringify(publicPaper).includes('synthetic-private-token'));
@@ -66,7 +71,7 @@ async function claimRun(h) {
  await enqueue(transient);
  for(let attempt=1;attempt<=3;attempt++) {
   const result=await claimRun(transient);assert.equal(result.attempts,attempt);assert.equal(result.state,attempt<3?'queued':'failed');
-  if(attempt<3){assert.equal((await (await service(transient,{action:'claim'})).json()).job,null);clock.now+=attempt===1?61000:601000;}
+  if(attempt<3){assert.deepEqual(await signal(transient),{ok:true,pending:false});assert.equal((await (await service(transient,{action:'claim'})).json()).job,null);clock.now+=attempt===1?61000:601000;assert.deepEqual(await signal(transient),{ok:true,pending:true});}
  }
  assert.equal([...transient.values.keys()].filter(k=>k.startsWith('library:queue:')).length,0);
  assert.equal(JSON.parse(transient.values.get('library:cap:'+new Date(clock.now).toISOString().slice(0,10))),1,'automatic retries do not consume another reader submission');
@@ -74,6 +79,7 @@ async function claimRun(h) {
  h=await setup();await enqueue(h);const pointer=(await (await service(h,{action:'claim'})).json()).job;
  assert.equal((await service(h,{action:'run',...pointer},{claims:{run_id:'9876'}})).status,409);
  assert.equal((await (await service(h,{action:'claim'})).json()).job,null,'live lease cannot be reclaimed');
+ assert.deepEqual(await signal(h),{ok:true,pending:false},'active lease does not start another runner');
  // A newly listed pointer may be visible before its job. It must survive KV propagation.
  h=await setup();await enqueue(h);const jobKey='library:job:'+doi,original=h.values.get(jobKey);h.values.delete(jobKey);
  assert.equal((await (await service(h,{action:'claim'})).json()).job,null);assert.equal([...h.values.keys()].filter(k=>k.startsWith('library:queue:')).length,1);

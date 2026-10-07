@@ -684,9 +684,10 @@ async function fulltextJobInput(request) {
 }
 async function fulltextClaim(env, owner) {
   let cursor;
-  for (let page = 0; page < 3; page++) {
-    let listing; try { listing = await env.QL_KV.list({ prefix:FULLTEXT_QUEUE_PREFIX, limit:20, ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
-    if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
+  // Bound KV operations even when every listed task needs expiration cleanup.
+  for (let page = 0; page < 2; page++) {
+    let listing; try { listing = await env.QL_KV.list({ prefix:FULLTEXT_QUEUE_PREFIX, limit:5, ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
+    if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 5) libraryFail('library_storage', 503);
     for (const entry of listing.keys) {
       if (typeof entry.name !== 'string' || !entry.name.startsWith(FULLTEXT_QUEUE_PREFIX)) continue;
       const pointer = await libraryGet(env.QL_KV, entry.name);
@@ -765,6 +766,30 @@ async function handleFulltextWorker(request, env) {
     const input = await fulltextJobInput(request);
     if (input.action === 'claim') return json({ ok:true, job:await fulltextClaim(env, owner) });
     return json({ ok:true, job:await fulltextRun(env, owner, input) });
+  } catch (error) { return json({ ok:false, error:error instanceof LibraryFailure ? error.code : 'job_server' }, error instanceof LibraryFailure ? error.status : 500); }
+}
+async function handleFulltextPending(request, env) {
+  try {
+    if (request.method !== 'GET' || new URL(request.url).search) libraryFail('job_bad_request', 405);
+    libraryConfig(env);
+    const listing = await env.QL_KV.list({ prefix:FULLTEXT_QUEUE_PREFIX, limit:20 });
+    if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
+    for (const entry of listing.keys) {
+      if (typeof entry.name !== 'string' || !entry.name.startsWith(FULLTEXT_QUEUE_PREFIX)) continue;
+      const pointer = await libraryGet(env.QL_KV, entry.name);
+      if (!pointer || !libraryDoi(pointer.doi)) continue;
+      const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + pointer.doi), pointer.doi);
+      if (!job || job.id !== pointer.id || job.queueKey !== entry.name) {
+        const createdAt = Number(entry.name.slice(FULLTEXT_QUEUE_PREFIX.length).split(':')[0]);
+        if (Number.isSafeInteger(createdAt) && Date.now() - createdAt > 300000) return json({ ok:true, pending:true });
+        continue;
+      }
+      const now = Date.now();
+      if (!['queued','running'].includes(job.state) || !fulltextJobActive(job)
+          || (job.state === 'queued' ? job.nextAttemptAt <= now : job.leaseUntil <= now)) return json({ ok:true, pending:true });
+    }
+    // Only expose an aggregate signal; never titles, DOIs or reader identities.
+    return json({ ok:true, pending:!listing.list_complete });
   } catch (error) { return json({ ok:false, error:error instanceof LibraryFailure ? error.code : 'job_server' }, error instanceof LibraryFailure ? error.status : 500); }
 }
 async function handleAcquire(request, env) {
@@ -1702,6 +1727,7 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
+    if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/acquire') return handleAcquire(request, env);
     if (url.pathname === '/api/acquire/retry') return handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
