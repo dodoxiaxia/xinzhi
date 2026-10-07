@@ -923,7 +923,11 @@
   function updateHeaderBadges() {
     const cb = $('#candCountBadge'); if (cb) cb.textContent = radarDefaultCount();
     const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
-    const lb = $('#libCountBadge'); if (lb) lb.textContent = LIBRARY.papers.length;
+    const lb = $('#libCountBadge'); if (lb) {
+      lb.textContent = LIBRARY.papers.length;
+      lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
+      lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+    }
 
   }
 
@@ -1251,7 +1255,7 @@
     const container = $('#activeFiltersBar');
     if (!container) return;
 
-    let chips = `<span class="results-meta">共找到 <b>${totalCount}</b> 篇文献</span>`;
+    let chips = `<span class="results-meta">共找到 <b>${totalCount}</b> 篇文献${usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
 
     if (state.search) {
       chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button class="filter-badge-remove" data-clear="search">&times;</button></span>`;
@@ -1860,11 +1864,18 @@
     const list = state.huddle.map(id => allPapersMap.get(id)).filter(Boolean);
     state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && allPapersMap.has(id));
     const selected = selectedComparePapers();
+    ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn'].forEach(id => {
+      const button = $('#' + id);
+      if (!button) return;
+      button.disabled = list.length === 0;
+      if (!list.length) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
+      else button.removeAttribute('aria-describedby');
+    });
 
     if (list.length === 0) {
       body.innerHTML = `
         <div class="empty-state" style="padding:30px;">
-          <p>精选清单当前为空</p>
+          <p id="huddleEmptyHelp" role="status">精选清单当前为空，添加文献后可清空、复制或导出。</p>
           <small style="color:var(--text-muted);">从文献列表中点击“加入精选清单”，即可将心仪文献加入讨论清单。</small>
         </div>
       `;
@@ -2261,7 +2272,7 @@
       searchInput?.focus();
     } else if (e.key === 'Tab') {
       const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open');
-      if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
+      if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
     } else if (e.key === 'Escape') {
       closeReaderDrawer();
       closeHuddleModal();
