@@ -21,13 +21,14 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
     (['scripts/fetch_archive.py', '--incremental'], 1500),
     (['scripts/archive_details.py', '--fill'], 1800),
     (['scripts/translate_titles.py', '--run', '--limit', '60'], 900),
-    (['scripts/generate_quicklooks.py', '--call-model', '--limit', '8', '--lookup-limit', '16'], 600),
+    (['scripts/week_precompute.py', '--run', '--provider', 'configured', '--attempt-limit', '8'], 600),
     (['scripts/auto_picks.py'], 120),
 ]
 BUILD = ['scripts/build_public.py']
+WEEK_BOARD = ['scripts/week_precompute.py']
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
-BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|RADAR)\s*=\s*')
+BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|WEEKLY_BOARD|PREGENERATED|RADAR)\s*=\s*')
 
 
 def stable_data(value):
@@ -136,9 +137,12 @@ def main():
         execute(argv, t, optional=True, reserve=300 if fast else 900)
     if not fast:
         for argv, t in FULL_OPTIONAL:
-            reserve = 300 if argv[0] in ('scripts/generate_quicklooks.py', 'scripts/auto_picks.py') else 900
+            reserve = 300 if argv[0] in ('scripts/week_precompute.py', 'scripts/auto_picks.py') else 900
             execute(argv, t, optional=True, reserve=reserve)
 
+    code = execute(WEEK_BOARD, 180, build=True)
+    if code:
+        return finish('failed', ['weekly public-abstract board failed'])
     code = execute(BUILD, 300, build=True)
     if code:
         return finish('failed', ['public build failed'])

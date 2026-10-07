@@ -170,10 +170,10 @@ class RefreshExecutionTests(PipelineFixture):
 
     def test_full_enriches_before_quicklooks_and_optional_failure_continues(self):
         def run(argv, timeout):
-            return (7, '', 'model failed') if argv[0] == 'scripts/generate_quicklooks.py' else (0, '', '')
+            return (7, '', 'model failed') if argv[0] == 'scripts/week_precompute.py' and '--run' in argv else (0, '', '')
         result, report, outputs, calls = self.invoke(fast=False, run=run)
         names = [argv[0] for argv in calls]
-        self.assertLess(names.index('scripts/archive_details.py'), names.index('scripts/generate_quicklooks.py'))
+        self.assertLess(names.index('scripts/archive_details.py'), names.index('scripts/week_precompute.py'))
         self.assertEqual(result, 0)
         self.assertFalse(report['fast'])
         self.assertEqual(report['status'], 'success')
@@ -230,17 +230,17 @@ class RefreshExecutionTests(PipelineFixture):
     def test_full_archive_work_reserves_time_for_model_and_build(self):
         timeouts = {}
         def run(argv, timeout):
-            timeouts[argv[0]] = timeout
+            timeouts[argv[0] + (':paid' if '--run' in argv else '')] = timeout
             return 0, '', ''
         # Archive work reaches its budget, leaving 600 seconds for the model and
         # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2700, 2700]
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2700, 2700, 2700]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)
         self.assertNotIn('scripts/archive_details.py', timeouts)
         self.assertNotIn('scripts/translate_titles.py', timeouts)
-        self.assertEqual(timeouts['scripts/generate_quicklooks.py'], 600)
+        self.assertEqual(timeouts['scripts/week_precompute.py:paid'], 600)
         self.assertEqual(timeouts['scripts/build_public.py'], 300)
         self.assertEqual(outputs, [True])
 

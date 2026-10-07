@@ -1,0 +1,86 @@
+{
+ "recordedAt": "2026-10-07T09:42:16.210268+00:00",
+ "baseMainSha": "03e2c7c98b2ba80583962df2e6da29d110e67c99",
+ "sourceStateSha": "652e67852f87ffdacab1582f8e5723cab32ab3b9",
+ "uiSha": "d8f5cdac9c2bd441fe34cb9baea0b7c9dd43c6bd",
+ "window": {
+  "start": "2026-10-01",
+  "end": "2026-10-07",
+  "timezone": "Asia/Shanghai",
+  "days": 7,
+  "target": 24,
+  "eligible": 90,
+  "selected": 24,
+  "eligibleByCategory": {
+   "心血管": 66,
+   "综合医学": 20,
+   "AI医疗": 3,
+   "AI前沿": 1
+  },
+  "excluded": {
+   "duplicates": 0,
+   "unverified_publication_date": 294,
+   "no_complete_public_abstract": 57,
+   "correction_comment_letter": 18,
+   "outside_window": 360,
+   "low_relevance": 47
+  },
+  "shortfallReason": null
+ },
+ "coverage": {
+  "title": 23,
+  "translate": 1,
+  "study": 0,
+  "quicklook": 0
+ },
+ "selectedByCategory": {
+  "心血管": 13,
+  "综合医学": 7,
+  "AI医疗": 3,
+  "AI前沿": 1
+ },
+ "wholeBatchComplete": false,
+ "status": "paused",
+ "blocker": "http_502:quote_not_in_abstract",
+ "actualVerification": {
+  "runtimeReadOnlyStatusSucceeded": true,
+  "http200ProviderDiagnosticIsNotValidatedContent": true,
+  "configuredCredentialsAvailableInThisEnvironment": false,
+  "totalRuntimePostRequests": 2,
+  "firstPost": "existing_shared_translation_cache_hit_2026-10-07T09:08:13.124Z; no new generation verified",
+  "secondPost": "study failed evidence validation; no usable result",
+  "reservedProviderAttempts": 4,
+  "actualNewProviderAttempts": "at most 2 for second POST including worker bounded retry; exact billing usage is not observable",
+  "sourceLookupLimit": 40,
+  "sourceRequestsUsed": 36,
+  "sourceRequestAccounting": "11 exploratory DOI queries + 1 independent first-paper check + 24 board hydration queries",
+  "newTranslationResults": 0,
+  "reusedSharedTranslationResults": 1,
+  "newStudyResults": 0,
+  "newQuicklookResults": 0
+ },
+ "runtimeLastDiagnostic": {
+  "version": 1,
+  "at": "2026-10-07T09:33:52.739Z",
+  "requestId": "fd20af24-9656-4923-8690-b698cef1188c",
+  "phase": "provider_response",
+  "code": "response_received",
+  "httpStatus": 200,
+  "elapsedMs": 15553,
+  "timedOut": false
+ },
+ "offlineTests": {
+  "weekPrecompute": 16,
+  "publicBuild": 20,
+  "packageRelease": 23,
+  "ciDaily": 29,
+  "releaseBuild": 3,
+  "workflow": 9,
+  "edgeWorker": "passed",
+  "studyServices": "passed",
+  "studyUiAssertions": 83,
+  "weeklyWindowChecks": 60
+ },
+ "deploymentPerformed": false,
+ "productionScheduleAdded": false
+}

@@ -15,6 +15,7 @@ INPUTS = (
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
     'scripts/source_fallbacks.py', 'editorial/legacy_published_guides.json', 'data/pubmed.json',
@@ -23,6 +24,7 @@ INPUTS = (
     'data/curated-archive.json', 'editorial/source_checked_drafts.json',
     'data/translations.json', 'data/media.json', 'data/picks.json',
     'data/radar-archive.json', 'data/archive-full.json', 'data/quicklooks.json',
+    'data/weekly-board.json', 'scripts/week_precompute.py', 'scripts/validate_week_precompute.cjs', 'scripts/auto_picks.py',
 )
 
 

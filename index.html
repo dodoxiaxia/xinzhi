@@ -138,14 +138,11 @@
     <main class="main-content">
       <!-- Stream Section (for Candidates, Curated, Library) -->
       <section id="streamSection">
+        <div class="stream-reading-layout">
+        <div class="stream-content">
         <!-- Stream Toolbar -->
-        <ol class="home-intro" id="homeIntro" hidden>
-          <li><b>每日精选</b><span>人工核对导读 + 每日自动精选</span></li>
-          <li><b>本周精读</b><span>近 7 天榜单每天更新；全文精读按期发布</span></li>
-          <li><b>晨会清单</b><span>任意文献点“加入晨会单”，汇总后复制或导出</span></li>
-        </ol>
         <div class="mode-note" id="modeNote" role="note"></div>
-        <div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div>
+        <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
         <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
         <div class="browse-bar" id="browseBar" hidden>
           <label class="journal-picker">期刊 / 信源<select id="journalSelect" aria-label="选择期刊或信源"></select></label>
@@ -184,6 +181,16 @@
 
         <!-- Load More Button -->
         <button id="loadMoreBtn" class="load-more-btn" hidden>显示更多</button>
+        </div>
+        <aside class="stream-rail" id="streamRail" aria-label="阅读导航与主题" hidden>
+          <ol class="home-intro" id="homeIntro" hidden>
+            <li><b>每日精选</b><span>人工核对导读 + 每日自动精选</span></li>
+            <li><b>本周精读</b><span>近 7 天榜单每天更新；全文精读按期发布</span></li>
+            <li><b>晨会清单</b><span>任意文献点“加入晨会单”，汇总后复制或导出</span></li>
+          </ol>
+          <div id="curatedTopicsSlot"></div>
+        </aside>
+        </div>
       </section>
 
       <!-- Weekly Deep Read Section (Journal Club) -->
@@ -192,11 +199,12 @@
         <aside class="weekly-deep-read" aria-label="全文精读">
         <h3 class="next-title">全文精读</h3>
         <div class="issue-list" id="issueList" aria-label="精读期次" hidden></div>
-        <details class="weekly-demo"><summary><span class="content-label">第 01 期 · 体例示范</span><strong>AI 指导的持续性房颤消融：获益与临床边界</strong><small>TAILORED-AF · Nature Medicine · 2025 年论文，非本周新文</small><span class="weekly-read-link">展开精读 →</span></summary>
+        <details class="weekly-demo"><summary><span class="content-label">第 01 期 · 体例示范</span><strong>AI 指导的持续性房颤消融：获益与临床边界</strong><small>TAILORED-AF · Nature Medicine · 2025 年论文，非本周新文</small><span data-journal-metrics="Nature Medicine"></span><span class="weekly-read-link"><span class="weekly-read-open">展开精读 ↓</span><span class="weekly-read-close">收起精读 ↑</span></span></summary>
+        <div data-journal-metrics-details="Nature Medicine"></div>
         <div class="weekly-hero">
           <span class="design-pill design-rct">第 01 期 · 全文精读示范</span> <span class="tag-pill">论文发表于 2025-02 · 用作精读体例示范，非当周新文</span>
           <h2>AI 指导的持续性房颤消融：获益与临床边界</h2>
-          <p class="text-secondary">TAILORED-AF 多中心随机对照试验 · <i>Nature Medicine</i> (2025-02)</p>
+          <p class="text-secondary">TAILORED-AF 多中心随机对照试验 · <i>Nature Medicine</i> (2025-02)<span data-journal-metrics="Nature Medicine"></span></p>
           <a href="https://doi.org/10.1038/s41591-025-03517-w" target="_blank" rel="noopener">官方期刊原文链接 ↗</a>
         </div>
 
@@ -228,6 +236,7 @@
           <div class="drawer-section" style="margin-top:20px;">
             <h3 id="wk1">一、 临床问题与背景：持续性房颤基质消融的探索瓶颈</h3>
             <p>肺静脉隔离（PVI）单独实施时，仅在约半数持续性房颤（persAF）患者中获得长期成功。过去十余年间，经验性解剖线性消融、左房后壁隔离（CAPLA 试验，JAMA 2023）、碎裂电位消融（STAR AF II 试验，NEJM 2015）以及 MRI 纤维化引导消融（DECAAF II 试验，JAMA 2022）等“PVI+”策略在多中心 RCT 中均未能证实额外获益。</p>
+            <p class="text-muted">文中期刊的当前指标：<span class="static-journal-metric"><b>JAMA</b><span data-journal-metrics="JAMA"></span></span><span class="static-journal-metric"><b>NEJM</b><span data-journal-metrics="New England Journal of Medicine"></span></span></p>
             <p>这反映出当前心房基质消融的核心瓶颈：<b>缺乏客观、可重复的基质识别与量化标准</b>。基于心内电图（EGM）时空离散度（spatio-temporal dispersion）的手术策略此前在单中心研究中提示过潜在价值，但在人工视觉判读下，不同术者间的一致性较差。TAILORED-AF 试验（NCT04702451）旨在评估引入确定性 AI 辅助系统标测时空离散度并指导消融，是否优于单纯解剖 PVI 策略。</p>
           </div>
 
@@ -334,7 +343,8 @@
             <a class="btn-sm btn-primary" target="_blank" rel="noopener" href="https://doi.org/10.1038/s41591-025-03517-w">
               前往 Nature Medicine 官方原文 ↗
             </a>
-            
+            <span data-journal-metrics="Nature Medicine"></span>
+            <button class="btn-sm" type="button" data-action="close-weekly">收起精读 ↑</button>
           </div>
         </div>
         </details>

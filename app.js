@@ -310,6 +310,20 @@
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 
+  function journalMetricBadge(input) {
+    return typeof window !== 'undefined' && window.JournalMetrics ? window.JournalMetrics.renderBadge(input) : '';
+  }
+  function journalMetricDetails(input) {
+    return typeof window !== 'undefined' && window.JournalMetrics ? window.JournalMetrics.renderDetails(input) : '';
+  }
+  function journalMetricText(input) {
+    return typeof window !== 'undefined' && window.JournalMetrics ? window.JournalMetrics.compactText(input) : '';
+  }
+  function renderStaticJournalMetrics() {
+    $$('[data-journal-metrics]').forEach(el => { el.innerHTML = journalMetricBadge(el.dataset.journalMetrics); });
+    $$('[data-journal-metrics-details]').forEach(el => { el.innerHTML = journalMetricDetails(el.dataset.journalMetricsDetails); });
+  }
+
   // Toast notification
   let toastTimer = null;
   function showToast(msg) {
@@ -369,7 +383,7 @@
       : '';
     const url = safeSourceUrl(p);
 
-    return `【心知文献情报 · 临床速递】\n📌 题名：${title}${origTitle}\n🏛️ 期刊：${journal} (${pub} · ${date}) | ${design}\n🎯 核心速览：${summary}${boundary}${question}\n🔗 原文：${url}\n\n（来源：心知 AIHOT-Med 临床文献工作台 · 仅供学习讨论）`;
+    return `【心知文献情报 · 临床速递】\n📌 题名：${title}${origTitle}\n🏛️ 期刊：${journal} (${pub} · ${date}) | ${design}\n期刊指标：${journalMetricText(p)}\n🎯 核心速览：${summary}${boundary}${question}\n🔗 原文：${url}\n\n（来源：心知 AIHOT-Med 临床文献工作台 · 仅供学习讨论）`;
   }
 
   // Clipboard copy helper
@@ -437,7 +451,15 @@
   }
   const LIVE_QL = {};
   function qlKey(p) { return p.doi ? String(p.doi).toLowerCase() : 'pmid-' + p.pmid; }
-  function quicklookOf(p) { const k = qlKey(p); return (window.QUICKLOOKS||{})[k] || LIVE_QL[k] || null; }
+  function preGeneratedOf(p) {
+    return (window.PREGENERATED || {})[trKeyOf(p)] || null;
+  }
+  function quicklookOf(p) {
+    const k = qlKey(p), embedded = preGeneratedOf(p)?.quicklook;
+    const valid = embedded && typeof embedded.one_line === 'string' && embedded.one_line.trim()
+      && Array.isArray(embedded.findings) && embedded.findings.every(f => f && typeof f.text === 'string' && typeof f.quote === 'string');
+    return (window.QUICKLOOKS || {})[k] || (valid ? embedded : null) || LIVE_QL[k] || null;
+  }
   // 一键 AI 解读：后端 /api/ql（Cloudflare _worker.js）。本地静态预览没有后端时自动隐藏按钮。
   function aiApiCheck(paper) {
     if (paper._aiChecked || (!paper.doi && !paper.pmid)) return;
@@ -457,6 +479,13 @@
   const trKeyOf = p => p.pmid ? 'pmid:' + p.pmid : (p.doi ? 'doi:' + String(p.doi).toLowerCase() : '');
   function validTranslation(tr) {
     return !!(tr && typeof tr.abstract_zh === 'string' && tr.abstract_zh.trim());
+  }
+  function hydratePreGenerated(paper) {
+    const record = preGeneratedOf(paper);
+    if (!record) return;
+    if (validTranslation(record.translation)) LIVE_TR[trKeyOf(paper)] = record.translation;
+    const result = studyResultOf(record, 'study');
+    if (result && result.papers.some(p => p.key === studyKey(paper))) STUDY_RESULTS[studyKey(paper)] = { state: 'done', result, cached: true, canGenerate: false };
   }
   function translationCanGenerate(paper) {
     return typeof paper._trCanGenerate === 'boolean' ? paper._trCanGenerate : AI_AVAIL;
@@ -500,6 +529,7 @@
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
     if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">机器翻译，未经人工核对；以英文原文为准。</p></div>`;
+    if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
     if (paper._trState === 'loading') return '<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…</p></div>';
     if (!(paper.pmid || paper.doi)) return '<p class="ql-meta" role="status">缺少文献标识，暂无法翻译。</p>';
     if (paper._trLookupState === 'error') return `<div class="tr-box"><p class="ql-meta" role="status">译文读取失败。</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}">重新读取译文</button></div>`;
@@ -614,7 +644,7 @@
   function studyResultHtml(result, requested, cached, task) {
     const rows = studyRows(result, requested);
     const content = task === 'compare'
-      ? `<div class="study-table-scroll" role="region" aria-label="逐篇公开摘要证据对照表" tabindex="0"><table class="study-table"><caption>逐篇证据对照 · 可横向滚动</caption><thead><tr><th scope="col">核对项目</th>${rows.map(p => `<th scope="col"><span class="study-paper-number">${p.n}.</span> ${esc(p.title)}<small>${esc(p.journal || '')}</small>${p.status !== 'available' ? `<small class="study-missing">${esc(studyMissingReason(p.reason))}</small>` : ''}</th>`).join('')}</tr></thead><tbody>${STUDY_FIELDS.map(([field, label]) => `<tr><th scope="row">${label}</th>${rows.map(p => `<td>${studyFieldHtml(p, field)}</td>`).join('')}</tr>`).join('')}<tr><th scope="row">摘要来源</th>${rows.map(p => `<td>${studySourceHtml(p)}</td>`).join('')}</tr></tbody></table></div>`
+      ? `<div class="study-table-scroll" role="region" aria-label="逐篇公开摘要证据对照表" tabindex="0"><table class="study-table"><caption>逐篇证据对照 · 可横向滚动</caption><thead><tr><th scope="col">核对项目</th>${rows.map(p => `<th scope="col"><span class="study-paper-number">${p.n}.</span> ${esc(p.title)}<small>${esc(p.journal || '')}</small>${journalMetricBadge(p)}${journalMetricDetails(p)}${p.status !== 'available' ? `<small class="study-missing">${esc(studyMissingReason(p.reason))}</small>` : ''}</th>`).join('')}</tr></thead><tbody>${STUDY_FIELDS.map(([field, label]) => `<tr><th scope="row">${label}</th>${rows.map(p => `<td>${studyFieldHtml(p, field)}</td>`).join('')}</tr>`).join('')}<tr><th scope="row">摘要来源</th>${rows.map(p => `<td>${studySourceHtml(p)}</td>`).join('')}</tr></tbody></table></div>`
       : rows.map(p => `<div class="study-paper">${p.status !== 'available' ? `<p class="study-missing">${esc(studyMissingReason(p.reason))}</p>` : ''}<dl class="study-fields">${STUDY_FIELDS.map(([field, label]) => `<div><dt>${label}</dt><dd>${studyFieldHtml(p, field)}</dd></div>`).join('')}</dl><p class="study-meta">${studySourceHtml(p)}</p></div>`).join('');
     return studyMetaHtml(result, cached) + content + studyChecklistHtml(result) + `<button class="btn-sm" data-action="study-copy" data-task="${task}"${task === 'study' ? ` data-paper-id="${esc(requested[0].id)}"` : ''}>复制${task === 'compare' ? '证据对照' : '研究结构'}与核对清单</button>`;
   }
@@ -622,7 +652,8 @@
     const key = studyKey(paper); if (!key) return '';
     const rec = STUDY_RESULTS[key];
     let content = '<p class="study-meta" role="status">正在检查已有结果，不会调用模型…</p>';
-    if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
+    if (!rec && paper.weeklyPick) content = '<p class="study-meta" role="status">本篇研究结构尚未预生成。</p>';
+    else if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
     else if (rec?.state === 'loading') content = '<p class="study-meta" role="status">正在从公开来源读取摘要并提取研究结构，请稍候…</p>';
     else if (rec && rec.state !== 'checking') {
       content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">${rec.state === 'error' ? '重试生成研究结构' : '提取研究结构与核对清单'}</button><p class="study-meta">点击后由模型读取公开摘要；不会读取全文。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到已有结果。' : '研究结构服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? `<button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">重查已有结果</button>` : ''}`);
@@ -696,7 +727,7 @@
   function studyCopyText(result, requested) {
     let text = '公开摘要研究结构与证据对照（未经人工核对）\n不作质量排名，不合并效应量。\n';
     studyRows(result, requested).forEach(p => {
-      text += `\n${p.n}. ${p.title}\n${p.journal || ''}\n`;
+      text += `\n${p.n}. ${p.title}\n${p.journal || ''}\n期刊指标：${journalMetricText(p)}\n`;
       if (p.status !== 'available') text += studyMissingReason(p.reason) + '\n';
       else STUDY_FIELDS.forEach(([field, label]) => {
         const value = p[field];
@@ -864,7 +895,6 @@
     return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
   }
   const MODE_NOTES = {
-    curated: '带“摘要核对”标记的是已对照期刊摘要核对来源的导读，<b>非全文精读，未经医生终审</b>；带“自动精选”标记的是每天由规则从新文献中选出、附 AI 速览，<b>未经人工核验，请以原文为准</b>。',
     candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
     library: '文献档案：按期刊与时间检索既有题录。输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
   };
@@ -874,6 +904,10 @@
     if (!el) return;
     const intro = $('#homeIntro');
     if (intro) intro.hidden = state.mode !== 'curated';
+    const rail = $('#streamRail');
+    if (rail) rail.hidden = state.mode !== 'curated';
+    const laneBar = $('#laneBar'), laneSlot = $(state.mode === 'curated' ? '#curatedTopicsSlot' : '#streamLaneSlot');
+    if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
     const note = MODE_NOTES[state.mode];
     el.innerHTML = note || '';
     el.hidden = !note;
@@ -1091,10 +1125,10 @@
         let jHtml = '';
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
-          jHtml += `<button class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" data-filter-pub="${esc(pubName)}">
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(jName)}</span>
+          jHtml += `<div class="journal-filter-item"><button class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" data-filter-pub="${esc(pubName)}">
+            <span class="journal-filter-label"><span>${esc(jName)}</span>${journalMetricBadge(jName)}</span>
             <span class="filter-count">${jCount}</span>
-          </button>`;
+          </button>${journalMetricDetails(jName)}</div>`;
         }
 
         accHtml += `
@@ -1189,7 +1223,7 @@
       chips += `<span class="filter-badge-active">发表时间: ${state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天'} <button class="filter-badge-remove" data-clear="range">&times;</button></span>`;
     }
     if (state.journal) {
-      chips += `<span class="filter-badge-active">期刊: ${esc(state.journal)} <button class="filter-badge-remove" data-clear="journal">&times;</button></span>`;
+      chips += `<span class="filter-badge-active">期刊: ${esc(state.journal)} ${journalMetricBadge(state.journal)} <button class="filter-badge-remove" data-clear="journal">&times;</button></span>`;
     }
     if (state.studyDesign) {
       chips += `<span class="filter-badge-active">设计: ${esc(state.studyDesign)} <button class="filter-badge-remove" data-clear="design">&times;</button></span>`;
@@ -1224,6 +1258,7 @@
         <div class="card-top">
           <div class="meta-badges">
             <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
+            ${journalMetricBadge(p)}
             <span class="design-pill ${designClass}">${esc(p.studyDesign || '研究类型待核验')}</span>
             ${p.kind ? `<span class="tag-pill kind-pill">${esc(p.kind)}</span>` : ''}
             ${p.autoPick && !p.hasDraft ? `<span class="tag-pill auto-pick-pill" title="由规则从当日新文献中自动选出，AI 速览未经人工核验">自动精选</span>` : ''}
@@ -1280,6 +1315,7 @@
           ${!p.hasDraft && p.titleZh ? `<div class="compact-zh">${esc(p.titleZh)}</div>` : ''}
           <div class="compact-meta">
             <span class="journal-badge ${pubClass}" title="${esc(journalName)}">${esc(journalName)}</span>
+            ${journalMetricBadge(p)}
             <span class="design-pill ${designClass}">${esc(p.studyDesign || '研究类型待核验')}</span>
             ${p.kind ? `<span class="tag-pill kind-pill">${esc(p.kind)}</span>` : ''}
             <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
@@ -1388,7 +1424,7 @@
       streamEl.className = compact ? 'articles-compact-list' : 'articles-stream';
       streamEl.innerHTML = Array.from(groups.entries()).map(([k, arr]) => {
         const first = arr[0].date ? arr[0].date.slice(0, 10) : '';
-        const label = groupBy === 'journal' ? `${esc(k)} <small>共 ${totals.get(k)} 篇 · 最新 ${esc((filtered.find(p => (p.cleanJournal || p.journal || '未标注期刊') === k) || {}).date?.slice(0, 10) || '')}</small>` : `${esc(k)} <small>${totals.get(k)} 篇</small>`;
+        const label = groupBy === 'journal' ? `${esc(k)} ${journalMetricBadge(k)} <small>共 ${totals.get(k)} 篇 · 最新 ${esc((filtered.find(p => (p.cleanJournal || p.journal || '未标注期刊') === k) || {}).date?.slice(0, 10) || '')}</small>` : `${esc(k)} <small>${totals.get(k)} 篇</small>`;
         return `<h2 class="day-heading">${label}</h2>` + arr.map(compact ? renderCompactRow : renderArticleCard).join('');
       }).join('');
     } else if (state.mode === 'curated') {
@@ -1445,6 +1481,7 @@
 
   // Slide-over Reader Drawer Open/Close
   function openReaderDrawer(paper) {
+    hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
     const drawer = $('#readerDrawer');
     const backdrop = $('#drawerBackdrop');
@@ -1462,6 +1499,7 @@
     if (headerBadges) {
       headerBadges.innerHTML = `
         <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
+        ${journalMetricBadge(paper)}
         <span class="design-pill ${designClass}">${esc(paper.studyDesign || '研究类型待核验')}</span>
         <span class="date-badge">${esc(dateStr)}</span>
       `;
@@ -1562,6 +1600,7 @@
           ${(ql.abstractSource || ql.abstract_source) ? `<p class="text-muted" style="font-size:11.5px;">摘要来源：${esc(ql.abstractSource || ql.abstract_source)}${safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}) ? ` · <a href="${esc(safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}))}" target="_blank" rel="noopener">查看来源 ↗</a>` : ''}</p>` : ''}
         </div>` : '';
       const aiBox = (!ql && !draft) ? (() => {
+        if (paper.weeklyPick) return '<div class="drawer-section quicklook"><div class="drawer-section-title">AI 速览</div><p class="ql-meta" role="status">本篇 AI 速览尚未预生成。</p></div>';
         const s = paper._aiState;
         if (s === 'none' || s === 'error') return `<div class="drawer-section quicklook ai-ask">
           <div class="drawer-section-title">AI 解读</div>
@@ -1586,6 +1625,8 @@
         `).join('');
       } else if (paper.summary) {
         abstractHtml = `<p>${esc(paper.summary)}</p>`;
+      } else if (paper.weeklyPick) {
+        abstractHtml = '<p class="text-muted">公开摘要尚未准备好，请查看官方原文。</p>';
       } else if (paper._absState === 'loading') {
         abstractHtml = '<p class="text-muted">正在从 Europe PMC 获取公开摘要…</p>';
       } else if (paper._absState === 'error') {
@@ -1636,6 +1677,8 @@
         ${!draft && !ql?.title_zh && paper.titleZh ? `<div class="drawer-title-zh"><small class="content-label">机器翻译</small>${esc(paper.titleZh)}</div>` : ''}
         ${draft?.title_zh ? `<div class="drawer-title-zh">${esc(draft.title_zh)}</div>` : ''}
         <h2 class="drawer-title-en">${esc(paper.title)}</h2>
+
+        ${journalMetricDetails(paper)}
 
         ${authorBox}
 
@@ -1690,12 +1733,14 @@
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
 
-    if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
-    trCheck(paper);
-    studyCheck(paper);
+    if (!paper.weeklyPick) {
+      if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
+      trCheck(paper);
+      studyCheck(paper);
+    }
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).
-    const needsAbs = !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
+    const needsAbs = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
     if (needsAbs) {
       paper._absTries = 1;
       paper._absState = 'loading';
@@ -1802,7 +1847,7 @@
           <div class="huddle-item-content">
             <h4>${i + 1}. ${esc(p.draftData?.title_zh || p.title)}</h4>
             <div class="huddle-item-meta">
-              <span>${esc(p.cleanJournal || p.journal)}</span> · 
+              <span>${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ·
               <span>${esc(p.studyDesign || '研究类型待核验')}</span> · 
               <span>${esc(p.date ? p.date.slice(0, 10) : '')}</span>
             </div>
@@ -1853,6 +1898,7 @@
       md += `### ${i + 1}. ${title}\n\n`;
       if (p.draftData?.title_zh) md += `- **英文原题**：${p.title}\n`;
       md += `- **期刊来源**：${journal} (${date}) | ${design}\n`;
+      md += `- **期刊指标**：${journalMetricText(p)}\n`;
       if (p.doi) md += `- **DOI / 原文**：[${p.doi}](${url})\n`;
       md += `- **核心速览**：${p.draftData?.summary || p.summary || '待讨论'}\n`;
       if (p.draftData?.limitations) md += `- **证据边界**：${p.draftData.limitations}\n`;
@@ -1883,7 +1929,7 @@
       const title = p.draftData?.title_zh || p.title;
       const journal = p.cleanJournal || p.journal;
       const design = p.studyDesign || '研究';
-      text += `${i + 1}. [${journal} | ${design}] ${title}\n`;
+      text += `${i + 1}. [${journal} | ${design}] ${title}\n期刊指标：${journalMetricText(p)}\n`;
       if (p.draftData?.summary) text += `   要点：${p.draftData.summary.slice(0, 100)}...\n`;
       text += `   原文：${safeSourceUrl(p)}\n\n`;
     });
@@ -1946,6 +1992,7 @@
               ${esc(statusLabel)}
             </span>
           </div>
+          <div class="source-journal-metrics">${journalMetricBadge(s.name)}${journalMetricDetails(s.name)}</div>
           <dl class="source-counts"><div><dt>原始条目</dt><dd>${isOk ? esc(s.rawItems ?? s.items ?? '未统计') : '未获取'}</dd></div><div><dt>近 14 天</dt><dd>${esc(s.eligibleItems ?? '待统计')}</dd></div><div><dt>含摘要</dt><dd>${isOk ? esc(s.itemsWithAbstracts ?? '未统计') : '未获取'}</dd></div></dl>
           ${s.cachedItems ? `<p class="source-cache-note">保留 ${esc(s.cachedItems)} 条旧缓存 · 最近缓存 ${esc(contentDate(s.lastCachedFetchAt || s.lastSuccessfulAt))}</p>` : ''}
           ${sourceHealthDetails(s) ? `<p class="source-detail-note">${esc(sourceHealthDetails(s))}</p>` : ''}
@@ -1985,6 +2032,7 @@
     const appContainer = $('.app-container');
     if (appContainer) {
       appContainer.classList.toggle('full-width-layout', noSidebar);
+      appContainer.classList.toggle('curated-layout', newMode === 'curated');
       appContainer.classList.toggle('weekly-layout', newMode === 'weekly');
       appContainer.classList.toggle('sources-layout', newMode === 'sources');
     }
@@ -2024,6 +2072,7 @@
   }
 
   function renderWeeklyHeader() {
+    renderStaticJournalMetrics();
     const list = $('#issueList');
     renderWeeklyAuto();
     if (list) {
@@ -2071,18 +2120,20 @@
     const updatedAt = reports[0] || FEEDS.updatedAt;
     const validUpdate = typeof updatedAt === 'string' && updatedAt.includes('T') && weeklyPublicationDate({ date: updatedAt }, now);
     const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}（北京时间）${now - Date.parse(updatedAt) > 6 * 3600000 ? ' · 更新已超过 6 小时，时效待确认' : ''}` : '更新时间暂无有效记录，时效待确认';
-    const heading = `<h3 class="next-title">近 7 天文献榜 <small>发表日期：北京时间 ${boardWindow.start}–${boardWindow.end}，含今天；${timing}。按专科相关性、研究类型、期刊与媒体关注度规则排序，未经逐篇质量评审。</small></h3>`;
+    const groups = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']].map(([id, name]) => ({ id, name, entries: boardWindow.entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
+    const heading = `<h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${boardWindow.entries.length} 篇</span><small>发表日期：北京时间 ${boardWindow.start}–${boardWindow.end}，含今天；${timing}。分类与排序为自动规则，未经逐篇质量评审。</small></h3>`;
     if (!boardWindow.entries.length) { el.innerHTML = heading + '<p class="text-muted">近7天暂无入榜条目</p>'; return; }
-    el.innerHTML = heading + '<div class="weekly-card-grid">' +
-      boardWindow.entries.map(({ paper: p, date }, i) => {
+    const categoryNav = `<nav class="weekly-category-nav" aria-label="文献榜分类">${groups.map(g => `<a href="#weekly-group-${g.id}">${g.name} <span>${g.entries.length}</span></a>`).join('')}</nav>`;
+    el.innerHTML = heading + categoryNav + groups.map(g => `<section class="weekly-group" id="weekly-group-${g.id}" aria-labelledby="weekly-title-${g.id}"><h4 id="weekly-title-${g.id}" class="weekly-group-title">${g.name}<span>${g.entries.length} 篇</span></h4>` + (g.entries.length ? '<div class="weekly-card-grid">' +
+      g.entries.map(({ paper: p, date }) => {
         const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
         const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
-        return `<article class="next-item weekly-auto-item"><span class="weekly-rank">${i + 1}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc(date)}</span></div>` +
+        return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc(date)}</span></div>` +
           `<div class="weekly-auto-title"><a href="${esc(p.url || ('https://doi.org/' + p.doi))}" target="_blank" rel="noopener noreferrer">${esc(zh || p.title)}</a></div>` +
           (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
-          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
-          `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${hasAbstract(p) ? '阅读原摘要 · 中英对照' : '获取公开摘要'}</button><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button></div></div></article>`;
-      }).join('') + '</div>';
+          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '<p class="weekly-prep-note">AI 速览尚未预生成</p>') +
+          `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息'}</button><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button></div></div></article>`;
+      }).join('') + '</div>' : '<p class="weekly-group-empty">本类暂无入榜文献。</p>') + '</section>').join('');
   }
 
   function renderNextCandidates() {
@@ -2098,7 +2149,7 @@
       .slice(0, 5).map(x => x[1]);
     if (!list.length) { el.innerHTML = ''; return; }
     el.innerHTML = `<h3 class="next-title">下期候选 <small>公共题录中的近期心血管 / AI 论文，优先心血管与“心血管 × AI”，按研究类型与期刊自动排序，<b>尚未评估质量</b>；全文获取与共享权限需另行核验。想推荐哪篇就加入晨会单。</small></h3>` +
-      list.map(p => `<div class="next-item"><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div><div class="next-item-title">${esc(p.title)}</div><div class="next-item-actions"><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button><a class="btn-sm" target="_blank" rel="noopener" href="${esc(p.url || (p.doi ? 'https://doi.org/' + p.doi : '#'))}">出版商 / 题录 ↗</a></div></div>`).join('');
+      list.map(p => `<div class="next-item"><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div><div class="next-item-title">${esc(p.title)}</div><div class="next-item-actions"><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button><a class="btn-sm" target="_blank" rel="noopener" href="${esc(p.url || (p.doi ? 'https://doi.org/' + p.doi : '#'))}">出版商 / 题录 ↗</a></div></div>`).join('');
   }
 
   function renderBrowseBar() {
@@ -2106,7 +2157,7 @@
     bar.hidden=!usesLane(); if(bar.hidden)return;
     const journals=[...new Set(getCurrentDataset().map(p=>p.cleanJournal||p.journal).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
     const sel=$('#journalSelect');
-    sel.innerHTML='<option value="">所有期刊 / 信源</option>'+journals.map(j=>`<option value="${esc(j)}" ${state.journal===j?'selected':''}>${state.favoriteJournals.includes(j)?'★ ':''}${esc(j)}</option>`).join('');
+    sel.innerHTML='<option value="">所有期刊 / 信源</option>'+journals.map(j=>`<option value="${esc(j)}" ${state.journal===j?'selected':''}>${state.favoriteJournals.includes(j)?'★ ':''}${esc(j)} · ${esc(journalMetricText(j))}</option>`).join('');
     $('#readingSelect').value=state.reading;
     const star=$('#favoriteJournalBtn');star.disabled=!state.journal;star.textContent=state.favoriteJournals.includes(state.journal)?'★ 已关注':'☆ 关注期刊';star.setAttribute('aria-pressed',String(state.favoriteJournals.includes(state.journal)));
     const fav=$('#favoritesOnlyBtn');fav.textContent='我的期刊 '+state.favoriteJournals.length;fav.classList.toggle('active',state.favoritesOnly);fav.setAttribute('aria-pressed',String(state.favoritesOnly));
@@ -2187,6 +2238,17 @@
   });
 
   document.addEventListener('click', e => {
+    const weeklyClose = e.target.closest('[data-action="close-weekly"]');
+    if (weeklyClose) {
+      const details = weeklyClose.closest('.weekly-demo');
+      if (details) {
+        details.open = false;
+        const summary = details.querySelector(':scope > summary');
+        summary?.focus({ preventScroll: true });
+        summary?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
+      return;
+    }
     const mb = e.target.closest('[data-minor]');
     if (mb) { state.minor = !state.minor; state.page = 1; renderSidebarFilters(); renderStream(); return; }
     const b = e.target.closest('[data-range]');
