@@ -1,0 +1,23 @@
+{
+  "mainShaObserved": "12701e17e71eb3c2eb1f76cfc42766d352e5a5a8",
+  "mainWorkflows": [
+    {
+      "path": ".github/workflows/daily.yml",
+      "pushBranchesMainOnly": true,
+      "jobRequiresMain": true,
+      "pullRequestTrigger": false
+    },
+    {
+      "path": ".github/workflows/fulltext.yml",
+      "pushBranchesMainOnly": true,
+      "jobRequiresMain": true,
+      "pullRequestTrigger": false
+    }
+  ],
+  "localBranchWorkflows": [
+    ".github/workflows/daily.yml"
+  ],
+  "dedicatedBranch": "codex/week-precompute-20261007",
+  "pushAllowedWithoutProductionActions": true,
+  "checkedBeforePush": true
+}

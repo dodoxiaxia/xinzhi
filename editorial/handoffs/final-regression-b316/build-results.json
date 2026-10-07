@@ -1,0 +1,30 @@
+[
+  {
+    "command": [
+      "python",
+      "scripts/week_precompute.py"
+    ],
+    "exitCode": 0,
+    "log": "build-0.log",
+    "tail": "{\"window\": {\"start\": \"2026-10-01\", \"end\": \"2026-10-07\", \"timezone\": \"Asia/Shanghai\", \"days\": 7, \"target\": 24, \"eligible\": 94, \"selected\": 24, \"eligibleByCategory\": {\"心血管\": 69, \"综合医学\": 21, \"AI医疗\": 3, \"AI前沿\": 1}, \"excluded\": {\"duplicates\": 0, \"unverified_publication_date\": 288, \"no_complete_public_abstract\": 61, \"low_relevance\": 49, \"correction_comment_letter\": 19, \"outside_window\": 359}, \"shortfallReason\": null}, \"coverage\": {\"title\": 22, \"translate\": 1, \"study\": 0, \"quicklook\": 0}, \"run\": {\"mode\": \"offline\", \"paidRequests\": 0, \"reservedModelAttempts\": 0, \"blocker\": null}}\n"
+  },
+  {
+    "command": [
+      "python",
+      "scripts/build_public.py"
+    ],
+    "exitCode": 0,
+    "log": "build-1.log",
+    "tail": "papers with media coverage: 1\nauto picks: 25 weekly: 8\ncandidates filled from private store: 53\n{\"built\": 6, \"release\": \"v14.2\", \"counts\": {\"radar\": 870, \"library\": 1268, \"checked_guides\": 12, \"ai_quicklooks_unchecked\": 12, \"radar_archive_titles\": 12635, \"titles_zh\": 14994, \"weekly_board\": 24, \"weekly_precomputed\": {\"title\": 22, \"translate\": 1, \"study\": 0, \"quicklook\": 0}}}\n"
+  },
+  {
+    "command": [
+      "python",
+      "-c",
+      "import sys;sys.path.insert(0,'scripts');from package_release import public_payloads;print('release preflight:',sorted(public_payloads()))"
+    ],
+    "exitCode": 0,
+    "log": "build-2.log",
+    "tail": "release preflight: ['_headers', '_worker.js', 'icon.svg', 'index.html', 'public.js', 'style.css']\n"
+  }
+]
