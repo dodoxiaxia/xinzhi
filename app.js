@@ -2055,6 +2055,14 @@
       http_access_refusal: '同主机已拒绝或限流，本轮没有继续请求。'
     }[s.failureReason || s.blockedReason];
     const parts = reason ? [reason] : [];
+    if (!['ok', 'empty_feed', 'filtered_empty'].includes(s.status)) {
+      const last = typeof s.lastSuccessfulAt === 'string' ? Date.parse(s.lastSuccessfulAt) : NaN;
+      if (Number.isFinite(last) && last <= Date.now()) {
+        parts.push(s.lastSuccessfulAtBasis === 'strict_feed_parse'
+          ? `最近严格解析成功：${contentDate(s.lastSuccessfulAt)}（北京时间）。`
+          : `历史成功记录：${contentDate(s.lastSuccessfulAt)}（北京时间，未核验为严格订阅解析）。`);
+      } else parts.push('尚无可核实的最近订阅成功记录。');
+    }
     const x = s.excludedItems;
     if (x) {
       const reasons = [[x.undated, '日期缺失'], [x.olderThan14Days, '超出14天'], [x.future, '未来日期'], [x.unclassifiedOrInvalid, '主题或链接未入选']]

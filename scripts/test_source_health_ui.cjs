@@ -84,3 +84,12 @@ assert(!nodes.sourcesHealthGrid.innerHTML.includes('<article'));
 assert(nodes.sourcesHealthGrid.innerHTML.includes('没有匹配的信源'));
 assert(nodes.sourcesHealthGrid.innerHTML.includes('data-clear="search"'));
 console.log('40 source health UI assertions passed (real journal metrics loaded)');
+
+// Failed RSS observations retain independently qualified success provenance.
+assert(details({status:'not_feed',lastSuccessfulAt:'2026-10-07T07:00:00Z',lastSuccessfulAtBasis:'strict_feed_parse'}).includes('最近严格解析成功：10/7 15:00（北京时间）'));
+const historical=details({status:'not_feed',lastSuccessfulAt:'2026-09-29T09:29:56Z',lastSuccessfulAtBasis:'historical_health_report'});
+assert(historical.includes('历史成功记录：9/29 17:29'));assert(historical.includes('未核验为严格订阅解析'));
+for(const stamp of [undefined,'invalid','2026-10-08T07:00:00Z'])assert(details({status:'not_feed',lastSuccessfulAt:stamp}).includes('尚无可核实'));
+assert(!details({status:'empty_feed'}).includes('最近订阅成功记录'));
+assert(!details({status:'filtered_empty'}).includes('最近订阅成功记录'));
+console.log('8 RSS success-provenance assertions passed; valid empty/filtered feeds remain successful.');
