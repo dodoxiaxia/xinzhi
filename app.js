@@ -2319,9 +2319,29 @@
 
   // ==================== Event Listeners ====================
   const header = $('header.app-header');
-  if (header && typeof ResizeObserver === 'function') {
-    new ResizeObserver(() => document.documentElement.style.setProperty('--mobile-header-h', `${Math.ceil(header.getBoundingClientRect().height)}px`)).observe(header);
+  function measureStickyHeader() {
+    const height = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--sticky-header-h', `${height}px`);
+    document.documentElement.style.setProperty('--mobile-header-h', `${height}px`);
+    const toolbar = $('.stream-toolbar'), toc = $('.weekly-toc');
+    document.documentElement.style.setProperty('--sticky-toolbar-h', `${toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 0}px`);
+    document.documentElement.style.setProperty('--sticky-toc-h', `${toc ? Math.ceil(toc.getBoundingClientRect().height) : 0}px`);
   }
+  measureStickyHeader();
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(measureStickyHeader);
+    [header, $('.stream-toolbar'), $('.weekly-toc')].filter(Boolean).forEach(element => observer.observe(element));
+  }
+  window.addEventListener('resize', measureStickyHeader);
+  // Backward tabbing must reveal the focused control below sticky surfaces.
+  document.addEventListener('focusin', event => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || target.closest('header,.stream-toolbar,.weekly-toc,#readerDrawer,#huddleModalBackdrop,.modal-backdrop')) return;
+    const rect = target.getBoundingClientRect();
+    const surfaces = [header, $('.stream-toolbar'), $('.weekly-toc')].filter(element => element && element.getClientRects().length && element.getBoundingClientRect().top <= parseFloat(getComputedStyle(element).top) + 1);
+    const bottom = Math.max(0, ...surfaces.map(element => element.getBoundingClientRect().bottom));
+    if (rect.top < bottom + 8) window.scrollBy({ top: rect.top - bottom - 12, behavior: 'instant' });
+  });
 
   // Header Nav Tab Clicks
   $$('[data-mode]').forEach(btn => {

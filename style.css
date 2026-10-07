@@ -178,7 +178,7 @@ main.main-content { min-width: 0; }
 
 /* ============ Sidebar ============ */
 aside.sidebar {
-  position: sticky; top: calc(var(--header-h) + 24px); max-height: calc(100vh - var(--header-h) - 40px);
+  position: sticky; top: calc(var(--sticky-header-h, var(--header-h)) + 24px); max-height: calc(100vh - var(--header-h) - 40px);
   overflow-y: auto; padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--border-subtle) transparent;
 }
 .sheet-head { display: none; }
@@ -278,7 +278,7 @@ aside.sidebar {
 
 /* ============ Stream toolbar ============ */
 .stream-toolbar {
-  position: sticky; top: var(--header-h); z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  position: sticky; top: var(--sticky-header-h, var(--header-h)); z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 14px;
   padding: 10px 0; margin: 0 0 4px; background: color-mix(in srgb, var(--bg-primary) 92%, transparent);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
 }
@@ -540,7 +540,7 @@ aside.sidebar {
 .evidence-stat + .evidence-stat { padding-left: 16px; border-left: 1px solid var(--border); }
 .evidence-stat strong { font-family: var(--font-serif); font-size: 24px; line-height: 1.25; color: var(--accent); }
 .evidence-stat span { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
-.weekly-toc { position: sticky; top: var(--header-h); z-index: 10; display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0 0 20px; padding: 10px 0; background: color-mix(in srgb, var(--bg-primary) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.weekly-toc { position: sticky; top: var(--sticky-header-h, var(--header-h)); z-index: 10; display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0 0 20px; padding: 10px 0; background: color-mix(in srgb, var(--bg-primary) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
 .weekly-toc a { font-size: 13.5px; padding: 0; color: var(--text-secondary); border: 0; background: none; border-radius: 0; }
 .weekly-toc a:hover { color: var(--accent); background: none; text-decoration: none; }
 .weekly-full-report { max-width: 720px; }
@@ -803,7 +803,7 @@ html[data-style="b"] .day-heading:first-child { margin-top: 8px; }
 html[data-style="b"] .articles-compact-list .day-heading { padding: 6px 12px; }
 html[data-style="b"] .lane-chip { border-radius: 4px; } html[data-style="b"] .lane-chip.active { background: var(--accent); color: #fff; }
 html[data-style="b"] .tag-chip { border-radius: 4px; } html[data-style="b"] .tag-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-html[data-style="b"] .stream-toolbar { top: var(--header-h); }
+html[data-style="b"] .stream-toolbar { top: var(--sticky-header-h, var(--header-h)); }
 html[data-style="b"] .home-intro { border-top-color: var(--accent); }
 html[data-style="b"] .filter-item-btn.active { background: var(--accent-light); color: var(--accent); }
 html[data-style="b"] .view-toggle, html[data-style="b"] .view-toggle-btn { border-radius: 4px; }
@@ -1037,7 +1037,7 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
   html[data-style] #themeToggle, html[data-style] #styleBtn { min-width: 44px; min-height: 44px; }
   html[data-style] .header-actions .source-status-btn, html[data-style] .search-input { min-height: 44px; }
   html[data-style] .brand-logo { min-height: 44px; min-width: 44px; }
-  html[data-style] .stream-toolbar { top: var(--mobile-header-h, 168px); }
+  html[data-style] .stream-toolbar { top: var(--sticky-header-h, var(--header-h)); }
   .weekly-category-nav a { min-height: 44px; }
   .weekly-group { scroll-margin-top: calc(var(--mobile-header-h, 168px) + 12px); }
   .huddle-label { display: none; }
@@ -1136,3 +1136,9 @@ body.dialog-open .back-to-top { display: none; }
 
 .static-journal-metric { display: block; margin-top: 6px; }
 .static-journal-metric [data-journal-metrics] { display: inline; margin-left: 6px; }
+
+/* Header wraps at tablet widths too; anchor and keyboard offsets follow measured surfaces. */
+html { scroll-padding-top: calc(var(--sticky-header-h, var(--header-h)) + var(--sticky-toolbar-h, 0px) + 12px); }
+.weekly-group { scroll-margin-top: 0; }
+.weekly-full-report h3[id] { scroll-margin-top: var(--sticky-toc-h, 0px); }
+:where(.article-card,.compact-row,.weekly-auto-item,.library-row) :is(button,a,input,select) { scroll-margin-top: calc(var(--sticky-header-h, var(--header-h)) + var(--sticky-toolbar-h, 0px) + 12px); }
