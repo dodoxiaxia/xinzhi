@@ -1,6 +1,6 @@
 # 心知｜心血管与AI医疗文献学习站
 
-公开网站：https://learn.dryz.info/ 。源码版本 v13.6；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
+公开网站：https://learn.dryz.info/ 。源码版本 v14.1；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
 ## 阅读和内容范围
 
@@ -14,6 +14,8 @@
 
 用户已授权将定时更新的私有文献库 `dodoxiaxia/AI-` 用作后台来源，并选择输入共享口令后下载 PDF。文献库下载接口按公开文献 ID 精确匹配 DOI，无 DOI 时匹配唯一的相同题名，服务端校验口令与单篇文件后供下载；官网原文入口保留。云端须配置 GitHub 只读凭据并启用下载开关。见 [PDF下载接入](docs/PDF下载接入.md)；历史索引接入和本机缓存说明见 [GitHub接入说明](docs/GitHub文献库接入.md)。
 
+v14.1 新增按 DOI 获取全文与补录：准确 DOI 先跨栏目精确查重，输入全文口令后才查 GitHub 或开放全文来源。补充题录和已取得的 PDF 保存在现有受保护存储中，页面合并显示，日常构建不覆盖补录记录。无可用 PDF 时明确标为待补全文，不改变既有导读审核状态。见 [DOI 按需全文与补录](docs/DOI按需全文与补录.md)。
+
 ## 本地核验与公开构建
 
 当前源码与数据位于本目录。不要从早期导入脚本重建私人文献索引来覆盖既有公开范围，不要恢复旧前端模板。
@@ -22,6 +24,8 @@
 python3 -m unittest discover -s scripts -p 'test_*.py'
 node scripts/test_reading_logic.cjs
 node scripts/test_edge_worker.cjs
+node scripts/test_doi_library_worker.cjs
+node scripts/test_doi_library_ui.cjs
 node scripts/test_study_services.cjs
 node scripts/test_study_ui.cjs
 python3 scripts/build_public.py

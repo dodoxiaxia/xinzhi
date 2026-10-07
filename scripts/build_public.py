@@ -5,6 +5,7 @@ import datetime, hashlib, json, re, shutil
 from pathlib import Path
 from release_integrity import input_hashes, ordinary_file, provenance, replace_unchanged_input
 from editorial_review import article_key, publication_date
+from sync_public_library import load_adjudications
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
@@ -12,7 +13,7 @@ PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBa
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.0'
+RELEASE = 'v14.1'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -55,6 +56,18 @@ def pdf_library_registry(papers):
             raise ValueError('Conflicting PDF library identity')
         registry[paper_id]=identity
     return registry
+def doi_adjudication_registry():
+    """Project reviewed public identities; keep source evidence and private data out."""
+    path=ordinary_file(ROOT,'config/public_library_adjudications.json')
+    policy=json.loads(path.read_text(encoding='utf-8'))
+    source_commit=policy.get('sourceCommit') if isinstance(policy,dict) else None
+    if not isinstance(source_commit,str) or not re.fullmatch(r'[0-9a-f]{40}',source_commit):
+        raise ValueError('DOI adjudication source commit is invalid')
+    decisions,_=load_adjudications(path,source_commit)
+    return {'sourceCommit':source_commit,'decisions':{
+        doi:{key:row[key] for key in ('action','acceptedTitles','metadata')}
+        for doi,row in decisions.items()
+    }}
 def public_paper(p,editorial_drafts=None):
     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
     out['url']=safe_url(out.get('url',''))
@@ -239,6 +252,9 @@ def main():
     placeholder='const PDF_LIBRARY = {};'
     if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
     worker=worker.replace(placeholder,'const PDF_LIBRARY = '+json.dumps(pdf_library_registry(library['papers']),ensure_ascii=False,separators=(',',':'))+';')
+    doi_placeholder='const DOI_ADJUDICATIONS = {};'
+    if worker.count(doi_placeholder)!=1:raise ValueError('DOI adjudication placeholder missing')
+    worker=worker.replace(doi_placeholder,'const DOI_ADJUDICATIONS = '+json.dumps(doi_adjudication_registry(),ensure_ascii=False,separators=(',',':'))+';')
     files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}

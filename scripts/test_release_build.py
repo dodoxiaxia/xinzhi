@@ -14,17 +14,19 @@ from package_release import PUBLIC, public_payloads
 
 
 def synthetic_root(root):
-    for folder in ('scripts', 'data', 'editorial', 'edge', 'docs'):
+    for folder in ('scripts', 'data', 'editorial', 'edge', 'docs', 'config'):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
-                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py'):
+                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py', 'sync_public_library.py'):
         shutil.copyfile(Path(__file__).parent / name, root / 'scripts' / name)
     shutil.copyfile(Path(__file__).parents[1] / 'editorial/legacy_published_guides.json',
                     root / 'editorial/legacy_published_guides.json')
+    shutil.copyfile(Path(__file__).parents[1] / 'config/public_library_adjudications.json',
+                    root / 'config/public_library_adjudications.json')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
-        'icon.svg': '<svg></svg>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; // synthetic worker',
+        'icon.svg': '<svg></svg>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; const DOI_ADJUDICATIONS = {}; // synthetic worker',
     }.items():
         (root / name).write_text(text)
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -50,7 +52,7 @@ class ReleaseBuildTests(unittest.TestCase):
             self.assertIsNotNone(manifest['buildProvenance']['inputs']['data/curated-archive.json'])
             # Provenance stays private in docs, outside the six-file public bundle.
             self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
-            for name in ('app.js', 'data/candidates.json', 'editorial/source_checked_drafts.json'):
+            for name in ('app.js', 'data/candidates.json', 'editorial/source_checked_drafts.json', 'config/public_library_adjudications.json'):
                 with self.subTest(input=name):
                     file = root / name
                     before = file.read_bytes()

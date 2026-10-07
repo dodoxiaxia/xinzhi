@@ -26,7 +26,9 @@ class PipelineTests(unittest.TestCase):
   files={p.name for p in (ROOT/'public').iterdir()}
   self.assertEqual(files,{'index.html','style.css','public.js','icon.svg','_headers','_worker.js'})
   source=(ROOT/'public/index.html').read_text()
-  for forbidden in ('weeklyNotes','localStorage','当前路径','/Users/','data/library.js','reviewer','QA临时记录'):
+  # v14 reads saved theme/style before paint. Preferences are allowed; private
+  # library data and credentials still must not appear in the static page.
+  for forbidden in ('weeklyNotes','当前路径','/Users/','data/library.js','reviewer','QA临时记录','GITHUB_LIBRARY_TOKEN','PDF_DOWNLOAD_PASSPHRASE'):
    self.assertNotIn(forbidden,source)
   self.assertNotIn('library.json',str(files))
 if __name__=='__main__':unittest.main()
