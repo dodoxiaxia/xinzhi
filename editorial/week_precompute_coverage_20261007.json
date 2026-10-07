@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-10-07T09:41:28.698972+00:00",
+ "generatedAt": "2026-10-07T10:06:46.783143+00:00",
  "scope": "public-abstract",
  "caveat": "仅依据公开摘要，模型生成，未经人工核对；未阅读全文，不代表全文精读或医学审查。机械引句与数字校验不证明中文语义完全正确。",
  "window": {
@@ -79,7 +79,12 @@
      "modelVersion": "glm-5.3-flash",
      "generatedAt": "2026-10-07T09:08:13.124Z",
      "promptVersion": "week-public-abstract-v1:translate:caa19ed86c6600a00d6c13c4132383a9b99cf9bec22bc6b510a71bd0cdddcd02",
-     "origin": "runtime-cache"
+     "origin": "runtime-cache",
+     "validatorVersion": "translation-number-occurrences-v2",
+     "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+     "generationPromptVersion": "unobserved",
+     "generationVersionKnown": false,
+     "legacyLocalValidationVersion": "week-public-abstract-v1:translate:caa19ed86c6600a00d6c13c4132383a9b99cf9bec22bc6b510a71bd0cdddcd02"
     }
    },
    "precomputeStatus": "partial",
@@ -695,9 +700,11 @@
   "quicklook": 0
  },
  "run": {
-  "mode": "offline",
-  "paidRequests": 0,
+  "mode": "configured",
   "reservedModelAttempts": 0,
-  "blocker": null
+  "paidRequests": 0,
+  "generatedTasks": 0,
+  "stopped": true,
+  "blocker": "missing_existing_model_configuration"
  }
 }

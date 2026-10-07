@@ -13,6 +13,8 @@ process.stdin.on('end',()=>{
     if(task==='translate')return checkTr(value,{title,abstract});
     if(task==='title'){if(!value || typeof value.title_zh!=='string' || !hasCJK(value.title_zh) || value.title_zh.length>400)throw Error('invalid_title');translationNumbersOk(value.title_zh,title);return {title_zh:value.title_zh.trim()};}
     if(task==='study')return checkStudy({papers:[{id:'1',...value}]},[{n:1,title,abstract}]).get('1');
+    if(task==='study_evidence')return resolveStudyEvidence({papers:[{id:'1',...value}]},[{n:1,title,abstract}]).get('1');
+    if(task==='study_evidence_catalog')return studyEvidence({n:1,title,abstract});
     if(task==='quicklook') {
       const checked=validate(value,abstract);
       translationNumbersOk(checked.title_zh,title);

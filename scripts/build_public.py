@@ -128,7 +128,7 @@ def public_weekly_board(raw):
         present={'translate':bool(out['translation']),'quicklook':bool(out['quicklook']),'study':bool(out['study'])}
         out['missingTasks']=[t for t in TASKS if not present[t]]
         out['precomputeStatus']='ready' if all(present.values()) else 'partial' if any(present.values()) else 'pending'
-        out['generationMeta']={t:{k:v for k,v in m.items() if k in {'modelVersion','generatedAt','promptVersion','origin'}} for t,m in row.get('generationMeta',{}).items() if t in TASKS and isinstance(m,dict)}
+        out['generationMeta']={t:{k:v for k,v in m.items() if k in {'modelVersion','generatedAt','promptVersion','origin','validatorVersion','validatedWith','generationPromptVersion','generationVersionKnown','legacyLocalValidationVersion'}} for t,m in row.get('generationMeta',{}).items() if t in TASKS and isinstance(m,dict)}
         safe.append(out)
     window={k:v for k,v in raw.get('window',{}).items() if k in {'start','end','timezone','days','target','eligible','selected','eligibleByCategory','excluded','shortfallReason'}}
     categories=[{k:v for k,v in c.items() if k in {'key','count','eligible','reason'}} for c in raw.get('categories',[]) if isinstance(c,dict)]
@@ -316,6 +316,7 @@ def main():
             q=byid[row['id']]
             q.update(title=row['title'],doi=row.get('doi',''),pmid=row.get('pmid',''),weeklyPick=row['rank'],weeklyAt=weekly['generatedAt'],weeklyCategory={'心血管':'cardio','综合医学':'general','AI医疗':'aimed','AI前沿':'aitech'}[row['category']],date=row['date'],datePrecision='day',dateBasis='Europe PMC firstPublicationDate' if row['abstractSource']=='Europe PMC' else q.get('dateBasis'),summary=row['abstract'],abstractSections=[])
             if row['titleZh']:q['titleZh']=row['titleZh']
+            else:q.pop('titleZh',None)  # Do not revive a legacy title rejected by the board's source checks.
     radar=make_radar(c['items'],tz)
     ql=load('data/quicklooks.json').get('items',{}) if (ROOT/'data/quicklooks.json').exists() else {}
     ql={k:public_quicklook(val) for k,val in ql.items()}

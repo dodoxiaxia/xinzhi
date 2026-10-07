@@ -25,6 +25,7 @@ INPUTS = (
     'data/translations.json', 'data/media.json', 'data/picks.json',
     'data/radar-archive.json', 'data/archive-full.json', 'data/quicklooks.json',
     'data/weekly-board.json', 'scripts/week_precompute.py', 'scripts/validate_week_precompute.cjs', 'scripts/auto_picks.py',
+    'scripts/week_precompute_cache.py', 'scripts/week_precompute_budget.py',
 )
 
 

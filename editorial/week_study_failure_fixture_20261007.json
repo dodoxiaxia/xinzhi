@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "fixtureKind": "historical-failure-metadata-and-real-public-source-with-constructed-regressions",
+  "scope": "public-abstract",
+  "provenance": {
+    "sourceFile": "editorial/week_precompute_sources_20261007.json",
+    "receiptFile": "editorial/week_precompute_receipt_20261007.json",
+    "sourceStateSha": "652e67852f87ffdacab1582f8e5723cab32ab3b9",
+    "baseMainSha": "03e2c7c98b2ba80583962df2e6da29d110e67c99",
+    "sourceUrl": "https://europepmc.org/article/MED/42826016",
+    "sourceHash": "2195a1591c9db6cf0be4b6eea1d16869a073a28cbc017898b16fdc21d6231f8c"
+  },
+  "historicalObservation": {
+    "recordedAt": "2026-10-07T09:42:16.210268+00:00",
+    "blocker": "http_502:quote_not_in_abstract",
+    "httpStatus": 502,
+    "detail": "quote_not_in_abstract",
+    "rawModelOutputPreserved": false,
+    "rawModelOutput": null,
+    "failingField": null,
+    "requestSourceFingerprintPreserved": false,
+    "runtimeLastDiagnostic": {
+      "version": 1,
+      "at": "2026-10-07T09:33:52.739Z",
+      "requestId": "fd20af24-9656-4923-8690-b698cef1188c",
+      "phase": "provider_response",
+      "code": "response_received",
+      "httpStatus": 200,
+      "elapsedMs": 15553,
+      "timedOut": false
+    }
+  },
+  "limitations": [
+    "The historical receipt preserves the HTTP 502 outcome, not the failed model response, offending quote, field, or study request source fingerprint.",
+    "The public abstract is the saved same-paper source snapshot. Its exact identity with the unpreserved study request input is not proven.",
+    "All model-shaped regression payloads in the test are constructed counterexamples, not recovered production model output.",
+    "The historical quote_not_in_abstract code conflated length violations and literal source mismatch; the specific historical trigger remains undetermined."
+  ],
+  "article": {
+    "n": 1,
+    "key": "pmid:42826016",
+    "doi": "10.1001/jamanetworkopen.2026.37545",
+    "pmid": "42826016",
+    "title": "Age at Iatrogenic Menopause and Cardiovascular Morbidity and Mortality: A Systematic Review and Meta-Analysis.",
+    "journal": "JAMA network open",
+    "abstract": "Importance Iatrogenic menopause is common, but its long-term cardiovascular consequences remain uncertain, particularly by age at menopause. Objective To quantify associations between iatrogenic menopause and cardiovascular morbidity and mortality and evaluate whether age at iatrogenic menopause is a modifier. Data sources In this systematic review and meta-analysis, Scopus, MEDLINE, PubMed, Embase, Cochrane Central Register of Controlled Trials (CENTRAL), CINAHL, and PsycINFO were searched from January 2004 to March 2026. Study selection Observational studies and randomized clinical trials reporting cardiovascular morbidity or mortality among women with iatrogenic menopause before natural menopause age compared with naturally menopausal or age-matched controls were included. Data extraction and synthesis Data were extracted in duplicate by 2 independent reviewers, with consensus resolution. The study followed the Preferred Reporting Items for Systematic Reviews and Meta-Analyses reporting guideline. Main outcomes and measures Primary outcomes were cardiovascular morbidity, cardiovascular and all-cause mortality, and a composite of cardiovascular morbidity and cardiovascular mortality, quantified as random-effects pooled hazard ratios (PHRs) with 95% CIs, irrespective of heterogeneity and with age at menopause as a moderator. Meta-regression estimates were clustered by source cohort. Results Of 14 409 records, 36 studies were included with 2 617 942 women (mean [SD] age, 55.52 [12.41] years for the iatrogenic menopause cohort and 45.58 [16.02] years for comparators); median follow-up was 16.0 years (range, 4.8-36.0 years). Iatrogenic menopause vs comparators was associated with higher risk of all-cause mortality (PHR, 1.08; 95% CI, 1.01-1.16), cardiovascular events (PHR, 1.25; 95% CI, 1.12-1.39), coronary heart disease (PHR, 1.48; 95% CI, 1.07-2.03), and stroke (PHR, 1.22; 95% CI, 1.15-1.28). Mortality excesses were confined to iatrogenic menopause before age 45 years (cardiovascular mortality: PHR, 1.20 [95% CI, 1.04-1.37]; all-cause mortality: PHR, 1.15 [95% CI, 1.06-1.25]), with null estimates at or after age 45 years (cardiovascular mortality: PHR, 0.95 [95% CI, 0.81-1.11]; all-cause mortality: PHR, 0.99 [95% CI, 0.89-1.09]). In a post hoc meta-regression on the composite outcome, each increasing 5-year increment in age at iatrogenic menopause was associated with lower risk (HR, 0.89; 95% CI, 0.83-0.97) based on 37 estimates from 11 independent populations. Conclusions and relevance In this study, iatrogenic menopause was associated with higher cardiovascular morbidity, most consistently stroke, and with cardiovascular and all-cause mortality excesses before age 45 years at menopause. Older age at iatrogenic menopause was associated with progressively lower risk of cardiovascular morbidity and mortality, supporting a period of elevated risk before age 45 years rather than a single threshold age."
+  },
+  "constructedCases": {
+    "entireResultsSection": {
+      "quote": "Results Of 14 409 records, 36 studies were included with 2 617 942 women (mean [SD] age, 55.52 [12.41] years for the iatrogenic menopause cohort and 45.58 [16.02] years for comparators); median follow-up was 16.0 years (range, 4.8-36.0 years). Iatrogenic menopause vs comparators was associated with higher risk of all-cause mortality (PHR, 1.08; 95% CI, 1.01-1.16), cardiovascular events (PHR, 1.25; 95% CI, 1.12-1.39), coronary heart disease (PHR, 1.48; 95% CI, 1.07-2.03), and stroke (PHR, 1.22; 95% CI, 1.15-1.28). Mortality excesses were confined to iatrogenic menopause before age 45 years (cardiovascular mortality: PHR, 1.20 [95% CI, 1.04-1.37]; all-cause mortality: PHR, 1.15 [95% CI, 1.06-1.25]), with null estimates at or after age 45 years (cardiovascular mortality: PHR, 0.95 [95% CI, 0.81-1.11]; all-cause mortality: PHR, 0.99 [95% CI, 0.89-1.09]). In a post hoc meta-regression on the composite outcome, each increasing 5-year increment in age at iatrogenic menopause was associated with lower risk (HR, 0.89; 95% CI, 0.83-0.97) based on 37 estimates from 11 independent populations.",
+      "length": 1098,
+      "literalMatch": true,
+      "historicalValidatorError": "quote_not_in_abstract",
+      "expectedSpecificError": "invalid_study_quote_length"
+    },
+    "mortalitySentence": {
+      "quote": "Mortality excesses were confined to iatrogenic menopause before age 45 years (cardiovascular mortality: PHR, 1.20 [95% CI, 1.04-1.37]; all-cause mortality: PHR, 1.15 [95% CI, 1.06-1.25]), with null estimates at or after age 45 years (cardiovascular mortality: PHR, 0.95 [95% CI, 0.81-1.11]; all-cause mortality: PHR, 0.99 [95% CI, 0.89-1.09]).",
+      "length": 343,
+      "supportedText": "45岁前的心血管死亡风险比为1.20",
+      "unsupportedSameQuoteText": "纳入36项研究，45岁前的心血管死亡风险比为1.20",
+      "unicodeMutationFrom": "1.04-1.37",
+      "unicodeMutationTo": "1.04–1.37"
+    }
+  }
+}
