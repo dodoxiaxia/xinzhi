@@ -1,0 +1,36 @@
+{
+  "doi": "10.1001/jamanetworkopen.2026.37533",
+  "indexRows": 1336,
+  "indexColumns": 20,
+  "ledgerItems": 815,
+  "githubIndexSha256": "f7ad67b3f5a73ab1ceb16e2874da16b78fbf6b017f4020ad2058cec3c6715816",
+  "driveIndexSha256": "f7ad67b3f5a73ab1ceb16e2874da16b78fbf6b017f4020ad2058cec3c6715816",
+  "ledgerSha256": "b2a6d3dbf01656c9347646198001cf5a200590bb633d734f4a671174979f2d33",
+  "sourceCommit": "fed03f8d789429fc84c94cefcb4b636d75ec9ee3",
+  "pdfSha256": "7234844b6174ea61ee7200f7af83b948a4c7ab6ee42fc58ed47b3f31a1cb04c4",
+  "pdfBytes": 1202764,
+  "pages": 16,
+  "twoParsers": true,
+  "titleVerified": true,
+  "doiVerified": true,
+  "reuseEligible": true,
+  "historicalReceipts": {
+    "local": true,
+    "github": true,
+    "drive": true
+  },
+  "currentReadbacks": {
+    "github": true,
+    "drive": true,
+    "mac": false
+  },
+  "threeSideComplete": false,
+  "executionClaimed": false,
+  "newPublisherDownloads": 0,
+  "modelCalls": 0,
+  "libraryWrites": 0,
+  "baseCommit": "bcb7355b2c8a1e3dd3000880df8fcabf474aabd4",
+  "branch": "codex/doi-self-service-20261007",
+  "productionDeployed": false,
+  "websiteEndToEndVerified": false
+}

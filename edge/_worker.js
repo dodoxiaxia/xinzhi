@@ -281,7 +281,9 @@ function libraryDoi(value) {
   if (typeof value !== 'string' || value.length > 500) return '';
   let doi = value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '');
   try { doi = decodeURIComponent(doi); } catch { return ''; }
-  doi = doi.toLowerCase();
+  doi = doi.toLowerCase().replace(/[.,;:]+$/, '');
+  while (doi.endsWith(')') && doi.split(')').length > doi.split('(').length) doi = doi.slice(0, -1);
+  if (doi.includes('%') || doi.split('/').some(part => part === '.' || part === '..')) return '';
   return /^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(doi) && !/[<>?#@\\]/.test(doi) ? doi : '';
 }
 function libraryText(value, limit = 800) {
@@ -292,12 +294,12 @@ function libraryText(value, limit = 800) {
 function libraryPaper(record, expectedDoi = '') {
   const input = record && record.version === 1 && record.paper;
   if (!input || (expectedDoi && input.doi !== expectedDoi) || libraryDoi(input.doi) !== input.doi || !/^doi-[a-f0-9]{16}$/.test(input.id || '') || !libraryText(input.title) || !['available','pending','review'].includes(input.fulltextStatus)) return null;
-  if (input.fulltextStatus === 'available' && (!record.pdf || !/^library:pdf:[a-f0-9]{64}$/.test(record.pdf.key || '') || record.pdf.key !== 'library:pdf:' + record.pdf.sha256 || !Number.isInteger(record.pdf.size) || record.pdf.size < 8 || record.pdf.size > LIBRARY_MAX_PDF_BYTES)) return null;
+  if (input.fulltextStatus === 'available' && (!record.pdf || !/^library:pdf:[a-f0-9]{64}$/.test(record.pdf.key || '') || record.pdf.key !== 'library:pdf:' + record.pdf.sha256 || !Number.isInteger(record.pdf.size) || record.pdf.size < 50 * 1024 || record.pdf.size > LIBRARY_MAX_PDF_BYTES)) return null;
   const paper = { id:input.id, doi:input.doi, title:libraryText(input.title), journal:libraryText(input.journal || '', 300),
     url:'https://doi.org/' + encodeURIComponent(input.doi).replace(/%2F/gi, '/'), authors:(Array.isArray(input.authors) ? input.authors : []).map(name => libraryText(name, 200)).filter(Boolean).slice(0, 30),
     date:/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(input.date || '') ? input.date : '', datePrecision:['day','month','year'].includes(input.datePrecision) ? input.datePrecision : '',
     dateBasis:libraryText(input.dateBasis || '', 100), ingestedAt:typeof input.ingestedAt === 'string' && !isNaN(Date.parse(input.ingestedAt)) ? input.ingestedAt : '',
-    metadataStatus:'external_bibliography_checked', fulltextStatus:input.fulltextStatus, basis:'官方题录来源关联 · 未做医学全文审阅' };
+    metadataStatus:'external_bibliography_checked', fulltextStatus:input.fulltextStatus, acquisitionStatus:['manual_needed','cache_reused','blocked','review'].includes(input.acquisitionStatus) ? input.acquisitionStatus : input.fulltextStatus === 'available' ? 'cache_reused' : input.fulltextStatus === 'review' ? 'review' : 'manual_needed', basis:'官方题录来源关联 · 未做医学全文审阅' };
   return paper;
 }
 async function libraryGet(kv, key) {
@@ -328,14 +330,15 @@ async function libraryAuthorize(request, env, url) {
   await pdfVerifyPassphrase(await pdfReadPassphrase(request), env);
 }
 function libraryForm(doi, route, invalid = false) {
-  return pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : route === '/api/acquire' ? '输入全文口令，按 DOI 获取文献并加入文献库。公开来源可能无法提供 PDF。' : '输入全文口令即可下载已获取的 PDF。') + '</p><form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (route === '/api/acquire' ? '获取并加入文献库' : '下载 PDF') + '</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载');
+  return pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : route === '/api/acquire' ? '输入全文口令核对题录并优先复用已有 PDF。新获取等待 Hamburg 授权执行和领取账本接通；网页缓存不代表三端归档。' : '输入全文口令即可下载已获取的 PDF。') + '</p><form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (route === '/api/acquire' ? '获取并加入文献库' : '下载 PDF') + '</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载');
 }
 function libraryResult(request, paper, error = '', cached = false) {
   const status = paper.fulltextStatus;
   const downloadUrl = status === 'available' ? '/api/fulltext?doi=' + encodeURIComponent(paper.doi) : '';
-  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true, paper, status, cached, ...(error ? { error } : {}), ...(downloadUrl ? { downloadUrl } : {}) }, status === 'available' ? 200 : 202);
-  const message = status === 'available' ? '已获取并加入文献库，可下载 PDF。题录与文件同步可能稍有延迟，下载暂未就绪时请稍后重试。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。' : '题录已加入文献库，暂未取得可下载 PDF。可稍后重试。';
-  return pdfHtml('<p>' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? '<p><a href="' + pdfEscape(downloadUrl) + '">下载 PDF</a></p>' : '') + '<p>文件来源与完整性核验不代表医学全文审阅。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202);
+  const archive = { state:'not_confirmed', complete:false, executionClaimed:false, ledgerChecked:false, sides:{mac:'pending',github:'pending',drive:'pending'}, scope:'website_cache' };
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true, paper, status, cached, archive, ...(error ? { error } : {}), ...(downloadUrl ? { downloadUrl } : {}) }, status === 'available' ? 200 : 202);
+  const message = paper.acquisitionStatus === 'blocked' ? '来源请求已暂停，题录已保留；等待维护者核对授权或限流问题。未领取新的下载任务。' : status === 'available' ? 'PDF 已缓存，可下载；文件完整性与来源对应已核验。正式文献库的 Mac、GitHub、Drive 三端归档仍待回读确认。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。' : '题录已保留，尚未领取新的下载任务。等待 Hamburg 授权执行、唯一账本与三端同步接通；重复提交只查看现有状态。';
+  return pdfHtml('<p>' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? '<p><a href="' + pdfEscape(downloadUrl) + '">下载 PDF</a></p>' : '') + '<p>文件来源与完整性核验不代表医学全文审阅。网页缓存与正式三端归档分别确认。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202);
 }
 function libraryError(request, error, doi = '', route = '') {
   if (error instanceof PdfFailure) {
@@ -347,7 +350,7 @@ function libraryError(request, error, doi = '', route = '') {
   const messages = { library_bad_doi:'请输入有效 DOI。', library_not_configured:'文献补录服务尚未完成配置。', library_disabled:'全文获取暂未启用。', library_storage:'文献存储暂时不可用，未确认入库成功。',
     library_not_found:'尚无可下载的全文，请先获取并加入文献库。', library_busy:'这篇文献正在处理，请稍后查看。', library_retry_later:'这篇文献刚尝试过获取，请稍后重试。', library_limit:'今日按需获取次数已达到限制，请稍后再试。',
     library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
-    library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
+    library_paused:'来源请求已暂停，请维护者确认授权或限流问题已解决后恢复。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
   return pdfHtml('<p>' + pdfEscape(messages[code] || messages.library_server) + '</p>' + pdfOfficialLink(doi), status);
 }
 function librarySafeUrl(value, pdf = false) {
@@ -414,7 +417,7 @@ async function libraryMetadata(doi, context) {
     url:'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/'), ...libraryPublication(message), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
 }
 function libraryValidatePdf(bytes) {
-  if (!(bytes instanceof Uint8Array) || bytes.length < 8 || bytes.length > LIBRARY_MAX_PDF_BYTES || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-' || !/%%EOF\s*$/.test(new TextDecoder().decode(bytes.slice(-1024)))) libraryFail('library_identity', 409);
+  if (!(bytes instanceof Uint8Array) || bytes.length < 50 * 1024 || bytes.length > LIBRARY_MAX_PDF_BYTES || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-' || !/%%EOF\s*$/.test(new TextDecoder().decode(bytes.slice(-1024)))) libraryFail('library_identity', 409);
 }
 async function libraryGithub(paper, env, context) {
   const decision = DOI_ADJUDICATIONS.decisions && DOI_ADJUDICATIONS.decisions[paper.doi];
@@ -435,7 +438,7 @@ async function libraryGithub(paper, env, context) {
   const path = pdfSafePath(row['当前路径']), checksum = row.SHA256.trim().toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(checksum)) libraryFail('library_identity', 409);
   const endpoint = pdfContentsUrl(path, commit), metadata = pdfJson(await pdfRead(endpoint, 2 * 1024 * 1024, { token, signal:context.signal, file:true, accept:'application/vnd.github+json' }));
-  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 8 || metadata.size > LIBRARY_MAX_PDF_BYTES) libraryFail('library_identity', 409);
+  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 50 * 1024 || metadata.size > LIBRARY_MAX_PDF_BYTES) libraryFail('library_identity', 409);
   const bytes = await pdfRead(endpoint, LIBRARY_MAX_PDF_BYTES, { token, signal:context.signal, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
   libraryValidatePdf(bytes);
   if (bytes.length !== metadata.size || await pdfDigest('SHA-256', bytes) !== checksum) libraryFail('library_identity', 409);
@@ -443,37 +446,11 @@ async function libraryGithub(paper, env, context) {
   if (await pdfDigest('SHA-1', blob) !== metadata.sha.toLowerCase()) libraryFail('library_identity', 409);
   return { bytes, source:'github', commit };
 }
-async function libraryOa(paper, context) {
-  let review = false;
-  const candidates = [], seen = new Set();
-  const add = value => { if (typeof value === 'string' && !seen.has(value) && seen.size < 3) { seen.add(value); candidates.push(value); } };
-  try {
-    const data = await libraryRead('https://api.unpaywall.org/v2/' + encodeURIComponent(paper.doi) + '?email=shijunxia1988%40gmail.com', context);
-    if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
-    else if (data.is_oa === true) { add(data.best_oa_location && data.best_oa_location.url_for_pdf); for (const location of (Array.isArray(data.oa_locations) ? data.oa_locations : []).slice(0, 10)) add(location.url_for_pdf); }
-  } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
-  for (const provider of [0, 1]) {
-    if (provider) {
-      try {
-        const data = await libraryRead('https://api.openalex.org/works/doi:' + encodeURIComponent(paper.doi) + '?select=doi,title,open_access,best_oa_location,locations&mailto=shijunxia1988%40gmail.com', context);
-        if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
-        else if (data.open_access && data.open_access.is_oa === true) {
-          const locations = [data.best_oa_location, ...(Array.isArray(data.locations) ? data.locations : []).slice(0, 10)];
-          for (const location of locations) if (location && location.is_oa === true) add(location.pdf_url);
-        }
-      } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
-    }
-    for (const candidate of candidates.splice(0)) {
-      try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); return { bytes, source:'oa' }; }
-      catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
-    }
-  }
-  return { review };
-}
 async function librarySoftGate(kv, request, doi) {
   const now = Date.now(), lockKey = 'library:lock:' + doi, lock = await libraryGet(kv, lockKey);
   if (libraryLocalActive.has(doi) || (lock && lock.until > now)) libraryFail('library_busy', 409);
   const attempt = await libraryGet(kv, 'library:attempt:' + doi);
+  if (attempt && attempt.paused === true) libraryFail('library_paused', 423);
   if (attempt && attempt.retryAfter > now) libraryFail('library_retry_later', 429);
   const day = new Date(now).toISOString().slice(0, 10), ip = request.headers.get('cf-connecting-ip') || 'unknown';
   for (const [key, limit] of [['library:cap:' + day, 30], ['library:ip:' + day + ':' + (await pdfDigest('SHA-256', new TextEncoder().encode(ip))).slice(0, 16), 20]]) {
@@ -549,27 +526,30 @@ async function handleAcquire(request, env) {
     if (request.method !== 'POST') libraryFail('library_method', 405);
     await libraryAuthorize(request, env, parsed.url); libraryConfig(env);
     const cachedRecord = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), cached = libraryPaper(cachedRecord, doi);
-    if (cached && cached.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, cachedRecord); return libraryResult(request, cached, '', true); }
+    if (cached) { if (cached.fulltextStatus === 'available') await libraryStoredPdf(env.QL_KV, cachedRecord); return libraryResult(request, cached, '', true); }
     if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT !== undefined && (typeof env.PDF_GITHUB_COMMIT !== 'string' || !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT)))) libraryFail('library_not_configured', 503);
     release = await librarySoftGate(env.QL_KV, request, doi);
     timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
     const context = { signal:controller.signal };
     let paper = await libraryMetadata(doi, context);
-    let fetched = null, review = false;
+    let fetched = null, review = DOI_ADJUDICATIONS.decisions?.[doi]?.action === 'hold', sourceBlocked = false;
     try { fetched = await libraryGithub(paper, env, context); }
-    catch (error) { if (controller.signal.aborted) libraryFail('library_timeout', 504); if (error.code === 'library_not_configured') throw error; review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code); }
-    if (!fetched) {
-      const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else review = review || oa.review;
-    }
+    catch (error) { if (controller.signal.aborted) libraryFail('library_timeout', 504); if (error.code === 'library_not_configured') throw error; review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code); sourceBlocked = !review; }
+    // Explicit DOI requests prioritize authorized Hamburg. No new publisher
+    // acquisition until the existing owner/815 ledger and supported bridge are joined.
+    // This endpoint is a cache/reuse operation, never a second download consumer.
     if (controller.signal.aborted) libraryFail('library_timeout', 504);
-    paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : 'pending' };
+    paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : 'pending', acquisitionStatus:fetched ? 'cache_reused' : review ? 'review' : sourceBlocked ? 'blocked' : 'manual_needed' };
     const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : 'library_metadata_unavailable');
     return libraryResult(request, saved, saved.fulltextStatus === 'available' ? '' : review ? 'library_identity' : 'library_metadata_unavailable');
   } catch (error) {
     if (release && doi && env.QL_KV) {
       try {
         const observed = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
-        if (!observed || observed.fulltextStatus !== 'available') await libraryPut(env.QL_KV, 'library:attempt:' + doi, JSON.stringify({ status:error.code === 'library_identity' ? 'review' : 'pending', retryAfter:Date.now() + LIBRARY_RETRY_SECONDS * 1000 }), { expirationTtl:600 });
+        if (!observed || observed.fulltextStatus !== 'available') {
+          const paused = ['library_upstream','pdf_upstream','library_timeout','pdf_timeout','library_identity'].includes(error.code);
+          await libraryPut(env.QL_KV, 'library:attempt:' + doi, JSON.stringify({ status:error.code === 'library_identity' ? 'review' : 'pending', paused, retryAfter:Date.now() + LIBRARY_RETRY_SECONDS * 1000 }), paused ? undefined : { expirationTtl:600 });
+        }
       } catch { /* Preserve the original fixed error if storage/cooldown is unavailable. */ }
     }
     return libraryError(request, error, doi, '/api/acquire');
