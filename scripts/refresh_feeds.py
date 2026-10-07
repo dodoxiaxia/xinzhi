@@ -18,6 +18,7 @@ from urllib.parse import unquote, unquote_plus, urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
 from build_data import clean, classify
+from abstract_quality import abstract_fields, normalize_paper
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BYTES = 3_000_000
@@ -82,6 +83,16 @@ def text(element, key):
     for child in element:
         if local(child.tag) == key.lower():
             return ''.join(child.itertext()).strip()
+    return ''
+
+
+def abstract_text(element):
+    for key in ('description', 'summary', 'abstract'):
+        for child in element:
+            if local(child.tag) == key:
+                value = (child.text or '') + ''.join(ET.tostring(node, encoding='unicode') for node in child)
+                if value.strip():
+                    return value
     return ''
 
 
@@ -378,19 +389,22 @@ def parse_feed(raw, source, *, checked_at=None):
         except ValueError:
             valid_link = False
         links += bool(valid_link)
-        description = clean(text(entry, 'description') or text(entry, 'summary') or text(entry, 'abstract'))
-        abstracts += bool(description)
+        abstract = normalize_paper({'title': title, 'doi': extract_doi(link, entry),
+                                    **abstract_fields(abstract_text(entry))})
+        description = abstract['summary']
+        abstracts += bool(description) and abstract.get('abstractStatus') != 'unverified'
         if not title or not valid_link:
             continue
         category = classify(title, source['name'])
         if category == '待分类':
             continue
-        output.append({'id': 'rss-' + hashlib.sha256(link.encode()).hexdigest()[:16], 'title': title,
+        output.append(normalize_paper({'id': 'rss-' + hashlib.sha256(link.encode()).hexdigest()[:16], 'title': title,
                        'url': safe_url(link), 'doi': extract_doi(link, entry), 'journal': source['name'],
                        'date': dateval(text(entry, 'pubDate') or text(entry, 'date') or text(entry, 'published') or text(entry, 'updated')),
                        'category': category, 'basis': 'RSS 元数据 · 待编辑核验', 'summary': description[:12000],
                        'summary_truncated': len(description) > 12000, 'sourceId': source['id'],
-                       'sourceUrl': safe_url(source.get('url', '')), 'fetchedAt': checked_at})
+                       'sourceUrl': safe_url(source.get('url', '')), 'fetchedAt': checked_at,
+                       **{k:v for k,v in abstract.items() if k not in {'summary','doi','title'} and (k!='abstractSections' or len(description)<=12000)}}))
     return {'items': output, 'rawItems': len(entries), 'classifiedItems': len(output),
             'itemsWithLinks': links, 'itemsWithAbstracts': abstracts,
             'feedType': kind, 'parser': parser, 'parserWarnings': warnings, **metadata}

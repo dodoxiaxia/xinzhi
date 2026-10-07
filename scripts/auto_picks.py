@@ -4,6 +4,7 @@
 每天最多 DAILY_N 篇;周榜取近 7 天总分最高的 WEEKLY_N 篇。结果只存条目 id,展示端按 id 取内容。"""
 import datetime, json
 from pathlib import Path
+from abstract_quality import normalize_paper, readable_abstract
 ROOT = Path(__file__).resolve().parents[1]
 DAILY_N, WEEKLY_N, DAYS = 6, 24, 7
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
@@ -15,6 +16,9 @@ AI_WORDS = ('artificial intelligence', 'deep learning', 'machine learning', 'lar
 
 
 def has_content(p):
+    p = normalize_paper(p)
+    if not readable_abstract(p):
+        return False
     t = (p.get('summary') or '').strip()
     return (len(t) > 80 and t.lower() != 'no abstract') or bool(p.get('abstractSections'))
 

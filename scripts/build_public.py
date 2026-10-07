@@ -72,7 +72,16 @@ def doi_adjudication_registry():
         for doi,row in decisions.items()
     }}
 def public_paper(p,editorial_drafts=None):
+    from abstract_quality import normalize_paper
+    p=normalize_paper(p)
     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
+    if p.get('abstractStatus') in {'structured','available','missing','unverified','non_abstract_metadata'}:out['abstractStatus']=p['abstractStatus']
+    if p.get('abstractSource') in {'Crossref','PubMed','RSS','Europe PMC'}:
+        out['abstractSource']=p['abstractSource']
+        out['abstractSourceUrl']=safe_url(p.get('abstractSourceUrl'))
+    if p.get('nonAbstractMetadata'):
+        out['nonAbstractMetadata']=[{'kind':row['kind'],'text':row['text'][:12000]} for row in p['nonAbstractMetadata']
+                                   if isinstance(row,dict) and row.get('kind') in {'funding','funding-group','award-group','contrib-group','permissions'} and isinstance(row.get('text'),str)]
     out['url']=safe_url(out.get('url',''))
     out['abstractSections']=[{k:v for k,v in s.items() if k in {'label','text'}} for s in out.get('abstractSections',[]) if isinstance(s,dict)]
     out['quantitativeMetrics']={k:v for k,v in out.get('quantitativeMetrics',{}).items() if k in {'sampleSize','followUp','trialId','effectSizes'}}
@@ -291,18 +300,20 @@ def main():
         print('papers with media coverage:',nm)
     pk=ROOT/'data/picks.json'
     if pk.exists():
+        from abstract_quality import readable_abstract
         picks=json.loads(pk.read_text());byid={q.get('id'):q for q in candidates['items']}
         for d,ids in picks.get('daily',{}).items():
             for i,x in enumerate(ids):
-                if x in byid:byid[x]['autoPick']={'d':d,'r':i+1}
+                if x in byid and readable_abstract(byid[x]):byid[x]['autoPick']={'d':d,'r':i+1}
         for i,x in enumerate(picks.get('weekly',[])):
-            if x in byid:byid[x]['weeklyPick']=i+1;byid[x]['weeklyAt']=picks.get('updatedAt');byid[x]['weeklyCategory']={'心血管':'cardio','综合医学':'general','AI医疗':'aimed','AI前沿':'aitech'}.get(picks.get('weeklyCategories',{}).get(x))
+            if x in byid and readable_abstract(byid[x]):byid[x]['weeklyPick']=i+1;byid[x]['weeklyAt']=picks.get('updatedAt');byid[x]['weeklyCategory']={'心血管':'cardio','综合医学':'general','AI医疗':'aimed','AI前沿':'aitech'}.get(picks.get('weeklyCategories',{}).get(x))
         print('auto picks:',sum(1 for q in candidates['items'] if q.get('autoPick')),'weekly:',len(picks.get('weekly',[])))
     fullp=ROOT/'data/archive-full.json'
     if fullp.exists():
         full=json.loads(fullp.read_text());bydoi={str(v.get('d','')).lower():v for v in full.values() if v.get('d')}
         filled=0
         for q in candidates['items']:
+            if q.get('abstractStatus') in {'non_abstract_metadata','unverified'}:continue
             if q.get('summary') or q.get('abstractSections'):continue
             v=full.get(str(q.get('pmid') or ''))or bydoi.get(str(q.get('doi') or '').lower())
             if v and v.get('a'):
