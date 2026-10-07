@@ -11,6 +11,7 @@ from pathlib import Path
 PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
+    'scripts/publication_dates.py',
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'style.css', 'icon.svg', 'edge/_worker.js',

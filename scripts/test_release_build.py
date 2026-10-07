@@ -20,7 +20,8 @@ def synthetic_root(root):
     for folder in ('scripts', 'data', 'editorial', 'edge', 'docs', 'config'):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
-                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py'):
+                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
+                 'publication_dates.py'):
         shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
     for module in (snapshot_apply, library_sync):
         source = Path(module.__file__)

@@ -101,6 +101,7 @@ jobs:
           node scripts/test_study_ui.cjs
           node scripts/test_source_health_ui.cjs
           node scripts/test_weekly_window.cjs
+          node scripts/test_publication_dates_ui.cjs
           python3 -m unittest discover -s scripts -p 'test_public_build.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
           python3 -m unittest discover -s scripts -p 'test_release_build.py'
@@ -110,6 +111,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_pubmed_request.py'
           python3 -m unittest discover -s scripts -p 'test_sync_public_library.py'
           python3 -m unittest discover -s scripts -p 'test_apply_public_library.py'
+          python3 -m unittest discover -s scripts -p 'test_publication_dates.py'
           PYTHONPATH=scripts python3 -c 'from package_release import public_payloads; public_payloads()'
 
       - name: 发布到 Cloudflare Pages
