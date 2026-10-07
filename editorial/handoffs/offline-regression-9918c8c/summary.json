@@ -1,0 +1,70 @@
+{
+  "recordedAt": "2026-10-07T11:15:38.862515+00:00",
+  "candidateSha": "9918c8c67ade43e49a88aa6fe8bc9bc39cc23eaf",
+  "stateSha": "5dd46b9a0e8aaa3aee94f1c0bc6c88679baaae96",
+  "completeReleaseRegressionPassed": false,
+  "fullBuildPassed": true,
+  "releasePreflightPassed": true,
+  "allThreeZipReadbacksPassed": true,
+  "pythonUnittestsPassed": 457,
+  "browserAssertions": {
+    "layout": 520,
+    "weeklyFixture": 67,
+    "journalRealWeekly": 116,
+    "doiBrowser": "passed"
+  },
+  "failure": {
+    "command": "node scripts/test_source_health_ui.cjs",
+    "exitCode": 1,
+    "error": "ReferenceError: journalMetricBadge is not defined",
+    "log": "test-10.log",
+    "scope": "isolated VM renderer test context lacks new dependency; fixed candidate unchanged"
+  },
+  "ledger": {
+    "originalLocalLedgerRepaired": true,
+    "reservedAttempts": 4,
+    "reservedOutputTokens": 3800,
+    "pausePreserved": true,
+    "automaticHelperAcceptedActualOldLedger": false,
+    "helperRejection": "ledger_receipt_does_not_cover_local_history",
+    "audit": "ledger-audit.json",
+    "diff": "ledger-reconciliation.diff",
+    "pauseGuard": "paid_work_paused"
+  },
+  "fullCache": {
+    "bytes": 31339518,
+    "entries": 14480,
+    "gitBlob": "90ca0b2292319774a5bbf7c5753e726d3a67d0d9",
+    "sha256": "ec8b03e740668080dc93c46c70f1033bf36c377485bd6ae7edc47d9cf8f8efdc",
+    "matchesExistingHistoricalCache": true,
+    "guardSkipped": false
+  },
+  "counts": {
+    "radar": 870,
+    "library": 1268,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 12,
+    "radar_archive_titles": 12635,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 22,
+      "translate": 1,
+      "study": 0,
+      "quicklook": 0
+    }
+  },
+  "coverage": {
+    "title": 22,
+    "translate": 1,
+    "study": 0,
+    "quicklook": 0
+  },
+  "modelCalls": 0,
+  "newReservations": 0,
+  "runtime403Requests": 0,
+  "headersFromPrior403Retained": false,
+  "mainStateWrites": false,
+  "deploymentPerformed": false,
+  "candidateCodeChanged": false
+}

@@ -1,0 +1,17 @@
+evalmachine.<anonymous>:66
+              ${esc(statusLabel)}
+                ^
+
+ReferenceError: journalMetricBadge is not defined
+    at evalmachine.<anonymous>:66:17
+    at Array.map (<anonymous>)
+    at Object.renderSourcesHealth (evalmachine.<anonymous>:57:97)
+    at Object.<anonymous> (/workspace/week-integration-regression-9918c8c/scripts/test_source_health_ui.cjs:38:3)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+
+Node.js v24.19.0

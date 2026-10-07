@@ -1,0 +1,96 @@
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+fast unchanged
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+FAIL scripts/build_public.py
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+fast unchanged
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/fetch_archive.py --incremental
+OK   scripts/week_precompute.py --run --provider configured --attempt-limit 8
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+full unchanged
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/fetch_archive.py --incremental
+OK   scripts/archive_details.py --fill
+OK   scripts/translate_titles.py --run --limit 60
+FAIL scripts/week_precompute.py --run --provider configured --attempt-limit 8
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+full unchanged
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+fast changed
+FAIL scripts/apply_public_library.py
+FAIL scripts/apply_public_library.py
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+fast unchanged
+.................................build failed
+...model failed
+.SANITY FAILED: ["manifest unreadable: [Errno 2] No such file or directory: '/tmp/tmpl8o3vwna/docs/public-manifest.json'"]
+..pipeline time budget exhausted
+.source failed
+.SANITY FAILED: ["public files differ: ['private.json']"]
+................................................................................................................................................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 457 tests in 15.222s
+
+OK

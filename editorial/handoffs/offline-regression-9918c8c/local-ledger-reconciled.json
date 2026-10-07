@@ -1,0 +1,63 @@
+{
+ "schemaVersion": 1,
+ "days": {
+  "2026-10-07": {
+   "reservedAttempts": 4,
+   "requests": [
+    {
+     "paperID": "doi:10.1001/jamanetworkopen.2026.37545",
+     "sourceHash": "2195a1591c9db6cf0be4b6eea1d16869a073a28cbc017898b16fdc21d6231f8c",
+     "task": "translate",
+     "status": "failed_or_uncertain",
+     "at": "2026-10-07T09:29:06.645375+00:00",
+     "reservedAttempts": 2,
+     "reservedOutputTokens": 0
+    },
+    {
+     "paperID": "doi:10.1001/jamanetworkopen.2026.37545",
+     "sourceHash": "2195a1591c9db6cf0be4b6eea1d16869a073a28cbc017898b16fdc21d6231f8c",
+     "task": "study",
+     "status": "failed_or_uncertain",
+     "at": "2026-10-07T09:33:25.428137+00:00",
+     "reservedAttempts": 2,
+     "reservedOutputTokens": 3800
+    }
+   ],
+   "paused": "source_or_cache_identity_mismatch",
+   "reservedOutputTokens": 3800,
+   "resolution": {
+    "at": "2026-10-07T09:33:11.205793+00:00",
+    "reason": "deployed_worker_16_hex_fingerprint_compatibility_fixed; independently validated existing cached translation",
+    "newProviderCallVerified": false
+   },
+   "outputBudgetReconciliation": {
+    "version": 1,
+    "receipt": "week_precompute_receipt_20261007.json",
+    "receiptRecordedAt": "2026-10-07T09:42:16.210268+00:00",
+    "basis": "confirmed_translation_cache_hit_and_bounded_failed_study",
+    "reservedOutputTokens": 3800,
+    "actualBillingUsageKnown": false
+   },
+   "pauseReasons": [
+    "source_or_cache_identity_mismatch",
+    "http_502:quote_not_in_abstract"
+   ],
+   "explicitReceiptReconciliation": {
+    "at": "2026-10-07T11:10:39.893979+00:00",
+    "receiptSha256": "5d287e0a59a668a69651162cdbb05c682c002538d6a1f13fcc3afbff7a943c5c",
+    "basis": "exact retained first request plus explicit known receipt second request; no aggregate inference",
+    "previousReservedAttempts": 2,
+    "previousReservedOutputTokens": null,
+    "reservedAttempts": 4,
+    "reservedOutputTokens": 3800,
+    "actualBillingUsageKnown": false,
+    "failureAndPausePreserved": true,
+    "automaticRepairHelperRejected": "ledger_receipt_does_not_cover_local_history"
+   }
+  }
+ },
+ "paused": "http_502:quote_not_in_abstract",
+ "pauseReasons": [
+  "http_502:quote_not_in_abstract"
+ ]
+}

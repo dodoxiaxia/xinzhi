@@ -1,0 +1,166 @@
+{
+  "candidateSha": "9918c8c67ade43e49a88aa6fe8bc9bc39cc23eaf",
+  "at": "2026-10-07T11:12:20.967602+00:00",
+  "results": [
+    {
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0,
+      "log": "test-00.log",
+      "tests": [
+        "457"
+      ],
+      "tail": "  scripts/fetch_pubmed.py\nOK   scripts/merge_candidates.py\nOK   scripts/media_signals.py\nOK   scripts/auto_picks.py\nOK   scripts/week_precompute.py\nOK   scripts/build_public.py\nfast unchanged\n.................................build failed\n...model failed\n.SANITY FAILED: [\"manifest unreadable: [Errno 2] No such file or directory: '/tmp/tmpl8o3vwna/docs/public-manifest.json'\"]\n..pipeline time budget exhausted\n.source failed\n.SANITY FAILED: [\"public files differ: ['private.json']\"]\n................................................................................................................................................................................................................................................................................................................................................................................................................................\n----------------------------------------------------------------------\nRan 457 tests in 15.222s\n\nOK\n"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "app.js"
+      ],
+      "exitCode": 0,
+      "log": "test-01.log",
+      "tests": [],
+      "tail": ""
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_boot_url_ui.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-02.log",
+      "tests": [],
+      "tail": " \"url\": \"https://boot-url.invalid/#keep\",\n      \"requests\": 26\n    },\n    {\n      \"name\": \"sources mode bare saved view\",\n      \"beforeCss\": {\n        \"style\": \"a\",\n        \"theme\": \"light\",\n        \"scheme\": \"light\",\n        \"background\": \"rgb(238, 242, 247)\",\n        \"body\": \"rgba(0, 0, 0, 0)\",\n        \"accent\": \"\",\n        \"bar\": \"#ffffff\"\n      },\n      \"beforeApp\": {\n        \"style\": \"a\",\n        \"theme\": \"light\",\n        \"scheme\": \"light\",\n        \"background\": \"rgb(238, 242, 247)\",\n        \"body\": \"rgb(238, 242, 247)\",\n        \"accent\": \"#1b4f9c\",\n        \"bar\": \"#ffffff\"\n      },\n      \"after\": {\n        \"style\": \"a\",\n        \"theme\": \"light\",\n        \"scheme\": \"light\",\n        \"background\": \"rgb(238, 242, 247)\",\n        \"body\": \"rgb(238, 242, 247)\",\n        \"accent\": \"#1b4f9c\",\n        \"bar\": \"#ffffff\"\n      },\n      \"initializedUrl\": \"https://boot-url.invalid/?mode=sources#health\",\n      \"url\": \"https://boot-url.invalid/?mode=sources#health\",\n      \"requests\": 26\n    }\n  ]\n}\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_doi_library_ui.cjs",
+        "--helpers-only"
+      ],
+      "exitCode": 0,
+      "log": "test-03.log",
+      "tests": [],
+      "tail": "DOI library helper checks passed (browser checks run separately)\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_doi_library_worker.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-04.log",
+      "tests": [],
+      "tail": "DOI library offline tests passed: read-only GET, password, DOI identity, GitHub/OA links, safe URLs, body limits/timeouts, KV binaries/soft guards, durable records, downloads, public projection and persisted manual retry deadlines.\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_edge_worker.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-05.log",
+      "tests": [],
+      "tail": "Edge offline boundaries passed: identity, evidence, provider retry, redirect, missing config, static assets.\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_journal_metrics.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-06.log",
+      "tests": [],
+      "tail": "journal metrics: 43 identity, evidence, history, rendering and multi-category assertions passed\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_pdf_worker.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-07.log",
+      "tests": [],
+      "tail": "PDF offline boundaries passed: GET password form, bounded POST password verification, no unauthorized GitHub access, commit pinning, exact DOI/title, CSV, paths, PDF/SHA/size/blob, safe redirects, downloads and HTML errors.\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_publication_dates_ui.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-08.log",
+      "tests": [],
+      "tail": "publication date UI: 10 assertions passed\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_reading_logic.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-09.log",
+      "tests": [],
+      "tail": "20 reading regression assertions passed\n6 API error message regression assertions passed\n4 private PDF link scope assertions passed\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_source_health_ui.cjs"
+      ],
+      "exitCode": 1,
+      "log": "test-10.log",
+      "tests": [],
+      "tail": "evalmachine.<anonymous>:66\n              ${esc(statusLabel)}\n                ^\n\nReferenceError: journalMetricBadge is not defined\n    at evalmachine.<anonymous>:66:17\n    at Array.map (<anonymous>)\n    at Object.renderSourcesHealth (evalmachine.<anonymous>:57:97)\n    at Object.<anonymous> (/workspace/week-integration-regression-9918c8c/scripts/test_source_health_ui.cjs:38:3)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n\nNode.js v24.19.0\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_study_evidence_regression.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-11.log",
+      "tests": [],
+      "tail": "Study evidence regression: 20 cases passed; real public source, honest historical-failure provenance, exact spans, strict citation IDs and same-quote numbers; zero network calls.\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_study_services.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-12.log",
+      "tests": [],
+      "tail": "582e7-4e04-4b0d-a7c3-5695d53c6e67\",\"phase\":\"provider_http\",\"code\":\"provider_unavailable\",\"httpStatus\":500,\"elapsedMs\":1,\"timedOut\":false}\nXINZHI_AI_DIAGNOSTIC {\"version\":1,\"at\":\"2026-10-07T11:12:20.747Z\",\"requestId\":\"85ad57ff-655e-4ca6-b5d6-1c2c8c1c5717\",\"phase\":\"provider_http\",\"code\":\"provider_auth\",\"httpStatus\":401,\"elapsedMs\":0,\"timedOut\":false}\nXINZHI_AI_DIAGNOSTIC {\"version\":1,\"at\":\"2026-10-07T11:12:20.748Z\",\"requestId\":\"9fba54a8-5a2f-435e-a3dc-a89b04352064\",\"phase\":\"budget\",\"code\":\"provider_budget\",\"httpStatus\":null,\"elapsedMs\":0,\"timedOut\":false}\nXINZHI_AI_DIAGNOSTIC {\"version\":1,\"at\":\"2026-10-07T11:12:20.752Z\",\"requestId\":\"5fe30b8b-ebbf-4862-9f45-0fcf8dc64b3f\",\"phase\":\"provider_response\",\"code\":\"output_truncated\",\"httpStatus\":200,\"elapsedMs\":0,\"timedOut\":false}\nXINZHI_AI_DIAGNOSTIC {\"version\":1,\"at\":\"2026-10-07T11:12:20.752Z\",\"requestId\":\"477df206-02e0-4812-ad6c-97a83ce2b78f\",\"phase\":\"provider_response\",\"code\":\"output_truncated\",\"httpStatus\":200,\"elapsedMs\":0,\"timedOut\":false}\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_study_ui.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-13.log",
+      "tests": [],
+      "tail": "83 public-abstract study UI assertions passed\n"
+    },
+    {
+      "command": [
+        "node",
+        "/workspace/week-integration-regression-9918c8c/scripts/test_weekly_window.cjs"
+      ],
+      "exitCode": 0,
+      "log": "test-14.log",
+      "tests": [],
+      "tail": "{\"passed\":true,\"checks\":61,\"networkCalls\":0,\"scope\":\"weekly helpers and renderer only\"}\n"
+    }
+  ]
+}

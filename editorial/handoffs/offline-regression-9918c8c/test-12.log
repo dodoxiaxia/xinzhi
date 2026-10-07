@@ -1,0 +1,9 @@
+Study/compare offline services passed: scoped evidence, unique paper IDs, partial abstracts, shared caches, ID-only input, bounded metadata and provider retries.
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.733Z","requestId":"4eea6767-258d-4c54-9488-f27b5f36c8e3","phase":"provider_http","code":"provider_auth","httpStatus":401,"elapsedMs":1,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.739Z","requestId":"e7f1f665-94ae-4fd8-8068-3f8c67bf3c02","phase":"provider_http","code":"provider_auth","httpStatus":403,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.742Z","requestId":"c4b6746a-ef29-4885-9a6a-ba2e0d2ee544","phase":"provider_http","code":"provider_rate_limit","httpStatus":429,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.745Z","requestId":"fa6582e7-4e04-4b0d-a7c3-5695d53c6e67","phase":"provider_http","code":"provider_unavailable","httpStatus":500,"elapsedMs":1,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.747Z","requestId":"85ad57ff-655e-4ca6-b5d6-1c2c8c1c5717","phase":"provider_http","code":"provider_auth","httpStatus":401,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.748Z","requestId":"9fba54a8-5a2f-435e-a3dc-a89b04352064","phase":"budget","code":"provider_budget","httpStatus":null,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.752Z","requestId":"5fe30b8b-ebbf-4862-9f45-0fcf8dc64b3f","phase":"provider_response","code":"output_truncated","httpStatus":200,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-07T11:12:20.752Z","requestId":"477df206-02e0-4812-ad6c-97a83ce2b78f","phase":"provider_response","code":"output_truncated","httpStatus":200,"elapsedMs":0,"timedOut":false}

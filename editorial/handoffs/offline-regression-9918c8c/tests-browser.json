@@ -1,0 +1,33 @@
+{
+  "candidateSha": "9918c8c67ade43e49a88aa6fe8bc9bc39cc23eaf",
+  "at": "2026-10-07T11:14:23.876297+00:00",
+  "results": [
+    {
+      "command": [
+        "python",
+        "scripts/test_layout_ui.py"
+      ],
+      "exitCode": 0,
+      "log": "browser-00.log",
+      "tail": "Layout checks passed: style a\nLayout checks passed: style b\nLayout checks passed: style c\nLayout checks passed: style d\nCurated reading-column checks passed: style a\nCurated reading-column checks passed: style b\nCurated reading-column checks passed: style c\nCurated reading-column checks passed: style d\nHeader and mode-return checks passed\n520 browser assertions passed; 60 layouts; screenshots: /workspace/week-integration-regression-9918c8c/.local/layout-qa\n"
+    },
+    {
+      "command": [
+        "python",
+        "scripts/test_weekly_ui.py"
+      ],
+      "exitCode": 0,
+      "log": "browser-01.log",
+      "tail": "67 weekly UI assertions passed; offline fixtures only.\n"
+    },
+    {
+      "command": [
+        "python",
+        "scripts/test_journal_ui.py"
+      ],
+      "exitCode": 0,
+      "log": "browser-02.log",
+      "tail": "116 journal/real-weekly UI integration assertions passed.\n"
+    }
+  ]
+}
