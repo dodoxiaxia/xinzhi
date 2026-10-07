@@ -1,0 +1,46 @@
+name: lazy-public-data-preview
+on:
+  push:
+    branches: [codex/night-v143-preview-20261008]
+permissions:
+  contents: read
+concurrency:
+  group: lazy-public-data-preview
+  cancel-in-progress: false
+jobs:
+  preview:
+    if: github.ref == 'refs/heads/codex/night-v143-preview-20261008'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Restore fixed reviewed state and build only
+        run: |
+          git fetch --depth=1 origin ffcd8fa4356656458509484fe7e83bb4f46a54fb
+          git archive ffcd8fa4356656458509484fe7e83bb4f46a54fb data public | tar -x -C .
+          python3 scripts/build_public.py
+          PYTHONPATH=scripts python3 -c 'from package_release import public_payloads; public_payloads()'
+          node scripts/test_public_data_worker.cjs
+          python3 -m unittest discover -s scripts -p 'test_public_data_bundle.py'
+      - name: Deploy isolated existing-project preview and read public routes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          mkdir -p .local/lazy-preview
+          npx --yes wrangler@3 pages deploy public --project-name dryz-xinzhi --branch lazy-v143-review-20261008 --commit-dirty=true > .local/lazy-preview/deploy.txt 2>&1
+          python3 scripts/probe_lazy_preview.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lazy-preview-${{ github.run_id }}
+          path: |
+            .local/lazy-preview/report.json
+            docs/public-manifest.json
+          if-no-files-found: error

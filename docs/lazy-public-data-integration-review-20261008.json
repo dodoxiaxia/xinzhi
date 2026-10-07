@@ -1,0 +1,16 @@
+{
+  "candidateOnly": true,
+  "baseMain": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+  "upstreamPerformance": "4cdb45fe0cbfdefeb0863e4f4e257c84b953e27d",
+  "fixes": [
+    "FEEDS/RECENT_RADAR/RADAR precede unrelated library data; recent segment no annual seek",
+    "validate archive rows/dictionary indices/nested abstracts and feed paper shape before adoption",
+    "failed values cleared; adoption uses ready records only",
+    "request abort, downstream cancellation and ASSETS stream errors stop upstream reader"
+  ],
+  "offlineWorkerChecks": 218,
+  "offlineBrowserChecks": 692,
+  "browserOfflineOnly": true,
+  "resourceGatePassed": false,
+  "productionPublished": false
+}
