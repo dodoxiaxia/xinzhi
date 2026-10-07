@@ -12,4 +12,6 @@ public/
 work/
 
 docs/*.png
+docs/operations-health.json
+quality-check.json
 .git-broken/

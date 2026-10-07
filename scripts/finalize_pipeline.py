@@ -27,6 +27,7 @@ def make_status(root, *, refresh_outcome, deployment_outcome, state_outcome,
         'status': 'deployed' if deployed else ('not_requested' if refresh_outcome == 'success' and not requested else 'failed'),
     }
     built_this_attempt = False
+    warnings = []
     for name, field in [('last-refresh.json', 'refresh'), ('public-manifest.json', 'build')]:
         path = root / 'docs' / name
         try:
@@ -41,10 +42,35 @@ def make_status(root, *, refresh_outcome, deployment_outcome, state_outcome,
                                data.get('codeSha') == code_sha)
                 status[field]['currentAttempt'] = current
                 built_this_attempt = current and any(step.get('script') == 'scripts/build_public.py' and step.get('exitCode') == 0 for step in data.get('steps', []))
+                if current:
+                    for step in data.get('steps', []):
+                        if step.get('optional') and (step.get('outcome') == 'skipped' or step.get('exitCode') not in (None, 0)):
+                            warnings.append({'code': 'optional_step_skipped' if step.get('outcome') == 'skipped' else 'optional_step_failed',
+                                             'script': step.get('script', '')})
+                    try:
+                        health = json.loads((root / 'data/source-health.json').read_text(encoding='utf-8'))
+                        checked = datetime.datetime.fromisoformat(health['checkedAt'])
+                        started = datetime.datetime.fromisoformat(data['startedAt'])
+                        if checked >= started:
+                            sources = health['sources']
+                            failed = sum(source.get('ok') is not True for source in sources)
+                            status['sourceHealth'] = {'checkedAt': health['checkedAt'], 'total': len(sources),
+                                                      'succeeded': len(sources) - failed, 'failed': failed}
+                            if failed:
+                                warnings.append({'code': 'source_fetch_failures', 'count': failed})
+                    except (OSError, ValueError, KeyError, TypeError):
+                        pass
             else:
                 status[field]['currentAttempt'] = built_this_attempt
         except (OSError, ValueError):
             status[field] = {'available': False}
+    if deployed and state_outcome not in ('success', 'pending'):
+        warnings.append({'code': 'state_save_incomplete'})
+    # Pages acceptance remains a separate fact from end-to-end pipeline health.
+    status['pipelineStatus'] = ('failed' if status['status'] == 'failed' else
+                                'pending' if state_outcome == 'pending' else
+                                'degraded' if warnings else 'healthy')
+    status['warnings'] = warnings
     return status
 
 
@@ -56,7 +82,7 @@ def main():
     status = make_status(ROOT, **vars(args))
     (ROOT / 'docs').mkdir(exist_ok=True)
     (ROOT / 'docs' / 'deployment-status.json').write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding='utf-8')
-    print(json.dumps({key: status[key] for key in ('status', 'deployed', 'deploymentOutcome', 'stateOutcome', 'runUrl')}, ensure_ascii=False))
+    print(json.dumps({key: status[key] for key in ('status', 'pipelineStatus', 'deployed', 'deploymentOutcome', 'stateOutcome', 'warnings', 'runUrl')}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

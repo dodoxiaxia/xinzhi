@@ -1,0 +1,85 @@
+name: offline-quality
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 恢复固定 state 的测试数据（不恢复代码或报告）
+        id: restore_state
+        run: |
+          git fetch --depth=1 origin state
+          TEST_STATE_SHA=$(git rev-parse FETCH_HEAD)
+          echo "sha=$TEST_STATE_SHA" >> "$GITHUB_OUTPUT"
+          git archive "$TEST_STATE_SHA" data public | tar -x -C .
+
+      - name: Python 离线回归与本地服务测试
+        id: python_tests
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 -m unittest discover -s service/tests -p 'test_*.py'
+
+      - name: JavaScript 语法与离线 Worker / UI 测试
+        id: javascript_tests
+        run: |
+          node --check app.js
+          node --check editor/editor.js
+          node --input-type=module --check < edge/_worker.js
+          node --input-type=module --check < workers/cron-dispatch/index.js
+          node scripts/test_reading_logic.cjs
+          node scripts/test_edge_worker.cjs
+          node scripts/test_study_services.cjs
+          node scripts/test_study_ui.cjs
+          node scripts/test_pdf_worker.cjs
+
+      - name: 真实 state 的公开白名单构建与打包（不发布）
+        id: public_build
+        run: |
+          python3 scripts/build_public.py
+          python3 scripts/package_release.py
+
+      - name: 保存质量门禁结果（失败时也保留）
+        if: always()
+        env:
+          QUALITY_STATE_SHA: ${{ steps.restore_state.outputs.sha }}
+          QUALITY_RESTORE: ${{ steps.restore_state.outcome }}
+          QUALITY_PYTHON: ${{ steps.python_tests.outcome }}
+          QUALITY_JAVASCRIPT: ${{ steps.javascript_tests.outcome }}
+          QUALITY_BUILD: ${{ steps.public_build.outcome }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          outcomes = {name: os.environ.get(variable, 'unknown') for name, variable in [('restore', 'QUALITY_RESTORE'), ('python', 'QUALITY_PYTHON'), ('javascript', 'QUALITY_JAVASCRIPT'), ('build', 'QUALITY_BUILD')]}
+          report = {'codeSha': os.environ['GITHUB_SHA'], 'stateSha': os.environ.get('QUALITY_STATE_SHA', ''), 'runId': os.environ['GITHUB_RUN_ID'], 'outcomes': outcomes, 'status': 'passed' if all(outcome == 'success' for outcome in outcomes.values()) else 'failed'}
+          Path('quality-check.json').write_text(json.dumps(report, indent=2))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('Offline quality: ' + report['status'] + '\n')
+          PY
+
+      - name: 上传质量门禁证据
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-${{ github.run_id }}-${{ github.run_attempt }}
+          path: quality-check.json
+          if-no-files-found: error

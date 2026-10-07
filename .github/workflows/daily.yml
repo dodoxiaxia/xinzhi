@@ -9,9 +9,14 @@ on:
       - 'style.css'
       - 'icon.svg'
       - 'edge/**'
+      - 'workers/**'
       - 'scripts/**'
+      - 'service/**'
+      - 'config/**'
+      - 'editor/**'
       - 'editorial/**'
-      - '.github/workflows/daily.yml'
+      - '.github/workflows/**'
+      - '.gitignore'
   schedule:
     - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
     - cron: '7 */2 * * *'   # 每 2 小时:轻量刷新,内容有变化才发布
@@ -28,13 +33,19 @@ on:
         type: boolean
 
 concurrency:
-  group: daily-refresh
+  # Ignored legacy dispatches must not replace a pending legitimate refresh.
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.allow_fast_dispatch && 'daily-refresh-ignored' || 'daily-refresh' }}
   cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
+  quality:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.mode != 'fast' || inputs.allow_fast_dispatch)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
   ignored-dispatch:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.allow_fast_dispatch
     runs-on: ubuntu-latest
@@ -43,6 +54,7 @@ jobs:
     steps:
       - run: echo "::notice::已忽略未确认的 fast dispatch；定时快刷由 GitHub 每两小时运行，人工临时快刷请勾选 allow_fast_dispatch。此门禁不代表外部定时器已停用。"
   refresh:
+    needs: quality
     if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.mode != 'fast' || inputs.allow_fast_dispatch)
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -98,6 +110,23 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_public_build.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
 
+      - name: 保存上次成功发布的回滚文件
+        if: steps.refresh.outputs.deploy == 'true'
+        run: |
+          mkdir -p .local/previous-release
+          git archive '${{ steps.restore_state.outputs.sha }}' public docs/public-manifest.json | tar -x -C .local/previous-release
+          echo '${{ steps.restore_state.outputs.sha }}' > .local/previous-release/state-sha.txt
+
+      - name: 上传上次成功发布的回滚文件
+        if: steps.refresh.outputs.deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: previous-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .local/previous-release/
+          include-hidden-files: true
+          retention-days: 30
+          if-no-files-found: error
+
       - name: 发布到 Cloudflare Pages
         id: deploy
         if: steps.refresh.outputs.deploy == 'true'
@@ -147,6 +176,27 @@ jobs:
           --code-sha '${{ github.sha }}'
           --run-attempt '${{ github.run_attempt }}'
 
+      - name: 公网只读验收（静态资产与运行配置，不调用模型）
+        if: always()
+        run: python3 scripts/check_operations.py
+
+      - name: 输出流水线健康摘要
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          for name, label in [('deployment-status.json', 'Pipeline'), ('operations-health.json', 'Public checks')]:
+              try:
+                  report = json.loads((Path('docs') / name).read_text())
+              except (OSError, ValueError):
+                  print(f'{label}: evidence unavailable\n')
+                  continue
+              print(f"{label}: {report.get('pipelineStatus', report.get('status', 'unknown'))}\n")
+              for warning in report.get('warnings', []):
+                  print(f"- {warning['code']}\n")
+          PY
+
       - name: 上传成功或失败的流水线证据
         if: always()
         uses: actions/upload-artifact@v4
@@ -156,4 +206,5 @@ jobs:
             docs/deployment-status.json
             docs/last-refresh.json
             docs/public-manifest.json
+            docs/operations-health.json
           if-no-files-found: error

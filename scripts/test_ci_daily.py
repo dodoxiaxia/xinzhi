@@ -274,6 +274,41 @@ class DeploymentEvidenceTests(PipelineFixture):
         status = self.status(state_outcome='failure')
         self.assertTrue(status['deployed'])
         self.assertEqual(status['stateOutcome'], 'failure')
+        self.assertEqual(status['pipelineStatus'], 'degraded')
+        self.assertIn({'code': 'state_save_incomplete'}, status['warnings'])
+
+    def test_optional_failures_and_budget_skips_are_visible_without_raw_errors(self):
+        report = {'runId': '123', 'runAttempt': '1', 'codeSha': 'abc123', 'steps': [
+            {'script': 'scripts/generate_quicklooks.py', 'optional': True, 'exitCode': 7, 'error': 'private response'},
+            {'script': 'scripts/archive_details.py', 'optional': True, 'outcome': 'skipped'},
+        ]}
+        (self.root / 'docs/last-refresh.json').write_text(json.dumps(report))
+        status = self.status()
+        self.assertTrue(status['deployed'])
+        self.assertEqual(status['pipelineStatus'], 'degraded')
+        self.assertEqual(len(status['warnings']), 2)
+        self.assertNotIn('private response', json.dumps(status))
+
+    def test_previous_attempt_warnings_do_not_contaminate_this_run(self):
+        report = {'runId': '122', 'runAttempt': '1', 'codeSha': 'abc123', 'steps': [
+            {'script': 'scripts/generate_quicklooks.py', 'optional': True, 'exitCode': 7},
+        ]}
+        (self.root / 'docs/last-refresh.json').write_text(json.dumps(report))
+        self.assertEqual(self.status()['warnings'], [])
+        self.assertEqual(self.status()['pipelineStatus'], 'healthy')
+
+    def test_source_failures_remain_visible_with_cached_content(self):
+        report = {'runId': '123', 'runAttempt': '1', 'codeSha': 'abc123',
+                  'startedAt': '2026-10-07T08:00:00+00:00', 'steps': []}
+        (self.root / 'docs/last-refresh.json').write_text(json.dumps(report))
+        (self.root / 'data').mkdir()
+        (self.root / 'data/source-health.json').write_text(json.dumps({
+            'checkedAt': '2026-10-07T08:01:00+00:00', 'sources': [{'ok': True}, {'ok': False}]}))
+        status = self.status()
+        self.assertTrue(status['deployed'])
+        self.assertEqual(status['pipelineStatus'], 'degraded')
+        self.assertEqual(status['sourceHealth']['failed'], 1)
+        self.assertIn({'code': 'source_fetch_failures', 'count': 1}, status['warnings'])
 
     def test_missing_refresh_report_is_explicit(self):
         self.assertEqual(self.status()['refresh'], {'available': False})
