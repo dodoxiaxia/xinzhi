@@ -421,7 +421,7 @@
   }
   function pdfDownloadLink(p) {
     const url = pdfDownloadUrl(p);
-    return url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="仅授权用户可下载；未登录时先登录">登录下载 PDF</a>` : '';
+    return url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>` : '';
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;
@@ -505,7 +505,7 @@
   const MODE_NOTES = {
     curated: '带“摘要核对”标记的是已对照期刊摘要核对来源的导读，<b>非全文精读，未经医生终审</b>；带“自动精选”标记的是每天由规则从新文献中选出、附 AI 速览，<b>未经人工核验，请以原文为准</b>。',
     candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
-    library: '文献档案：按期刊与时间检索既有题录。授权用户登录后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
+    library: '文献档案：按期刊与时间检索既有题录。输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
   };
 
   function renderModeNote() {

@@ -654,6 +654,9 @@ class TestGithubLibraryReadOnly(unittest.TestCase):
     """Synthetic local sessions/snapshots only; never reads an existing admin token."""
 
     def setUp(self):
+        self.pdf_passphrase = "synthetic-download-phrase"
+        self.pdf_env = mock.patch.dict(os.environ, {"PDF_DOWNLOAD_PASSPHRASE": self.pdf_passphrase})
+        self.pdf_env.start()
         self.temp = tempfile.TemporaryDirectory(prefix="xinzhi_library_api_")
         self.root = Path(self.temp.name)
         (self.root / ".local").mkdir()
@@ -671,6 +674,7 @@ class TestGithubLibraryReadOnly(unittest.TestCase):
         self.thread.join(timeout=2)
         self.db.close()
         self.temp.cleanup()
+        self.pdf_env.stop()
 
     def get(self, path, authenticated=False):
         connection = http.client.HTTPConnection(*self.server.server_address, timeout=5)
@@ -728,12 +732,20 @@ class TestGithubLibraryReadOnly(unittest.TestCase):
         (self.root / "data" / "library.json").write_text(json.dumps({"papers": [paper]}, ensure_ascii=False), encoding="utf-8")
         return paper
 
-    def pdf_request(self, query="id=1234567890abcdef", authenticated=True, accept="application/json", cookie=None):
+    def pdf_request(self, query="id=1234567890abcdef", authenticated=False, accept="application/json", cookie=None,
+                    method="POST", passphrase=None, body=None, extra_headers=None):
         connection = http.client.HTTPConnection(*self.server.server_address, timeout=5)
         headers = {"Accept": accept}
         if authenticated:
             headers["Cookie"] = cookie if cookie is not None else self.cookie
-        connection.request("GET", "/api/pdf?" + query, headers=headers)
+        if method == "POST":
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            if body is None:
+                phrase = self.pdf_passphrase if passphrase is None else passphrase
+                body = urllib.parse.urlencode({"passphrase": phrase}).encode("utf-8")
+        if extra_headers:
+            headers.update(extra_headers)
+        connection.request(method, "/api/pdf?" + query, body=body, headers=headers)
         response = connection.getresponse()
         status, response_headers, body = response.status, dict(response.getheaders()), response.read()
         connection.close()
@@ -745,39 +757,145 @@ class TestGithubLibraryReadOnly(unittest.TestCase):
         blob = hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
         return data, blob
 
-    def test_pdf_requires_existing_session_before_any_catalog_or_github_read(self):
+    def test_pdf_requires_correct_phrase_before_any_catalog_or_github_read(self):
         with mock.patch("service.server.public_pdf_paper") as public_read, \
                 mock.patch("scripts.github_library.load_snapshot") as private_read, \
                 mock.patch("scripts.github_library.fetch_pdf") as fetch:
-            for authenticated, cookie in ((False, None), (True, "xinzhi_session=invalid-session")):
-                status, raw, headers = self.pdf_request(authenticated=authenticated, cookie=cookie)
+            for phrase in ("", "wrong-synthetic-phrase"):
+                status, raw, headers = self.pdf_request(passphrase=phrase)
                 body = json.loads(raw)
-                self.assertEqual(status, 401)
-                self.assertEqual(body["code"], "login_required")
-                self.assertEqual(body["login_url"], "/editor/")
+                self.assertEqual(status, 403)
+                self.assertEqual(body["code"], "invalid_passphrase")
+                self.assertNotIn(phrase or "wrong-synthetic-phrase", raw.decode("utf-8"))
                 self.assertEqual(headers["Cache-Control"], "no-store")
             public_read.assert_not_called()
             private_read.assert_not_called()
             fetch.assert_not_called()
 
-    def test_pdf_unauthenticated_browser_gets_login_link(self):
-        status, raw, headers = self.pdf_request(authenticated=False, accept="text/html,application/xhtml+xml")
-        self.assertEqual(status, 401)
+    def test_pdf_browser_gets_phrase_form_without_session_or_private_read(self):
+        self.public_library(title='<script>alert("synthetic")</script>')
+        with mock.patch("scripts.github_library.load_snapshot") as private_read, \
+                mock.patch("scripts.github_library.fetch_pdf") as fetch, \
+                mock.patch("service.server.XinzhiRequestHandler.get_authenticated_session", side_effect=AssertionError("No account lookup")):
+            status, raw, headers = self.pdf_request(method="GET", accept="text/html,application/xhtml+xml")
+            private_read.assert_not_called()
+            fetch.assert_not_called()
+        self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "text/html; charset=utf-8")
-        self.assertIn('href="/editor/"', raw.decode("utf-8"))
+        self.assertIn('method="post"', raw.decode("utf-8"))
+        self.assertIn('action="/api/pdf?id=1234567890abcdef"', raw.decode("utf-8"))
+        self.assertIn('type="password"', raw.decode("utf-8"))
         self.assertIn('href="/?mode=library"', raw.decode("utf-8"))
-        self.assertIn("登录后返回文献库", raw.decode("utf-8"))
+        self.assertNotIn('href="/editor/"', raw.decode("utf-8"))
+        self.assertNotIn("<script>", raw.decode("utf-8"))
+        self.assertNotIn(self.pdf_passphrase, raw.decode("utf-8"))
+        self.assertNotIn("Set-Cookie", headers)
         self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertEqual(headers["Referrer-Policy"], "same-origin")
+
+    def test_pdf_wrong_phrase_browser_form_preserves_id_without_echo(self):
+        with mock.patch("scripts.github_library.load_snapshot") as private_read, \
+                mock.patch("scripts.github_library.fetch_pdf") as fetch:
+            status, raw, headers = self.pdf_request(accept="text/html", passphrase="wrong-synthetic-phrase")
+            self.assertEqual(status, 403)
+            self.assertIn("口令错误", raw.decode("utf-8"))
+            self.assertIn('action="/api/pdf?id=1234567890abcdef"', raw.decode("utf-8"))
+            self.assertIn('type="password"', raw.decode("utf-8"))
+            self.assertNotIn("wrong-synthetic-phrase", raw.decode("utf-8"))
+            self.assertNotIn("value=", raw.decode("utf-8"))
+            self.assertNotIn("Set-Cookie", headers)
+            self.assertEqual(headers["Referrer-Policy"], "same-origin")
+            private_read.assert_not_called()
+            fetch.assert_not_called()
+
+    def test_pdf_get_json_requires_phrase_and_never_downloads(self):
+        self.public_library()
+        with mock.patch("scripts.github_library.load_snapshot") as private_read, \
+                mock.patch("scripts.github_library.fetch_pdf") as fetch:
+            status, raw, _ = self.pdf_request(method="GET", authenticated=True)
+            self.assertEqual(status, 401)
+            self.assertEqual(json.loads(raw)["code"], "passphrase_required")
+            private_read.assert_not_called()
+            fetch.assert_not_called()
+
+    def test_pdf_phrase_origin_and_form_validation_precede_private_reads(self):
+        self.public_library()
+        with mock.patch("service.server.public_pdf_paper") as public_read, \
+                mock.patch("scripts.github_library.load_snapshot") as private_read, \
+                mock.patch("scripts.github_library.fetch_pdf") as fetch:
+            for origin in ("https://other.example", "null"):
+                status, raw, _ = self.pdf_request(extra_headers={"Origin": origin})
+                self.assertEqual(status, 403)
+                self.assertEqual(json.loads(raw)["code"], "invalid_origin")
+            port = self.server.server_address[1]
+            status, raw, _ = self.pdf_request(extra_headers={"Origin": f"http://localhost:{port}"})
+            self.assertEqual(status, 403)
+            for fetch_site in ("cross-site", "same-site", "unknown"):
+                status, raw, _ = self.pdf_request(extra_headers={"Sec-Fetch-Site": fetch_site})
+                self.assertEqual(status, 403)
+                self.assertEqual(json.loads(raw)["code"], "invalid_origin")
+            for body in (b"passphrase=first&passphrase=second", b"passphrase=first&id=1234567890abcdef",
+                         b"passphrase=first&extra=", b"", b"passphrase=" + b"x" * 257, b"passphrase=%ff"):
+                status, raw, _ = self.pdf_request(body=body)
+                self.assertEqual(status, 400, body[:50])
+                self.assertEqual(json.loads(raw)["code"], "invalid_form")
+            status, raw, _ = self.pdf_request(body=b"{}", extra_headers={"Content-Type": "application/json"})
+            self.assertEqual(status, 415)
+            status, raw, _ = self.pdf_request(body=b"passphrase=" + b"x" * 2048)
+            self.assertEqual(status, 413)
+            self.assertEqual(json.loads(raw)["code"], "form_too_large")
+            public_read.assert_not_called()
+            private_read.assert_not_called()
+            fetch.assert_not_called()
+
+    def test_pdf_same_origin_or_cli_phrase_submission_is_accepted_without_editor_session(self):
+        self.public_library()
+        port = self.server.server_address[1]
+        with mock.patch("scripts.github_library.load_snapshot", return_value=None) as private_read, \
+                mock.patch("service.server.XinzhiRequestHandler.get_authenticated_session", side_effect=AssertionError("No account lookup")):
+            for headers in ({}, {"Origin": f"http://127.0.0.1:{port}", "Sec-Fetch-Site": "same-origin"}, {"Sec-Fetch-Site": "none"}):
+                status, raw, _ = self.pdf_request(extra_headers=headers)
+                self.assertEqual(status, 404)
+                self.assertEqual(json.loads(raw)["code"], "pdf_not_found")
+            self.assertEqual(private_read.call_count, 3)
+
+    def test_pdf_invalid_override_is_closed_without_private_access(self):
+        with mock.patch("service.server.public_pdf_paper") as public_read, \
+                mock.patch("scripts.github_library.load_snapshot") as private_read:
+            for configured in ("", "x" * 257):
+                with mock.patch.dict(os.environ, {"PDF_DOWNLOAD_PASSPHRASE": configured}):
+                    status, raw, _ = self.pdf_request()
+                    self.assertEqual(status, 503)
+                    self.assertEqual(json.loads(raw)["code"], "pdf_not_configured")
+            public_read.assert_not_called()
+            private_read.assert_not_called()
+
+    def test_pdf_phrase_override_changes_download_access_and_is_not_logged(self):
+        self.public_library()
+        with mock.patch.dict(os.environ, {"PDF_DOWNLOAD_PASSPHRASE": "second-synthetic-download-phrase"}), \
+                mock.patch("service.server.sys.stderr", new_callable=io.StringIO) as log, \
+                mock.patch("scripts.github_library.load_snapshot", return_value=None) as private_read:
+            status, raw, _ = self.pdf_request()
+            self.assertEqual(status, 403)
+            private_read.assert_not_called()
+            status, raw, _ = self.pdf_request(passphrase="second-synthetic-download-phrase")
+            self.assertEqual(status, 404)
+            private_read.assert_called_once()
+            self.assertNotIn("synthetic-download-phrase", log.getvalue())
+            self.assertNotIn("second-synthetic-download-phrase", log.getvalue())
 
     def test_pdf_rejects_nonpublic_ids_and_path_repository_query_parameters(self):
         self.public_library()
         with mock.patch("scripts.github_library.fetch_pdf") as fetch:
             for query in ("", "id=../secret", "id=gh-" + "a" * 24,
                           "id=1234567890abcdef&id=1234567890abcdef", "doi=10.1234/synthetic0",
-                          "id=1234567890abcdef&path=papers/secret.pdf", "id=1234567890abcdef&repo=other/private"):
-                status, raw, _ = self.pdf_request(query=query)
-                self.assertEqual(status, 400, query)
-                self.assertEqual(json.loads(raw)["code"], "invalid_paper_id")
+                          "id=1234567890abcdef&path=papers/secret.pdf", "id=1234567890abcdef&repo=other/private",
+                          "id=1234567890abcdef&passphrase=wrong-synthetic-phrase", "id=1234567890abcdef&passphrase=",
+                          "id=1234567890abcdef&path=", "id=1234567890abcdef&repo=", "id=1234567890abcdef&flag"):
+                for method in ("GET", "POST"):
+                    status, raw, _ = self.pdf_request(query=query, method=method)
+                    self.assertEqual(status, 400, query)
+                    self.assertEqual(json.loads(raw)["code"], "invalid_paper_id")
             status, raw, _ = self.pdf_request(query="id=0000000000000000")
             self.assertEqual(status, 404)
             self.assertEqual(json.loads(raw)["code"], "pdf_not_found")
@@ -795,6 +913,7 @@ class TestGithubLibraryReadOnly(unittest.TestCase):
             self.assertEqual(headers["Content-Length"], str(len(data)))
             self.assertEqual(headers["Cache-Control"], "no-store")
             self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+            self.assertNotIn("Set-Cookie", headers)
             disposition = headers["Content-Disposition"]
             self.assertTrue(disposition.startswith('attachment; filename="paper-1234567890abcdef.pdf"; filename*=UTF-8\'\''))
             utf8_name = urllib.parse.unquote(disposition.split("filename*=UTF-8''", 1)[1])

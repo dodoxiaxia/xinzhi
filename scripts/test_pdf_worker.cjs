@@ -1,4 +1,4 @@
-// Offline integration tests: synthetic Access keys and fixture GitHub responses only.
+// Offline integration tests: synthetic passphrases and fixture GitHub responses only.
 const fs = require('fs'), vm = require('vm'), assert = require('assert'), path = require('path');
 const { webcrypto, createHash } = require('crypto');
 const original = fs.readFileSync(path.join(__dirname, '../edge/_worker.js'), 'utf8');
@@ -8,7 +8,11 @@ const library = {
   both: { doi:'10.1000/exact', title:'Do not use this fallback' },
   invalid: { doi:'not-a-doi', title:'Clinical, "quoted" STRASSE study' }
 };
-const source = original.replace('const PDF_LIBRARY = {};', 'const PDF_LIBRARY = ' + JSON.stringify(library) + ';').replace('export default {', 'globalThis.worker = {');
+const defaultPassphrase = 'synthetic-default-passphrase';
+const defaultDigest = createHash('sha256').update(defaultPassphrase).digest('hex');
+assert(original.includes("const PDF_DEFAULT_PASSPHRASE_SHA256 = '09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab';"));
+assert(!/CF_ACCESS_|pdfAuthorize|RS256|jwks/i.test(original));
+const source = original.replace('const PDF_LIBRARY = {};', 'const PDF_LIBRARY = ' + JSON.stringify(library) + ';').replace(/const PDF_DEFAULT_PASSPHRASE_SHA256 = '[a-f0-9]{64}';/, "const PDF_DEFAULT_PASSPHRASE_SHA256 = '" + defaultDigest + "';").replace('export default {', 'globalThis.worker = {');
 assert.notEqual(source, original);
 const commit = 'a'.repeat(40), otherCommit = 'b'.repeat(40);
 const repo = '/repos/dodoxiaxia/AI-';
@@ -21,27 +25,14 @@ const csvCell = value => /[,"\r\n]/.test(value) ? '"' + value.replace(/"/g, '""'
 const csv = rows => '\uFEFF' + [columns, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 const normalRow = ['精确匹配文章','https://doi.org/10.1000/EXACT','fixture','2026-10-07','fixture',pdfPath,sha256(pdf)];
 const noDoiRow = ['Clinical, "quoted"\r\nStraße study','','fixture','','',pdfPath,sha256(pdf)];
-const env = { PDF_DOWNLOAD_ENABLED:'true', GITHUB_LIBRARY_TOKEN:'synthetic-secret-token', CF_ACCESS_TEAM_DOMAIN:'offline.cloudflareaccess.com', CF_ACCESS_AUD:'synthetic-audience', PDF_GITHUB_COMMIT:commit };
-let keyPair, jwk;
-const b64 = value => Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)).toString('base64url');
-async function jwt(overrides = {}, headerOverrides = {}) {
-  const now = Math.floor(Date.now() / 1000);
-  const body = b64({ iss:'https://offline.cloudflareaccess.com', aud:['synthetic-audience'], exp:now + 3600, nbf:now - 60, ...overrides });
-  const header = b64({ alg:'RS256', kid:'offline-key', ...headerOverrides });
-  const input = header + '.' + body;
-  const signature = await webcrypto.subtle.sign('RSASSA-PKCS1-v1_5', keyPair.privateKey, Buffer.from(input));
-  return input + '.' + Buffer.from(signature).toString('base64url');
-}
+const env = { PDF_DOWNLOAD_ENABLED:'true', GITHUB_LIBRARY_TOKEN:'synthetic-secret-token', PDF_DOWNLOAD_PASSPHRASE:'synthetic-test-passphrase', PDF_GITHUB_COMMIT:commit };
+const valid = env.PDF_DOWNLOAD_PASSPHRASE;
 function harness(options = {}) {
   const calls = [];
   const fetch = async (url, init) => {
     const target = new URL(url); calls.push({ url:target, init });
     assert.equal(init.method, 'GET'); assert.equal(init.redirect, 'manual');
-    if (target.hostname === 'offline.cloudflareaccess.com') {
-      assert.equal(target.pathname, '/cdn-cgi/access/certs');
-      assert(!init.headers.authorization);
-      return options.jwksResponse ? options.jwksResponse(target, init) : Response.json({ keys:[jwk] });
-    }
+    assert(!target.href.includes(valid)); assert(!JSON.stringify(init.headers).includes(valid)); assert(!init.body);
     if (target.hostname === 'raw.githubusercontent.com') {
       assert(!init.headers.authorization, 'GitHub token must never follow a private raw redirect');
       return options.rawResponse ? options.rawResponse(target, init) : new Response(pdf);
@@ -58,72 +49,76 @@ function harness(options = {}) {
     return options.pdfResponse ? options.pdfResponse(target, init) : new Response(options.pdf || pdf);
   };
   const timers = options.timeoutMs ? (callback, ms) => setTimeout(callback, Math.min(ms, options.timeoutMs)) : setTimeout;
-  const context = vm.createContext({ URL, Response, Request, TextEncoder, TextDecoder, AbortController, setTimeout:timers, clearTimeout, Uint8Array, atob, crypto:webcrypto, fetch, console });
+  const context = vm.createContext({ URL, Response, Request, TextEncoder, TextDecoder, AbortController, setTimeout:timers, clearTimeout, Uint8Array, URLSearchParams, crypto:webcrypto, fetch, console });
   vm.runInContext(source, context);
-  return { context, calls, request:async (token, changes = {}, url = 'https://site.test/api/pdf?id=article', headers = {}) => {
-    const response = await context.worker.fetch(new Request(url, { headers:{ ...(token ? { 'cf-access-jwt-assertion':token } : {}), ...headers } }), { ...env, ...changes });
+  const request = async (passphrase, changes = {}, url = 'https://site.test/api/pdf?id=article', headers = {}, rawBody) => {
+    const response = await context.worker.fetch(new Request(url, { method:'POST', headers:{ 'content-type':'application/x-www-form-urlencoded', ...headers }, body:rawBody === undefined ? new URLSearchParams({ passphrase:passphrase || '' }).toString() : rawBody }), { ...env, ...changes });
     return response;
-  } };
+  };
+  return { context, calls, request, get:async (changes = {}, url = 'https://site.test/api/pdf?id=article', headers = {}) => context.worker.fetch(new Request(url, { headers }), { ...env, ...changes }) };
+
 }
 async function error(result, status, code) {
   assert.equal(result.status, status);
   const body = await result.text();
-  assert(!body.includes('synthetic-secret-token')); assert(!body.includes(pdfPath));
+  assert(!body.includes('synthetic-secret-token')); assert(!body.includes(pdfPath)); assert(!body.includes(valid)); assert(!body.includes(defaultPassphrase));
   const parsed = JSON.parse(body); assert.equal(parsed.ok, false); assert.equal(parsed.error, code);
   assert.equal(result.headers.get('cache-control'), 'no-store');
 }
 const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.github.com');
 
 (async () => {
-  keyPair = await webcrypto.subtle.generateKey({ name:'RSASSA-PKCS1-v1_5', modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256' }, true, ['sign','verify']);
-  jwk = { ...await webcrypto.subtle.exportKey('jwk', keyPair.publicKey), kid:'offline-key', use:'sig', alg:'RS256' };
-  const valid = await jwt();
-
   let h = harness();
-  await error(await h.request(null, { PDF_DOWNLOAD_ENABLED:undefined }), 503, 'pdf_disabled');
+  const initial = await h.get({ PDF_DOWNLOAD_ENABLED:undefined, GITHUB_LIBRARY_TOKEN:undefined });
+  assert.equal(initial.status, 200); assert.equal(h.calls.length, 0);
+  const initialPage = await initial.text();
+  assert(initialPage.includes('method="post"')); assert(initialPage.includes('action="/api/pdf?id=article"')); assert(initialPage.includes('type="password"')); assert(initialPage.includes('autocomplete="current-password"')); assert(initialPage.includes('href="/?mode=library"'));
+  assert(initialPage.includes('https://doi.org/10.1000/exact')); assert(!initialPage.includes(valid)); assert(!initialPage.includes(defaultPassphrase));
+  assert.equal(initial.headers.get('cache-control'), 'no-store'); assert(initial.headers.get('content-security-policy').includes("form-action 'self'"));
+  assert.equal(initial.headers.get('referrer-policy'), 'same-origin', 'normal browser form submissions must retain the same-origin Origin header');
+  await error(await h.request(valid, { PDF_DOWNLOAD_ENABLED:undefined }), 503, 'pdf_disabled');
   await error(await h.request(valid, { GITHUB_LIBRARY_TOKEN:'' }), 503, 'pdf_not_configured');
-  await error(await h.request(valid, { CF_ACCESS_AUD:undefined }), 503, 'pdf_not_configured');
-  await error(await h.request(valid, { CF_ACCESS_TEAM_DOMAIN:'https://attacker.example' }), 503, 'pdf_not_configured');
-  await error(await h.request(valid, { CF_ACCESS_TEAM_DOMAIN:'https://offline.cloudflareaccess.com@attacker.example' }), 503, 'pdf_not_configured');
   await error(await h.request(valid, { PDF_GITHUB_COMMIT:'main' }), 503, 'pdf_not_configured');
-  await error(await h.request(null), 401, 'pdf_auth_required'); assert.equal(h.calls.length, 0);
-
-  for (const token of [
-    await jwt({ iss:'https://attacker.example' }), await jwt({ aud:'different-app' }),
-    await jwt({ exp:Math.floor(Date.now() / 1000) - 1 }), await jwt({ nbf:Math.floor(Date.now() / 1000) + 3600 }),
-    await jwt({ exp:'9999999999' }), await jwt({}, { alg:'HS256' }),
-    'invalid.jwt.parts', valid.split('.').slice(0, 2).concat(b64('tampered signature')).join('.'),
-    await jwt({ aud:'synthetic-audience' }, { crit:['unhandled'] })
-  ]) {
-    h = harness(); await error(await h.request(token), 403, 'pdf_access_denied'); assert.equal(githubCalls(h).length, 0);
+  await error(await h.request(valid, { PDF_DOWNLOAD_PASSPHRASE:'' }), 503, 'pdf_not_configured');
+  assert.equal(h.calls.length, 0);
+  for (const passphrase of ['', 'wrong', valid + 'x', ' ' + valid, valid.toUpperCase()]) {
+    h = harness(); await error(await h.request(passphrase), 403, 'pdf_passphrase_invalid'); assert.equal(h.calls.length, 0);
   }
-  const parts = valid.split('.');
-  const signature = Buffer.from(parts[2], 'base64url'); signature[signature.length - 1] ^= 1;
-  h = harness(); await error(await h.request(parts.slice(0, 2).concat(signature.toString('base64url')).join('.')), 403, 'pdf_access_denied'); assert.equal(githubCalls(h).length, 0);
-  h = harness({ jwksResponse:() => new Response('private-upstream-message', { status:500 }) });
-  await error(await h.request(valid), 503, 'pdf_auth_unavailable'); assert.equal(githubCalls(h).length, 0);
-  h = harness({ jwksResponse:() => new Response(null, { status:302, headers:{ location:'https://attacker.example/jwks' } }) });
-  await error(await h.request(valid), 503, 'pdf_auth_unavailable'); assert.equal(h.calls.length, 1);
-  h = harness({ jwksResponse:() => Response.json({ keys:[{ ...jwk, kid:'different-key' }] }) });
-  await error(await h.request(valid), 403, 'pdf_access_denied'); assert.equal(githubCalls(h).length, 0);
-  h = harness({ jwksResponse:() => Response.json({ keys:[jwk, jwk] }) });
-  await error(await h.request(valid), 403, 'pdf_access_denied'); assert.equal(githubCalls(h).length, 0);
+  h = harness(); await error(await h.request('wrong', { GITHUB_LIBRARY_TOKEN:undefined, PDF_DOWNLOAD_ENABLED:undefined }), 403, 'pdf_passphrase_invalid'); assert.equal(h.calls.length, 0);
+  h = harness(); const incorrect = await h.request('wrong', {}, undefined, { accept:'text/html' });
+  assert.equal(incorrect.status, 403); assert.equal(incorrect.headers.get('referrer-policy'), 'same-origin'); const retry = await incorrect.text(); assert(retry.includes('请重新输入')); assert(retry.includes('method="post"')); assert(retry.includes('action="/api/pdf?id=article"')); assert(retry.includes('https://doi.org/10.1000/exact')); assert(!retry.includes('value="wrong"')); assert.equal(h.calls.length, 0);
+  for (const body of ['passphrase=a&passphrase=b', 'passphrase=a&id=article', 'password=a', '', 'passphrase=a&repo=other']) {
+    h = harness(); await error(await h.request(valid, {}, undefined, {}, body), 400, 'pdf_bad_form'); assert.equal(h.calls.length, 0);
+  }
+  h = harness(); await error(await h.request(valid, {}, undefined, { 'content-type':'application/json' }), 415, 'pdf_content_type'); assert.equal(h.calls.length, 0);
+  h = harness(); await error(await h.request(valid, {}, undefined, {}, 'passphrase=' + 'a'.repeat(2048)), 413, 'pdf_body_too_large'); assert.equal(h.calls.length, 0);
+  h = harness(); await error(await h.request(valid, {}, undefined, { 'content-length':'2049' }), 413, 'pdf_body_too_large'); assert.equal(h.calls.length, 0);
+  h = harness(); await error(await h.request(valid, {}, undefined, {}, 'passphrase=' + 'a'.repeat(257)), 403, 'pdf_passphrase_invalid'); assert.equal(h.calls.length, 0);
+  for (const origin of ['https://attacker.example', 'null']) {
+    h = harness(); await error(await h.request(valid, {}, undefined, { origin }), 403, 'pdf_origin'); assert.equal(h.calls.length, 0);
+  }
+  for (const site of ['cross-site', 'same-site']) {
+    h = harness(); await error(await h.request(valid, {}, undefined, { 'sec-fetch-site':site }), 403, 'pdf_origin'); assert.equal(h.calls.length, 0);
+  }
+  h = harness(); assert.equal((await h.request(valid, {}, undefined, { 'sec-fetch-site':'same-origin' })).status, 200);
+  h = harness(); assert.equal((await h.request(valid, {}, undefined, { origin:'https://site.test' })).status, 200);
+  h = harness(); assert.equal((await h.request(defaultPassphrase, { PDF_DOWNLOAD_PASSPHRASE:undefined })).status, 200, 'configured digest fallback works without exposing plaintext in source');
+  h = harness(); await error(await h.request(defaultPassphrase), 403, 'pdf_passphrase_invalid'); assert.equal(h.calls.length, 0);
 
   h = harness(); const success = await h.request(valid);
   assert.equal(success.status, 200); assert.equal(success.headers.get('content-type'), 'application/pdf');
   assert(success.headers.get('content-disposition').startsWith('attachment;')); assert(success.headers.get('content-disposition').includes("filename*=UTF-8''" + encodeURIComponent('精确匹配文章.pdf')));
   assert(success.headers.get('cache-control').includes('no-store')); assert.equal(success.headers.get('content-length'), String(pdf.length));
   assert.deepEqual(Buffer.from(await success.arrayBuffer()), pdf); assert.equal(githubCalls(h).length, 3);
-  const cached = await h.request(valid); assert.equal(cached.status, 200); assert.equal(h.calls.filter(call => call.url.hostname === 'offline.cloudflareaccess.com').length, 1);
   h = harness({ commit:otherCommit }); assert.equal((await h.request(valid, { PDF_GITHUB_COMMIT:undefined })).status, 200); assert.equal(githubCalls(h).length, 4);
-  h = harness(); assert.equal((await h.request(await jwt({ aud:'synthetic-audience' }))).status, 200);
   h = harness(); assert.equal((await h.request(valid, {}, 'https://site.test/api/pdf?id=titled')).status, 200, 'no DOI uses exact Unicode case-folded title with quoted comma and embedded newline');
   h = harness({ csv:csv([noDoiRow]) }); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=both'), 404, 'pdf_not_found');
   h = harness(); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=invalid'), 404, 'pdf_not_found'); assert.equal(githubCalls(h).length, 0);
   h = harness(); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=unknown'), 404, 'pdf_not_found'); assert.equal(githubCalls(h).length, 0);
   h = harness(); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=article&id=titled'), 400, 'pdf_bad_id'); assert.equal(githubCalls(h).length, 0);
-  for (const extra of ['repo=other/repo', 'path=secret.pdf', 'doi=10.1000/exact']) {
+  for (const extra of ['repo=other/repo', 'path=secret.pdf', 'doi=10.1000/exact', 'passphrase=synthetic-test-passphrase']) {
     h = harness(); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=article&' + extra), 400, 'pdf_bad_id'); assert.equal(githubCalls(h).length, 0);
+    await error(await h.get({}, 'https://site.test/api/pdf?id=article&' + extra), 400, 'pdf_bad_id'); assert.equal(githubCalls(h).length, 0);
   }
   h = harness(); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=__proto__'), 404, 'pdf_not_found'); assert.equal(githubCalls(h).length, 0);
 
@@ -170,16 +165,14 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
   const redirected = await h.request(valid); assert.equal(redirected.status, 200); assert.equal(h.calls.filter(call => call.url.hostname === 'raw.githubusercontent.com').length, 1);
   for (const location of ['https://attacker.example/private.pdf', 'https://raw.githubusercontent.com/dodoxiaxia/AI-/' + otherCommit + '/wrong.pdf', 'https://api.github.com/elsewhere']) {
     h = harness({ pdfResponse:() => new Response(null, { status:302, headers:{ location } }) });
-    await error(await h.request(valid), 502, 'pdf_upstream'); assert.equal(h.calls.length, 4);
+    await error(await h.request(valid), 502, 'pdf_upstream'); assert.equal(h.calls.length, 3);
   }
   h = harness({ pdfResponse:() => new Response(null, { status:302, headers:{ location:'https://raw.githubusercontent.com/dodoxiaxia/AI-/' + commit + '/' + pdfPath.split('/').map(encodeURIComponent).join('/') } }), rawResponse:() => new Response(null, { status:302, headers:{ location:'https://attacker.example' } }) });
-  await error(await h.request(valid), 502, 'pdf_upstream'); assert.equal(h.calls.length, 5);
+  await error(await h.request(valid), 502, 'pdf_upstream'); assert.equal(h.calls.length, 4);
 
-  h = harness(); const noLogin = await h.request(null, {}, undefined, { accept:'text/html' });
-  assert.equal(noLogin.status, 401); const noLoginPage = await noLogin.text(); assert(noLoginPage.includes('Cloudflare Access 登录')); assert(noLoginPage.includes('href="/?mode=library"'));
   h = harness({ csv:csv([noDoiRow]) }); const fallback = await h.request(valid, {}, undefined, { accept:'text/html' });
   assert.equal(fallback.status, 404); const page = await fallback.text(); assert(page.includes('https://doi.org/10.1000/exact')); assert(!page.includes(pdfPath)); assert(!page.includes(env.GITHUB_LIBRARY_TOKEN));
-  const method = await h.context.worker.fetch(new Request('https://site.test/api/pdf?id=article', { method:'POST' }), env); await error(method, 405, 'pdf_method');
+  const method = await h.context.worker.fetch(new Request('https://site.test/api/pdf?id=article', { method:'PUT' }), env); await error(method, 405, 'pdf_method');
 
-  console.log('PDF offline boundaries passed: Access JWT, no unauthorized GitHub access, commit pinning, exact DOI/title, CSV, paths, PDF/SHA/size/blob, safe redirects, downloads and HTML errors.');
+  console.log('PDF offline boundaries passed: GET password form, bounded POST password verification, no unauthorized GitHub access, commit pinning, exact DOI/title, CSV, paths, PDF/SHA/size/blob, safe redirects, downloads and HTML errors.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
