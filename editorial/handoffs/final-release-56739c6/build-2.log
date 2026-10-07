@@ -1,0 +1,1 @@
+release preflight: ['_headers', '_worker.js', 'icon.svg', 'index.html', 'public.js', 'style.css']

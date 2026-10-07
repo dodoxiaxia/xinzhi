@@ -1,0 +1,667 @@
+{
+  "passed": true,
+  "scenarios": 20,
+  "checks": 240,
+  "evidence": [
+    {
+      "name": "appearance a light",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=a&theme=light",
+      "url": "https://boot-url.invalid/?style=a&theme=light",
+      "requests": 26
+    },
+    {
+      "name": "appearance b light",
+      "beforeCss": {
+        "style": "b",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(255, 255, 255)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#d13a1f"
+      },
+      "beforeApp": {
+        "style": "b",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(255, 255, 255)",
+        "body": "rgb(255, 255, 255)",
+        "accent": "#d13a1f",
+        "bar": "#d13a1f"
+      },
+      "after": {
+        "style": "b",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(255, 255, 255)",
+        "body": "rgb(255, 255, 255)",
+        "accent": "#d13a1f",
+        "bar": "#d13a1f"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=b&theme=light",
+      "url": "https://boot-url.invalid/?style=b&theme=light",
+      "requests": 26
+    },
+    {
+      "name": "appearance c light",
+      "beforeCss": {
+        "style": "c",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(240, 242, 244)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "c",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(240, 242, 244)",
+        "body": "rgb(240, 242, 244)",
+        "accent": "#0b8f7e",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "c",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(240, 242, 244)",
+        "body": "rgb(240, 242, 244)",
+        "accent": "#0b8f7e",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=c&theme=light",
+      "url": "https://boot-url.invalid/?style=c&theme=light",
+      "requests": 26
+    },
+    {
+      "name": "appearance d light",
+      "beforeCss": {
+        "style": "d",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(245, 242, 234)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#f5f2ea"
+      },
+      "beforeApp": {
+        "style": "d",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(245, 242, 234)",
+        "body": "rgb(245, 242, 234)",
+        "accent": "#9b2335",
+        "bar": "#f5f2ea"
+      },
+      "after": {
+        "style": "d",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(245, 242, 234)",
+        "body": "rgb(245, 242, 234)",
+        "accent": "#9b2335",
+        "bar": "#f5f2ea"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=d&theme=light",
+      "url": "https://boot-url.invalid/?style=d&theme=light",
+      "requests": 26
+    },
+    {
+      "name": "appearance a dark",
+      "beforeCss": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#141d2b"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgb(14, 21, 32)",
+        "accent": "#78aeff",
+        "bar": "#141d2b"
+      },
+      "after": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgb(14, 21, 32)",
+        "accent": "#78aeff",
+        "bar": "#141d2b"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=a&theme=dark",
+      "url": "https://boot-url.invalid/?style=a&theme=dark",
+      "requests": 26
+    },
+    {
+      "name": "appearance b dark",
+      "beforeCss": {
+        "style": "b",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 18, 18)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#b8321a"
+      },
+      "beforeApp": {
+        "style": "b",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 18, 18)",
+        "body": "rgb(18, 18, 18)",
+        "accent": "#ff6b4d",
+        "bar": "#b8321a"
+      },
+      "after": {
+        "style": "b",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 18, 18)",
+        "body": "rgb(18, 18, 18)",
+        "accent": "#ff6b4d",
+        "bar": "#b8321a"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=b&theme=dark",
+      "url": "https://boot-url.invalid/?style=b&theme=dark",
+      "requests": 26
+    },
+    {
+      "name": "appearance c dark",
+      "beforeCss": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#1c2024"
+      },
+      "beforeApp": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgb(18, 21, 23)",
+        "accent": "#40cdb7",
+        "bar": "#1c2024"
+      },
+      "after": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgb(18, 21, 23)",
+        "accent": "#40cdb7",
+        "bar": "#1c2024"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=c&theme=dark",
+      "url": "https://boot-url.invalid/?style=c&theme=dark",
+      "requests": 26
+    },
+    {
+      "name": "appearance d dark",
+      "beforeCss": {
+        "style": "d",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(20, 18, 15)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#14120f"
+      },
+      "beforeApp": {
+        "style": "d",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(20, 18, 15)",
+        "body": "rgb(20, 18, 15)",
+        "accent": "#e0707a",
+        "bar": "#14120f"
+      },
+      "after": {
+        "style": "d",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(20, 18, 15)",
+        "body": "rgb(20, 18, 15)",
+        "accent": "#e0707a",
+        "bar": "#14120f"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=d&theme=dark",
+      "url": "https://boot-url.invalid/?style=d&theme=dark",
+      "requests": 26
+    },
+    {
+      "name": "bare default",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/",
+      "url": "https://boot-url.invalid/",
+      "requests": 26
+    },
+    {
+      "name": "bare saved compact",
+      "beforeCss": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#1c2024"
+      },
+      "beforeApp": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgb(18, 21, 23)",
+        "accent": "#40cdb7",
+        "bar": "#1c2024"
+      },
+      "after": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgb(18, 21, 23)",
+        "accent": "#40cdb7",
+        "bar": "#1c2024"
+      },
+      "initializedUrl": "https://boot-url.invalid/",
+      "url": "https://boot-url.invalid/?view=cards",
+      "requests": 27
+    },
+    {
+      "name": "explicit cards overrides compact",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/?view=cards",
+      "url": "https://boot-url.invalid/?view=cards",
+      "requests": 26
+    },
+    {
+      "name": "explicit compact overrides cards",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/?view=compact",
+      "url": "https://boot-url.invalid/?view=compact",
+      "requests": 26
+    },
+    {
+      "name": "query appearance wins",
+      "beforeCss": {
+        "style": "b",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 18, 18)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#b8321a"
+      },
+      "beforeApp": {
+        "style": "b",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 18, 18)",
+        "body": "rgb(18, 18, 18)",
+        "accent": "#ff6b4d",
+        "bar": "#b8321a"
+      },
+      "after": {
+        "style": "b",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 18, 18)",
+        "body": "rgb(18, 18, 18)",
+        "accent": "#ff6b4d",
+        "bar": "#b8321a"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=b&theme=dark",
+      "url": "https://boot-url.invalid/?style=b&theme=dark",
+      "requests": 26
+    },
+    {
+      "name": "invalid query uses valid saved",
+      "beforeCss": {
+        "style": "d",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(20, 18, 15)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#14120f"
+      },
+      "beforeApp": {
+        "style": "d",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(20, 18, 15)",
+        "body": "rgb(20, 18, 15)",
+        "accent": "#e0707a",
+        "bar": "#14120f"
+      },
+      "after": {
+        "style": "d",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(20, 18, 15)",
+        "body": "rgb(20, 18, 15)",
+        "accent": "#e0707a",
+        "bar": "#14120f"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=invalid&theme=invalid",
+      "url": "https://boot-url.invalid/?style=invalid&theme=invalid",
+      "requests": 26
+    },
+    {
+      "name": "invalid saved uses system",
+      "beforeCss": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#141d2b"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgb(14, 21, 32)",
+        "accent": "#78aeff",
+        "bar": "#141d2b"
+      },
+      "after": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgb(14, 21, 32)",
+        "accent": "#78aeff",
+        "bar": "#141d2b"
+      },
+      "initializedUrl": "https://boot-url.invalid/",
+      "url": "https://boot-url.invalid/",
+      "requests": 26
+    },
+    {
+      "name": "storage refused query",
+      "beforeCss": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#1c2024"
+      },
+      "beforeApp": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgb(18, 21, 23)",
+        "accent": "#40cdb7",
+        "bar": "#1c2024"
+      },
+      "after": {
+        "style": "c",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(18, 21, 23)",
+        "body": "rgb(18, 21, 23)",
+        "accent": "#40cdb7",
+        "bar": "#1c2024"
+      },
+      "initializedUrl": "https://boot-url.invalid/?style=c&theme=dark&view=cards",
+      "url": "https://boot-url.invalid/?style=c&theme=dark&view=cards",
+      "requests": 26
+    },
+    {
+      "name": "storage refused system",
+      "beforeCss": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#141d2b"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgb(14, 21, 32)",
+        "accent": "#78aeff",
+        "bar": "#141d2b"
+      },
+      "after": {
+        "style": "a",
+        "theme": "dark",
+        "scheme": "dark",
+        "background": "rgb(14, 21, 32)",
+        "body": "rgb(14, 21, 32)",
+        "accent": "#78aeff",
+        "bar": "#141d2b"
+      },
+      "initializedUrl": "https://boot-url.invalid/",
+      "url": "https://boot-url.invalid/",
+      "requests": 26
+    },
+    {
+      "name": "filter hash and drawer",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/?mode=candidates&q=Offline&range=365&reading=abstract&drawer=first#paper",
+      "url": "https://boot-url.invalid/?mode=candidates&q=Offline&range=365&reading=abstract&drawer=first#paper",
+      "requests": 32
+    },
+    {
+      "name": "invalid mode preserves hash",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/#keep",
+      "url": "https://boot-url.invalid/#keep",
+      "requests": 26
+    },
+    {
+      "name": "sources mode bare saved view",
+      "beforeCss": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgba(0, 0, 0, 0)",
+        "accent": "",
+        "bar": "#ffffff"
+      },
+      "beforeApp": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "after": {
+        "style": "a",
+        "theme": "light",
+        "scheme": "light",
+        "background": "rgb(238, 242, 247)",
+        "body": "rgb(238, 242, 247)",
+        "accent": "#1b4f9c",
+        "bar": "#ffffff"
+      },
+      "initializedUrl": "https://boot-url.invalid/?mode=sources#health",
+      "url": "https://boot-url.invalid/?mode=sources#health",
+      "requests": 26
+    }
+  ]
+}
