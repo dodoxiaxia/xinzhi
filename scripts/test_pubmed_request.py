@@ -1,6 +1,7 @@
 """Offline regression for long E-utilities queries and failure propagation."""
 import datetime
 import http.client
+import io
 import unittest
 import urllib.error
 import urllib.parse
@@ -96,6 +97,17 @@ class PubmedRequestTests(unittest.TestCase):
         self.assertIs(caught.exception, error)
         opener.assert_called_once()
         sleep.assert_not_called()
+
+    def test_bad_request_retains_action_and_public_error_without_retry_or_query(self):
+        error = urllib.error.HTTPError('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', 400, 'Bad Request', {}, io.BytesIO(b'{"error":"Invalid uid"}'))
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=error) as opener, patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                fetch_pubmed.request('efetch.fcgi', {'db':'pubmed', 'id':'synthetic-invalid', 'retmode':'xml'})
+        self.assertIs(caught.exception, error)
+        opener.assert_called_once();sleep.assert_not_called()
+        self.assertIn('efetch.fcgi', error.__notes__[0])
+        self.assertIn('Invalid uid', error.__notes__[0])
+        self.assertNotIn('synthetic-invalid',error.__notes__[0])
 
 
 if __name__ == '__main__':
