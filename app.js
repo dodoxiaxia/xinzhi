@@ -978,7 +978,9 @@
       set('minor', state.minor ? '1' : '', '');
       set('reading', usesLane()?state.reading:'', '');
       set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
-      if (viewInUrl) u.searchParams.set('view', state.viewMode);
+      const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
+        || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
+      if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
       history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
@@ -1258,6 +1260,8 @@
     let chips = `<span class="results-meta">共找到 <b>${totalCount}</b> 篇文献${usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
 
     if (state.search) {
+      const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
+      chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
       chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button class="filter-badge-remove" data-clear="search">&times;</button></span>`;
     }
     if (state.clinicalTier) {
@@ -2268,6 +2272,9 @@
   // Hotkey '/' for search
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
+      if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey
+        || $('#huddleModalBackdrop.open') || $('#readerDrawer.open')
+        || document.activeElement?.matches('input,textarea,select') || document.activeElement?.isContentEditable) return;
       e.preventDefault();
       searchInput?.focus();
     } else if (e.key === 'Tab') {

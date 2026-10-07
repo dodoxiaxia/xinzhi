@@ -74,6 +74,10 @@ def main():
 
                 def route(r):
                     req = r.request
+                    if req.url.startswith('https://www.ebi.ac.uk/europepmc/webservices/rest/search?'):
+                        check(req.method == 'GET', 'Public abstract lookup is intercepted without a network call')
+                        requests.append({'path': 'mocked-europe-pmc-search', 'method': req.method})
+                        return r.fulfill(json={'resultList': {'result': []}})
                     check(req.url.startswith(base), 'Only local public assets and APIs are requested')
                     if urlsplit(req.url).path.startswith('/api/'):
                         requests.append({'path': urlsplit(req.url).path, 'method': req.method})
@@ -93,6 +97,9 @@ def main():
                     expect(page.locator('[data-clear="search"]')).to_be_visible()
                     matched = count(page)
                     check(0 < matched < baseline, label + ': AI-ECG reduces results')
+                    scope = {'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[mode]
+                    expect(page.locator('.search-scope')).to_contain_text('检索范围：' + scope)
+                    expect(page.locator('.search-scope')).to_contain_text('切换栏目保留关键词')
                     check(page.locator('.article-title').first.inner_text() != first_before, label + ': rendered list changes')
                     check(parse_qs(urlsplit(page.url).query)['q'] == ['AI-ECG'], label + ': query reflected in URL')
                     no_overflow(page, label + '/search')
@@ -133,6 +140,7 @@ def main():
                     page.locator(f'[data-mode="{next_mode}"]').click()
                     expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
                     check(parse_qs(urlsplit(page.url).query)['q'] == ['AI-ECG'], label + ': mode switch preserves query')
+                    expect(page.locator('.search-scope')).to_contain_text({'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[next_mode])
 
                 composite = {'mode': 'library', 'lane': 'all', 'journal': 'No matching journal', 'design': 'RCT', 'range': '30'}
                 page.goto(base + '?' + urlencode(composite), wait_until='load')
@@ -147,6 +155,65 @@ def main():
                 page.goto(base + '?mode=library&lane=all&view=compact', wait_until='load')
                 expect(page.locator('#articlesStream')).to_have_class('articles-compact-list')
                 check(page.locator('.compact-row').count() > 0, f'{width}: existing compact view works')
+
+                # A saved compact preference must be made explicit in a shared search URL.
+                page.evaluate('localStorage.setItem("xinzhi_view_mode", "compact")')
+                page.goto(base + '?q=房颤&design=RCT', wait_until='load')
+                expect(page.locator('.search-scope')).to_contain_text('检索范围：每日精选')
+                shared_url, shared_count = page.url, count(page)
+                params = parse_qs(urlsplit(shared_url).query)
+                check(params['view'] == ['compact'] and params['q'] == ['房颤'] and params['design'] == ['RCT'], f'{width}: share URL keeps saved view, query and filters')
+                fresh_context = browser.new_context(viewport={'width': width, 'height': 900})
+                fresh = fresh_context.new_page()
+                fresh.on('pageerror', lambda error: errors.append(str(error)))
+                fresh.route('**/*', route)
+                fresh.goto(shared_url, wait_until='load')
+                check(count(fresh) == shared_count, f'{width}: shared query reproduces count without prior storage')
+                expect(fresh.locator('#articlesStream')).to_have_class('articles-compact-list')
+                expect(fresh.locator('.search-scope')).to_contain_text('检索范围：每日精选')
+                fresh_context.close()
+
+                page.goto(base + '?mode=candidates&lane=all&view=cards', wait_until='load')
+                author_paper = page.evaluate('''() => {
+                    const visible = window.FEEDS.items.filter(p=>!p.minor && p.authors?.length && p.doi && p.datePrecision==='day');
+                    visible.sort((a,b)=>b.date.localeCompare(a.date));
+                    const p = visible[0];
+                    return {id:p.id, author:p.authors[0], doi:p.doi};
+                }''')
+                page.locator('#globalSearch').fill(author_paper['author'])
+                expect(page.locator('[data-clear="search"]')).to_be_visible()
+                check(count(page) > 0, f'{width}: public author search returns results')
+                check(page.locator('#articlesStream [data-paper-id="' + author_paper['id'] + '"]').count() > 0, f'{width}: author search renders the matching public paper')
+                expect(page.locator('.search-scope')).to_contain_text('检索范围：文献雷达')
+                doi = author_paper['doi']
+                page.goto(base + '?' + urlencode({'mode': 'curated', 'q': doi, 'journal': 'No matching journal', 'view': 'compact'}), wait_until='load')
+                expect(page.locator('.doi-search-notice')).to_contain_text('按 DOI 全站检索')
+                check(count(page) > 0, f'{width}: exact DOI keeps its existing explicit global scope')
+                check(parse_qs(urlsplit(page.url).query)['q'] == [doi], f'{width}: DOI query survives URL synchronization')
+
+                # Shortcuts remain available on the page, but never steal editable/modal focus.
+                page.goto(base + '?mode=library&lane=all&view=cards&q=AI-ECG', wait_until='load')
+                page.locator('#globalSearch').evaluate('(e)=>e.blur()')
+                page.keyboard.press('/')
+                check(page.evaluate('document.activeElement.id === "globalSearch"'), f'{width}: slash still focuses search from the page')
+                for tag in ['input', 'textarea', 'select', 'div']:
+                    page.evaluate('tag=>{const e=document.createElement(tag);e.id="editingFixture";if(tag==="div")e.contentEditable="true";document.body.append(e);e.focus()}', tag)
+                    page.keyboard.press('/')
+                    check(page.evaluate('document.activeElement.id === "editingFixture"'), f'{width}: slash preserves ' + tag + ' editing focus')
+                    page.locator('#editingFixture').evaluate('(e)=>e.remove()')
+                before_url = page.url
+                page.locator('#openHuddleBtn').click()
+                page.keyboard.press('/')
+                page.keyboard.type('x')
+                check(page.evaluate('document.activeElement.id === "closeHuddleModalBtn"'), f'{width}: slash cannot leave the selected-list modal')
+                check(page.url == before_url, f'{width}: modal typing cannot mutate background query')
+                page.locator('#closeHuddleModalBtn').click()
+                page.locator('#articlesStream [data-action="open-drawer"]').first.click()
+                focus_before = page.evaluate('document.activeElement.id')
+                page.keyboard.press('/')
+                check(page.evaluate('document.activeElement.id') == focus_before, f'{width}: slash cannot leave the reader modal')
+                check(page.url == before_url, f'{width}: reader slash leaves search unchanged')
+                page.locator('#drawerCloseBtn').click()
 
                 page.goto(base + '?mode=library&lane=all', wait_until='load')
                 total = int(page.locator('#libCountBadge').inner_text())
