@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Select a quality-filtered seven-day board and incrementally precompute public abstracts.
 
-Offline by default. --run requires explicit use of existing learn.dryz.info runtime. Serial, no retries, durable attempt reservations before
-requests, default/hard maximum 8 model attempts per UTC day (the existing daily batch
-budget). Runtime requests reserve TWO attempts for the Worker's bounded internal retry.
+Offline by default. --run uses only the existing configured model or public runtime.
+The local conservative trial cap is 8 attempts/9600 output tokens per UTC day,
+inferred from the former quicklook step per invocation; it is NOT account quota.
+Runtime requests reserve TWO attempts for the Worker's bounded internal retry.
 An uncertain in-flight attempt, authorization/rate error or transport failure pauses
 paid work; successful siblings remain readable. Never reads library/PDF/private indexes.
 """
-import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess, sys
+import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess, sys, uuid
 import urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from build_data import clean
@@ -15,6 +16,7 @@ from generate_quicklooks import local_abstract, minor_item, NoModelRedirect
 from auto_picks import CARDIO, GOOD_DESIGN, TOP
 from week_precompute_budget import BudgetError, reserve_runtime, reserve_configured
 import week_precompute_cache as cache_contract
+from week_precompute_checkpoint import CheckpointError
 
 ROOT=Path(__file__).resolve().parents[1]
 ZONE=dt.timezone(dt.timedelta(hours=8))
@@ -22,7 +24,7 @@ CATEGORIES=('心血管','综合医学','AI医疗','AI前沿')
 QUOTAS=(10,6,6,2)
 TASKS=('translate','study','quicklook')
 MAX_ATTEMPTS=8
-MAX_DAILY_OUTPUT_TOKENS=8*1200  # Preserve the replaced batch output-token ceiling.
+MAX_DAILY_OUTPUT_TOKENS=8*1200  # Local trial ceiling, not verified provider/account budget.
 RUNTIME='https://learn.dryz.info'
 SCHEMA=1
 PROMPT_VERSION='week-public-abstract-v1'
@@ -237,10 +239,10 @@ def board(selected,window,cache,report,title_cache=None):
   items.append({'id':p['id'],'paperID':p['paperID'],'doi':p.get('doi',''),'pmid':p.get('pmid',''),'rank':rank,'category':p['weeklyCategory'],'date':p['date'],'title':p['title'],'sourceHash':p['sourceHash'],'abstract':p['abstract'],'abstractSource':p['abstractSource'],'abstractSourceUrl':p['abstractSourceUrl'],'titleZh':content.get('translate',{}).get('title_zh') or content.get('quicklook',{}).get('title_zh') or legacy_title, 'translation':content.get('translate'),'quicklook':content.get('quicklook'),'study':study,'generationMeta':meta,'precomputeStatus':'ready' if len(content)==3 else 'partial' if content else 'pending','missingTasks':[t for t in TASKS if t not in content],'allowAutomaticGeneration':False})
  return {'schemaVersion':SCHEMA,'generatedAt':stamp(),'scope':'public-abstract','caveat':CAVEAT,'window':window,'categories':[{'key':c,'count':sum(i['category']==c for i in items),'eligible':window['eligibleByCategory'][c],'reason':'没有同时符合真实出版日期、完整公开摘要和相关性条件的条目。' if not window['eligibleByCategory'][c] else '本类在严格出版窗口、完整公开摘要与相关性筛选后仅有'+str(window['eligibleByCategory'][c])+'条；未用旧稿或低相关条目补数。' if window['eligibleByCategory'][c]<QUOTAS[CATEGORIES.index(c)] else None} for c in CATEGORIES],'items':items,'coverage':{'title':sum(bool(i['titleZh']) for i in items),**{t:sum(bool(i[{'translate':'translation','study':'study','quicklook':'quicklook'}[t]]) for i in items) for t in TASKS}},'run':report}
 
-def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,transport=request):
+def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,transport=request,checkpoint=None):
  day=now().date().isoformat();daily=ledger.setdefault('days',{}).setdefault(day,{'reservedAttempts':0,'reservedOutputTokens':0,'requests':[]})
  report={'mode':'runtime' if run else 'read-only-cache','reservedModelAttempts':0,'paidRequests':0,'cacheReads':0,'imported':0,'confirmedPostCacheHits':0,'stopped':False,'blocker':None,'remainingBudget':max(0,limit-daily['reservedAttempts'])}
- if run and os.environ.get('GITHUB_ACTIONS')=='true':
+ if run and os.environ.get('GITHUB_ACTIONS')=='true' and checkpoint is None:
   report.update(stopped=True,blocker='paid_ci_requires_durable_checkpoint');return report
  if run and (ledger.get('paused') or daily.get('paused') or any(r['status']=='started' for r in daily['requests'])):
   report.update(stopped=True,blocker=ledger.get('paused') or daily.get('paused') or 'uncertain_prior_attempt');return report
@@ -260,11 +262,14 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
     if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');return report
     try:reservation=reserve_runtime(daily,task,limit,MAX_DAILY_OUTPUT_TOKENS)
     except BudgetError as exc:report.update(stopped=True,blocker=exc.code);return report
-    item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'task':task,'status':'started','at':stamp(),**reservation}
+    item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'task':task,'status':'started','at':stamp(),'requestId':str(uuid.uuid4()),**reservation}
     daily['requests'].append(item);atomic(ledger_path,ledger)
-    report['reservedModelAttempts']+=2;report['paidRequests']+=1
+    report['reservedModelAttempts']+=2
     ids={'pmid':p['pmid']} if p.get('pmid') else {'doi':p['doi']}
-    result=transport(RUNTIME+('/api/ql' if task=='quicklook' else '/api/ai'),ids if task=='quicklook' else {'task':task,**ids})
+    def dispatch():
+     report['paidRequests']+=1
+     return transport(RUNTIME+('/api/ql' if task=='quicklook' else '/api/ai'),ids if task=='quicklook' else {'task':task,**ids})
+    result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
     item['cachedResponse']=result.get('cached') is True
     if item['cachedResponse']:report['confirmedPostCacheHits']+=1
     atomic(ledger_path,ledger)
@@ -272,6 +277,7 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
     if not hit:raise Halt('source_or_cache_identity_mismatch')
     store(cache,p,task,*hit,'runtime-precompute');atomic(cache_path,cache)
     item['status']='validated';atomic(ledger_path,ledger)
+    if checkpoint:checkpoint.save(ledger,cache)
  except (Halt,ValueError) as exc:
   code=str(exc) if re.fullmatch(r'[a-z_0-9:]{1,120}',str(exc)) else 'processing_failed'
   daily['paused']=code;ledger['paused']=code
@@ -291,11 +297,11 @@ COMBINED_PROMPT = (
  'limits只能提炼摘要明确体现的局限，否则写摘要未提供。不要把待阅读全文核对的问题声称为已发现的缺陷。'
  '不得借用其他论文的信息，不编补无摘要，不声称读过全文或通过医学审查，不作诊疗推荐。')
 
-def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_call=None):
+def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_call=None,checkpoint=None):
  report={'mode':'configured','reservedModelAttempts':0,'paidRequests':0,'generatedTasks':0,'stopped':False,'blocker':None}
  # The current workflow saves state only after successful deployment. A failed
  # runner would otherwise lose reservations and silently charge again next run.
- if os.environ.get('GITHUB_ACTIONS')=='true':
+ if os.environ.get('GITHUB_ACTIONS')=='true' and checkpoint is None:
   report.update(stopped=True,blocker='paid_ci_requires_durable_checkpoint');return report
  try:
   config=read(ROOT/'.local/llm.json',{})
@@ -341,17 +347,24 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
    try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS)
    except BudgetError as exc:report.update(stopped=True,blocker=exc.code);break
    output_limit=reservation['reservedOutputTokens']
-   item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'tasks':missing,'maxOutputTokens':output_limit,'status':'started','at':stamp(),**reservation}
-   daily['requests'].append(item);atomic(ledger_path,ledger);report['reservedModelAttempts']+=1;report['paidRequests']+=1
-   result=(model_call or call)({'title':p['title'],'journal':p.get('cleanJournal') or p.get('journal',''),'abstract':p['abstract'],'evidence':validate('study_evidence_catalog',None,p),'missingTasks':missing})
+   item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'tasks':missing,'maxOutputTokens':output_limit,'status':'started','at':stamp(),'requestId':str(uuid.uuid4()),**reservation}
+   daily['requests'].append(item);atomic(ledger_path,ledger);report['reservedModelAttempts']+=1
+   public={'title':p['title'],'journal':p.get('cleanJournal') or p.get('journal',''),'abstract':p['abstract'],'evidence':validate('study_evidence_catalog',None,p),'missingTasks':missing}
+   def dispatch():
+    report['paidRequests']+=1
+    return (model_call or call)(public)
+   result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
    invalid=False
    for task in missing:
     try:
      value=validate('study_evidence',result.get(task),p) if task=='study' else result.get(task)
      store(cache,p,task,value,cfg['model'],stamp(),'configured-precompute');atomic(cache_path,cache);report['generatedTasks']+=1
+     if checkpoint:checkpoint.save(ledger,cache)
+    except CheckpointError:raise
     except ValueError:invalid=True
    if invalid:raise Halt('evidence_validation_failed')
    item['status']='validated';atomic(ledger_path,ledger)
+   if checkpoint:checkpoint.save(ledger,cache)
  except (Halt,ValueError) as exc:
   code=str(exc) if re.fullmatch(r'[a-z_0-9:]{1,120}',str(exc)) else 'processing_failed'
   daily['paused']=code;ledger['paused']=code
@@ -368,7 +381,7 @@ def main(argv=None):
  ap.add_argument('--attempt-limit',type=int,default=MAX_ATTEMPTS);ap.add_argument('--output',type=Path,default=ROOT/'data/weekly-board.json')
  args=ap.parse_args(argv)
  if not 20<=args.target<=30:ap.error('--target must be 20..30')
- if not 0<=args.attempt_limit<=MAX_ATTEMPTS:ap.error('--attempt-limit must be 0..8; existing budget cannot be expanded')
+ if not 0<=args.attempt_limit<=MAX_ATTEMPTS:ap.error('--attempt-limit must be 0..8; local trial cap unchanged pending budget review')
  cache_path=ROOT/'data/week-precompute-cache.json';ledger_path=ROOT/'data/week-precompute-ledger.json'
  lock=ROOT/'.local/week-precompute.lock';lock.parent.mkdir(parents=True,exist_ok=True)
  try:fd=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
@@ -380,8 +393,17 @@ def main(argv=None):
   if not isinstance(cache,dict) or not isinstance(cache.get('entries'),dict) or not isinstance(ledger,dict) or not isinstance(ledger.get('days'),dict):
    print(json.dumps({'failed':True,'blocker':'invalid_checkpoint_format'}));return 1
   report={'mode':'offline','paidRequests':0,'reservedModelAttempts':0,'blocker':None}
-  if args.read_runtime_cache or (args.run and args.provider=='runtime'):report=acquire_runtime(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,args.run)
-  elif args.run:report=configured_batch(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit)
+  checkpoint=None
+  if args.run:
+   from week_precompute_ci import initialize_checkpoint
+   try:
+    checkpoint=initialize_checkpoint(ROOT,ledger,cache)
+    if checkpoint:atomic(cache_path,cache);atomic(ledger_path,ledger)
+   except ValueError as exc:
+    report.update(stopped=True,blocker=str(exc))
+  if report.get('stopped'):pass
+  elif args.read_runtime_cache or (args.run and args.provider=='runtime'):report=acquire_runtime(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,args.run,checkpoint=checkpoint)
+  elif args.run:report=configured_batch(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,checkpoint=checkpoint)
   result=board(selected,window,cache,report,read(ROOT/'data/translations.json',{}));atomic(args.output,result)
   print(json.dumps({'window':window,'coverage':result['coverage'],'run':report},ensure_ascii=False))
   return 1 if report.get('stopped') else 0
