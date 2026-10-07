@@ -1,0 +1,1468 @@
+{
+  "firstScreen": [
+    {
+      "viewport": [
+        320,
+        740
+      ],
+      "modes": [
+        {
+          "mode": "",
+          "documentWidth": 320,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 10,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 114.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 118.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 204.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 208.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 318.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 322.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 424.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 645.484375
+        },
+        {
+          "mode": "?mode=candidates",
+          "documentWidth": 320,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 10,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 114.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 118.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 204.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 208.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 318.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 322.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 424.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 818.03125
+        },
+        {
+          "mode": "?mode=library",
+          "documentWidth": 320,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": -104,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 0.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 4.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 90.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 94.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 204.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 208.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 310.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 797.40625
+        },
+        {
+          "mode": "?mode=weekly",
+          "documentWidth": 320,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": -104,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 0.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 4.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 90.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 94.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 204.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 208.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 310.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 0
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "viewport": [
+        375,
+        812
+      ],
+      "modes": [
+        {
+          "mode": "",
+          "documentWidth": 375,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 10,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 114.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 118.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 204.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 208.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 318.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 322.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 424.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 645.484375
+        },
+        {
+          "mode": "?mode=candidates",
+          "documentWidth": 375,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 10,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 114.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 118.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 204.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 208.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 318.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 322.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 424.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 797.40625
+        },
+        {
+          "mode": "?mode=library",
+          "documentWidth": 375,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": -39,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 65.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 69.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 155.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 159.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 269.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 273.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 375.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 776.78125
+        },
+        {
+          "mode": "?mode=weekly",
+          "documentWidth": 375,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": -39,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 65.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 69.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 155.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 159.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 269.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 273.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 375.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 0
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "modes": [
+        {
+          "mode": "",
+          "documentWidth": 390,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 10,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 114.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 118.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 204.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 208.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 318.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 322.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 424.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 601.484375
+        },
+        {
+          "mode": "?mode=candidates",
+          "documentWidth": 390,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 10,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 114.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 118.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 204.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 208.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 318.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 322.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 424.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 797.40625
+        },
+        {
+          "mode": "?mode=library",
+          "documentWidth": 390,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": -24,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 80.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 84.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 170.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 174.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 284.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 288.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 390.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 776.78125
+        },
+        {
+          "mode": "?mode=weekly",
+          "documentWidth": 390,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": -24,
+              "y": 111,
+              "w": 104.234375,
+              "h": 46,
+              "right": 80.234375,
+              "bottom": 157
+            },
+            {
+              "text": "本周精读",
+              "x": 84.234375,
+              "y": 111,
+              "w": 86.015625,
+              "h": 46,
+              "right": 170.25,
+              "bottom": 157
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 174.25,
+              "y": 111,
+              "w": 110.34375,
+              "h": 46,
+              "right": 284.59375,
+              "bottom": 157
+            },
+            {
+              "text": "文献库 1268",
+              "x": 288.59375,
+              "y": 111,
+              "w": 101.4375,
+              "h": 46,
+              "right": 390.03125,
+              "bottom": 157
+            }
+          ],
+          "firstCardTop": 0
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "modes": [
+        {
+          "mode": "",
+          "documentWidth": 1440,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 88,
+              "y": 0,
+              "w": 104.765625,
+              "h": 60,
+              "right": 192.765625,
+              "bottom": 60
+            },
+            {
+              "text": "本周精读",
+              "x": 196.765625,
+              "y": 0,
+              "w": 86,
+              "h": 60,
+              "right": 282.765625,
+              "bottom": 60
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 286.765625,
+              "y": 0,
+              "w": 111.15625,
+              "h": 60,
+              "right": 397.921875,
+              "bottom": 60
+            },
+            {
+              "text": "文献库 1268",
+              "x": 401.921875,
+              "y": 0,
+              "w": 103.03125,
+              "h": 60,
+              "right": 504.953125,
+              "bottom": 60
+            }
+          ],
+          "firstCardTop": 180.5
+        },
+        {
+          "mode": "?mode=candidates",
+          "documentWidth": 1440,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 88,
+              "y": 0,
+              "w": 104.765625,
+              "h": 60,
+              "right": 192.765625,
+              "bottom": 60
+            },
+            {
+              "text": "本周精读",
+              "x": 196.765625,
+              "y": 0,
+              "w": 86,
+              "h": 60,
+              "right": 282.765625,
+              "bottom": 60
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 286.765625,
+              "y": 0,
+              "w": 111.15625,
+              "h": 60,
+              "right": 397.921875,
+              "bottom": 60
+            },
+            {
+              "text": "文献库 1268",
+              "x": 401.921875,
+              "y": 0,
+              "w": 103.03125,
+              "h": 60,
+              "right": 504.953125,
+              "bottom": 60
+            }
+          ],
+          "firstCardTop": 462.265625
+        },
+        {
+          "mode": "?mode=library",
+          "documentWidth": 1440,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 88,
+              "y": 0,
+              "w": 104.765625,
+              "h": 60,
+              "right": 192.765625,
+              "bottom": 60
+            },
+            {
+              "text": "本周精读",
+              "x": 196.765625,
+              "y": 0,
+              "w": 86,
+              "h": 60,
+              "right": 282.765625,
+              "bottom": 60
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 286.765625,
+              "y": 0,
+              "w": 111.15625,
+              "h": 60,
+              "right": 397.921875,
+              "bottom": 60
+            },
+            {
+              "text": "文献库 1268",
+              "x": 401.921875,
+              "y": 0,
+              "w": 103.03125,
+              "h": 60,
+              "right": 504.953125,
+              "bottom": 60
+            }
+          ],
+          "firstCardTop": 462.265625
+        },
+        {
+          "mode": "?mode=weekly",
+          "documentWidth": 1440,
+          "nav": [
+            {
+              "text": "每日精选 37",
+              "x": 88,
+              "y": 0,
+              "w": 104.765625,
+              "h": 60,
+              "right": 192.765625,
+              "bottom": 60
+            },
+            {
+              "text": "本周精读",
+              "x": 196.765625,
+              "y": 0,
+              "w": 86,
+              "h": 60,
+              "right": 282.765625,
+              "bottom": 60
+            },
+            {
+              "text": "文献雷达 843",
+              "x": 286.765625,
+              "y": 0,
+              "w": 111.15625,
+              "h": 60,
+              "right": 397.921875,
+              "bottom": 60
+            },
+            {
+              "text": "文献库 1268",
+              "x": 401.921875,
+              "y": 0,
+              "w": 103.03125,
+              "h": 60,
+              "right": 504.953125,
+              "bottom": 60
+            }
+          ],
+          "firstCardTop": 0
+        }
+      ],
+      "pageErrors": []
+    }
+  ],
+  "interactions": [
+    {
+      "viewport": [
+        320,
+        740
+      ],
+      "before": {
+        "scrollY": 1296,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract"
+      },
+      "afterEscape": {
+        "scrollY": 1296,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract",
+        "drawerOpen": false
+      },
+      "slashFocus": {
+        "focus": "globalSearch",
+        "inside": false
+      },
+      "backTopAfter": {
+        "scrollY": 0,
+        "focus": "brandLogo",
+        "hidden": true,
+        "reduced": true
+      },
+      "anchor": {
+        "scrollY": 14313,
+        "headerBottom": -14094,
+        "heading": {
+          "x": 16,
+          "y": 119.9375,
+          "width": 288,
+          "height": 70,
+          "top": 119.9375,
+          "right": 304,
+          "bottom": 189.9375,
+          "left": 16
+        },
+        "text": "四、 主要结果与安全性：数据与统计呈现",
+        "width": 320,
+        "hash": "#wk4"
+      },
+      "closeWeekly": {
+        "open": false,
+        "focus": "SUMMARY",
+        "summaryY": 256.203125
+      }
+    },
+    {
+      "viewport": [
+        375,
+        812
+      ],
+      "before": {
+        "scrollY": 1037,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract"
+      },
+      "afterEscape": {
+        "scrollY": 1037,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract",
+        "drawerOpen": false
+      },
+      "slashFocus": {
+        "focus": "globalSearch",
+        "inside": false
+      },
+      "backTopAfter": {
+        "scrollY": 0,
+        "focus": "brandLogo",
+        "hidden": true,
+        "reduced": true
+      },
+      "anchor": {
+        "scrollY": 12737,
+        "headerBottom": -12518,
+        "heading": {
+          "x": 16,
+          "y": 119.65625,
+          "width": 343,
+          "height": 70,
+          "top": 119.65625,
+          "right": 359,
+          "bottom": 189.65625,
+          "left": 16
+        },
+        "text": "四、 主要结果与安全性：数据与统计呈现",
+        "width": 375,
+        "hash": "#wk4"
+      },
+      "closeWeekly": {
+        "open": false,
+        "focus": "SUMMARY",
+        "summaryY": 302.390625
+      }
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "before": {
+        "scrollY": 1021,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract"
+      },
+      "afterEscape": {
+        "scrollY": 1021,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract",
+        "drawerOpen": false
+      },
+      "slashFocus": {
+        "focus": "globalSearch",
+        "inside": false
+      },
+      "backTopAfter": {
+        "scrollY": 0,
+        "focus": "brandLogo",
+        "hidden": true,
+        "reduced": true
+      },
+      "anchor": {
+        "scrollY": 12332,
+        "headerBottom": -12113,
+        "heading": {
+          "x": 16,
+          "y": 120.359375,
+          "width": 358,
+          "height": 70,
+          "top": 120.359375,
+          "right": 374,
+          "bottom": 190.359375,
+          "left": 16
+        },
+        "text": "四、 主要结果与安全性：数据与统计呈现",
+        "width": 390,
+        "hash": "#wk4"
+      },
+      "closeWeekly": {
+        "open": false,
+        "focus": "SUMMARY",
+        "summaryY": 317.75
+      }
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "before": {
+        "scrollY": 0,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract"
+      },
+      "afterEscape": {
+        "scrollY": 0,
+        "reading": "abstract",
+        "focused": "<button class=\"title-open\" data-action=\"open-drawer\" data-paper-id=\"rss-1c8b4a491df5fd23\">Minimally Invasive Versus Sternotomy in Redo Mitral Valve Surgery: Short‐ and Long‐Term Outcomes with Meta‐Regression and Time‐to‐Event Analysis</button>",
+        "url": "<local>/?mode=candidates&reading=abstract",
+        "drawerOpen": false
+      },
+      "slashFocus": {
+        "focus": "globalSearch",
+        "inside": false
+      },
+      "backTopAfter": {
+        "scrollY": 0,
+        "focus": "brandLogo",
+        "hidden": true,
+        "reduced": true
+      },
+      "anchor": {
+        "scrollY": 2935,
+        "headerBottom": 61,
+        "heading": {
+          "x": 1021.296875,
+          "y": 120.390625,
+          "width": 394.703125,
+          "height": 35,
+          "top": 120.390625,
+          "right": 1416,
+          "bottom": 155.390625,
+          "left": 1021.296875
+        },
+        "text": "四、 主要结果与安全性：数据与统计呈现",
+        "width": 1440,
+        "hash": "#wk4"
+      },
+      "closeWeekly": {
+        "open": false,
+        "focus": "SUMMARY",
+        "summaryY": 122.1875
+      }
+    }
+  ],
+  "keyboard": {
+    "keyboardBefore": {
+      "focus": "drawerCloseBtn",
+      "scrollY": 1021,
+      "search": "",
+      "first": "pmid-42839539"
+    },
+    "keyboardDuring": {
+      "focus": "globalSearch",
+      "inside": false,
+      "search": "房颤",
+      "url": "<local>/?mode=candidates&reading=abstract&q=%E6%88%BF%E9%A2%A4",
+      "open": true
+    },
+    "keyboardAfter": {
+      "scrollY": 0,
+      "search": "",
+      "focus": "<input type=\"search\" id=\"globalSearch\" class=\"search-input\" placeholder=\"搜房颤、心衰、大模型、DOI…\" aria-label=\"搜索文献（支持中文关键词）\" autocomplete=\"off\" style=\"\">",
+      "first": "rss-1c8b4a491df5fd23",
+      "url": "<local>/?mode=candidates&reading=abstract&q=%E6%88%BF%E9%A2%A4"
+    }
+  },
+  "quicklookLayout": {
+    "abstractTop": 1247.84375,
+    "aiTop": 393.984375
+  },
+  "styles": [
+    {
+      "style": "a",
+      "width": 320,
+      "docWidth": 320,
+      "navWidth": 320,
+      "navScrollWidth": 434,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 114.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 118.234375,
+          "right": 204.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 208.25,
+          "right": 318.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 322.59375,
+          "right": 424.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 33,
+        "y": 817.125,
+        "width": 254,
+        "height": 102,
+        "top": 817.125,
+        "right": 287,
+        "bottom": 919.125,
+        "left": 33
+      }
+    },
+    {
+      "style": "b",
+      "width": 320,
+      "docWidth": 320,
+      "navWidth": 320,
+      "navScrollWidth": 434,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 114.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 118.234375,
+          "right": 204.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 208.25,
+          "right": 318.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 322.59375,
+          "right": 424.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 46,
+        "y": 662.375,
+        "width": 258,
+        "height": 102,
+        "top": 662.375,
+        "right": 304,
+        "bottom": 764.375,
+        "left": 46
+      }
+    },
+    {
+      "style": "c",
+      "width": 320,
+      "docWidth": 320,
+      "navWidth": 320,
+      "navScrollWidth": 442,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 116.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 120.234375,
+          "right": 208.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 212.25,
+          "right": 324.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 328.59375,
+          "right": 432.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 34,
+        "y": 825.0625,
+        "width": 252,
+        "height": 127.5,
+        "top": 825.0625,
+        "right": 286,
+        "bottom": 952.5625,
+        "left": 34
+      }
+    },
+    {
+      "width": 320,
+      "sheetOpen": true,
+      "backTopVisible": true,
+      "backTopZ": "60",
+      "sheetZ": "120"
+    },
+    {
+      "style": "a",
+      "width": 375,
+      "docWidth": 375,
+      "navWidth": 375,
+      "navScrollWidth": 434,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 114.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 118.234375,
+          "right": 204.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 208.25,
+          "right": 318.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 322.59375,
+          "right": 424.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 33,
+        "y": 757.25,
+        "width": 309,
+        "height": 102,
+        "top": 757.25,
+        "right": 342,
+        "bottom": 859.25,
+        "left": 33
+      }
+    },
+    {
+      "style": "b",
+      "width": 375,
+      "docWidth": 375,
+      "navWidth": 375,
+      "navScrollWidth": 434,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 114.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 118.234375,
+          "right": 204.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 208.25,
+          "right": 318.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 322.59375,
+          "right": 424.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 46,
+        "y": 662.375,
+        "width": 313,
+        "height": 102,
+        "top": 662.375,
+        "right": 359,
+        "bottom": 764.375,
+        "left": 46
+      }
+    },
+    {
+      "style": "c",
+      "width": 375,
+      "docWidth": 375,
+      "navWidth": 375,
+      "navScrollWidth": 442,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 116.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 120.234375,
+          "right": 208.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 212.25,
+          "right": 324.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 328.59375,
+          "right": 432.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 34,
+        "y": 784.765625,
+        "width": 307,
+        "height": 102,
+        "top": 784.765625,
+        "right": 341,
+        "bottom": 886.765625,
+        "left": 34
+      }
+    },
+    {
+      "width": 375,
+      "sheetOpen": true,
+      "backTopVisible": true,
+      "backTopZ": "60",
+      "sheetZ": "120"
+    },
+    {
+      "style": "a",
+      "width": 390,
+      "docWidth": 390,
+      "navWidth": 390,
+      "navScrollWidth": 434,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 114.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 118.234375,
+          "right": 204.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 208.25,
+          "right": 318.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 322.59375,
+          "right": 424.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 33,
+        "y": 713.25,
+        "width": 324,
+        "height": 102,
+        "top": 713.25,
+        "right": 357,
+        "bottom": 815.25,
+        "left": 33
+      }
+    },
+    {
+      "style": "b",
+      "width": 390,
+      "docWidth": 390,
+      "navWidth": 390,
+      "navScrollWidth": 434,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 114.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 118.234375,
+          "right": 204.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 208.25,
+          "right": 318.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 322.59375,
+          "right": 424.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 46,
+        "y": 618.375,
+        "width": 328,
+        "height": 102,
+        "top": 618.375,
+        "right": 374,
+        "bottom": 720.375,
+        "left": 46
+      }
+    },
+    {
+      "style": "c",
+      "width": 390,
+      "docWidth": 390,
+      "navWidth": 390,
+      "navScrollWidth": 442,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 10,
+          "right": 116.234375
+        },
+        {
+          "text": "本周精读",
+          "x": 120.234375,
+          "right": 208.25
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 212.25,
+          "right": 324.59375
+        },
+        {
+          "text": "文献库 1268",
+          "x": 328.59375,
+          "right": 432.03125
+        }
+      ],
+      "firstTitle": {
+        "x": 34,
+        "y": 740.765625,
+        "width": 322,
+        "height": 102,
+        "top": 740.765625,
+        "right": 356,
+        "bottom": 842.765625,
+        "left": 34
+      }
+    },
+    {
+      "width": 390,
+      "sheetOpen": true,
+      "backTopVisible": true,
+      "backTopZ": "60",
+      "sheetZ": "120"
+    },
+    {
+      "style": "a",
+      "width": 1440,
+      "docWidth": 1440,
+      "navWidth": 732,
+      "navScrollWidth": 732,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 88,
+          "right": 192.765625
+        },
+        {
+          "text": "本周精读",
+          "x": 196.765625,
+          "right": 282.765625
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 286.765625,
+          "right": 397.921875
+        },
+        {
+          "text": "文献库 1268",
+          "x": 401.921875,
+          "right": 504.953125
+        }
+      ],
+      "firstTitle": {
+        "x": 129,
+        "y": 233.890625,
+        "width": 890,
+        "height": 54,
+        "top": 233.890625,
+        "right": 1019,
+        "bottom": 287.890625,
+        "left": 129
+      }
+    },
+    {
+      "style": "b",
+      "width": 1440,
+      "docWidth": 1440,
+      "navWidth": 732,
+      "navScrollWidth": 732,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 88,
+          "right": 192.765625
+        },
+        {
+          "text": "本周精读",
+          "x": 196.765625,
+          "right": 282.765625
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 286.765625,
+          "right": 397.921875
+        },
+        {
+          "text": "文献库 1268",
+          "x": 401.921875,
+          "right": 504.953125
+        }
+      ],
+      "firstTitle": {
+        "x": 226,
+        "y": 201.390625,
+        "width": 738,
+        "height": 51,
+        "top": 201.390625,
+        "right": 964,
+        "bottom": 252.390625,
+        "left": 226
+      }
+    },
+    {
+      "style": "c",
+      "width": 1440,
+      "docWidth": 1440,
+      "navWidth": 732,
+      "navScrollWidth": 732,
+      "nav": [
+        {
+          "text": "每日精选 37",
+          "x": 88,
+          "right": 196.765625
+        },
+        {
+          "text": "本周精读",
+          "x": 200.765625,
+          "right": 290.765625
+        },
+        {
+          "text": "文献雷达 843",
+          "x": 294.765625,
+          "right": 409.921875
+        },
+        {
+          "text": "文献库 1268",
+          "x": 413.921875,
+          "right": 520.953125
+        }
+      ],
+      "firstTitle": {
+        "x": 132,
+        "y": 249.390625,
+        "width": 884,
+        "height": 54,
+        "top": 249.390625,
+        "right": 1016,
+        "bottom": 303.390625,
+        "left": 132
+      }
+    }
+  ],
+  "nativeBack": {
+    "before": {
+      "url": "<local>/?mode=candidates&reading=abstract",
+      "historyLength": 3,
+      "scrollY": 1021,
+      "reading": "abstract",
+      "drawerOpen": true
+    },
+    "after": {
+      "url": "<local>/",
+      "historyLength": 3,
+      "scrollY": 0,
+      "reading": "",
+      "drawerOpen": false
+    }
+  },
+  "mutationRequests": 0
+}

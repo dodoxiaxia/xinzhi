@@ -1,0 +1,59 @@
+{
+  "observedAt": "2026-10-07T15:06:14.469280+00:00",
+  "main": "7dbe94c5465e7acca4097ac0282ef8ff78e4a48f",
+  "state": "6135056e3d544816ff3554a8e6241f60e3274698",
+  "release": "v14.2.3",
+  "browser": "Chromium 151.0.7922.173",
+  "viewports": [
+    [
+      320,
+      740
+    ],
+    [
+      375,
+      812
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      1440,
+      900
+    ]
+  ],
+  "mode": "LOCAL OFFLINE static full six-file public package; API absent; external requests aborted",
+  "sourceUnmodified": true,
+  "files": [
+    {
+      "path": "_headers",
+      "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab",
+      "matchesDeploymentManifest": true
+    },
+    {
+      "path": "_worker.js",
+      "sha256": "519a2aab952dce5adc7abfc5a110ca06e7bcca07631b101d298f33090ad041e3",
+      "matchesDeploymentManifest": true
+    },
+    {
+      "path": "icon.svg",
+      "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7",
+      "matchesDeploymentManifest": true
+    },
+    {
+      "path": "index.html",
+      "sha256": "6da80fc3b8fefbec08358259a5a291e221cc9bd6dc72ca49538a6767024aff0b",
+      "matchesDeploymentManifest": true
+    },
+    {
+      "path": "public.js",
+      "sha256": "cfeb1610c6f3106c31879470f32613e5ef86a8b408773949e2421a5bc8cae474",
+      "matchesDeploymentManifest": true
+    },
+    {
+      "path": "style.css",
+      "sha256": "d503c5f74288edc4c2409a99132549258607bb21bcfd88b6649fa7bccc875c25",
+      "matchesDeploymentManifest": true
+    }
+  ]
+}
