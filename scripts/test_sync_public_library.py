@@ -302,5 +302,140 @@ class PinnedSourceTest(unittest.TestCase):
         self.assertEqual(provenance['sourceCommit'], commit)
 
 
+class AdjudicationTests(unittest.TestCase):
+    def policy(self, **updates):
+        item = {'doi': '10.1234/trial', 'action': 'official',
+                'acceptedTitles': ['A clinical trial'],
+                'metadata': {'title': 'A clinical trial', 'journal': 'Official Journal',
+                             'pmid': '123', 'date': '2026-09-11', 'datePrecision': 'day',
+                             'dateBasis': '官方题录 published-online（已复核）'},
+                'reason': 'official_bibliography_only',
+                'evidence': [{'url': 'https://publisher.example/article', 'finding': 'canonical_bibliography'}]}
+        item.update(updates)
+        return {'version': 1, 'sourceCommit': 'c' * 40, 'checkedAt': '2026-10-07', 'decisions': [item]}
+
+    def load(self, policy=None, commit='c' * 40):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'review.json'
+            path.write_text(json.dumps(policy or self.policy()))
+            return sync.load_adjudications(path, commit)
+
+    def stage(self, rows, previous=None, decisions=None):
+        return sync.stage_library(rows, previous or {'papers': []}, {'sourceCommit': 'c' * 40}, {}, set(),
+                                  generated_at='2026-10-07T00:00:00Z', adjudications=decisions)
+
+    def test_unresolved_conflict_preserves_old_public_bibliography_and_unknown_date(self):
+        old = {'id': 'stable', 'title': 'Original public title', 'journal': 'Original Journal',
+               'doi': '10.1234/trial', 'date': '2026-08-01', 'dateBasis': 'unsupported private annotation',
+               'localAvailable': True, 'privateNotes': 'do not publish'}
+        rows = [row(), row(题名='A conflicting title', 期刊='Different Journal')]
+        first, report = self.stage(rows, {'papers': [old]})
+        second, _ = self.stage(list(reversed(rows)), {'papers': [old]})
+        self.assertEqual(first, second)
+        paper = first['papers'][0]
+        self.assertEqual((paper['id'], paper['title'], paper['journal']),
+                         ('stable', 'Original public title', 'Original Journal'))
+        self.assertEqual(paper['date'], '')
+        self.assertEqual(paper['metadataStatus'], 'hold_bibliography_review')
+        self.assertFalse(paper['localAvailable'])
+        self.assertEqual(report['sourceMetadataConflicts'][0]['status'], 'hold_previous_public_record')
+        self.assertEqual(report['heldSourceRows'], 2)
+        self.assertNotIn('privateNotes', json.dumps(first))
+        round_trip, _ = self.stage(rows, first)
+        self.assertEqual(first, round_trip)
+
+    def test_unresolved_new_conflict_is_held_without_choosing_or_adding_either_title(self):
+        data, report = self.stage([row(), row(题名='Another incompatible title')])
+        self.assertEqual(data['papers'], [])
+        self.assertEqual(report['added'], 0)
+        self.assertEqual(report['sourceMetadataConflicts'][0]['status'], 'hold_new_record')
+        self.assertTrue(report['requiresPublicMetadataReview'])
+
+    def test_official_metadata_corrects_public_doi_record_and_holds_unrelated_source_row(self):
+        decisions, _ = self.load()
+        old = {'papers': [{'id': 'stable', 'title': 'A conflicting title', 'doi': '10.1234/trial',
+                           'journal': 'Wrong Journal'}]}
+        rows = [row(), row(题名='A conflicting title', 期刊='Wrong Journal')]
+        data, report = self.stage(rows, old, decisions)
+        paper = data['papers'][0]
+        self.assertEqual((paper['id'], paper['title'], paper['journal'], paper['date'], paper['pmid']),
+                         ('stable', 'A clinical trial', 'Official Journal', '2026-09-11', '123'))
+        self.assertEqual(paper['metadataStatus'], 'official_bibliography_checked')
+        self.assertEqual(paper['fulltextStatus'], 'not_verified')
+        self.assertIsNone(paper['ingestedAt'])
+        self.assertFalse(paper['localAvailable'])
+        self.assertEqual(report['heldSourceRows'], 1)
+        self.assertEqual(report['sourceMetadataConflicts'][0]['heldSourceRows'], [
+            {'row': 2, 'title': 'A conflicting title', 'journal': 'Wrong Journal',
+             'status': 'hold_wrong_identifier_binding'}])
+        for private in ('private/trial.pdf', '/Users/', 'do not publish', 'a' * 64):
+            self.assertNotIn(private, json.dumps(data) + json.dumps(report))
+        round_trip, _ = self.stage(rows, data, decisions)
+        self.assertEqual(data, round_trip)
+
+    def test_fully_resolved_variants_need_no_new_review_or_fulltext_claim(self):
+        decisions, _ = self.load()
+        rows = [row(), row(期刊='Journal abbreviation', 实际出版日期='2026-09-01')]
+        data, report = self.stage(rows, decisions=decisions)
+        self.assertEqual(len(data['papers']), 1)
+        self.assertFalse(report['requiresPublicMetadataReview'])
+        self.assertEqual(report['heldSourceRows'], 0)
+        self.assertFalse(data['papers'][0]['localAvailable'])
+
+    def test_policy_cannot_create_a_doi_record_from_an_unmatched_source_title(self):
+        decisions, _ = self.load()
+        with self.assertRaisesRegex(sync.SyncError, 'adjudication_no_matching_source_record'):
+            self.stage([row(题名='Not the reviewed article')], decisions=decisions)
+
+    def test_stale_source_policy_is_refused(self):
+        with self.assertRaisesRegex(sync.SyncError, 'adjudication_source_commit_mismatch'):
+            self.load(commit='d' * 40)
+
+    def test_policy_rejects_unknown_private_fields_in_metadata_or_evidence(self):
+        for location in ('metadata', 'evidence'):
+            policy = self.policy()
+            target = policy['decisions'][0]['metadata'] if location == 'metadata' else policy['decisions'][0]['evidence'][0]
+            target['privateNotes'] = 'do not publish'
+            with self.subTest(location=location), self.assertRaises(sync.SyncError):
+                self.load(policy)
+
+    def test_policy_rejects_private_values_credentials_and_unsupported_dates(self):
+        for update in ({'title': '/Users/private/book.pdf'}, {'date': '2026-09-99'},
+                       {'datePrecision': 'month'}, {'dateBasis': 'private observation'}):
+            policy = self.policy()
+            policy['decisions'][0]['metadata'].update(update)
+            with self.subTest(update=update), self.assertRaises(sync.SyncError):
+                self.load(policy)
+        policy = self.policy()
+        policy['decisions'][0]['evidence'][0]['url'] = 'https://publisher.example/article?token=private'
+        with self.assertRaises(sync.SyncError):
+            self.load(policy)
+
+    def test_official_pmid_must_not_conflict_with_index_pmid(self):
+        decisions, _ = self.load()
+        with self.assertRaisesRegex(sync.SyncError, 'duplicate_identity_conflict'):
+            self.stage([row(PMID='456')], decisions=decisions)
+
+    def test_explicit_hold_preserves_old_fragment_without_guessing_replacement_identifier(self):
+        policy = self.policy(action='hold', acceptedTitles=[], metadata=None)
+        decisions, _ = self.load(policy)
+        old = {'papers': [{'id': 'stable', 'title': 'A clinical trial', 'journal': 'Heart', 'doi': '10.1234/trial'}]}
+        data, report = self.stage([row(), row(题名='A different fragment')], old, decisions)
+        self.assertEqual(data['papers'][0]['id'], 'stable')
+        self.assertEqual(data['papers'][0]['doi'], '10.1234/trial')
+        self.assertEqual(data['papers'][0]['metadataStatus'], 'hold_bibliography_review')
+        self.assertTrue(report['requiresPublicMetadataReview'])
+
+    def test_repository_policy_is_source_pinned_and_contains_only_eight_public_decisions(self):
+        decisions, provenance = sync.load_adjudications(sync.ADJUDICATION_PATH,
+                                                       'fed03f8d789429fc84c94cefcb4b636d75ec9ee3')
+        self.assertEqual(len(decisions), 8)
+        self.assertEqual(sum(d['action'] == 'official' for d in decisions.values()), 7)
+        self.assertEqual(decisions['10.1016/j.landig']['action'], 'hold')
+        self.assertEqual(decisions['10.1093/ehjdh/ztag141']['metadata']['date'], '2026-09-11')
+        self.assertEqual(decisions['10.1038/s41591-026-04297-7']['metadata']['date'], '2026-02-23')
+        self.assertEqual(provenance['adjudicationCheckedAt'], '2026-10-07')
+
+
 if __name__ == '__main__':
     unittest.main()

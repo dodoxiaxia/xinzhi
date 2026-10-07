@@ -35,6 +35,9 @@ PRIVATE_TEXT = re.compile(
     r'\b(?:bearer|ghp_|github_pat_)|[\w.+-]+@[\w.-]+\.[a-z]{2,}|'
     r'(?:\S+/)+\S+\.pdf\b|当前路径|原始路径|私人备注')
 MAX_INDEX_BYTES = 16 * 1024 * 1024
+ADJUDICATION_PATH = ROOT / 'config/public_library_adjudications.json'
+OFFICIAL_DATE_BASES = {'官方题录 published-online（已复核）',
+                       '出版商登记 published-print（已复核）', '发表日期未知'}
 
 
 class SyncError(ValueError):
@@ -198,6 +201,81 @@ def public_feed(feed):
     return out
 
 
+def load_adjudications(path, source_commit):
+    """Load reviewed public metadata only, tied to one exact private-source SHA."""
+    raw = Path(path).read_bytes()
+    if len(raw) > 256 * 1024:
+        raise SyncError('adjudication_schema')
+    policy = json.loads(raw)
+    if (not isinstance(policy, dict) or set(policy) != {'version', 'sourceCommit', 'checkedAt', 'decisions'}
+            or type(policy['version']) is not int or policy['version'] != 1
+            or not isinstance(policy['decisions'], list)):
+        raise SyncError('adjudication_schema')
+    if policy['sourceCommit'] != source_commit:
+        raise SyncError('adjudication_source_commit_mismatch')
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', policy['checkedAt']):
+        raise SyncError('adjudication_schema')
+    try:
+        datetime.date.fromisoformat(policy['checkedAt'])
+    except ValueError:
+        raise SyncError('adjudication_schema') from None
+    decisions = {}
+    for item in policy['decisions']:
+        if (not isinstance(item, dict) or set(item) != {'doi', 'action', 'acceptedTitles', 'metadata', 'reason', 'evidence'}
+                or item['action'] not in ('official', 'hold') or not isinstance(item['acceptedTitles'], list)
+                or not isinstance(item['evidence'], list) or not item['evidence']):
+            raise SyncError('adjudication_schema')
+        doi = normalize_doi(item['doi'])
+        if not doi or doi != item['doi'] or doi in decisions:
+            raise SyncError('adjudication_schema')
+        titles = [public_text(title) for title in item['acceptedTitles']]
+        if len(titles) != len(set(titles)) or any(not title for title in titles):
+            raise SyncError('adjudication_schema')
+        public_text(item['reason'])
+        for evidence in item['evidence']:
+            if not isinstance(evidence, dict) or set(evidence) != {'url', 'finding'}:
+                raise SyncError('adjudication_schema')
+            public_feed({'url': evidence['url']})
+            if urlsplit(evidence['url']).scheme != 'https':
+                raise SyncError('adjudication_schema')
+            public_text(evidence['finding'])
+        meta = item['metadata']
+        if item['action'] == 'hold':
+            if meta is not None or titles:
+                raise SyncError('adjudication_schema')
+        else:
+            if (not titles or not isinstance(meta, dict)
+                    or set(meta) != {'title', 'journal', 'pmid', 'date', 'datePrecision', 'dateBasis'}
+                    or not public_text(meta['title']) or not public_text(meta['journal'])
+                    or normalize_pmid(meta['pmid']) != meta['pmid']
+                    or meta['dateBasis'] not in OFFICIAL_DATE_BASES):
+                raise SyncError('adjudication_schema')
+            date, precision, _ = publication_date(meta['date'], 'Crossref published-online')
+            if ((date, precision) != (meta['date'], meta['datePrecision'])
+                    or bool(date) == (meta['dateBasis'] == '发表日期未知')):
+                raise SyncError('adjudication_schema')
+        decisions[doi] = item
+    return decisions, {'adjudicationSha256': hashlib.sha256(raw).hexdigest(),
+                       'adjudicationCheckedAt': policy['checkedAt']}
+
+
+def previous_bibliography(paper):
+    """A HOLD carries only old public bibliography, never a new conflicting row."""
+    title, journal = public_text(paper.get('title', '')), public_text(paper.get('journal', ''))
+    if not title:
+        raise SyncError('blank_public_title')
+    # The old date is retained only with a supported fixed provenance/precision.
+    # Otherwise it stays unknown; no ingestion or generated date is substituted.
+    basis = paper.get('dateBasis', '')
+    if basis in OFFICIAL_DATE_BASES:
+        date, precision, _ = publication_date(paper.get('date', ''), 'Crossref published-online')
+    else:
+        date, precision, basis = publication_date(paper.get('date', ''), basis)
+    return {'title': title, 'journal': journal, 'doi': normalize_doi(paper.get('doi', '')),
+            'pmid': normalize_pmid(str(paper.get('pmid') or '')),
+            'date': date, 'datePrecision': precision, 'dateBasis': basis}
+
+
 def source_identity_migrations(previous_rows, final_rows, previous_public):
     """Carry an already public ID through owner-confirmed source corrections.
 
@@ -249,13 +327,14 @@ def source_identity_migrations(previous_rows, final_rows, previous_public):
 
 
 def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, source_final=False,
-                  identity_migrations=None, migration_evidence=None):
+                  identity_migrations=None, migration_evidence=None, adjudications=None):
     """Strict row whitelist, DOI/PMID dedup, stable public IDs and no silent deletion."""
     if not isinstance(previous, dict) or not isinstance(previous.get('papers'), list):
         raise SyncError('previous_library_required')
     if type(source_final) is not bool:
         raise SyncError('invalid_source_final_status')
     identity_migrations = identity_migrations or {}
+    adjudications = adjudications or {}
     if identity_migrations and not source_final:
         raise SyncError('source_migrations_require_final_confirmation')
     old = previous['papers']
@@ -282,7 +361,7 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, sour
                 raise SyncError('duplicate_identity_conflict')
             doi_by_pmid[pmid] = doi
     checksum_counts = collections.Counter()
-    for row in rows:
+    for row_number, row in enumerate(rows, 1):
         title, journal = public_text(row['题名']), public_text(row['期刊'])
         if not title:
             raise SyncError('blank_public_title')  # Never substitute a private filename.
@@ -296,7 +375,8 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, sour
                else 'title:' + title_key(title, journal))
         date, precision, basis = publication_date(row['实际出版日期'], row['日期来源'])
         groups[key].append({'title': title, 'journal': journal, 'doi': doi, 'pmid': pmid,
-                            'date': date, 'datePrecision': precision, 'dateBasis': basis})
+                            'date': date, 'datePrecision': precision, 'dateBasis': basis,
+                            '_row': row_number})
     papers, matched_ids, used_ids = [], set(), set()
     metadata_conflicts, corrections, pmids = [], [], {}
     source_dois = {p['doi'] for copies in groups.values() for p in copies if p['doi']}
@@ -309,10 +389,27 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, sour
     for key, copies in sorted(groups.items()):
         if len({p['pmid'] for p in copies if p['pmid']}) > 1:
             raise SyncError('duplicate_identity_conflict')
-        # Input order must not decide which bibliographic record survives.
-        record = dict(sorted(copies, key=lambda p: (not bool(p['date']), not bool(p['pmid']), json.dumps(p, sort_keys=True)))[0])
-        if len({json.dumps(p, sort_keys=True) for p in copies}) > 1:
-            metadata_conflicts.append({'doi': record['doi'], 'copies': len(copies), 'status': 'source_records_differ'})
+        variants = [{k: v for k, v in p.items() if k != '_row'} for p in copies]
+        conflict = len({json.dumps(p, sort_keys=True) for p in variants}) > 1
+        # Sorting serves identity lookup only. Unresolved variants are never
+        # selected as a new public bibliography merely by lexicographic order.
+        record = dict(sorted(variants, key=lambda p: (not bool(p['date']), not bool(p['pmid']), json.dumps(p, sort_keys=True)))[0])
+        decision = adjudications.get(record['doi'])
+        held_rows, evidence = [], []
+        metadata_status = 'index_record_only'
+        if decision and decision['action'] == 'official':
+            accepted = [p for p in copies if p['title'] in decision['acceptedTitles']]
+            if not accepted:
+                raise SyncError('adjudication_no_matching_source_record')
+            official = decision['metadata']
+            if record['pmid'] and official['pmid'] and record['pmid'] != official['pmid']:
+                raise SyncError('duplicate_identity_conflict')
+            held_rows = [{'row': p['_row'], 'title': p['title'], 'journal': p['journal'],
+                          'status': 'hold_wrong_identifier_binding'}
+                         for p in copies if p['title'] not in decision['acceptedTitles']]
+            record.update(official)
+            metadata_status = 'official_bibliography_checked'
+            evidence = decision['evidence']
         match = identities.get('doi:' + record['doi']) if record['doi'] else None
         migrated_id = identity_migrations.get(key)
         if migrated_id:
@@ -343,6 +440,19 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, sour
         identifier = match.get('id') if match else hashlib.sha256(public_key.encode()).hexdigest()[:16]
         if not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', identifier) or identifier in used_ids:
             raise SyncError('ambiguous_public_identity')
+        hold = (decision and decision['action'] == 'hold') or (conflict and not decision)
+        if hold:
+            held_rows = [{'row': p['_row'], 'title': p['title'], 'journal': p['journal'],
+                          'status': 'hold_unresolved_bibliography'} for p in copies]
+            evidence = decision['evidence'] if decision else []
+            if not match:
+                metadata_conflicts.append({'doi': record['doi'], 'copies': len(copies),
+                                           'status': 'hold_new_record', 'heldSourceRows': held_rows,
+                                           'reason': decision['reason'] if decision else 'unreviewed_source_metadata_conflict',
+                                           'evidence': evidence})
+                continue
+            record = previous_bibliography(match)
+            metadata_status = 'hold_bibliography_review'
         used_ids.add(identifier)
         if record['pmid']:
             if record['pmid'] in pmids:
@@ -353,10 +463,18 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, sour
             before = normalize_doi(match.get('doi', ''))
             if before != record['doi']:
                 corrections.append({'id': identifier, 'oldDoi': before, 'newDoi': record['doi']})
+        if conflict or decision:
+            metadata_conflicts.append({'doi': record['doi'], 'copies': len(copies),
+                                       'status': 'hold_previous_public_record' if hold else 'official_bibliography_checked',
+                                       'heldSourceRows': held_rows,
+                                       'reason': decision['reason'] if decision else 'unreviewed_source_metadata_conflict',
+                                       'evidence': evidence})
         record.update(id=identifier, url='https://doi.org/' + quote(record['doi'], safe='/():;') if record['doi'] else
                       'https://pubmed.ncbi.nlm.nih.gov/' + record['pmid'] + '/' if record['pmid'] else '',
-                      ingestedAt=None, metadataStatus='index_record_only', fulltextStatus='not_verified',
-                      basis='仅公共题录 · 原索引元数据未独立复核 · 未读全文', localAvailable=False,
+                      ingestedAt=None, metadataStatus=metadata_status, fulltextStatus='not_verified',
+                      basis=('仅公共题录 · 官方书目信息已复核 · 未读全文' if metadata_status == 'official_bibliography_checked'
+                             else '保留旧公共题录 · 书目信息待核验 · 未读全文' if hold
+                             else '仅公共题录 · 原索引元数据未独立复核 · 未读全文'), localAvailable=False,
                       category=classify(record['title'], record['journal']))
         if set(record) != PUBLIC_FIELDS:
             raise SyncError('public_field_allowlist')
@@ -376,7 +494,9 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, sour
               'added': len(papers) - len(matched_ids), 'removed': 0, 'identifierCorrections': corrections,
               'sourceMetadataConflicts': metadata_conflicts, 'pdfAudit': pdf_audit(rows, tree, lfs),
               'sourceIdentityMigrations': migration_evidence or [],
-              'requiresPublicMetadataReview': bool(metadata_conflicts),
+              'requiresPublicMetadataReview': any(c['status'].startswith('hold_') or c['heldSourceRows']
+                                                 for c in metadata_conflicts),
+              'heldSourceRows': sum(len(c['heldSourceRows']) for c in metadata_conflicts),
               'sameTitleDistinctIdentifiers': [
                   {'dois': sorted({doi for doi, _ in identities if doi}),
                    'pmids': sorted({pmid for _, pmid in identities if pmid})}
@@ -432,10 +552,14 @@ def main(argv=None):
     parser.add_argument('--previous-library', type=Path, default=ROOT / 'data/library.json')
     parser.add_argument('--source-final', action='store_true', help='Source SHA explicitly confirmed final by its owner; does not authorize publication')
     parser.add_argument('--previous-source-commit', help='Explicit old source SHA for index-identity continuity; requires --source-final')
+    parser.add_argument('--adjudications', type=Path, default=ADJUDICATION_PATH,
+                        help='Reviewed public bibliographic decisions pinned to the source SHA')
     args = parser.parse_args(argv)
     try:
         previous = json.loads(args.previous_library.read_text(encoding='utf-8'))
         rows, tree, lfs, provenance = load_source(args.source, args.source_commit)
+        decisions, decision_provenance = load_adjudications(args.adjudications, args.source_commit)
+        provenance.update(decision_provenance)
         migrations, evidence = {}, []
         if args.previous_source_commit:
             if not args.source_final:
@@ -444,7 +568,8 @@ def main(argv=None):
             migrations, evidence = source_identity_migrations(old_rows, rows, previous['papers'])
             provenance['previousSourceCommit'] = args.previous_source_commit
         data, report = stage_library(rows, previous, provenance, tree, lfs, source_final=args.source_final,
-                                     identity_migrations=migrations, migration_evidence=evidence)
+                                     identity_migrations=migrations, migration_evidence=evidence,
+                                     adjudications=decisions)
         write_candidate(data, report)
     except SyncError as error:
         print(json.dumps({'error': str(error)}), file=sys.stderr)

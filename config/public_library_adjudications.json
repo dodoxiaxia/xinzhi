@@ -1,0 +1,211 @@
+{
+  "version": 1,
+  "sourceCommit": "fed03f8d789429fc84c94cefcb4b636d75ec9ee3",
+  "checkedAt": "2026-10-07",
+  "decisions": [
+    {
+      "doi": "10.1016/j.landig",
+      "action": "hold",
+      "acceptedTitles": [],
+      "metadata": null,
+      "reason": "doi_not_found_404_and_fragment_titles_unbound",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1016%2Fj.landig",
+          "finding": "exact_doi_lookup_http_404_on_2026_10_07"
+        }
+      ]
+    },
+    {
+      "doi": "10.1038/d41586-026-00345-x",
+      "action": "official",
+      "acceptedTitles": [
+        "Cheap AI chatbots transform medical diagnoses in places with limited care"
+      ],
+      "metadata": {
+        "title": "Cheap AI chatbots transform medical diagnoses in places with limited care",
+        "journal": "Nature",
+        "pmid": "",
+        "date": "2026-02-06",
+        "datePrecision": "day",
+        "dateBasis": "官方题录 published-online（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1038%2Fd41586-026-00345-x",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://www.nature.com/articles/d41586-026-00345-x",
+          "finding": "official_article_title_journal_and_published_online_date"
+        }
+      ]
+    },
+    {
+      "doi": "10.1038/d41586-026-01691-6",
+      "action": "official",
+      "acceptedTitles": [
+        "How good are ‘AI doctors’ — and will they take over medicine?"
+      ],
+      "metadata": {
+        "title": "How good are ‘AI doctors’ — and will they take over medicine?",
+        "journal": "Nature",
+        "pmid": "",
+        "date": "2026-06-03",
+        "datePrecision": "day",
+        "dateBasis": "官方题录 published-online（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1038%2Fd41586-026-01691-6",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://www.nature.com/articles/d41586-026-01691-6",
+          "finding": "official_article_title_journal_and_published_online_date"
+        }
+      ]
+    },
+    {
+      "doi": "10.1038/s41467-026-73779-6",
+      "action": "official",
+      "acceptedTitles": [
+        "Memorization in large language models in medicine prevalence characteristics and implications",
+        "Memorization in large language models in medicine: prevalence, characteristics, and implications"
+      ],
+      "metadata": {
+        "title": "Memorization in large language models in medicine prevalence characteristics and implications",
+        "journal": "Nature Communications",
+        "pmid": "",
+        "date": "2026-06-19",
+        "datePrecision": "day",
+        "dateBasis": "官方题录 published-online（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1038%2Fs41467-026-73779-6",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://www.nature.com/articles/s41467-026-73779-6",
+          "finding": "official_article_title_journal_and_published_online_date"
+        }
+      ]
+    },
+    {
+      "doi": "10.1038/s41575-026-01216-6",
+      "action": "official",
+      "acceptedTitles": [
+        "Synthetic data generation: challenges and perspectives for gastrointestinal medicine"
+      ],
+      "metadata": {
+        "title": "Synthetic data generation: challenges and perspectives for gastrointestinal medicine",
+        "journal": "Nature Reviews Gastroenterology & Hepatology",
+        "pmid": "",
+        "date": "2026-06-17",
+        "datePrecision": "day",
+        "dateBasis": "官方题录 published-online（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1038%2Fs41575-026-01216-6",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://www.nature.com/articles/s41575-026-01216-6",
+          "finding": "official_article_title_journal_and_published_online_date"
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/42310470/",
+          "finding": "online_publication_2026_06_17_journal_gastroenterology_hepatology"
+        }
+      ]
+    },
+    {
+      "doi": "10.1038/s41591-026-04297-7",
+      "action": "official",
+      "acceptedTitles": [
+        "ChatGPT Health performance in a structured test of triage recommendations"
+      ],
+      "metadata": {
+        "title": "ChatGPT Health performance in a structured test of triage recommendations",
+        "journal": "Nature Medicine",
+        "pmid": "",
+        "date": "2026-02-23",
+        "datePrecision": "day",
+        "dateBasis": "官方题录 published-online（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1038%2Fs41591-026-04297-7",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://www.nature.com/articles/s41591-026-04297-7",
+          "finding": "official_article_title_journal_and_published_online_date"
+        },
+        {
+          "url": "https://www.science.org/doi/10.1126/science.aeg8766",
+          "finding": "science_fragment_is_not_this_nature_doi_binding_remains_on_hold"
+        }
+      ]
+    },
+    {
+      "doi": "10.1056/nejmcpc2412539",
+      "action": "official",
+      "acceptedTitles": [
+        "Case 28-2025: A 36-Year-Old Man with Abdominal Pain, Fever, and Hypoxemia"
+      ],
+      "metadata": {
+        "title": "Case 28-2025: A 36-Year-Old Man with Abdominal Pain, Fever, and Hypoxemia",
+        "journal": "New England Journal of Medicine",
+        "pmid": "",
+        "date": "2025-10-09",
+        "datePrecision": "day",
+        "dateBasis": "出版商登记 published-print（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1056%2Fnejmcpc2412539",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://jamanetwork.com/journals/jama/fullarticle/2852129",
+          "finding": "ipatient_is_jama_10_1001_jama_2026_13582_not_this_nejm_case_binding_remains_on_hold"
+        }
+      ]
+    },
+    {
+      "doi": "10.1093/ehjdh/ztag141",
+      "action": "official",
+      "acceptedTitles": [
+        "Associations between echocardiographic traits and artificial intelligence-enabled electrocardiography predictions of heart failure"
+      ],
+      "metadata": {
+        "title": "Associations between echocardiographic traits and artificial intelligence-enabled electrocardiography predictions of heart failure",
+        "journal": "European Heart Journal - Digital Health",
+        "pmid": "42757299",
+        "date": "2026-09-11",
+        "datePrecision": "day",
+        "dateBasis": "官方题录 published-online（已复核）"
+      },
+      "reason": "canonical_doi_bibliography_only_exclude_unmatched_title_bindings",
+      "evidence": [
+        {
+          "url": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag141",
+          "finding": "publisher_deposit_canonical_title_journal_and_publication_date"
+        },
+        {
+          "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=42757299&retmode=xml",
+          "finding": "pubmed_primary_article_electronic_date_2026_09_11_matches_crossref_online"
+        }
+      ]
+    }
+  ]
+}
