@@ -364,6 +364,51 @@ class HealthTests(OfflineTests):
         self.assertNotIn('private-secret', json.dumps(current))
         self.assertNotIn('private response text', json.dumps(current))
 
+    def test_publisher_verification_resource_stops_host_even_at_original_feed_url(self):
+        class Response:
+            headers = {'Content-Type': 'text/html; charset=utf-8'}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def getcode(self): return 200
+            def geturl(self): return SOURCE['url']
+            def read(self, size):
+                return b'<!DOCTYPE html><html><img src="https://verify.nature.com/check?code=private-secret"/></html>'
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        with patch('refresh_feeds.urllib.request.urlopen', return_value=Response()) as opener:
+            current = feeds.fetch_group([SOURCE, same])
+        self.assertEqual(opener.call_count, 1)
+        self.assertEqual(current[0][0]['failureReason'], 'publisher_access_challenge')
+        self.assertEqual(current[0][0]['rootKind'], 'html')
+        self.assertEqual(current[1][0]['status'], 'not_checked_host_blocked')
+        self.assertNotIn('private-secret', json.dumps(current))
+        self.assertNotIn('verify.nature.com', json.dumps(current))
+
+    def test_cookie_failure_canonical_target_is_observed_without_following_it(self):
+        raw = b'<html><link rel="canonical" href="https://www.nature.com/npjhealthsyst/?error=cookies_not_supported&amp;code=private-secret"/></html>'
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=AssertionError('No follow-up request')):
+            self.assertEqual(feeds.non_feed_reason(raw, SOURCE['url']), 'publisher_cookie_requirement')
+
+    def test_verification_words_links_comments_and_lookalike_hosts_do_not_prove_challenge(self):
+        for raw in (b'<html><p>verify.nature.com</p></html>',
+                    b'<html><!-- <img src="https://verify.nature.com/check"> --></html>',
+                    b'<html><a href="https://verify.nature.com/check">Reference</a></html>',
+                    b'<html><img src="https://verify.nature.com.example.org/check"/></html>',
+                    b'<html><![malformed html]></html>'):
+            with self.subTest(raw=raw):
+                self.assertEqual(feeds.non_feed_reason(raw, SOURCE['url']), 'html_instead_of_feed')
+
+    def test_http_refusal_preserves_sanitized_final_endpoint_and_content_type_without_body_read(self):
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        failure = urllib.error.HTTPError('https://user:secret@example.org/refused?code=private-secret',
+                                         403, 'Forbidden', {'Content-Type': 'text/html; charset=utf-8'}, None)
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=failure) as opener:
+            current = feeds.fetch_group([SOURCE, same])
+        self.assertEqual(opener.call_count, 1)
+        self.assertEqual(current[0][0]['responseContentType'], 'text/html')
+        self.assertEqual(current[0][0]['responseUrl'], 'https://example.org/refused?code=<redacted>')
+        self.assertEqual(current[1][0]['status'], 'not_checked_host_blocked')
+        self.assertNotIn('secret', json.dumps(current))
+
     def test_filtered_zero_reports_actual_exclusion_reasons(self):
         items = parsed(date='2020-01-01') + parsed(link='https://example.org/two', date='')
         feeds_data, health = feeds.build_results([SOURCE], [(report(SOURCE, raw=3), items)], now=NOW)

@@ -77,6 +77,9 @@ def publication_day(p,clock):
  except ValueError:return ''
 
 def public_abstract(p):
+ from abstract_quality import normalize_paper, readable_abstract
+ p=normalize_paper(p)
+ if not readable_abstract(p):return None
  if p.get('publicAbstractVerified') is True and p.get('abstractSource') in ('Europe PMC','Crossref'):
   abstract=clean(p.get('summary'))
   if p.get('summary_truncated') is False and 200<=len(abstract)<=6000 and not abstract.endswith(('…','...')):

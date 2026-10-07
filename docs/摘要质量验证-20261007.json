@@ -1,0 +1,111 @@
+{
+  "baseMain": "7dbe94c5465e7acca4097ac0282ef8ff78e4a48f",
+  "fixedState": "6135056e3d544816ff3554a8e6241f60e3274698",
+  "release": "v14.2.3",
+  "counts": {
+    "radar": 868,
+    "library": 1268,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 11,
+    "radar_archive_titles": 12635,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 24,
+      "translate": 0,
+      "study": 0,
+      "quicklook": 0
+    }
+  },
+  "changedCandidateCount": 2,
+  "candidateInputUnchanged": true,
+  "exactGuidePayloadRetained": true,
+  "cases": [
+    {
+      "doi": "10.1161/jaha.126.050490",
+      "title": "Stable, Progressive, and Acute Valve Syndrome in Severe Aortic Stenosis: Insights From the CURRENT AS Registry‐2",
+      "beforeChars": 2138,
+      "afterChars": 2075,
+      "abstractStatus": "structured",
+      "sections": [
+        "Background",
+        "Methods",
+        "Results",
+        "Conclusions"
+      ],
+      "autoPick": {
+        "d": "2026-10-07",
+        "r": 3
+      },
+      "nonAbstractMetadata": null
+    },
+    {
+      "doi": "10.1093/eurheartj/ehag713",
+      "title": "Beating Bias: defining research priorities for women and cardiovascular disease",
+      "beforeChars": 157,
+      "afterChars": 0,
+      "abstractStatus": "non_abstract_metadata",
+      "sections": [],
+      "autoPick": null,
+      "nonAbstractMetadata": [
+        {
+          "kind": "funding",
+          "text": "Heart Research UK10.13039/501100000327100001NIHR304448NIHR10.13039/501100000272NHS10.13039/100030827Department of Health and Social Care10.13039/501100000276"
+        }
+      ]
+    }
+  ],
+  "sourceChecks": [
+    {
+      "name": "jaha",
+      "status": 403,
+      "retry": false
+    },
+    {
+      "name": "ehj",
+      "status": 200,
+      "contentType": "text/xml",
+      "bytes": 17651,
+      "sha256": "da08e6c358fbd008eec4ee7ba8fb2600ca602ac53a258ec7ed230ac90fdf08a2",
+      "checkedAt": "2026-10-07T14:36:53.667483+00:00"
+    },
+    {
+      "name": "crossref-jaha",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 18054,
+      "sha256": "5eb0fef4a6a3fb85c010f39cee8f32495ac53aed868d1a980d6888e01a48b72c",
+      "checkedAt": "2026-10-07T14:36:54.073384+00:00"
+    },
+    {
+      "name": "crossref-ehj",
+      "status": 200,
+      "contentType": "application/json",
+      "bytes": 8422,
+      "sha256": "7851fc565612d720fced8b689ed1d4c5725d802c2f9f5d9f27b815752bad7b21",
+      "checkedAt": "2026-10-07T14:36:54.408077+00:00"
+    },
+    {
+      "name": "pubmed",
+      "status": 200,
+      "contentType": "text/xml; charset=UTF-8",
+      "bytes": 19239,
+      "sha256": "5224d8b10ba23c5246f4d1dc7ac695cd52a9abbc0ebe2e72b65ed4af51450c43",
+      "checkedAt": "2026-10-07T14:36:54.826088+00:00"
+    }
+  ],
+  "offlinePython": {
+    "testsRun": 472,
+    "failures": 0,
+    "errors": 0
+  },
+  "targetedPython": {
+    "testsRun": 105,
+    "failures": 0
+  },
+  "readingUIAssertions": 20,
+  "apiErrorAssertions": 6,
+  "sourceUIAssertions": 40,
+  "weeklyAssertions": 61,
+  "noModelCalls": true
+}

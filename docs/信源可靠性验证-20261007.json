@@ -1,0 +1,201 @@
+{
+  "baselineMain": "066f8a6c36902143546b7144d4ff24a3b51b21c8",
+  "fixedState": "5faa071a4d28d90204424566fc1d13c5b6161ee3",
+  "counts": {
+    "radar": 869,
+    "library": 1268,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 11,
+    "radar_archive_titles": 12635,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 22,
+      "translate": 0,
+      "study": 0,
+      "quicklook": 0
+    }
+  },
+  "publicFiles": [
+    "_headers",
+    "_worker.js",
+    "icon.svg",
+    "index.html",
+    "public.js",
+    "style.css"
+  ],
+  "pubmedInputUnchanged": true,
+  "healthCheckedAt": "2026-10-07T14:11:52.343022+00:00",
+  "healthSummary": {
+    "ok": 54,
+    "filtered_empty": 22,
+    "not_feed": 6
+  },
+  "failedSources": [
+    {
+      "name": "Nature Medicine",
+      "status": "not_feed",
+      "failureReason": "html_instead_of_feed",
+      "responseContentType": "text/html",
+      "cachedItems": 8,
+      "lastSuccessfulAt": "2026-10-07T13:13:44.731747+00:00",
+      "pubmedFallback": {
+        "provider": "PubMed",
+        "journal": "Nature Medicine",
+        "configured": true,
+        "observedItems": 46,
+        "eligibleItems": 24,
+        "checkedAt": "2026-10-07T14:11:52.541424+00:00",
+        "queryTruncated": true,
+        "stale": false,
+        "queryScope": "journal",
+        "queryHash": "3bbcd15a10646431ae2f3260bf8611965286144ddc8ff5c8ba1fe2e41eb80709",
+        "status": "records_observed"
+      }
+    },
+    {
+      "name": "Nature Reviews Psychology",
+      "status": "not_feed",
+      "failureReason": "html_instead_of_feed",
+      "responseContentType": "text/html",
+      "cachedItems": 0,
+      "lastSuccessfulAt": "2026-10-07T13:13:44.790030+00:00",
+      "pubmedFallback": {
+        "provider": "PubMed",
+        "journal": "Nature Reviews Psychology",
+        "configured": true,
+        "observedItems": 0,
+        "eligibleItems": 0,
+        "checkedAt": "2026-10-07T14:11:52.541424+00:00",
+        "queryTruncated": true,
+        "stale": false,
+        "queryScope": "cardiovascular_or_ai",
+        "queryHash": "3bbcd15a10646431ae2f3260bf8611965286144ddc8ff5c8ba1fe2e41eb80709",
+        "status": "no_records_observed"
+      }
+    },
+    {
+      "name": "Nature Communications",
+      "status": "not_feed",
+      "failureReason": "html_instead_of_feed",
+      "responseContentType": "text/html",
+      "cachedItems": 1,
+      "lastSuccessfulAt": "2026-10-07T13:13:44.968342+00:00",
+      "pubmedFallback": {
+        "provider": "PubMed",
+        "journal": "Nature Communications",
+        "configured": true,
+        "observedItems": 7,
+        "eligibleItems": 2,
+        "checkedAt": "2026-10-07T14:11:52.541424+00:00",
+        "queryTruncated": true,
+        "stale": false,
+        "queryScope": "cardiovascular_or_ai",
+        "queryHash": "3bbcd15a10646431ae2f3260bf8611965286144ddc8ff5c8ba1fe2e41eb80709",
+        "status": "records_observed"
+      }
+    },
+    {
+      "name": "NPJ Digital Medicine",
+      "status": "not_feed",
+      "failureReason": "html_instead_of_feed",
+      "responseContentType": "text/html",
+      "cachedItems": 8,
+      "lastSuccessfulAt": "2026-10-07T13:13:45.028435+00:00",
+      "pubmedFallback": {
+        "provider": "PubMed",
+        "journal": "npj Digital Medicine",
+        "configured": true,
+        "observedItems": 7,
+        "eligibleItems": 4,
+        "checkedAt": "2026-10-07T14:11:52.541424+00:00",
+        "queryTruncated": true,
+        "stale": false,
+        "queryScope": "journal",
+        "queryHash": "3bbcd15a10646431ae2f3260bf8611965286144ddc8ff5c8ba1fe2e41eb80709",
+        "status": "records_observed"
+      }
+    },
+    {
+      "name": "npj Health Systems",
+      "status": "not_feed",
+      "failureReason": "html_instead_of_feed",
+      "responseContentType": "text/html",
+      "cachedItems": 0,
+      "lastSuccessfulAt": "2026-09-29T09:29:56.128280+00:00",
+      "pubmedFallback": {
+        "provider": "PubMed",
+        "journal": "npj Health Systems",
+        "configured": true,
+        "observedItems": 1,
+        "eligibleItems": 0,
+        "checkedAt": "2026-10-07T14:11:52.541424+00:00",
+        "queryTruncated": true,
+        "stale": false,
+        "queryScope": "cardiovascular_or_ai",
+        "queryHash": "3bbcd15a10646431ae2f3260bf8611965286144ddc8ff5c8ba1fe2e41eb80709",
+        "status": "records_observed"
+      }
+    },
+    {
+      "name": "Cardiovascular Diabetology",
+      "status": "not_feed",
+      "failureReason": "html_instead_of_feed",
+      "responseContentType": "text/html",
+      "cachedItems": 0,
+      "lastSuccessfulAt": null,
+      "pubmedFallback": {
+        "provider": "PubMed",
+        "journal": "Cardiovascular Diabetology",
+        "configured": true,
+        "observedItems": 3,
+        "eligibleItems": 0,
+        "checkedAt": "2026-10-07T14:11:52.541424+00:00",
+        "queryTruncated": true,
+        "stale": false,
+        "queryScope": "journal",
+        "queryHash": "3bbcd15a10646431ae2f3260bf8611965286144ddc8ff5c8ba1fe2e41eb80709",
+        "status": "records_observed"
+      }
+    }
+  ],
+  "offlinePython": {
+    "testsRun": 469,
+    "failures": 0,
+    "errors": 0
+  },
+  "targetedPython": {
+    "testsRun": 91,
+    "failures": 0
+  },
+  "sourceUIAssertions": 40,
+  "livePublicCheck": {
+    "httpStatus": 403,
+    "attempts": 1,
+    "retry": false
+  },
+  "boundedPubmedProof": [
+    {
+      "label": "patched",
+      "pmid": "42791307",
+      "count": 1,
+      "checkedAt": "2026-10-07T14:12:33.034500+00:00"
+    },
+    {
+      "label": "previous",
+      "pmid": "42791307",
+      "count": 0,
+      "checkedAt": "2026-10-07T14:12:33.822999+00:00"
+    }
+  ],
+  "workflowPrecheck": {
+    "dailyPushBranches": [
+      "main"
+    ],
+    "fulltextPushBranches": [
+      "main"
+    ],
+    "productionJobMainOnly": true,
+    "isolatedBranchRunsBeforePush": 0
+  }
+}

@@ -32,6 +32,7 @@ INPUTS = (
     'scripts/week_precompute_checkpoint.py', 'scripts/week_precompute_ci.py',
     'scripts/week_precompute_usage.py',
     'editorial/public_title_translations.json',
+    'scripts/abstract_quality.py', 'editorial/public_abstract_evidence.json',
 )
 
 
