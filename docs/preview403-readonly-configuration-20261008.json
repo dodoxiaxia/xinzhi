@@ -1,0 +1,245 @@
+{
+  "checkedAt": "2026-10-07T19:54:17.801335+00:00",
+  "sourceRun": 37675847598,
+  "original403HeadersRetained": false,
+  "original403BodyRetained": false,
+  "previewRouteRequests": 0,
+  "deploymentsCreated": 0,
+  "configWrites": 0,
+  "identityChanged": false,
+  "permissionChanges": false,
+  "requests": [
+    {
+      "resource": "existing_pages_project",
+      "method": "GET",
+      "retried": false,
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-Ray": "a46f74f56ff0916d-IAD"
+      },
+      "errors": []
+    },
+    {
+      "resource": "existing_preview_deployment",
+      "method": "GET",
+      "retried": false,
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-Ray": "a46f74f71d90e047-IAD"
+      },
+      "errors": []
+    },
+    {
+      "resource": "existing_access_applications",
+      "method": "GET",
+      "retried": false,
+      "status": 403,
+      "headers": {
+        "Content-Type": "application/json; charset=UTF-8",
+        "Server": "cloudflare",
+        "CF-Ray": "a46f74f90dd4c937-IAD"
+      },
+      "errors": [
+        {
+          "code": 9999,
+          "message": "access.api.error.not_enabled: Access is not enabled. Visit the Access dashboard at https://dash.cloudflare.com/ and click the 'Enable Access' button."
+        }
+      ]
+    },
+    {
+      "resource": "existing_analytics_capability",
+      "method": "POST",
+      "retried": false,
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json",
+        "Server": "cloudflare",
+        "CF-Ray": "a46f74fa5c292c24-IAD"
+      },
+      "errors": []
+    }
+  ],
+  "project": {
+    "name": "dryz-xinzhi",
+    "subdomain": "dryz-xinzhi.pages.dev",
+    "domains": [
+      "dryz-xinzhi.pages.dev",
+      "learn.dryz.info"
+    ],
+    "production_branch": "main",
+    "accessProtectionPublicFlags": {},
+    "workerModeMetadata": {
+      "preview": {
+        "usage_model": "standard",
+        "compatibility_date": "2026-09-29",
+        "fail_open": true
+      },
+      "production": {
+        "usage_model": "standard",
+        "compatibility_date": "2026-09-29",
+        "fail_open": true
+      }
+    }
+  },
+  "deployment": {
+    "id": "3f577b35-9077-4c4f-be65-e2079d3a5c56",
+    "environment": "preview",
+    "url": "https://3f577b35.dryz-xinzhi.pages.dev",
+    "aliases": [
+      "https://lazy-v143-review-20261008.dryz-xinzhi.pages.dev"
+    ],
+    "is_skipped": false,
+    "created_on": "2026-10-07T19:38:15.372265Z",
+    "latest_stage": {
+      "name": "deploy",
+      "status": "success",
+      "started_on": null,
+      "ended_on": "2026-10-07T19:38:17.126467Z"
+    },
+    "trigger": {
+      "branch": "lazy-v143-review-20261008",
+      "commit_hash": "5c46f0f5c973fa0940fc18af3ad1a582abb0f2a9"
+    }
+  },
+  "analyticsCapability": [
+    {
+      "availableFields": [
+        "avg_sampleInterval",
+        "dimensions_cacheStatus",
+        "dimensions_coloCode",
+        "dimensions_date",
+        "dimensions_datetime",
+        "dimensions_datetimeFifteenMinutes",
+        "dimensions_datetimeFiveMinutes",
+        "dimensions_datetimeHour",
+        "dimensions_datetimeMinute",
+        "dimensions_datetimeSixHours",
+        "dimensions_dispatchNamespaceName",
+        "dimensions_environmentName",
+        "dimensions_isDispatcher",
+        "dimensions_isPreview",
+        "dimensions_previewSlug",
+        "dimensions_scriptName",
+        "dimensions_scriptTag",
+        "dimensions_scriptVersion",
+        "dimensions_status",
+        "dimensions_usageModel",
+        "max_cpuTime",
+        "max_duration",
+        "max_memoryUsageBytes",
+        "max_requestDuration",
+        "max_responseBodySize",
+        "max_wallTime",
+        "max_wasmMemoryBytes",
+        "min_cpuTime",
+        "min_duration",
+        "min_requestDuration",
+        "min_responseBodySize",
+        "min_wallTime",
+        "quantiles_cpuTimeP25",
+        "quantiles_cpuTimeP50",
+        "quantiles_cpuTimeP75",
+        "quantiles_cpuTimeP90",
+        "quantiles_cpuTimeP95",
+        "quantiles_cpuTimeP99",
+        "quantiles_cpuTimeP999",
+        "quantiles_durationP25",
+        "quantiles_durationP50",
+        "quantiles_durationP75",
+        "quantiles_durationP90",
+        "quantiles_durationP95",
+        "quantiles_durationP99",
+        "quantiles_durationP999",
+        "quantiles_memoryUsageBytesP25",
+        "quantiles_memoryUsageBytesP50",
+        "quantiles_memoryUsageBytesP75",
+        "quantiles_memoryUsageBytesP90",
+        "quantiles_memoryUsageBytesP95",
+        "quantiles_memoryUsageBytesP99",
+        "quantiles_memoryUsageBytesP999",
+        "quantiles_requestDurationP25",
+        "quantiles_requestDurationP50",
+        "quantiles_requestDurationP75",
+        "quantiles_requestDurationP90",
+        "quantiles_requestDurationP95",
+        "quantiles_requestDurationP99",
+        "quantiles_requestDurationP999",
+        "quantiles_responseBodySizeP25",
+        "quantiles_responseBodySizeP50",
+        "quantiles_responseBodySizeP75",
+        "quantiles_responseBodySizeP90",
+        "quantiles_responseBodySizeP95",
+        "quantiles_responseBodySizeP99",
+        "quantiles_responseBodySizeP999",
+        "quantiles_wallTimeP25",
+        "quantiles_wallTimeP50",
+        "quantiles_wallTimeP75",
+        "quantiles_wallTimeP90",
+        "quantiles_wallTimeP95",
+        "quantiles_wallTimeP99",
+        "quantiles_wallTimeP999",
+        "quantiles_wasmMemoryBytesP25",
+        "quantiles_wasmMemoryBytesP50",
+        "quantiles_wasmMemoryBytesP75",
+        "quantiles_wasmMemoryBytesP90",
+        "quantiles_wasmMemoryBytesP95",
+        "quantiles_wasmMemoryBytesP99",
+        "quantiles_wasmMemoryBytesP999",
+        "sum_clientDisconnects",
+        "sum_cpuTimeUs",
+        "sum_duration",
+        "sum_errors",
+        "sum_requestDuration",
+        "sum_requests",
+        "sum_responseBodySize",
+        "sum_subrequests",
+        "sum_wallTime"
+      ],
+      "enabled": true
+    }
+  ],
+  "liveCpuMemoryMeasured": false,
+  "resourceGatePassed": false,
+  "performanceProductionHeld": true,
+  "configReadRunId": 37677990603,
+  "configReadSource": "6222eb372bcb42a2a5b766213a0188c7d77f654c",
+  "configReadRunUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37677990603",
+  "verifiedConclusions": [
+    "Existing account/project/deployment found; preview latest deploy stage success, correct URL/branch/commit",
+    "Access API code9999 explicitly says Access is not enabled; no evidence for Access preview authentication",
+    "Analytics schema/settings metadata accessible, including CPU/memory fields; actual historical metrics query denied",
+    "Application public-data handler explicit statuses200/404/405/409/503, no explicit403 response"
+  ],
+  "unresolved": [
+    "Original403headers/body were not retained; cannot distinguish WAF vs egress proxy from that record alone",
+    "Available telemetry permission is not actual live resource measurements or a passed production gate"
+  ],
+  "analyticsActualMetricsReadAuthorized": false,
+  "analyticsSchemaMetadataReadable": true,
+  "analyticsCapabilityMustNotBeTreatedAsDataAuthorization": true,
+  "historicalTelemetryRunId": 37678326401,
+  "historicalTelemetryRunUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37678326401",
+  "historicalTelemetryDeniedMessage": "authorization denied",
+  "rootCauseClassification": {
+    "accountOrDeploymentMissing": "excluded by successful exact existing-deployment read",
+    "previewAccessAuthentication": "no supporting evidence; Access account API says not enabled",
+    "applicationDataHandler403": "excluded as an explicit response of reviewed handler",
+    "WafOrManagedEdgeSecurity": "unconfirmed: original rejected-route headers/body not retained",
+    "executionEgressProxy": "unconfirmed: original rejected-route headers/body not retained",
+    "cpuOrMemoryLimit": "not proven; actual metrics denied and no invocation evidence"
+  },
+  "minimalExistingUserAction": {
+    "readOnly": true,
+    "noTokenExpansionRequested": true,
+    "steps": [
+      "In existing Cloudflare dashboard: Workers & Pages > dryz-xinzhi > preview deployment3f577b35-9077-4c4f-be65-e2079d3a5c56, confirm shown access/protection state (no setting changes).",
+      "Inspect existing Functions Metrics and invocation/error evidence for UTC2026-10-07 19:38:15–19:38:30 (BJT2026-10-08 03:38:15–03:38:30); provide CPU/memory measurements or status if available, without credentials.",
+      "Use existing Cloudflare security event or Support portal read-only inquiry for hostname3f577b35.dryz-xinzhi.pages.dev and original public-data URL/time. If a blocking rule is identified, provide rule/action classification, do not disable WAF or change policy."
+    ],
+    "note": "Do not reopen the refused preview URL or alternate hostname as a workaround; configuration and past records only."
+  }
+}
