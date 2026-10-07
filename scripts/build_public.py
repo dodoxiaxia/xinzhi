@@ -9,14 +9,16 @@ from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
 from publication_dates import DATE_CORRECTIONS, canonical_publication_date
 from journal_metrics import public_registry
+from public_library_quality import QUALITY_FIELDS, project_public_library
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
+PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.2.8'
+RELEASE = 'v14.2.9'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -280,6 +282,7 @@ def main():
     archive=make_archive(c['items'],l['papers'])
     editorial_drafts={article_key(d):d for d in load('editorial/source_checked_drafts.json')['articles']}
     library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p,editorial_drafts) for p in l['papers']]}
+    library['papers'],library_quality=project_public_library(library['papers'])
     candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p,editorial_drafts) for p in c['items']]}
     pubmed=load('data/pubmed.json') if (ROOT/'data/pubmed.json').is_file() else {}
     now=datetime.datetime.now(datetime.timezone.utc)
@@ -356,7 +359,9 @@ def main():
     worker=(ROOT/'edge/_worker.js').read_text()
     placeholder='const PDF_LIBRARY = {};'
     if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
-    worker=worker.replace(placeholder,'const PDF_LIBRARY = '+json.dumps(pdf_library_registry(library['papers']),ensure_ascii=False,separators=(',',':'))+';')
+    # A public DOI correction is not evidence for rebinding a private PDF.
+    pdf_papers=[p for p in library['papers'] if p['id'] not in library_quality['pdfBindingHoldIds']]
+    worker=worker.replace(placeholder,'const PDF_LIBRARY = '+json.dumps(pdf_library_registry(pdf_papers),ensure_ascii=False,separators=(',',':'))+';')
     doi_placeholder='const DOI_ADJUDICATIONS = {};'
     if worker.count(doi_placeholder)!=1:raise ValueError('DOI adjudication placeholder missing')
     worker=worker.replace(doi_placeholder,'const DOI_ADJUDICATIONS = '+json.dumps(doi_adjudication_registry(),ensure_ascii=False,separators=(',',':'))+';')
@@ -373,7 +378,7 @@ def main():
     # The receipt describes the bytes we constructed and validated, never replacements.
     manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
     assert {p['path'] for p in manifest}==PUBLIC
-    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {}},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {}},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     # curated-archive is both input and sanitized output; record its final bytes.
     build_after=provenance(ROOT)
     expected_inputs=dict(inputs_before)
@@ -386,6 +391,8 @@ def main():
         if ordinary_file(ROOT,'public/'+name).read_bytes()!=content:
             raise ValueError('Public output changed before completion: '+name)
     meta['buildProvenance']=build_after
+    # Local audit only; the six-file public allowlist does not include this report.
+    (ROOT/'docs/public-library-quality-audit.json').write_text(json.dumps(library_quality,ensure_ascii=False,indent=2)+'\n')
     (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
     print(json.dumps({'built':len(manifest),'release':meta['release'],'counts':meta['counts']},ensure_ascii=False))
 if __name__=='__main__':main()

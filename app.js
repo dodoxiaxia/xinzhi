@@ -1526,6 +1526,7 @@
 
   // Slide-over Reader Drawer Open/Close
   function openReaderDrawer(paper) {
+    const changedPaper = !state.activeDrawerPaper || state.activeDrawerPaper.id !== paper.id;
     hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
     const drawer = $('#readerDrawer');
@@ -1766,7 +1767,8 @@
     if (!drawer.classList.contains('open')) lastFocus = document.activeElement;
     drawer.classList.add('open');
     backdrop.classList.add('open');
-    if (lastFocus && !drawer.contains(document.activeElement)) $('#drawerCloseBtn')?.focus({ preventScroll: true });
+    if (changedPaper && bodyEl) bodyEl.scrollTop = 0;
+    if (changedPaper || (lastFocus && !drawer.contains(document.activeElement))) $('#drawerCloseBtn')?.focus({ preventScroll: true });
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
 
@@ -1848,7 +1850,14 @@
     if (drawer) { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); }
     document.body.classList.remove('dialog-open');
     if (backdrop) backdrop.classList.remove('open');
-    if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    let restoreFocus = lastFocus;
+    // Same-paper actions can rerender the list and replace the original opener.
+    if (restoreFocus && !restoreFocus.isConnected && restoreFocus.dataset?.paperId) {
+      const paperId = restoreFocus.dataset.paperId;
+      restoreFocus = [...document.querySelectorAll('[data-action="open-drawer"]')]
+        .find(el => el.dataset.paperId === paperId && el.getClientRects().length) || null;
+    }
+    if (restoreFocus && restoreFocus.focus) { try { restoreFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     lastFocus = null;
   }
 

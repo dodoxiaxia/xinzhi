@@ -126,6 +126,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_workflow.py'
           python3 -m unittest discover -s scripts -p 'test_release_decoupling.py'
           python3 -m unittest discover -s scripts -p 'test_public_build.py'
+          python3 -m unittest discover -s scripts -p 'test_public_library_quality.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
           python3 -m unittest discover -s scripts -p 'test_release_build.py'
           python3 -m unittest discover -s scripts -p 'test_editorial_review.py'
