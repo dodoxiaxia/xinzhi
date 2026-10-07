@@ -31,6 +31,7 @@ INPUTS = (
     'scripts/week_precompute_cache.py', 'scripts/week_precompute_budget.py',
     'scripts/week_precompute_checkpoint.py', 'scripts/week_precompute_ci.py',
     'scripts/week_precompute_usage.py',
+    'editorial/public_title_translations.json',
 )
 
 

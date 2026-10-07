@@ -17,6 +17,24 @@ def structure():return {k:{'text':'摘要未提供','quote':''} for k in w.STUDY
 def model_structure():return {k:{'text':'摘要未提供','quote_id':''} for k in w.STUDY_FIELDS}
 
 class SelectionTests(unittest.TestCase):
+ def test_editorial_title_matches_identity_and_original_title_hash(self):
+  p=paper();zh='一项随机临床试验'
+  entry={'paperID':w.identity(p),'pmid':p['pmid'],'sourceTitle':p['title'],'sourceTitleHash':w.hashlib.sha256(p['title'].encode()).hexdigest(),'titleZh':zh,'origin':'codex-editorial-translation'}
+  registry={'entries':{w.identity(p):entry}}
+  self.assertEqual(w.editorial_title(p,registry),zh)
+  self.assertEqual(w.editorial_title(dict(p,title=p['title']+' correction'),registry),'')
+  self.assertEqual(w.editorial_title(dict(p,pmid='999'),registry),'')
+  self.assertEqual(w.editorial_title(dict(p,doi='10.1234/other'),registry),'')
+  bad=copy.deepcopy(registry);bad['entries'][w.identity(p)]['sourceTitleHash']='wrong'
+  self.assertEqual(w.editorial_title(p,bad),'')
+ def test_editorial_titles_fill_only_missing_and_do_not_change_model_cache(self):
+  selected,window=w.select([paper()],CLOCK);p=selected[0];cache={'entries':{}}
+  entry={'paperID':w.identity(p),'pmid':p['pmid'],'sourceTitle':p['title'],'sourceTitleHash':w.hashlib.sha256(p['title'].encode()).hexdigest(),'titleZh':'一项随机临床试验','origin':'codex-editorial-translation'}
+  registry={'entries':{w.identity(p):entry}};before=copy.deepcopy(cache)
+  b=w.board(selected,window,cache,{'paidRequests':0},{},registry)
+  self.assertEqual(b['coverage'],{'title':1,'translate':0,'study':0,'quicklook':0});self.assertEqual(cache,before);self.assertEqual(b['items'][0]['generationMeta'],{})
+  old='随机临床试验的原有译名';b=w.board(selected,window,cache,{}, {p['paperID']:old},registry)
+  self.assertEqual(b['items'][0]['titleZh'],old)
  def test_strict_dates_and_future(self):
   bad=['2026-02-29','2026-10','2026-10-08','2026-09-30','2026-10-07T10:00:00Z','2026-10-01T00:00:00']
   for raw in bad:

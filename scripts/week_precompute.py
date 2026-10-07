@@ -233,7 +233,17 @@ def runtime_value(task,result,p):
   raw=value;model=value.get('model');generated=value.get('generatedAt')
  return raw,model,generated
 
-def board(selected,window,cache,report,title_cache=None):
+def editorial_title(p,registry):
+ entry=registry.get('entries',{}).get(identity(p))
+ if not isinstance(entry,dict) or entry.get('origin')!='codex-editorial-translation':return ''
+ title=p.get('title','')
+ if entry.get('paperID')!=identity(p) or entry.get('sourceTitle')!=title or entry.get('sourceTitleHash')!=hashlib.sha256(title.encode()).hexdigest():return ''
+ if entry.get('pmid') and str(p.get('pmid',''))!=entry['pmid']:return ''
+ try:return validate('title',{'title_zh':entry.get('titleZh')},{'title':title,'abstract':''})['title_zh']
+ except ValueError:return ''
+
+def board(selected,window,cache,report,title_cache=None,editorial_titles=None):
+ editorial_titles=editorial_titles if editorial_titles is not None else read(ROOT/'editorial/public_title_translations.json',{'entries':{}})
  items=[]
  for rank,p in enumerate(selected,1):
   content={};meta={}
@@ -246,6 +256,7 @@ def board(selected,window,cache,report,title_cache=None):
    if candidate_title:
     try:legacy_title=validate('title',{'title_zh':candidate_title},p)['title_zh']
     except ValueError:pass
+  if not legacy_title:legacy_title=editorial_title(p,editorial_titles)
   study=None
   if 'study' in content:
    row={k:p.get(k,'') for k in ('title','doi','pmid','journal')};row.update(n=1,key='pmid:'+p['pmid'] if p.get('pmid') else p['paperID'],status='available',sourceFingerprint=p['sourceHash'],abstract_source=p['abstractSource'],source_url=p['abstractSourceUrl'],generatedAt=meta['study']['generatedAt'],model=meta['study']['modelVersion'],**content['study'])

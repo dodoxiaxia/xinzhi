@@ -16,7 +16,7 @@ PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBa
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.2.2'
+RELEASE = 'v14.2.3'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -276,9 +276,11 @@ def main():
     now=datetime.datetime.now(datetime.timezone.utc)
     health={'checkedAt':h.get('checkedAt'),'sources':[public_health(s,pubmed,now) for s in h['sources']]}
     tz=json.loads((ROOT/'data/translations.json').read_text()) if (ROOT/'data/translations.json').exists() else {}
+    from week_precompute import editorial_title
+    editorial_titles=load('editorial/public_title_translations.json') if (ROOT/'editorial/public_title_translations.json').exists() else {'entries':{}}
     def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower())
     for q in candidates['items']+library['papers']:
-        z=zhkey(q)
+        z=zhkey(q) or ('' if q.get('titleZh') else editorial_title(q,editorial_titles))
         if z:q['titleZh']=z
     mp=ROOT/'data/media.json'
     if mp.exists():

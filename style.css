@@ -1017,6 +1017,10 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
 .abstract-translation { border-left: 1px solid var(--border); padding-left: 28px; }
 .abstract-column-title { font: 600 13px var(--font-sans); color: var(--text-muted); margin-bottom: 14px; }
 .abstract-jump-nav { display: none; }
+.back-to-top { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 60; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--bg-card); color: var(--accent); font: 24px var(--font-sans); cursor: pointer; box-shadow: var(--shadow-sm); }
+.back-to-top:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+body.dialog-open .back-to-top { display: none; }
+@media (max-width: 720px) { .back-to-top { right: max(14px, env(safe-area-inset-right)); bottom: calc(76px + env(safe-area-inset-bottom)); } }
 .abstract-column-title { scroll-margin-top: 58px; }
 @media (max-width: 720px) {
   .abstract-jump-nav { display: flex; position: sticky; top: -1px; z-index: 2; gap: 8px; padding: 8px 0 12px; margin-bottom: 10px; background: var(--bg-card); border-bottom: 1px solid var(--border); }

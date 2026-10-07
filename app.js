@@ -2691,6 +2691,19 @@
   label.textContent = name(root.dataset.style);
 })();
 
+;(function () {
+  const button = document.getElementById('backToTopBtn');
+  if (!button) return;
+  const update = () => { button.hidden = window.scrollY < 600; };
+  window.addEventListener('scroll', update, { passive: true });
+  button.addEventListener('click', () => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('brandLogo')?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: reduced ? 'instant' : 'smooth' });
+  });
+  update();
+})();
+
 ;(function () { /* 页面开着时发现新版本就提示刷新；后台计划每 2 小时查新 */
   let tag = null, shown = false;
   async function probe() {
