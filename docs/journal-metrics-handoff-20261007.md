@@ -74,7 +74,7 @@ JM.detailText(paper);       // 完整学科、年份、状态与边界说明
 
 ## 测试与最小缺失输入
 
-已通过：13 个 journal Python 测试（含原别名测试）、29 个 Node 指标断言、20 个公开构建测试、23 个打包测试；完整固定 state 构建恰好六文件，脚本语法通过，原有内容计数保留。组件离线 fixture 在系统 Chromium 的 320/390/1440 像素宽度没有横向溢出，原生 details 可用 Tab/Enter 展开；截图为 `.local/journal-metrics/component-320.png`，构建证据为 `.local/journal-metrics/build-manifest.json`，两者未进入 Git/public。该验证不能代替 app/style 接入后的真实站点验收。
+已通过：13 个 journal Python 测试（含原别名测试）、27 个 Node 指标断言、20 个公开构建测试、23 个打包测试；完整固定 state 构建恰好六文件，脚本语法通过，原有内容计数保留。组件离线 fixture 在系统 Chromium 的 320/390/1440 像素宽度没有横向溢出，原生 details 可用 Tab/Enter 展开；截图为 `.local/journal-metrics/component-320.png`，构建证据为 `.local/journal-metrics/build-manifest.json`，两者未进入 Git/public。该验证不能代替 app/style 接入后的真实站点验收。
 
 要补分区，最小输入是用户已授权、且允许本站展示的 2026 JCR 发布版/2025 数据年的**本站具体刊名子集**：规范刊名、ISSN/eISSN、JIF、JIF 年、JCR 发布年、全部学科类别及对应官方 JIF Quartile（有则排名）、导出/核验时间。只需未核实表对应期刊；不需要整库导出、登录凭据、私人 PDF 或私人索引。6 个身份不清标签还需确切期刊名/ISSN；不能借系列/文章标题猜刊名。收到授权导出后逐项核对年份和身份，完整学科才把 categoryCoverage/status 提升为 complete/verified。
 

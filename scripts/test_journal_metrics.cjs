@@ -40,4 +40,4 @@ assert.match(details, /https:\/\/www.nature.com\/nm\/journal-impact/);
 assert.match(details, /核验/); assert.match(details, /单篇研究质量/);
 synthetic.sources.nm.url = 'javascript:alert(1)';
 assert.doesNotMatch(create(synthetic).renderDetails('Nature Medicine'), /href="javascript/);
-console.log('journal metrics: 29 identity, evidence, rendering and multi-category assertions passed');
+console.log('journal metrics: 27 identity, evidence, rendering and multi-category assertions passed');
