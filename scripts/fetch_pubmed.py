@@ -25,8 +25,13 @@ JOURNALS = [
 JOURNALS += list(ADDITIONAL_JOURNALS)
 
 def request(action, params):
-    u = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/' + action + '?' + urllib.parse.urlencode(params)
-    req = urllib.request.Request(u, headers={'User-Agent': 'XinZhiLearningPilot/0.1 (public journal metadata)'})
+    u = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/' + action
+    # E-utilities accepts form POSTs; the full journal/topic query exceeds GET URI limits.
+    body = urllib.parse.urlencode(params).encode('ascii')
+    req = urllib.request.Request(u, data=body, headers={
+        'User-Agent': 'XinZhiLearningPilot/0.1 (public journal metadata)',
+        'Content-Type': 'application/x-www-form-urlencoded',
+    })
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.read(10_000_000)
 
