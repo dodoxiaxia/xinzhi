@@ -98,6 +98,7 @@ jobs:
           node scripts/test_doi_library_worker.cjs
           node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_study_services.cjs
+          node scripts/test_study_evidence_regression.cjs
           node scripts/test_study_ui.cjs
           node scripts/test_source_health_ui.cjs
           node scripts/test_weekly_window.cjs
