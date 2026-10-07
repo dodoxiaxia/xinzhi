@@ -6,6 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'app.js'
+      - 'citation-export.js'
       - 'style.css'
       - 'icon.svg'
       - 'journal-metrics.js'
@@ -100,6 +101,8 @@ jobs:
         if: steps.refresh.outputs.deploy == 'true'
         run: |
           node --check app.js
+          node --check citation-export.js
+          node scripts/test_citation_export.cjs
           node scripts/test_reading_logic.cjs
           node scripts/test_edge_worker.cjs
           node scripts/test_pdf_worker.cjs

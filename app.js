@@ -1886,6 +1886,8 @@
       `).join('') + compareBoxHtml(list) + (AI_AVAIL === true ? briefHtml('huddle', list) : '');
     }
 
+    window.CITATION_EXPORT?.mount(body, list, { formatter: buildCitations, copy: copyToClipboard, today: beijingToday });
+
     const newlyOpened = !modal.classList.contains('open');
     if(newlyOpened) huddleLastFocus=document.activeElement;
     modal.classList.add('open'); document.body.classList.add('dialog-open');
@@ -2628,7 +2630,6 @@
   // Initialize
   updateHeaderBadges();
   updateHuddleCounter();
-  renderSidebarFilters();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
   if (searchInput && state.search) searchInput.value = state.search;
   switchMode(state.mode, true);

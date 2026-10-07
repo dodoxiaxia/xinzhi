@@ -23,6 +23,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     checks, calls, errors = [], [], []
     controls = {'compare': None}
+    # Reproduce this recorded source snapshot at its generation time. Calendar
+    # rollover behavior is checked separately by test_weekly_window.cjs.
+    board_time = json.loads((ROOT / 'data/weekly-board.json').read_text())['generatedAt']
     server = ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(ROOT / 'public')))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f'http://127.0.0.1:{server.server_port}/'
@@ -67,6 +70,13 @@ def main():
             browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
             for width in [1440, 390, 320]:
                 context = browser.new_context(viewport={'width': width, 'height': 950})
+                context.add_init_script("""(() => {
+                  const NativeDate = Date, fixed = NativeDate.parse(""" + json.dumps(board_time) + """);
+                  window.Date = class extends NativeDate {
+                    constructor(...args) { super(...(args.length ? args : [fixed])); }
+                    static now() { return fixed; }
+                  };
+                })();""")
                 context.route('**/*', mock)
                 context.add_init_script("Object.defineProperty(navigator, 'clipboard', {value:{writeText:async text=>{window.__copied=text;}}});")
                 page = context.new_page()

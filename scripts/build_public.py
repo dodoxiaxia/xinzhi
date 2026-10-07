@@ -16,7 +16,7 @@ PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBa
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.2.5'
+RELEASE = 'v14.2.6'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -345,7 +345,7 @@ def main():
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics)]+([js('WEEKLY_BOARD',weekly),js('PREGENERATED',pregenerated_map(weekly))] if weekly else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'app.js').read_text()])
+    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics)]+([js('WEEKLY_BOARD',weekly),js('PREGENERATED',pregenerated_map(weekly))] if weekly else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
     worker=(ROOT/'edge/_worker.js').read_text()
     placeholder='const PDF_LIBRARY = {};'
