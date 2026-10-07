@@ -170,18 +170,56 @@ async function callModel(env, art, feedback) {
   return requestModel(env, body);
 }
 
+function endpointProblem(value) {
+  let endpoint;
+  try { endpoint = new URL(value); } catch { return 'model_endpoint_invalid'; }
+  if (endpoint.protocol !== 'https:') return 'model_endpoint_insecure';
+  if (endpoint.username || endpoint.password || endpoint.hash) return 'model_endpoint_invalid';
+  return '';
+}
+function transportFailure(error) {
+  const cause = String(error?.cause?.code || error?.code || '');
+  if (['ENOTFOUND','EAI_AGAIN'].includes(cause)) return 'model_fetch_dns';
+  if (/^(?:ERR_TLS_|CERT_|UNABLE_TO_VERIFY_)/.test(cause)) return 'model_fetch_tls';
+  if (['ECONNRESET','ECONNREFUSED','EPIPE'].includes(cause)) return 'model_fetch_connection';
+  return 'model_fetch_transport';
+}
+async function saveModelDiagnostic(env, details) {
+  // Fixed metadata only: never include URL, request/response text, headers or raw exceptions.
+  const diagnostic = { version:1, at:new Date().toISOString(), requestId:crypto.randomUUID(), ...details };
+  if (diagnostic.code !== 'response_received') console.warn('XINZHI_AI_DIAGNOSTIC', JSON.stringify(diagnostic));
+  try { if (env.QL_KV) await env.QL_KV.put('ai:runtime:last-diagnostic:v1', JSON.stringify(diagnostic), {expirationTtl:86400}); } catch { /* diagnostics never hide the original result */ }
+}
+async function runtimeStatus(env) {
+  let lastDiagnostic = null;
+  try { if (env.QL_KV) lastDiagnostic = await env.QL_KV.get('ai:runtime:last-diagnostic:v1', 'json'); } catch { /* status remains read only */ }
+  const problem = endpointProblem(env.LLM_ENDPOINT);
+  return { ok:true, scope:'configuration-and-last-provider-attempt', hasKV:!!env.QL_KV,
+    hasEndpoint:!!env.LLM_ENDPOINT, hasModel:!!env.LLM_MODEL, hasApiKey:!!env.LLM_API_KEY,
+    endpointValid:!problem, configurationError:problem ? safeModelError(Error(problem)) : null,
+    canGenerate:!!(env.QL_KV && env.LLM_API_KEY && env.LLM_MODEL && !problem) && env.AI_ENABLED !== 'off',
+    lastDiagnostic, note:'Configuration presence and the last provider attempt do not prove a valid generated answer.' };
+}
 async function requestModel(env, body) {
+  const started = Date.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 45000);
+  let phase = 'configuration', httpStatus = null;
   try {
+    const problem = endpointProblem(env.LLM_ENDPOINT);
+    if (problem) throw Error(problem);
+    phase = 'fetch';
     let response;
     try {
-      response = await fetch(env.LLM_ENDPOINT, { method: 'POST', redirect: 'error', signal: controller.signal,
+      response = await fetch(env.LLM_ENDPOINT, { method: 'POST', redirect: 'manual', signal: controller.signal,
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.LLM_API_KEY }, body: JSON.stringify(body) });
-    } catch {
-      throw new Error(controller.signal.aborted ? 'model_timeout' : 'model_transport');
+    } catch (error) {
+      throw new Error(controller.signal.aborted ? 'model_timeout' : transportFailure(error));
     }
+    phase = 'provider_http'; httpStatus = response.status;
+    if (response.status >= 300 && response.status < 400) throw Error('model_redirect');
     if (!response.ok) throw new Error('model_http_' + response.status);
+    phase = 'provider_response';
     let payload;
     try { payload = await response.json(); } catch { throw new Error(controller.signal.aborted ? 'model_timeout' : 'model_response_json'); }
     const choice = payload?.choices?.[0];
@@ -189,11 +227,17 @@ async function requestModel(env, body) {
     if (choice.finish_reason === 'length') throw new Error('model_output_truncated');
     if (choice.finish_reason === 'content_filter' || choice.finish_reason === 'sensitive') throw new Error('model_output_blocked');
     if (choice.finish_reason === 'model_context_window_exceeded') throw new Error('model_context_limit');
-    if (choice.finish_reason === 'network_error') throw new Error('model_transport');
+    if (choice.finish_reason === 'network_error') throw new Error('model_provider_network');
     if (choice.finish_reason !== undefined && choice.finish_reason !== 'stop') throw new Error('model_output_incomplete');
     const content = choice.message.content;
     if (typeof content !== 'string' || !content.trim()) throw new Error('model_output_empty');
-    try { return JSON.parse(content); } catch { throw new Error('model_output_json'); }
+    let output;
+    try { output = JSON.parse(content); } catch { throw new Error('model_output_json'); }
+    await saveModelDiagnostic(env, {phase, code:'response_received', httpStatus, elapsedMs:Date.now()-started, timedOut:false});
+    return output;
+  } catch (error) {
+    await saveModelDiagnostic(env, {phase, code:safeModelError(error), httpStatus, elapsedMs:Date.now()-started, timedOut:controller.signal.aborted});
+    throw error;
   } finally { clearTimeout(timer); }
 }
 
@@ -294,7 +338,7 @@ function safeModelError(error) {
   if (/^model_http_(?:401|403)$/.test(message)) return 'provider_auth';
   if (message === 'model_http_429') return 'provider_rate_limit';
   if (/^model_http_\d{3}$/.test(message)) return 'provider_unavailable';
-  const codes = { model_timeout:'request_timeout', model_transport:'transport_error', model_context_limit:'context_limit', model_response_json:'output_json', model_output_json:'output_json', model_output_truncated:'output_truncated', model_output_shape:'output_shape', model_output_empty:'output_empty', model_output_incomplete:'output_incomplete', model_output_blocked:'output_blocked', numbers_missing_from_translation:'missing_numbers' };
+  const codes = { model_timeout:'request_timeout', model_transport:'transport_error', model_fetch_transport:'transport_error', model_fetch_dns:'fetch_dns', model_fetch_tls:'fetch_tls', model_fetch_connection:'fetch_connection', model_provider_network:'provider_network_error', model_redirect:'model_redirect', model_endpoint_invalid:'endpoint_invalid', model_endpoint_insecure:'endpoint_insecure', model_context_limit:'context_limit', model_response_json:'output_json', model_output_json:'output_json', model_output_truncated:'output_truncated', model_output_shape:'output_shape', model_output_empty:'output_empty', model_output_incomplete:'output_incomplete', model_output_blocked:'output_blocked', numbers_missing_from_translation:'missing_numbers' };
   if (codes[message]) return codes[message];
   return /^(?:model_not_object|invalid_[a-z_]+|not_object|quote_not_in_abstract)$/.test(message) ? message :
     (/^numbers_not_in_(?:abstract|source):/.test(message) ? 'unsupported_numbers' : 'provider_or_output_error');
@@ -351,6 +395,7 @@ function checkBrief(o, arts) {
 
 async function handleAI(request, env) {
   const url = new URL(request.url);
+  if (request.method === 'GET' && url.searchParams.get('task') === 'status') return json(await runtimeStatus(env));
   if (!env.QL_KV) return json({ ok: false, error: 'not_configured' }, 503);
   if (request.method === 'GET') {
     const k = parseKey(url.searchParams.get('k'));
