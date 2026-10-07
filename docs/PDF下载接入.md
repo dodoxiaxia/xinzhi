@@ -29,6 +29,18 @@
 
 GitHub 只读凭据通过 GitHub/Cloudflare 的受保护界面配置，不写入聊天、仓库或静态文件。缺少下载开关或 GitHub 凭据时不能下载；按钮出现不代表上线验收完成。
 
+### 创建并安装只读凭据
+
+1. 打开[已预填的 GitHub fine-grained token 创建页](https://github.com/settings/personal-access-tokens/new?name=xinzhi-pdf-readonly&description=Read%20PDF%20library%20for%20dryz-xinzhi%3B%20select%20only%20dodoxiaxia%2FAI-.&target_name=dodoxiaxia&expires_in=90&contents=read)。模板设置资源所有者 `dodoxiaxia`、有效期 90 天和 `Contents: Read-only`。GitHub 不支持通过该模板预选单个仓库，仍需在页面选择 **Only select repositories**，并只选 **AI-**。`Metadata: Read-only` 自动附带，不添加其他权限。确认后点击 **Generate token**。
+2. 在 [Cloudflare Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) 打开 `dryz-xinzhi`，进入 **Settings → Variables and Secrets**，选择 **Production** 环境。
+3. 新增 `GITHUB_LIBRARY_TOKEN`，将刚生成的令牌直接粘贴到该界面，选择 **Encrypt / Secret** 后保存；不要通过聊天、源码、普通文本变量或 workflow 输入传递令牌。当前方案不需要在 GitHub Actions 中另存这份令牌。
+4. 在同一环境添加文本变量 `PDF_DOWNLOAD_ENABLED`，值为 `true`。使用本次指定口令时省略 `PDF_DOWNLOAD_PASSPHRASE`。Preview 环境不自动复制这些配置。
+5. 保存配置后，通过现有 `daily-refresh` 发布流程部署包含下载功能的版本。Secret 必须在该次部署前保存，旧部署不会因新增变量而完成上线。部署后以错误口令与正确口令分别验证，并确认正确口令能下载对应 PDF；令牌到期时在同一界面替换并重新发布。
+
+配置入口与权限依据：[GitHub 令牌和模板说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)、[Cloudflare Pages 变量与 Secret 说明](https://developers.cloudflare.com/pages/functions/bindings/#secrets)。
+
+2026-10-07 配置检查：现有 GitHub 连接能访问私有 `AI-`，但读取 `xinzhi` 的 Actions Secret 名称时返回 `HTTP 403: Resource not accessible by integration`；环境没有配置 Cloudflare 凭据，插件目录搜索也未找到 Cloudflare 配置连接。没有生成或安装运行时令牌。账号界面中的令牌生成和上述 Secret 保存仍需由账号持有人完成。
+
 ## 本地使用与验证
 
 运行 `python3 service/server.py`，在文献库点击“下载 PDF”并输入相同口令即可。本地下载复用既有快照、单篇 fetch 与文件完整性校验，不要求编辑台会话；编辑台其他接口沿用原登录方式。
