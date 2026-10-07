@@ -1,0 +1,1316 @@
+{
+  "checkedAt": "2026-10-07T14:45:58Z",
+  "mainSha": "7dbe94c5465e7acca4097ac0282ef8ff78e4a48f",
+  "stateSha": "6135056e3d544816ff3554a8e6241f60e3274698",
+  "registry": {
+    "labels": 207,
+    "officialJif": 94,
+    "officialCompleteJcr": 2,
+    "historicalUserReferences": 50
+  },
+  "surfaces": {
+    "library": {
+      "allPapers": 1268,
+      "officialJif": 727,
+      "officialCompleteJcr": 2,
+      "notApplicable": 135,
+      "unverifiedJif": 400,
+      "missingIdentity": 6
+    },
+    "radar": {
+      "allPapers": 868,
+      "officialJif": 624,
+      "officialCompleteJcr": 0,
+      "notApplicable": 45,
+      "unverifiedJif": 199,
+      "missingIdentity": 0
+    },
+    "picks": {
+      "allPapers": 25,
+      "officialJif": 20,
+      "officialCompleteJcr": 0,
+      "notApplicable": 1,
+      "unverifiedJif": 4,
+      "missingIdentity": 0
+    }
+  },
+  "remaining": [
+    {
+      "name": "Heart Rhythm",
+      "rawNames": [
+        "Heart Rhythm",
+        "Heart rhythm"
+      ],
+      "occurrences": {
+        "picks": 2,
+        "radar": 28,
+        "library": 5
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Journal of the American Heart Association",
+      "rawNames": [
+        "Journal of the American Heart Association"
+      ],
+      "occurrences": {
+        "picks": 1,
+        "radar": 56,
+        "library": 0
+      },
+      "jifReason": "当前 Wiley 公开页核到 ISSN，但未列 JIF 数字或数据年；AHA 当前期刊主页本次访问返回 403，尚未得到可核实的官方年版值。",
+      "jcrReason": "当前 Wiley 公开页未列逐学科 JCR 分区；官方 About 搜索摘要中的旧 IF 6.106 没有数据年，不作为当前指标。"
+    },
+    {
+      "name": "Journal of the American Heart Association",
+      "rawNames": [
+        "JAHA"
+      ],
+      "occurrences": {
+        "picks": 1,
+        "radar": 2,
+        "library": 0
+      },
+      "jifReason": "当前 Wiley 公开页核到 ISSN，但未列 JIF 数字或数据年；AHA 当前期刊主页本次访问返回 403，尚未得到可核实的官方年版值。",
+      "jcrReason": "当前 Wiley 公开页未列逐学科 JCR 分区；官方 About 搜索摘要中的旧 IF 6.106 没有数据年，不作为当前指标。"
+    },
+    {
+      "name": "The Lancet",
+      "rawNames": [
+        "The Lancet"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 30,
+        "library": 18
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "International Journal of Cardiology",
+      "rawNames": [
+        "IJC"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 26,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Global Health",
+      "rawNames": [
+        "The Lancet Global Health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 13,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Diabetes & Endocrinology",
+      "rawNames": [
+        "The Lancet Diabetes & Endocrinology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 11,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Oncology",
+      "rawNames": [
+        "The Lancet Oncology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 10,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "BMJ Digital Health & AI",
+      "rawNames": [
+        "BMJ Digital Health & AI",
+        "BMJ digital health & AI"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 5,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Digital Health",
+      "rawNames": [
+        "The Lancet Digital Health",
+        "The Lancet. Digital health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 5,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "BMJ Digital Health & AI",
+      "rawNames": [
+        "BMJ Digital Health & AI current issue"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 4,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "eClinicalMedicine",
+      "rawNames": [
+        "eClinicalMedicine"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 3,
+        "library": 4
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Science Advances",
+      "rawNames": [
+        "Science Advances"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 2,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Public Health",
+      "rawNames": [
+        "The Lancet Public Health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 2,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Neurology",
+      "rawNames": [
+        "The Lancet Neurology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 2,
+        "library": 0
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "NEJM AI",
+      "rawNames": [
+        "NEJM AI"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 107
+      },
+      "jifReason": "官方 Ovid 公开目录已核实 ISSN，但未列 JIF 数字或数据年；NEJM 自身 about 页在本次访问中返回 403，尚未获得官方年版指标。",
+      "jcrReason": "所读官方公开目录未列 JCR 学科/分区；不能因目录没有指标便断言该刊没有 JCR。"
+    },
+    {
+      "name": "The Lancet Digital Health",
+      "rawNames": [
+        "Lancet Digital Health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 43
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Science",
+      "rawNames": [
+        "Science"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 30
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "BMJ Digital Health & AI",
+      "rawNames": [
+        "BMJ Digital Health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 19
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Nature Health",
+      "rawNames": [
+        "Nature Health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 17
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "npj Health Systems",
+      "rawNames": [
+        "npj Health Systems"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 15
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "npj Artificial Intelligence",
+      "rawNames": [
+        "npj Artificial Intelligence"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 13
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中国全科医学",
+      "rawNames": [
+        "中国全科医学"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 8
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Intelligent Systems with Applications",
+      "rawNames": [
+        "Intelligent Systems with Applications"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 7
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华心血管病杂志",
+      "rawNames": [
+        "中华心血管病杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 7
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Unknown",
+      "rawNames": [
+        "Unknown"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 6
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华内科杂志",
+      "rawNames": [
+        "中华内科杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 6
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Primary Care",
+      "rawNames": [
+        "Lancet Primary Care"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 4
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华外科杂志",
+      "rawNames": [
+        "中华外科杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Trends in Cardiovascular Medicine",
+      "rawNames": [
+        "Trends in Cardiovascular Medicine"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华结核和呼吸杂志",
+      "rawNames": [
+        "中华结核和呼吸杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "NEJM Catalyst",
+      "rawNames": [
+        "NEJM Catalyst"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Cell Reports Medicine",
+      "rawNames": [
+        "Cell Reports Medicine"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "International Journal of Medical Informatics",
+      "rawNames": [
+        "International Journal of Medical Informatics"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华医学杂志",
+      "rawNames": [
+        "中华医学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 3
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华普外科手术学杂志（电子版）",
+      "rawNames": [
+        "中华普外科手术学杂志（电子版）"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "当前 state 新刊名尚待官方书目信息核对",
+      "jcrReason": "期刊身份与 JCR 年版/全部学科分区尚待核对"
+    },
+    {
+      "name": "中华儿科杂志",
+      "rawNames": [
+        "中华儿科杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Diagnostics",
+      "rawNames": [
+        "Diagnostics"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Journal of Arrhythmia",
+      "rawNames": [
+        "Journal of Arrhythmia"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Journal of Clinical Medicine",
+      "rawNames": [
+        "Journal of Clinical Medicine"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Journal of Biomedical Informatics",
+      "rawNames": [
+        "Journal of Biomedical Informatics"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华医学教育杂志",
+      "rawNames": [
+        "中华医学教育杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 2
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华口腔医学杂志",
+      "rawNames": [
+        "中华口腔医学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "当前 state 新刊名尚待官方书目信息核对",
+      "jcrReason": "期刊身份与 JCR 年版/全部学科分区尚待核对"
+    },
+    {
+      "name": "中华腔镜泌尿外科杂志（电子版）",
+      "rawNames": [
+        "中华腔镜泌尿外科杂志（电子版）"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "当前 state 新刊名尚待官方书目信息核对",
+      "jcrReason": "期刊身份与 JCR 年版/全部学科分区尚待核对"
+    },
+    {
+      "name": "Medicina",
+      "rawNames": [
+        "Medicina"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Life",
+      "rawNames": [
+        "Life"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "International Journal of Cardiology",
+      "rawNames": [
+        "International Journal of Cardiology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Journal of Thoracic Disease",
+      "rawNames": [
+        "Journal of Thoracic Disease"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Technological Forecasting and Social Change",
+      "rawNames": [
+        "Technological Forecasting and Social Change"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Heart Rhythm O2",
+      "rawNames": [
+        "Heart Rhythm O2"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华消化外科杂志",
+      "rawNames": [
+        "中华消化外科杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "当前 state 新刊名尚待官方书目信息核对",
+      "jcrReason": "期刊身份与 JCR 年版/全部学科分区尚待核对"
+    },
+    {
+      "name": "Informatics in Medicine Unlocked",
+      "rawNames": [
+        "Informatics in Medicine Unlocked"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "European Journal of Clinical Nutrition",
+      "rawNames": [
+        "European Journal of Clinical Nutrition"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Rheumatology",
+      "rawNames": [
+        "Lancet Rheumatology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "European Heart Journal Supplements",
+      "rawNames": [
+        "European Heart Journal Supplements"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Journal of Tehran University Heart Center",
+      "rawNames": [
+        "The Journal of Tehran University Heart Center"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "当前 state 新刊名尚待官方书目信息核对",
+      "jcrReason": "期刊身份与 JCR 年版/全部学科分区尚待核对"
+    },
+    {
+      "name": "Leukemia",
+      "rawNames": [
+        "Leukemia"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Lancet Healthy Longevity",
+      "rawNames": [
+        "The Lancet Healthy Longevity"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Information Fusion",
+      "rawNames": [
+        "Information Fusion"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "npj Cardiovascular Health",
+      "rawNames": [
+        "npj Cardiovascular Health"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "npj Gut and Liver",
+      "rawNames": [
+        "npj Gut and Liver"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "American Heart Journal",
+      "rawNames": [
+        "American Heart Journal"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "JMIR Biomedical Engineering",
+      "rawNames": [
+        "JMIR Biomedical Engineering"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "eLife",
+      "rawNames": [
+        "eLife"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Archivos de Bronconeumología",
+      "rawNames": [
+        "Archivos de Bronconeumología"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Computers in Biology and Medicine",
+      "rawNames": [
+        "Computers in Biology and Medicine"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Intelligent Medicine",
+      "rawNames": [
+        "Intelligent Medicine"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Postgraduate Medical Journal",
+      "rawNames": [
+        "Postgraduate Medical Journal"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "The Clinical Teacher",
+      "rawNames": [
+        "The Clinical Teacher"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中国科学：信息科学",
+      "rawNames": [
+        "中国科学：信息科学"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Stroke and Vascular Neurology",
+      "rawNames": [
+        "Stroke and Vascular Neurology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Neural Computing and Applications",
+      "rawNames": [
+        "Neural Computing and Applications"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Artificial Intelligence",
+      "rawNames": [
+        "Artificial Intelligence"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "American Journal of Physiology - Heart and Circulatory Physiology",
+      "rawNames": [
+        "American Journal of Physiology - Heart and Circulatory Physiology"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "BMJ Open",
+      "rawNames": [
+        "BMJ Open"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Circulation: Cardiovascular Quality and Outcomes",
+      "rawNames": [
+        "Circulation: Cardiovascular Quality and Outcomes"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "International Journal of Telemedicine and Applications",
+      "rawNames": [
+        "International Journal of Telemedicine and Applications"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华药械研究与临床",
+      "rawNames": [
+        "中华药械研究与临床"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中国小儿急救医学",
+      "rawNames": [
+        "中国小儿急救医学"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华健康管理学杂志",
+      "rawNames": [
+        "中华健康管理学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华行为医学与脑科学杂志",
+      "rawNames": [
+        "中华行为医学与脑科学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华传染病杂志",
+      "rawNames": [
+        "中华传染病杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华放射肿瘤学杂志",
+      "rawNames": [
+        "中华放射肿瘤学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "AI Agent Trends",
+      "rawNames": [
+        "AI Agent Trends"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华围产医学杂志",
+      "rawNames": [
+        "中华围产医学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华胸部外科电子杂志",
+      "rawNames": [
+        "中华胸部外科电子杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中国卫生政策研究",
+      "rawNames": [
+        "中国卫生政策研究"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华眼科杂志",
+      "rawNames": [
+        "中华眼科杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华精神科杂志",
+      "rawNames": [
+        "中华精神科杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Science Robotics",
+      "rawNames": [
+        "Science Robotics"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "AI Co-Clinician",
+      "rawNames": [
+        "AI Co-Clinician"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "国际麻醉学与复苏杂志",
+      "rawNames": [
+        "国际麻醉学与复苏杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "State of Generative AI",
+      "rawNames": [
+        "State of Generative AI"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "计算机辅助设计与图形学学报",
+      "rawNames": [
+        "计算机辅助设计与图形学学报"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "Clinician of the Future",
+      "rawNames": [
+        "Clinician of the Future"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "中华病理学杂志",
+      "rawNames": [
+        "中华病理学杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "实用心脑肺血管病杂志",
+      "rawNames": [
+        "实用心脑肺血管病杂志"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    },
+    {
+      "name": "医学信息学研究稿",
+      "rawNames": [
+        "医学信息学研究稿"
+      ],
+      "occurrences": {
+        "picks": 0,
+        "radar": 0,
+        "library": 1
+      },
+      "jifReason": "未核实官方 JIF 年份和值",
+      "jcrReason": "未核实完整 JCR 学科与分区"
+    }
+  ]
+}

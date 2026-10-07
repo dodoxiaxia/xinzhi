@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-10-07T14:40:57Z",
+  "verifiedAt": "2026-10-07T14:45:58Z",
   "notice": "期刊指标只描述期刊，不用于判断单篇研究质量。",
   "sources": {
     "edition-2026": {
@@ -516,6 +516,30 @@
       "url": "https://www.wolterskluwer.com/en/solutions/ovid/nejm-ai-16597",
       "kind": "publisher_public",
       "verifiedAt": "2026-10-07T14:40:57Z"
+    },
+    "public-springer-15010": {
+      "label": "Infection: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/15010",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:44:19Z"
+    },
+    "public-springer-13369": {
+      "label": "Arabian Journal for Science and Engineering: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/13369",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:44:19Z"
+    },
+    "public-pnas-metrics": {
+      "label": "PNAS publisher Journal Metrics: 2025 metrics (five-year JIF and CiteScore excluded)",
+      "url": "https://www.pnas.org/about/article-journal-metrics",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:44:19Z"
+    },
+    "identity-jaha-wiley": {
+      "label": "JAHA: current Wiley public catalogue, ISSN and 2027 publisher transfer; no JIF field",
+      "url": "https://onlinelibrary.wiley.com/journal/20479980",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:45:58Z"
     }
   },
   "journals": [
@@ -731,25 +755,34 @@
       "id": "j-69fafd038529",
       "name": "Arabian Journal for Science and Engineering",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2191-4281",
+        "2193-567X"
+      ],
+      "identitySources": [
+        "public-springer-13369"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 3.1,
+        "year": 2025,
+        "sources": [
+          "public-springer-13369"
+        ],
+        "verifiedAt": "2026-10-07T14:44:19Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -2178,25 +2211,34 @@
       "id": "j-647573c3148b",
       "name": "Infection",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1439-0973",
+        "0300-8126"
+      ],
+      "identitySources": [
+        "public-springer-15010"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 3.9,
+        "year": 2025,
+        "sources": [
+          "public-springer-15010"
+        ],
+        "verifiedAt": "2026-10-07T14:44:19Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -3403,8 +3445,12 @@
       "aliases": [
         "JAHA"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2047-9980"
+      ],
+      "identitySources": [
+        "identity-jaha-wiley"
+      ],
       "kind": "journal",
       "jif": {
         "status": "unverified",
@@ -3412,7 +3458,7 @@
         "year": null,
         "sources": [],
         "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "reason": "当前 Wiley 公开页核到 ISSN，但未列 JIF 数字或数据年；AHA 当前期刊主页本次访问返回 403，尚未得到可核实的官方年版值。"
       },
       "jcr": {
         "status": "unverified",
@@ -3421,7 +3467,7 @@
         "editionSources": [],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "当前 Wiley 公开页未列逐学科 JCR 分区；官方 About 搜索摘要中的旧 IF 6.106 没有数据年，不作为当前指标。"
       }
     },
     {
@@ -4801,25 +4847,44 @@
       "aliases": [
         "PNAS-current"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1091-6490"
+      ],
+      "identitySources": [
+        "public-pnas-metrics"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 9.5,
+        "year": 2025,
+        "sources": [
+          "public-pnas-metrics"
+        ],
+        "verifiedAt": "2026-10-07T14:44:19Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
-        "categories": [],
-        "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Multidisciplinary Sciences",
+            "quartile": null,
+            "rank": 14,
+            "total": 140,
+            "sources": [
+              "public-pnas-metrics"
+            ],
+            "verifiedAt": "2026-10-07T14:44:19Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {

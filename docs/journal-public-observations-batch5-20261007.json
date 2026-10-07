@@ -1,0 +1,56 @@
+{
+  "scope": "existing_site_journals_only",
+  "observations": [
+    {
+      "name": "Infection",
+      "sourceId": "public-springer-15010",
+      "url": "https://link.springer.com/journal/15010",
+      "label": "Infection: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:44:19Z",
+      "value": 3.9,
+      "year": 2025,
+      "issns": [
+        "1439-0973",
+        "0300-8126"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Arabian Journal for Science and Engineering",
+      "sourceId": "public-springer-13369",
+      "url": "https://link.springer.com/journal/13369",
+      "label": "Arabian Journal for Science and Engineering: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:44:19Z",
+      "value": 3.1,
+      "year": 2025,
+      "issns": [
+        "2191-4281",
+        "2193-567X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "PNAS",
+      "sourceId": "public-pnas-metrics",
+      "url": "https://www.pnas.org/about/article-journal-metrics",
+      "label": "PNAS publisher Journal Metrics: 2025 metrics (five-year JIF and CiteScore excluded)",
+      "verifiedAt": "2026-10-07T14:44:19Z",
+      "value": 9.5,
+      "year": 2025,
+      "issns": [
+        "1091-6490"
+      ],
+      "categories": [
+        {
+          "name": "Multidisciplinary Sciences",
+          "quartile": null,
+          "rank": 14,
+          "total": 140
+        }
+      ],
+      "categoryCoverage": "publisher_reported"
+    }
+  ]
+}
