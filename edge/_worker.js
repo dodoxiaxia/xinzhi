@@ -1646,6 +1646,17 @@ async function handleAI(request, env) {
   if (!env.QL_KV) return json({ ok: false, error: 'not_configured' }, 503);
   if (request.method === 'GET') {
     const task = url.searchParams.get('task');
+    if (task === 'brief') {
+      const mode = url.searchParams.get('mode'), raw = url.searchParams.get('keys') || '';
+      let keys;
+      try {
+        const list = raw.length <= 2400 ? JSON.parse(raw) : null;
+        keys = Array.isArray(list) && list.length >= 2 && list.length <= 8 && list.every(k => typeof k === 'string' && normalizeStudyKey(k)) ? [...new Set(list.map(normalizeStudyKey))].sort() : null;
+      } catch { keys = null; }
+      if (!['digest', 'huddle'].includes(mode) || !keys || keys.length < 2) return json({ok: false, error: 'bad_request'}, 400);
+      const hit = await env.QL_KV.get('br:' + mode + ':' + await sha(keys.join('|')), 'json');
+      return json({ok: true, found: !!hit, brief: hit || null});
+    }
     if (task === 'study' || task === 'compare') {
       let keys;
       if (task === 'study') { const key = normalizeStudyKey(url.searchParams.get('k')); keys = key ? [key] : null; }

@@ -1,0 +1,257 @@
+{
+  "version": "v14.2.11",
+  "baselineMain": "fb4e9426cf3325aa2cf1c5ef4b9aa492b0e1105d",
+  "baselineState": "0e6a0fdfb361c5c2c31606be5c6f6dcc6b4cc52a",
+  "titleCandidate": "277c167d29ecd6d0b980c5a7aaecc8e03f497ee8",
+  "scope": "Offline Chromium with exact built six-file bundle and intercepted APIs; synthetic Worker/frontend tests. Not live custom-domain or physical-device acceptance.",
+  "passed": {
+    "weeklyRendererChecks": 71,
+    "legacySourceHealthAssertions": 40,
+    "additionalSourceSearchAssertions": 6,
+    "titleOverlayTests": 4,
+    "priorTitleContractTests": 2,
+    "publicBuildTests": 23,
+    "packageTests": 23,
+    "releaseTests": 3,
+    "workflowTests": 9,
+    "fullLayoutBrowserAssertions": 555,
+    "fullLayouts": 60,
+    "journalIntegrationBrowserAssertions": 122,
+    "bootContexts": 20,
+    "bootChecks": 240,
+    "briefFrontendAndWorkerRegression": true,
+    "doiLibraryUIHelpers": true,
+    "doiLibraryWorker": true,
+    "doiOneSubmitAttachment": true,
+    "pdfWorkerBoundaries": true,
+    "finalSearchShortlistChecks": 1165,
+    "publicEditorialOverlayTests": 5
+  },
+  "browserNavigation": {
+    "fixedExpected": true,
+    "scope": "Offline Chromium, exact public files, all API/external requests intercepted",
+    "records": [
+      {
+        "width": 320,
+        "mode": "weekly",
+        "before": 24,
+        "noMatchAfter": 0,
+        "visibleScope": 1
+      },
+      {
+        "width": 320,
+        "mode": "sources",
+        "before": 82,
+        "noMatchAfter": 0,
+        "visibleScope": 1
+      },
+      {
+        "width": 320,
+        "mode": "weekly-matched-author-chinese-reload",
+        "matched": 10,
+        "hiddenOtherColumnFiltersIgnored": true
+      },
+      {
+        "width": 320,
+        "mode": "source-name-status-and-doi",
+        "nameMatches": 5,
+        "failedMatches": 5,
+        "doiGlobalPreserved": true
+      },
+      {
+        "width": 320,
+        "mode": "mobile-scroll",
+        "navigationVisibleAfterScroll": true,
+        "controlSizes": {
+          "#themeToggle": {
+            "x": 231.984375,
+            "y": 10,
+            "width": 44,
+            "height": 44
+          },
+          "#styleBtn": {
+            "x": 179.984375,
+            "y": 10,
+            "width": 44,
+            "height": 44
+          },
+          "#openHuddleBtn": {
+            "x": 109.984375,
+            "y": 10,
+            "width": 62,
+            "height": 44
+          },
+          "#globalSearch": {
+            "x": 16,
+            "y": 116,
+            "width": 207.984375,
+            "height": 44
+          },
+          "#sourceStatusBtn": {
+            "x": 231.984375,
+            "y": 121,
+            "width": 72.015625,
+            "height": 44
+          }
+        }
+      },
+      {
+        "width": 320,
+        "mode": "all-mobile-appearances",
+        "styles": 4,
+        "themes": 2,
+        "minimumTouchSize": 44
+      },
+      {
+        "width": 390,
+        "mode": "weekly",
+        "before": 24,
+        "noMatchAfter": 0,
+        "visibleScope": 1
+      },
+      {
+        "width": 390,
+        "mode": "sources",
+        "before": 82,
+        "noMatchAfter": 0,
+        "visibleScope": 1
+      },
+      {
+        "width": 390,
+        "mode": "weekly-matched-author-chinese-reload",
+        "matched": 10,
+        "hiddenOtherColumnFiltersIgnored": true
+      },
+      {
+        "width": 390,
+        "mode": "source-name-status-and-doi",
+        "nameMatches": 5,
+        "failedMatches": 5,
+        "doiGlobalPreserved": true
+      },
+      {
+        "width": 390,
+        "mode": "mobile-scroll",
+        "navigationVisibleAfterScroll": true,
+        "controlSizes": {
+          "#themeToggle": {
+            "x": 301.984375,
+            "y": 10,
+            "width": 44,
+            "height": 44
+          },
+          "#styleBtn": {
+            "x": 249.984375,
+            "y": 10,
+            "width": 44,
+            "height": 44
+          },
+          "#openHuddleBtn": {
+            "x": 179.984375,
+            "y": 10,
+            "width": 62,
+            "height": 44
+          },
+          "#globalSearch": {
+            "x": 16,
+            "y": 116,
+            "width": 277.984375,
+            "height": 44
+          },
+          "#sourceStatusBtn": {
+            "x": 301.984375,
+            "y": 121,
+            "width": 72.015625,
+            "height": 44
+          }
+        }
+      },
+      {
+        "width": 390,
+        "mode": "all-mobile-appearances",
+        "styles": 4,
+        "themes": 2,
+        "minimumTouchSize": 44
+      },
+      {
+        "width": 1440,
+        "mode": "weekly",
+        "before": 24,
+        "noMatchAfter": 0,
+        "visibleScope": 1
+      },
+      {
+        "width": 1440,
+        "mode": "sources",
+        "before": 82,
+        "noMatchAfter": 0,
+        "visibleScope": 1
+      },
+      {
+        "width": 1440,
+        "mode": "weekly-matched-author-chinese-reload",
+        "matched": 10,
+        "hiddenOtherColumnFiltersIgnored": true
+      },
+      {
+        "width": 1440,
+        "mode": "source-name-status-and-doi",
+        "nameMatches": 5,
+        "failedMatches": 5,
+        "doiGlobalPreserved": true
+      }
+    ],
+    "posts": [],
+    "pageErrors": []
+  },
+  "browserBrief": {
+    "fixedExpected": true,
+    "scope": "Offline Chromium; synthetic partial/stalled API; no paid calls",
+    "requestedLabel": "AI 综述当前结果前 8 篇",
+    "requestedItems": 8,
+    "actualReturnedRefs": 2,
+    "partialStatus": "综述速读\n模型根据公开摘要生成 · 未经人工核对\n\n请求 8 篇 · 实际纳入 2 篇 · 6 篇公开摘要未纳入，下面结果只对应已纳入文献\n\n离线测试主题\n\n离线摘要一 ——《Synthetic public abstract》\n离线摘要二 ——《Synthetic public abstract》\n\n共同点与分歧：离线比较\n\n值得追问：\n\n离线问题\n\n证据边界：仅为合成测试",
+    "slowStatus": "正在读取摘要并生成，请稍候…用时较长，无需重复点击；不会自动重新提交。",
+    "stalledStatus": "等待已超过 4 分钟，完成状态尚未确认；后台可能仍在处理，未重新提交。\n\n读取已有综述",
+    "closedModalStaysClosed": true,
+    "posts": 3,
+    "pageErrors": []
+  },
+  "fullBuildCounts": {
+    "radar": 910,
+    "library": 1264,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 11,
+    "radar_archive_titles": 12635,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 24,
+      "translate": 24,
+      "study": 0,
+      "quicklook": 24
+    }
+  },
+  "newTitleOverlayReadback": {
+    "savedDOIs": 5,
+    "actualBuiltPublicTitleZhMatches": 5,
+    "fullLibraryTitleCoverageClaimed": false
+  },
+  "boundaries": {
+    "newPaidCalls": 0,
+    "realPDFDownloads": 0,
+    "newFormalArchiveWrites": 0,
+    "secretValuesRead": false,
+    "providerBudgetTimeoutRetryCodeUnchanged": true,
+    "workerDeltaOnlyReadonlyGETBrief": true,
+    "cronOrPermissionsChanged": false,
+    "forcePush": false,
+    "precomputePausedRetained": true,
+    "privatePDFBindingHoldRetained": true
+  },
+  "independentPending": {
+    "performance": "01a116ad-c436, no fixed merge SHA yet",
+    "liveNewAcquireBrowser": "Mac old /api/fulltext form access does not verify new /api/acquire download=1 POST/attachment; no secure password handoff, no submit"
+  },
+  "deploymentStatus": "Local gates passed; publication and saved state byte readback required before claiming deployment"
+}

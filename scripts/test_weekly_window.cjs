@@ -7,13 +7,14 @@ assert(code.includes('function weeklyPublicationDate') && code.includes('functio
 const now=Date.parse('2026-10-07T02:00:00Z');
 class FixedDate extends Date { static now(){return now;} }
 let node={innerHTML:''};
-const ctx=vm.createContext({Date:FixedDate,Intl,$:()=>node,FEEDS:{items:[]},state:{huddle:[]},
+const ctx=vm.createContext({Date:FixedDate,Intl,$:()=>node,FEEDS:{items:[]},state:{huddle:[],search:''},queryMatches:(text,q)=>text.includes(q),
  esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
  contentDate:value=>value,quicklookOf:()=>null,getPublisherClass:()=>'',getDesignClass:()=>'',hasAbstract:()=>true,
  journalMetricBadge:()=>'',preGeneratedOf:()=>null,validTranslation:tr=>!!tr?.abstract_zh,LIVE_TR:{},trKeyOf:()=>''});
 const designStart=src.indexOf('  // Study design badge class');
 const designEnd=src.indexOf('  //',designStart+5);
 vm.runInContext(src.slice(designStart,designEnd),ctx);
+vm.runInContext(['matchesQuery','specialSearchStatus'].map(n=>src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'))[0]).join('\n'),ctx);
 vm.runInContext(code,ctx);
 let checks=0;const eq=(a,b,label)=>{assert.deepStrictEqual(a,b,label);checks++;};
 const plain=x=>JSON.parse(JSON.stringify(x));
@@ -71,4 +72,12 @@ for(const value of [undefined,'bad','2026-02-30T00:00:00Z','2026-10-08T00:00:00Z
  html=render([],value);eq(html.includes('更新时间暂无有效记录，时效待确认'),true,'missing/invalid/future/day-only update '+value);
 }
 eq(render([paper('2026-10-07',{weeklyPick:2,weeklyAt:'2026-10-07T00:00:00Z'}),paper('2026-10-01',{weeklyPick:1,weeklyAt:'2026-10-07T01:00:00Z'})]).includes('榜单更新于 2026-10-07T01:00:00Z'),true,'latest valid pick metadata');
+ctx.state.search='2026-10-07';ctx.state.journal='Unrelated hidden filter';
+html=render([paper('2026-10-07',{weeklyPick:2}),paper('2026-10-01',{weeklyPick:1})]);
+eq(html.includes('匹配 1 / 2'),true,'query filters only the current finite board');
+eq(html.includes('weekly-rank">2'),true,'search retains original rank');
+eq(ctx.FEEDS.items.length,2,'search never overwrites the selected source board');
+ctx.state.search='no-existing-paper';html=render([paper('2026-10-07')]);
+eq(html.includes('当前榜内没有匹配文献'),true,'honest query empty state');
+eq(html.includes('清除关键词'),true,'query can be cleared from the visible special view');
 console.log(JSON.stringify({passed:true,checks,networkCalls:0,scope:'weekly helpers and renderer only'}));

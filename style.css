@@ -1021,11 +1021,25 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
 .huddle-icon { display: none; }
 .weekly-preparation { margin: 8px 0 18px; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
 .weekly-preparation summary { cursor: pointer; }
+.special-search-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); font-size: 13px; overflow-wrap: anywhere; }
+.sources-grid .special-search-status, .sources-grid .special-search-empty { grid-column: 1 / -1; }
+.special-search-status .search-scope { flex-basis: 100%; color: var(--text-muted); }
+.special-search-status .btn-sm { min-height: 44px; }
+.brief-help, .brief-coverage { font-size: 12px; color: var(--text-muted); }
+.brief-coverage { flex-basis: 100%; }
 .design-pill.design-unverified { background: none !important; color: var(--text-muted) !important; font-weight: 400; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
 .selection-storage-note { color: var(--text-muted); font-size: 12px; }
 @media (max-width: 720px) {
+  html[data-style] header.app-header { position: sticky; top: 0; background: var(--bg-primary); }
+  html[data-style="b"] header.app-header { background: var(--accent); }
   html[data-style] .header-container { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: "brand huddle style theme" "nav nav nav nav" "search search search sources"; }
-  .header-actions .huddle-btn { justify-self: end; padding: 0 8px; gap: 4px; min-width: 44px; }
+  html[data-style] .header-actions .huddle-btn { justify-self: end; padding: 0 8px; gap: 4px; min-width: 44px; min-height: 44px; }
+  html[data-style] #themeToggle, html[data-style] #styleBtn { min-width: 44px; min-height: 44px; }
+  html[data-style] .header-actions .source-status-btn, html[data-style] .search-input { min-height: 44px; }
+  html[data-style] .brand-logo { min-height: 44px; min-width: 44px; }
+  html[data-style] .stream-toolbar { top: var(--mobile-header-h, 168px); }
+  .weekly-category-nav a { min-height: 44px; }
+  .weekly-group { scroll-margin-top: calc(var(--mobile-header-h, 168px) + 12px); }
   .huddle-label { display: none; }
   .huddle-icon { display: inline; font-size: 20px; }
   html[data-style] .header-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; margin: 0; padding: 0; overflow: visible; }

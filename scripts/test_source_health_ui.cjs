@@ -10,9 +10,10 @@ const fn = n => {
 class Clock extends Date { static now() { return Date.parse('2026-10-07T08:00:00Z'); } }
 const nodes = {sourcesHealthGrid: {}, sourcesHealthMeta: {classList:{toggle(){}}}, sourcesHealthSummary:{}};
 const c = vm.createContext({Date: Clock, URL, window: {JournalMetrics: journalMetrics}, HEALTH: {checkedAt: '2026-10-07T07:22:33Z', sources: []},
+  state: {search: ''}, queryMatches: (text, q) => text.includes(q),
   $: selector => nodes[selector.slice(1)],
   esc: text => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]))});
-vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'sourceHealthDetails', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
+vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'sourceHealthDetails', 'specialSearchStatus', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
 const details = s => c.sourceHealthDetails(s);
 assert(details({status:'filtered_empty'}).includes('不代表期刊没有新文章'));
 const excluded = details({excludedItems: {undated:2, olderThan14Days:28, future:1, unclassifiedOrInvalid:3}});
@@ -74,4 +75,12 @@ assert(metricCards[2].includes('待官方核对'));
 assert(!metricCards[3].includes('<img'));
 assert(metricCards[3].includes('&lt;img'));
 assert(!metricCards[3].includes('href="javascript:'));
+c.state.search = 'nejm'; c.renderSourcesHealth();
+assert.equal((nodes.sourcesHealthGrid.innerHTML.match(/<article/g) || []).length, 1);
+assert(nodes.sourcesHealthGrid.innerHTML.includes('匹配 1/4 个信源'));
+assert(nodes.sourcesHealthSummary.innerHTML.includes('<strong>4</strong>'), 'Health summary remains the entire source report');
+c.state.search = 'no-existing-source'; c.renderSourcesHealth();
+assert(!nodes.sourcesHealthGrid.innerHTML.includes('<article'));
+assert(nodes.sourcesHealthGrid.innerHTML.includes('没有匹配的信源'));
+assert(nodes.sourcesHealthGrid.innerHTML.includes('data-clear="search"'));
 console.log('40 source health UI assertions passed (real journal metrics loaded)');
