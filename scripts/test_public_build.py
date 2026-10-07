@@ -3,6 +3,13 @@ from pathlib import Path
 from unittest.mock import patch
 import build_public as b
 class PublicBuildTests(unittest.TestCase):
+ def test_pdf_allowlist_contains_only_public_identity(self):
+  papers=[{'id':'public-one','title':'Published title','doi':'https://doi.org/10.1234/ONE','repo_path':'private/paper.pdf','pdf_sha256':'private'}, {'id':'title-only','title':'Exact published title'}, {'id':'missing','doi':''}, {'id':'__proto__','doi':'10.1234/unsafe'}]
+  out=b.pdf_library_registry(papers)
+  self.assertEqual(out,{'public-one':{'doi':'10.1234/one','title':'Published title'},'title-only':{'doi':'','title':'Exact published title'}})
+  self.assertNotIn('private',json.dumps(out))
+  with self.assertRaisesRegex(ValueError,'Conflicting'):
+   b.pdf_library_registry([{'id':'one','doi':'10.1234/a'},{'id':'one','doi':'10.1234/b'}])
  def test_private_unknown_fields_never_pass(self):
   p={'id':'one','title':'Public paper','url':'javascript:alert(1)','privateNotes':'secret','api_key':'secret','copies':2,'quantitativeMetrics':{'trialId':'NCT001','private':'secret'},'draftData':{'summary':'draft','source_checked':False},'hasDraft':True}
   out=b.public_paper(p);self.assertNotIn('api_key',out);self.assertNotIn('privateNotes',out);self.assertNotIn('copies',out);self.assertNotIn('draftData',out);self.assertNotIn('private',out['quantitativeMetrics']);self.assertEqual(out['url'],'')

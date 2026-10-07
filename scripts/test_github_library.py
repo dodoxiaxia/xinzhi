@@ -103,6 +103,16 @@ class PrivateLibrary(Errors, unittest.TestCase):
     def sync(self):
         return library.sync_snapshot(self.root, REPO)
 
+    def test_download_read_checks_cache_again_and_rejects_other_paths(self):
+        snapshot = self.sync()
+        receipt = library.fetch_pdf(self.root, snapshot['papers'][0]['id'])
+        self.assertEqual(library.read_verified_pdf(self.root, receipt), PDF)
+        self.assert_code('pdf_cache_invalid', library.read_verified_pdf, self.root,
+                         dict(receipt, cache_file='snapshots/other.pdf'))
+        cached = self.private / receipt['cache_file']
+        cached.write_bytes(PDF + b'changed')
+        self.assert_code('pdf_sha_mismatch', library.read_verified_pdf, self.root, receipt)
+
     def test_sync_pins_commit_preserves_dates_and_private_permissions(self):
         snapshot = self.sync()
         self.assertEqual(library.load_snapshot(self.root), snapshot)

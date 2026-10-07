@@ -28,3 +28,11 @@ assert(errors.aiErrorMessage({error:'model_failed',detail:'unsupported_numbers'}
 assert(!errors.aiErrorMessage({error:'model_failed'},'translate').includes('引句'));
 assert(!errors.aiErrorMessage({error:'model_failed',detail:'untrusted-private-text'},'translate').includes('untrusted'));
 console.log('6 API error message regression assertions passed');
+
+const downloads=vm.createContext({PDF_LIBRARY_IDS:new Set(['known-id']),encodeURIComponent});
+vm.runInContext(fn('pdfDownloadUrl'),downloads);
+assert.equal(downloads.pdfDownloadUrl({id:'known-id',doi:'10.1234/known'}),'/api/pdf?id=known-id');
+assert.equal(downloads.pdfDownloadUrl({id:'radar-id',doi:'10.1234/known'}),'');
+assert.equal(downloads.pdfDownloadUrl({id:'known-id',doi:'',title:'Exact title'}),'/api/pdf?id=known-id');
+assert.equal(downloads.pdfDownloadUrl(null),'');
+console.log('4 private PDF link scope assertions passed');
