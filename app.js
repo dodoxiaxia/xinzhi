@@ -303,7 +303,7 @@
     paper._trState = 'loading'; openReaderDrawer(paper);
     fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'translate', pmid: paper.pmid || '', doi: paper.doi || '' }) })
       .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { if (j.ok && j.tr) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else { paper._trState = 'error'; paper._trMsg = AI_ERR[j.error] || '翻译失败，请稍后重试。'; } })
+      .then(j => { if (j.ok && j.tr) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
       .catch(() => { paper._trState = 'error'; paper._trMsg = '网络错误，请稍后重试。'; })
       .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
@@ -312,7 +312,7 @@
     paper._ttState = 'loading'; paper._ttMsg = '翻译中…'; openReaderDrawer(paper);
     fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'title', pmid: paper.pmid || '', doi: paper.doi || '' }) })
       .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { if (j.ok && j.tt) { paper.titleZh = j.tt.title_zh; paper._ttMsg = ''; } else paper._ttMsg = AI_ERR[j.error] || '翻译失败，请稍后重试。'; })
+      .then(j => { if (j.ok && j.tt) { paper.titleZh = j.tt.title_zh; paper._ttMsg = ''; } else paper._ttMsg = aiErrorMessage(j, 'title'); })
       .catch(() => { paper._ttMsg = '网络错误，请稍后重试。'; })
       .then(() => { paper._ttState = ''; if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
@@ -332,7 +332,7 @@
     BRIEFS[k] = { state: 'loading' }; rerender();
     fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'brief', mode, items }) })
       .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { BRIEFS[k] = j.ok && j.brief ? { state: 'done', brief: j.brief } : { state: 'error', msg: AI_ERR[j.error] || '生成失败，请稍后重试。' }; })
+      .then(j => { BRIEFS[k] = j.ok && j.brief ? { state: 'done', brief: j.brief } : { state: 'error', msg: aiErrorMessage(j, 'brief') }; })
       .catch(() => { BRIEFS[k] = { state: 'error', msg: '网络错误，请稍后重试。' }; })
       .then(rerender);
   }
@@ -359,8 +359,31 @@
     el.hidden = false; el.innerHTML = briefHtml('digest', top);
   }
   const AI_ERR = { daily_cap: '今日 AI 解读额度已用完，明天再试。', ip_cap: '你今天的解读次数已达上限。', no_abstract: '各公开渠道都没有找到这篇的摘要。',
-    model_failed: '模型输出未通过校验（引句或数字与摘要不符），未保存。可稍后重试。', in_progress: '这篇正在被生成，稍后刷新即可查看。',
-    generation_off: 'AI 功能暂未开放。', server: '服务暂时出错，请稍后重试。', need_two: '至少需要 2 篇文献。', bad_key: '这篇缺少 PMID/DOI，无法处理。' };
+    model_failed: 'AI 服务未能完成处理，未保存。请稍后重试。', in_progress: '这篇正在被生成，稍后刷新即可查看。',
+    generation_off: 'AI 功能暂未开放。', not_configured: 'AI 服务尚未配置完成，需要维护者处理。', server: '服务暂时出错，请稍后重试。', need_two: '至少需要 2 篇文献。', bad_key: '这篇缺少 PMID/DOI，无法处理。' };
+  const AI_MODEL_ERR = {
+    provider_auth: 'AI 服务认证失败，需要维护者修复配置。',
+    provider_rate_limit: '模型服务暂时限流，请稍后重试。',
+    provider_unavailable: '模型服务暂不可用，请稍后重试。',
+    request_timeout: '模型服务响应超时，请稍后重试。',
+    transport_error: '暂时无法连接模型服务，请稍后重试。',
+    output_truncated: '模型结果未完整返回，已自动重试但仍未完成，未保存。请稍后重试。',
+    output_json: '模型结果格式不正确，已自动重试，未保存。请稍后重试。',
+    output_shape: '模型没有返回可用结果，未保存。请稍后重试。',
+    output_empty: '模型返回了空结果，未保存。请稍后重试。',
+    output_blocked: '模型服务没有提供这次结果，未保存。',
+    output_incomplete: '模型未正常完成这次处理，未保存。请稍后重试。',
+    context_limit: '摘要超出了模型服务的处理范围，需要维护者检查配置。',
+    missing_numbers: '译文遗漏了原文数字，未保存。请重试。',
+    quote_not_in_abstract: 'AI 要点的引文未能在原摘要中核对，未保存。请重试。'
+  };
+  function aiErrorMessage(result, task) {
+    if (result?.error !== 'model_failed') return AI_ERR[result?.error] || 'AI 服务暂时出错，请稍后重试。';
+    const detail = String(result.detail || '');
+    if (detail === 'unsupported_numbers') return (task === 'translate' || task === 'title' ? '译文' : 'AI 结果') + '包含与原文不符的数字，未保存。请重试。';
+    if (/^(?:invalid_[a-z_]+|model_not_object|not_object)$/.test(detail)) return '模型结果未符合格式要求，未保存。请重试。';
+    return AI_MODEL_ERR[detail] || AI_ERR.model_failed;
+  }
   function aiInterpret(paper) {
     if (paper._aiState === 'loading') return;
     paper._aiState = 'loading'; openReaderDrawer(paper);
@@ -369,7 +392,7 @@
       .then(j => {
         if (j.ok && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; paper._aiState = 'done'; }
         else if (j.error === 'no_abstract') { paper._aiState = 'noabs'; }
-        else { paper._aiState = 'error'; paper._aiMsg = AI_ERR[j.error] || '生成失败，请稍后重试。'; }
+        else { paper._aiState = 'error'; paper._aiMsg = aiErrorMessage(j, 'quicklook'); }
       })
       .catch(() => { paper._aiState = 'error'; paper._aiMsg = '网络错误，请稍后重试。'; })
       .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });

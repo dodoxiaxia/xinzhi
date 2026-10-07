@@ -17,7 +17,6 @@ fixed error codes, never credentials, API responses or abstract/model content.
 import argparse
 import copy
 import datetime
-import html
 import json
 import os
 import re
@@ -26,6 +25,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from build_data import clean
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/quicklooks.json'
@@ -100,7 +100,7 @@ def minor_item(p):
 
 
 def clean_abstract(value):
-    return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', value or ''))).strip()
+    return clean(value)
 
 
 def local_abstract(p):

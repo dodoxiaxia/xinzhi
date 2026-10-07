@@ -19,3 +19,12 @@ c.state.range='30';assert.equal(c.rangeStart(),'2026-09-02');
 c.state.range='all';assert.equal(c.rangeStart(),'');
 c.state.range='7';assert.equal(c.rangeStart(),'2026-09-25');
 console.log('20 reading regression assertions passed');
+
+const errors=vm.createContext({});vm.runInContext([cs('AI_ERR'),cs('AI_MODEL_ERR'),fn('aiErrorMessage')].join('\n'),errors);
+assert(errors.aiErrorMessage({error:'model_failed',detail:'provider_auth'},'translate').includes('认证'));
+assert(errors.aiErrorMessage({error:'model_failed',detail:'provider_rate_limit'},'translate').includes('限流'));
+assert(errors.aiErrorMessage({error:'model_failed',detail:'output_truncated'},'translate').includes('未完整'));
+assert(errors.aiErrorMessage({error:'model_failed',detail:'unsupported_numbers'},'translate').startsWith('译文'));
+assert(!errors.aiErrorMessage({error:'model_failed'},'translate').includes('引句'));
+assert(!errors.aiErrorMessage({error:'model_failed',detail:'untrusted-private-text'},'translate').includes('untrusted'));
+console.log('6 API error message regression assertions passed');

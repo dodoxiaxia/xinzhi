@@ -12,8 +12,9 @@ Usage
   python3 scripts/fetch_archive.py --seed FILE     # ingest {pmid: esummary-fields} saved by a browser session
 Output: data/radar-archive.json (private working file; build_public.py turns it into the compact public form).
 """
-import argparse, datetime, html, json, re, sys, time, urllib.parse, urllib.request
+import argparse, datetime, json, re, sys, time, urllib.parse, urllib.request
 from pathlib import Path
+from build_data import clean
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/radar-archive.json'
@@ -70,8 +71,7 @@ def parse_date(raw):
 
 
 def clean_title(t):
-    t = html.unescape(re.sub(r'<[^>]+>', '', t or '')).strip()
-    t = re.sub(r'\s+', ' ', t)
+    t = clean(t)
     return t[:-1] if t.endswith('.') and not t.endswith('..') else t
 
 

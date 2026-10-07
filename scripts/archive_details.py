@@ -11,9 +11,10 @@ Usage
   python3 scripts/archive_details.py --fill                                  # daily: efetch PMIDs missing details,
                                                                               # then OpenAlex/Crossref for still-empty abstracts
 """
-import argparse, datetime, html, json, re, sys, time, urllib.parse, urllib.request
+import argparse, datetime, json, sys, time, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from build_data import clean
 
 ROOT = Path(__file__).resolve().parents[1]
 STORE = ROOT / 'data/archive-full.json'
@@ -83,14 +84,14 @@ def openalex_abs(doi):
 def epmc_abs(doi):
     j = get('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=1&query=' + urllib.parse.quote('DOI:"%s"' % doi))
     r = (((j or {}).get('resultList') or {}).get('result') or [{}])[0]
-    t = html.unescape(re.sub(r'<[^>]+>', ' ', r.get('abstractText') or '')).strip()
+    t = clean(r.get('abstractText'))
     return t if len(t) >= 200 else ''
 
 
 def crossref_abs(doi):
     j = get('https://api.crossref.org/works/%s?mailto=shijunxia1988@gmail.com' % urllib.parse.quote(doi, safe='/'))
     a = ((j or {}).get('message') or {}).get('abstract') or ''
-    return html.unescape(re.sub(r'<[^>]+>', ' ', a)).strip()
+    return clean(a)
 
 
 def fill(limit_alt=300):

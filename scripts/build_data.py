@@ -1,10 +1,30 @@
 #!/usr/bin/env python3
 """Read-only library import. Never copy PDFs or change the source index."""
-import argparse,csv,datetime,hashlib,html,json,re,xml.etree.ElementTree as ET
+import argparse,csv,datetime,hashlib,json,re,xml.etree.ElementTree as ET
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit,urlunsplit
 ROOT=Path(__file__).resolve().parents[1]
-def clean(s): return re.sub(r'\s+',' ',re.sub('<[^>]+>','',html.unescape(s or ''))).strip()
+class _PlainText(HTMLParser):
+ """Strip actual markup without consuming clinical comparisons such as <4 and >315."""
+ _blocks={'p','div','br','hr','li','ul','ol','section','sec','abstract','title',
+          'h1','h2','h3','h4','h5','h6','table','tr','td','th'}
+ def __init__(self):
+  super().__init__(convert_charrefs=True)
+  self.parts=[]
+ def handle_data(self,text): self.parts.append(text)
+ def _boundary(self,tag):
+  if tag.rsplit(':',1)[-1] in self._blocks: self.parts.append(' ')
+ def handle_starttag(self,tag,attrs): self._boundary(tag)
+ def handle_endtag(self,tag): self._boundary(tag)
+
+def clean(s):
+ # Parse markup before decoding entities. Decoded < or > must remain text,
+ # rather than being reparsed as tags; inline superscript digits stay adjacent.
+ parser=_PlainText()
+ parser.feed(s or '')
+ parser.close()
+ return re.sub(r'\s+',' ',''.join(parser.parts)).strip()
 def classify(t,j=''):
  title=t.lower();journal=j.lower();s=title+' '+journal
  ai=bool(re.search(r'artificial intelligence|machine learning|deep learning|language model|\bllm\b|neural network|transformer|ai-enabled|ai-assisted|ai-based|machine intelligence|openai',s))
