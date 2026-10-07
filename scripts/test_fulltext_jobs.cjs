@@ -8,7 +8,7 @@ const workflow='dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main
 const b64=x=>Buffer.from(typeof x==='string'?x:JSON.stringify(x)).toString('base64url');
 let keypair,jwk;
 async function setup(options={}) {
- const h=harness({...options,jwks:[jwk]});h.env.FULLTEXT_ASYNC_ENABLED=undefined;return h;
+ const h=harness({...options,jwks:[jwk]});h.env.FULLTEXT_ASYNC_ENABLED='true';return h;
 }
 async function token(h,changes={},header={}) {
  const now=Math.floor(vm.runInContext('Date.now()',h.context)/1000);

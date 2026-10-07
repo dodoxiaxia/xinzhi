@@ -557,7 +557,7 @@ async function handleLibrary(request, env) {
       const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
-      const job = env.FULLTEXT_ASYNC_ENABLED === 'false' ? null : fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
+      const job = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
       if (paper) return json({ ok:true, found:true, paper, status:paper.fulltextStatus, ...(paper.fulltextStatus !== 'available' && attempt ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}) });
       return json({ ok:true, found:false, ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status, ...libraryRetryInfo(attempt.retryAfter) } : {}) });
     }
@@ -761,6 +761,7 @@ async function fulltextRun(env, owner, input) {
 async function handleFulltextWorker(request, env) {
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('job_bad_request', 405);
+    if (env.FULLTEXT_ASYNC_ENABLED !== 'true') libraryFail('job_disabled', 503);
     const owner = await fulltextJobAuthorize(request);
     libraryConfig(env);
     const input = await fulltextJobInput(request);
@@ -771,6 +772,7 @@ async function handleFulltextWorker(request, env) {
 async function handleFulltextPending(request, env) {
   try {
     if (request.method !== 'GET' || new URL(request.url).search) libraryFail('job_bad_request', 405);
+    if (env.FULLTEXT_ASYNC_ENABLED !== 'true') return json({ ok:true, pending:false });
     libraryConfig(env);
     const listing = await env.QL_KV.list({ prefix:FULLTEXT_QUEUE_PREFIX, limit:20 });
     if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
@@ -799,7 +801,7 @@ async function handleAcquire(request, env) {
     const parsed = libraryQuery(request); doi = parsed.doi;
     if (request.method === 'GET') {
       const stored = env.QL_KV ? libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi) : null;
-      if (env.QL_KV && env.FULLTEXT_ASYNC_ENABLED !== 'false' && parsed.url.pathname !== '/api/acquire/retry') {
+      if (env.QL_KV && env.FULLTEXT_ASYNC_ENABLED === 'true' && parsed.url.pathname !== '/api/acquire/retry') {
         const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
         if (job) return fulltextJobResponse(request, job, stored);
         if (stored && stored.fulltextStatus === 'available') return libraryResult(request, stored, '', true);
@@ -812,7 +814,7 @@ async function handleAcquire(request, env) {
     const cachedRecord = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), cached = libraryPaper(cachedRecord, doi);
     if (cached && cached.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, cachedRecord); return libraryResult(request, cached, '', true); }
     if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT !== undefined && (typeof env.PDF_GITHUB_COMMIT !== 'string' || !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT)))) libraryFail('library_not_configured', 503);
-    if (env.FULLTEXT_ASYNC_ENABLED !== 'false') return fulltextEnqueue(request, env, doi, cached);
+    if (env.FULLTEXT_ASYNC_ENABLED === 'true') return fulltextEnqueue(request, env, doi, cached);
     release = await librarySoftGate(env.QL_KV, request, doi);
     timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
     const context = { signal:controller.signal };

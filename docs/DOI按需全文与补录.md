@@ -2,12 +2,12 @@
 
 v14.1 延续科室内部试用的共享全文口令，暂不增加注册登录。顶栏输入准确 DOI 或 doi.org 链接后，系统跨精选、文献雷达（含归档）和文献库精确查重，不受当前时间、专科和期刊筛选影响。普通关键词仍沿用原检索逻辑。
 
-未收录的 DOI 可点击“获取全文并加入文献库”；雷达已收录但尚无 PDF 的文献也有获取入口。口令验证通过后保存后台任务。工作流领取任务后查证官方题录，先尝试 GitHub 已有文件，再尝试同 DOI 的开放全文来源。题录查证失败不新增虚构文献。题录已查证而未取得文件时，文献库标为待补全文或需要核实。
+未收录的 DOI 可点击“获取全文并加入文献库”；雷达已收录但尚无 PDF 的文献也有获取入口。默认沿用即时模式：口令验证通过后在本次请求中查证官方题录，先尝试 GitHub 已有文件，再尝试同 DOI 的开放全文来源。题录查证失败不新增虚构文献。题录已查证而未取得文件时，文献库标为待补全文或需要核实。v14.2.1 尚为待协调候选，后台队列默认不激活。
 
 ## 获取、保存与下载
 
 - `/api/library` 只读补充题录，分页返回安全公共字段。按 DOI 查询只读取已经保存的结果，不触发外部查询或模型。
-- `/api/acquire?doi=…` 的 GET 展示口令表单或已有任务结果；POST 验证同源请求和口令后保存下载任务，重复提交复用同一活动任务。`/api/acquire/retry?doi=…` 用于完成后重新打开口令表单。口令不进 URL、回显、浏览器存储或公共题录。
+- `/api/acquire?doi=…` 的 GET 默认展示口令表单；POST 验证同源请求和口令后即时查询与保存，成功缓存直接复用。只有经独立验收且明确启用的队列模式才保存后台任务、复用活动任务和返回任务状态。`/api/acquire/retry?doi=…` 保留重新打开口令表单的兼容入口。口令不进 URL、回显、浏览器存储或公共题录。
 - `/api/fulltext?doi=…` 为补录全文下载入口，继续逐次输入口令。原有 `/api/pdf?id=…` 保留原下载流程。
 - `QL_KV` 中的补录命名空间与 AI 缓存独立。PDF 使用二进制及内容地址保存，先保存文件，再保存引用该文件的题录；公开响应不含存储键、GitHub 私有路径、原始索引、哈希或凭据。
 
@@ -37,7 +37,9 @@ Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行�
 
 2026-10-07 发布前验证：313 项脚本测试及 38 项本地服务测试通过，原阅读、PDF、公开摘要、研究比较、信源、周榜和首帧/URL 检查通过。新增 DOI Worker/UI 边界和独立审阅通过。Chromium 从真实页面获取原先未收录的 PLOS 论文 `10.1371/journal.pone.0174944`，公开 Crossref/Unpaywall/PDF 请求成功，下载为 1,428,808 字节，SHA-256 为 `690575cc821768ed4999307fc0e58965c4b1e49fec1aab117a8e5e2409e0015b`；已验证错误口令零来源请求/零写入、重复获取不重复收录、DOI 与题名回搜和手机布局。该本地浏览器验证使用内存存储和空 GitHub 索引模拟，未据此宣称生产补录已完成。
 
-## v14.2 后台下载与回传
+## v14.2 后台下载与回传（保留的未启用方案）
+
+以下是独立任务 `01a1152b-e819-73bf-9934-bf37086780f5` 的队列设计，不是已上线运行状态。PR6 / main `12701e17` 在更新 `xinzhi-cron` 时遭遇“ No access to the specified service ”，Pages/state 均 skipped。v14.2.1 候选移除 daily-refresh 中的调度器部署步骤，保留既有 Pages 发布权限和日更调度；不修改或部署现网 Cloudflare 调度器。原 daily 兜底仍不得被本候选悄然替换。
 
 提交后立即保存 `library:job:` 任务及 `library:queue:` 指针，不等待外部文献源。既有 Cloudflare `xinzhi-cron` 约每 5 分钟读取只含有无任务信号的 `/api/fulltext-pending`，仅在任务已到执行时间且没有正在运行的下载工作流时触发 `fulltext.yml`。空队列不启动 GitHub runner；也可在 GitHub Actions 手动运行。实际启动可能延迟。每批最多 5 篇，工作流串行执行，不与网站日更共享并发组。
 
@@ -47,10 +49,12 @@ Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行�
 
 GitHub job 使用 `id-token: write` 临时身份调用 `/api/fulltext-worker`，固定验证 GitHub issuer/JWKS、RS256 签名、audience、本仓库名称和 numeric ID、main 分支、指定 `fulltext.yml`、GitHub 托管 runner、有效期和事件类型。它不使用或接收用户口令、GitHub PDF 凭据、PDF 正文或模型 Secret。文件检索仍在网站受保护后台执行，PDF 存入原 QL_KV，由网站供下载；不新建 GitHub 私有库写入或 Mac/Drive 归档流程。
 
-此方案复用 `xinzhi-cron` 既有 `GH_TOKEN`（仅本仓库 Actions 读写），不新增长期 Secret，不扩大现有 `GITHUB_LIBRARY_TOKEN` 的 AI- Contents 只读权限。原调度器重复触发轻量刷新已由日更门禁忽略，现改为按需触发全文队列；日更原有 GitHub 两小时和每日调度保留。发布入口先更新调度器、确认既有受保护配置仍可用，再发布六文件网站；调度器更新失败会阻止网站升级。
+原方案拟复用 `xinzhi-cron` 既有 `GH_TOKEN`（仅本仓库 Actions 读写），但更换现网调度器职责及相关部署尚未完成协调。本 UI 候选不执行该切换、不申请新 token 或扩大权限；原 GitHub 两小时和每日调度保留。队列调度器源码仍保留供独立任务验收，不再作为 Pages 发布门禁。
 
 后台短时 OIDC 身份只能领取和运行任务，不能提交任意文件、外部 URL 或题录。读者口令不能访问工作接口。队列指针与记录允许 KV 同步延迟，领取的 lease 有界，失联任务可恢复；跨地区软去重与限制不作为严格原子保证。
 
-可选 `FULLTEXT_ASYNC_ENABLED=false` 将新提交回退到 v14.1.2 的即时处理模式，已有队列仍可完成。正常 Production 不需新增此变量。后台下载只能取得可访问的来源，机构登录会话未迁移到云端，排队不保证能取得所有有效 DOI 的全文。
+本候选只有 Worker 非秘密配置 `FULLTEXT_ASYNC_ENABLED` 明确等于字符串 `true` 时才启用任务读取、入队、领取与执行；未设置或为其它值时采用即时模式，队列信号返回无任务，工作接口返回 `job_disabled`，不读取/删除/处理已有排队记录。GitHub `fulltext-queue` job 另需仓库非秘密变量 `FULLTEXT_ASYNC_ENABLED=true` 才运行；两个配置属于不同平台，不能混同。本轮未设置任何变量。以后启用前必须先完成调度器身份/职责、权限、Pages/工作流配套与真实任务验收，并由统筹确认；已有暂停任务需明确处理，不能把默认关闭误说成后台继续运行。
+
+GitHub runner 实际通过 OIDC 领取/运行边缘服务任务，PDF 进入 QL_KV。初次 push 的 `processed:0 / waiting_for_website_deploy` 绿灯或队列关闭后的 skipped 都不是成功下载，也不替代815/三端归档执行者。后台下载只能取得可访问的来源，机构登录会话未迁移到云端，排队不保证能取得所有有效 DOI 的全文。
 
 验证入口：`node scripts/test_fulltext_jobs.cjs`、`node scripts/test_fulltext_dispatcher.cjs`、`node scripts/test_doi_library_worker.cjs`、`node scripts/test_doi_library_ui.cjs`。Worker、调度器及 UI helper 在网站发布前运行，完整浏览器流程在本地执行。
