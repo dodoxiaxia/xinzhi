@@ -181,6 +181,8 @@
    "releaseBuild": 3
   },
   "semanticReviewStatus": "machine-validated-unreviewed; no fulltext or medical review",
-  "uiContract": "PREGENERATED retained; pmid and doi aliases; study papers[].key matches alias priority; public text/quote fields unchanged; allowAutomaticGeneration false"
+  "uiContract": "PREGENERATED retained; pmid and doi aliases; study papers[].key matches alias priority; public text/quote fields unchanged; allowAutomaticGeneration false",
+  "budgetScope": "new_local_conservative_execution_cap_not_provider_quota_or_balance",
+  "budgetOrigin": "derived_from_previous_quicklook_step_8_calls_times_1200_output_per_invocation; newly enforced per UTC day"
  }
 }

@@ -1,0 +1,2626 @@
+{
+ "rows": [
+  {
+   "paperID": "doi:10.1001/jamanetworkopen.2026.37545",
+   "sourceHash": "2195a1591c9db6cf0be4b6eea1d16869a073a28cbc017898b16fdc21d6231f8c",
+   "source": {
+    "characters": 3063,
+    "utf8Bytes": 3063
+   },
+   "abstract": {
+    "characters": 2952,
+    "utf8Bytes": 2952
+   },
+   "evidenceCount": 14,
+   "evidence": {
+    "characters": 3618,
+    "utf8Bytes": 3618
+   },
+   "tasks": {
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 7665,
+       "utf8Bytes": 8559
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 7792,
+       "utf8Bytes": 8822
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 15457,
+      "utf8Bytes": 17381
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 3437,
+       "utf8Bytes": 3865
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 3529,
+       "utf8Bytes": 4097
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 6966,
+      "utf8Bytes": 7962
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 7544,
+     "utf8Bytes": 8214
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+   "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+   "source": {
+    "characters": 2034,
+    "utf8Bytes": 2034
+   },
+   "abstract": {
+    "characters": 1806,
+    "utf8Bytes": 1806
+   },
+   "evidenceCount": 12,
+   "evidence": {
+    "characters": 2372,
+    "utf8Bytes": 2372
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2334,
+       "utf8Bytes": 2714
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2451,
+       "utf8Bytes": 3023
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4785,
+      "utf8Bytes": 5737
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5385,
+       "utf8Bytes": 6279
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5512,
+       "utf8Bytes": 6542
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 10897,
+      "utf8Bytes": 12821
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2403,
+       "utf8Bytes": 2831
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2495,
+       "utf8Bytes": 3063
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4898,
+      "utf8Bytes": 5894
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5261,
+     "utf8Bytes": 5931
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1161/circulationaha.126.080404",
+   "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+   "source": {
+    "characters": 2624,
+    "utf8Bytes": 2626
+   },
+   "abstract": {
+    "characters": 2501,
+    "utf8Bytes": 2503
+   },
+   "evidenceCount": 17,
+   "evidence": {
+    "characters": 3310,
+    "utf8Bytes": 3312
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2924,
+       "utf8Bytes": 3306
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 3041,
+       "utf8Bytes": 3615
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5965,
+      "utf8Bytes": 6921
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 6912,
+       "utf8Bytes": 7810
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 7039,
+       "utf8Bytes": 8073
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 13951,
+      "utf8Bytes": 15883
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2992,
+       "utf8Bytes": 3422
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 3084,
+       "utf8Bytes": 3654
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 6076,
+      "utf8Bytes": 7076
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 6828,
+     "utf8Bytes": 7502
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1016/j.jacadv.2026.103298",
+   "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+   "source": {
+    "characters": 2239,
+    "utf8Bytes": 2239
+   },
+   "abstract": {
+    "characters": 2123,
+    "utf8Bytes": 2123
+   },
+   "evidenceCount": 11,
+   "evidence": {
+    "characters": 2260,
+    "utf8Bytes": 2260
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2539,
+       "utf8Bytes": 2919
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2656,
+       "utf8Bytes": 3228
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5195,
+      "utf8Bytes": 6147
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5480,
+       "utf8Bytes": 6374
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5607,
+       "utf8Bytes": 6637
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 11087,
+      "utf8Bytes": 13011
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2610,
+       "utf8Bytes": 3038
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2702,
+       "utf8Bytes": 3270
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5312,
+      "utf8Bytes": 6308
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5348,
+     "utf8Bytes": 6018
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1016/j.jacadv.2026.103306",
+   "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+   "source": {
+    "characters": 2109,
+    "utf8Bytes": 2109
+   },
+   "abstract": {
+    "characters": 1984,
+    "utf8Bytes": 1984
+   },
+   "evidenceCount": 13,
+   "evidence": {
+    "characters": 2597,
+    "utf8Bytes": 2597
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2409,
+       "utf8Bytes": 2789
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2526,
+       "utf8Bytes": 3098
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4935,
+      "utf8Bytes": 5887
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5687,
+       "utf8Bytes": 6581
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5814,
+       "utf8Bytes": 6844
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 11501,
+      "utf8Bytes": 13425
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2480,
+       "utf8Bytes": 2908
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2572,
+       "utf8Bytes": 3140
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5052,
+      "utf8Bytes": 6048
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5571,
+     "utf8Bytes": 6241
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1016/j.jacadv.2026.103295",
+   "sourceHash": "fcfecfa872b76b89e7a53a658f1af8780386e232bc57610b62b9d025796cef42",
+   "source": {
+    "characters": 1935,
+    "utf8Bytes": 1935
+   },
+   "abstract": {
+    "characters": 1797,
+    "utf8Bytes": 1797
+   },
+   "evidenceCount": 13,
+   "evidence": {
+    "characters": 2412,
+    "utf8Bytes": 2412
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2235,
+       "utf8Bytes": 2615
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2352,
+       "utf8Bytes": 2924
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4587,
+      "utf8Bytes": 5539
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5328,
+       "utf8Bytes": 6222
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5455,
+       "utf8Bytes": 6485
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 10783,
+      "utf8Bytes": 12707
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2306,
+       "utf8Bytes": 2734
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2398,
+       "utf8Bytes": 2966
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4704,
+      "utf8Bytes": 5700
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5212,
+     "utf8Bytes": 5882
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1161/strokeaha.126.057089",
+   "sourceHash": "ed1e79aa7481a4ed06eb6e7089a0a473c1938d42bd90a4588d7da96fd9495439",
+   "source": {
+    "characters": 2153,
+    "utf8Bytes": 2153
+   },
+   "abstract": {
+    "characters": 2028,
+    "utf8Bytes": 2028
+   },
+   "evidenceCount": 12,
+   "evidence": {
+    "characters": 2594,
+    "utf8Bytes": 2594
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2453,
+       "utf8Bytes": 2833
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2570,
+       "utf8Bytes": 3142
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5023,
+      "utf8Bytes": 5975
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5720,
+       "utf8Bytes": 6614
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5847,
+       "utf8Bytes": 6877
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 11567,
+      "utf8Bytes": 13491
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2516,
+       "utf8Bytes": 2944
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2608,
+       "utf8Bytes": 3176
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5124,
+      "utf8Bytes": 6120
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5596,
+     "utf8Bytes": 6266
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1093/eurheartj/ehag699",
+   "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+   "source": {
+    "characters": 2041,
+    "utf8Bytes": 2044
+   },
+   "abstract": {
+    "characters": 1896,
+    "utf8Bytes": 1899
+   },
+   "evidenceCount": 13,
+   "evidence": {
+    "characters": 2509,
+    "utf8Bytes": 2512
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2341,
+       "utf8Bytes": 2724
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2458,
+       "utf8Bytes": 3033
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4799,
+      "utf8Bytes": 5757
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5539,
+       "utf8Bytes": 6439
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5666,
+       "utf8Bytes": 6702
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 11205,
+      "utf8Bytes": 13141
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2420,
+       "utf8Bytes": 2851
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2512,
+       "utf8Bytes": 3083
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4932,
+      "utf8Bytes": 5934
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5423,
+     "utf8Bytes": 6099
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1111/jce.70518",
+   "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+   "source": {
+    "characters": 2519,
+    "utf8Bytes": 2524
+   },
+   "abstract": {
+    "characters": 2355,
+    "utf8Bytes": 2360
+   },
+   "evidenceCount": 16,
+   "evidence": {
+    "characters": 3115,
+    "utf8Bytes": 3120
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2819,
+       "utf8Bytes": 3204
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2936,
+       "utf8Bytes": 3513
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5755,
+      "utf8Bytes": 6717
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 6644,
+       "utf8Bytes": 7548
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 6771,
+       "utf8Bytes": 7811
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 13415,
+      "utf8Bytes": 15359
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2919,
+       "utf8Bytes": 3352
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 3011,
+       "utf8Bytes": 3584
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5930,
+      "utf8Bytes": 6936
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 6552,
+     "utf8Bytes": 7232
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1161/circulationaha.126.080384",
+   "sourceHash": "4f653e7a94d994e3ea06885a131a447242fb212c9d8b205df9ad90cee3cc0eb9",
+   "source": {
+    "characters": 2858,
+    "utf8Bytes": 2859
+   },
+   "abstract": {
+    "characters": 2724,
+    "utf8Bytes": 2725
+   },
+   "evidenceCount": 15,
+   "evidence": {
+    "characters": 3441,
+    "utf8Bytes": 3442
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 3158,
+       "utf8Bytes": 3539
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 3275,
+       "utf8Bytes": 3848
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 6433,
+      "utf8Bytes": 7387
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 7277,
+       "utf8Bytes": 8173
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 7404,
+       "utf8Bytes": 8436
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 14681,
+      "utf8Bytes": 16609
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 3226,
+       "utf8Bytes": 3655
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 3318,
+       "utf8Bytes": 3887
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 6544,
+      "utf8Bytes": 7542
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 7177,
+     "utf8Bytes": 7849
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1001/jamanetworkopen.2026.36741",
+   "sourceHash": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+   "source": {
+    "characters": 3552,
+    "utf8Bytes": 3552
+   },
+   "abstract": {
+    "characters": 3414,
+    "utf8Bytes": 3414
+   },
+   "evidenceCount": 19,
+   "evidence": {
+    "characters": 4327,
+    "utf8Bytes": 4327
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 3852,
+       "utf8Bytes": 4232
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 3969,
+       "utf8Bytes": 4541
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 7821,
+      "utf8Bytes": 8773
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 8863,
+       "utf8Bytes": 9757
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 8990,
+       "utf8Bytes": 10020
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 17853,
+      "utf8Bytes": 19777
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 3926,
+       "utf8Bytes": 4354
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 4018,
+       "utf8Bytes": 4586
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 7944,
+      "utf8Bytes": 8940
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 8795,
+     "utf8Bytes": 9465
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1001/jama.2026.17192",
+   "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+   "source": {
+    "characters": 3104,
+    "utf8Bytes": 3104
+   },
+   "abstract": {
+    "characters": 2994,
+    "utf8Bytes": 2994
+   },
+   "evidenceCount": 18,
+   "evidence": {
+    "characters": 3854,
+    "utf8Bytes": 3854
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 3404,
+       "utf8Bytes": 3784
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 3521,
+       "utf8Bytes": 4093
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 6925,
+      "utf8Bytes": 7877
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 7929,
+       "utf8Bytes": 8823
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 8056,
+       "utf8Bytes": 9086
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 15985,
+      "utf8Bytes": 17909
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 3465,
+       "utf8Bytes": 3893
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 3557,
+       "utf8Bytes": 4125
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 7022,
+      "utf8Bytes": 8018
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 7853,
+     "utf8Bytes": 8523
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1038/s41591-026-04675-1",
+   "sourceHash": "100b14d8eca13c57bfb4ede0a8aaac7c78f120cd1243f28f7c1b1e97ce36ba3b",
+   "source": {
+    "characters": 2020,
+    "utf8Bytes": 2022
+   },
+   "abstract": {
+    "characters": 1864,
+    "utf8Bytes": 1864
+   },
+   "evidenceCount": 10,
+   "evidence": {
+    "characters": 2336,
+    "utf8Bytes": 2336
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2320,
+       "utf8Bytes": 2702
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2437,
+       "utf8Bytes": 3011
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4757,
+      "utf8Bytes": 5713
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5338,
+       "utf8Bytes": 6234
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5465,
+       "utf8Bytes": 6497
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 10803,
+      "utf8Bytes": 12731
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2392,
+       "utf8Bytes": 2822
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2484,
+       "utf8Bytes": 3054
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4876,
+      "utf8Bytes": 5876
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5198,
+     "utf8Bytes": 5870
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1038/s41591-026-04674-2",
+   "sourceHash": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+   "source": {
+    "characters": 1772,
+    "utf8Bytes": 1772
+   },
+   "abstract": {
+    "characters": 1672,
+    "utf8Bytes": 1672
+   },
+   "evidenceCount": 8,
+   "evidence": {
+    "characters": 2047,
+    "utf8Bytes": 2047
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2072,
+       "utf8Bytes": 2452
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2189,
+       "utf8Bytes": 2761
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4261,
+      "utf8Bytes": 5213
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 4801,
+       "utf8Bytes": 5695
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 4928,
+       "utf8Bytes": 5958
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 9729,
+      "utf8Bytes": 11653
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2144,
+       "utf8Bytes": 2572
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2236,
+       "utf8Bytes": 2804
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4380,
+      "utf8Bytes": 5376
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 4645,
+     "utf8Bytes": 5315
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1001/jamainternmed.2026.4894",
+   "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+   "source": {
+    "characters": 3872,
+    "utf8Bytes": 3874
+   },
+   "abstract": {
+    "characters": 3703,
+    "utf8Bytes": 3705
+   },
+   "evidenceCount": 23,
+   "evidence": {
+    "characters": 4411,
+    "utf8Bytes": 4413
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 4172,
+       "utf8Bytes": 4554
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 4289,
+       "utf8Bytes": 4863
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 8461,
+      "utf8Bytes": 9417
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 9272,
+       "utf8Bytes": 10170
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 9399,
+       "utf8Bytes": 10433
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 18671,
+      "utf8Bytes": 20603
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 4251,
+       "utf8Bytes": 4681
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 4343,
+       "utf8Bytes": 4913
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 8594,
+      "utf8Bytes": 9594
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 9236,
+     "utf8Bytes": 9910
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1038/s41591-026-04713-y",
+   "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+   "source": {
+    "characters": 2473,
+    "utf8Bytes": 2476
+   },
+   "abstract": {
+    "characters": 2320,
+    "utf8Bytes": 2323
+   },
+   "evidenceCount": 12,
+   "evidence": {
+    "characters": 2505,
+    "utf8Bytes": 2508
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2773,
+       "utf8Bytes": 3156
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2890,
+       "utf8Bytes": 3465
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5663,
+      "utf8Bytes": 6621
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5960,
+       "utf8Bytes": 6860
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 6087,
+       "utf8Bytes": 7123
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 12047,
+      "utf8Bytes": 13983
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2845,
+       "utf8Bytes": 3276
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2937,
+       "utf8Bytes": 3508
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5782,
+      "utf8Bytes": 6784
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5836,
+     "utf8Bytes": 6512
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1093/jamia/ocag164",
+   "sourceHash": "f56e97f882cf3155c2bc495df0f0a7d2c6ca8968fce933bff1f920b9adb6700c",
+   "source": {
+    "characters": 1918,
+    "utf8Bytes": 1919
+   },
+   "abstract": {
+    "characters": 1802,
+    "utf8Bytes": 1803
+   },
+   "evidenceCount": 12,
+   "evidence": {
+    "characters": 2366,
+    "utf8Bytes": 2367
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2218,
+       "utf8Bytes": 2599
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2335,
+       "utf8Bytes": 2908
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4553,
+      "utf8Bytes": 5507
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5258,
+       "utf8Bytes": 6154
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5385,
+       "utf8Bytes": 6417
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 10643,
+      "utf8Bytes": 12571
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2282,
+       "utf8Bytes": 2711
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2374,
+       "utf8Bytes": 2943
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4656,
+      "utf8Bytes": 5654
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5182,
+     "utf8Bytes": 5854
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1038/s41746-026-03361-3",
+   "sourceHash": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+   "source": {
+    "characters": 627,
+    "utf8Bytes": 627
+   },
+   "abstract": {
+    "characters": 517,
+    "utf8Bytes": 517
+   },
+   "evidenceCount": 4,
+   "evidence": {
+    "characters": 703,
+    "utf8Bytes": 703
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 929,
+       "utf8Bytes": 1309
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 1046,
+       "utf8Bytes": 1618
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 1975,
+      "utf8Bytes": 2927
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 2319,
+       "utf8Bytes": 3213
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 2446,
+       "utf8Bytes": 3476
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4765,
+      "utf8Bytes": 6689
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 1006,
+       "utf8Bytes": 1434
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 1098,
+       "utf8Bytes": 1666
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 2104,
+      "utf8Bytes": 3100
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 2131,
+     "utf8Bytes": 2801
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1093/jamia/ocag171",
+   "sourceHash": "4adbfede17ddf3f5b37956c57c268207a0073cc915a115a8bad7a2e1f3fb49c5",
+   "source": {
+    "characters": 1506,
+    "utf8Bytes": 1506
+   },
+   "abstract": {
+    "characters": 1377,
+    "utf8Bytes": 1377
+   },
+   "evidenceCount": 9,
+   "evidence": {
+    "characters": 1798,
+    "utf8Bytes": 1798
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 1806,
+       "utf8Bytes": 2186
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 1923,
+       "utf8Bytes": 2495
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 3729,
+      "utf8Bytes": 4681
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 4278,
+       "utf8Bytes": 5172
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 4405,
+       "utf8Bytes": 5435
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 8683,
+      "utf8Bytes": 10607
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 1870,
+       "utf8Bytes": 2298
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 1962,
+       "utf8Bytes": 2530
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 3832,
+      "utf8Bytes": 4828
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 4178,
+     "utf8Bytes": 4848
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1038/s41467-026-78143-2",
+   "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+   "source": {
+    "characters": 1628,
+    "utf8Bytes": 1628
+   },
+   "abstract": {
+    "characters": 1531,
+    "utf8Bytes": 1531
+   },
+   "evidenceCount": 8,
+   "evidence": {
+    "characters": 1904,
+    "utf8Bytes": 1904
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 1928,
+       "utf8Bytes": 2308
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2045,
+       "utf8Bytes": 2617
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 3973,
+      "utf8Bytes": 4925
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 4520,
+       "utf8Bytes": 5414
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 4647,
+       "utf8Bytes": 5677
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 9167,
+      "utf8Bytes": 11091
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2006,
+       "utf8Bytes": 2434
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2098,
+       "utf8Bytes": 2666
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4104,
+      "utf8Bytes": 5100
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 4364,
+     "utf8Bytes": 5034
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1161/circep.126.014967",
+   "sourceHash": "9994fe992eafacea8a1b8e685ac11a18c7bb30b67df8ed10a3013566604e38f5",
+   "source": {
+    "characters": 2036,
+    "utf8Bytes": 2037
+   },
+   "abstract": {
+    "characters": 1932,
+    "utf8Bytes": 1933
+   },
+   "evidenceCount": 14,
+   "evidence": {
+    "characters": 2598,
+    "utf8Bytes": 2599
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2336,
+       "utf8Bytes": 2717
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2453,
+       "utf8Bytes": 3026
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4789,
+      "utf8Bytes": 5743
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5646,
+       "utf8Bytes": 6542
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5773,
+       "utf8Bytes": 6805
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 11419,
+      "utf8Bytes": 13347
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2438,
+       "utf8Bytes": 2867
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2530,
+       "utf8Bytes": 3099
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4968,
+      "utf8Bytes": 5966
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5538,
+     "utf8Bytes": 6210
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1016/j.jcin.2026.07.042",
+   "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+   "source": {
+    "characters": 2241,
+    "utf8Bytes": 2243
+   },
+   "abstract": {
+    "characters": 2105,
+    "utf8Bytes": 2107
+   },
+   "evidenceCount": 13,
+   "evidence": {
+    "characters": 2724,
+    "utf8Bytes": 2726
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2541,
+       "utf8Bytes": 2923
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2658,
+       "utf8Bytes": 3232
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5199,
+      "utf8Bytes": 6155
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5966,
+       "utf8Bytes": 6864
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 6093,
+       "utf8Bytes": 7127
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 12059,
+      "utf8Bytes": 13991
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2632,
+       "utf8Bytes": 3062
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2724,
+       "utf8Bytes": 3294
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5356,
+      "utf8Bytes": 6356
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5850,
+     "utf8Bytes": 6524
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1161/jaha.126.054084",
+   "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+   "source": {
+    "characters": 2078,
+    "utf8Bytes": 2078
+   },
+   "abstract": {
+    "characters": 1920,
+    "utf8Bytes": 1920
+   },
+   "evidenceCount": 10,
+   "evidence": {
+    "characters": 2392,
+    "utf8Bytes": 2392
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 2378,
+       "utf8Bytes": 2758
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 2495,
+       "utf8Bytes": 3067
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 4873,
+      "utf8Bytes": 5825
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 5478,
+       "utf8Bytes": 6372
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 5605,
+       "utf8Bytes": 6635
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 11083,
+      "utf8Bytes": 13007
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 2476,
+       "utf8Bytes": 2904
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 2568,
+       "utf8Bytes": 3136
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 5044,
+      "utf8Bytes": 6040
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 5338,
+     "utf8Bytes": 6008
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  },
+  {
+   "paperID": "doi:10.1001/jamanetworkopen.2026.33046",
+   "sourceHash": "36f507ab9582bd15fea53f59614d5d7ffc40bc8ebd8643252c152015aec177be",
+   "source": {
+    "characters": 3329,
+    "utf8Bytes": 3329
+   },
+   "abstract": {
+    "characters": 3220,
+    "utf8Bytes": 3220
+   },
+   "evidenceCount": 22,
+   "evidence": {
+    "characters": 4276,
+    "utf8Bytes": 4276
+   },
+   "tasks": {
+    "translate": {
+     "first": {
+      "maxOutputTokens": 3000,
+      "messagesContent": {
+       "characters": 3629,
+       "utf8Bytes": 4009
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 6000,
+      "messagesContent": {
+       "characters": 3746,
+       "utf8Bytes": 4318
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 7375,
+      "utf8Bytes": 8327
+     },
+     "bothOutputMax": 9000
+    },
+    "study": {
+     "first": {
+      "maxOutputTokens": 1600,
+      "messagesContent": {
+       "characters": 8589,
+       "utf8Bytes": 9483
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2200,
+      "messagesContent": {
+       "characters": 8716,
+       "utf8Bytes": 9746
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 17305,
+      "utf8Bytes": 19229
+     },
+     "bothOutputMax": 3800
+    },
+    "quicklook": {
+     "first": {
+      "maxOutputTokens": 1200,
+      "messagesContent": {
+       "characters": 3703,
+       "utf8Bytes": 4131
+      },
+      "messageCount": 2
+     },
+     "retry": {
+      "maxOutputTokens": 2400,
+      "messagesContent": {
+       "characters": 3795,
+       "utf8Bytes": 4363
+      },
+      "messageCount": 3
+     },
+     "bothMessagesContent": {
+      "characters": 7498,
+      "utf8Bytes": 8494
+     },
+     "bothOutputMax": 3600
+    }
+   },
+   "configured": {
+    "messagesContent": {
+     "characters": 8545,
+     "utf8Bytes": 9215
+    },
+    "maxOutputTokens": 5800,
+    "messageCount": 2
+   }
+  }
+ ],
+ "scope": {
+  "workerSHA": "bb55fc29dc681a9a45a3534b911dd45954ad81fa",
+  "pipelineSHA": "176e98be6679c9798f85e6e98af68ccfb2ce364f",
+  "networkCalls": 0,
+  "providerTokenizerUsed": false,
+  "whatIsMeasured": "Decoded message.content strings only, exact saved title/abstract, source journal; roles, provider chat wrapper, hidden reasoning and runtime re-fetch changes excluded."
+ },
+ "totals": {
+  "papers": 24,
+  "source": {
+   "characters": 55731,
+   "utf8Bytes": 55753
+  },
+  "abstract": {
+   "characters": 52537,
+   "utf8Bytes": 52557
+  },
+  "evidenceCount": 318,
+  "tasks": {
+   "translate": {
+    "missing": 23,
+    "minProviderCalls": 23,
+    "maxProviderCalls": 46,
+    "firstOutputCaps": 69000,
+    "firstPlusRetryOutputCaps": 207000,
+    "firstInput": {
+     "characters": 59570,
+     "utf8Bytes": 68332
+    },
+    "firstPlusRetryInput": {
+     "characters": 121831,
+     "utf8Bytes": 143771
+    }
+   },
+   "study": {
+    "missing": 24,
+    "minProviderCalls": 24,
+    "maxProviderCalls": 48,
+    "firstOutputCaps": 38400,
+    "firstPlusRetryOutputCaps": 91200,
+    "firstInput": {
+     "characters": 145854,
+     "utf8Bytes": 167352
+    },
+    "firstPlusRetryInput": {
+     "characters": 294756,
+     "utf8Bytes": 341016
+    }
+   },
+   "quicklook": {
+    "missing": 24,
+    "minProviderCalls": 24,
+    "maxProviderCalls": 48,
+    "firstOutputCaps": 28800,
+    "firstPlusRetryOutputCaps": 86400,
+    "firstInput": {
+     "characters": 64745,
+     "utf8Bytes": 75039
+    },
+    "firstPlusRetryInput": {
+     "characters": 131698,
+     "utf8Bytes": 155646
+    }
+   }
+  },
+  "runtime": {
+   "minPOSTs": 71,
+   "minProviderCalls": 71,
+   "maxProviderCalls": 142,
+   "firstOutputCaps": 136200,
+   "firstPlusRetryOutputCaps": 384600,
+   "firstInput": {
+    "characters": 270169,
+    "utf8Bytes": 310723
+   },
+   "firstPlusRetryInput": {
+    "characters": 548285,
+    "utf8Bytes": 640433
+   }
+  },
+  "configured": {
+   "providerCalls": 24,
+   "outputCaps": 139200,
+   "input": {
+    "characters": 143201,
+    "utf8Bytes": 159323
+   }
+  }
+ },
+ "provenance": {
+  "conservativeLocalDailyCap": {
+   "attempts": 8,
+   "outputTokens": 9600,
+   "origin": "inferred from former quicklook step per invocation, then newly imposed as local per UTC day cap; not user balance or original service-wide cap"
+  },
+  "legacyPerInvocationQuicklook": {
+   "calls": 8,
+   "maxTokensEach": 1200,
+   "retries": 0
+  },
+  "workerDefaultsPerUTCDate": {
+   "MODEL_CALL_CAP": 300,
+   "DAILY_CAP": 150,
+   "IP_CAP": 20,
+   "actualDeployedValuesKnown": false,
+   "distributedHardBillingCap": false
+  },
+  "knownLedgerReserved": {
+   "attempts": 4,
+   "outputTokens": 3800,
+   "actualBilledUsageKnown": false
+  },
+  "localArithmeticRemaining": {
+   "attempts": 4,
+   "outputTokens": 5800
+  }
+ },
+ "configurationChangesIfSeparatelyApproved": {
+  "runtimeSameUTCDateFullRemainingConservative": {
+   "MAX_ATTEMPTS": 146,
+   "MAX_OUTPUT_TOKENS": 388400,
+   "explanation": "Retains known ledger 4/3800, adds 142/384600 for the 71 missing tasks. Includes one repaired verification as one of those tasks, not an extra duplicated call."
+  },
+  "configuredSameUTCDateAlternative": {
+   "MAX_ATTEMPTS": 28,
+   "MAX_OUTPUT_TOKENS": 143000,
+   "explanation": "Retains known ledger 4/3800, adds 24/139200; requires already-authorized existing configured environment, absent locally. No retries."
+  },
+  "doNotChangeAutomatically": [
+   "Worker MODEL_CALL_CAP",
+   "Worker DAILY_CAP",
+   "Worker IP_CAP",
+   "credentials",
+   "pricing plan"
+  ],
+  "unknowns": [
+   "actual provider input/output usage",
+   "actual billing unit and hidden reasoning handling",
+   "actual deployed Worker cap overrides and current KV counters",
+   "other readers/CI provider usage",
+   "account balance and package quota",
+   "provider tokenizer and chat message overhead"
+  ]
+ },
+ "compareAlternative": {
+  "status": "Unimplemented runner adaptation; existing Worker route only, offline measurement, no real verification",
+  "studies": 24,
+  "compareRequests": 6,
+  "studyFirstOutputCaps": 36000,
+  "studyFirstPlusRetryOutputCaps": 81600,
+  "studyFirstInput": {
+   "characters": 129528,
+   "utf8Bytes": 134934
+  },
+  "studyFirstPlusRetryInput": {
+   "characters": 259818,
+   "utf8Bytes": 271446
+  },
+  "totalPOSTs": 53,
+  "minProviderCalls": 53,
+  "maxProviderCalls": 106,
+  "totalFirstOutputCaps": 133800,
+  "totalFirstPlusRetryOutputCaps": 375000,
+  "totalFirstInput": {
+   "characters": 253843,
+   "utf8Bytes": 278305
+  },
+  "totalFirstPlusRetryInput": {
+   "characters": 513347,
+   "utf8Bytes": 570863
+  },
+  "groups": [
+   {
+    "paperIDs": [
+     "doi:10.1001/jamanetworkopen.2026.37545",
+     "doi:10.1016/j.hrthm.2026.09.051",
+     "doi:10.1161/circulationaha.126.080404",
+     "doi:10.1016/j.jacadv.2026.103298"
+    ],
+    "calls": [
+     {
+      "input": {
+       "characters": 22721,
+       "utf8Bytes": 23619
+      },
+      "maxOutputTokens": 6000
+     },
+     {
+      "input": {
+       "characters": 22848,
+       "utf8Bytes": 23882
+      },
+      "maxOutputTokens": 7600
+     }
+    ]
+   },
+   {
+    "paperIDs": [
+     "doi:10.1016/j.jacadv.2026.103306",
+     "doi:10.1016/j.jacadv.2026.103295",
+     "doi:10.1161/strokeaha.126.057089",
+     "doi:10.1093/eurheartj/ehag699"
+    ],
+    "calls": [
+     {
+      "input": {
+       "characters": 19553,
+       "utf8Bytes": 20453
+      },
+      "maxOutputTokens": 6000
+     },
+     {
+      "input": {
+       "characters": 19680,
+       "utf8Bytes": 20716
+      },
+      "maxOutputTokens": 7600
+     }
+    ]
+   },
+   {
+    "paperIDs": [
+     "doi:10.1111/jce.70518",
+     "doi:10.1161/circulationaha.126.080384",
+     "doi:10.1001/jamanetworkopen.2026.36741",
+     "doi:10.1001/jama.2026.17192"
+    ],
+    "calls": [
+     {
+      "input": {
+       "characters": 27992,
+       "utf8Bytes": 28898
+      },
+      "maxOutputTokens": 6000
+     },
+     {
+      "input": {
+       "characters": 28119,
+       "utf8Bytes": 29161
+      },
+      "maxOutputTokens": 7600
+     }
+    ]
+   },
+   {
+    "paperIDs": [
+     "doi:10.1038/s41591-026-04675-1",
+     "doi:10.1038/s41591-026-04674-2",
+     "doi:10.1001/jamainternmed.2026.4894",
+     "doi:10.1038/s41591-026-04713-y"
+    ],
+    "calls": [
+     {
+      "input": {
+       "characters": 22650,
+       "utf8Bytes": 23556
+      },
+      "maxOutputTokens": 6000
+     },
+     {
+      "input": {
+       "characters": 22777,
+       "utf8Bytes": 23819
+      },
+      "maxOutputTokens": 7600
+     }
+    ]
+   },
+   {
+    "paperIDs": [
+     "doi:10.1093/jamia/ocag164",
+     "doi:10.1038/s41746-026-03361-3",
+     "doi:10.1093/jamia/ocag171",
+     "doi:10.1038/s41467-026-78143-2"
+    ],
+    "calls": [
+     {
+      "input": {
+       "characters": 13654,
+       "utf8Bytes": 14550
+      },
+      "maxOutputTokens": 6000
+     },
+     {
+      "input": {
+       "characters": 13781,
+       "utf8Bytes": 14813
+      },
+      "maxOutputTokens": 7600
+     }
+    ]
+   },
+   {
+    "paperIDs": [
+     "doi:10.1161/circep.126.014967",
+     "doi:10.1016/j.jcin.2026.07.042",
+     "doi:10.1161/jaha.126.054084",
+     "doi:10.1001/jamanetworkopen.2026.33046"
+    ],
+    "calls": [
+     {
+      "input": {
+       "characters": 22958,
+       "utf8Bytes": 23858
+      },
+      "maxOutputTokens": 6000
+     },
+     {
+      "input": {
+       "characters": 23085,
+       "utf8Bytes": 24121
+      },
+      "maxOutputTokens": 7600
+     }
+    ]
+   }
+  ],
+  "afterStandaloneSuccessfulVerificationFromCurrentSnapshot": {
+   "POSTs": 54,
+   "maxProviderCalls": 108,
+   "studyOutputCaps": 83200,
+   "totalOutputCaps": 376600,
+   "explanation": "One single study (1600+2200), five 4-paper comparisons (6000+7600 each), one 3-paper comparison (4800+6600). Includes verification in current-snapshot totals; never charges it twice."
+  }
+ },
+ "conditionalPricing": {
+  "checkedOn": "2026-10-07",
+  "officialSource": "https://docs.z.ai/guides/overview/pricing",
+  "model": "glm-5.3-flash",
+  "currency": "USD",
+  "perMillionInput": 0.15,
+  "perMillionOutput": 0.5,
+  "actualEndpointOrAccountPriceVerified": false,
+  "providerTokenizerUsed": false,
+  "monetaryHardCeilingVerified": false,
+  "planningAssumption": "1 visible UTF8 byte per input token plus 256 framing input tokens per provider attempt; hypothesis, not measured token usage",
+  "runtimeFirstPassPlanningUSD": 0.117435,
+  "runtimeAllRetriesPlanningUSD": 0.293818,
+  "configuredPlanningUSD": 0.09442,
+  "singleStudyVerificationPlanningUSD": 0.004584
+ }
+}
