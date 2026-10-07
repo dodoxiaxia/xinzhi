@@ -1,0 +1,164 @@
+{
+  "papers": [
+    {
+      "rank": 9,
+      "paperID": "doi:10.1093/eurheartj/ehag699",
+      "doi": "10.1093/eurheartj/ehag699",
+      "pmid": "42834810",
+      "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+      "translate": {
+        "title_zh": "房颤合并心力衰竭患者房室结消融后的双心室起搏与传导系统起搏比较：CONDUCT-AF试验",
+        "abstract_zh": "背景与目的：在难治性心房颤动（AF）和心力衰竭（HF）患者中，比较房室结消融后传导系统起搏（CSP）与双心室起搏（BVP）的随机证据仍然有限。本研究评估在接受房室结消融的患者中，采用左束支区域起搏的CSP是否非劣于BVP。\n方法：CONDUCT-AF是一项由研究者发起、在欧洲10个中心开展的多中心随机试验。将难治性AF、左心室射血分数（LVEF）<50%的HF、窄QRS时限（≤120 ms）及N末端B型利钠肽原>600 ng/L的患者按1:1随机分配至CSP或BVP组。主要终点为6个月后LVEF的变化，由独立核心实验室评估。次要终点包括超声心动图、临床和操作相关结局。分析遵循意向性治疗原则。\n结果：八十二名患者接受随机分组（平均年龄72±7岁，46%为男性）。6个月时，CSP组{从36%［95%置信区间（CI）33–39］升至46%［95% CI 44–49］；P<.001}与BVP组［从34%（95% CI 31–36）升至46%（95% CI 43–49）；P<.001］的LVEF改善相似。组间差异为.4%（95% CI -3.1–3.8；非劣效性检验P=.002）。两组左心室容积、临床参数以及HF恶化或心血管死亡复合终点的变化相当。与BVP相比，CSP的起搏QRS时限［平均差-14 ms（95% CI -19至-9；P<.001）］、操作时间及透视时间均显著更短。\n结论：在接受房室结消融的难治性AF合并HF患者中，采用左束支区域起搏的CSP在6个月时的LVEF改善方面非劣于BVP，临床结局相当，且操作相关表现较有利。"
+      },
+      "quicklook": {
+        "title_zh": "房颤合并心力衰竭患者房室结消融后的双心室起搏与传导系统起搏比较：CONDUCT-AF试验",
+        "one_line": "房室结消融后，左束支区域起搏在射血分数改善方面非劣于双心室起搏。",
+        "design": "研究者发起的多中心随机非劣效性试验；意向性治疗分析",
+        "findings": [
+          {
+            "text": "LVEF改善的组间差异为.4%（95% CI -3.1–3.8），非劣效性检验P=.002。",
+            "quote": "The between-group difference was .4% (95% CI -3.1-3.8; P = .002 for non-inferiority)."
+          },
+          {
+            "text": "左心室容积、临床参数及HF恶化或心血管死亡复合终点的变化，两组相当。",
+            "quote": "Changes in left ventricular volumes, clinical parameters, and composite endpoint of worsening HF or cardiovascular death were comparable between groups."
+          },
+          {
+            "text": "CSP较BVP的起搏QRS时限、操作时间及透视时间均显著更短。",
+            "quote": "Paced QRS [mean difference -14 ms (95% CI -19 to -9; P < .001)] and procedural and fluoroscopy times were significantly shorter with CSP compared with BVP."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解房室结消融后两种起搏方式的非劣效性与操作相关比较。"
+      }
+    },
+    {
+      "rank": 10,
+      "paperID": "doi:10.1111/jce.70518",
+      "doi": "10.1111/jce.70518",
+      "pmid": "42836688",
+      "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+      "translate": {
+        "title_zh": "房颤患者冷冻球囊消融后复发及生活质量的预测因素：台湾多中心登记研究的24个月随访数据",
+        "abstract_zh": "背景：以阵发性心房颤动（AF）为主的人群接受冷冻球囊消融（CBA）后24个月结局的当代亚洲数据有限。\n方法：我们在台湾四家三级医疗中心开展多中心登记研究（2018–2023年）。对连续接受CBA的患者分析有记录的房性心律失常复发（90天空白期后出现持续≥30秒的发作）及12个月生活质量（QoL；EQ-5D-3L指数和视觉模拟量表［VAS］）。心律随访主要依靠间歇性心电图、动态心电图、事件记录器或有临床指征时的心律评估。Cox模型用于识别复发预测因素；QoL分析使用成对的完整病例数据。\n结果：298名患者中（年龄63.7±11.8岁，60%为男性），282名（94.6%）为阵发性AF。操作相关不良事件少见（2.0%），无心脏压塞或心房食管瘘。五十八名患者（19%）在空白期后出现有记录的复发（晚期90–365天：n=37；极晚期>365天：n=21）。在间歇性监测下，Kaplan-Meier估计的无复发生存率在12个月时约为90%，24个月时为62%，18个月后的置信带更宽。在多变量分析中，从AF诊断至消融的时间越长，越能独立预测复发（每年校正后HR 1.050，95% CI 1.007–1.096；p=0.023）；左心室射血分数呈临界性的负向关联（每1%校正后HR 0.970，95% CI 0.942–1.000；p=0.052）。在具有成对数据的205/298名患者中，QoL分析显示EQ-5D-3L指数无显著变化（p=0.672），但VAS类别向较低症状负担转移（中度/高度从21.5%降至10.2%）。34%的患者（70/205）出现有临床意义的VAS改善（≥10分）。由于成对QoL数据不完整，且事件稀少和准完全分离使逻辑回归模型不稳定，无法确认VAS改善的稳健独立预测因素。\n结论：在这项以阵发性AF为主的台湾多中心登记研究中，CBA的并发症率较低，在间歇性监测下12个月时无记录心律失常的比例较高。从AF诊断至消融的时间较长与复发相关。在具有成对QoL数据的患者中，三分之一达到有临床意义的VAS改善，尽管EQ-5D-3L指数未改变。"
+      },
+      "quicklook": {
+        "title_zh": "房颤患者冷冻球囊消融后复发及生活质量的预测因素：台湾多中心登记研究的24个月随访数据",
+        "one_line": "诊断至消融时间较长与复发相关；生活质量指数未变，部分患者VAS改善。",
+        "design": "台湾多中心登记研究；间歇性心律监测及成对完整病例分析",
+        "findings": [
+          {
+            "text": "间歇性监测下，估计无复发生存率在12个月约90%、24个月为62%；18个月后置信带更宽。",
+            "quote": "Kaplan-Meier recurrence-free survival under intermittent monitoring was approximately 90% at 12 months and 62% at 24 months, with wider confidence bands beyond 18 months."
+          },
+          {
+            "text": "诊断至消融时间较长独立预测复发：每年校正后HR 1.050（95% CI 1.007–1.096；p=0.023）。",
+            "quote": "In multivariable analysis, longer time from AF diagnosis to ablation independently predicted recurrence (adjusted HR 1.050 per year, 95% CI 1.007-1.096; p = 0.023);"
+          },
+          {
+            "text": "成对数据患者的EQ-5D-3L指数未显著改变；VAS中度/高度症状负担比例从21.5%降至10.2%。",
+            "quote": "QoL analyses in 205/298 patients with paired data showed no significant change in EQ-5D-3L index (p = 0.672), but VAS categories shifted toward lower symptom burden (moderate/high 21.5% to 10.2%)."
+          }
+        ],
+        "limits": "成对生活质量数据不完整；事件稀少及准完全分离导致逻辑回归模型不稳定，无法确认VAS改善的稳健独立预测因素。心律随访主要依靠间歇性监测。",
+        "why_read": "同时查看复发关联、监测方式与不同生活质量指标之间的差异。"
+      }
+    },
+    {
+      "rank": 11,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.36741",
+      "doi": "10.1001/jamanetworkopen.2026.36741",
+      "pmid": "42832201",
+      "sourceHash": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+      "translate": {
+        "title_zh": "校外时段儿童照护中针对身体活动与屏幕时间的政策干预：整群随机临床试验",
+        "abstract_zh": "重要性：延伸教育项目在全球儿童可自由支配、身体活动与屏幕使用相互竞争的时段覆盖数千万名儿童，但可推广的运动行为改善策略有限。\n目的：评估Activated Outside School Hours Care（OSHC）的有效性；这是一项在延伸教育环境中改善身体活动及屏幕时间实践的政策干预。\n设计、场所及参与者：这项整群随机临床试验于2022年8月1日至2024年12月31日在澳大利亚3个州（南澳大利亚州、新南威尔士州和西澳大利亚州）的有组织课前及课后照护体系中开展，在基线、3个月及12个月进行评估。\n干预：Activated OSHC是一项基于网络的干预，通过员工培训，向使自身政策与国家身体活动及屏幕时间指南相一致的服务机构提供自愿认证。服务机构按1:1随机分配至干预或常规实践组，后者继续其通常的项目安排。\n主要结局及测量：主要结局为服务机构层面对OSHC行业身体活动及屏幕时间指南的遵循情况。次要结局包括员工促进身体活动的行为、儿童中高强度身体活动及娱乐性屏幕时间，以及身体活动器材的可用性，通过直接观察评估。进行了意向性治疗及符合方案分析。\n结果：197家服务机构（干预组101家，对照组96家）中，182家（92%；干预组90家，对照组92家）完成12个月随访。干预组101家服务机构中，48家（48%）在12个月内获得认证。意向性治疗分析显示，对指南遵循情况或儿童活动水平均无显著影响。然而，干预组服务机构在课前照护期间展现出更多员工促进身体活动的行为（比值比［OR］1.72；95% CI 1.27–2.33），且课前（OR 1.21；95% CI 1.00–1.46）及课后照护期间（OR 1.16；95% CI 1.04–1.30）的身体活动器材可用性更高。在符合方案分析中，获得认证的服务机构较对照更可能满足全部指南（OR 7.35；95% CI 1.39–38.86），课后屏幕时间指南遵循情况也有所改善（OR 5.63；95% CI 1.16–27.22）。在符合方案分析中，与对照相比，获得认证的服务机构员工促进身体活动的行为更多（OR 3.00；95% CI 2.10–4.28），儿童在课前照护期间参与的身体活动更多（发生率比1.23；95% CI 1.05–1.43）。\n结论及意义：这项随机临床试验在意向性治疗分析中发现的人群层面变化很少。然而，获得认证的服务机构在指南遵循情况、员工与身体活动有关的行为及儿童身体活动方面展现出一致改善。该干预在实施时有效，但有限的采用程度制约了人群层面的影响。认证模式可用于改善实践，但可能需要政策或系统层面的策略推动广泛采用。\n试验注册：澳大利亚新西兰临床试验注册平台标识符：ACTRN12622000393752。"
+      },
+      "quicklook": {
+        "title_zh": "校外时段儿童照护中针对身体活动与屏幕时间的政策干预：整群随机临床试验",
+        "one_line": "意向性分析少见人群层面改善，获认证机构的符合方案分析显示改善。",
+        "design": "澳大利亚课前及课后照护机构的整群随机临床试验",
+        "findings": [
+          {
+            "text": "意向性治疗分析未发现指南遵循情况或儿童活动水平的显著改善。",
+            "quote": "Intention-to-treat analyses showed no significant effects for guideline adherence or children's activity levels."
+          },
+          {
+            "text": "干预组101家机构中，48家（48%）在12个月内获得认证。",
+            "quote": "Of the 101 services in the intervention group, 48 (48%) achieved accreditation within 12 months."
+          },
+          {
+            "text": "符合方案分析中，获认证机构较对照更可能满足全部指南（OR 7.35；95% CI 1.39–38.86）。",
+            "quote": "In per-protocol analyses, accredited services were more likely than controls to meet all guidelines (OR, 7.35; 95% CI, 1.39-38.86), with improved after-school screen time adherence (OR, 5.63; 95% CI, 1.16-27.22)."
+          }
+        ],
+        "limits": "干预的采用程度有限，制约了人群层面的影响。摘要中获认证机构的改善来自符合方案分析。",
+        "why_read": "比较意向性与符合方案结果，理解政策干预的实施覆盖和效果。"
+      }
+    },
+    {
+      "rank": 12,
+      "paperID": "doi:10.1001/jama.2026.17192",
+      "doi": "10.1001/jama.2026.17192",
+      "pmid": "42832220",
+      "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+      "translate": {
+        "title_zh": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+        "abstract_zh": "重要性：美国医疗保险和医疗补助服务中心要求医疗系统向接受肺癌筛查的患者提供戒烟服务。然而，使接受肺癌筛查且医疗服务不足的患者实现戒烟的最有效方法尚不明确。\n目的：比较4种策略在转介接受肺癌筛查的医疗服务不足者中促进戒烟的有效性。\n设计、场所及参与者：这项随机临床试验纳入被转介至美国4个医疗系统（5个中心）接受肺癌筛查、目前吸烟且自认为黑人、西班牙裔、居住在农村地区或社会经济地位较低的个体。首名参与者于2021年5月17日入组，末次随访日期为2025年4月29日。\n干预：患者随机分至4组中的1组。参与者接受以下策略之一：询问、劝戒并转介至戒烟服务的策略（常规照护）；常规照护加免费药物治疗（即尼古丁替代治疗及伐尼克兰或安非他酮的费用报销）；常规照护、免费药物治疗，以及以生化确认戒烟为条件、最高$600的经济激励；或常规照护、免费药物治疗、经济激励，再加上鼓励患者思考未来健康的移动健康工具。\n主要结局及测量：主要终点为经生化确认的、持续至6个月的烟草戒断，通过可替宁、新烟碱或碳氧血红蛋白测定。\n结果：接受资格评估的9963名患者中，3259名接受随机分组，3220名纳入主要分析。年龄中位数（四分位距）为61.1（56.6–66.0）岁，1948名（60.3%）为女性，823名（25.5%）为黑人，287名（8.9%）为西班牙裔，1251名（38.8%）居住在农村地区，1519名（74.9%）社会经济地位较低，1792名（55.5%）报告入组时每天吸烟超过10支。持续至6个月的烟草戒断率在常规照护组为4.3%，加用药物治疗组为5.1%，加用经济激励组为8.8%，加用移动健康工具组为7.2%。加用经济激励较常规照护（差值4.6%［95% CI 2.1%–7.0%］；P<.001）以及常规照护加免费药物治疗（差值4.1%［95% CI 1.7%–6.4%］；P<.001）提高了校正后的持续烟草戒断率。在询问、劝戒并转介策略中加用免费药物治疗并不优于该策略单独使用（差值0.5%［95% CI -1.7%至2.6%］；P=.66）。\n结论及意义：在目前吸烟且被转介接受肺癌筛查的医疗服务不足成年人中，与单独采用询问、劝戒并转介策略或加用免费药物治疗相比，加用经济激励后的持续至6个月烟草戒断率更高。\n试验注册：ClinicalTrials.gov标识符：NCT04798664。"
+      },
+      "quicklook": {
+        "title_zh": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+        "one_line": "加用经济激励的持续戒断率较高；单加免费药物未优于常规策略。",
+        "design": "美国多医疗系统随机临床试验；比较四种戒烟策略",
+        "findings": [
+          {
+            "text": "持续至6个月的戒断率：常规照护4.3%、加药物5.1%、加经济激励8.8%、再加移动工具7.2%。",
+            "quote": "Sustained tobacco abstinence rates through 6 months were 4.3% with usual care, 5.1% with the addition of pharmacotherapy, 8.8% with the addition of financial incentives, and 7.2% with the addition of mobile health tool."
+          },
+          {
+            "text": "加经济激励较常规照护的校正后戒断率差值为4.6%（95% CI 2.1%–7.0%；P<.001）。",
+            "quote": "Adding financial incentives increased the adjusted rate of sustained tobacco abstinence compared with usual care (difference, 4.6% [95% CI, 2.1%-7.0%]; P < .001) and usual care plus free pharmacotherapy (difference, 4.1% [95% CI, 1.7%-6.4%]; P < .001)."
+          },
+          {
+            "text": "单加免费药物并不优于询问、劝戒并转介策略（差值0.5%；95% CI -1.7%至2.6%；P=.66）。",
+            "quote": "Adding free pharmacotherapy to ask-advise-refer was not superior to ask-advise-refer alone (difference, 0.5% [95% CI, -1.7% to 2.6%]; P = .66)."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "比较医疗服务不足的筛查人群中不同戒烟支持策略的随机证据。"
+      }
+    },
+    {
+      "rank": 13,
+      "paperID": "doi:10.1038/s41591-026-04675-1",
+      "doi": "10.1038/s41591-026-04675-1",
+      "pmid": "42827131",
+      "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+      "translate": {
+        "title_zh": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+        "abstract_zh": "营养不足和传染病对儿童生存构成双重威胁，尤其是在营养不良负担高且疫苗接种覆盖率低的地区。本研究在尼日利亚北部的一项儿科实用性整群随机对照试验中，评估在常规免疫接种服务中同时分发预防性少量脂质营养补充剂（SQ-LNS）是否可能提高疫苗接种率。两个地方政府辖区内二十个按地理界定的整群按1:1随机分配至NutriVax策略（干预）或标准国家免疫规划（NPI）服务（对照）。NutriVax在初级卫生保健中心提供常规NPI服务后，向6–23月龄儿童提供每月配额的SQ-LNS。主要结局为12–23月龄儿童经接种卡核实的首剂含麻疹成分疫苗（MCV1）接种覆盖率，通过终期基于人群的家庭横断面调查评估，该调查在开展类似基线调查12个月后进行。终期调查纳入1,604名儿童（对照组801名，NutriVax组803名）；干预整群中受调查儿童的48%曾接受SQ-LNS。NutriVax组经接种卡核实接受MCV1的比值（odds）是对照组的两倍（比值比=2.08，95%置信区间（CI）：1.30–3.35，P=0.004）。双重差分的整群条件分析显示，与对照组相比，MCV1覆盖率从基线提高20.1个百分点（pp）（95% CI：13.7–26.5 pp，P<0.0001）。将SQ-LNS与常规免疫接种共同提供，显著提高了经接种卡核实的MCV1接种率，支持在类似环境中采用可推广策略，推动实现世界卫生组织《免疫议程2030》设定的目标。ClinicalTrials.gov标识符：NCT06387511。"
+      },
+      "quicklook": {
+        "title_zh": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+        "one_line": "在尼日利亚北部，营养补充剂与常规免疫服务共同提供后，麻疹疫苗接种率提高。",
+        "design": "实用性整群随机对照试验；基线及终期家庭横断面调查",
+        "findings": [
+          {
+            "text": "终期调查纳入1,604名儿童；干预整群受调查儿童中48%曾接受SQ-LNS。",
+            "quote": "The endline survey included 1,604 children (801 control, 803 NutriVax); 48% of children surveyed in intervention clusters had ever received SQ-LNS."
+          },
+          {
+            "text": "经接种卡核实的MCV1接种优势比为2.08（95% CI 1.30–3.35；P=0.004）。",
+            "quote": "The odds of receiving card-verified MCV1 were two times higher in the NutriVax arm than in the control arm (odds ratio = 2.08, 95% confidence interval (CI): 1.30-3.35, P = 0.004)."
+          },
+          {
+            "text": "双重差分分析显示，MCV1覆盖率相对对照组从基线提高20.1个百分点（95% CI 13.7–26.5；P<0.0001）。",
+            "quote": "The difference-in-differences, cluster conditional analysis indicated a 20.1 percentage-point (pp) increase in MCV1 coverage from baseline (95% CI: 13.7-26.5 pp, P < 0.0001) relative to the control arm."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解营养补充与常规免疫服务共同提供的接种覆盖率试验结果。"
+      }
+    }
+  ]
+}

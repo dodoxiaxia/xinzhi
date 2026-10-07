@@ -1,0 +1,344 @@
+{
+  "checks": [
+    {
+      "rank": 1,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37545",
+      "sourceHash": "1bee850359b6eed3b26a3bb3b931ebfb386352f923eb53021184288997ef5d54",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 1,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37545",
+      "sourceHash": "1bee850359b6eed3b26a3bb3b931ebfb386352f923eb53021184288997ef5d54",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 2,
+      "paperID": "doi:10.1093/ehjcvp/pvag089",
+      "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 2,
+      "paperID": "doi:10.1093/ehjcvp/pvag089",
+      "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 3,
+      "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+      "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 3,
+      "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+      "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 4,
+      "paperID": "doi:10.1161/circulationaha.126.080404",
+      "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 4,
+      "paperID": "doi:10.1161/circulationaha.126.080404",
+      "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 5,
+      "paperID": "doi:10.1016/j.jacadv.2026.103298",
+      "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 5,
+      "paperID": "doi:10.1016/j.jacadv.2026.103298",
+      "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 6,
+      "paperID": "doi:10.1016/j.jacadv.2026.103306",
+      "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 6,
+      "paperID": "doi:10.1016/j.jacadv.2026.103306",
+      "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 7,
+      "paperID": "doi:10.1016/j.jacadv.2026.103295",
+      "sourceHash": "5cfb05d07f46ea9f65499bb18cf255aed45c6fb716dede341f9b202071ab93db",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 7,
+      "paperID": "doi:10.1016/j.jacadv.2026.103295",
+      "sourceHash": "5cfb05d07f46ea9f65499bb18cf255aed45c6fb716dede341f9b202071ab93db",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 8,
+      "paperID": "doi:10.1161/strokeaha.126.057089",
+      "sourceHash": "7cbf94dfefe41f905b51dfe332626975f1188e028d531e40d5000eb5216e9729",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 8,
+      "paperID": "doi:10.1161/strokeaha.126.057089",
+      "sourceHash": "7cbf94dfefe41f905b51dfe332626975f1188e028d531e40d5000eb5216e9729",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 9,
+      "paperID": "doi:10.1093/eurheartj/ehag699",
+      "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 9,
+      "paperID": "doi:10.1093/eurheartj/ehag699",
+      "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 10,
+      "paperID": "doi:10.1111/jce.70518",
+      "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 10,
+      "paperID": "doi:10.1111/jce.70518",
+      "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 11,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.36741",
+      "sourceHash": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 11,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.36741",
+      "sourceHash": "0c6c1d412fd030daa76be10fc6853a907d794a095dda9b48801921ec525af243",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 12,
+      "paperID": "doi:10.1001/jama.2026.17192",
+      "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 12,
+      "paperID": "doi:10.1001/jama.2026.17192",
+      "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 13,
+      "paperID": "doi:10.1038/s41591-026-04675-1",
+      "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 13,
+      "paperID": "doi:10.1038/s41591-026-04675-1",
+      "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 14,
+      "paperID": "doi:10.1038/s41591-026-04674-2",
+      "sourceHash": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 14,
+      "paperID": "doi:10.1038/s41591-026-04674-2",
+      "sourceHash": "8602505cdc023365bb83427dddd3ab9710a0623907bce1d09e5b74441be8b1c6",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 15,
+      "paperID": "doi:10.1001/jamainternmed.2026.4894",
+      "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 15,
+      "paperID": "doi:10.1001/jamainternmed.2026.4894",
+      "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 16,
+      "paperID": "doi:10.1038/s41591-026-04713-y",
+      "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 16,
+      "paperID": "doi:10.1038/s41591-026-04713-y",
+      "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 17,
+      "paperID": "doi:10.1038/s41746-026-03361-3",
+      "sourceHash": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 17,
+      "paperID": "doi:10.1038/s41746-026-03361-3",
+      "sourceHash": "bdce7c3474c16871bb80d491a350b97e6cd7fe386a571a6b7e2954f93f314afd",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 18,
+      "paperID": "doi:10.1038/s41467-026-78143-2",
+      "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 18,
+      "paperID": "doi:10.1038/s41467-026-78143-2",
+      "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 19,
+      "paperID": "doi:10.1161/circulationaha.126.080384",
+      "sourceHash": "4f653e7a94d994e3ea06885a131a447242fb212c9d8b205df9ad90cee3cc0eb9",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 19,
+      "paperID": "doi:10.1161/circulationaha.126.080384",
+      "sourceHash": "4f653e7a94d994e3ea06885a131a447242fb212c9d8b205df9ad90cee3cc0eb9",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 20,
+      "paperID": "doi:10.1161/circep.126.014967",
+      "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 20,
+      "paperID": "doi:10.1161/circep.126.014967",
+      "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 21,
+      "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+      "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 21,
+      "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+      "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 22,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+      "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 22,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+      "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 23,
+      "paperID": "doi:10.1016/j.jcin.2026.07.042",
+      "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 23,
+      "paperID": "doi:10.1016/j.jcin.2026.07.042",
+      "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+      "task": "quicklook",
+      "valid": true
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1161/jaha.126.054084",
+      "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+      "task": "translate",
+      "valid": true
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1161/jaha.126.054084",
+      "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+      "task": "quicklook",
+      "valid": true
+    }
+  ],
+  "tasksValidated": 48,
+  "firstBatchEntriesPreserved": true,
+  "providerRequests": 0,
+  "ledgerUnchanged": true
+}

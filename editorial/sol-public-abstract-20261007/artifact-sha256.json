@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    "editorial/sol-public-abstract-20261007/FIRST_BATCH.md": "a540781874eda57bf890607a5ec3673b115bac1701d53e4c7477abd30b00dac0",
+    "editorial/sol-public-abstract-20261007/README.md": "eed2b65cee4cf51e009fb5bcc140a8584a7fe767ad418f373990f4dd33a9ebfe",
+    "editorial/sol-public-abstract-20261007/batch-01-board.json": "913ef4910ada210a7c80157f5bf716b6aba8132500c57f4601d68f4f11f78f33",
+    "editorial/sol-public-abstract-20261007/batch-01-cache.json": "f6809189fd333089f6097d3ec43ebb4fc86abf931c9ae98f417c769920024e6a",
+    "editorial/sol-public-abstract-20261007/batch-01-receipt.json": "15b7c55b4671e988c9a36f90dd2ac70c303267fa53da7029dafca5a3cb8f3397",
+    "editorial/sol-public-abstract-20261007/batch-01-validation.json": "a8744b80d0ec6ce76241cf1f12ad73bbf87e3dfe349fec0dc368bb0e4468f278",
+    "editorial/sol-public-abstract-20261007/coverage.json": "0eb2379943e58bed68932cc2f20cb394b5de3b5abd7b4ae1d69943710396ff31",
+    "editorial/sol-public-abstract-20261007/drafts/batch-01.json": "7f334c786d0dd22b655d104161f98d8110a9e8300df5a84b0a3175b5daaaa80a",
+    "editorial/sol-public-abstract-20261007/drafts/batch-02.json": "86c61f6c0ffc8e732f7056e2a2b7e677c34a98b4543418b8ecc4e4c37cfba6ad",
+    "editorial/sol-public-abstract-20261007/drafts/batch-03.json": "a4bf1e71c9f8ddcb1910abd16a3692b359fa1dbe2aa23c72446876932621b16f",
+    "editorial/sol-public-abstract-20261007/drafts/batch-04.json": "d3f60f6a9d6fe48ef901418206dbef566cbb44ce5966a0194bb6775ba70890ea",
+    "editorial/sol-public-abstract-20261007/drafts/batch-05.json": "fe48d1f45958d8f0479f8abefbcecb25c8f84d3f4e5fec794b1185e792c03ec0",
+    "editorial/sol-public-abstract-20261007/full-board.json": "fc38d815f0f4877245e48dbab4d13cd5cade34691233661dd3a6a284ba57bc57",
+    "editorial/sol-public-abstract-20261007/full-cache.json": "d1649098cfbbd7877924f4ae048a9a9634789ff1fe0d266519dfd13923415028",
+    "editorial/sol-public-abstract-20261007/full-receipt.json": "c97f4a74aa07fb5739b87235eb928d5a0e45a360ceb93398697a992641bc430c",
+    "editorial/sol-public-abstract-20261007/full-validation.json": "c92efb79def41d968daf45ef2eef16fb8df49271a3a0ec34d107f32d608b2e87",
+    "editorial/sol-public-abstract-20261007/reviews/batch-01-review.json": "e31eab750bb95c8158a901656b8b7886d41cacf6accb67243ea9455435a85607",
+    "editorial/sol-public-abstract-20261007/reviews/remaining-04-10.json": "81356a7c735a5c91b5c6b11b7d67b6f2b43dd152c93a3fc336131cb89eceb1e5",
+    "editorial/sol-public-abstract-20261007/reviews/remaining-11-17.json": "5819ad893edf1c3ac1e95c2dbc75b4e889b213405f2c7955b7f38ce51430922b",
+    "editorial/sol-public-abstract-20261007/reviews/remaining-18-24.json": "3223454b2fc16e123b312df0f16fe0a98e7bd19295342c0eb3f45ef3913cc2a2",
+    "editorial/sol-public-abstract-20261007/reviews/source-quality-review.json": "c8200f6bd39778c83eb8070b0da051f6a00d69dd54b3b2b376d43398e7a16342",
+    "editorial/sol-public-abstract-20261007/sources.json": "8c20d1a3e4af2edf9bb617ffd1f8079dbaaf89113de71ce485b9104bff161754",
+    "scripts/preview_sol_public_overlay.py": "cc6acaf792746d0e549b20a52c0dac57f4956dd74451a22ae8ca2532534db4f9",
+    "scripts/test_sol_public_overlay.py": "b9275f9395df558aa92cd7330222b771dba8e2e531bb9f64fb206d4291ab8293"
+  }
+}

@@ -2,7 +2,7 @@
 """Validate a finite public editorial overlay and preview the existing board schema.
 
 Offline only. Never reads model configuration, dispatches generation, or writes
-runtime cache/ledger. An optional output must stay in editorial/ or .local/.
+runtime cache/ledger. Outputs are restricted to dedicated board preview artifacts.
 """
 import argparse
 import copy
@@ -14,6 +14,15 @@ import week_precompute as w
 
 ORIGIN = 'sol-session-public-abstract'
 MODEL = 'sol-session-model-unobserved'
+
+
+def output_target(output, inputs):
+    target = output.resolve()
+    allowed = (w.ROOT / 'editorial/sol-public-abstract-20261007').resolve()
+    if (not target.is_relative_to(allowed) or not target.name.endswith('-board.json')
+            or target in {p.resolve() for p in inputs if p is not None}):
+        raise ValueError('preview_output_must_be_separate_dedicated_board_artifact')
+    return target
 
 
 def preview(sources, overlay, runtime_cache=None):
@@ -85,10 +94,7 @@ def main():
     result = preview(read(args.sources), read(args.overlay),
                      read(args.runtime_cache) if args.runtime_cache else None)
     if args.output:
-        target = args.output.resolve()
-        allowed = [(w.ROOT / name).resolve() for name in ('editorial', '.local')]
-        if not any(target.is_relative_to(root) for root in allowed):
-            raise ValueError('preview_output_must_stay_in_editorial_or_local')
+        target = output_target(args.output, (args.sources, args.overlay, args.runtime_cache))
         w.atomic(target, result)
     print(json.dumps({'coverage': result['coverage'], 'run': result['run'],
                       'selected': len(result['items']), 'outputWritten': bool(args.output)},

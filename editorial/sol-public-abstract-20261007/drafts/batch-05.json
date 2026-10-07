@@ -1,0 +1,212 @@
+{
+  "papers": [
+    {
+      "rank": 19,
+      "paperID": "doi:10.1161/circulationaha.126.080384",
+      "doi": "10.1161/circulationaha.126.080384",
+      "pmid": "42836296",
+      "sourceHash": "4f653e7a94d994e3ea06885a131a447242fb212c9d8b205df9ad90cee3cc0eb9",
+      "translate": {
+        "title_zh": "脂质负荷与易损冠状动脉粥样硬化斑块预防性PCI的疗效：PREVENT试验的事后分析",
+        "abstract_zh": "背景：对不限制血流的高风险斑块病变（血流储备分数>0.80）实施预防性经皮冠状动脉介入治疗（PCI），已成为减少心脏事件的一种潜在策略。然而，与单纯最佳药物治疗相比，识别哪些病变可从预防性PCI中获得最大益处仍具挑战。本事后分析评估近红外光谱测得的脂质核心负荷指数在识别可能从预防性PCI中获益的高风险斑块方面的作用。\n方法：PREVENT试验（对功能上无显著意义的易损斑块所致狭窄实施预防性冠状动脉介入治疗）是一项由研究者发起的多中心、开放标签、随机对照试验，于2015年9月至2021年9月纳入1606名患者。本事后分析纳入其中同时接受近红外光谱评估的598名患者（平均年龄64.1±8.8岁；女性占27.9%），涉及632处血管内超声显示斑块负荷>70%、最小管腔面积<4 mm2的病变。预先将富脂质斑块（LRP）定义为4-mm节段内最大脂质核心负荷指数>315。主要结局是由心脏原因死亡、靶血管心肌梗死、缺血驱动的靶血管血运重建，或因不稳定性或进行性心绞痛住院构成的复合结局。\n结果：223名患者（37.3%）存在LRP，共234处病变。中位随访5.6年期间，在总体人群中，LRP患者的主要结局事件发生率高于非LRP患者（12.5%对4.7%；未调整风险比2.08；95% CI，1.03-4.19；P=0.039）。在LRP组内，与单纯最佳药物治疗相比，预防性PCI与较低的主要结局风险相关（7.3%对17.6%；调整后风险比0.23；95% CI，0.13-0.41；P<0.001）。相反，在非LRP组未观察到预防性PCI的益处（5.5%对4.2%；调整后风险比1.00；95% CI，0.54-1.86；P=0.97）。治疗策略与是否存在LRP之间有显著交互作用（Pinteraction<0.001）。\n结论：在PREVENT试验的本事后分析中，对近红外光谱定义的LRP患者，预防性PCI与较低的主要复合结局风险相关；而非LRP患者虽有较大斑块负荷和较小的最小管腔面积，却未观察到显著关联。这些发现提示，在指导预防性PCI时，除单纯形态学严重程度外，斑块成分也具有重要意义。\n注册：网址：https://www.clinicaltrials.gov；唯一标识符：NCT02316886。"
+      },
+      "quicklook": {
+        "title_zh": "脂质负荷与易损冠状动脉粥样硬化斑块预防性PCI的疗效：PREVENT试验的事后分析",
+        "one_line": "PREVENT事后分析中，预防性PCI与富脂质斑块患者较低的复合结局风险相关。",
+        "design": "PREVENT随机对照试验的事后分析；含598名近红外光谱评估患者。",
+        "findings": [
+          {
+            "text": "LRP患者的主要结局发生率高于非LRP患者：12.5%对4.7%，未调整风险比2.08。",
+            "quote": "primary outcome events occurred more frequently in patients with LRPs than in those with non-LRPs (12.5% versus 4.7%; unadjusted hazard ratio, 2.08; 95% CI, 1.03-4.19; P=0.039) in the overall population."
+          },
+          {
+            "text": "LRP组中，预防性PCI与较低的主要结局风险相关：7.3%对17.6%，调整后风险比0.23。",
+            "quote": "Within the LRP group, preventive PCI was associated with a lower risk of the primary outcome compared with optimal medical therapy alone (7.3% vs. 17.6%; adjusted hazard ratio, 0.23; 95% CI, 0.13-0.41; P<0.001)."
+          },
+          {
+            "text": "非LRP组未观察到预防性PCI获益：5.5%对4.2%，调整后风险比1.00。",
+            "quote": "Conversely, no benefit of preventive PCI was observed in the non-LRP group (5.5% versus 4.2%; adjusted hazard ratio, 1.00; 95% CI, 0.54-1.86; P=0.97)."
+          },
+          {
+            "text": "治疗策略与是否存在LRP之间有显著交互作用，Pinteraction<0.001。",
+            "quote": "A significant interaction was found between treatment strategy and the presence of LRP (Pinteraction<0.001)."
+          }
+        ],
+        "why_read": "了解斑块脂质成分如何关联预防性PCI的结局差异。",
+        "limits": "摘要未提供明确局限"
+      }
+    },
+    {
+      "rank": 20,
+      "paperID": "doi:10.1161/circep.126.014967",
+      "doi": "10.1161/circep.126.014967",
+      "pmid": "42825324",
+      "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+      "translate": {
+        "title_zh": "马凡综合征中的室性心律失常：多中心队列中的患病率及临床相关因素",
+        "abstract_zh": "背景：马凡综合征中的室性心律失常日益受到重视，但相关临床和结构特征仍未得到充分界定。\n方法：我们在梅奥诊所的3个院区开展了一项回顾性多中心队列研究，纳入783名确诊马凡综合征的成人。通过人工病历审查获取临床、心律失常、超声心动图、心脏磁共振、手术及植入式心律转复除颤器数据。采用单变量逻辑回归、全队列的主要多变量模型，以及预先设定的探索性心脏磁共振敏感性模型，评估这些因素与持续性室性心动过速（VT）或心室颤动（VF）的关联。\n结果：在12.7±7.6年间，74名患者（9.5%）发生持续性VT/VF。单变量分析显示，持续性VT/VF与不良的结构-电生理表型共同出现，包括房性心律失常、心室重构、二尖瓣疾病、心脏手术史及钆延迟强化。在主要多变量模型中，非持续性VT（比值比12.11［95% CI，6.43-22.79］；P<0.001）、较低的左心室射血分数（每升高1%的比值比为0.95［95% CI，0.93-0.97］；P<0.001）、至少接受过1次心脏手术（比值比3.59［95% CI，1.65-7.84］；P=0.001）及中度至重度二尖瓣反流（比值比2.00［95% CI，1.07-3.75］；P=0.030）均与持续性VT/VF独立相关。在心脏磁共振敏感性模型中，非持续性VT、较低的左心室射血分数及钆延迟强化仍与持续性VT/VF相关。\n结论：在马凡综合征成人患者中，持续性VT/VF发生于近乎每10名患者中的1名，并与更广泛的结构-电生理表型相关。在接受心脏磁共振检查的患者中，钆延迟强化提供了额外的风险信号。"
+      },
+      "quicklook": {
+        "title_zh": "马凡综合征中的室性心律失常：多中心队列中的患病率及临床相关因素",
+        "one_line": "马凡综合征成人队列中，持续性室性心律失常与结构及电生理异常表型相关。",
+        "design": "回顾性多中心队列；梅奥诊所3个院区的783名确诊成人患者。",
+        "findings": [
+          {
+            "text": "12.7±7.6年间，74名患者发生持续性VT/VF，占9.5%。",
+            "quote": "Sustained VT/VF occurred in 74 patients (9.5%) over 12.7±7.6 years."
+          },
+          {
+            "text": "主要多变量模型中，非持续性VT的比值比为12.11，95% CI 6.43-22.79。",
+            "quote": "In the primary multivariable model, nonsustained VT (odds ratio, 12.11 [95% CI, 6.43-22.79]; P<0.001)"
+          },
+          {
+            "text": "心脏磁共振敏感性模型中，非持续性VT、较低射血分数及钆延迟强化仍与持续性VT/VF相关。",
+            "quote": "In the cardiac magnetic resonance sensitivity model, nonsustained VT, lower left ventricular ejection fraction, and late gadolinium enhancement remained associated with sustained VT/VF."
+          }
+        ],
+        "why_read": "了解马凡综合征中室性心律失常与结构异常的关联。",
+        "limits": "摘要未提供明确局限"
+      }
+    },
+    {
+      "rank": 21,
+      "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+      "doi": "10.1016/j.hrthm.2026.08.046",
+      "pmid": "42754239",
+      "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+      "translate": {
+        "title_zh": "心律学会与Heart Rhythm Advocates立场声明：心脏电生理领域的事先授权——证据、政策与改革",
+        "abstract_zh": "Medicare Advantage（MA）及商业保险公司规定的事先授权（PA）要求，已演变为对指南指征明确的心脏电生理（EP）诊疗的系统性障碍，造成可量化的患者伤害、医生及相关专业人员的巨大行政负担，并扩大医疗服务差距。本文考察MA按人头付费模式的财务架构及其造成的拒绝批准的结构性激励，分析拒批制度的根本原因，包括第三方拒批机构、基于人工智能的算法，以及不透明的承保标准；回顾监察长办公室和参议院常设调查小组委员会的联邦监督发现，并分析房颤导管消融、植入式心律转复除颤器治疗、左心耳封堵及带除颤功能的心脏再同步化治疗等不同操作的特定拒批模式。联邦审计数据显示，相当一部分遭拒的PA申请符合Medicare自身的承保标准，而且大多数被申诉的拒批决定最终被推翻，但多数不当拒批未受到质疑。临床结局数据证实，PA造成的延迟在各类EP操作中都有直接的临床后果。本文回顾了监管和立法形势，涵盖Medicare与Medicaid服务中心从2023至2026年的规则制定及国会尚待采取的行动，最后提出一个涵盖申诉策略、机构倡议以及医生层面参与的结构化框架。"
+      },
+      "quicklook": {
+        "title_zh": "心律学会与Heart Rhythm Advocates立场声明：心脏电生理领域的事先授权——证据、政策与改革",
+        "one_line": "立场声明分析心脏电生理事先授权的拒批机制、患者影响及政策改革框架。",
+        "design": "学会立场声明；回顾监督、临床结局及政策证据。",
+        "findings": [
+          {
+            "text": "声明分析按人头付费的拒批激励、第三方拒批机构、人工智能算法及不透明承保标准。",
+            "quote": "This paper examines the financial architecture of the MA capitation model and the structural incentives it creates for denial, characterizes the root causes of the denial system, including third-party denial organizations, artificial intelligence-based algorithms, and opaque coverage criteria;"
+          },
+          {
+            "text": "联邦审计显示，相当一部分遭拒申请符合承保标准；多数申诉成功，但多数不当拒批未被质疑。",
+            "quote": "Federal audit data establish that a substantial proportion of denied PA requests meet Medicare's own coverage criteria and that the majority of appealed denials are overturned, yet most wrongful denials go uncontested."
+          },
+          {
+            "text": "本文回顾2023至2026年的规则制定及待议国会行动，并提出申诉、机构倡议和医生参与框架。",
+            "quote": "The regulatory and legislative landscape-spanning Centers for Medicare & Medicaid Services rulemaking from 2023 to 2026 and pending congressional action-is reviewed, and the paper concludes with a structured framework for appeals strategy, institutional advocacy, and physician-level engagement."
+          }
+        ],
+        "why_read": "理解美国电生理诊疗事先授权的制度问题及声明提出的改革路径。",
+        "limits": "摘要未提供明确局限"
+      }
+    },
+    {
+      "rank": 22,
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+      "doi": "10.1001/jamanetworkopen.2026.37533",
+      "pmid": "42832198",
+      "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+      "translate": {
+        "title_zh": "伴房颤及日常生活活动能力障碍的养老院居民的抗凝结局",
+        "abstract_zh": "重要性：伴房颤（AF）和日常生活活动（ADL）能力障碍的长期养老院居民出血及死亡风险较高，使抗凝治疗的净获益不确定。\n目的：在伴AF和ADL能力障碍的长期养老院居民中，比较使用与未使用口服抗凝药（OAC）与缺血性卒中及大出血的关联。\n设计、地点和参与者：本队列研究使用与最低数据集关联的美国Medicare理赔数据（2013年1月1日至2022年12月31日）。纳入伴非瓣膜性AF且3项或以上ADL受损的养老院居民。采用发病密度抽样，构建三个分别比较阿哌沙班、利伐沙班或华法林使用与未使用的队列。\n暴露：开始使用阿哌沙班、利伐沙班或华法林。\n主要结局及测量：主要结局为缺血性卒中、大出血及两者的复合结局。倾向评分（PS）匹配平衡了111项协变量。估计调整后发生率比（ARR）及95% CI。临界点分析评估了使抗凝治疗倾向于获益所需的缺血性卒中相对于大出血的权重。直接的活性对照分析比较阿哌沙班与利伐沙班、华法林。\n结果：研究包括26 940名养老院居民（年龄中位数［四分位距］为82［74,88］岁；17 504名［65.0%］为女性），其中PS匹配队列包括7600名使用阿哌沙班者、2654名使用利伐沙班者及3216名使用华法林者。与未使用相比，所有OAC的使用均与较低的缺血性卒中发生率相关（阿哌沙班：ARR，0.53；95% CI，0.38-0.73；利伐沙班：ARR，0.48；95% CI，0.27-0.87；华法林：ARR，0.47；95% CI，0.25-0.88），同时与较高的大出血发生率相关（阿哌沙班：ARR，1.62；95% CI，1.29-2.03；利伐沙班：ARR，2.68；95% CI，1.84-3.93；华法林：ARR，3.02；95% CI，2.15-4.25）。仅阿哌沙班未与较高的复合结局发生率相关（ARR，1.08；95% CI，0.90-1.30），而利伐沙班（ARR，1.62；95% CI，1.20-2.18）和华法林（ARR，1.99；95% CI，1.50-2.63）与较高发生率相关。结果在不同衰弱分层中一致，不过在衰弱者中阿哌沙班所关联的卒中减少有所减弱。临界点分析表明，阿哌沙班的获益-风险平衡比利伐沙班或华法林更有利。\n结论及意义：在伴AF和ADL能力障碍的养老院居民中，与未使用相比，OAC使用与较低的缺血性卒中发生率和较高的大出血发生率相关。在所评估的OAC中，阿哌沙班表现出最有利的获益-风险特征。这些发现可能为个体化抗凝决策提供信息。"
+      },
+      "quicklook": {
+        "title_zh": "伴房颤及日常生活活动能力障碍的养老院居民的抗凝结局",
+        "one_line": "养老院居民队列中，抗凝药使用与较少缺血性卒中及较多大出血相关。",
+        "design": "美国Medicare关联数据队列；采用倾向评分匹配及临界点分析。",
+        "findings": [
+          {
+            "text": "研究包括26 940名养老院居民，年龄中位数82岁，女性占65.0%。",
+            "quote": "The study comprised 26 940 nursing home residents (median [IQR] age, 82 [74,88] years; 17 504 [65.0%] female)"
+          },
+          {
+            "text": "与未使用相比，所有OAC均与较低卒中率及较高大出血率相关；阿哌沙班对应ARR分别为0.53和1.62。",
+            "quote": "Compared with nonuse, use of all OACs was associated with lower rates of ischemic stroke (apixaban: ARR, 0.53; 95% CI, 0.38-0.73; rivaroxaban: ARR, 0.48; 95% CI, 0.27-0.87; warfarin: ARR, 0.47; 95% CI, 0.25-0.88) and higher rates of major bleeding (apixaban: ARR, 1.62; 95% CI, 1.29-2.03; rivaroxaban: ARR, 2.68; 95% CI, 1.84-3.93; warfarin: ARR, 3.02; 95% CI, 2.15-4.25)."
+          },
+          {
+            "text": "仅阿哌沙班未与较高复合结局发生率相关，ARR 1.08（95% CI 0.90-1.30）；另两种药与较高发生率相关。",
+            "quote": "Only apixaban was not associated with a higher composite outcome (ARR, 1.08; 95% CI, 0.90-1.30), whereas rivaroxaban (ARR, 1.62; 95% CI, 1.20-2.18) and warfarin (ARR, 1.99; 95% CI, 1.50-2.63) were associated with higher rates."
+          },
+          {
+            "text": "不同衰弱分层的结果一致，但衰弱者中阿哌沙班关联的卒中减少有所减弱。",
+            "quote": "Findings were consistent across frailty strata, although stroke reduction with apixaban was attenuated among frail individuals."
+          }
+        ],
+        "why_read": "了解功能受损养老院居民中抗凝药使用所关联的卒中与出血权衡。",
+        "limits": "摘要未提供明确局限"
+      }
+    },
+    {
+      "rank": 23,
+      "paperID": "doi:10.1016/j.jcin.2026.07.042",
+      "doi": "10.1016/j.jcin.2026.07.042",
+      "pmid": "42836810",
+      "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+      "translate": {
+        "title_zh": "中高危肺栓塞的机械取栓与单纯抗凝比较：STORM-PE随机对照试验中改善的90天功能结局",
+        "abstract_zh": "背景：多达50%的肺栓塞（PE）幸存者存在长期功能受限及生活质量（QoL）下降。再灌注策略可迅速缓解右心室（RV）功能障碍，并防止临床恶化或血流动力学崩溃；但此前从未在随机试验中，以患者为中心的结局将这些方法与单纯抗凝比较。\n目的：本研究旨在评估，在急性中高危PE患者中，机械取栓联合抗凝相较于单纯抗凝，是否改善90天内的功能、QoL和安全性结局。\n方法：STORM-PE在22个国际研究中心纳入100名PE患者，以1:1随机分配至计算机辅助真空取栓（CAVT）联合抗凝或单纯抗凝，主要终点为48小时右心室与左心室（RV/LV）比值的变化。次要终点包括7天内的重大不良事件，以及截至90天的功能和QoL结局、死亡及有症状PE复发。\n结果：所有患者从随机分组到最后一次随访的中位时间为91.0天［Q1-Q3：80.5-100.0］。90天时，CAVT患者中66.0%（31/47）及抗凝患者中64.2%（34/53）完成了6分钟步行试验。CAVT组的6分钟步行距离比单纯抗凝组更长（478.7 ± 159.5 m对368.0 ± 127.8 m，P = 0.003）。90天时，CAVT患者达到NYHA心功能I级的比例高于抗凝患者（97.4%［37/38］对75.6%［34/45］，P = 0.005）。两组的呼吸困难和QoL评分相当；90天内的全因死亡、PE相关死亡及有症状PE复发在两组间无差异。\n结论：在STORM-PE中，与单纯抗凝相比，CAVT联合抗凝改善了90天的功能结局，安全性事件发生率相当。本试验支持CAVT作为中高危PE的有效且安全的再灌注策略。\n临床试验注册：https://clinicaltrials.gov；唯一标识符：NCT05684796。"
+      },
+      "quicklook": {
+        "title_zh": "中高危肺栓塞的机械取栓与单纯抗凝比较：STORM-PE随机对照试验中改善的90天功能结局",
+        "one_line": "STORM-PE中，取栓联合抗凝改善90天功能结局，生活质量及死亡等结局无组间差异。",
+        "design": "多中心随机对照试验；100名中高危PE患者，主要终点为48小时RV/LV变化。",
+        "findings": [
+          {
+            "text": "90天时，CAVT与抗凝组分别有66.0%和64.2%完成6分钟步行试验。",
+            "quote": "At 90 days, 66.0% (31/47) of CAVT and 64.2% (34/53) of anticoagulation patients completed the 6-min walk test."
+          },
+          {
+            "text": "CAVT组6分钟步行距离更长：478.7 ± 159.5 m对368.0 ± 127.8 m，P = 0.003。",
+            "quote": "The CAVT arm exhibited a longer 6-min walk distance compared with anticoagulation alone (478.7 ± 159.5 m vs 368.0 ± 127.8 m, P = 0.003)."
+          },
+          {
+            "text": "90天时NYHA心功能I级比例，CAVT组为97.4%，抗凝组为75.6%，P = 0.005。",
+            "quote": "More CAVT than anticoagulation patients were NYHA Functional Class I (97.4% [37/38] vs 75.6% [34/45], P = 0.005) at 90 days."
+          },
+          {
+            "text": "呼吸困难和QoL评分相当；90天内全因死亡、PE相关死亡及有症状PE复发无组间差异。",
+            "quote": "Dyspnea and QoL scores were comparable between groups, with no differences between arms for all-cause mortality, PE-related mortality, and symptomatic PE recurrence within 90 days."
+          }
+        ],
+        "why_read": "区分取栓试验的主要影像学终点、功能获益与未见差异的结局。",
+        "limits": "摘要未提供明确局限"
+      }
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1161/jaha.126.054084",
+      "doi": "10.1161/jaha.126.054084",
+      "pmid": "42831398",
+      "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+      "translate": {
+        "title_zh": "远程医疗在中低收入国家先天性心脏病照护模式中的作用：美国心脏协会科学声明",
+        "abstract_zh": "远程医疗日益被视为应对中低收入国家重大挑战的一项变革性策略；这些国家占全部国家的63%、全球人口的84%，以及<15岁儿童的90%。这些地区面临多重障碍，包括地理位置偏远、经济限制、医疗基础设施有限，以及受过培训的医疗专业人员短缺。先天性心脏病是一个高度专业化、通常集中于城市中心的领域，受到的影响尤为显著，使许多儿童无法及时或公平地获得挽救生命的照护。在此背景下，远程心脏病医疗已成为覆盖先天性心脏病照护全流程的有用工具，支持院前评估、住院管理、出院后随访及多学科协作。除视频会诊外，远程医疗还可安全传输心电图、超声心动图、先进影像及数字听诊数据。基于人工智能的工具进一步加强了教育、诊断支持以及影像采集的质量保证。这些能力共同减少不必要的出行、加快专家意见的获取、加强当地决策，并有助于改善结局。远程医疗还促进儿科心脏病医生、新生儿科医生、重症医学医生、影像专家和护士之间的协作，建立将外围医疗机构与三级医疗中心连接起来的、更整合且更有韧性的照护网络。通过优化有限资源并扩大专家服务覆盖面，远程医疗对于改善中低收入国家先天性心脏病照护的可及性、公平性及结局具有显著潜力。持续投入、战略规划以及协作式能力建设，对确保其在全球范围内可持续且有效地实施至关重要。"
+      },
+      "quicklook": {
+        "title_zh": "远程医疗在中低收入国家先天性心脏病照护模式中的作用：美国心脏协会科学声明",
+        "one_line": "科学声明讨论远程医疗支持中低收入国家先天性心脏病全流程照护的潜力。",
+        "design": "美国心脏协会科学声明；讨论远程医疗照护模式。",
+        "findings": [
+          {
+            "text": "声明所述中低收入国家占国家总数63%、全球人口84%，以及<15岁儿童的90%。",
+            "quote": "Telemedicine is increasingly recognized as a transformative strategy to address critical challenges in low- and middle-income countries, which comprise 63% of all nations, 84% of the global population, and 90% of children <15 years of age."
+          },
+          {
+            "text": "远程心脏病医疗支持院前评估、住院管理、出院后随访及多学科协作。",
+            "quote": "In this context, telecardiology has emerged as a valuable tool across the congenital heart disease care continuum, supporting prehospital assessment, inpatient management, postdischarge follow-up, and multidisciplinary collaboration."
+          },
+          {
+            "text": "除视频会诊外，还可安全传输心电、超声、先进影像及数字听诊数据；人工智能支持教育、诊断和影像采集质保。",
+            "quote": "Beyond video consultations, telemedicine enables secure transmission of electrocardiograms, echocardiograms, advanced imaging, and digital auscultation data. Artificial intelligence-based tools further enhance education, diagnostic support, and quality assurance in image acquisition."
+          },
+          {
+            "text": "声明强调持续投入、战略规划及协作式能力建设对可持续有效实施的必要性。",
+            "quote": "Continued investment, strategic planning, and collaborative capacity-building will be essential to ensure its sustainable and effective implementation worldwide."
+          }
+        ],
+        "why_read": "了解资源受限地区先天性心脏病照护中远程医疗的应用范围和实施需求。",
+        "limits": "摘要未提供明确局限"
+      }
+    }
+  ]
+}

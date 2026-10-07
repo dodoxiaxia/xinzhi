@@ -1,0 +1,176 @@
+{
+  "papers": [
+    {
+      "rank": 4,
+      "paperID": "doi:10.1161/circulationaha.126.080404",
+      "doi": "10.1161/circulationaha.126.080404",
+      "pmid": "42836281",
+      "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+      "translate": {
+        "title_zh": "中国院内心脏骤停的发生率、诊疗过程和结局：多中心前瞻性登记研究",
+        "abstract_zh": "背景：院内心脏骤停（IHCA）是与高死亡率相关的急性事件。尽管高收入国家的生存情况已有改善，但来自低收入和中等收入国家的当代多中心数据仍然稀缺，限制了全球基准比较以及识别系统层面改善机会的能力。\n方法：本队列研究使用BASIC-IHCA（院内心脏骤停基线调查）登记数据。纳入2019年7月1日至2020年12月31日期间，在中国29个省份的37家医院发生IHCA并接受心肺复苏的成年患者（≥18岁）。主要结局为存活至30天或出院。次要结局包括自主循环恢复、6个月和12个月生存，以及良好神经功能结局（脑功能分级评分1-2）。过程指标侧重于复苏响应的及时性和复苏后干预措施的实施。\n结果：在17 602名患者中（年龄中位数66岁；65.5%为男性），成人IHCA的年发生率为每1000例入院4.1例。6569名（37.3%）患者被判定为心源性病因，2380名（13.5%）患者的初始心律可电击。在所有患者中，16 872名（95.9%）在1分钟内接受心肺复苏；初始心律可电击和不可电击的患者中，分别有71.4%和84.4%及时接受除颤或肾上腺素。6200名（35.2%）患者实现持续自主循环恢复，其中222名（3.6%）接受温度控制治疗，320名（5.2%）接受冠状动脉造影。总体而言，1610名（9.1%）患者存活至30天或出院，其中1241名（7.1%）具有良好神经功能结局。12个月时，1075名（6.1%）患者仍存活，986名（5.6%）具有良好神经功能结局。\n结论：本多中心登记研究显示，中国IHCA负担较重，生存率明显偏低。尽管初始复苏及时，复苏后照护仍存在关键缺口。系统和文化因素，包括不尝试心肺复苏医嘱的使用较少，可能进一步导致生存差异。这些发现提示了若干在系统层面改善IHCA结局的机会，包括建立有组织的响应系统、优化重症监护资源分配，以及进一步整合预先照护规划。"
+      },
+      "quicklook": {
+        "title_zh": "中国院内心脏骤停的发生率、诊疗过程和结局：多中心前瞻性登记研究",
+        "one_line": "中国多中心登记显示院内心脏骤停生存率低，复苏后照护存在关键缺口。",
+        "design": "多中心前瞻性登记队列研究",
+        "findings": [
+          {
+            "text": "纳入17 602名患者，成人院内心脏骤停年发生率为每1000例入院4.1例。",
+            "quote": "Among 17 602 patients (median age, 66 years; 65.5% male), the annual incidence of adult IHCA was 4.1 per 1000 admissions."
+          },
+          {
+            "text": "95.9%的患者在1分钟内接受心肺复苏。",
+            "quote": "Among all patients, 16 872 (95.9%) received cardiopulmonary resuscitation within 1 minute;"
+          },
+          {
+            "text": "存活至30天或出院的患者占9.1%，良好神经功能结局占7.1%。",
+            "quote": "Overall, 1610 (9.1%) patients survived to 30 days or discharge, with 1241 (7.1%) having a favorable neurological outcome."
+          },
+          {
+            "text": "12个月时6.1%的患者仍存活，5.6%具有良好神经功能结局。",
+            "quote": "At 12 months, 1075 (6.1%) patients remained alive, and 986 (5.6%) had a favorable neurological outcome."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解院内复苏的响应速度、生存结果及复苏后照护过程。"
+      }
+    },
+    {
+      "rank": 5,
+      "paperID": "doi:10.1016/j.jacadv.2026.103298",
+      "doi": "10.1016/j.jacadv.2026.103298",
+      "pmid": "42832923",
+      "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+      "translate": {
+        "title_zh": "经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析",
+        "abstract_zh": "背景：2025年美国心脏病学会/美国心脏协会指南支持急性冠脉综合征（ACS）患者在经皮冠状动脉介入治疗（PCI）后降阶为替格瑞洛单药治疗，而2023年欧洲心脏病学会指南推荐将阿司匹林联合普拉格雷的12个月双联抗血小板治疗（DAPT）作为默认策略。\n目的：本研究旨在比较这些策略的缺血和出血结局，并评估糖尿病是否改变其相对效应。\n方法：纳入PCI后患者、评估降阶为替格瑞洛单药治疗或12个月DAPT（以替格瑞洛或普拉格雷为基础）的随机对照试验。主要疗效和安全性结局分别为主要不良心血管或脑血管事件（MACCE）和大出血。采用频率学派随机效应网状Meta分析合并发生率比（IRR）及95%置信区间（CI）。按糖尿病状态进行亚组分析。\n结果：纳入七项随机对照试验，共27,225名患者（平均年龄62岁；23.2%为女性；31.7%有糖尿病；98.6%为ACS）。通过以替格瑞洛为基础的DAPT，间接比较替格瑞洛单药治疗与阿司匹林联合普拉格雷。替格瑞洛单药治疗的MACCE与阿司匹林联合普拉格雷相近（IRR：1.09；95% CI：0.86-1.38），但不能排除具有临床意义的风险增加（非劣效性检验P = 0.33）；替格瑞洛单药治疗的大出血更少（IRR：0.54；95% CI：0.37-0.80）。对于MACCE，观察到P2Y12抑制剂策略与糖尿病状态之间存在交互作用（Pint = 0.04）。\n结论：本网状Meta分析纳入的主要是接受PCI的ACS患者。与阿司匹林联合普拉格雷治疗12个月相比，替格瑞洛单药治疗减少了大出血，但在MACCE方面未达到非劣效性。需要开展直接随机比较。（经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析；CRD420261322968）。"
+      },
+      "quicklook": {
+        "title_zh": "经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析",
+        "one_line": "间接比较提示替格瑞洛单药大出血较少，但主要心脑血管事件未达到非劣效性。",
+        "design": "随机对照试验的频率学派随机效应网状Meta分析",
+        "findings": [
+          {
+            "text": "替格瑞洛单药与阿司匹林联合普拉格雷经由替格瑞洛双联治疗进行间接比较。",
+            "quote": "Ticagrelor monotherapy and aspirin plus prasugrel were compared indirectly through ticagrelor-based DAPT."
+          },
+          {
+            "text": "MACCE的IRR为1.09，95% CI为0.86-1.38，非劣效性检验P = 0.33。",
+            "quote": "Ticagrelor monotherapy showed similar MACCE compared with aspirin plus prasugrel (IRR: 1.09; 95% CI: 0.86-1.38), although a clinically meaningful increase in risk cannot be excluded (P for noninferiority = 0.33);"
+          },
+          {
+            "text": "替格瑞洛单药大出血较少：IRR 0.54，95% CI 0.37-0.80。",
+            "quote": "major bleeding was lower with ticagrelor monotherapy (IRR: 0.54; 95% CI: 0.37-0.80)."
+          },
+          {
+            "text": "MACCE存在P2Y12抑制剂策略与糖尿病状态的交互作用（Pint = 0.04）。",
+            "quote": "An interaction between P2Y12 inhibitor strategy and diabetes status was observed for MACCE (Pint = 0.04)."
+          }
+        ],
+        "limits": "两种策略为间接比较；不能排除具有临床意义的MACCE风险增加，且未达到非劣效性。摘要指出需要直接随机比较。",
+        "why_read": "关注减少出血与缺血结局非劣效性未获证实之间的证据差异。"
+      }
+    },
+    {
+      "rank": 6,
+      "paperID": "doi:10.1016/j.jacadv.2026.103306",
+      "doi": "10.1016/j.jacadv.2026.103306",
+      "pmid": "42832922",
+      "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+      "translate": {
+        "title_zh": "难治性或未控制高血压各治疗方案疗效的比较：随机试验网状Meta分析",
+        "abstract_zh": "背景：许多高血压患者尽管接受2种或更多降压药治疗，仍未达到推荐的血压目标。\n目的：我们旨在比较用于难治性或未控制高血压管理的附加治疗的疗效。\n方法：检索Embase和MEDLINE至2025年11月。纳入比较难治性或未控制高血压附加治疗的随机试验。采用网状Meta分析可信度（CINeMA）框架评估证据确定性。主要结局为诊室收缩压相较基线的变化。在难治性高血压患者以及范围更广的未控制高血压人群中，采用贝叶斯框架下的随机效应网状Meta分析估计合并均数差。\n结果：系统综述纳入35项试验（8,648名患者、12种单独治疗），网状Meta分析纳入30项试验（8,187名患者、10种单独治疗）。在难治性高血压患者中，与基线治疗相比，螺内酯（均数差：-12.43 mm Hg；95%可信区间：-17.68至-7.18；CINeMA中等）和射频肾去神经术（均数差：-8.74 mm Hg；95%可信区间：-12.96至-4.52；CINeMA中等）降低诊室收缩压更为有效。在未控制高血压患者中观察到相似结果。由于大多数头对头比较仍包含无效的可能性，没有任何干预显示明确优于另一种干预。\n结论：在头对头比较中，各附加治疗降低难治性或未控制高血压患者血压的效果未见显著差异。治疗选择应优先考虑已显示优于基线治疗的方案，包括螺内酯、baxdrostat和射频肾去神经术。"
+      },
+      "quicklook": {
+        "title_zh": "难治性或未控制高血压各治疗方案疗效的比较：随机试验网状Meta分析",
+        "one_line": "部分附加治疗优于基线治疗，但各附加治疗之间未见明确优势。",
+        "design": "随机试验的系统综述与贝叶斯随机效应网状Meta分析",
+        "findings": [
+          {
+            "text": "网状Meta分析纳入30项试验、8,187名患者及10种单独治疗。",
+            "quote": "We included 35 trials (8,648 patients and 12 individual treatments) in the systematic review and 30 trials (8,187 patients and 10 individual treatments) in the network meta-analysis."
+          },
+          {
+            "text": "难治性高血压患者中，螺内酯及射频肾去神经术降低诊室收缩压优于基线治疗。",
+            "quote": "In patients with resistant hypertension, spironolactone (mean difference: -12.43 mm Hg; 95% credible interval: -17.68 to -7.18; CINeMA moderate) and radiofrequency renal denervation (mean difference: -8.74 mm Hg; 95% credible interval: -12.96 to -4.52; CINeMA moderate) were more effective than baseline treatment in reducing office systolic blood pressure."
+          },
+          {
+            "text": "未控制高血压患者中也观察到相似结果。",
+            "quote": "Similar findings were observed in patients with uncontrolled hypertension."
+          },
+          {
+            "text": "没有干预明确优于另一种干预，大多数头对头比较仍包含无效的可能性。",
+            "quote": "No intervention demonstrated clear superiority over another because most head-to-head comparisons included the possibility of no effect."
+          }
+        ],
+        "limits": "大多数头对头比较仍包含无效的可能性，未显示附加治疗之间存在明确优势。",
+        "why_read": "区分相对基线治疗的降压效果与附加治疗之间的比较结果。"
+      }
+    },
+    {
+      "rank": 7,
+      "paperID": "doi:10.1016/j.jacadv.2026.103295",
+      "doi": "10.1016/j.jacadv.2026.103295",
+      "pmid": "42822410",
+      "sourceHash": "5cfb05d07f46ea9f65499bb18cf255aed45c6fb716dede341f9b202071ab93db",
+      "translate": {
+        "title_zh": "无纤维化对非缺血性心肌病心脏再同步化治疗预后的影响：系统综述与Meta分析",
+        "abstract_zh": "背景：对于接受心脏再同步化治疗（CRT）的非缺血性心肌病（NICM）患者，目前没有明确建议指导选择带除颤器的CRT（CRT-D）或带起搏器的CRT（CRT-P）。CRT应答概率高且心律失常风险低的患者可能是CRT-P的理想候选者。\n目的：本研究旨在评估，在接受CRT的NICM患者中，无钆延迟强化（LGE）是否与CRT应答和室性心律失常（VA）相关。\n方法：开展系统综述与Meta分析。通过检索PubMed、Web of Science和Scopus，识别在植入CRT之前接受心脏磁共振检查的NICM患者的观察性研究。纳入按LGE状态分层评估CRT超声心动图应答或VA的研究。VA终点包括持续性室性心动过速、适当的植入式心律转复除颤器治疗、经复苏的心脏骤停和猝死。\n结果：纳入十项研究：9项（n = 831）评估CRT应答，6项（745名患者）评估心律失常风险。无LGE患者的CRT应答率显著高于有LGE患者（78.7% vs 50.7%；P < 0.001）。LGE病例（原文此处未明确阴性或阳性）的VA累积发生率极低，显著低于LGE+病例（0.8% vs 21.1%，P < 0.001）。无LGE与更高的CRT应答率（OR：3.52；95% CI：2.54-4.88；P < 0.001）和低得多的心律失常风险（OR：0.06；95% CI：0.02-0.15；P < 0.001）强烈相关。\n结论：在接受CRT的NICM患者中，无LGE与更好的超声心动图应答和极低的心律失常风险强烈相关。在该亚组中，带除颤器的CRT相较CRT-P的增量获益可能有限。"
+      },
+      "quicklook": {
+        "title_zh": "无纤维化对非缺血性心肌病心脏再同步化治疗预后的影响：系统综述与Meta分析",
+        "one_line": "观察性研究汇总显示，无钆延迟强化与更高CRT应答率及更低心律失常风险相关。",
+        "design": "观察性研究的系统综述与Meta分析",
+        "findings": [
+          {
+            "text": "无LGE患者的CRT应答率高于有LGE者：78.7% vs 50.7%，P < 0.001。",
+            "quote": "CRT response was significantly higher in patients without LGE than in patients with LGE (78.7% vs 50.7%; P < 0.001)."
+          },
+          {
+            "text": "无LGE与更高CRT应答率相关（OR 3.52，95% CI 2.54-4.88），也与更低心律失常风险相关（OR 0.06，95% CI 0.02-0.15）。",
+            "quote": "The absence of LGE was strongly associated with higher CRT response (OR: 3.52; 95% CI: 2.54-4.88; P < 0.001) and much lower arrhythmic risk (OR: 0.06; 95% CI: 0.02-0.15; P < 0.001)."
+          },
+          {
+            "text": "作者认为，在无LGE亚组中，CRT-D相较CRT-P的增量获益可能有限。",
+            "quote": "In this subgroup the incremental benefit of CRT with defibrillator over CRT-P may be limited."
+          }
+        ],
+        "limits": "摘要未提供明确局限；原文一处LGE组标记未明确阴性或阳性，本速读未依据该歧义句提取结论。",
+        "why_read": "了解磁共振LGE状态与CRT应答和心律失常风险之间的关联。"
+      }
+    },
+    {
+      "rank": 8,
+      "paperID": "doi:10.1161/strokeaha.126.057089",
+      "doi": "10.1161/strokeaha.126.057089",
+      "pmid": "42817893",
+      "sourceHash": "7cbf94dfefe41f905b51dfe332626975f1188e028d531e40d5000eb5216e9729",
+      "translate": {
+        "title_zh": "左心耳封堵与口服抗凝预防房颤患者卒中的比较：更新的Meta分析",
+        "abstract_zh": "背景：非瓣膜性房颤患者的左房血栓有百分之九十起源于左心耳，左心耳可经皮封堵（左心耳封堵术［LAAC］）。2026年的两项试验（CHAMPION-AF和CLOSURE-AF）使比较LAAC与口服抗凝的现有随机证据增加到原来的两倍以上。我们按出血风险、抗凝治疗资格及比较方案，评估LAAC对卒中、出血和死亡的合并效应。\n方法：本系统综述与Meta分析检索PubMed、Scopus和Embase，从建库至2026年4月15日，查找在非瓣膜性房颤患者中比较经皮LAAC与口服抗凝的随机对照试验。采用Cochrane偏倚风险2工具评估偏倚风险。使用随机效应模型，以比值比合并累积发生率结局，并采用预测区间、预设亚组和试验序贯分析。\n结果：六项随机对照试验（2014-2026年；北美、欧洲和亚洲的358个研究中心；7028名患者）比较LAAC与华法林（2项试验）或直接口服抗凝药（4项试验）；人群主要为符合抗凝治疗条件、既往卒中比例低的患者，另包含2项高出血风险试验及1项消融后试验。两组总体卒中发生率相近（比值比1.10［95% CI，0.78-1.56］）。LAAC组缺血性卒中更常见（比值比1.41［95% CI，1.07-1.86］），但未达到所需信息量。LAAC组非操作相关出血较少（比值比0.58［95% CI，0.35-0.96］），这是唯一达到充足信息量的结局；该结果见于标准风险及消融后患者，但未见于高出血风险患者。\n结论：LAAC最适合的定位是减少符合抗凝治疗条件且出血风险为标准至中等的患者的非操作相关出血，而非作为与口服抗凝在卒中预防上等效的替代方案。\n注册：网址：https://www.crd.york.ac.uk/PROSPERO/；唯一标识符：CRD420261370546。"
+      },
+      "quicklook": {
+        "title_zh": "左心耳封堵与口服抗凝预防房颤患者卒中的比较：更新的Meta分析",
+        "one_line": "总体卒中相近，LAAC非操作相关出血较少；缺血性卒中更常见但信息量不足。",
+        "design": "随机对照试验的系统综述与随机效应Meta分析",
+        "findings": [
+          {
+            "text": "LAAC与口服抗凝的总体卒中发生率相近：比值比1.10，95% CI 0.78-1.56。",
+            "quote": "Overall stroke rates were similar between arms (odds ratio, 1.10 [95% CI, 0.78-1.56])."
+          },
+          {
+            "text": "LAAC组缺血性卒中更常见：比值比1.41，95% CI 1.07-1.86；但未达到所需信息量。",
+            "quote": "Ischemic stroke was more frequent with LAAC (odds ratio, 1.41 [95% CI, 1.07-1.86]) but did not reach the required information size."
+          },
+          {
+            "text": "LAAC组非操作相关出血较少：比值比0.58，95% CI 0.35-0.96；该结果未见于高出血风险患者。",
+            "quote": "Nonprocedural bleeding was lower with LAAC (odds ratio, 0.58 [95% CI, 0.35-0.96]), the only outcome reaching a sufficient information size, in standard-risk and postablation but not high-bleeding-risk patients."
+          }
+        ],
+        "limits": "缺血性卒中结局未达到所需信息量；非操作相关出血是唯一达到充足信息量的结局。纳入人群主要符合抗凝条件且既往卒中比例低。",
+        "why_read": "区分总体卒中、缺血性卒中及不同出血风险人群的结果。"
+      }
+    }
+  ]
+}
