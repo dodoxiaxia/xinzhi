@@ -271,6 +271,13 @@ const LIBRARY_TASK_MS = 45000;
 const LIBRARY_MAX_PDF_BYTES = 10 * 1024 * 1024;
 const libraryCatalogCache = new Map();
 const LIBRARY_RETRY_SECONDS = 300;
+const FULLTEXT_JOB_PREFIX = 'library:job:';
+const FULLTEXT_QUEUE_PREFIX = 'library:queue:';
+const FULLTEXT_OIDC_AUDIENCE = 'https://learn.dryz.info/api/fulltext-worker';
+const FULLTEXT_WORKFLOW_REF = 'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main';
+const FULLTEXT_JOB_LEASE_MS = 180000;
+const FULLTEXT_JOB_LIFETIME_MS = 86400000;
+let fulltextOidcKeys;
 const libraryLocalActive = new Set();
 const LIBRARY_PDF_HOSTS = ['ncbi.nlm.nih.gov','europepmc.org','ebi.ac.uk','nature.com','springer.com','springernature.com','biomedcentral.com','plos.org','frontiersin.org','jmir.org','bmj.com','jamanetwork.com','ahajournals.org','academic.oup.com','oup.com','nejm.org','thelancet.com','sciencedirect.com','cell.com','wiley.com','arxiv.org','medrxiv.org','biorxiv.org','researchsquare.com','zenodo.org','hal.science','osf.io','figshare.com'];
 class LibraryFailure extends Error {
@@ -469,14 +476,14 @@ async function libraryGithub(paper, env, context) {
   return { bytes, source:'github', commit };
 }
 async function libraryOa(paper, context) {
-  let review = false;
+  let review = false, unavailable = false;
   const candidates = [], seen = new Set();
   const add = value => { if (typeof value === 'string' && !seen.has(value) && seen.size < 3) { seen.add(value); candidates.push(value); } };
   try {
     const data = await libraryRead('https://api.unpaywall.org/v2/' + encodeURIComponent(paper.doi) + '?email=shijunxia1988%40gmail.com', context);
     if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
     else if (data.is_oa === true) { add(data.best_oa_location && data.best_oa_location.url_for_pdf); for (const location of (Array.isArray(data.oa_locations) ? data.oa_locations : []).slice(0, 10)) add(location.url_for_pdf); }
-  } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
+  } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); }
   for (const provider of [0, 1]) {
     if (provider) {
       try {
@@ -486,14 +493,14 @@ async function libraryOa(paper, context) {
           const locations = [data.best_oa_location, ...(Array.isArray(data.locations) ? data.locations : []).slice(0, 10)];
           for (const location of locations) if (location && location.is_oa === true) add(location.pdf_url);
         }
-      } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
+      } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); }
     }
     for (const candidate of candidates.splice(0)) {
       try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); return { bytes, source:'oa' }; }
-      catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
+      catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); }
     }
   }
-  return { review };
+  return { review, unavailable };
 }
 async function librarySoftGate(kv, request, doi) {
   const now = Date.now(), lockKey = 'library:lock:' + doi, lock = await libraryGet(kv, lockKey);
@@ -550,8 +557,9 @@ async function handleLibrary(request, env) {
       const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
-      if (paper) return json({ ok:true, found:true, paper, status:paper.fulltextStatus, ...(paper.fulltextStatus !== 'available' && attempt ? libraryRetryInfo(attempt.retryAfter) : {}) });
-      return json({ ok:true, found:false, ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status, ...libraryRetryInfo(attempt.retryAfter) } : {}) });
+      const job = env.FULLTEXT_ASYNC_ENABLED === 'false' ? null : fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
+      if (paper) return json({ ok:true, found:true, paper, status:paper.fulltextStatus, ...(paper.fulltextStatus !== 'available' && attempt ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}) });
+      return json({ ok:true, found:false, ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status, ...libraryRetryInfo(attempt.retryAfter) } : {}) });
     }
     if ([...url.searchParams.keys()].some(key => !['cursor','limit'].includes(key)) || url.searchParams.getAll('cursor').length > 1 || url.searchParams.getAll('limit').length > 1) libraryFail('library_bad_doi', 400);
     const cursor = url.searchParams.get('cursor') || '', rawLimit = url.searchParams.get('limit') || '20';
@@ -567,6 +575,198 @@ async function handleLibrary(request, env) {
     return json(payload);
   } catch (error) { return libraryError(request, error); }
 }
+function fulltextJobRecord(value, doi = '') {
+  if (!value || value.version !== 1 || libraryDoi(value.doi) !== value.doi || (doi && value.doi !== doi)
+      || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.id || '') || !['queued','running','available','pending','review','failed'].includes(value.state)
+      || ![value.createdAt,value.updatedAt,value.nextAttemptAt].every(n => Number.isSafeInteger(n) && n >= 0 && n < 8640000000000000 - 28800000)
+      || !Number.isInteger(value.attempts) || value.attempts < 0 || value.attempts > 3
+      || (value.state === 'running' && (!/^\d{1,20}$/.test(value.owner || '') || !Number.isSafeInteger(value.leaseUntil) || !/^[a-f0-9-]{36}$/.test(value.leaseId || '')))
+      || value.queueKey !== FULLTEXT_QUEUE_PREFIX + String(value.createdAt).padStart(13, '0') + ':' + value.id) return null;
+  return value;
+}
+function fulltextJobActive(job) {
+  return !!job && ['queued','running'].includes(job.state) && (Date.now() - job.createdAt < FULLTEXT_JOB_LIFETIME_MS || (job.state === 'running' && job.leaseUntil > Date.now()));
+}
+function fulltextPublicJob(record, doi = '') {
+  const job = fulltextJobRecord(record, doi);
+  if (!job) return null;
+  const state = ['queued','running'].includes(job.state) && !fulltextJobActive(job) ? 'failed' : job.state;
+  const messages = { queued:job.attempts ? '来源暂时不可用，已安排自动重试。' : '已排队，等待后台获取全文。', running:'后台正在获取全文。',
+    available:'全文已取得，可下载。', pending:'后台已完成查询，目前未找到可获取的 PDF。', review:'全文来源对应需要核验，暂不提供下载。',
+    failed:job.reason === 'library_metadata_unavailable' ? '未能核实官方 DOI 题录，未新增文献。' : '后台未能完成获取，请稍后重新提交。' };
+  return { id:job.id, doi:job.doi, state, attempts:job.attempts, createdAt:new Date(job.createdAt).toISOString(), updatedAt:new Date(job.updatedAt).toISOString(),
+    message:messages[state], ...(['queued','running'].includes(state) ? { nextCheckSeconds:15 } : {}), ...(state === 'queued' && job.nextAttemptAt > Date.now() ? { nextAttemptAt:new Date(job.nextAttemptAt).toISOString() } : {}) };
+}
+function fulltextJobResponse(request, record, paper = null) {
+  const job = fulltextPublicJob(record, record.doi), active = ['queued','running'].includes(job.state);
+  if (paper && paper.fulltextStatus === 'available') return libraryResult(request, paper, '', true);
+  const url = '/api/acquire?doi=' + encodeURIComponent(record.doi);
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true, status:job.state, job, ...(paper ? { paper } : {}), statusUrl:url }, active ? 202 : 200, active ? { 'retry-after':'15' } : {});
+  const next = job.nextAttemptAt ? '<p>下一次自动尝试不早于北京时间 ' + new Date(record.nextAttemptAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '，实际开始时间可能延迟。</p>' : '';
+  const waiting = active ? '<p>后台约每 5 分钟检查下载队列，开始时间可能延迟。任务开始后通常需几十秒。无需保持页面打开，回来后仍可查看结果。</p>' + next + '<p>本页每 15 秒只更新状态，不会重复提交下载。</p><meta http-equiv="refresh" content="15;url=' + pdfEscape(url) + '">' : job.state === 'pending' ? '<p>题录已保存。来源未提供可访问的全文时，后台也无法取得 PDF；可前往官网原文查看。</p>' : '';
+  const link = active ? '<p><a href="' + pdfEscape(url) + '">刷新任务状态</a></p>' : libraryRetryLink(record.doi, '/api/acquire/retry');
+  const view = '/?mode=library&q=' + encodeURIComponent(record.doi);
+  return pdfHtml('<p role="status">' + pdfEscape(job.message) + '</p><p>' + pdfEscape(paper ? paper.title : record.doi) + '</p>' + waiting + link
+    + '<p><a href="' + pdfEscape(view) + '">在文献库查看</a></p>' + pdfOfficialLink(record.doi), active ? 202 : 200, '全文下载任务');
+}
+async function fulltextEnqueue(request, env, doi, paper) {
+  let job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
+  if (fulltextJobActive(job)) return fulltextJobResponse(request, job, paper);
+  const release = await librarySoftGate(env.QL_KV, request, doi);
+  try {
+    job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
+    if (fulltextJobActive(job)) return fulltextJobResponse(request, job, paper);
+    const now = Date.now(), id = crypto.randomUUID();
+    job = { version:1, id, doi, state:'queued', attempts:0, createdAt:now, updatedAt:now, nextAttemptAt:now,
+      queueKey:FULLTEXT_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id };
+    // Save the queue pointer first. If the job write fails, the worker discards its orphan pointer.
+    await libraryPut(env.QL_KV, job.queueKey, JSON.stringify({ id, doi }), { expirationTtl:172800 });
+    await libraryPut(env.QL_KV, FULLTEXT_JOB_PREFIX + doi, JSON.stringify(job), { expirationTtl:604800 });
+    return fulltextJobResponse(request, job, paper);
+  } finally { await release(); }
+}
+function fulltextJwtPart(value) {
+  if (!/^[A-Za-z0-9_-]+$/.test(value || '')) libraryFail('job_auth', 401);
+  try { return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); }
+  catch { libraryFail('job_auth', 401); }
+}
+async function fulltextJobAuthorize(request) {
+  const auth = request.headers.get('authorization') || '';
+  if (auth.length > 16000 || !auth.startsWith('Bearer ')) libraryFail('job_auth', 401);
+  const parts = auth.slice(7).split('.');
+  if (parts.length !== 3) libraryFail('job_auth', 401);
+  let header, claims;
+  try { header = JSON.parse(new TextDecoder().decode(fulltextJwtPart(parts[0]))); claims = JSON.parse(new TextDecoder().decode(fulltextJwtPart(parts[1]))); }
+  catch { libraryFail('job_auth', 401); }
+  const now = Math.floor(Date.now() / 1000);
+  if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(header.kid)
+      || claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== FULLTEXT_OIDC_AUDIENCE
+      || claims.repository !== 'dodoxiaxia/xinzhi' || String(claims.repository_id) !== '1397425558'
+      || claims.sub !== 'repo:dodoxiaxia/xinzhi:ref:refs/heads/main' || claims.ref !== 'refs/heads/main'
+      || claims.workflow_ref !== FULLTEXT_WORKFLOW_REF || claims.runner_environment !== 'github-hosted'
+      || !['schedule','workflow_dispatch','push'].includes(claims.event_name) || !/^\d{1,20}$/.test(claims.run_id || '')
+      || !Number.isInteger(claims.exp) || !Number.isInteger(claims.iat) || !Number.isInteger(claims.nbf)
+      || claims.exp <= now || claims.exp > now + 600 || claims.iat > now + 30 || claims.iat < now - 600 || claims.nbf > now + 30) libraryFail('job_auth', 401);
+  if (!fulltextOidcKeys || fulltextOidcKeys.until < Date.now() || !fulltextOidcKeys.keys.some(k => k.kid === header.kid)) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch('https://token.actions.githubusercontent.com/.well-known/jwks', { method:'GET', redirect:'error', signal:controller.signal, headers:{ accept:'application/json' } });
+      if (!response.ok) libraryFail('job_auth_unavailable', 503);
+      const text = await response.text();
+      if (text.length > 65536) libraryFail('job_auth_unavailable', 503);
+      const payload = JSON.parse(text);
+      if (!Array.isArray(payload.keys) || payload.keys.length > 20) libraryFail('job_auth_unavailable', 503);
+      fulltextOidcKeys = { keys:payload.keys.filter(k => k.kty === 'RSA' && k.alg === 'RS256' && k.use === 'sig'), until:Date.now() + 600000 };
+    } catch (error) { if (error instanceof LibraryFailure) throw error; libraryFail('job_auth_unavailable', 503); }
+    finally { clearTimeout(timer); }
+  }
+  const jwk = fulltextOidcKeys.keys.find(k => k.kid === header.kid);
+  if (!jwk) libraryFail('job_auth', 401);
+  try {
+    const key = await crypto.subtle.importKey('jwk', jwk, { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' }, false, ['verify']);
+    if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fulltextJwtPart(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]))) libraryFail('job_auth', 401);
+  } catch { libraryFail('job_auth', 401); }
+  return claims.run_id;
+}
+async function fulltextJobInput(request) {
+  if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) libraryFail('job_bad_request', 400);
+  const reader = request.body && request.body.getReader();
+  if (!reader) libraryFail('job_bad_request', 400);
+  const chunks = []; let size = 0;
+  while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > 1024) { await reader.cancel(); libraryFail('job_bad_request', 413); } chunks.push(item.value); }
+  const bytes = new Uint8Array(size); let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  let input; try { input = JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); } catch { libraryFail('job_bad_request', 400); }
+  if (!input || typeof input !== 'object' || Array.isArray(input) || !['claim','run'].includes(input.action)
+      || Object.keys(input).some(k => !(input.action === 'claim' ? ['action'] : ['action','doi','id','leaseId']).includes(k))
+      || (input.action === 'run' && (!libraryDoi(input.doi) || input.doi !== libraryDoi(input.doi) || !/^[a-f0-9-]{36}$/.test(input.id || '') || !/^[a-f0-9-]{36}$/.test(input.leaseId || '')))) libraryFail('job_bad_request', 400);
+  return input;
+}
+async function fulltextClaim(env, owner) {
+  let cursor;
+  for (let page = 0; page < 3; page++) {
+    let listing; try { listing = await env.QL_KV.list({ prefix:FULLTEXT_QUEUE_PREFIX, limit:20, ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
+    if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
+    for (const entry of listing.keys) {
+      if (typeof entry.name !== 'string' || !entry.name.startsWith(FULLTEXT_QUEUE_PREFIX)) continue;
+      const pointer = await libraryGet(env.QL_KV, entry.name);
+      if (!pointer || !libraryDoi(pointer.doi)) continue;
+      const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + pointer.doi), pointer.doi);
+      if (!job || job.id !== pointer.id || job.queueKey !== entry.name) {
+        // KV can expose the pointer before the job record; allow propagation before cleanup.
+        const createdAt = Number(entry.name.slice(FULLTEXT_QUEUE_PREFIX.length).split(':')[0]);
+        if (Number.isSafeInteger(createdAt) && Date.now() - createdAt > 300000) await env.QL_KV.delete(entry.name);
+        continue;
+      }
+      if (!['queued','running'].includes(job.state)) { await env.QL_KV.delete(entry.name); continue; }
+      const now = Date.now();
+      if (job.state === 'running' && job.leaseUntil > now) continue;
+      if (!fulltextJobActive(job) || job.attempts >= 3) {
+        await libraryPut(env.QL_KV, FULLTEXT_JOB_PREFIX + job.doi, JSON.stringify({ ...job, state:'failed', updatedAt:now, reason:'job_expired' }), { expirationTtl:604800 });
+        await env.QL_KV.delete(entry.name); continue;
+      }
+      if (job.nextAttemptAt > now) continue;
+      const claimed = { ...job, state:'running', owner, leaseId:crypto.randomUUID(), leaseUntil:now + FULLTEXT_JOB_LEASE_MS, updatedAt:now, attempts:job.attempts + 1 };
+      await libraryPut(env.QL_KV, FULLTEXT_JOB_PREFIX + job.doi, JSON.stringify(claimed), { expirationTtl:604800 });
+      return { id:job.id, doi:job.doi, leaseId:claimed.leaseId };
+    }
+    if (listing.list_complete || !listing.cursor) break;
+    cursor = listing.cursor;
+  }
+  return null;
+}
+async function fulltextRun(env, owner, input) {
+  const key = FULLTEXT_JOB_PREFIX + input.doi, job = fulltextJobRecord(await libraryGet(env.QL_KV, key), input.doi);
+  if (!job || job.id !== input.id || job.state !== 'running' || job.owner !== owner || job.leaseId !== input.leaseId || job.leaseUntil <= Date.now()) libraryFail('job_stale', 409);
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
+  let final;
+  try {
+    const stored = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), ready = libraryPaper(stored, job.doi);
+    let paper;
+    if (ready && ready.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, stored); paper = ready; }
+    else {
+      const context = { signal:controller.signal };
+      paper = await libraryMetadata(job.doi, context);
+      let fetched, review = false, sourceUnavailable = false;
+      try { fetched = await libraryGithub(paper, env, context); }
+      catch (error) {
+        if (controller.signal.aborted) libraryFail('library_timeout', 504);
+        if (error.code === 'library_not_configured') throw error;
+        review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code);
+        sourceUnavailable = !review;
+      }
+      if (!fetched) { const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; } }
+      if (controller.signal.aborted) libraryFail('library_timeout', 504);
+      const current = fulltextJobRecord(await libraryGet(env.QL_KV, key), job.doi);
+      if (!current || current.id !== job.id || current.owner !== owner || current.leaseId !== job.leaseId) libraryFail('job_stale', 409);
+      paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : 'pending' };
+      const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : 'library_metadata_unavailable');
+      paper = saved.paper;
+      if (!fetched && !review && sourceUnavailable) libraryFail('library_upstream', 502);
+    }
+    final = { ...job, state:paper.fulltextStatus, updatedAt:Date.now(), reason:'' };
+  } catch (error) {
+    if (error.code === 'job_stale') throw error;
+    const transient = ['library_timeout','library_upstream','library_storage','library_sync_pending','pdf_timeout','pdf_upstream'].includes(error.code);
+    final = { ...job, state:transient && job.attempts < 3 ? 'queued' : error.code === 'library_identity' ? 'review' : 'failed',
+      updatedAt:Date.now(), nextAttemptAt:Date.now() + (job.attempts === 1 ? 60000 : 600000), reason:['library_metadata_unavailable','library_identity'].includes(error.code) ? error.code : 'job_failed' };
+  } finally { clearTimeout(timer); }
+  const current = fulltextJobRecord(await libraryGet(env.QL_KV, key), job.doi);
+  if (!current || current.id !== job.id || current.owner !== owner || current.leaseId !== job.leaseId) libraryFail('job_stale', 409);
+  await libraryPut(env.QL_KV, key, JSON.stringify(final), { expirationTtl:604800 });
+  if (final.state !== 'queued') await env.QL_KV.delete(job.queueKey);
+  return fulltextPublicJob(final, job.doi);
+}
+async function handleFulltextWorker(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('job_bad_request', 405);
+    const owner = await fulltextJobAuthorize(request);
+    libraryConfig(env);
+    const input = await fulltextJobInput(request);
+    if (input.action === 'claim') return json({ ok:true, job:await fulltextClaim(env, owner) });
+    return json({ ok:true, job:await fulltextRun(env, owner, input) });
+  } catch (error) { return json({ ok:false, error:error instanceof LibraryFailure ? error.code : 'job_server' }, error instanceof LibraryFailure ? error.status : 500); }
+}
 async function handleAcquire(request, env) {
   let doi = '', release;
   const controller = new AbortController(); let timer;
@@ -574,6 +774,11 @@ async function handleAcquire(request, env) {
     const parsed = libraryQuery(request); doi = parsed.doi;
     if (request.method === 'GET') {
       const stored = env.QL_KV ? libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi) : null;
+      if (env.QL_KV && env.FULLTEXT_ASYNC_ENABLED !== 'false' && parsed.url.pathname !== '/api/acquire/retry') {
+        const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
+        if (job) return fulltextJobResponse(request, job, stored);
+        if (stored && stored.fulltextStatus === 'available') return libraryResult(request, stored, '', true);
+      }
       const attempt = env.QL_KV && (!stored || stored.fulltextStatus !== 'available') ? await libraryGet(env.QL_KV, 'library:attempt:' + doi) : null;
       return libraryForm(doi, '/api/acquire', false, attempt && attempt.retryAfter);
     }
@@ -582,6 +787,7 @@ async function handleAcquire(request, env) {
     const cachedRecord = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), cached = libraryPaper(cachedRecord, doi);
     if (cached && cached.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, cachedRecord); return libraryResult(request, cached, '', true); }
     if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT !== undefined && (typeof env.PDF_GITHUB_COMMIT !== 'string' || !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT)))) libraryFail('library_not_configured', 503);
+    if (env.FULLTEXT_ASYNC_ENABLED !== 'false') return fulltextEnqueue(request, env, doi, cached);
     release = await librarySoftGate(env.QL_KV, request, doi);
     timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
     const context = { signal:controller.signal };
@@ -1495,7 +1701,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
+    if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/acquire') return handleAcquire(request, env);
+    if (url.pathname === '/api/acquire/retry') return handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
     if (url.pathname === '/api/pdf') return handlePdf(request, env);
     if (url.pathname === '/api/ql') {

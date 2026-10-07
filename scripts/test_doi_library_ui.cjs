@@ -20,14 +20,14 @@ async function helpers() {
   const radar = { id: 'radar-id', doi: '10.1234/radar', title: 'Archived clinical title', archived: true, date: '2025-01-01' };
   const c = vm.createContext({ URL, AbortController, setTimeout, clearTimeout, encodeURIComponent, CURATED: [kept], FEEDS: { items: [radar] }, LIBRARY: { papers: [held] },
     state: { search: '', mode: 'library', lane: 'aitech', range: '7', journal: 'Other', reading: 'guide' }, _maxDateCache: {},
-    PDF_LIBRARY_IDS: new Set([held.id]), DOI_FULLTEXT: new Map(), DOI_LOOKUPS: new Map(),
+    PDF_LIBRARY_IDS: new Set([held.id]), DOI_FULLTEXT: new Map(), DOI_LOOKUPS: new Map(), DOI_JOBS: new Map(), DOI_JOB_WATCH: { timer:null, doi:'', startedAt:0 },
     SUPPLEMENTAL_LIBRARY: { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 },
     esc: value => String(value).replace(/[<>&"']/g, ''), refreshSupplementalView: () => {},
     matchesFilters: () => false, getCurrentDataset: () => [],
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
   const names = ['exactDoi', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
-    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'pdfDownloadUrl', 'pdfDownloadLink',
+    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'pdfDownloadUrl', 'pdfDownloadLink',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
   vm.runInContext([constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
@@ -61,6 +61,12 @@ async function helpers() {
   assert.equal(c.LIBRARY.papers.filter(p => p.doi === '10.1234/new').length, 1, 'Aliases and repeated pages deduplicate');
   const pending = c.LIBRARY.papers.find(p => p.doi === '10.1234/new');
   assert(c.pdfDownloadLink(pending).includes('待补全文')); assert(c.pdfDownloadLink(pending).includes('/api/acquire?doi=')); assert.equal(c.pdfDownloadUrl(pending), '');
+  const job = { id: '00000000-0000-4000-8000-000000000001', doi: pending.doi, state: 'queued' };
+  c.mergeDoiJob(pending.doi, job); assert(c.pdfDownloadLink(pending).includes('全文排队中')); assert(c.pdfDownloadLink(pending).includes('查看任务'));
+  c.mergeDoiJob(pending.doi, { ...job, state: 'running' }); assert(c.pdfDownloadLink(pending).includes('全文获取中'));
+  assert.throws(() => c.mergeDoiJob(pending.doi, { ...job, doi: '10.1234/wrong' }));
+  c.mergeDoiJob(pending.doi, { ...job, state: 'pending' }); assert(c.pdfDownloadLink(pending).includes('/api/acquire/retry?doi='));
+  c.mergeDoiJob(pending.doi); assert.equal(c.DOI_JOBS.size, 0);
   const collision = { id: id('10.1234/collision'), doi: '10.1234/collision', title: 'Held collision title', metadataStatus: 'hold_bibliography_review' };
   c.LIBRARY.papers.push(collision); c.collision = collision;
   vm.runInContext('STATIC_DOI_PAPERS.push(collision); allPapersMap.set(collision.id,collision);', c);
@@ -97,6 +103,7 @@ async function browserChecks() {
     ['10.1234/new', apiPaper('10.1234/new', 'New clinical title')],
     ['10.1234/pending', apiPaper('10.1234/pending', 'Pending clinical title', 'pending')]
   ]);
+  const jobs = new Map();
   let unsupported = false;
   const context = await browser.newContext(), page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
@@ -106,7 +113,7 @@ async function browserChecks() {
     assert(['GET', 'HEAD'].includes(req.method()), 'Typing/searching/loading never sends POST');
     if (u.pathname === '/api/library') {
       if (unsupported) return route.fulfill({ status: 404, json: { error: 'not_found' } });
-      if (u.searchParams.has('doi')) { const p = records.get(u.searchParams.get('doi')); return route.fulfill({ json: { ok: true, found: !!p, ...(p ? { paper: p, status: p.fulltextStatus } : {}) } }); }
+      if (u.searchParams.has('doi')) { const key = u.searchParams.get('doi'), p = records.get(key), job = jobs.get(key); return route.fulfill({ json: { ok: true, found: !!p, ...(p ? { paper: p, status: p.fulltextStatus } : {}), ...(job ? { job } : {}) } }); }
       return route.fulfill({ json: { ok: true, papers: [...records.values()] } });
     }
     if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { ok: true, found: false, canGenerate: false } });
@@ -156,6 +163,23 @@ async function browserChecks() {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.goto(origin + '/?mode=library&q=' + encodeURIComponent('10.1234/' + 'x'.repeat(220))); await page.locator('.doi-search-notice').waitFor();
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Long DOI does not widen a phone screen');
+    jobs.set('10.1234/job', { id:'00000000-0000-4000-8000-000000000001', doi:'10.1234/job', state:'queued' });
+    await page.clock.install();
+    await page.goto(origin + '/?mode=library&lane=all&q=10.1234%2Fjob');
+    await page.getByText('后台任务已提交', { exact:true }).waitFor();
+    assert((await page.locator('.doi-job-notice').innerText()).includes('已排队'));
+    assert.equal(await page.getByRole('link', { name:'查看任务状态', exact:true }).count(), 1);
+    jobs.get('10.1234/job').state = 'running';
+    await page.clock.runFor(16000);
+    await page.getByText('后台正在获取全文，完成后会显示下载入口。', { exact:false }).waitFor();
+    records.set('10.1234/job', apiPaper('10.1234/job', 'Background cardiovascular fulltext result'));
+    jobs.delete('10.1234/job');
+    await page.clock.runFor(16000);
+    await page.locator('a[href="/api/fulltext?doi=10.1234%2Fjob"]').waitFor();
+    assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(),1);
+    assert.equal(await page.locator('.doi-job-notice').count(),0,'Completion stops pending status and adds verified record without reload');
+    assert(requests.every(request => ['GET','HEAD'].includes(request.method)), 'Polling never submits or acquires again');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Background status fits mobile screen');
     unsupported = true; await page.goto(origin + '/?mode=library&lane=all&q=Static%20official');
     await page.locator('#articlesStream article[data-paper-id="2222222222222222"]').waitFor();
     assert.equal(await page.locator('a[href="/api/pdf?id=2222222222222222"]').count(), 1, 'Old API 404 keeps static downloads');

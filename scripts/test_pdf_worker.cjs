@@ -11,7 +11,9 @@ const library = {
 const defaultPassphrase = 'synthetic-default-passphrase';
 const defaultDigest = createHash('sha256').update(defaultPassphrase).digest('hex');
 assert(original.includes("const PDF_DEFAULT_PASSPHRASE_SHA256 = '09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab';"));
-assert(!/CF_ACCESS_|pdfAuthorize|RS256|jwks/i.test(original));
+assert(!/CF_ACCESS_|pdfAuthorize/i.test(original));
+const readerPdf = original.slice(original.indexOf('async function handlePdf('), original.indexOf('const LIBRARY_PREFIX'));
+assert(!/RS256|jwks|fulltextJobAuthorize/i.test(readerPdf), 'reader downloads use the shared password; OIDC belongs only to the background task endpoint');
 const source = original.replace('const PDF_LIBRARY = {};', 'const PDF_LIBRARY = ' + JSON.stringify(library) + ';').replace(/const PDF_DEFAULT_PASSPHRASE_SHA256 = '[a-f0-9]{64}';/, "const PDF_DEFAULT_PASSPHRASE_SHA256 = '" + defaultDigest + "';").replace('export default {', 'globalThis.worker = {');
 assert.notEqual(source, original);
 const commit = 'a'.repeat(40), otherCommit = 'b'.repeat(40);

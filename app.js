@@ -108,6 +108,8 @@
   const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
   const DOI_FULLTEXT = new Map();
   const DOI_LOOKUPS = new Map();
+  const DOI_JOBS = new Map();
+  const DOI_JOB_WATCH = { timer: null, doi: '', startedAt: 0 };
   const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
 
   function exactDoi(value) {
@@ -204,6 +206,29 @@
     return record && !sameDoiTitle(p.title, record.title) ? record : null;
   }
   function acquireDoiUrl(doi) { return exactDoi(doi) ? '/api/acquire?doi=' + encodeURIComponent(exactDoi(doi)) : ''; }
+  function doiJobActive(job) { return job && ['queued', 'running'].includes(job.state); }
+  function mergeDoiJob(doi, raw) {
+    if (!raw) { DOI_JOBS.delete(doi); return; }
+    if (typeof raw.id !== 'string' || !/^[a-f0-9-]{36}$/.test(raw.id) || raw.doi !== doi
+        || !['queued', 'running', 'available', 'pending', 'review', 'failed'].includes(raw.state)) throw new Error('library_unavailable');
+    DOI_JOBS.set(doi, { id: raw.id, doi, state: raw.state });
+  }
+  function watchDoiJob(doi) {
+    if (DOI_JOB_WATCH.timer) clearTimeout(DOI_JOB_WATCH.timer);
+    DOI_JOB_WATCH.timer = null;
+    if (exactDoi(state.search) !== doi || !doiJobActive(DOI_JOBS.get(doi))) { DOI_JOB_WATCH.doi = ''; return; }
+    if (DOI_JOB_WATCH.doi !== doi) { DOI_JOB_WATCH.doi = doi; DOI_JOB_WATCH.startedAt = Date.now(); }
+    if (typeof document === 'undefined' || document.hidden || Date.now() - DOI_JOB_WATCH.startedAt > 3600000) return;
+    DOI_JOB_WATCH.timer = setTimeout(() => lookupSupplementalDoi(doi, true), 15000);
+  }
+  function doiJobNotice(doi) {
+    const job = DOI_JOBS.get(doi);
+    if (!job) return '';
+    const labels = { queued: '全文任务已排队，页面会自动更新状态。', running: '后台正在获取全文，完成后会显示下载入口。',
+      available: '全文已取得，题录与文件正在同步，可刷新状态。', pending: '后台查询已结束，目前未找到可获取的全文。',
+      review: '后台查询已结束，全文来源对应需要核验。', failed: '后台未能完成获取，可重新提交任务。' };
+    return '<p class="doi-job-notice" role="status">' + labels[job.state] + ' <a href="' + esc(acquireDoiUrl(doi)) + '" target="_blank" rel="noopener">查看任务</a></p>';
+  }
   async function libraryJson(url) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
     try {
@@ -225,6 +250,7 @@
     DOI_LOOKUPS.set(doi, { state: 'loading' });
     try {
       const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
+      mergeDoiJob(doi, result.job);
       if (result.found === true) {
         if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
       } else if (result.found === false) {
@@ -235,6 +261,7 @@
       else throw new Error('library_unavailable');
     } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
     if (exactDoi(state.search) === doi) refreshSupplementalView();
+    watchDoiJob(doi);
   }
   function loadSupplementalLibrary(refresh = false) {
     if (SUPPLEMENTAL_LIBRARY.promise) return SUPPLEMENTAL_LIBRARY.promise;
@@ -789,11 +816,14 @@
   function pdfDownloadLink(p) {
     const conflict = fulltextConflict(p);
     if (conflict) return `<span class="fulltext-state fulltext-review" title="官方题名：${esc(conflict.title)}">题录对应待核实</span>`;
+    const job = p && DOI_JOBS.get(exactDoi(p.doi));
+    if (doiJobActive(job)) return '<span class="fulltext-state">' + (job.state === 'queued' ? '全文排队中' : '全文获取中') + '</span><a href="' + esc(acquireDoiUrl(job.doi)) + '" target="_blank" rel="noopener" class="btn-sm">查看任务</a>';
     const url = pdfDownloadUrl(p);
     if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>`;
     const doi = p && exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
     const label = record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';
-    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquireDoiUrl(doi))}" target="_blank" rel="noopener" class="btn-sm">${record ? '再次获取全文' : '获取全文并加入文献库'}</a>` : '';
+    const acquire = job ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi);
+    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquire)}" target="_blank" rel="noopener" class="btn-sm">${record || job ? '再次获取全文' : '获取全文并加入文献库'}</a>` : '';
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;
@@ -1320,6 +1350,7 @@
   }
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
+    const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
     ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
     const filters = $('#activeFiltersBar');
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
@@ -1333,13 +1364,14 @@
       if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
-    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p><button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}"${pendingLookup ? ' disabled' : ''}>刷新收录状态</button></div>`
+    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${doiJobNotice(doi)}<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}"${pendingLookup ? ' disabled' : ''}>刷新收录状态</button></div>`
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
-      + (!papers.length ? `<div class="empty-state doi-empty"><h3>${pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献'}</h3><p>输入全文口令后，尝试获取这篇文献并加入文献库。</p><a href="${esc(acquireDoiUrl(doi))}" target="_blank" rel="noopener" class="btn-sm btn-primary">获取全文并加入文献库</a></div>` : '');
+      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3><p>' + (activeJob ? '后台取得官方题录后会加入文献库，取得全文后可下载。' : '输入全文口令后，提交后台全文获取任务。') + '</p><a href="' + esc(job && !activeJob ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi)) + '" target="_blank" rel="noopener" class="btn-sm btn-primary">' + (activeJob ? '查看任务状态' : job ? '重新提交全文任务' : '获取全文并加入文献库') + '</a></div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
     if (!lookup) lookupSupplementalDoi(doi);
   }
   function renderStream() {
+    if (DOI_JOB_WATCH.doi && exactDoi(state.search) !== DOI_JOB_WATCH.doi) watchDoiJob(DOI_JOB_WATCH.doi);
     const streamEl = $('#articlesStream');
     const loadMoreBtn = $('#loadMoreBtn');
     if (!streamEl) return;
@@ -2540,6 +2572,7 @@
   };
   window.addEventListener('focus', refreshLibraryAfterReturn);
   window.addEventListener('pageshow', event => { if (event.persisted) refreshLibraryAfterReturn(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && doiJobActive(DOI_JOBS.get(exactDoi(state.search)))) lookupSupplementalDoi(exactDoi(state.search), true); });
   fetch('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } }).then(r => r.ok ? r.json() : Promise.reject())
     .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
     .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });

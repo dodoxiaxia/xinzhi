@@ -13,6 +13,7 @@ on:
       - 'editorial/**'
       - 'config/public_library_adjudications.json'
       - '.github/workflows/daily.yml'
+      - '.github/workflows/fulltext.yml'
   schedule:
     - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
     - cron: '7 */2 * * *'   # 每 2 小时:轻量刷新,内容有变化才发布
@@ -96,6 +97,7 @@ jobs:
           node scripts/test_edge_worker.cjs
           node scripts/test_pdf_worker.cjs
           node scripts/test_doi_library_worker.cjs
+          node scripts/test_fulltext_jobs.cjs
           node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_study_services.cjs
           node scripts/test_study_evidence_regression.cjs
