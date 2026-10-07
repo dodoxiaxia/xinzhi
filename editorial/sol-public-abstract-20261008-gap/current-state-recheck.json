@@ -1,0 +1,77 @@
+{
+  "currentStateSha": "1c9bdb528717b4cfd687b2557d8c3d16dde25d2d",
+  "window": {
+    "start": "2026-10-02",
+    "end": "2026-10-08",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 63,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 55,
+      "综合医学": 7,
+      "AI医疗": 0,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 329,
+      "no_complete_public_abstract": 48,
+      "low_relevance": 25,
+      "correction_comment_letter": 10,
+      "outside_window": 435
+    },
+    "shortfallReason": null
+  },
+  "coverageBeforeGap": {
+    "title": 24,
+    "translate": 18,
+    "study": 0,
+    "quicklook": 18
+  },
+  "checks": [
+    {
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "originalRank": 15,
+      "currentRank": 15,
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "matchesCurrent": true
+    },
+    {
+      "paperID": "doi:10.1038/s41591-026-04673-3",
+      "originalRank": 16,
+      "currentRank": 16,
+      "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "matchesCurrent": true
+    },
+    {
+      "paperID": "doi:10.1093/europace/euag272",
+      "originalRank": 21,
+      "currentRank": 21,
+      "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "matchesCurrent": true
+    },
+    {
+      "paperID": "doi:10.1111/jce.70522",
+      "originalRank": 22,
+      "currentRank": 22,
+      "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+      "matchesCurrent": true
+    },
+    {
+      "paperID": "doi:10.1111/jce.70525",
+      "originalRank": 23,
+      "currentRank": 23,
+      "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+      "matchesCurrent": true
+    },
+    {
+      "paperID": "doi:10.1111/jce.70526",
+      "originalRank": 24,
+      "currentRank": 24,
+      "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+      "matchesCurrent": true
+    }
+  ]
+}

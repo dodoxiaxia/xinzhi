@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    "editorial/sol-public-abstract-20261008-gap/README.md": "0f782158e1bdb2551af5da82803f158a277bfc20f0d6bbcdefb4020da2a5e665",
+    "editorial/sol-public-abstract-20261008-gap/coverage.json": "9ce27ed4948f1dc78f48367dd29f7da3fc9f112f85b1c8257328f8835283d343",
+    "editorial/sol-public-abstract-20261008-gap/current-state-recheck.json": "3b8503fd6bf391d88607797e501b796679eeaf9d93c3c7b77bfa1fded2d0c53c",
+    "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41",
+    "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4",
+    "editorial/sol-public-abstract-20261008-gap/gap-board.json": "6785062516a4f3f34d8a923c13c0e9df9af1e310ad8b02f7bb228fd0fe88bbb5",
+    "editorial/sol-public-abstract-20261008-gap/gap-cache.json": "7e13d0cf0840883d11c645139cc9d25e2b346280cf9ed2f9fc1a9c114ae93787",
+    "editorial/sol-public-abstract-20261008-gap/receipt.json": "5c7381877c906d8c436d274181cec0f313b0ed63633ba697ddece14aa0188d19",
+    "editorial/sol-public-abstract-20261008-gap/reviews/batch-a-review.json": "9417a5ac55b29aa5eecdf6353d8aa1ae5dab303ca67e1e04588189850e97f617",
+    "editorial/sol-public-abstract-20261008-gap/reviews/batch-b-review.json": "1d580705ec1d02d3d5fa8eef06d539e30afeccb14afc1141b0734d9366df22cb",
+    "editorial/sol-public-abstract-20261008-gap/sources.json": "e1c9d1994ad833ffe6c8e376a680aa65d0208e99a5a58d0c1b818a27935a2490",
+    "editorial/sol-public-abstract-20261008-gap/validation.json": "7533f5001c59be7de8b77b2942c9de51359a539ecb65488689bff3269c0c5b7b",
+    "scripts/public_editorial_overlay.py": "e5985326400031b55b451d3b5937504201973da7e8f991db0db459f8bcc4d16d",
+    "scripts/preview_sol_public_overlay.py": "d498558b2aa2741cb0e7229fab5e065cee48cb9ebbb920cf8506a4af58cd4167",
+    "scripts/test_public_editorial_overlay.py": "9f6dbc0eb5e1e9835e385777d98ef1d040c264690787d828b8657aeeacd71917",
+    "scripts/test_sol_gap_overlay.py": "339c48c125fd980af1c6bead92bce6ccd66a3b6fd038eddcb1fc4de985759a2c"
+  }
+}

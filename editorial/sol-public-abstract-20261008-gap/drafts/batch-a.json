@@ -1,0 +1,112 @@
+{
+  "papers": [
+    {
+      "rank": 15,
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "doi": "10.1038/s41591-026-04704-z",
+      "pmid": "42839103",
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "translate": {
+        "title_zh": "体内BCMA CAR-T治疗复发／难治性多发性骨髓瘤的延长随访",
+        "abstract_zh": "体内嵌合抗原受体T细胞（CAR-T）治疗的长期结局数据仍然有限。我们此前报告了体内B细胞成熟抗原（BCMA）CAR-T（ESO-T01）治疗四例复发／难治性多发性骨髓瘤患者的初步安全性和疗效数据；患者未接受白细胞单采和淋巴细胞清除，随访最长达3个月。主要终点包括安全性和耐受性，次要终点包括疗效、药代动力学和药效动力学。所有患者均出现双阶段细胞因子释放综合征（1-3级）和血液学毒性（≥3级）。一例患者出现1级免疫效应细胞相关神经毒性综合征。客观缓解率达到100%（两例严格完全缓解和两例部分缓解）。本文更新最长随访15个月的长期安全性和缓解持久性数据。未发生免疫原性或整合相关毒性，初次报告之后也未出现与ESO-T01相关的重要不良事件。四例患者中，一例维持严格完全缓解达15个月。中位无进展生存期为4.0个月（范围3.0-15.0个月）。疾病进展后，多种挽救治疗使总生存期延长至输注后5.5-10.9个月。三例患者复发或进展，均伴髓外受累，并最终在随访期间死亡。一例患者在接受体外制备的CAR-T治疗后，伴随其强劲扩增获得了持久缓解。总体而言，这些更新结果为体内CAR-T治疗的安全性和疗效提供了更多认识。所观察到的持续性有限，提示必须进一步优化体内CAR-T平台。ClinicalTrials.gov注册号：NCT06691685。"
+      },
+      "quicklook": {
+        "title_zh": "体内BCMA CAR-T治疗复发／难治性多发性骨髓瘤的延长随访",
+        "one_line": "一例严格完全缓解维持较久，其余患者复发或进展并在随访中死亡。",
+        "design": "四例复发／难治性多发性骨髓瘤患者的体内BCMA CAR-T治疗延长随访。",
+        "findings": [
+          {
+            "text": "初期所有患者均发生双阶段细胞因子释放综合征和血液学毒性，客观缓解率为100%。",
+            "quote": "All patients developed dual-phase cytokine release syndrome (grades 1-3) and hematotoxicities (grade ≥3). One patient developed grade 1 immune effector cell-associated neurotoxicity syndrome. The objective response rate reached 100% (two stringent complete response and two partial response)."
+          },
+          {
+            "text": "未发生免疫原性或整合相关毒性，初次报告后未出现与该治疗相关的重要不良事件。",
+            "quote": "No immunogenicity‑ or integration‑related toxicities occurred, and no important adverse events related to ESO-T01 emerged beyond the initial report."
+          },
+          {
+            "text": "一例维持严格完全缓解15个月；中位无进展生存期为4.0个月，范围3.0-15.0个月。",
+            "quote": "Of the four patients, one maintained stringent complete response for 15 months. The median progression-free survival was 4.0 (range 3.0-15.0) months."
+          },
+          {
+            "text": "三例发生复发或进展且均伴髓外受累，最终在随访中死亡；一例经体外制备CAR-T治疗获得持久缓解。",
+            "quote": "Three patients experienced relapse or progression, all with extramedullary involvement, and eventually died during follow-up. One patient achieved durable response with robust expansion from ex vivo CAR-T."
+          }
+        ],
+        "limits": "所观察到的体内CAR-T持续性有限，需要进一步优化平台。",
+        "why_read": "关注体内CAR-T长期结局，以及早期缓解与后续复发、挽救治疗的区别。"
+      }
+    },
+    {
+      "rank": 16,
+      "paperID": "doi:10.1038/s41591-026-04673-3",
+      "doi": "10.1038/s41591-026-04673-3",
+      "pmid": "42827132",
+      "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "translate": {
+        "title_zh": "尿液细胞游离RNA用于膀胱癌检测与治疗反应预测",
+        "abstract_zh": "尿液生物标志物有望改善泌尿生殖系统恶性肿瘤的无创检测和分子特征分析。本文介绍尿液细胞游离RNA（cfRNA）片段随机引物引发和亲和捕获后通过测序进行富集分析的方法（uRARE-seq），这是一种用于尿液cfRNA谱分析的液体活检方法，并将其应用于癌症患者和对照者的683份尿液样本。尿液cfRNA含有来自泌尿生殖组织的转录本；在前列腺癌、肾癌或膀胱癌患者中，还含有肿瘤来源的转录本。uRARE-seq检测局限性膀胱癌时，在特异度为90%的条件下，敏感度为95%。该方法优于尿液肿瘤DNA分析，且不受场效应突变存在的影响。尿液cfRNA分析还可敏感地检测微小残留病灶，并区分手术后的完全分子学缓解与膀胱内卡介苗（BCG）治疗后的完全分子学缓解。对BCG治疗获得完全缓解者的治疗前尿液富含T细胞和其他免疫特征，提示已存在抗肿瘤免疫反应，而未缓解者的增殖相关基因表达更高。在114例患者的治疗前尿液中，这种生物学差异使研究者得以开发一种生物标志物，用于预测BCG相较于化疗的治疗反应可能性（曲线下面积为0.93），该标志物与复发风险密切相关。因此，尿液cfRNA分析是一种有前景的膀胱癌生物标志物方法，也可能适用于其他泌尿系统恶性肿瘤，但仍需要前瞻性研究来评估其临床效用。"
+      },
+      "quicklook": {
+        "title_zh": "尿液细胞游离RNA用于膀胱癌检测与治疗反应预测",
+        "one_line": "尿液cfRNA兼具膀胱癌检测和疗效预测潜力，临床效用仍需前瞻性评估。",
+        "design": "以癌症患者和对照者的683份尿液样本评估uRARE-seq液体活检方法。",
+        "findings": [
+          {
+            "text": "检测局限性膀胱癌时，在90%特异度下敏感度为95%；表现优于尿液肿瘤DNA分析，且不受场效应突变影响。",
+            "quote": "uRARE-seq demonstrated 95% sensitivity at 90% specificity for detecting localized bladder cancer. The method outperformed urine tumor DNA analysis and was unaffected by the presence of field-effect mutations."
+          },
+          {
+            "text": "可敏感检测微小残留病灶，并区分手术后与膀胱内BCG治疗后的完全分子学缓解。",
+            "quote": "Urine cfRNA analysis also sensitively detected minimal residual disease and distinguished complete molecular responses after surgery from those after intravesical Bacillus Calmette-Guérin (BCG)."
+          },
+          {
+            "text": "BCG完全缓解者的治疗前尿液富含T细胞及其他免疫特征；未缓解者的增殖相关基因表达更高。",
+            "quote": "Pretreatment urine from complete responders to BCG was enriched for T cell and other immune signatures, suggesting a preexisting antitumor immune response, whereas nonresponders showed higher expression of proliferation-related genes."
+          },
+          {
+            "text": "在114例患者的治疗前尿液中开发了预测BCG相较于化疗的治疗反应可能性的标志物，曲线下面积为0.93，并与复发风险密切相关。",
+            "quote": "In pretreatment urine from 114 patients, this biological difference enabled development of a biomarker predicting likelihood of response to BCG versus chemotherapy (area under the curve 0.93) that was strongly associated with risk of recurrence."
+          }
+        ],
+        "limits": "仍需前瞻性研究评估其临床效用。",
+        "why_read": "把尿液无创检测、残留病灶监测和治疗反应预测联系起来。"
+      }
+    },
+    {
+      "rank": 21,
+      "paperID": "doi:10.1093/europace/euag272",
+      "doi": "10.1093/europace/euag272",
+      "pmid": "42834820",
+      "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "translate": {
+        "title_zh": "室性心律失常高危患者的升钾方案：随机POTCAST试验的一项预先指定观察性分析",
+        "abstract_zh": "背景与目的：POTCAST试验（n=1,200）显示，在植入式心律转复除颤器（ICD）患者中，将血浆钾水平控制在正常范围高值可减少室性心律失常。我们比较了用于升高血浆钾的三种方案下血浆钾水平的变化，并描述了各方案的结局。方法：我们研究了POTCAST中600名对照组参与者和572名完成钾水平上调的干预组参与者。干预组参与者根据血浆钾上调后的治疗分为：a）盐皮质激素受体拮抗剂（MRA）单药治疗，b）钾补充剂单药治疗，或c）二者联合治疗。主要终点为持续性室性心律失常、适当的ICD治疗、因心律失常或心力衰竭住院，或全因死亡的复合终点。安全性结局包括死亡及电解质／肾脏异常。结果：六个月后，MRA组血浆钾由4.12升至4.27 mmol/L（p=0.004），钾补充剂组由3.99升至4.24 mmol/L（p<0.001），联合治疗组由3.98升至4.34 mmol/L（p<0.001）。对照组中29%（n=175）的参与者发生主要终点，MRA组为22%（n=16），钾补充剂组为21%（n=31），联合治疗组为22%（n=72）（方案间p=0.8）。对照组低钾血症发生率为13%；接受MRA、钾补充剂和联合治疗的参与者中分别为3%、9%和5%。对照组高钾血症发生率为0.2%；接受MRA、钾补充剂和联合治疗的参与者中分别为0%、3%和4%（方案间p>0.1）。结论：MRA、钾补充剂或二者联合治疗均提高了钾水平。所有方案均与数值上低于对照组的终点发生率相关。我们未检出各方案间终点或安全性存在统计学显著差异。"
+      },
+      "quicklook": {
+        "title_zh": "室性心律失常高危患者的升钾方案：随机POTCAST试验的一项预先指定观察性分析",
+        "one_line": "预先指定观察性分析中，三种升钾方案均升高血钾，方案间未检出显著结局差异。",
+        "design": "POTCAST随机试验的预先指定观察性分析，按钾水平上调后的治疗方案分组。",
+        "findings": [
+          {
+            "text": "六个月后，MRA、钾补充剂及联合治疗均提高血浆钾水平。",
+            "quote": "After six months, plasma potassium increased from 4.12 to 4.27 mmol/L (p=0.004) with MRA, from 3.99 to 4.24 mmol/L (p<0.001) with potassium-supplements, and from 3.98 to 4.34 mmol/L (p<0.001) with combination-therapy."
+          },
+          {
+            "text": "主要终点发生率：对照组29%，MRA组22%，钾补充剂组21%，联合治疗组22%；方案间p=0.8。",
+            "quote": "The primary endpoint occurred in 29% (n=175) of controls, 22% (n=16) in the MRA group, 21% (n=31) in the potassium-supplements group and in 22% (n=72) in the combination-therapy group (p=0.8 between regimens)."
+          },
+          {
+            "text": "低钾血症发生率：对照组13%，MRA组3%，钾补充剂组9%，联合治疗组5%。",
+            "quote": "Hypokalemia occurred in 13% of controls and in 3%, 9%, and 5% of participants receiving MRA, potassium-supplements and combination-therapy, respectively."
+          },
+          {
+            "text": "高钾血症发生率：对照组0.2%，MRA组0%，钾补充剂组3%，联合治疗组4%；方案间p>0.1。",
+            "quote": "Hyperkalemia occurred in 0.2% of controls and in 0%, 3%, and 4% of participants receiving MRA, potassium-supplements, and combination-therapy (p>0.1 between regimens)."
+          }
+        ],
+        "limits": "摘要未提供明确局限。",
+        "why_read": "了解不同升钾方案的结局与电解质异常数据，供评估高危患者治疗选择。"
+      }
+    }
+  ]
+}
