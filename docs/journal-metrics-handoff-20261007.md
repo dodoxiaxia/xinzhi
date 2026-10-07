@@ -8,6 +8,8 @@
 
 完整逐刊来源覆盖见 [coverage CSV](journal-metrics-coverage-20261007.csv)，缺失见 [unverified CSV](journal-metrics-unverified-20261007.csv)，原始别名及出现次数见 [inventory JSON](journal-metrics-inventory-20261007.json)。14 刊有核实 JIF，168 标签 JIF 未核实；全部 182 个适用/身份不清标签的 JCR 分区仍未核实，23 标签为不适用。8 刊公开学科与 JIF 排名已记录，但不以排名比例推算 Q 值。没有混用 JCI 排名、CiteScore、SJR 或中科院分区。
 
+后续收到的 5 份“供参考”表已按 [有限覆盖审计](journal-reference-audit-20261007.md)纳入：受支持字节访问 403，预览可见范围匹配 73 标签/74 记录；2024 JIF/2025 JCR 与官方较新值分开，50 单学科 Q 候选及 18 多学科单 Q 行只进私有中间表，未变成已核当前指标。新增 5 个参考表回归检查通过，journal Python 总数为 18。
+
 ## 核实来源
 
 核验时间均为 `2026-10-07T09:24:05Z`。表中数据年为 2025；JCR 发布版年为 2026。[Annual Reviews 出版社页面](https://www.annualreviews.org/page/librarians/impact-factors)正文明确两者关系，但小标题仍写 2025，已记录这一页面内部不一致。Clarivate 2026 发布新闻可搜索到，但直接打开失败，未用其不可读正文补值。
