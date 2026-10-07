@@ -43,7 +43,12 @@ class SelectionTests(unittest.TestCase):
   selected,win=w.select([a,b,c,d],CLOCK);self.assertEqual(set(p['weeklyCategory'] for p in selected),set(w.CATEGORIES))
 
 class CacheAndBudgetTests(unittest.TestCase):
- def setUp(self):self.p=w.select([paper()],CLOCK)[0][0]
+ def setUp(self):
+  # These cases exercise local injected transports, not paid Actions dispatch.
+  # The dedicated CI guard case below opts back into Actions explicitly.
+  environment=patch.dict(w.os.environ,{'GITHUB_ACTIONS':''})
+  environment.start();self.addCleanup(environment.stop)
+  self.p=w.select([paper()],CLOCK)[0][0]
  def test_translation_numbers_occurrences_and_quotes_are_strict(self):
   self.assertEqual(w.validate('translate',tr(),self.p),tr());self.assertEqual(w.validate('quicklook',ql(),self.p),ql())
   for task,value in [('translate',dict(tr(),abstract_zh=tr()['abstract_zh'].replace('120','121'))),('translate',dict(tr(),abstract_zh=tr()['abstract_zh']+'120')),('quicklook',dict(ql(),findings=[{'text':'999例','quote':QUOTE},ql()['findings'][1]]))]:
