@@ -1643,6 +1643,33 @@
   }
 
   // Render Sources Health Grid
+  function sourceHealthDetails(s) {
+    const reason = {
+      publisher_access_challenge: '出版商返回访问验证页，本轮停止继续请求同主机。',
+      publisher_cookie_requirement: '出版商要求浏览器 Cookie，订阅请求跳转到网页。',
+      publisher_login_page: '订阅请求跳转到登录页。',
+      feed_redirected_to_journal_page: '旧订阅地址跳转到期刊网页，未取得 RSS。',
+      html_instead_of_feed: '本轮返回网页内容，未取得有效订阅。',
+      http_access_refusal: '同主机已拒绝或限流，本轮没有继续请求。'
+    }[s.failureReason || s.blockedReason];
+    const parts = reason ? [reason] : [];
+    const x = s.excludedItems;
+    if (x) {
+      const reasons = [[x.undated, '日期缺失'], [x.olderThan14Days, '超出14天'], [x.future, '未来日期'], [x.unclassifiedOrInvalid, '主题或链接未入选']]
+        .filter(([n]) => n > 0).map(([n, label]) => `${label} ${n} 条`);
+      if (reasons.length) parts.push(reasons.join('；') + '。');
+    } else if (s.status === 'filtered_empty') parts.push('已有订阅条目未通过日期或主题筛选，不代表期刊没有新文章。');
+    const p = s.pubmedFallback;
+    if (p) {
+      if (p.status === 'records_observed') parts.push(`PubMed 备用快照 ${p.observedItems} 条，近14天 ${p.eligibleItems} 条${p.stale || olderThan(p.checkedAt,6) ? '（快照已过期）' : ''}。`);
+      else parts.push(p.configured ? 'PubMed 备用查询尚无匹配记录。' : 'PubMed 备用查询尚未覆盖此来源。');
+      if (p.checkedAt && (p.configured || p.status === 'records_observed')) parts.push(`备用检查：${contentDate(p.checkedAt)}（北京时间）。`);
+      if (p.queryScope === 'cardiovascular_or_ai' && p.configured) parts.push('备用检索限心血管或 AI 主题。');
+      if (p.queryTruncated && p.configured) parts.push('备用检索达到结果上限，不能据此判断完整覆盖。');
+    }
+    return parts.join(' ');
+  }
+
   function renderSourcesHealth() {
     const grid = $('#sourcesHealthGrid');
     const meta = $('#sourcesHealthMeta');
@@ -1658,8 +1685,8 @@
 
     grid.innerHTML = sources.map(s => {
       const isOk = successful(s);
-      const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '近 14 天无新条目' : isOk ? '获取成功' :
-        s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
+      const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '获取成功 · 暂无入选' : isOk ? '获取成功' :
+        s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'not_checked_host_blocked' ? '同主机暂停检查' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
       return `
         <div class="source-item">
           <div class="source-item-name">
@@ -1673,6 +1700,7 @@
             <span>含摘要: ${s.itemsWithAbstracts || 0}</span>
           </div>
           ${s.cachedItems ? `<small>保留 ${esc(s.cachedItems)} 条旧缓存 · 最近缓存 ${esc(contentDate(s.lastCachedFetchAt || s.lastSuccessfulAt))}</small>` : ''}
+          ${sourceHealthDetails(s) ? `<small>${esc(sourceHealthDetails(s))}</small>` : ''}
           <a href="${esc(s.url)}" target="_blank" rel="noopener" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent);">
             ${esc(s.url)} ↗
           </a>

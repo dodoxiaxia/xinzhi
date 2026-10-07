@@ -10,7 +10,7 @@ PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh'}
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
-SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error'}
+SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
 RELEASE = 'v13.6'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
@@ -40,6 +40,17 @@ def public_quicklook(item):
     for field in ('source_url','abstractSourceUrl'):
         if field in out:out[field]=safe_url(out[field])
     out['findings']=[{k:v for k,v in x.items() if k in {'text','quote'}} for x in out.get('findings',[]) if isinstance(x,dict)]
+    return out
+
+def public_health(source, pubmed, now):
+    from refresh_feeds import safe_url as sanitized_url
+    from source_fallbacks import coverage
+    out={k:v for k,v in source.items() if k in SOURCE_FIELDS}
+    if 'responseUrl' in out:out['responseUrl']=sanitized_url(safe_url(out['responseUrl']))
+    if 'excludedItems' in out:
+        out['excludedItems']={k:v for k,v in out['excludedItems'].items()
+                              if k in {'undated','future','olderThan14Days','unclassifiedOrInvalid'} and type(v) is int and v>=0}
+    out['pubmedFallback']=coverage(source,pubmed,now)
     return out
 
 def make_archive(candidates,library):
@@ -144,7 +155,9 @@ def main():
     editorial_drafts={article_key(d):d for d in load('editorial/source_checked_drafts.json')['articles']}
     library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p,editorial_drafts) for p in l['papers']]}
     candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p,editorial_drafts) for p in c['items']]}
-    health={'checkedAt':h.get('checkedAt'),'sources':[{k:v for k,v in s.items() if k in SOURCE_FIELDS} for s in h['sources']]}
+    pubmed=load('data/pubmed.json') if (ROOT/'data/pubmed.json').is_file() else {}
+    now=datetime.datetime.now(datetime.timezone.utc)
+    health={'checkedAt':h.get('checkedAt'),'sources':[public_health(s,pubmed,now) for s in h['sources']]}
     tz=json.loads((ROOT/'data/translations.json').read_text()) if (ROOT/'data/translations.json').exists() else {}
     def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower())
     for q in candidates['items']+library['papers']:

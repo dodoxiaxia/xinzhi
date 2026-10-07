@@ -3,6 +3,7 @@
 import argparse, datetime, hashlib, json, time, urllib.request, urllib.parse, xml.etree.ElementTree as ET
 from pathlib import Path
 from build_data import clean, classify
+from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,6 +22,7 @@ JOURNALS = [
     'JAMA', 'JAMA Cardiology', 'JAMA Internal Medicine', 'JAMA Network Open',
     'Nature Medicine', 'npj Digital Medicine', 'Cardiovascular Diabetology', 'BMJ Digital Health & AI'
 ]
+JOURNALS += list(ADDITIONAL_JOURNALS)
 
 def request(action, params):
     u = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/' + action + '?' + urllib.parse.urlencode(params)
@@ -97,6 +99,7 @@ def parse(root):
             'url': 'https://doi.org/' + doi if doi else 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/',
             'pubmed_url': 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/',
             'journal': journal,
+            'journalAbbreviation': article.findtext('./Journal/ISOAbbreviation') or '',
             'date': date,
             'dateBasis': date_basis,
             'category': classify(title, journal),
@@ -125,7 +128,7 @@ def main():
     now = datetime.datetime.now(datetime.timezone.utc)
     start = (now - datetime.timedelta(days=a.days)).strftime('%Y/%m/%d')
     end = now.strftime('%Y/%m/%d')
-    term = '(' + ' OR '.join('"' + j + '"[Journal]' for j in JOURNALS) + ') AND ("' + start + '"[Date - Publication] : "' + end + '"[Date - Publication])'
+    term = '(' + ' OR '.join(journal_query(j) for j in JOURNALS) + ') AND ("' + start + '"[Date - Publication] : "' + end + '"[Date - Publication])'
     found = json.loads(request('esearch.fcgi', {'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': a.limit, 'sort': 'pub date'}))['esearchresult']
     ids = found['idlist']
     time.sleep(0.4)
