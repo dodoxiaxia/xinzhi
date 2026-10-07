@@ -95,10 +95,23 @@ def main():
         if geometry['drawer']:
             check(geometry['drawer'][0] <= geometry['drawer'][1] + 1, label + ': no reader overflow')
 
-    def open_weekly(page, width=1440):
+    def expected_weekly(page):
+        return page.evaluate('''() => {
+          const end = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Shanghai'}).format(new Date());
+          const start = new Date(end+'T00:00:00Z'); start.setUTCDate(start.getUTCDate()-6);
+          return window.FEEDS.items.filter(p=>p.weeklyPick && (!p.datePrecision || p.datePrecision==='day')
+            && p.date?.slice(0,10)>=start.toISOString().slice(0,10) && p.date.slice(0,10)<=end).length;
+        }''')
+
+    def open_weekly(page, width=1440, legacy_reader=False):
         page.set_viewport_size({'width': width, 'height': 1000 if width > 640 else 900})
         page.goto(base + '?mode=weekly&style=a', wait_until='load')
-        expect(page.locator('.weekly-auto-item')).to_have_count(8)
+        expect(page.locator('.weekly-auto-item')).to_have_count(expected_weekly(page))
+        if legacy_reader:
+            page.evaluate('''() => {
+              const ids=[...document.querySelectorAll('.weekly-auto-item')].slice(0,2).map(e=>e.dataset.paperId);
+              window.FEEDS.items.filter(p=>ids.includes(p.id)).forEach(p=>{p._testWeeklyPick=p.weeklyPick;delete p.weeklyPick;});
+            }''')
 
     try:
         with sync_playwright() as p:
@@ -134,8 +147,9 @@ def main():
                         huddle, source = page.locator('#openHuddleBtn').bounding_box(), page.locator('#sourceStatusBtn').bounding_box()
                         check(source['x'] >= huddle['x'] + huddle['width'] - 1, label + ': source entry right of huddle')
                         if mode == 'weekly':
-                            expect(page.locator('.weekly-auto-item')).to_have_count(8)
-                            first, second = [page.locator('.weekly-auto-item').nth(i).bounding_box() for i in [0, 1]]
+                            expect(page.locator('.weekly-auto-item')).to_have_count(expected_weekly(page))
+                            cards = page.locator('.weekly-group').filter(has=page.locator('.weekly-auto-item')).first.locator('.weekly-auto-item')
+                            first, second = [cards.nth(i).bounding_box() for i in [0, 1]]
                             board, deep = page.locator('#weeklyAuto').bounding_box(), page.locator('.weekly-deep-read').bounding_box()
                             if width > 1000:
                                 check(abs(first['y'] - second['y']) < 2 and second['x'] > first['x'], label + ': two card columns')
@@ -186,7 +200,7 @@ def main():
             check(len(posts) == 0, 'Morning-list changes only read caches, never generate')
             check(bool(page.evaluate('window.CONTENT_STATUS.radarUpdatedAt')), 'Content timestamps remain in source data')
 
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             paper_id = page.locator('.weekly-card-actions [data-action="open-drawer"]').first.get_attribute('data-paper-id')
             original = page.evaluate('(id) => { const p = window.FEEDS.items.find(p => p.id === id); return p.abstractSections?.map(s => s.text).join(" ") || p.summary; }', paper_id)
             read_button = page.locator('.weekly-card-actions [data-action="open-drawer"]').first
@@ -218,7 +232,7 @@ def main():
 
             for outcome in ['abort', 'provider_error', 'bad_json', 'empty']:
                 controls['post'] = outcome
-                open_weekly(page)
+                open_weekly(page, legacy_reader=True)
                 page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
                 page.locator('[data-action="ai-translate"]').click()
                 expect(page.locator('[data-action="ai-translate"]')).to_have_text('重试翻译')
@@ -232,7 +246,7 @@ def main():
                 expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
 
             controls['lookup'] = 'abort'
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('[data-action="tr-check"]')).to_be_visible()
             controls['lookup'] = 'absent'
@@ -242,18 +256,18 @@ def main():
 
             controls['lookup'] = 'cached'
             before = len(posts)
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
             check(page.locator('[data-action="ai-translate"]').count() == 0 and len(posts) == before, 'Saved translation readable when generation is disabled')
             controls['lookup'] = 'off'
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text('翻译服务暂不可用')
             check(page.locator('[data-action="ai-translate"]').count() == 0, 'Unavailable translation shows a concise state')
 
             controls['lookup'] = 'absent'
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('[data-action="ai-translate"]')).to_be_visible()
             page.evaluate('window.__translationDelay = 1200')
@@ -269,13 +283,14 @@ def main():
             expect(page.locator('.drawer-title-en')).to_have_text(second_title)
             check(FIXTURE_ZH not in page.locator('.abstract-translation').inner_text(), 'Late translation never takes over another paper')
             page.locator('#drawerCloseBtn').click()
+            page.evaluate('''() => window.FEEDS.items.filter(p=>p._testWeeklyPick).forEach(p=>p.weeklyPick=p._testWeeklyPick)''')
             page.locator('#sourceStatusBtn').click()
             page.locator('[data-mode="weekly"]').click()
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
             check(True, 'Returning to the original paper retains completed translation')
 
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             controls['abstract'] = 'abort'
             page.evaluate('''id => { const p = window.FEEDS.items.find(p => p.id === id); p.summary=''; p.abstractSections=[]; }''', paper_id)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()

@@ -280,7 +280,15 @@
   }
   const LIVE_QL = {};
   function qlKey(p) { return p.doi ? String(p.doi).toLowerCase() : 'pmid-' + p.pmid; }
-  function quicklookOf(p) { const k = qlKey(p); return (window.QUICKLOOKS||{})[k] || LIVE_QL[k] || null; }
+  function preGeneratedOf(p) {
+    return (window.PREGENERATED || {})[trKeyOf(p)] || null;
+  }
+  function quicklookOf(p) {
+    const k = qlKey(p), embedded = preGeneratedOf(p)?.quicklook;
+    const valid = embedded && typeof embedded.one_line === 'string' && embedded.one_line.trim()
+      && Array.isArray(embedded.findings) && embedded.findings.every(f => f && typeof f.text === 'string' && typeof f.quote === 'string');
+    return (window.QUICKLOOKS || {})[k] || (valid ? embedded : null) || LIVE_QL[k] || null;
+  }
   // 一键 AI 解读：后端 /api/ql（Cloudflare _worker.js）。本地静态预览没有后端时自动隐藏按钮。
   function aiApiCheck(paper) {
     if (paper._aiChecked || (!paper.doi && !paper.pmid)) return;
@@ -300,6 +308,13 @@
   const trKeyOf = p => p.pmid ? 'pmid:' + p.pmid : (p.doi ? 'doi:' + String(p.doi).toLowerCase() : '');
   function validTranslation(tr) {
     return !!(tr && typeof tr.abstract_zh === 'string' && tr.abstract_zh.trim());
+  }
+  function hydratePreGenerated(paper) {
+    const record = preGeneratedOf(paper);
+    if (!record) return;
+    if (validTranslation(record.translation)) LIVE_TR[trKeyOf(paper)] = record.translation;
+    const result = studyResultOf(record, 'study');
+    if (result && result.papers.some(p => p.key === studyKey(paper))) STUDY_RESULTS[studyKey(paper)] = { state: 'done', result, cached: true, canGenerate: false };
   }
   function translationCanGenerate(paper) {
     return typeof paper._trCanGenerate === 'boolean' ? paper._trCanGenerate : AI_AVAIL;
@@ -343,6 +358,7 @@
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
     if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">机器翻译，未经人工核对；以英文原文为准。</p></div>`;
+    if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
     if (paper._trState === 'loading') return '<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…</p></div>';
     if (!(paper.pmid || paper.doi)) return '<p class="ql-meta" role="status">缺少文献标识，暂无法翻译。</p>';
     if (paper._trLookupState === 'error') return `<div class="tr-box"><p class="ql-meta" role="status">译文读取失败。</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}">重新读取译文</button></div>`;
@@ -465,7 +481,8 @@
     const key = studyKey(paper); if (!key) return '';
     const rec = STUDY_RESULTS[key];
     let content = '<p class="study-meta" role="status">正在检查已有结果，不会调用模型…</p>';
-    if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
+    if (!rec && paper.weeklyPick) content = '<p class="study-meta" role="status">本篇研究结构尚未预生成。</p>';
+    else if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
     else if (rec?.state === 'loading') content = '<p class="study-meta" role="status">正在从公开来源读取摘要并提取研究结构，请稍候…</p>';
     else if (rec && rec.state !== 'checking') {
       content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">${rec.state === 'error' ? '重试生成研究结构' : '提取研究结构与核对清单'}</button><p class="study-meta">点击后由模型读取公开摘要；不会读取全文。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到已有结果。' : '研究结构服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? `<button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">重查已有结果</button>` : ''}`);
@@ -1229,6 +1246,7 @@
 
   // Slide-over Reader Drawer Open/Close
   function openReaderDrawer(paper) {
+    hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
     const drawer = $('#readerDrawer');
     const backdrop = $('#drawerBackdrop');
@@ -1346,6 +1364,7 @@
           ${(ql.abstractSource || ql.abstract_source) ? `<p class="text-muted" style="font-size:11.5px;">摘要来源：${esc(ql.abstractSource || ql.abstract_source)}${safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}) ? ` · <a href="${esc(safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}))}" target="_blank" rel="noopener">查看来源 ↗</a>` : ''}</p>` : ''}
         </div>` : '';
       const aiBox = (!ql && !draft) ? (() => {
+        if (paper.weeklyPick) return '<div class="drawer-section quicklook"><div class="drawer-section-title">AI 速览</div><p class="ql-meta" role="status">本篇 AI 速览尚未预生成。</p></div>';
         const s = paper._aiState;
         if (s === 'none' || s === 'error') return `<div class="drawer-section quicklook ai-ask">
           <div class="drawer-section-title">AI 解读</div>
@@ -1370,6 +1389,8 @@
         `).join('');
       } else if (paper.summary) {
         abstractHtml = `<p>${esc(paper.summary)}</p>`;
+      } else if (paper.weeklyPick) {
+        abstractHtml = '<p class="text-muted">公开摘要尚未准备好，请查看官方原文。</p>';
       } else if (paper._absState === 'loading') {
         abstractHtml = '<p class="text-muted">正在从 Europe PMC 获取公开摘要…</p>';
       } else if (paper._absState === 'error') {
@@ -1474,12 +1495,14 @@
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
 
-    if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
-    trCheck(paper);
-    studyCheck(paper);
+    if (!paper.weeklyPick) {
+      if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
+      trCheck(paper);
+      studyCheck(paper);
+    }
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).
-    const needsAbs = !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
+    const needsAbs = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
     if (needsAbs) {
       paper._absTries = 1;
       paper._absState = 'loading';
@@ -1851,18 +1874,20 @@
     const updatedAt = reports[0] || FEEDS.updatedAt;
     const validUpdate = typeof updatedAt === 'string' && updatedAt.includes('T') && weeklyPublicationDate({ date: updatedAt }, now);
     const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}（北京时间）${now - Date.parse(updatedAt) > 6 * 3600000 ? ' · 更新已超过 6 小时，时效待确认' : ''}` : '更新时间暂无有效记录，时效待确认';
-    const heading = `<h3 class="next-title">近 7 天文献榜 <small>发表日期：北京时间 ${boardWindow.start}–${boardWindow.end}，含今天；${timing}。按专科相关性、研究类型、期刊与媒体关注度规则排序，未经逐篇质量评审。</small></h3>`;
+    const groups = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']].map(([id, name]) => ({ id, name, entries: boardWindow.entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
+    const heading = `<h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${boardWindow.entries.length} 篇</span><small>发表日期：北京时间 ${boardWindow.start}–${boardWindow.end}，含今天；${timing}。分类与排序为自动规则，未经逐篇质量评审。</small></h3>`;
     if (!boardWindow.entries.length) { el.innerHTML = heading + '<p class="text-muted">近7天暂无入榜条目</p>'; return; }
-    el.innerHTML = heading + '<div class="weekly-card-grid">' +
-      boardWindow.entries.map(({ paper: p, date }, i) => {
+    const categoryNav = `<nav class="weekly-category-nav" aria-label="文献榜分类">${groups.map(g => `<a href="#weekly-group-${g.id}">${g.name} <span>${g.entries.length}</span></a>`).join('')}</nav>`;
+    el.innerHTML = heading + categoryNav + groups.map(g => `<section class="weekly-group" id="weekly-group-${g.id}" aria-labelledby="weekly-title-${g.id}"><h4 id="weekly-title-${g.id}" class="weekly-group-title">${g.name}<span>${g.entries.length} 篇</span></h4>` + (g.entries.length ? '<div class="weekly-card-grid">' +
+      g.entries.map(({ paper: p, date }) => {
         const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
         const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
-        return `<article class="next-item weekly-auto-item"><span class="weekly-rank">${i + 1}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc(date)}</span></div>` +
+        return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc(date)}</span></div>` +
           `<div class="weekly-auto-title"><a href="${esc(p.url || ('https://doi.org/' + p.doi))}" target="_blank" rel="noopener noreferrer">${esc(zh || p.title)}</a></div>` +
           (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
-          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
-          `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${hasAbstract(p) ? '阅读原摘要 · 中英对照' : '获取公开摘要'}</button><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button></div></div></article>`;
-      }).join('') + '</div>';
+          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '<p class="weekly-prep-note">AI 速览尚未预生成</p>') +
+          `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息'}</button><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入晨会 ✓' : '加入晨会单'}</button></div></div></article>`;
+      }).join('') + '</div>' : '<p class="weekly-group-empty">本类暂无入榜文献。</p>') + '</section>').join('');
   }
 
   function renderNextCandidates() {
@@ -1967,6 +1992,17 @@
   });
 
   document.addEventListener('click', e => {
+    const weeklyClose = e.target.closest('[data-action="close-weekly"]');
+    if (weeklyClose) {
+      const details = weeklyClose.closest('.weekly-demo');
+      if (details) {
+        details.open = false;
+        const summary = details.querySelector(':scope > summary');
+        summary?.focus({ preventScroll: true });
+        summary?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
+      return;
+    }
     const mb = e.target.closest('[data-minor]');
     if (mb) { state.minor = !state.minor; state.page = 1; renderSidebarFilters(); renderStream(); return; }
     const b = e.target.closest('[data-range]');
