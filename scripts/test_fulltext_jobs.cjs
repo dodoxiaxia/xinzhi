@@ -74,6 +74,11 @@ async function claimRun(h) {
   if(attempt<3){assert.deepEqual(await signal(transient),{ok:true,pending:false});assert.equal((await (await service(transient,{action:'claim'})).json()).job,null);clock.now+=attempt===1?61000:601000;assert.deepEqual(await signal(transient),{ok:true,pending:true});}
  }
  assert.equal([...transient.values.keys()].filter(k=>k.startsWith('library:queue:')).length,0);
+ for(const status of [401,403,429]){
+  const paused=await setup({rows:[],unpaywallResponse:()=>new Response('authorization needed',{status})});await enqueue(paused);
+  const stopped=await claimRun(paused);assert.equal(stopped.state,'failed');assert.equal(stopped.attempts,1);assert(stopped.message.includes('任务暂停'));
+  assert(!paused.calls.some(c=>c.url.hostname==='api.openalex.org'));assert.equal([...paused.values.keys()].filter(k=>k.startsWith('library:queue:')).length,0);
+ }
  assert.equal(JSON.parse(transient.values.get('library:cap:'+new Date(clock.now).toISOString().slice(0,10))),1,'automatic retries do not consume another reader submission');
  h=await setup({crossref:{DOI:'10.1000/wrong'}});await enqueue(h);assert.equal((await claimRun(h)).state,'review');assert(!h.values.has('library:paper:'+doi));
  h=await setup();await enqueue(h);const pointer=(await (await service(h,{action:'claim'})).json()).job;
