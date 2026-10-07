@@ -1,9 +1,6 @@
 """Offline source health: distinguish observed fallback from configured coverage."""
 import datetime
 import unittest
-from unittest.mock import patch
-import urllib.error
-import urllib.parse
 import xml.etree.ElementTree as ET
 
 import build_public
@@ -20,42 +17,6 @@ def snapshot(items=(), journals=(), **extra):
 
 def source(name):
     return {'id': 'test', 'name': name, 'url': 'https://example.org/rss', 'status': 'not_feed'}
-
-
-class PubMedRequestTests(unittest.TestCase):
-    def test_full_journal_search_avoids_uri_limit_and_preserves_query(self):
-        term = '(' + ' OR '.join(journal_query(j) for j in fetch_pubmed.JOURNALS) + ')'
-        term += ' AND ("2026/09/07"[Date - Publication] : "2026/10/07"[Date - Publication])'
-        params = {'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': 1500, 'sort': 'pub date'}
-        # This is the production query that exceeded the upstream GET URI limit.
-        self.assertGreater(len(urllib.parse.urlencode(params)), 4096)
-        self.assert_request('esearch.fcgi', params, b'{"esearchresult":{"idlist":["123"]}}')
-
-    def test_article_batch_preserves_ids_and_xml_response(self):
-        params = {'db': 'pubmed', 'id': ','.join(str(42000000 + i) for i in range(150)), 'retmode': 'xml'}
-        self.assert_request('efetch.fcgi', params, b'<PubmedArticleSet/>')
-
-    def assert_request(self, action, params, payload):
-        with patch('fetch_pubmed.urllib.request.urlopen') as urlopen:
-            response = urlopen.return_value.__enter__.return_value
-            response.read.return_value = payload
-            self.assertEqual(fetch_pubmed.request(action, params), payload)
-            req = urlopen.call_args.args[0]
-            self.assertEqual(req.get_method(), 'POST')
-            self.assertEqual(req.full_url, 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/' + action)
-            self.assertEqual(req.get_header('Content-type'), 'application/x-www-form-urlencoded')
-            self.assertEqual(urllib.parse.parse_qs(req.data.decode('ascii')),
-                             {key: [str(value)] for key, value in params.items()})
-            self.assertIn('XinZhiLearningPilot', req.get_header('User-agent'))
-            self.assertEqual(urlopen.call_args.kwargs['timeout'], 30)
-            response.read.assert_called_once_with(10_000_000)
-
-    def test_upstream_errors_still_abort_refresh(self):
-        error = urllib.error.HTTPError('https://eutils.ncbi.nlm.nih.gov', 503, 'Unavailable', {}, None)
-        with patch('fetch_pubmed.urllib.request.urlopen', side_effect=error):
-            with self.assertRaises(urllib.error.HTTPError) as caught:
-                fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'cardiac'})
-        self.assertIs(caught.exception, error)
 
 
 class SourceFallbackTests(unittest.TestCase):

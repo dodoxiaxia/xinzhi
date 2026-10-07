@@ -104,6 +104,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_editorial_review.py'
           python3 -m unittest discover -s scripts -p 'test_feed_health.py'
           python3 -m unittest discover -s scripts -p 'test_source_fallbacks.py'
+          python3 -m unittest discover -s scripts -p 'test_pubmed_request.py'
           python3 -m unittest discover -s scripts -p 'test_sync_public_library.py'
           PYTHONPATH=scripts python3 -c 'from package_release import public_payloads; public_payloads()'
 
