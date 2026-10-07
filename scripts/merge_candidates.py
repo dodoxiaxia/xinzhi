@@ -2,13 +2,15 @@
 """Merge public RSS and PubMed metadata by DOI, URL, then normalized title."""
 import datetime,json,re,unicodedata,xml.etree.ElementTree as ET
 from pathlib import Path
+from publication_dates import canonical_publication_date
 ROOT=Path(__file__).resolve().parents[1]
 def titlekey(t):return re.sub(r'[^a-z0-9]','',unicodedata.normalize('NFKD',t).lower())
 def main():
  feed=json.loads((ROOT/'data/feeds.json').read_text());pub=json.loads((ROOT/'data/pubmed.json').read_text())
  now=datetime.datetime.now(datetime.timezone.utc);seen=set();items=[];excluded=0
  # Prefer PubMed's DOI and structured abstract when the same paper also appears in RSS.
- for p in pub['items']+feed['items']:
+ for source_record in pub['items']+feed['items']:
+  p=canonical_publication_date(source_record)
   try:age=(now.date()-datetime.date.fromisoformat(p['date'][:10])).days
   except ValueError:excluded+=1;continue
   if not 0<=age<=14:excluded+=1;continue

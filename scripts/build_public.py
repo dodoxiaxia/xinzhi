@@ -7,6 +7,7 @@ from apply_public_library import require_snapshot
 from release_integrity import input_hashes, ordinary_file, provenance, replace_unchanged_input
 from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
+from publication_dates import DATE_CORRECTIONS, canonical_publication_date
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
@@ -14,7 +15,7 @@ PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBa
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.1.2'
+RELEASE = 'v14.1.3'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -169,12 +170,15 @@ def make_radar(candidates,tz=None):
     pools={k:{} for k in ('jn','pub','tier','design','tag')}
     def idx(kind,val):
         d=pools[kind];return d.setdefault(val,len(d))
-    rows=[];seen=set()
-    for r in a.get('rows',[]):
+    rows=[];seen=set();date_bases={}
+    for source_record in a.get('rows',[]):
+        r=canonical_publication_date(source_record)
         if r.get('datePrecision')!='day':continue
         keys={r.get('doi') or '','pmid:'+r['pmid'],_titlekey(r['title'])}-{''}
         if keys&have or keys&seen:continue
         seen|=keys
+        if str(r.get('doi') or '').strip().lower() in DATE_CORRECTIONS:
+            date_bases[str(r['pmid'])]=r['dateBasis']
         j=r.get('journal','');url='https://doi.org/'+r['doi'] if r.get('doi') else ''
         cj=_RADAR_JOURNAL_FIX.get(clean_journal_name(j),clean_journal_name(j))
         f=full.get(str(r['pmid']),{})
@@ -187,7 +191,8 @@ def make_radar(candidates,tz=None):
                      [idx('tag',t) for t in extract_tags(r['title'],atext)],r['title']])
     if not rows:return None
     lists={k:[v for v,_ in sorted(d.items(),key=lambda kv:kv[1])] for k,d in pools.items()}
-    return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):tz['pmid:%s'%r[0]] for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows}
+    return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):tz['pmid:%s'%r[0]] for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows,
+            **({'dateBases':date_bases} if date_bases else {})}
 
 def validate_public(text):
     forbidden=(r'/Users/',r'/home/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/')
@@ -203,6 +208,10 @@ def main():
     if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
     require_snapshot(l, ROOT)
+    # Old state may predate the reviewed publisher correction. Correct before
+    # archive selection and public ordering without changing approved library rows.
+    c['items']=sorted((canonical_publication_date(p) for p in c['items']),
+                      key=lambda p:p.get('date') or '',reverse=True)
     archive=make_archive(c['items'],l['papers'])
     editorial_drafts={article_key(d):d for d in load('editorial/source_checked_drafts.json')['articles']}
     library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p,editorial_drafts) for p in l['papers']]}
