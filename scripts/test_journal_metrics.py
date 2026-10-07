@@ -17,14 +17,21 @@ class JournalMetricsTests(unittest.TestCase):
 
     def test_verified_numbers_are_evidenced_and_match_the_edition(self):
         verified = [j for j in self.registry['journals'] if j['jif']['status'] == 'verified']
-        self.assertEqual(len(verified), 14)
+        self.assertGreaterEqual(len(verified), 14)
         for row in verified:
             self.assertEqual(row['jif']['year'], 2025)
             self.assertEqual(row['jcr']['releaseYear'], 2026)
             self.assertTrue(row['jif']['sources'])
-            self.assertTrue(row['issns'])
-        # Public publisher ranks are recorded but do not imply a quartile.
-        self.assertFalse(any(c['quartile'] for r in verified for c in r['jcr']['categories']))
+            self.assertTrue(row['identitySources'])
+        # A publisher rank alone does not imply a quartile. Explicit published
+        # JMIR JCR Q is kept separate from that page's Scopus CiteScore Q.
+        for row in verified:
+            if row['jcr']['categoryCoverage'] == 'publisher_reported':
+                self.assertFalse(any(c['quartile'] for c in row['jcr']['categories']))
+        jmi = next(r for r in verified if r['name'] == 'JMIR Medical Informatics')
+        self.assertEqual(jmi['jif']['value'], 5.0)
+        self.assertEqual([(c['name'], c['quartile']) for c in jmi['jcr']['categories']],
+                         [('Medical Informatics', 'Q2')])
 
     def test_cross_year_and_false_complete_categories_are_rejected(self):
         data = copy.deepcopy(self.registry)

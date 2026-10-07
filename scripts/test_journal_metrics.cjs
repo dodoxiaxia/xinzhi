@@ -63,4 +63,10 @@ assert.match(create(current).detailText(ehj.name), /历史参考：JCR 2024 Q1/)
 const maliciousHistory = structuredClone(registry);
 maliciousHistory.sources['user-jcr-2025-reference'].label = '<img src=x onerror=alert(1)>';
 assert.doesNotMatch(create(maliciousHistory).renderDetails('European Heart Journal'), /<img/);
-console.log('journal metrics: 43 identity, evidence, history, rendering and multi-category assertions passed');
+assert.match(api.compactText('JMIR Medical Informatics'), /IF 5.0 \(2025\).*JCR Q2 \(2026\)/);
+assert.match(api.compactText('JMIR AI'), /IF 6.1 \(2025\).*JCR Q1 \(2026\)/);
+assert.match(api.detailText('JMIR AI'), /Health Care Sciences &amp; Services|Health Care Sciences & Services/);
+assert.match(api.detailText('JMIR AI'), /Medical Informatics/);
+assert.match(api.compactText('Circulation'), /IF 41.3 \(2025\)/);
+assert.match(api.compactText('JACC Advances'), /IF 5.5 \(2025\)/);
+console.log('journal metrics: 49 identity, evidence, history, rendering and multi-category assertions passed');
