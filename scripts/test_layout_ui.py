@@ -95,10 +95,24 @@ def main():
         if geometry['drawer']:
             check(geometry['drawer'][0] <= geometry['drawer'][1] + 1, label + ': no reader overflow')
 
-    def open_weekly(page, width=1440):
+    def expected_weekly(page):
+        return page.evaluate('''() => {
+          const end = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Shanghai'}).format(new Date());
+          const start = new Date(end+'T00:00:00Z'); start.setUTCDate(start.getUTCDate()-6);
+          return window.FEEDS.items.filter(p=>p.weeklyPick && (!p.datePrecision || p.datePrecision==='day')
+            && p.date?.slice(0,10)>=start.toISOString().slice(0,10) && p.date.slice(0,10)<=end).length;
+        }''')
+
+    def open_weekly(page, width=1440, legacy_reader=False):
         page.set_viewport_size({'width': width, 'height': 1000 if width > 640 else 900})
         page.goto(base + '?mode=weekly&style=a', wait_until='load')
-        expect(page.locator('.weekly-auto-item')).to_have_count(8)
+        expect(page.locator('.weekly-auto-item')).to_have_count(expected_weekly(page))
+        if legacy_reader:
+            page.evaluate('''() => {
+              const ids=[...document.querySelectorAll('.weekly-auto-item')].slice(0,2).map(e=>e.dataset.paperId);
+              window.FEEDS.items.filter(p=>ids.includes(p.id)).forEach(p=>{p._testWeeklyPick=p.weeklyPick;delete p.weeklyPick;});
+              window.PREGENERATED={}; // Exercise on-demand requests separately from actual embedded caches.
+            }''')
 
     try:
         with sync_playwright() as p:
@@ -135,8 +149,9 @@ def main():
                         huddle, source = page.locator('#openHuddleBtn').bounding_box(), page.locator('#sourceStatusBtn').bounding_box()
                         check(source['x'] >= huddle['x'] + huddle['width'] - 1, label + ': source entry right of huddle')
                         if mode == 'weekly':
-                            expect(page.locator('.weekly-auto-item')).to_have_count(8)
-                            first, second = [page.locator('.weekly-auto-item').nth(i).bounding_box() for i in [0, 1]]
+                            expect(page.locator('.weekly-auto-item')).to_have_count(expected_weekly(page))
+                            cards = page.locator('.weekly-group').filter(has=page.locator('.weekly-auto-item')).first.locator('.weekly-auto-item')
+                            first, second = [cards.nth(i).bounding_box() for i in [0, 1]]
                             board, deep = page.locator('#weeklyAuto').bounding_box(), page.locator('.weekly-deep-read').bounding_box()
                             if width > 1000:
                                 check(abs(first['y'] - second['y']) < 2 and second['x'] > first['x'], label + ': two card columns')
@@ -161,6 +176,44 @@ def main():
                         if style == 'a' and width in [1440, 390]:
                             page.screenshot(path=str(out / f'{mode}-{"desktop" if width == 1440 else "mobile"}.png'))
                 print(f'Layout checks passed: style {style}', flush=True)
+
+            for style in ['a', 'b', 'c', 'd']:
+                for width in [1440, 1024, 768, 390, 320]:
+                    label = f'curated/{style}/{width}'
+                    page.set_viewport_size({'width': width, 'height': 1000 if width > 640 else 900})
+                    page.goto(base + f'?mode=curated&view=cards&style={style}', wait_until='load')
+                    expect(page.locator('#streamRail')).to_be_visible()
+                    expect(page.locator('#modeNote')).to_be_hidden()
+                    check(page.get_by_text('带“摘要核对”标记的是', exact=False).count() == 0, label + ': green-box paragraph removed')
+                    check(page.locator('#streamRail #homeIntro').count() == 1 and page.locator('#streamRail #laneBar').count() == 1, label + ': both red-box blocks moved together')
+                    body, rail = page.locator('.stream-content').bounding_box(), page.locator('#streamRail').bounding_box()
+                    if width > 1000:
+                        check(rail['x'] >= body['x'] + body['width'] and body['width'] > rail['width'] * 2, label + ': wide reading column and right tools')
+                    else:
+                        check(body['y'] >= rail['y'] + rail['height'], label + ': tools and text stack')
+                    cards = page.locator('#articlesStream .article-card')
+                    if cards.count() > 1:
+                        a, b = [cards.nth(i).bounding_box() for i in [0, 1]]
+                        check(abs(a['x'] - b['x']) < 1 and b['y'] > a['y'], label + ': long abstracts remain one column')
+                    topic = page.locator('#laneBar [data-filter-tag]').first
+                    if topic.count():
+                        topic.focus()
+                        topic.press('Enter')
+                        expect(page.locator('#laneBar [data-filter-tag].active')).to_be_visible()
+                        expect(page.locator('[data-clear="tag"]')).to_be_visible()
+                        page.locator('[data-clear="tag"]').click()
+                    overflow(page, label)
+                    if style == 'a' and width in [1440, 390]:
+                        page.screenshot(path=str(out / f'curated-{"desktop" if width == 1440 else "mobile"}.png'))
+                    page.locator('[data-mode="candidates"]').click()
+                    expect(page.locator('#streamRail')).to_be_hidden()
+                    check(page.locator('#streamLaneSlot #laneBar').count() == 1, label + ': radar classification restored to main area')
+                    expect(page.locator('#modeNote')).to_be_visible()
+                    page.locator('[data-mode="curated"]').click()
+                    expect(page.locator('#streamRail #laneBar')).to_be_visible()
+                    check(page.locator('#laneBar').count() == 1, label + ': return without duplicate filters')
+                    records.append({'style': style, 'width': width, 'mode': 'curated', 'overflow': False})
+                print(f'Curated reading-column checks passed: style {style}', flush=True)
 
             check(len(posts) == 0, 'Opening/navigating pages never generates paid content')
             for width in [1440, 320]:
@@ -187,7 +240,7 @@ def main():
             check(len(posts) == 0, 'Morning-list changes only read caches, never generate')
             check(bool(page.evaluate('window.CONTENT_STATUS.radarUpdatedAt')), 'Content timestamps remain in source data')
 
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             paper_id = page.locator('.weekly-card-actions [data-action="open-drawer"]').first.get_attribute('data-paper-id')
             original = page.evaluate('(id) => { const p = window.FEEDS.items.find(p => p.id === id); return p.abstractSections?.map(s => s.text).join(" ") || p.summary; }', paper_id)
             read_button = page.locator('.weekly-card-actions [data-action="open-drawer"]').first
@@ -219,7 +272,7 @@ def main():
 
             for outcome in ['abort', 'provider_error', 'bad_json', 'empty']:
                 controls['post'] = outcome
-                open_weekly(page)
+                open_weekly(page, legacy_reader=True)
                 page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
                 page.locator('[data-action="ai-translate"]').click()
                 expect(page.locator('[data-action="ai-translate"]')).to_have_text('重试翻译')
@@ -233,7 +286,7 @@ def main():
                 expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
 
             controls['lookup'] = 'abort'
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('[data-action="tr-check"]')).to_be_visible()
             controls['lookup'] = 'absent'
@@ -243,18 +296,18 @@ def main():
 
             controls['lookup'] = 'cached'
             before = len(posts)
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
             check(page.locator('[data-action="ai-translate"]').count() == 0 and len(posts) == before, 'Saved translation readable when generation is disabled')
             controls['lookup'] = 'off'
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text('翻译服务暂不可用')
             check(page.locator('[data-action="ai-translate"]').count() == 0, 'Unavailable translation shows a concise state')
 
             controls['lookup'] = 'absent'
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('[data-action="ai-translate"]')).to_be_visible()
             page.evaluate('window.__translationDelay = 1200')
@@ -270,13 +323,14 @@ def main():
             expect(page.locator('.drawer-title-en')).to_have_text(second_title)
             check(FIXTURE_ZH not in page.locator('.abstract-translation').inner_text(), 'Late translation never takes over another paper')
             page.locator('#drawerCloseBtn').click()
+            page.evaluate('''() => window.FEEDS.items.filter(p=>p._testWeeklyPick).forEach(p=>p.weeklyPick=p._testWeeklyPick)''')
             page.locator('#sourceStatusBtn').click()
             page.locator('[data-mode="weekly"]').click()
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
             check(True, 'Returning to the original paper retains completed translation')
 
-            open_weekly(page)
+            open_weekly(page, legacy_reader=True)
             controls['abstract'] = 'abort'
             page.evaluate('''id => { const p = window.FEEDS.items.find(p => p.id === id); p.summary=''; p.abstractSections=[]; }''', paper_id)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()

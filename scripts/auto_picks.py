@@ -5,7 +5,7 @@
 import datetime, json
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-DAILY_N, WEEKLY_N, DAYS = 6, 8, 7
+DAILY_N, WEEKLY_N, DAYS = 6, 24, 7
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 AIMED = {'AI医疗与数字医学'}
 GOOD_DESIGN = {'RCT': 3, 'Meta/系统综述': 3, 'Meta/综述': 3, '指南共识': 3, '队列研究': 2, '方法/模型验证': 2}
@@ -66,8 +66,10 @@ def main():
         d = (p.get('date') or '')[:10]
         if len(daily.setdefault(d, [])) < DAILY_N:
             daily[d].append(p['id'])
-    weekly = [p['id'] for s, p in scored[:WEEKLY_N]]
-    out = {'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'rule': 'v1 规则打分,非人工核验', 'daily': daily, 'weekly': weekly}
+    from week_precompute import select
+    selected, window = select(cand, datetime.datetime.now(datetime.timezone.utc), WEEKLY_N)
+    weekly = [p['id'] for p in selected]
+    out = {'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'rule': 'v2 真实7日公开摘要与相关性筛选,非医学审查', 'daily': daily, 'weekly': weekly, 'weeklyWindow': window, 'weeklyCategories': {p['id']: p['weeklyCategory'] for p in selected}}
     (ROOT / 'data/picks.json').write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding='utf-8')
     print(json.dumps({'days': {k: len(v) for k, v in sorted(daily.items())}, 'weekly': len(weekly)}, ensure_ascii=False))
 

@@ -8,11 +8,13 @@ on:
       - 'app.js'
       - 'style.css'
       - 'icon.svg'
+      - 'journal-metrics.js'
       - 'edge/**'
       - 'workers/cron-dispatch/**'
       - 'scripts/**'
       - 'editorial/**'
       - 'config/public_library_adjudications.json'
+      - 'config/journal-metrics.json'
       - '.github/workflows/daily.yml'
       - '.github/workflows/fulltext.yml'
   schedule:
@@ -59,7 +61,7 @@ jobs:
       - name: 恢复数据(state 分支:data/ public/ 等私有数据,不含历史)
         id: restore_state
         run: |
-          rm -f docs/last-refresh.json docs/deployment-status.json
+          rm -f docs/last-refresh.json docs/deployment-status.json .local/week-checkpoint-head
           if git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
             git fetch --depth=1 origin state
             RESTORED_STATE_SHA=$(git rev-parse FETCH_HEAD)
@@ -83,6 +85,10 @@ jobs:
 
       - name: 抓取 / 补摘要 / 翻译 / 构建
         id: refresh
+        env:
+          # Opt-in only after integrator review; reuses the existing token/permissions.
+          XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
 
       - uses: actions/setup-node@v4
@@ -107,6 +113,11 @@ jobs:
           node scripts/test_source_health_ui.cjs
           node scripts/test_weekly_window.cjs
           node scripts/test_publication_dates_ui.cjs
+          node scripts/test_journal_metrics.cjs
+          python3 -m unittest discover -s scripts -p 'test_week_precompute*.py'
+          python3 -m unittest discover -s scripts -p 'test_journal*.py'
+          python3 -m unittest discover -s scripts -p 'test_ci_daily.py'
+          python3 -m unittest discover -s scripts -p 'test_workflow.py'
           python3 -m unittest discover -s scripts -p 'test_public_build.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
           python3 -m unittest discover -s scripts -p 'test_release_build.py'
@@ -154,6 +165,11 @@ jobs:
         if: steps.refresh.outcome == 'success' && steps.deploy.outcome == 'success'
         run: |
           set -e
+          STATE_EXPECTED_SHA='${{ steps.restore_state.outputs.sha }}'
+          if test -f .local/week-checkpoint-head; then
+            STATE_EXPECTED_SHA=$(cat .local/week-checkpoint-head)
+            [[ "$STATE_EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
+          fi
           T=$(mktemp -d)
           mkdir -p "$T/s/docs"
           cp -r data public "$T/s/"
@@ -164,7 +180,7 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add -A
           git commit -qm "state $(date -u +%F)"
-          git push --force-with-lease=refs/heads/state:${{ steps.restore_state.outputs.sha }} "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
+          git push --force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA" "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
 
       - name: 记录流水线最终结果
         if: always()
@@ -187,4 +203,6 @@ jobs:
             docs/deployment-status.json
             docs/last-refresh.json
             docs/public-manifest.json
+            data/week-precompute-ledger.json
+            data/week-precompute-cache.json
           if-no-files-found: error
