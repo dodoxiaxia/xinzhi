@@ -9,6 +9,8 @@ from enrich_metadata import _journal_key
 
 KINDS = {'journal', 'preprint', 'conference', 'news', 'blog', 'book', 'collection', 'unknown'}
 STATUSES = {'verified', 'unverified', 'not_applicable'}
+OFFICIAL_EVIDENCE = {'publisher_public', 'clarivate_public', 'authorized_jcr_export'}
+HISTORY_STATUS = 'historical_reference_unverified'
 
 
 def valid_issn(value):
@@ -26,24 +28,37 @@ def timestamp(value):
 
 def validate_registry(data):
     """Fail a build for ambiguous aliases, unsupported years or unproven values."""
-    if set(data) != {'schemaVersion', 'verifiedAt', 'notice', 'sources', 'journals'} or data.get('schemaVersion') != 1 or not isinstance(data.get('journals'), list):
+    required = {'schemaVersion', 'verifiedAt', 'notice', 'sources', 'journals'}
+    if not required <= set(data) or set(data) - required - {'historicalReferences'} or data.get('schemaVersion') != 1 or not isinstance(data.get('journals'), list):
         raise ValueError('Unsupported journal metrics registry')
     timestamp(data['verifiedAt'])
     aliases, issns, ids = {}, {}, set()
     sources = data.get('sources', {})
     for key, source in sources.items():
+        if source.get('kind') == 'user_reference':
+            if set(source) != {'label', 'url', 'kind', 'checkedAt', 'status', 'dataYear', 'releaseYear', 'scope'}:
+                raise ValueError('Unexpected historical source fields: ' + key)
+            if source['url'] is not None or not source['label'] or source['status'] != HISTORY_STATUS or source['scope'] != 'matched_site_journals_only':
+                raise ValueError('Historical source must remain a bounded unverified reference')
+            if type(source['dataYear']) is not int or type(source['releaseYear']) is not int or source['releaseYear'] != source['dataYear'] + 1:
+                raise ValueError('Historical source data/release years differ')
+            if timestamp(source['checkedAt']).year < source['releaseYear']:
+                raise ValueError('Historical source cannot precede its release')
+            continue
         if set(source) != {'label', 'url', 'kind', 'verifiedAt'}:
             raise ValueError('Unexpected source fields: ' + key)
         url = urlsplit(source['url'])
         if url.scheme != 'https' or not url.hostname or url.username or url.password or url.query:
             raise ValueError('Source must be a public HTTPS URL without credentials/query')
-        if source['kind'] not in {'publisher_public', 'clarivate_public', 'authorized_jcr_export'}:
+        if source['kind'] not in OFFICIAL_EVIDENCE:
             raise ValueError('Unsupported evidence kind')
         timestamp(source['verifiedAt'])
 
     def evidence(refs):
         if not refs or any(ref not in sources for ref in refs):
             raise ValueError('Verified metric requires source evidence')
+        if any(sources[ref]['kind'] not in OFFICIAL_EVIDENCE for ref in refs):
+            raise ValueError('User reference cannot verify official journal metrics or identity')
 
     for row in data['journals']:
         if set(row) != {'id', 'name', 'aliases', 'issns', 'identitySources', 'kind', 'jif', 'jcr'}:
@@ -63,7 +78,7 @@ def validate_registry(data):
             if key in issns and issns[key] != row['id']:
                 raise ValueError('Conflicting ISSN')
             issns[key] = row['id']
-        if row['issns']:
+        if row['issns'] or row['identitySources']:
             evidence(row['identitySources'])
         jif, jcr = row['jif'], row['jcr']
         if set(jif) != {'status', 'value', 'year', 'sources', 'verifiedAt', 'reason'}:
@@ -102,6 +117,34 @@ def validate_registry(data):
                 raise ValueError('Invalid official JIF rank')
         if jcr['status'] == 'verified' and (jcr['categoryCoverage'] != 'complete' or not jcr['categories'] or any(c['quartile'] is None for c in jcr['categories'])):
             raise ValueError('Verified JCR requires all categories/quartiles')
+    histories = data.get('historicalReferences', [])
+    if not isinstance(histories, list):
+        raise ValueError('Historical references must be a list')
+    journal_by_id = {row['id']: row for row in data['journals']}
+    seen_history = set()
+    for history in histories:
+        if set(history) != {'journalId', 'dataYear', 'releaseYear', 'category', 'quartile', 'sources', 'checkedAt', 'status', 'categoryCoverage'}:
+            raise ValueError('Unexpected historical reference fields')
+        row = journal_by_id.get(history['journalId'])
+        if not row or row['kind'] != 'journal':
+            raise ValueError('Historical reference requires an existing journal identity')
+        if history['status'] != HISTORY_STATUS or history['categoryCoverage'] != 'reference_single_category':
+            raise ValueError('Historical reference must remain unverified and single-category')
+        if not isinstance(history['category'], str) or not history['category'].strip() or re.search(r'[;；|\n]', history['category']) or history['quartile'] not in {'Q1', 'Q2', 'Q3', 'Q4'}:
+            raise ValueError('Historical reference requires one category and one quartile')
+        if type(history['dataYear']) is not int or type(history['releaseYear']) is not int or history['releaseYear'] != history['dataYear'] + 1:
+            raise ValueError('Historical data/release years differ')
+        timestamp(history['checkedAt'])
+        refs = history['sources']
+        if not isinstance(refs, list) or len(refs) != 1 or refs[0] not in sources or sources[refs[0]]['kind'] != 'user_reference':
+            raise ValueError('Historical reference requires its user-provided source')
+        source = sources[refs[0]]
+        if any(source[k] != history[k] for k in ('dataYear', 'releaseYear', 'checkedAt')):
+            raise ValueError('Historical reference years/time must match its source')
+        identity = (history['journalId'], history['dataYear'])
+        if identity in seen_history:
+            raise ValueError('Duplicate historical reference')
+        seen_history.add(identity)
     return data
 
 

@@ -40,4 +40,27 @@ assert.match(details, /https:\/\/www.nature.com\/nm\/journal-impact/);
 assert.match(details, /核验/); assert.match(details, /单篇研究质量/);
 synthetic.sources.nm.url = 'javascript:alert(1)';
 assert.doesNotMatch(create(synthetic).renderDetails('Nature Medicine'), /href="javascript/);
-console.log('journal metrics: 27 identity, evidence, rendering and multi-category assertions passed');
+
+// Historical user references retain their own year and never replace official JIF.
+assert.equal(api.compactText('European Heart Journal'), 'IF 45.6 (2025) · JCR 2024 Q1 · 用户提供参考表 · 待官方核对');
+assert.equal(api.historicalReferences('European Heart Journal')[0].releaseYear, 2025);
+assert.equal(api.resolve('European Heart Journal').jcr.dataYear, 2025);
+assert.equal(api.resolve('European Heart Journal').jcr.categories[0].quartile, null);
+assert.match(api.detailText('European Heart Journal'), /历史参考：JCR 2024 Q1；数据年 2024；发布版 2025/);
+assert.match(api.detailText('European Heart Journal'), /参考表所列单学科 CARDIAC & CARDIOVASCULAR SYSTEMS\(SCIE\)/);
+assert.match(api.detailText('European Heart Journal'), /官方分区仍未核实（2026 发布版）/);
+assert.match(api.detailText('European Heart Journal'), /全部 JCR 学科覆盖未核实/);
+assert.match(api.renderDetails('European Heart Journal'), /用户提供参考表，待官方核对；读取/);
+assert.doesNotMatch(api.renderDetails('European Heart Journal'), /libfile_|file_000|\.xlsx|href="null"/);
+assert.equal(api.historicalReferences('Nature Medicine').length, 0);
+assert.equal(api.historicalReferences('arXiv').length, 0);
+assert.equal(api.historicalReferences({journal:'European Heart Journal',issn:'2398-6352'}).length, 0);
+const current = structuredClone(registry);
+const ehj = current.journals.find(r => r.name === 'European Heart Journal');
+ehj.jcr.categories[0].quartile = 'Q2'; ehj.jcr.status = 'verified'; ehj.jcr.categoryCoverage = 'complete';
+assert.equal(create(current).compactText(ehj.name), 'IF 45.6 (2025) · JCR Q2 (2026)');
+assert.match(create(current).detailText(ehj.name), /历史参考：JCR 2024 Q1/);
+const maliciousHistory = structuredClone(registry);
+maliciousHistory.sources['user-jcr-2025-reference'].label = '<img src=x onerror=alert(1)>';
+assert.doesNotMatch(create(maliciousHistory).renderDetails('European Heart Journal'), /<img/);
+console.log('journal metrics: 43 identity, evidence, history, rendering and multi-category assertions passed');
