@@ -1,0 +1,28 @@
+{
+  "sourceMainSha": "7dbe94c5465e7acca4097ac0282ef8ff78e4a48f",
+  "sourceStateSha": "6135056e3d544816ff3554a8e6241f60e3274698",
+  "sourceRepairSha": "69a46b6a6479773a725a742310e10b280ff29cf3",
+  "originalAbstractsRetained": true,
+  "batchRanks": [
+    1,
+    2,
+    3
+  ],
+  "cacheTasksValidated": 6,
+  "coverage": {
+    "title": 24,
+    "translate": 3,
+    "study": 0,
+    "quicklook": 3
+  },
+  "externalModelApiRequests": 0,
+  "providerUsage": null,
+  "route": "current Sol conversation public-abstract editorial preparation",
+  "independentReview": "Sol model review; not human or medical final review",
+  "originalLedgerUnchanged": true,
+  "reservedAttempts": 4,
+  "reservedOutputTokens": 3800,
+  "productionWrites": 0,
+  "deployed": false,
+  "failedIdentityHashOrQuoteMayNotBeSkipped": true
+}

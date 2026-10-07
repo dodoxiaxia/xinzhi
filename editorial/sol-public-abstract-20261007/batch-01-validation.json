@@ -1,0 +1,38 @@
+[
+  {
+    "rank": 1,
+    "task": "translate",
+    "valid": true,
+    "cacheRevalidated": true
+  },
+  {
+    "rank": 1,
+    "task": "quicklook",
+    "valid": true,
+    "cacheRevalidated": true
+  },
+  {
+    "rank": 2,
+    "task": "translate",
+    "valid": true,
+    "cacheRevalidated": true
+  },
+  {
+    "rank": 2,
+    "task": "quicklook",
+    "valid": true,
+    "cacheRevalidated": true
+  },
+  {
+    "rank": 3,
+    "task": "translate",
+    "valid": true,
+    "cacheRevalidated": true
+  },
+  {
+    "rank": 3,
+    "task": "quicklook",
+    "valid": true,
+    "cacheRevalidated": true
+  }
+]
