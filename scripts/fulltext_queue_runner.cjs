@@ -25,7 +25,7 @@ async function identityToken(env, http) {
 async function call(input, env, http) {
   const token = await identityToken(env, http);
   const response = await http(ENDPOINT, { method:'POST', redirect:'error', signal:AbortSignal.timeout(90000),
-    headers:{ authorization:'Bearer ' + token, 'content-type':'application/json', accept:'application/json' }, body:JSON.stringify(input) });
+    headers:{ authorization:'Bearer ' + token, 'content-type':'application/json', accept:'application/json', 'user-agent':'XinZhiFulltextQueue/1.0' }, body:JSON.stringify(input) });
   const body = await readJson(response);
   if (!response.ok || !body || body.ok !== true) {
     const error = new Error(response.status === 409 && body.error === 'job_stale' ? 'job_sync_pending' : 'worker_unavailable');
@@ -39,7 +39,7 @@ async function runQueue(env = process.env, http = fetch, log = console.log, wait
     let ready = false;
     for (let n = 0; n < 25; n++) {
       try {
-        const response = await http(ENDPOINT, { method:'GET', redirect:'error', signal:AbortSignal.timeout(10000) });
+        const response = await http(ENDPOINT, { method:'GET', redirect:'error', signal:AbortSignal.timeout(10000), headers:{ 'user-agent':'XinZhiFulltextQueue/1.0' } });
         const payload = await readJson(response);
         ready = response.status === 405 && payload.error === 'job_bad_request';
       } catch { /* The next scheduled batch can resume after deployment. */ }
