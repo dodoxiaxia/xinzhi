@@ -10,18 +10,24 @@ from pathlib import Path
 from unittest.mock import patch
 
 import build_public as builder
+import apply_public_library as snapshot_apply
+import sync_public_library as library_sync
 from package_release import PUBLIC, public_payloads
+from public_library_test_fixture import write_public_library_fixture
 
 
 def synthetic_root(root):
     for folder in ('scripts', 'data', 'editorial', 'edge', 'docs', 'config'):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
-                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py', 'sync_public_library.py'):
-        shutil.copyfile(Path(__file__).parent / name, root / 'scripts' / name)
-    shutil.copyfile(Path(__file__).parents[1] / 'editorial/legacy_published_guides.json',
+                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py'):
+        shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
+    for module in (snapshot_apply, library_sync):
+        source = Path(module.__file__)
+        shutil.copyfile(source, root / 'scripts' / source.name)
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'editorial/legacy_published_guides.json',
                     root / 'editorial/legacy_published_guides.json')
-    shutil.copyfile(Path(__file__).parents[1] / 'config/public_library_adjudications.json',
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/public_library_adjudications.json',
                     root / 'config/public_library_adjudications.json')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
@@ -32,11 +38,11 @@ def synthetic_root(root):
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     for name, data in {
         'data/candidates.json': {'updatedAt': now, 'items': []},
-        'data/library.json': {'papers': []},
         'data/source-health.json': {'checkedAt': now, 'sources': []},
         'editorial/source_checked_drafts.json': {'articles': []},
     }.items():
         (root / name).write_text(json.dumps(data))
+    write_public_library_fixture(root)
 
 
 class ReleaseBuildTests(unittest.TestCase):
@@ -52,7 +58,10 @@ class ReleaseBuildTests(unittest.TestCase):
             self.assertIsNotNone(manifest['buildProvenance']['inputs']['data/curated-archive.json'])
             # Provenance stays private in docs, outside the six-file public bundle.
             self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
-            for name in ('app.js', 'data/candidates.json', 'editorial/source_checked_drafts.json', 'config/public_library_adjudications.json'):
+            for name in ('app.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
+                         'config/public_library_adjudications.json',
+                         'editorial/public_library_snapshot.json',
+                         'editorial/public_library_snapshot_manifest.json'):
                 with self.subTest(input=name):
                     file = root / name
                     before = file.read_bytes()

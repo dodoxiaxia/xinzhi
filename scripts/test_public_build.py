@@ -53,8 +53,26 @@ class PublicBuildTests(unittest.TestCase):
    with patch.object(b,'ROOT',r),self.assertRaises(ValueError):b.make_archive([],[])
  def test_public_directory_extra_file_blocks_build(self):
   with tempfile.TemporaryDirectory() as d:
-   dest=Path(d);(dest/'secret.txt').write_text('secret')
-   with patch.object(b,'DEST',dest),self.assertRaises(ValueError):b.main()
+   from test_release_build import synthetic_root
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir();(dest/'secret.txt').write_text('secret')
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),self.assertRaisesRegex(ValueError,'Unexpected public files'):b.main()
+ def test_snapshot_guard_holds_before_replacing_previous_public_build(self):
+  from test_release_build import synthetic_root
+  for failure in ('missing_snapshot','changed_snapshot','missing_approved_id'):
+   with self.subTest(failure=failure),tempfile.TemporaryDirectory() as d:
+    root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir()
+    output=dest/'public.js';output.write_text('// previous published bytes')
+    receipt=root/'docs/public-manifest.json';receipt.write_text('previous receipt')
+    snapshot=root/'editorial/public_library_snapshot.json'
+    if failure=='missing_snapshot':snapshot.unlink()
+    elif failure=='changed_snapshot':snapshot.write_bytes(snapshot.read_bytes()+b' ')
+    else:
+     state=json.loads((root/'data/library.json').read_text());state['papers']=[]
+     (root/'data/library.json').write_text(json.dumps(state))
+    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),self.assertRaisesRegex(ValueError,'public_library_snapshot_hold'):
+     b.main()
+    self.assertEqual(output.read_text(),'// previous published bytes')
+    self.assertEqual(receipt.read_text(),'previous receipt')
  def test_private_paths_stop_publication(self):
   for text in ['/Users/someone/file.pdf','{"api_key":"test"}','.local/llm.json']:
    with self.assertRaises(ValueError):b.validate_public(text)

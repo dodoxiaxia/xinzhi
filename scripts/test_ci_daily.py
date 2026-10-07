@@ -184,6 +184,7 @@ class RefreshExecutionTests(PipelineFixture):
         result, report, outputs, calls = self.invoke(run=lambda argv, timeout: (3, '', 'source failed'))
         self.assertEqual(result, 1)
         self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0], ['scripts/apply_public_library.py'])
         self.assertEqual(report['status'], 'failed')
         self.assertTrue(report['fast'])
         self.assertIsNone(report['changed'])
@@ -212,7 +213,8 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(outputs, [False])
 
     def test_budget_skips_optional_steps_but_reserves_build(self):
-        result, report, outputs, calls = self.invoke(clock=[0, 0, 0, 0, 1250, 1250, 1250])
+        clock = [0] * (1 + len(ci_daily.REQUIRED)) + [1250] * (len(ci_daily.LIGHT_OPTIONAL) + 1)
+        result, report, outputs, calls = self.invoke(clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(calls[-1], ci_daily.BUILD)
         self.assertEqual(sum(step.get('outcome') == 'skipped' for step in report['steps']), 2)
@@ -232,7 +234,7 @@ class RefreshExecutionTests(PipelineFixture):
             return 0, '', ''
         # Archive work reaches its budget, leaving 600 seconds for the model and
         # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0, 0, 0, 0, 0, 0, 1000, 2100, 2100, 2100, 2700, 2700]
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2700, 2700]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)

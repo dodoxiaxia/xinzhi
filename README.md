@@ -1,10 +1,10 @@
 # 心知｜心血管与AI医疗文献学习站
 
-公开网站：https://learn.dryz.info/ 。源码版本 v14.1；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
+公开网站：https://learn.dryz.info/ 。源码版本 v14.1.1；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
 ## 阅读和内容范围
 
-每日精选、每周精读、文献雷达、文献库构成四个主要栏目。雷达近14天自动聚合，文献库维持现有1,219条公开题录，不代表已读全文。原摘要、未经核对AI速览、摘要核对导读和全文精读分别标记；导读未经医生终审。本周没有新精读时明确显示未发布。
+每日精选、每周精读、文献雷达、文献库构成四个主要栏目。雷达近14天自动聚合，文献库本版获批静态题录为1,268条，不代表已读全文。原摘要、未经核对AI速览、摘要核对导读和全文精读分别标记；导读未经医生终审。本周没有新精读时明确显示未发布。
 
 按刊关注、可读内容筛选和中文检索帮助查新；关注与晨会单仅存当前浏览器。内部共读文档只有指定Google账号可访问，当前仅dryz@dryz.info。
 
@@ -18,6 +18,8 @@ v14.1 新增按 DOI 获取全文与补录：准确 DOI 先跨栏目精确查重�
 
 ## 本地核验与公开构建
 
+v14.1.1 将审核后的公开题录快照接入发布：恢复 `state` 后先运行 `scripts/apply_public_library.py`，再刷新与构建；构建守卫阻止旧状态覆盖已批准条目。快照保留原 1219 个 ID，新增 49 条至 1268 条。后续索引更新必须一并交付审核后的快照与 manifest，不能只提交同步脚本。发表日期精度与全文可用性分别记录，题录入库不代表全文已核验。
+
 当前源码与数据位于本目录。不要从早期导入脚本重建私人文献索引来覆盖既有公开范围，不要恢复旧前端模板。
 
 ```sh
@@ -28,6 +30,7 @@ node scripts/test_doi_library_worker.cjs
 node scripts/test_doi_library_ui.cjs
 node scripts/test_study_services.cjs
 node scripts/test_study_ui.cjs
+python3 scripts/apply_public_library.py
 python3 scripts/build_public.py
 python3 scripts/package_release.py
 ```

@@ -3,6 +3,7 @@
 """Reproducible, allowlisted public build. No credentials, PDFs or private paths."""
 import datetime, hashlib, json, re, shutil
 from pathlib import Path
+from apply_public_library import require_snapshot
 from release_integrity import input_hashes, ordinary_file, provenance, replace_unchanged_input
 from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
@@ -13,7 +14,7 @@ PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBa
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.1'
+RELEASE = 'v14.1.1'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -201,6 +202,7 @@ def main():
     extra={p.name for p in DEST.iterdir()}-PUBLIC
     if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
+    require_snapshot(l, ROOT)
     archive=make_archive(c['items'],l['papers'])
     editorial_drafts={article_key(d):d for d in load('editorial/source_checked_drafts.json')['articles']}
     library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p,editorial_drafts) for p in l['papers']]}

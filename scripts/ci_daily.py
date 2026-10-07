@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
 
 REQUIRED = [
+    ['scripts/apply_public_library.py'],
     ['scripts/refresh_feeds.py', '--all'],
     ['scripts/fetch_pubmed.py'],
     ['scripts/merge_candidates.py'],
