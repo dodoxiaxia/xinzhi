@@ -33,7 +33,7 @@ function outputFor(arts) {
       question: '评估影像标志物的预后意义', population: '纳入888例患者', design: '前瞻性观察队列分析', comparator: '标志物高值与低值比较', endpoints: '因心力衰竭住院', results: '随访期间6.1%发生住院'
     };
     const paper = { id: art.id };
-    for (const field of fields) paper[field] = { text: text[field], quote: quotes[field] };
+    for (const field of fields) paper[field] = art.evidence ? { text: text[field], quote_id: art.evidence.find(e => e.quote === quotes[field]).id } : { text: text[field], quote: quotes[field] };
     return paper;
   }) };
 }
@@ -50,7 +50,7 @@ function harness({ model, timers, fixtureRecords = records } = {}) {
       assert.equal(opts.redirect, 'manual');
       const payload = JSON.parse(opts.body), arts = JSON.parse(payload.messages[1].content);
       stats.modelPayloads.push(payload);
-      assert(arts.every(a => Object.keys(a).sort().join(',') === 'abstract,id,journal,title'));
+      assert(arts.every(a => Object.keys(a).sort().join(',') === 'abstract,evidence,id,journal,title'));
       if (model) return model(arts, stats.model, payload);
       return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(outputFor(arts)) } }] });
     }
@@ -100,7 +100,7 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
   bad = clone(good); bad.papers[1].id = '9';
   assert.throws(() => h.ctx.checkStudy(bad, arts), /invalid_study_id/);
   bad = clone(good); bad.papers[0].comparator = { text: '摘要没有说明', quote: '' };
-  assert.throws(() => h.ctx.checkStudy(bad, arts), /quote_not_in_abstract/);
+  assert.throws(() => h.ctx.checkStudy(bad, arts), /invalid_study_quote_length/);
   bad = clone(good); bad.papers[0].comparator = { ...unknown, quote: quotesA.comparator };
   assert.throws(() => h.ctx.checkStudy(bad, arts), /invalid_study_unknown/);
   bad = clone(good); bad.papers[0].comparator = unknown;
@@ -254,7 +254,7 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
   // At most one validation retry; failed generations do not create result caches.
   const repaired = harness({ model: (used, call) => {
-    const output = outputFor(used); if (call === 1) output.papers[0].results.quote = 'This counterfeit quote is not in the source.';
+    const output = outputFor(used); if (call === 1) output.papers[0].results.quote_id = '1:nonexistent';
     return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(output) } }] });
   } });
   assert.equal((await repaired.post({ task: 'study', pmid: '111' })).status, 200); assert.equal(repaired.stats.model, 2);

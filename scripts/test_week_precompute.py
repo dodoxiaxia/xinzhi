@@ -1,4 +1,4 @@
-import copy,datetime as dt,json,tempfile,unittest,urllib.error
+import copy,datetime as dt,io,json,tempfile,unittest,urllib.error
 from pathlib import Path
 from unittest.mock import patch
 import week_precompute as w
@@ -14,6 +14,7 @@ def paper(number=1,**extra):
 def tr():return {'title_zh':'一项随机临床试验','abstract_zh':'方法：随机试验比较治疗与安慰剂，纳入120例患者。结果：治疗组12例患者发生事件，安慰剂组24例。结论：生存无显著差异；局限为随访较短。'}
 def ql():return {'title_zh':'一项随机临床试验','one_line':'生存无显著差异','design':'随机试验','findings':[{'text':'治疗组12例发生事件','quote':QUOTE},{'text':'安慰剂组24例发生事件','quote':QUOTE}],'limits':'随访较短','why_read':'了解摘要证据边界'}
 def structure():return {k:{'text':'摘要未提供','quote':''} for k in w.STUDY_FIELDS}
+def model_structure():return {k:{'text':'摘要未提供','quote_id':''} for k in w.STUDY_FIELDS}
 
 class SelectionTests(unittest.TestCase):
  def test_strict_dates_and_future(self):
@@ -58,12 +59,13 @@ class CacheAndBudgetTests(unittest.TestCase):
    cp=Path(d)/'cache.json';lp=Path(d)/'ledger.json';cache={'entries':{}};ledger={'days':{}};calls=[]
    def transport(url,payload=None):
     calls.append(payload)
-    if payload is None:return {'found':False}
-    disk=json.loads(lp.read_text());self.assertEqual(next(iter(disk['days'].values()))['reservedAttempts'],2 if payload['task']=='translate' else 4)
+    if payload is None:
+     return {'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])} if 'task=translate' in url else {'found':False}
+    disk=json.loads(lp.read_text());self.assertEqual(next(iter(disk['days'].values()))['reservedAttempts'],2);self.assertEqual(next(iter(disk['days'].values()))['reservedOutputTokens'],3800)
     if payload['task']=='translate':return {'ok':True,'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])}
     raise w.Halt('http_429:provider_rate_limit')
    report=w.acquire_runtime([self.p],cache,cp,ledger,lp,8,True,transport)
-   self.assertTrue(report['stopped']);self.assertEqual(report['paidRequests'],2);self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertEqual(json.loads(cp.read_text()),cache)
+   self.assertTrue(report['stopped']);self.assertEqual(report['paidRequests'],1);self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertEqual(json.loads(cp.read_text()),cache)
    count=len(calls);again=w.acquire_runtime([self.p],cache,cp,ledger,lp,8,True,transport);self.assertTrue(again['stopped']);self.assertEqual(len(calls),count)
  def test_daily_budget_never_exceeded_even_with_worker_retry(self):
   with tempfile.TemporaryDirectory() as d:
@@ -85,9 +87,9 @@ class CacheAndBudgetTests(unittest.TestCase):
   second=dict(self.p,paperID='doi:10.1234/2',id='p2',doi='10.1234/2',pmid='2')
   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
    def call(public):
-    calls.append(public);self.assertEqual(set(public),{'title','journal','abstract','missingTasks'})
+    calls.append(public);self.assertEqual(set(public),{'title','journal','abstract','evidence','missingTasks'})
     if len(calls)==2:raise w.Halt('provider_http_403')
-    return {'translate':tr(),'study':structure(),'quicklook':ql()}
+    return {'translate':tr(),'study':model_structure(),'quicklook':ql()}
    report=w.configured_batch([self.p,second],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,call)
    self.assertTrue(report['stopped']);self.assertEqual(report['blocker'],'provider_http_403');self.assertEqual(len(calls),2)
    self.assertTrue(all(w.find(cache,self.p,t)[0] for t in w.TASKS));self.assertNotIn('fixture-secret',json.dumps(cache)+json.dumps(ledger))
@@ -98,6 +100,48 @@ class CacheAndBudgetTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
    report=w.configured_batch([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',1,lambda public:{'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()})
    self.assertEqual(report['generatedTasks'],2);self.assertTrue(report['stopped']);self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+ def test_runtime_output_budget_prevents_second_task_after_translation(self):
+  with tempfile.TemporaryDirectory() as d:
+   cache={'entries':{}};ledger={'days':{}};posts=[]
+   def transport(url,payload=None):
+    if payload is None:return {'found':False}
+    posts.append(payload);return {'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])}
+   report=w.acquire_runtime([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,True,transport)
+   self.assertEqual(len(posts),1);self.assertEqual(report['blocker'],'existing_daily_output_token_budget_exhausted');self.assertEqual(report['remainingOutputTokens'],600)
+ def test_ephemeral_ci_paid_calls_fail_closed_before_configuration_or_network(self):
+  with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'GITHUB_ACTIONS':'true'}):
+   args=([self.p],{'entries':{}},Path(d)/'cache',{'days':{}},Path(d)/'ledger',8)
+   runtime=w.acquire_runtime(*args,True,lambda *a:self.fail('no network'))
+   configured=w.configured_batch(*args,lambda *a:self.fail('no model'))
+   self.assertEqual(runtime['blocker'],'paid_ci_requires_durable_checkpoint');self.assertEqual(configured['blocker'],runtime['blocker'])
+ def test_paid_batches_stop_at_utc_day_boundary(self):
+  for provider in ('runtime','configured'):
+   clock=[CLOCK];cache={'entries':{}};ledger={'days':{}};posts=[]
+   second=dict(self.p,paperID='doi:10.1234/2',id='p2',doi='10.1234/2',pmid='2')
+   def call(url_or_public,payload=None):
+    if provider=='runtime' and payload is None:return {'found':False}
+    posts.append(payload);clock[0]=CLOCK+dt.timedelta(days=1)
+    return {'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])} if provider=='runtime' else {'translate':tr(),'study':model_structure(),'quicklook':ql()}
+   with tempfile.TemporaryDirectory() as d,patch.object(w,'now',lambda:clock[0]),patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
+    args=([self.p,second],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8)
+    report=w.acquire_runtime(*args,True,call) if provider=='runtime' else w.configured_batch(*args,call)
+    self.assertEqual(len(posts),1);self.assertEqual(report['blocker'],'utc_day_changed');self.assertEqual(set(ledger['days']),{'2026-10-07'})
+ def test_configured_rejects_underreported_or_uncertain_ledger_before_call(self):
+  for status,expected in [('validated','inconsistent_budget_accounting'),('failed_or_uncertain','uncertain_prior_attempt')]:
+   daily={'reservedAttempts':0,'reservedOutputTokens':0,'requests':[{'status':status,'reservedAttempts':8,'reservedOutputTokens':9600}]}
+   ledger={'days':{w.now().date().isoformat():daily}}
+   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
+    report=w.configured_batch([self.p],{'entries':{}},Path(d)/'cache',ledger,Path(d)/'ledger',8,lambda *a:self.fail('must not call'))
+    self.assertEqual(report['paidRequests'],0);self.assertEqual(report['blocker'],expected)
+ def test_configured_rejects_incomplete_json_responses(self):
+  for reason in ['length','content_filter','sensitive','network_error',None]:
+   response=io.BytesIO(json.dumps({'choices':[{'finish_reason':reason,'message':{'content':json.dumps({'translate':tr(),'study':model_structure(),'quicklook':ql()})}}]}).encode())
+   class Opener:
+    def open(self,*args,**kwargs):return response
+   with tempfile.TemporaryDirectory() as d,patch.object(w.urllib.request,'build_opener',return_value=Opener()),patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
+    cache={'entries':{}}
+    report=w.configured_batch([self.p],cache,Path(d)/'cache',{'days':{}},Path(d)/'ledger',8)
+    self.assertTrue(report['stopped']);self.assertEqual(report['generatedTasks'],0);self.assertFalse(cache['entries']);self.assertEqual(report['paidRequests'],1)
  def test_identity_checked_source_hydration_preserves_real_publication_day(self):
   from hydrate_week_public_sources import fetch
   source={'resultList':{'result':[{'doi':self.p['doi'],'pmid':self.p['pmid'],'title':self.p['title'],'firstPublicationDate':'2026-09-17','abstractText':ABSTRACT}]}}
