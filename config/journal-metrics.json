@@ -1,0 +1,5616 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-07T09:24:05Z",
+  "notice": "期刊指标只描述期刊，不用于判断单篇研究质量。",
+  "sources": {
+    "edition-2026": {
+      "label": "Annual Reviews: 2026 JCR release uses 2025 data",
+      "url": "https://www.annualreviews.org/page/librarians/impact-factors",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "ehj": {
+      "label": "European Heart Journal: public publisher metrics",
+      "url": "https://academic.oup.com/eurheartj/pages/About",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "europace": {
+      "label": "Europace: public publisher metrics",
+      "url": "https://academic.oup.com/europace/pages/About",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "ehjdh": {
+      "label": "European Heart Journal - Digital Health: public publisher metrics",
+      "url": "https://academic.oup.com/ehjdh/pages/about",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "ehjcimaging": {
+      "label": "European Heart Journal - Cardiovascular Imaging: public publisher metrics",
+      "url": "https://academic.oup.com/ehjcimaging/pages/About",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "ehjcvp": {
+      "label": "European Heart Journal - Cardiovascular Pharmacotherapy: public publisher metrics",
+      "url": "https://academic.oup.com/ehjcvp",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "cvr": {
+      "label": "Cardiovascular Research: public publisher metrics",
+      "url": "https://academic.oup.com/cardiovascres/pages/about",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "pnasnexus": {
+      "label": "PNAS Nexus: public publisher metrics",
+      "url": "https://academic.oup.com/pnasnexus/pages/About",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "nsr": {
+      "label": "National Science Review: public publisher metrics",
+      "url": "https://academic.oup.com/nsr/pages/About",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "jamia": {
+      "label": "Journal of the American Medical Informatics Association: public publisher metrics",
+      "url": "https://academic.oup.com/jamia/pages/About",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "nm": {
+      "label": "Nature Medicine: public publisher metrics",
+      "url": "https://www.nature.com/nm/journal-impact",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "nmi": {
+      "label": "Nature Machine Intelligence: public publisher metrics",
+      "url": "https://www.nature.com/natmachintell/journal-impact",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "commsmed": {
+      "label": "Communications Medicine: public publisher metrics",
+      "url": "https://www.nature.com/commsmed/journal-impact",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "npjdigitalmed": {
+      "label": "npj Digital Medicine: public publisher metrics",
+      "url": "https://www.nature.com/npjdigitalmed/journal-impact",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "nrcardio": {
+      "label": "Nature Reviews Cardiology: public publisher metrics",
+      "url": "https://www.nature.com/nrcardio/journal-impact",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "fdgth": {
+      "label": "Frontiers in Digital Health: public journal facts",
+      "url": "https://www.frontiersin.org/journals/digital-health/about",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T09:24:05Z"
+    }
+  },
+  "journals": [
+    {
+      "id": "j-b032d60cf60f",
+      "name": "ACM会议稿",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-95f81cfe0395",
+      "name": "AI Agent Trends",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "unknown",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-9a6e8d81560b",
+      "name": "AI Co-Clinician",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "unknown",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-3db105967433",
+      "name": "AI评论",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "blog",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-7b516aa53e90",
+      "name": "AMIA会议稿",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-e29d65d7e65e",
+      "name": "American Heart Journal",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-7253dbed771a",
+      "name": "American Journal of Physiology - Heart and Circulatory Physiology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-b4b4546689fd",
+      "name": "Annals of Internal Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-69fafd038529",
+      "name": "Arabian Journal for Science and Engineering",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-6e6ef8dff44a",
+      "name": "Archivos de Bronconeumología",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-0507d1bb9ff4",
+      "name": "Arteriosclerosis, Thrombosis, and Vascular Biology",
+      "aliases": [
+        "ATVB"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-80f921dc9023",
+      "name": "Artificial Intelligence",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-3b1e2a96d9d4",
+      "name": "BMC Cardiovascular Disorders",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-edf17fb82911",
+      "name": "BMC Medical Education",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-ba7f95f3eda4",
+      "name": "BMC Medical Informatics and Decision Making",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-bcc2e7f15197",
+      "name": "BMC Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-4a3b700b9abd",
+      "name": "BMJ Digital Health & AI",
+      "aliases": [
+        "BMJ Digital Health",
+        "BMJ Digital Health & AI current issue",
+        "BMJ Digital Health & AI recent issues",
+        "BMJ digital health & AI"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f55150b33466",
+      "name": "BMJ Evidence-Based Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-80bd2fb7f1bd",
+      "name": "BMJ Open",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-dd8b4048aa59",
+      "name": "Cardiovascular Diabetology",
+      "aliases": [
+        "Cardiovascular diabetology"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-dcd49442d7ae",
+      "name": "Cardiovascular Research",
+      "aliases": [
+        "Cardiovascular research"
+      ],
+      "issns": [
+        "1755-3245"
+      ],
+      "identitySources": [
+        "cvr"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 12.5,
+        "year": 2025,
+        "sources": [
+          "cvr"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Cardiac & Cardiovascular Systems",
+            "quartile": null,
+            "rank": 12,
+            "total": 237,
+            "sources": [
+              "cvr"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-ef50f8b75c6e",
+      "name": "Cell Reports Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-611719304015",
+      "name": "Circulation",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1700d45ddccf",
+      "name": "Circulation Research",
+      "aliases": [
+        "Circulation research"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-d8d8f93e4807",
+      "name": "Circulation: Arrhythmia and Electrophysiology",
+      "aliases": [
+        "Circ: AE",
+        "Circulation. Arrhythmia and electrophysiology",
+        "Circulation: AE",
+        "Circulation: Arrhythmia & EP"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-eb5e4c3403a9",
+      "name": "Circulation: Cardiovascular Imaging",
+      "aliases": [
+        "Circ CV Imaging",
+        "Circulation. Cardiovascular imaging",
+        "Circulation: Imaging"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-9f63a531b9de",
+      "name": "Circulation: Cardiovascular Interventions",
+      "aliases": [
+        "Circ: Cardiovascular Interventions",
+        "Circulation. Cardiovascular interventions",
+        "Circulation: Interventions"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f43f261e4268",
+      "name": "Circulation: Cardiovascular Quality and Outcomes",
+      "aliases": [
+        "Circulation: CQO",
+        "Circulation: Outcomes"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-3433b0e67f0e",
+      "name": "Circulation: Genomic and Precision Medicine",
+      "aliases": [
+        "Circ Genomic and Precision Medicine",
+        "Circulation. Genomic and precision medicine",
+        "Circulation: Genomic Med"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-783e8d3808eb",
+      "name": "Circulation: Heart Failure",
+      "aliases": [
+        "Circ Heart Failure",
+        "Circulation. Heart failure"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-04e84a6045a2",
+      "name": "Clinician of the Future",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "unknown",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-76d44fd1894d",
+      "name": "Communications Medicine",
+      "aliases": [],
+      "issns": [
+        "2730-664X"
+      ],
+      "identitySources": [
+        "commsmed"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 7.4,
+        "year": 2025,
+        "sources": [
+          "commsmed"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社公开 JIF；未公开完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-dac70633b25d",
+      "name": "Communications Psychology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-6c9ec61c2b35",
+      "name": "Computers in Biology and Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-268f14bbfe11",
+      "name": "Diagnostics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-81d740890f28",
+      "name": "EMNLP",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-0a6adff08d1f",
+      "name": "Europace",
+      "aliases": [
+        "Europace : European pacing, arrhythmias, and cardiac electrophysiology : journal of the working groups on cardiac pacing, arrhythmias, and cardiac cellular electrophysiology of the European Society of Cardiology"
+      ],
+      "issns": [
+        "1532-2092"
+      ],
+      "identitySources": [
+        "europace"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 10.2,
+        "year": 2025,
+        "sources": [
+          "europace"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Cardiac & Cardiovascular Systems",
+            "quartile": null,
+            "rank": 17,
+            "total": 237,
+            "sources": [
+              "europace"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-f98b4fec0fae",
+      "name": "European Heart Journal",
+      "aliases": [
+        "EHJ",
+        "EHJ: Advance Access",
+        "EHJ: Current Issue",
+        "European heart journal"
+      ],
+      "issns": [
+        "0195-668X",
+        "1522-9645"
+      ],
+      "identitySources": [
+        "ehj"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 45.6,
+        "year": 2025,
+        "sources": [
+          "ehj"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Cardiac & Cardiovascular Systems",
+            "quartile": null,
+            "rank": 2,
+            "total": 237,
+            "sources": [
+              "ehj"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-c8d1f4b22ca6",
+      "name": "European Heart Journal - Cardiovascular Imaging",
+      "aliases": [
+        "European heart journal. Cardiovascular Imaging"
+      ],
+      "issns": [
+        "2047-2412"
+      ],
+      "identitySources": [
+        "ehjcimaging"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 6.1,
+        "year": 2025,
+        "sources": [
+          "ehjcimaging"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Radiology, Nuclear Medicine & Medical Imaging",
+            "quartile": null,
+            "rank": 20,
+            "total": 217,
+            "sources": [
+              "ehjcimaging"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          },
+          {
+            "name": "Cardiac & Cardiovascular Systems",
+            "quartile": null,
+            "rank": 37,
+            "total": 237,
+            "sources": [
+              "ehjcimaging"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-bec0834f9ba8",
+      "name": "European Heart Journal - Cardiovascular Pharmacotherapy",
+      "aliases": [
+        "EHJ - Cardiovasc Pharmacotherapy",
+        "EHJ - Cardiovascular Pharmacotherapy",
+        "European heart journal. Cardiovascular pharmacotherapy"
+      ],
+      "issns": [
+        "2055-6845"
+      ],
+      "identitySources": [
+        "ehjcvp"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 8.2,
+        "year": 2025,
+        "sources": [
+          "ehjcvp"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Pharmacology & Pharmacy",
+            "quartile": null,
+            "rank": 20,
+            "total": 356,
+            "sources": [
+              "ehjcvp"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          },
+          {
+            "name": "Cardiac & Cardiovascular Systems",
+            "quartile": null,
+            "rank": 28,
+            "total": 237,
+            "sources": [
+              "ehjcvp"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-61a3c28d6639",
+      "name": "European Heart Journal - Digital Health",
+      "aliases": [
+        "EHJ- Digital Health Advance Access",
+        "EHJ-Digital Health",
+        "European heart journal. Digital health"
+      ],
+      "issns": [
+        "2634-3916"
+      ],
+      "identitySources": [
+        "ehjdh"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 5.3,
+        "year": 2025,
+        "sources": [
+          "ehjdh"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Cardiac & Cardiovascular Systems",
+            "quartile": null,
+            "rank": 50,
+            "total": 237,
+            "sources": [
+              "ehjdh"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-7125170777ba",
+      "name": "European Heart Journal Supplements",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-248fea1fabef",
+      "name": "European Journal of Clinical Nutrition",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c5b385a592e1",
+      "name": "European Journal of Heart Failure",
+      "aliases": [
+        "EJHF",
+        "Euro J Heart Failure",
+        "European journal of heart failure"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f244e725a14d",
+      "name": "Frontiers in Digital Health",
+      "aliases": [],
+      "issns": [
+        "2673-253X"
+      ],
+      "identitySources": [
+        "fdgth"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "公开页显示 IF，但未标明指标年份，未作为已核实 JIF 展示"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-770af9d18037",
+      "name": "Heart",
+      "aliases": [
+        "Heart (British Cardiac Society)",
+        "Heart Online First"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-63e6c94458cf",
+      "name": "Heart Rhythm",
+      "aliases": [
+        "Heart rhythm"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-d54a18f9b13a",
+      "name": "Heart Rhythm O2",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-cc5cc8d5ca13",
+      "name": "Hypertension",
+      "aliases": [
+        "Hypertension (Dallas, Tex. : 1979)"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-333c311be442",
+      "name": "IEEE International Conference on Healthcare Informatics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-68cb0e57e439",
+      "name": "IJCAI",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-647573c3148b",
+      "name": "Infection",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e04f389ad36b",
+      "name": "Informatics in Medicine Unlocked",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-177e490920b4",
+      "name": "Information Fusion",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-5e403261901e",
+      "name": "Intelligent Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1ff2a4c7e9b9",
+      "name": "Intelligent Systems with Applications",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-83deeb0a2d15",
+      "name": "International Journal of Cardiology",
+      "aliases": [
+        "IJC",
+        "Int. J. Cardiology (IJC)"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1f4f76c3d82d",
+      "name": "International Journal of Medical Informatics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-8313b141c008",
+      "name": "International Journal of Telemedicine and Applications",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f382ff4aab4f",
+      "name": "JACC",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e0b5a3e8177b",
+      "name": "JACC Asia",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-de43e6776d01",
+      "name": "JACC: Advances",
+      "aliases": [
+        "JACC Advances",
+        "JACC. Advances"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-4ef7fff979d5",
+      "name": "JACC: Basic to Translational Science",
+      "aliases": [
+        "JACC: BTS"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-67bcfbfc4535",
+      "name": "JACC: Cardiovascular Imaging",
+      "aliases": [
+        "JACC. Cardiovascular imaging",
+        "JACC: Cardio Imaging"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-482ca59f3eba",
+      "name": "JACC: Cardiovascular Interventions",
+      "aliases": [
+        "JACC. Cardiovascular interventions",
+        "JACC: Interventions"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-99ebca64ce0a",
+      "name": "JACC: Case Reports",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e55eb1801e6a",
+      "name": "JACC: Clinical Electrophysiology",
+      "aliases": [
+        "JACC. Clinical electrophysiology",
+        "JACC: CE"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-540e8155203a",
+      "name": "JACC: Heart Failure",
+      "aliases": [
+        "JACC Heart Failure",
+        "JACC. Heart failure"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e9c30224892e",
+      "name": "JAMA",
+      "aliases": [
+        "JAMA Current Issue",
+        "JAMA Online First"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-45e7db772e92",
+      "name": "JAMA Cardiology",
+      "aliases": [
+        "JAMA Cardiology Current Issue",
+        "JAMA Cardiology Online First",
+        "JAMA cardiology",
+        "JAMA: Cardiology Topic Collection"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a0fcbe50d1da",
+      "name": "JAMA Health Forum",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e130fe7da202",
+      "name": "JAMA Internal Medicine",
+      "aliases": [
+        "JAMA IM Current Issue",
+        "JAMA IM Online First",
+        "JAMA internal medicine"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-fe314b262b90",
+      "name": "JAMA Network Open",
+      "aliases": [
+        "JAMA Network Open Most Read",
+        "JAMA Network Open New Online",
+        "JAMA network open"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-0bb7adaf437f",
+      "name": "JAMA Neurology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-176c39e38676",
+      "name": "JAMA Oncology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c2797c981788",
+      "name": "JAMA Ophthalmology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-0aaad9bad6a3",
+      "name": "JAMA Otolaryngology-Head & Neck Surgery",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-b6e148883444",
+      "name": "JAMA Pediatrics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f0fb0c53a7b3",
+      "name": "JAMA Psychiatry",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-ac6901741d2f",
+      "name": "JAMA Surgery",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-427aec02961b",
+      "name": "JMIR AI",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-ff08244bff22",
+      "name": "JMIR Biomedical Engineering",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-6be076faeb4c",
+      "name": "JMIR Medical Informatics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-12f9d5c35aab",
+      "name": "JN Learning",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "collection",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-bef66d0eaca0",
+      "name": "Journal of Arrhythmia",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-d28c7ca43c23",
+      "name": "Journal of Biomedical Informatics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-06c9e01bb6ff",
+      "name": "Journal of Cardiovascular Electrophysiology",
+      "aliases": [
+        "J. Cardiovasc. Electrophysiol. (JCE)",
+        "JCE",
+        "Journal of cardiovascular electrophysiology"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-063c06962a48",
+      "name": "Journal of Clinical Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c56a766b57b8",
+      "name": "Journal of Imaging Informatics in Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1a590d5a46ef",
+      "name": "Journal of Thoracic Disease",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-87fee1fa9769",
+      "name": "Journal of the American Heart Association",
+      "aliases": [
+        "JAHA"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-354c0ec1bb64",
+      "name": "Journal of the American Medical Informatics Association",
+      "aliases": [
+        "JAMIA",
+        "JAMIA-1",
+        "JAMIA-2"
+      ],
+      "issns": [
+        "1527-974X"
+      ],
+      "identitySources": [
+        "jamia"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 7.1,
+        "year": 2025,
+        "sources": [
+          "jamia"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社公开 JIF；未公开完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-05ff04f66fac",
+      "name": "KDD",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-a28b879a5619",
+      "name": "Leukemia",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-52d46ffedcf8",
+      "name": "Life",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e753f909eae5",
+      "name": "Medical Journal of Australia",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-8fbc5d4e3562",
+      "name": "Medicina",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c4d3d42ed3a4",
+      "name": "Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e81c7afdcacf",
+      "name": "NEJM AI",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-8ddfa1db6fd4",
+      "name": "NEJM Catalyst",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-de45c6763f3f",
+      "name": "NEJM Evidence",
+      "aliases": [
+        "NEJM Evid"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-20a7bc362115",
+      "name": "National Science Review",
+      "aliases": [],
+      "issns": [
+        "2053-714X",
+        "2095-5138"
+      ],
+      "identitySources": [
+        "nsr"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 18.1,
+        "year": 2025,
+        "sources": [
+          "nsr"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Multidisciplinary Sciences",
+            "quartile": null,
+            "rank": 8,
+            "total": 140,
+            "sources": [
+              "nsr"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-c71ce8ccf3b4",
+      "name": "Nature",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-387de4f37896",
+      "name": "Nature Aging",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-afe279386de9",
+      "name": "Nature Biomedical Engineering",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f948c5812598",
+      "name": "Nature Biotechnology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-2ed78740b6fe",
+      "name": "Nature Cancer",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e2a0a0e8aa05",
+      "name": "Nature Cardiovascular Research",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-91444c745ca4",
+      "name": "Nature Communications",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-b16f394ae053",
+      "name": "Nature Computational Science",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-0ef0972d2e5f",
+      "name": "Nature Electronics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-9e84ccd47779",
+      "name": "Nature Health",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-78fce4a9298b",
+      "name": "Nature Human Behaviour",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a7a9ed9073d2",
+      "name": "Nature Machine Intelligence",
+      "aliases": [],
+      "issns": [
+        "2522-5839"
+      ],
+      "identitySources": [
+        "nmi"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 29.8,
+        "year": 2025,
+        "sources": [
+          "nmi"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社公开 JIF；未公开完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-860b88dcd61f",
+      "name": "Nature Materials",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-463704931e31",
+      "name": "Nature Medicine",
+      "aliases": [
+        "Nature medicine"
+      ],
+      "issns": [
+        "1546-170X",
+        "1078-8956"
+      ],
+      "identitySources": [
+        "nm"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 52.5,
+        "year": 2025,
+        "sources": [
+          "nm"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社公开 JIF；未公开完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c5f51d81c4c0",
+      "name": "Nature Mental Health",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-7be1c39ae2db",
+      "name": "Nature Metabolism",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-4603f2941d73",
+      "name": "Nature Methods",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-afc31abe926e",
+      "name": "Nature Microbiology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-8efb14342d5a",
+      "name": "Nature News",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "news",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-8e165c3a78c4",
+      "name": "Nature Protocols",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-51a425b54ad3",
+      "name": "Nature Reviews Bioengineering",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-7c7a0f89c94b",
+      "name": "Nature Reviews Cancer",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-0961a699e950",
+      "name": "Nature Reviews Cardiology",
+      "aliases": [],
+      "issns": [
+        "1759-5010",
+        "1759-5002"
+      ],
+      "identitySources": [
+        "nrcardio"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 50.2,
+        "year": 2025,
+        "sources": [
+          "nrcardio"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社公开 JIF；未公开完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-5288574fa0b3",
+      "name": "Nature Reviews Clinical Oncology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-14fcd8fb5144",
+      "name": "Nature Reviews Gastroenterology & Hepatology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-6b41f6ec5528",
+      "name": "Nature Reviews Neurology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-94b95de5f753",
+      "name": "Nature Reviews Psychology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-fb9d4a298fc8",
+      "name": "Nature Reviews Urology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a51d3de8b1bf",
+      "name": "Neural Computing and Applications",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a769ec16388f",
+      "name": "New England Journal of Medicine",
+      "aliases": [
+        "N Engl J Med",
+        "NEJM",
+        "The New England journal of medicine"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-49543e194e70",
+      "name": "News Center",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "news",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-b19842a3bf40",
+      "name": "OpenAI News",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "news",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-3843ce694812",
+      "name": "PNAS",
+      "aliases": [
+        "PNAS-current"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-2575d85e3b0c",
+      "name": "PNAS Nexus",
+      "aliases": [],
+      "issns": [
+        "2752-6542"
+      ],
+      "identitySources": [
+        "pnasnexus"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 4.8,
+        "year": 2025,
+        "sources": [
+          "pnasnexus"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Social Sciences, Interdisciplinary",
+            "quartile": null,
+            "rank": 9,
+            "total": 275,
+            "sources": [
+              "pnasnexus"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          },
+          {
+            "name": "Multidisciplinary Sciences",
+            "quartile": null,
+            "rank": 23,
+            "total": 140,
+            "sources": [
+              "pnasnexus"
+            ],
+            "verifiedAt": "2026-10-07T09:24:05Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "出版社公开 JIF 学科排名；分区与全部学科未核实，不按排名比例推算"
+      }
+    },
+    {
+      "id": "j-6317691f3b30",
+      "name": "Pacing and Clinical Electrophysiology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-7f1ea44c6f71",
+      "name": "Postgraduate Medical Journal",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-161ba005ee6e",
+      "name": "Progress in Cardiovascular Diseases",
+      "aliases": [
+        "Progress in Cardio Dis"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-756386b248c0",
+      "name": "PubMed: 中国心血管病报告",
+      "aliases": [
+        "CN CVD2022"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "collection",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-60968d9e85a1",
+      "name": "PubMed: 丹麦房颤队列追踪",
+      "aliases": [
+        "danish cohort atrial fibrillation"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "collection",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-0ffce237c670",
+      "name": "PubMed: 安贞团队论文追踪",
+      "aliases": [
+        "AZ team"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "collection",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-c5696a76d6e8",
+      "name": "PubMed: 房颤专病追踪",
+      "aliases": [
+        "atrial fibrillation"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "collection",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-9d948c73e0ad",
+      "name": "Science",
+      "aliases": [
+        "Science Magazine"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-26240bd42e3b",
+      "name": "Science Advances",
+      "aliases": [
+        "Science Advances: ToC"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-90242c8cf91e",
+      "name": "Science Robotics",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-bef6dc2fba25",
+      "name": "Scientific Reports",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-7dca2b2d6faa",
+      "name": "Springer图书",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "book",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-563dceb33b69",
+      "name": "State of Generative AI",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "unknown",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1582a13fefaa",
+      "name": "Stroke",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a45a0826abe6",
+      "name": "Stroke and Vascular Neurology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-56876ecc95a5",
+      "name": "TechRxiv",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "preprint",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-f4e35f3f535c",
+      "name": "Technological Forecasting and Social Change",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-cacb4f2498ee",
+      "name": "The BMJ",
+      "aliases": [
+        "BMJ",
+        "BMJ (Clinical research ed.)"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1c8f92415594",
+      "name": "The Clinical Teacher",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c64cf1836c23",
+      "name": "The Lancet",
+      "aliases": [
+        "Lancet (London, England)"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-6109ab3bc9df",
+      "name": "The Lancet Diabetes & Endocrinology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-473d1554c7bc",
+      "name": "The Lancet Digital Health",
+      "aliases": [
+        "Lancet Digital Health"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-5fccbb64e8e7",
+      "name": "The Lancet Global Health",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e4756f9afc90",
+      "name": "The Lancet Healthy Longevity",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-712a8499ae92",
+      "name": "The Lancet Neurology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-ef5cb136ef7c",
+      "name": "The Lancet Oncology",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c32140fdce50",
+      "name": "The Lancet Primary Care",
+      "aliases": [
+        "Lancet Primary Care"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1a61b3c65f73",
+      "name": "The Lancet Public Health",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-b417132033f2",
+      "name": "The Lancet Rheumatology",
+      "aliases": [
+        "Lancet Rheumatology"
+      ],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-90749a207170",
+      "name": "Trends in Cardiovascular Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-b764cdc0eab7",
+      "name": "Unknown",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "unknown",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-414d4b60179f",
+      "name": "Working Papers",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "preprint",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-2d546634e2a5",
+      "name": "arXiv",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "preprint",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-3b262a002f52",
+      "name": "eClinicalMedicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-7294c2d5d911",
+      "name": "eLife",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-56229fe4ff46",
+      "name": "medRxiv",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "preprint",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-8ced07f84c2a",
+      "name": "nejm系列",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "collection",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-e09bd7ed2ccb",
+      "name": "npj Artificial Intelligence",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-867964fd04c3",
+      "name": "npj Cardiovascular Health",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-5a778d4b4f26",
+      "name": "npj Digital Medicine",
+      "aliases": [
+        "NPJ Digital Medicine",
+        "NPJ digital medicine"
+      ],
+      "issns": [
+        "2398-6352"
+      ],
+      "identitySources": [
+        "npjdigitalmed"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 18.0,
+        "year": 2025,
+        "sources": [
+          "npjdigitalmed"
+        ],
+        "verifiedAt": "2026-10-07T09:24:05Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社公开 JIF；未公开完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e54bd69a4b86",
+      "name": "npj Gut and Liver",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c611c2ad1e8f",
+      "name": "npj Health Systems",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-73f9a3066e5d",
+      "name": "中华传染病杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1d926129fe02",
+      "name": "中华健康管理学杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-3ec65feeeebe",
+      "name": "中华儿科杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-116fc5a778ac",
+      "name": "中华内科杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-22741372ceb5",
+      "name": "中华医学教育杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-eea0416af907",
+      "name": "中华医学杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-410585261d39",
+      "name": "中华围产医学杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-ac7909542bdc",
+      "name": "中华外科杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c807d56b46c9",
+      "name": "中华心血管病杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-e47fe9a4eb30",
+      "name": "中华放射肿瘤学杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a45ce93903b1",
+      "name": "中华病理学杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-bd1f0736af91",
+      "name": "中华眼科杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-25feb0060002",
+      "name": "中华精神科杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-c4c4580f3352",
+      "name": "中华结核和呼吸杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-1581efdef5de",
+      "name": "中华胸部外科电子杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-a7becb7aa4ff",
+      "name": "中华药械研究与临床",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-82106bdf3a0d",
+      "name": "中华行为医学与脑科学杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-432a2233f83d",
+      "name": "中国全科医学",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-3a3e8dd8d1f5",
+      "name": "中国卫生政策研究",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-b9cbf0131fc9",
+      "name": "中国小儿急救医学",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-aa4cf91f4f72",
+      "name": "中国科学：信息科学",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-ec3ba882a481",
+      "name": "会议与会议稿",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "conference",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-24ef5b12a815",
+      "name": "医学信息学研究稿",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "unknown",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-f8b577dd8f47",
+      "name": "博客与评论",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "blog",
+      "jif": {
+        "status": "not_applicable",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "该标签不是可唯一识别的期刊"
+      },
+      "jcr": {
+        "status": "not_applicable",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "not_applicable",
+        "reason": "不适用期刊分区"
+      }
+    },
+    {
+      "id": "j-3b221e707cdf",
+      "name": "国际麻醉学与复苏杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-61bd61254cf3",
+      "name": "实用心脑肺血管病杂志",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-6e3f6dec4ce4",
+      "name": "计算机辅助设计与图形学学报",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [],
+      "kind": "journal",
+      "jif": {
+        "status": "unverified",
+        "value": null,
+        "year": null,
+        "sources": [],
+        "verifiedAt": null,
+        "reason": "未核实官方 JIF 年份和值"
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": null,
+        "releaseYear": null,
+        "editionSources": [],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "未核实完整 JCR 学科与分区"
+      }
+    }
+  ]
+}

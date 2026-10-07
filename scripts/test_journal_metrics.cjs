@@ -1,0 +1,43 @@
+'use strict';
+const assert = require('node:assert/strict');
+const registry = require('../config/journal-metrics.json');
+const {create} = require('../journal-metrics.js');
+const api = create(registry);
+
+assert.equal(api.resolve('EHJ: Current Issue').name, 'European Heart Journal');
+assert.equal(api.resolve('European heart journal. Digital health').name, 'European Heart Journal - Digital Health');
+assert.equal(api.resolve({issn:'23986352'}).name, 'npj Digital Medicine');
+assert.equal(api.resolve({journal:'Nature Medicine',issn:'2398-6352'}).id, null);
+assert.match(api.detailText({journal:'Nature Medicine',issn:'2398-6352'}), /身份冲突/);
+assert.equal(api.compactText('Nature News'), 'IF/JCR 不适用');
+assert.equal(api.compactText('arXiv'), 'IF/JCR 不适用');
+assert.equal(api.compactText('NEJM AI'), 'IF 未核实 · JCR 未核实');
+assert.equal(api.compactText('npj Digital Medicine'), 'IF 18.0 (2025) · JCR 未核实 (2026)');
+assert.equal(api.resolve('Unknown Heart JAMA Nature').id, null);
+assert.equal(api.resolve({journal:'Unverified',url:'https://www.nature.com/nm/'}).id, null);
+assert.match(api.detailText('European Heart Journal - Cardiovascular Imaging'), /Radiology, Nuclear Medicine & Medical Imaging/);
+assert.match(api.detailText('European Heart Journal - Cardiovascular Imaging'), /Cardiac & Cardiovascular Systems/);
+assert.match(api.detailText('European Heart Journal - Cardiovascular Imaging'), /20\/217/);
+assert.match(api.detailText('European Heart Journal - Cardiovascular Imaging'), /37\/237/);
+assert.doesNotMatch(api.compactText('European Heart Journal - Cardiovascular Imaging'), /Q[1-4]/);
+
+// Future fully sourced multicolumn JCR export: retain every quartile, including the lower one.
+const synthetic = structuredClone(registry);
+const row = synthetic.journals.find(r => r.name === 'European Heart Journal - Cardiovascular Imaging');
+row.jcr.categories[0].quartile = 'Q1';
+row.jcr.categories[1].quartile = 'Q3';
+row.jcr.status = 'verified'; row.jcr.categoryCoverage = 'complete';
+assert.match(create(synthetic).compactText(row.name), /JCR Q1\/Q3 \(2026\)/);
+row.jcr.status = 'unverified'; row.jcr.categoryCoverage = 'publisher_reported';
+assert.match(create(synthetic).compactText(row.name), /Q1\/Q3\*/);
+const hostile = api.renderBadge('<img src=x onerror=alert(1)>');
+assert.doesNotMatch(hostile, /<img/);
+assert.match(hostile, /&lt;img/);
+assert.doesNotMatch(api.renderBadge('Nature Medicine'), /<(?:button|details|a)\b/);
+const details = api.renderDetails('Nature Medicine');
+assert.match(details, /^<details/); assert.match(details, /<summary>/);
+assert.match(details, /https:\/\/www.nature.com\/nm\/journal-impact/);
+assert.match(details, /核验/); assert.match(details, /单篇研究质量/);
+synthetic.sources.nm.url = 'javascript:alert(1)';
+assert.doesNotMatch(create(synthetic).renderDetails('Nature Medicine'), /href="javascript/);
+console.log('journal metrics: 29 identity, evidence, rendering and multi-category assertions passed');
