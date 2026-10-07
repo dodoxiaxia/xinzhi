@@ -1,11 +1,36 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN" data-theme="light" data-style="a">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>心知 AIHOT-Med · 心血管与AI医疗前沿文献情报台</title>
   <meta name="description" content="面向科室同事的心血管与 AI 医疗每日精选、每周精读与文献雷达。所有导读均标注核对范围，仅供学习讨论。">
   <meta name="theme-color" content="#ffffff">
+  <script>
+    // Resolve appearance before CSS and body paint; storage may be unavailable.
+    (function () {
+      const root = document.documentElement, params = new URLSearchParams(location.search);
+      const read = key => { try { return localStorage.getItem(key); } catch (e) { return null; } };
+      const choose = (values, query, saved, fallback) => values.includes(query) ? query : values.includes(saved) ? saved : fallback;
+      const style = choose(['a', 'b', 'c', 'd'], params.get('style'), read('xz-style'), 'a');
+      let systemTheme = 'light';
+      try { if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) systemTheme = 'dark'; } catch (e) {}
+      const theme = choose(['light', 'dark'], params.get('theme'), read('xinzhi_theme'), systemTheme);
+      const backgrounds = { light: { a: '#eef2f7', b: '#ffffff', c: '#f0f2f4', d: '#f5f2ea' }, dark: { a: '#0e1520', b: '#121212', c: '#121517', d: '#14120f' } };
+      const bars = { light: { a: '#ffffff', b: '#d13a1f', c: '#ffffff', d: '#f5f2ea' }, dark: { a: '#141d2b', b: '#b8321a', c: '#1c2024', d: '#14120f' } };
+      function apply(theme, style) {
+        if (!['light', 'dark'].includes(theme) || !['a', 'b', 'c', 'd'].includes(style)) return;
+        if (root.dataset.theme !== theme) root.dataset.theme = theme;
+        if (root.dataset.style !== style) root.dataset.style = style;
+        root.style.colorScheme = theme;
+        root.style.backgroundColor = backgrounds[theme][style];
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = bars[theme][style];
+      }
+      window.XINZHI_BOOT = { theme, style, apply };
+      apply(theme, style);
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>

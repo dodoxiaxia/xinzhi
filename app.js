@@ -110,10 +110,16 @@
 
   // URL State & Query Params
   const urlParams = new URLSearchParams(window.location.search);
+  const validView = value => ['cards', 'compact'].includes(value);
+  const validTheme = value => ['light', 'dark'].includes(value);
+  // Saved view preferences affect rendering without adding a URL parameter.
+  let viewInUrl = validView(urlParams.get('view'));
+  const savedView = safeGet('xinzhi_view_mode');
+  const savedTheme = safeGet('xinzhi_theme');
   const state = {
     mode: urlParams.get('mode') || 'curated', // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
-    viewMode: urlParams.get('view') || safeGet('xinzhi_view_mode') || 'cards', // 'cards' | 'compact'
-    theme: urlParams.get('theme') || safeGet('xinzhi_theme') || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
+    viewMode: viewInUrl ? urlParams.get('view') : validView(savedView) ? savedView : 'cards', // 'cards' | 'compact'
+    theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
     search: urlParams.get('q') || '',
     clinicalTier: urlParams.get('tier') || '',
     publisher: urlParams.get('pub') || '',
@@ -228,6 +234,7 @@
   function applyTheme(theme) {
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
+    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(theme, document.documentElement.dataset.style);
     safeSet('xinzhi_theme', theme);
   }
   applyTheme(state.theme);
@@ -708,7 +715,8 @@
       set('minor', state.minor ? '1' : '', '');
       set('reading', usesLane()?state.reading:'', '');
       set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
-      set('view', state.viewMode, 'cards');
+      if (viewInUrl) u.searchParams.set('view', state.viewMode);
+      else u.searchParams.delete('view');
       history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
   }
@@ -1909,6 +1917,7 @@
   if (btnCards && btnCompact) {
     btnCards.addEventListener('click', () => {
       state.viewMode = 'cards';
+      viewInUrl = true;
       safeSet('xinzhi_view_mode', 'cards');
       btnCards.classList.add('active');
       btnCompact.classList.remove('active');
@@ -1916,6 +1925,7 @@
     });
     btnCompact.addEventListener('click', () => {
       state.viewMode = 'compact';
+      viewInUrl = true;
       safeSet('xinzhi_view_mode', 'compact');
       btnCompact.classList.add('active');
       btnCards.classList.remove('active');
@@ -2247,9 +2257,10 @@
   function syncBar() {
     const m = document.querySelector('meta[name="theme-color"]'); if (!m) return;
     const t = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    m.setAttribute('content', BAR[t][root.dataset.style] || '#ffffff');
+    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(t, root.dataset.style);
+    else m.setAttribute('content', BAR[t][root.dataset.style] || '#ffffff');
   }
-  let st = new URLSearchParams(location.search).get('style');
+  let st = window.XINZHI_BOOT ? window.XINZHI_BOOT.style : new URLSearchParams(location.search).get('style');
   if (!valid(st)) st = get();
   if (!valid(st)) st = 'a';
   root.dataset.style = st; put(st);
