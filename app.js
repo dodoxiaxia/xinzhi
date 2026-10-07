@@ -1445,7 +1445,8 @@
 
     grid.innerHTML = sources.map(s => {
       const isOk = successful(s);
-      const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '近 14 天无新条目' : isOk ? '获取成功' : '获取异常';
+      const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '近 14 天无新条目' : isOk ? '获取成功' :
+        s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
       return `
         <div class="source-item">
           <div class="source-item-name">

@@ -1,6 +1,8 @@
 """Offline workflow checks using temporary local Git repositories only."""
+import ast
 import json
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -8,6 +10,68 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/daily.yml'
+
+
+def refresh_argument(context):
+    """Evaluate the actual workflow's small expression without executing code."""
+    match = re.search(r'^\s*run:\s*python3 scripts/ci_daily\.py\s*\$\{\{(.*?)\}\}\s*$', WORKFLOW.read_text(), re.MULTILINE)
+    if not match:
+        raise AssertionError('refresh command expression not found')
+    expression = ast.parse(match[1].strip().replace('&&', ' and ').replace('||', ' or '), mode='eval').body
+
+    def evaluate(node):
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Name):
+            return context[node.id]
+        if isinstance(node, ast.Attribute):
+            target = evaluate(node.value)
+            if not isinstance(target, dict):
+                raise AssertionError('unsupported workflow context')
+            return target.get(node.attr)
+        if isinstance(node, ast.BoolOp):
+            value = evaluate(node.values[0])
+            for child in node.values[1:]:
+                if isinstance(node.op, ast.And) and not value:
+                    return value
+                if isinstance(node.op, ast.Or) and value:
+                    return value
+                value = evaluate(child)
+            return value
+        if isinstance(node, ast.Compare) and len(node.ops) == 1:
+            left, right = evaluate(node.left), evaluate(node.comparators[0])
+            if isinstance(left, str) and isinstance(right, str):
+                left, right = left.casefold(), right.casefold()
+            if isinstance(node.ops[0], ast.Eq):
+                return left == right
+            if isinstance(node.ops[0], ast.NotEq):
+                return left != right
+        raise AssertionError('unsupported workflow expression: ' + type(node).__name__)
+
+    return evaluate(expression)
+
+
+class RefreshModeTests(unittest.TestCase):
+    def select(self, event, *, schedule=None, mode=None):
+        return refresh_argument({'github': {'event_name': event, 'ref': 'refs/heads/main', 'event': {'schedule': schedule}}, 'inputs': {'mode': mode}})
+
+    def test_main_source_push_is_fast(self):
+        self.assertEqual(self.select('push'), '--fast')
+
+    def test_manual_full_remains_full(self):
+        self.assertEqual(self.select('workflow_dispatch', mode='full'), '')
+
+    def test_daily_0517_beijing_remains_full(self):
+        self.assertEqual(self.select('schedule', schedule='17 21 * * *'), '')
+
+    def test_every_two_hours_remains_fast(self):
+        self.assertEqual(self.select('schedule', schedule='7 */2 * * *'), '--fast')
+
+    def test_explicit_manual_fast_remains_fast(self):
+        self.assertEqual(self.select('workflow_dispatch', mode='fast'), '--fast')
+
+    def test_manual_default_remains_full(self):
+        self.assertEqual(self.select('workflow_dispatch'), '')
 
 
 def restore_commands():

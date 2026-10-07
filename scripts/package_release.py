@@ -13,7 +13,7 @@ def public_payloads(root=ROOT):
  if public.is_symlink() or not public.is_dir() or public.resolve().parent!=root.resolve():
   raise ValueError('Public directory must be an ordinary project directory')
  if {p.name for p in public.iterdir()}!=PUBLIC:
-  raise ValueError('Public directory must contain exactly the five allowlisted files')
+  raise ValueError('Public directory must contain exactly the six allowlisted files')
  for name in PUBLIC:
   path=public/name
   if path.is_symlink() or not path.is_file() or path.resolve().parent!=public.resolve():
@@ -38,6 +38,6 @@ def main():
    if p.suffix in ('.db','.sqlite','.pyc'):continue
    z.write(p,str(Path('xinzhi')/rel))
   assert not any('.local' in f or 'admin-token' in f for f in z.namelist())
- print('Public: 5 files. Local package: no credentials or live database.')
+ print(f'Public: {len(PUBLIC)} files. Local package: no credentials or live database.')
 
 if __name__=='__main__':main()

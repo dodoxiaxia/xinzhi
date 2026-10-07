@@ -109,6 +109,97 @@ class ParserTests(OfflineTests):
         self.assertEqual(value['rawItems'], 1)
         self.assertEqual(value['items'], [])
 
+    def test_safe_simple_system_and_public_doctype_ignore_without_resolution(self):
+        declarations = [('<!DOCTYPE rss>', 'simple'),
+                        ('<!DOCTYPE rss SYSTEM "https://never-request.example/external.dtd">', 'external_system'),
+                        ('<!DOCTYPE rss PUBLIC "-//Example//RSS//EN" "file:///never-read.dtd">', 'external_public')]
+        with (patch('refresh_feeds.urllib.request.urlopen', side_effect=AssertionError('DTD must never resolve')),
+              patch('builtins.open', side_effect=AssertionError('External DTD files must never open'))):
+            for declaration, kind in declarations:
+                value = feeds.parse_feed(declaration.encode() + rss(), SOURCE)
+                self.assertEqual((value['rootKind'], value['doctypeKind'], value['parser']), ('rss', kind, 'strict'))
+                self.assertEqual(value['rawItems'], 1)
+                self.assertIn('doctype_ignored_without_resolution', value['parserWarnings'])
+
+    def test_doctype_atom_and_prefixed_rdf_match_actual_root(self):
+        atom = b'<!DOCTYPE feed SYSTEM "https://never-request.example/feed.dtd"><feed xmlns="http://www.w3.org/2005/Atom"><entry><title>Cardiac AI</title><link href="https://example.org/article"/></entry></feed>'
+        rdf = b'<!DOCTYPE rdf:RDF SYSTEM "https://never-request.example/rss.dtd"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/"><channel/><item><title>Cardiac AI</title><link>https://example.org/article</link></item></rdf:RDF>'
+        for raw, root_kind in [(atom, 'atom'), (rdf, 'rdf')]:
+            value = feeds.parse_feed(raw, SOURCE)
+            self.assertEqual((value['rootKind'], value['rawItems']), (root_kind, 1))
+
+    def test_safe_doctype_utf8_and_utf16_delete_only_original_declaration_bytes(self):
+        declaration = '<!DOCTYPE rss SYSTEM "https://never-request.example/rss.dtd">'
+        body = rss(title='Cardiac AI café').decode()
+        for codec, prefix, xml_encoding in [('utf-8', b'\xef\xbb\xbf', 'UTF-8'),
+                                            ('utf-16-le', b'\xff\xfe', 'UTF-16'),
+                                            ('utf-16-be', b'\xfe\xff', 'UTF-16')]:
+            prolog = '<?xml version="1.0" encoding="' + xml_encoding + '"?>\n<!--prefix-->'
+            raw = prefix + (prolog + declaration + body).encode(codec)
+            diagnostic, _ = feeds._diagnostic_text(raw)
+            stripped, _, _ = feeds._without_safe_doctype(raw, diagnostic)
+            self.assertEqual(stripped, prefix + (prolog + body).encode(codec))
+            value = feeds.parse_feed(raw, SOURCE)
+            self.assertIn('café', value['items'][0]['title'])
+
+    def test_doctype_internal_subset_entity_and_unknown_entity_still_fail_closed(self):
+        payloads = [b'<!DOCTYPE rss []>' + rss(),
+                    b'<!DOCTYPE rss [<!ENTITY external SYSTEM "file:///never-read">]>' + rss(title='Cardiac AI &external;'),
+                    b'<!ENTITY external SYSTEM "https://never-request.example/">' + rss(),
+                    b'<!DOCTYPE rss SYSTEM "https://never-request.example/feed.dtd">' + rss(title='Cardiac AI &publisherOnlyEntity;'),
+                    b'<!DOCTYPE rss>' + rss(title='Cardiac AI &copycat;'),
+                    b'<!DOCTYPE rss>' + rss(title='Cardiac AI &notarealentity;')]
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=AssertionError('Entities must never resolve')):
+            for raw in payloads:
+                with self.assertRaises(feeds.FeedParseError) as caught:
+                    feeds.parse_feed(raw, SOURCE)
+                self.assertEqual(caught.exception.status, 'parse_error')
+                self.assertIn('doctypeKind', caught.exception.metadata)
+
+    def test_doctype_name_position_duplicate_structure_and_html_not_loosened(self):
+        cases = [(b'<!DOCTYPE rss><html/>', 'not_feed', 'html'),
+                 (b'<!DOCTYPE html><html><body>Unavailable</body></html>', 'not_feed', 'html'),
+                 (b'<!DOCTYPE feed>' + rss(), 'parse_error', 'rss'),
+                 (b'<!DOCTYPE rss><!DOCTYPE rss>' + rss(), 'parse_error', 'unknown'),
+                 (b'<rss><channel/><!DOCTYPE rss></rss>', 'parse_error', 'rss'),
+                 (b'<!DOCTYPE rss><rss/>', 'parse_error', 'rss'),
+                 (b'<!DOCTYPE rss><rss><channel><item>', 'parse_error', 'rss')]
+        for raw, status, root_kind in cases:
+            with self.assertRaises(feeds.FeedParseError) as caught:
+                feeds.parse_feed(raw, SOURCE)
+            self.assertEqual(caught.exception.status, status)
+            self.assertEqual(caught.exception.metadata['rootKind'], root_kind)
+
+    def test_doctype_invalid_or_disagreeing_encoding_never_replaces_bytes(self):
+        invalid = b'<!DOCTYPE rss>' + rss().replace(b'AI-enabled', b'AI\xff-enabled')
+        wrong = ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE rss>' + rss().decode()).encode('utf-8')
+        for raw in [invalid, wrong]:
+            with self.assertRaises(feeds.FeedParseError) as caught:
+                feeds.parse_feed(raw, SOURCE)
+            self.assertEqual(caught.exception.metadata['doctypeKind'], 'encoding_rejected')
+
+    def test_external_literal_brackets_are_not_an_internal_subset(self):
+        value = feeds.parse_feed(b'<!DOCTYPE rss SYSTEM "https://never-request.example/[rss].dtd">' + rss(), SOURCE)
+        self.assertEqual(value['doctypeKind'], 'external_system')
+
+    def test_doctype_metadata_does_not_store_external_identifier_or_body(self):
+        raw = b'<!DOCTYPE rss SYSTEM "https://user:must-not-appear@never-request.example/rss.dtd?token=hidden">' + rss()
+        value = feeds.parse_feed(raw, SOURCE)
+        self.assertNotIn('must-not-appear', json.dumps(value))
+        self.assertNotIn('hidden', json.dumps(value))
+        self.assertNotIn('never-request', json.dumps(value))
+
+    def test_html_entity_recovery_cannot_manufacture_xml_structure_or_quotes(self):
+        for raw in (b'<rss>&LT;channel&GT;&LT;/channel&GT;</rss>',
+                    b'<!DOCTYPE rss><rss>&LT;channel&GT;&LT;/channel&GT;</rss>',
+                    b'<rss xmlns=&QUOT;urn:other&QUOT;><channel/></rss>'):
+            with self.assertRaises(feeds.FeedParseError) as caught:
+                feeds.parse_feed(raw, SOURCE)
+            self.assertEqual(caught.exception.status, 'parse_error')
+        escaped = b'<rss><channel>&LT;item&GT;&LT;title&GT;Cardiac AI&LT;/title&GT;&LT;link&GT;https://example.org/article&LT;/link&GT;&LT;/item&GT;</channel></rss>'
+        value = feeds.parse_feed(escaped, SOURCE)
+        self.assertEqual((value['rawItems'], value['items']), (0, []))
+
 
 class HealthTests(OfflineTests):
     def test_current_valid_zero_filtered_zero_and_failure_are_distinct(self):

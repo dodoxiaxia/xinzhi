@@ -80,7 +80,7 @@ jobs:
 
       - name: 抓取 / 补摘要 / 翻译 / 构建
         id: refresh
-        run: python3 scripts/ci_daily.py ${{ ((github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
+        run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
 
       - uses: actions/setup-node@v4
         if: steps.refresh.outputs.deploy == 'true'

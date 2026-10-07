@@ -35,8 +35,9 @@ SECRET_KEYS = {'token', 'access_token', 'refresh_token', 'api_key', 'apikey', 'k
 
 
 class FeedParseError(ValueError):
-    def __init__(self, status, reason):
+    def __init__(self, status, reason, metadata=None):
         self.status = status
+        self.metadata = metadata or {}
         super().__init__(reason)
 
 
@@ -138,6 +139,133 @@ def _root_hint(value):
     return match.group(1).rsplit(':', 1)[-1].lower() if match else ''
 
 
+def _prefix_end(value, start=0):
+    """Skip only XML prolog whitespace, processing instructions and comments."""
+    cursor = start
+    while True:
+        while cursor < len(value) and value[cursor] in '\ufeff \t\r\n':
+            cursor += 1
+        marker = '?>' if value.startswith('<?', cursor) else '-->' if value.startswith('<!--', cursor) else None
+        if marker is None:
+            return cursor
+        end = value.find(marker, cursor)
+        if end < 0:
+            return cursor
+        cursor = end + len(marker)
+
+
+def _root_qname(value):
+    cursor = _prefix_end(value)
+    match = re.match(r'<([A-Za-z_][A-Za-z0-9_.:-]*)(?=\s|/?>)', value[cursor:])
+    return match.group(1) if match else ''
+
+
+def _root_kind(qname):
+    name = qname.rsplit(':', 1)[-1].lower()
+    return {'rss': 'rss', 'feed': 'atom', 'rdf': 'rdf', 'html': 'html'}.get(name, 'other' if name else 'unknown')
+
+
+def _exact_utf_text(raw):
+    """Determine UTF byte order from its XML signature; never replace bytes."""
+    signatures = ((b'\xff\xfe\x00\x00', 'utf-32-le', 4), (b'\x00\x00\xfe\xff', 'utf-32-be', 4),
+                  (b'\xff\xfe', 'utf-16-le', 2), (b'\xfe\xff', 'utf-16-be', 2),
+                  (b'\xef\xbb\xbf', 'utf-8', 3),
+                  (b'\x00\x00\x00<', 'utf-32-be', 0), (b'<\x00\x00\x00', 'utf-32-le', 0),
+                  (b'\x00<', 'utf-16-be', 0), (b'<\x00', 'utf-16-le', 0))
+    codec, bom = 'utf-8', 0
+    for signature, candidate, length in signatures:
+        if raw.startswith(signature):
+            codec, bom = candidate, length
+            break
+    value = raw[bom:].decode(codec, errors='strict')
+    if value.encode(codec) != raw[bom:]:
+        raise UnicodeError('UTF content is not round-trip exact')
+    declaration = re.match(r'\s*<\?xml[^>]*encoding=[\'"]([^\'"]+)', value, re.I)
+    if declaration:
+        declared = declaration.group(1).lower().replace('_', '-').replace('utf8', 'utf-8')
+        allowed = {codec, codec.split('-le')[0].split('-be')[0]}
+        if declared not in allowed:
+            raise UnicodeError('Declared encoding disagrees with the UTF signature')
+    return value, codec, bom
+
+
+def _without_safe_doctype(raw, diagnostic):
+    """Remove one safe prolog declaration; no external resources are resolved."""
+    metadata = {'rootKind': _root_kind(_root_qname(diagnostic)), 'doctypeKind': 'none'}
+    declarations = list(re.finditer(r'<!\s*DOCTYPE\b', diagnostic, re.I))
+    entity = re.search(r'<!\s*ENTITY\b', diagnostic, re.I)
+    if not declarations:
+        if entity:
+            metadata['doctypeKind'] = 'entity_declaration'
+            raise FeedParseError('parse_error', 'Entity declarations are not supported', metadata)
+        return raw, diagnostic, metadata
+    if len(declarations) != 1:
+        metadata['doctypeKind'] = 'multiple'
+        raise FeedParseError('parse_error', 'Only one pre-root DOCTYPE is supported', metadata)
+    start = declarations[0].start()
+    quote, subset, depth, end = None, False, 0, None
+    for cursor in range(start, len(diagnostic)):
+        character = diagnostic[cursor]
+        if quote:
+            if character == quote:
+                quote = None
+        elif character in {'\'', '"'}:
+            quote = character
+        elif character == '[':
+            subset, depth = True, depth + 1
+        elif character == ']':
+            subset, depth = True, max(depth - 1, 0)
+        elif character == '>' and depth == 0:
+            end = cursor + 1
+            break
+    if end is None:
+        metadata['doctypeKind'] = 'malformed'
+        raise FeedParseError('parse_error', 'Incomplete DOCTYPE declaration', metadata)
+    root_name = _root_qname(diagnostic[:start] + diagnostic[end:])
+    metadata['rootKind'] = _root_kind(root_name)
+    if entity or subset:
+        metadata['doctypeKind'] = 'internal_subset' if subset else 'entity_declaration'
+        raise FeedParseError('parse_error', 'Internal subsets and entity declarations are not supported', metadata)
+    if start != _prefix_end(diagnostic):
+        metadata['doctypeKind'] = 'not_pre_root'
+        raise FeedParseError('parse_error', 'DOCTYPE must precede the document root', metadata)
+    declaration = diagnostic[start:end]
+    name = r'([A-Za-z_][A-Za-z0-9_.:-]*)'
+    literal = r'(?:"[^\"]*"|\'[^\']*\')'
+    patterns = (('simple', r'<!DOCTYPE\s+' + name + r'\s*>'),
+                ('external_system', r'<!DOCTYPE\s+' + name + r'\s+SYSTEM\s+' + literal + r'\s*>'),
+                ('external_public', r'<!DOCTYPE\s+' + name + r'\s+PUBLIC\s+' + literal + r'\s+' + literal + r'\s*>'))
+    matched = None
+    for kind, pattern in patterns:
+        matched = re.fullmatch(pattern, declaration)
+        if matched:
+            metadata['doctypeKind'] = kind
+            break
+    if not matched:
+        metadata['doctypeKind'] = 'malformed'
+        raise FeedParseError('parse_error', 'Unsupported DOCTYPE syntax', metadata)
+    if metadata['rootKind'] not in {'rss', 'atom', 'rdf'}:
+        raise FeedParseError('not_feed', 'Response root is not RSS/Atom/RDF', metadata)
+    if matched.group(1) != root_name:
+        metadata['doctypeKind'] = 'name_mismatch'
+        raise FeedParseError('parse_error', 'DOCTYPE name does not match the actual feed root', metadata)
+    try:
+        exact, codec, bom = _exact_utf_text(raw)
+    except (UnicodeError, LookupError):
+        metadata['doctypeKind'] = 'encoding_rejected'
+        raise FeedParseError('parse_error', 'DOCTYPE cannot be removed with an exact supported UTF encoding', metadata) from None
+    # Recheck positions against strict decoding, then delete only those original
+    # bytes. Feed content, XML declaration and byte order are untouched.
+    exact_start = _prefix_end(exact)
+    if exact[exact_start:exact_start + len(declaration)] != declaration:
+        metadata['doctypeKind'] = 'encoding_rejected'
+        raise FeedParseError('parse_error', 'DOCTYPE span is not exact in the original encoding', metadata)
+    exact_end = exact_start + len(declaration)
+    byte_start = bom + len(exact[:exact_start].encode(codec))
+    byte_end = bom + len(exact[:exact_end].encode(codec))
+    return raw[:byte_start] + raw[byte_end:], exact[:exact_start] + exact[exact_end:], metadata
+
+
 class _NoDTD(ET.TreeBuilder):
     def doctype(self, name, pubid, system):
         raise FeedParseError('parse_error', 'DTD declarations are not supported')
@@ -175,9 +303,13 @@ def _recover(value):
             name = match.group(1)
             if name in {'amp', 'lt', 'gt', 'quot', 'apos'} or name.startswith('#'):
                 return match.group(0)
-            expanded = html.unescape(match.group(0))
-            if expanded == match.group(0):
+            # html.unescape accepts partial legacy names (e.g. &copycat;),
+            # so only an exact known entity spelling is eligible for recovery.
+            if name + ';' not in html.entities.html5:
                 raise FeedParseError('parse_error', 'Unknown XML entity')
+            # Keep the expansion as XML text (including inside attributes).
+            # &LT;/&QUOT; must never manufacture tags or quote delimiters.
+            expanded = html.escape(html.unescape(match.group(0)), quote=True)
             changes.append('html_entity')
             return expanded
         part = re.sub(r'&([A-Za-z][A-Za-z0-9]*|#[0-9]+|#x[0-9a-fA-F]+);', entity, part)
@@ -197,11 +329,11 @@ def _recover(value):
 
 def parse_feed(raw, source, *, checked_at=None):
     if not isinstance(raw, bytes) or len(raw) > MAX_BYTES:
-        raise FeedParseError('parse_error', 'Feed exceeds the bounded byte limit')
+        raise FeedParseError('parse_error', 'Feed exceeds the bounded byte limit', {'rootKind': 'unknown', 'doctypeKind': 'unknown'})
     diagnostic, encoding = _diagnostic_text(raw)
-    if re.search(r'<!\s*(?:DOCTYPE|ENTITY)\b', diagnostic, re.I):
-        raise FeedParseError('parse_error', 'DTD/entity declarations are not supported')
-    parser, warnings = 'strict', []
+    raw, diagnostic, metadata = _without_safe_doctype(raw, diagnostic)
+    parser = 'strict'
+    warnings = ['doctype_ignored_without_resolution'] if metadata['doctypeKind'] != 'none' else []
     try:
         root = _xml(raw)
     except (ET.ParseError, LookupError, ValueError) as error:
@@ -209,17 +341,26 @@ def parse_feed(raw, source, *, checked_at=None):
             raise
         hint = _root_hint(diagnostic)
         if hint not in {'rss', 'feed', 'rdf'}:
-            raise FeedParseError('not_feed', 'Response root is not RSS/Atom/RDF') from None
+            raise FeedParseError('not_feed', 'Response root is not RSS/Atom/RDF', metadata) from None
         declaration = re.match(r'\s*<\?xml[^>]*encoding=[\'"]([^\'"]+)', diagnostic, re.I)
         if encoding != 'utf-8' or '\ufffd' in diagnostic or declaration and declaration.group(1).lower().replace('_', '-') not in {'utf-8', 'utf8'}:
-            raise FeedParseError('parse_error', 'Malformed feed cannot be recovered without guessing its encoding') from None
-        repaired, warnings = _recover(diagnostic)
+            raise FeedParseError('parse_error', 'Malformed feed cannot be recovered without guessing its encoding', metadata) from None
+        try:
+            repaired, recovered_warnings = _recover(diagnostic)
+            warnings.extend(recovered_warnings)
+        except FeedParseError as error:
+            error.metadata = metadata
+            raise
         try:
             root = _xml(repaired)
         except (ET.ParseError, LookupError, ValueError):
-            raise FeedParseError('parse_error', 'Malformed feed XML remains invalid after bounded text recovery') from None
+            raise FeedParseError('parse_error', 'Malformed feed XML remains invalid after bounded text recovery', metadata) from None
         parser = 'recovered'
-    kind, entries = _entries(root)
+    try:
+        kind, entries = _entries(root)
+    except FeedParseError as error:
+        error.metadata = metadata
+        raise
     checked_at = checked_at or utcnow().isoformat()
     output, links, abstracts = [], 0, 0
     for entry in entries:
@@ -252,7 +393,7 @@ def parse_feed(raw, source, *, checked_at=None):
                        'sourceUrl': safe_url(source.get('url', '')), 'fetchedAt': checked_at})
     return {'items': output, 'rawItems': len(entries), 'classifiedItems': len(output),
             'itemsWithLinks': links, 'itemsWithAbstracts': abstracts,
-            'feedType': kind, 'parser': parser, 'parserWarnings': warnings}
+            'feedType': kind, 'parser': parser, 'parserWarnings': warnings, **metadata}
 
 
 def parse(raw, source):
@@ -293,7 +434,7 @@ def fetch(source):
                        error='HTTP ' + str(error.code), errorClass=type(error).__name__), []
     except FeedParseError as error:
         return _report(source, ok=False, status=error.status, items=0, rawItems=None,
-                       startedAt=started, attempted=True, httpStatus=code, error=str(error), errorClass=type(error).__name__), []
+                       startedAt=started, attempted=True, httpStatus=code, error=str(error), errorClass=type(error).__name__, **error.metadata), []
     except urllib.error.URLError as error:
         # A tunnel denial is still an access refusal. Inspect only for a status
         # code and never serialize the exception's proxy/redirect URL string.
