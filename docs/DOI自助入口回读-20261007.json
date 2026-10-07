@@ -29,8 +29,11 @@
   "newPublisherDownloads": 0,
   "modelCalls": 0,
   "libraryWrites": 0,
-  "baseCommit": "94db8eee5193f06afdf0198b1f378da7d5133a20",
+  "baseCommit": "75f538eff711e7eb53628e0c101df278a97c3ee7",
   "branch": "codex/doi-self-service-20261007",
   "productionDeployed": false,
-  "websiteEndToEndVerified": false
+  "websiteEndToEndVerified": false,
+  "websiteSourcePolicy": "existing_then_legal_oa_then_authorized_subscription",
+  "bridgePrototypeOnly": true,
+  "bridgeRemoteVerified": false
 }
