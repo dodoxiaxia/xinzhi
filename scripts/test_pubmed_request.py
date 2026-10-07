@@ -65,7 +65,8 @@ class PubmedRequestTests(unittest.TestCase):
             result = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'})
         self.assertEqual(result, b'<PubmedArticleSet/>')
         self.assertEqual(opener.call_count, 2)
-        sleep.assert_called_once_with(1)
+        self.assertIs(opener.call_args_list[0].args[0], opener.call_args_list[1].args[0])
+        sleep.assert_called_once_with(0.5)
         for response in (first, second):
             response.__enter__.return_value.read.assert_called_once_with(10_000_000)
             response.__exit__.assert_called_once()
@@ -81,7 +82,7 @@ class PubmedRequestTests(unittest.TestCase):
                 fetch_pubmed.request('esearch.fcgi', {'term': 'public query ' * 500})
         self.assertIs(caught.exception, errors[-1])
         self.assertEqual(opener.call_count, 3)
-        self.assertEqual(sleep.call_args_list, [call(1), call(2)])
+        self.assertEqual(sleep.call_args_list, [call(0.5), call(1.0)])
         for response in responses:
             response.__enter__.return_value.read.assert_called_once_with(10_000_000)
             response.__exit__.assert_called_once()

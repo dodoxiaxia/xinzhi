@@ -39,10 +39,11 @@ def request(action, params):
             with urllib.request.urlopen(req, timeout=30) as r:
                 return r.read(10_000_000)
         except http.client.IncompleteRead:
-            # Discard the truncated body and retry the same read-only query.
+            # Discard partial bytes and retry the same public metadata request.
+            # HTTP access/rate-limit errors are not caught or retried here.
             if attempt == 2:
                 raise
-            time.sleep(2 ** attempt)
+            time.sleep(0.5 * (attempt + 1))
 
 def parse(root):
     items = []
