@@ -1,9 +1,10 @@
 """Offline regression for long E-utilities queries and failure propagation."""
 import datetime
+import http.client
 import unittest
 import urllib.error
 import urllib.parse
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import fetch_pubmed
 from source_fallbacks import journal_query
@@ -44,10 +45,56 @@ class PubmedRequestTests(unittest.TestCase):
         self.assertEqual(req.get_method(), 'POST')
         self.assertEqual(urllib.parse.parse_qs(req.data.decode('ascii'))['id'], [params['id']])
 
+    def test_incomplete_read_reopens_response_and_returns_only_complete_payload(self):
+        first, second = MagicMock(), MagicMock()
+        first.__enter__.return_value.read.side_effect = http.client.IncompleteRead(b'partial XML')
+        second.__enter__.return_value.read.return_value = b'<PubmedArticleSet/>'
+        responses = iter((first, second))
+
+        def reopen(*args, **kwargs):
+            response = next(responses)
+            if response is second:
+                first.__exit__.assert_called_once()
+            return response
+
+        def backoff(seconds):
+            first.__exit__.assert_called_once()
+
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=reopen) as opener, \
+                patch.object(fetch_pubmed.time, 'sleep', side_effect=backoff) as sleep:
+            result = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'})
+        self.assertEqual(result, b'<PubmedArticleSet/>')
+        self.assertEqual(opener.call_count, 2)
+        sleep.assert_called_once_with(1)
+        for response in (first, second):
+            response.__enter__.return_value.read.assert_called_once_with(10_000_000)
+            response.__exit__.assert_called_once()
+
+    def test_incomplete_read_retries_are_bounded_and_last_error_propagates(self):
+        responses = [MagicMock() for _ in range(3)]
+        errors = [http.client.IncompleteRead(('partial %d' % i).encode()) for i in range(3)]
+        for response, error in zip(responses, errors):
+            response.__enter__.return_value.read.side_effect = error
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=responses) as opener, \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            with self.assertRaises(http.client.IncompleteRead) as caught:
+                fetch_pubmed.request('esearch.fcgi', {'term': 'public query ' * 500})
+        self.assertIs(caught.exception, errors[-1])
+        self.assertEqual(opener.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(1), call(2)])
+        for response in responses:
+            response.__enter__.return_value.read.assert_called_once_with(10_000_000)
+            response.__exit__.assert_called_once()
+
     def test_http_failure_does_not_report_success_or_partial_coverage(self):
         error = urllib.error.HTTPError('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', 414, 'Request-URI Too Long', {}, None)
-        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=error), self.assertRaises(urllib.error.HTTPError):
-            fetch_pubmed.request('esearch.fcgi', {'term':'public query ' * 500})
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=error) as opener, \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                fetch_pubmed.request('esearch.fcgi', {'term':'public query ' * 500})
+        self.assertIs(caught.exception, error)
+        opener.assert_called_once()
+        sleep.assert_not_called()
 
 
 if __name__ == '__main__':

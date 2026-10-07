@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Public PubMed metadata fallback for watched journals. Never downloads PDFs."""
-import argparse, datetime, hashlib, json, time, urllib.request, urllib.parse, xml.etree.ElementTree as ET
+import argparse, datetime, hashlib, http.client, json, time, urllib.request, urllib.parse, xml.etree.ElementTree as ET
 from pathlib import Path
 from build_data import clean, classify
 from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
@@ -34,8 +34,15 @@ def request(action, params):
         req = urllib.request.Request(endpoint, data=encoded.encode('ascii'), headers=headers, method='POST')
     else:
         req = urllib.request.Request(endpoint + '?' + encoded, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return r.read(10_000_000)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return r.read(10_000_000)
+        except http.client.IncompleteRead:
+            # Discard the truncated body and retry the same read-only query.
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
 
 def parse(root):
     items = []
