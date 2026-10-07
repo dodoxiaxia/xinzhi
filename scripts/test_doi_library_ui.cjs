@@ -1,7 +1,6 @@
 'use strict';
 // Actual helper execution plus an offline browser; no network, credentials or mutations.
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert'), crypto = require('crypto');
-const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..'), src = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const fn = name => {
   const match = src.match(new RegExp('  (?:async )?function ' + name + '\\([^]*?\\n  }'));
@@ -87,6 +86,7 @@ async function helpers() {
 }
 
 async function browserChecks() {
+  const { chromium } = require('playwright');
   const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium' });
   const origin = 'https://doi-ui.invalid', date = new Date().toISOString().slice(0, 10), requests = [], errors = [];
   const hold = { id: '1111111111111111', doi: '10.1234/hold', title: 'Legacy wrong title', date, journal: 'Nature Medicine',
@@ -164,4 +164,8 @@ async function browserChecks() {
   } finally { await context.close(); await browser.close(); }
 }
 
-(async () => { await helpers(); await browserChecks(); console.log('DOI library helpers and offline browser checks passed'); })().catch(error => { console.error(error); process.exitCode = 1; });
+(async () => {
+  await helpers();
+  if (process.argv.includes('--helpers-only')) console.log('DOI library helper checks passed (browser checks run separately)');
+  else { await browserChecks(); console.log('DOI library helpers and offline browser checks passed'); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

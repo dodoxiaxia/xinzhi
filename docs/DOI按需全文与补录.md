@@ -29,4 +29,6 @@ KV 是最终一致存储：刚保存的记录可能稍后才出现在另一浏�
 
 沿用唯一 `daily-refresh` 发布入口，构建和发布仍为六文件。新增 Worker/UI 测试和题录政策投影测试纳入发布前门禁。实际上线以 Actions 部署成功、生产获取与下载核验为准，离线模拟通过不代表已上线。
 
+Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行无第三方依赖的实际 UI helper 合同；完整浏览器验证使用不带参数的同一测试（需本地 Playwright 与 Chromium），在发布前另行运行，CI 不依赖隐式安装的浏览器。
+
 2026-10-07 发布前验证：313 项脚本测试及 38 项本地服务测试通过，原阅读、PDF、公开摘要、研究比较、信源、周榜和首帧/URL 检查通过。新增 DOI Worker/UI 边界和独立审阅通过。Chromium 从真实页面获取原先未收录的 PLOS 论文 `10.1371/journal.pone.0174944`，公开 Crossref/Unpaywall/PDF 请求成功，下载为 1,428,808 字节，SHA-256 为 `690575cc821768ed4999307fc0e58965c4b1e49fec1aab117a8e5e2409e0015b`；已验证错误口令零来源请求/零写入、重复获取不重复收录、DOI 与题名回搜和手机布局。该本地浏览器验证使用内存存储和空 GitHub 索引模拟，未据此宣称生产补录已完成。

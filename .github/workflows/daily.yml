@@ -96,7 +96,7 @@ jobs:
           node scripts/test_edge_worker.cjs
           node scripts/test_pdf_worker.cjs
           node scripts/test_doi_library_worker.cjs
-          node scripts/test_doi_library_ui.cjs
+          node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_study_services.cjs
           node scripts/test_study_ui.cjs
           node scripts/test_source_health_ui.cjs
