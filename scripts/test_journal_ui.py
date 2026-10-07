@@ -7,8 +7,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-from playwright.sync_api import expect, sync_playwright
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -18,6 +16,9 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 
 def main():
+    # Unit discovery must not require the separate browser QA dependency.
+    from playwright.sync_api import expect, sync_playwright
+
     out = ROOT / '.local/weekly-v14-qa/journal'
     out.mkdir(parents=True, exist_ok=True)
     checks, calls, errors = [], [], []
