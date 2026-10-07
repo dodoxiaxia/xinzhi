@@ -34,4 +34,18 @@ class PublicBuildTests(unittest.TestCase):
  def test_quicklook_provenance_is_preserved_but_private_fields_are_not(self):
   item={'abstractSource':'PubMed','abstractSourceUrl':'https://pubmed.ncbi.nlm.nih.gov/1/','api_key':'private','findings':[{'text':'claim','quote':'source','privateNotes':'secret'}]}
   out=b.public_quicklook(item);self.assertEqual(out['abstractSource'],'PubMed');self.assertEqual(out['abstractSourceUrl'],item['abstractSourceUrl']);self.assertNotIn('api_key',out);self.assertNotIn('privateNotes',out['findings'][0])
+ def test_explicit_unpublished_checked_draft_is_not_public(self):
+  draft={'source_checked':True,'published':False,'summary':'Withheld'}
+  self.assertFalse(b.public_paper({'id':'p','hasDraft':True,'draftData':draft})['hasDraft'])
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d);(r/'editorial').mkdir()
+   (r/'editorial/source_checked_drafts.json').write_text(json.dumps({'articles':[dict(draft,id='p')]}))
+   with patch.object(b,'ROOT',r):self.assertEqual(b.make_archive([],[]),[])
+ def test_missing_abstract_cache_blocks_archive_rebuild(self):
+  with tempfile.TemporaryDirectory() as d:
+   r=Path(d);(r/'data').mkdir();(r/'data/radar-archive.json').write_text('{"rows":[]}')
+   with patch.object(b,'ROOT',r),self.assertRaisesRegex(ValueError,'abstract cache missing'):b.make_radar([])
+ def test_content_status_keeps_guide_and_ai_dates_separate(self):
+  status=b.content_status({'updatedAt':'2026-10-07T00:00:00Z'},{'checkedAt':'2026-10-06T00:00:00Z'},[{'draftData':{'published':'2026-09-30'}}],{'a':{'generatedAt':'2026-10-05T00:00:00Z'}},'2026-10-07T01:00:00Z')
+  self.assertEqual(status['guideLatestPublishedAt'],'2026-09-30');self.assertEqual(status['quicklookLatestAt'],'2026-10-05T00:00:00Z');self.assertNotIn('reviewed',status)
 if __name__=='__main__':unittest.main()

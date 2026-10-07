@@ -4,7 +4,7 @@
 // 需要在 Cloudflare 后台配置（见 docs/AI解读部署说明.md）：
 //   KV 绑定  QL_KV
 //   Secret   LLM_API_KEY
-//   变量     LLM_ENDPOINT, LLM_MODEL, 可选 AI_ENABLED("off" 关闭生成), DAILY_CAP(默认150), IP_CAP(默认8)
+//   变量     LLM_ENDPOINT, LLM_MODEL, 可选 AI_ENABLED("off" 关闭生成), DAILY_CAP(默认150), IP_CAP(默认20)
 // POST /api/ai {task:'translate',pmid|doi} 摘要中英对照翻译；GET /api/ai?task=translate&k=… 读缓存
 // POST /api/ai {task:'brief',mode:'huddle'|'digest',items:[{pmid|doi}…2-8]} 多篇讨论提纲/综述；同一组文献缓存复用
 // 其余请求原样交给静态资源。密钥只存在 Cloudflare 环境变量里，不进网页、不进公开包。
@@ -43,7 +43,8 @@ async function tryFetch(url, opts) { try { return await fetch(url, opts); } catc
 
 // 取公开摘要的逐级回退：Europe PMC → PubMed → OpenAlex → Crossref → 期刊落地页元数据（最后手段，仅用户点击时、单篇）
 async function resolveMeta(k, hintDoi, hintPmid) {
-  const m = { title: '', journal: '', pmid: k.type === 'pmid' ? k.id : (hintPmid || ''), doi: k.type === 'doi' ? k.id.toLowerCase() : String(hintDoi || '').toLowerCase(), abstract: '', source: '', url: '' };
+  // Cross-identifiers must come from a matching authoritative record, never reader hints.
+  const m = { title: '', journal: '', pmid: k.type === 'pmid' ? k.id : '', doi: k.type === 'doi' ? k.id.toLowerCase() : '', abstract: '', source: '', url: '' };
   const q = k.type === 'pmid' ? `EXT_ID:${k.id} AND SRC:MED` : `DOI:"${k.id}"`;
   const r = await tryFetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=3&query=' + encodeURIComponent(q), { headers: { accept: 'application/json' } });
   if (r && r.ok) {
@@ -110,7 +111,7 @@ const nums = s => new Set(String(s).replace(/(\d),(?=\d{3}\b)/g, '$1').match(/\d
 function validate(o, abstract) {
   if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('model_not_object');
   const fields = ['title_zh', 'one_line', 'design', 'limits', 'why_read'];
-  for (const f of fields) if (typeof o[f] !== 'string' || !o[f].trim() || o[f].length > 400) throw new Error('invalid_field_' + f);
+  for (const f of fields) if (typeof o[f] !== 'string' || !o[f].trim() || o[f].trim().length > (['one_line','design','why_read'].includes(f) ? 60 : 400)) throw new Error('invalid_field_' + f);
   const fs = o.findings;
   if (!Array.isArray(fs) || fs.length < 2 || fs.length > 4) throw new Error('invalid_findings');
   for (const x of fs) {
@@ -139,6 +140,7 @@ async function callModel(env, art, feedback) {
   else if (/^glm-/.test(model)) body.thinking = { type: 'disabled' };
   const r = await fetch(env.LLM_ENDPOINT, {
     method: 'POST',
+    redirect: 'error',
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.LLM_API_KEY },
     body: JSON.stringify(body)
   });
@@ -199,8 +201,9 @@ async function handle(request, env) {
     let result;
     try { result = validate(await callModel(env, art), art.abstract); }
     catch (e1) {
+      if (!retryableModelError(e1)) { await refund(env, request); return json({ ok: false, error: 'model_failed', detail: safeModelError(e1) }, 502); }
       try { result = validate(await callModel(env, art, String(e1.message || e1).slice(0, 80)), art.abstract); }
-      catch (e) { { await refund(env, request); return json({ ok: false, error: 'model_failed', detail: String(e.message || e).slice(0, 60) }, 502); } }
+      catch (e) { await refund(env, request); return json({ ok: false, error: 'model_failed', detail: safeModelError(e) }, 502); }
     }
     const ql = {
       ...result, pmid: art.pmid, generatedAt: new Date().toISOString(), model: env.LLM_MODEL,
@@ -232,14 +235,22 @@ async function chat(env, system, user, feedback) {
       ...(feedback ? [{ role: 'user', content: '上一次输出未通过机械校验：' + feedback + '。请重写：中文里出现的所有数字必须与原文中的数字完全一致，不要自行计算、换算或补充数字；严格按要求的 JSON 结构输出。' }] : [])] };
   if (/^glm-5\.3/.test(model)) body.reasoning_effort = 'low';
   else if (/^glm-/.test(model)) body.thinking = { type: 'disabled' };
-  const r = await fetch(env.LLM_ENDPOINT, { method: 'POST',
+  const r = await fetch(env.LLM_ENDPOINT, { method: 'POST', redirect: 'error',
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.LLM_API_KEY }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error('model_http_' + r.status);
   return JSON.parse((await r.json()).choices[0].message.content);
 }
 async function withRetry(env, system, user, check) {
   try { return check(await chat(env, system, user)); }
-  catch (e1) { return check(await chat(env, system, user, String(e1.message || e1).slice(0, 80))); }
+  catch (e1) { if (!retryableModelError(e1)) throw e1; return check(await chat(env, system, user, safeModelError(e1))); }
+}
+function safeModelError(error) {
+  const message = String(error?.message || '');
+  return /^(?:model_http_\d{3}|model_not_object|invalid_[a-z_]+|not_object|quote_not_in_abstract)$/.test(message) ? message :
+    (/^numbers_not_in_(?:abstract|source):/.test(message) ? 'unsupported_numbers' : 'provider_or_output_error');
+}
+function retryableModelError(error) {
+  return error instanceof SyntaxError || /^(?:model_not_object|invalid_[a-z_]+|not_object|quote_not_in_abstract|numbers_not_in_(?:abstract|source):)/.test(String(error?.message || ''));
 }
 const hasCJK = s => /[一-鿿]/.test(s);
 function numbersOk(text, source) {

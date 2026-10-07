@@ -9,7 +9,8 @@ PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh'}
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','reviewer','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
-SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','error'}
+SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error'}
+RELEASE = 'v13.5'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -21,7 +22,7 @@ def public_paper(p):
     out['abstractSections']=[{k:v for k,v in s.items() if k in {'label','text'}} for s in out.get('abstractSections',[]) if isinstance(s,dict)]
     out['quantitativeMetrics']={k:v for k,v in out.get('quantitativeMetrics',{}).items() if k in {'sampleSize','followUp','trialId','effectSizes'}}
     d=p.get('draftData') or {}
-    out['hasDraft']=bool(p.get('hasDraft') and d.get('source_checked') is True)
+    out['hasDraft']=bool(p.get('hasDraft') and d.get('source_checked') is True and d.get('published') is not False)
     if out['hasDraft']:out['draftData']={k:v for k,v in d.items() if k in DRAFT_FIELDS}
     return out
 
@@ -44,7 +45,7 @@ def make_archive(candidates,library):
     if old_keys-checked_keys:raise ValueError('Existing checked guides missing from editorial; explicit withdrawal required: '+','.join(sorted(old_keys-checked_keys)))
     archive=[]
     for draft in editorial['articles']:
-        if draft.get('source_checked') is not True:continue
+        if draft.get('source_checked') is not True or draft.get('published') is False:continue
         key=str(draft.get('doi') or draft.get('id') or '').lower()
         if not key or key not in pool:raise ValueError('Checked article has no archived metadata: '+key)
         p=dict(pool[key]);d=dict(draft)
@@ -54,6 +55,16 @@ def make_archive(candidates,library):
         d['published']=draft.get('published') or (old.get('draftData') or {}).get('published') or editorial.get('prepared_on') or draft.get('source_date')
         p.update(hasDraft=True,draftData=d);archive.append(public_paper(p))
     return archive
+
+def content_status(candidates, health, archive, quicklooks, built_at):
+    """Reader-facing dates describe evidence scope, never imply medical review."""
+    def latest(values):
+        return max((v for v in values if isinstance(v,str) and v),default=None)
+    return {'release':RELEASE,'builtAt':built_at,'radarUpdatedAt':candidates.get('updatedAt'),
+            'healthCheckedAt':health.get('checkedAt'),
+            'guideLatestPublishedAt':latest((p.get('draftData') or {}).get('published') for p in archive),
+            'quicklookLatestAt':latest(q.get('generatedAt') for q in quicklooks.values()),
+            'guideCount':len(archive),'quicklookCount':len(quicklooks)}
 
 def _titlekey(t): return re.sub(r'[^a-z0-9]','',(t or '').lower())
 
@@ -68,7 +79,10 @@ def make_radar(candidates,tz=None):
     if not path.exists():return None
     from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, extract_tags
     a=load('data/radar-archive.json')
-    full=json.loads((ROOT/'data/archive-full.json').read_text()) if (ROOT/'data/archive-full.json').exists() else {}
+    # Do not publish a metadata-only rebuild over an existing abstract archive.
+    full_path=ROOT/'data/archive-full.json'
+    if not full_path.is_file():raise ValueError('Full abstract cache missing; restore state before building the public archive')
+    full=json.loads(full_path.read_text())
     abs_days=ABS_DAYS
     floor=(datetime.date.today()-datetime.timedelta(days=abs_days)).isoformat()
     absmap={}
@@ -150,7 +164,9 @@ def main():
     ql={k:public_quicklook(val) for k,val in ql.items()}
     public_index=re.sub(r'<script src="data/library\.js"></script>.*?<script src="app\.js"></script>','<script src="public.js"></script>',(ROOT/'index.html').read_text(),flags=re.DOTALL)
     if 'data/library.js' in public_index or 'public.js' not in public_index:raise ValueError('Script bundling failed')
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql)]+([js('RADAR',radar)] if radar else [])+[(ROOT/'app.js').read_text()])
+    built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    status=content_status(candidates,health,archive,ql,built_at)
+    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status)]+([js('RADAR',radar)] if radar else [])+[(ROOT/'app.js').read_text()])
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
     files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':(ROOT/'edge/_worker.js').read_text()}
     for value in files.values():validate_public(value)
@@ -161,7 +177,7 @@ def main():
     (ROOT/'data/quicklooks.js').write_text(js('QUICKLOOKS',ql))
     manifest=[{'path':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(DEST.iterdir())]
     assert {p['path'] for p in manifest}==PUBLIC
-    meta={'release':'v13.4','createdAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'files':manifest,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz)},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz)},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
     print(json.dumps({'built':len(manifest),'release':meta['release'],'counts':meta['counts']},ensure_ascii=False))
 if __name__=='__main__':main()

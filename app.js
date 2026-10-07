@@ -10,6 +10,7 @@
   const LIBRARY = window.LIBRARY || { papers: [] };
   const CURATED = window.CURATED || [];
   const HEALTH = window.SOURCE_HEALTH || { sources: [] };
+  const CONTENT_STATUS = window.CONTENT_STATUS || {};
 
   // ---- Data normalisation (runs once): tidy titles/journals/links so filters and cards behave ----
   const KIND_MAP = { Articles: '', Article: '', Comment: '评论', Correspondence: '来信', Review: '综述', Viewpoint: '观点', News: '新闻', Series: '系列', 'World Report': '世界报道', Editorial: '社论', Obituary: '讣告' };
@@ -449,9 +450,29 @@
 
     const up = $('#siteUpdated');
     if (up) {
-      const d = (FEEDS.updatedAt || '').slice(0, 10);
-      up.textContent = d ? `雷达数据 ${d} · 计划每天 08:00 查新，发布以页面日期为准` : '';
+      up.textContent = `${CONTENT_STATUS.release || ''} · 雷达 ${contentDate(FEEDS.updatedAt)} · 计划每 2 小时查新，内容变化时发布`;
     }
+    renderContentStatus();
+  }
+
+  function contentDate(value) {
+    if (!value) return '尚无记录';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '日期待核验' : d.toLocaleString('zh-CN', { timeZone:'Asia/Shanghai', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+  }
+  function olderThan(value, hours) {
+    const time = Date.parse(value || '');
+    return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
+  }
+  function renderContentStatus() {
+    const el = $('#contentStatus'); if (!el) return;
+    const radar = CONTENT_STATUS.radarUpdatedAt || FEEDS.updatedAt;
+    const ai = CONTENT_STATUS.quicklookLatestAt;
+    el.innerHTML = `<span><b>自动查新</b> ${esc(contentDate(radar))}${olderThan(radar,6) ? ' · 更新待确认' : ''}</span>` +
+      `<span><b>摘要核对导读</b> ${esc(contentDate(CONTENT_STATUS.guideLatestPublishedAt))}</span>` +
+      `<span><b>AI 速览</b> ${esc(contentDate(ai))}${olderThan(ai,48) ? ' · 补充中' : ''} · 未经人工核验</span>` +
+      `<span><b>全文精读</b> ${currentWeekIssues().length ? '本周已发布' : '本周尚未发布'}</span>`;
   }
 
   const MODE_NOTES = {
@@ -1415,26 +1436,29 @@
     if (!grid) return;
 
     const sources = HEALTH.sources || [];
-    const okCount = sources.filter(s => s.status === 'ok').length;
+    const successful = s => ['ok','empty_feed','filtered_empty'].includes(s.status);
+    const okCount = sources.filter(successful).length;
 
     if (meta) {
-      meta.textContent = `全网学术信源共 ${sources.length} 个 · 正常可用 ${okCount} 个 (${((okCount / (sources.length || 1)) * 100).toFixed(0)}%) · 最近自检：${new Date(HEALTH.checkedAt || Date.now()).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`;
+      meta.textContent = `信源共 ${sources.length} 个 · 本轮获取成功 ${okCount} 个 · 最近自检：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
     }
 
     grid.innerHTML = sources.map(s => {
-      const isOk = s.status === 'ok';
+      const isOk = successful(s);
+      const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '近 14 天无新条目' : isOk ? '获取成功' : '获取异常';
       return `
         <div class="source-item">
           <div class="source-item-name">
             <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(s.name)}</span>
             <span class="source-status-badge ${isOk ? 'source-status-ok' : 'source-status-err'}">
-              ${isOk ? '正常' : '异常'}
+              ${esc(statusLabel)}
             </span>
           </div>
           <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
-            <span>抓取条数: ${s.items || 0}</span>
+            <span>原始条数: ${isOk ? (s.rawItems ?? s.items ?? 0) : '未获取'} · 近 14 天: ${s.eligibleItems ?? '待统计'}</span>
             <span>含摘要: ${s.itemsWithAbstracts || 0}</span>
           </div>
+          ${s.cachedItems ? `<small>保留 ${esc(s.cachedItems)} 条旧缓存 · 最近缓存 ${esc(contentDate(s.lastCachedFetchAt || s.lastSuccessfulAt))}</small>` : ''}
           <a href="${esc(s.url)}" target="_blank" rel="noopener" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent);">
             ${esc(s.url)} ↗
           </a>
@@ -1498,19 +1522,24 @@
     x.setDate(x.getDate() - day);
     return x;
   }
+  function currentWeekIssues() {
+    const today = new Date(beijingToday() + 'T12:00:00');
+    const start = isoWeekStart(today), end = new Date(start); end.setDate(end.getDate() + 7);
+    return ISSUES.filter(i => !i.demo && (() => { const t = new Date(i.published + 'T12:00:00'); return t >= start && t < end; })());
+  }
 
   function renderWeeklyHeader() {
     const status = $('#weeklyStatus');
     const list = $('#issueList');
-    const now = new Date();
+    const now = new Date(beijingToday() + 'T12:00:00');
     const ws = isoWeekStart(now);
     const we = new Date(ws); we.setDate(we.getDate() + 7);
     const fmt = d => d.toISOString ? `${d.getMonth() + 1}/${d.getDate()}` : '';
-    const thisWeek = ISSUES.filter(i => !i.demo && (() => { const t = new Date(i.published + 'T12:00:00'); return t >= ws && t < we; })());
+    const thisWeek = currentWeekIssues();
     if (status) {
       status.innerHTML = thisWeek.length
         ? `本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）精读已发布：第 ${String(thisWeek[0].no).padStart(2, '0')} 期。`
-        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）</b>下方「近 7 天精读榜」随每次内容刷新（约每 2 小时）自动更新；全文精读（需先取得可核验全文）按期发布，第 01 期仅作体例示范，已折叠在榜单下方。`;
+        : `<b>本周（${fmt(ws)}–${fmt(new Date(we.getTime() - 86400000))}）全文精读尚未发布。</b>下方「近 7 天文献榜」随内容刷新（约每 2 小时）自动更新，可阅读已取得的原摘要；全文精读需取得全文并完成审查后发布，第 01 期为体例示范。`;
     }
     renderWeeklyAuto();
     if (list) {
@@ -1525,14 +1554,15 @@
     const at = items.map(p => p.weeklyAt).filter(Boolean)[0];
     let upd = '';
     if (at) { try { upd = new Date(at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { upd = ''; } }
-    el.innerHTML = `<h3 class="next-title">近 7 天精读榜 <small>${upd ? '更新于 ' + upd + '（北京时间）；' : ''}随每次刷新自动更新；按专科相关性、研究类型、期刊与媒体关注度规则排序，AI 速览未经人工核验，请以原文为准。</small></h3>` +
+    el.innerHTML = `<h3 class="next-title">近 7 天文献榜 <small>${upd ? '更新于 ' + upd + '（北京时间）；' : ''}按专科相关性、研究类型、期刊与媒体关注度规则排序；原摘要与 AI 速览分别标注，请以原文为准。</small></h3>` +
       items.map((p, i) => {
         const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
         const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
         return `<div class="next-item weekly-auto-item"><span class="weekly-rank">${i + 1}</span><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> <span class="design-pill ${getDesignClass(p.studyDesign)}">${esc(p.studyDesign || '研究类型待核验')}</span> ${med} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span>` +
           `<div class="weekly-auto-title"><a href="${esc(p.url || ('https://doi.org/' + p.doi))}" target="_blank" rel="noopener noreferrer">${esc(zh || p.title)}</a></div>` +
           (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
-          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览</span>${esc(q.one_line)}</div>` : '') + `</div></div>`;
+          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
+          ((p.abstractSections?.length || p.summary) ? `<details class="weekly-abstract"><summary>阅读原摘要</summary><p>${esc(p.abstractSections?.length ? p.abstractSections.map(s => (s.label ? s.label + ': ' : '') + s.text).join('\n\n') : p.summary)}</p></details>` : '<small>摘要待补充</small>') + `</div></div>`;
       }).join('');
   }
 
@@ -2013,7 +2043,7 @@
   label.textContent = name(root.dataset.style);
 })();
 
-;(function () { /* 页面开着时,发现站点有新版本就提示刷新(后台每半小时更新一次) */
+;(function () { /* 页面开着时发现新版本就提示刷新；后台计划每 2 小时查新 */
   let tag = null, shown = false;
   async function probe() {
     if (shown || document.hidden) return;

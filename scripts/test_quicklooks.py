@@ -7,7 +7,7 @@ import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import generate_quicklooks as q
 
 TODAY = datetime.date(2026, 9, 30)
@@ -49,6 +49,13 @@ class QuicklooksTests(unittest.TestCase):
         self.net = patch.object(q.urllib.request, 'urlopen', side_effect=AssertionError('unexpected network'))
         self.net.start()
         self.addCleanup(self.net.stop)
+        self.model_net = patch.object(q.urllib.request, 'build_opener', side_effect=AssertionError('unexpected model transport'))
+        self.model_net.start()
+        self.addCleanup(self.model_net.stop)
+        # Real process configuration must never affect offline synthetic requests.
+        self.environment = patch.dict(q.os.environ, {}, clear=True)
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
 
     def test_scope_does_not_use_arbitrary_tags(self):
         self.assertFalse(q.lane_core({'tags': ['自然语言处理', '眼科']}))
@@ -130,6 +137,92 @@ class QuicklooksTests(unittest.TestCase):
         with self.assertRaisesRegex(q.QuicklookError, 'numbers_not_in_abstract'):
             q.validate(wrong_number, ABSTRACT)
 
+    def test_prompt_short_field_limits_are_enforced(self):
+        for field in ('one_line', 'design', 'why_read'):
+            with self.subTest(field=field):
+                value = valid_output()
+                value[field] = '中' * 60
+                self.assertEqual(len(q.validate(value, ABSTRACT)[field]), 60)
+                value[field] += '中'
+                with self.assertRaisesRegex(q.QuicklookError, 'invalid_field_' + field):
+                    q.validate(value, ABSTRACT)
+
+    def model_response(self, response, model='glm-5.3-flash'):
+        opener = Mock()
+        opener.open.return_value = response
+        with patch.object(q.urllib.request, 'build_opener', return_value=opener) as build:
+            result = q.call({'endpoint': 'https://provider.test/chat/completions',
+                             'api_key': 'offline-fake-key', 'model': model},
+                            'Study title', 'Journal', ABSTRACT)
+        return result, opener, build
+
+    def test_model_response_and_request_configuration(self):
+        result, opener, build = self.model_response(Response({
+            'choices': [{'message': {'content': json.dumps(valid_output())}, 'finish_reason': 'stop'}],
+            'usage': {'total_tokens': 5}}))
+        self.assertEqual(result[0], valid_output())
+        self.assertEqual(result[1], {'total_tokens': 5})
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.get_method(), 'POST')
+        self.assertEqual(request.full_url, 'https://provider.test/chat/completions')
+        self.assertEqual(opener.open.call_args.kwargs['timeout'], 90)
+        self.assertEqual(request.get_header('Authorization'), 'Bearer offline-fake-key')
+        payload = json.loads(request.data)
+        self.assertEqual(payload['reasoning_effort'], 'low')
+        self.assertEqual(payload['response_format'], {'type': 'json_object'})
+        self.assertIsInstance(build.call_args.args[0], q.NoModelRedirect)
+
+    def test_model_bad_provider_json_is_distinct_from_invalid_output(self):
+        with self.assertRaisesRegex(q.QuicklookError, '^model_response_json$'):
+            self.model_response(io.BytesIO(b'not JSON'))
+        with self.assertRaisesRegex(q.QuicklookError, '^model_output_json$'):
+            self.model_response(Response({'choices': [{'message': {'content': 'not JSON'}}]}))
+
+    def test_model_decoder_limits_use_fixed_provider_or_item_error_codes(self):
+        # Decoder limits vary by runtime. Inject their documented error classes.
+        provider = {'choices': [{'message': {'content': '{}'}}]}
+        for error_type in (ValueError, RecursionError):
+            with self.subTest(error_type=error_type.__name__):
+                with patch.object(q.json, 'loads', side_effect=error_type('offline-sensitive-detail')):
+                    with self.assertRaisesRegex(q.QuicklookError, '^model_response_json$'):
+                        self.model_response(Response(provider))
+                with patch.object(q.json, 'loads', side_effect=[provider, error_type('offline-sensitive-detail')]):
+                    with self.assertRaisesRegex(q.QuicklookError, '^model_output_json$'):
+                        self.model_response(Response(provider))
+
+    def test_model_envelope_output_shape_and_truncation(self):
+        cases = [({}, 'model_response_shape'),
+                 ([], 'model_response_shape'),
+                 ({'choices': []}, 'model_response_shape'),
+                 ({'choices': [{'message': {'content': None}}]}, 'model_output_shape'),
+                 ({'choices': [{'message': {'content': '{}'}, 'finish_reason': 'length'}]}, 'model_output_truncated')]
+        for response, code in cases:
+            with self.subTest(code=code), self.assertRaisesRegex(q.QuicklookError, '^' + code + '$'):
+                self.model_response(Response(response))
+
+    def test_model_response_size_is_bounded(self):
+        with self.assertRaisesRegex(q.QuicklookError, '^model_response_too_large$'):
+            self.model_response(io.BytesIO(b'x' * 200_001))
+
+    def test_model_redirect_never_forwards_credentials(self):
+        handler = q.NoModelRedirect()
+        request = q.urllib.request.Request('https://provider.test/chat', data=b'{}',
+                                          headers={'Authorization': 'Bearer offline-secret'})
+        for code in (301, 302, 303, 307, 308):
+            for target in ('https://other.test/?token=offline-secret', 'http://provider.test/chat'):
+                with self.subTest(code=code, target=target), self.assertRaisesRegex(q.QuicklookError, '^model_redirect_not_allowed$'):
+                    handler.redirect_request(request, None, code, 'redirect', {}, target)
+
+    def test_safe_metadata_never_copies_messages_identifiers_or_urls(self):
+        secret = 'Bearer offline-secret https://provider.test/?token=offline-secret'
+        result = q.safe_failure({'stage': secret, 'code': secret, 'error_type': secret,
+                                 'paper': secret, 'url': secret, 'http_status': 403, 'scope': 'batch'})
+        self.assertEqual(result, {'stage': 'processing', 'code': 'request_or_processing_failed',
+                                  'error_type': 'ProcessingError', 'http_status': 403, 'scope': 'batch'})
+        self.assertNotIn('offline-secret', json.dumps(result))
+        self.assertEqual(q.safe_failure({'stage': [], 'code': {}, 'error_type': {}, 'scope': []}),
+                         {'stage': 'processing', 'code': 'request_or_processing_failed', 'error_type': 'ProcessingError'})
+
     def test_model_and_lookup_caps_and_cached_content(self):
         old = {'items': {'10.1000/old': {'one_line': 'Keep me'}}, 'updatedAt': 'previous'}
         calls, lookups = [], []
@@ -149,7 +242,7 @@ class QuicklooksTests(unittest.TestCase):
         self.assertEqual(staged['items']['10.1000/old'], old['items']['10.1000/old'])
         self.assertEqual(len(old['items']), 1)  # Batch staging does not mutate cache.
 
-    def test_validation_failure_rolls_back_all_and_stops(self):
+    def test_validation_failure_skips_item_and_commits_only_verified_outputs(self):
         old, misses = {'items': {'old': {'value': 1}}, 'updatedAt': 'yesterday'}, {'pending': {'first': '2026-09-30'}}
         calls = []
         def model(*args):
@@ -159,11 +252,106 @@ class QuicklooksTests(unittest.TestCase):
                 output['findings'][0]['quote'] = 'invented evidence snippet'
             return output, {}
         staged, missing, stats, error = q.batch([paper(i) for i in range(1, 5)], old, misses, {'model': 'mock'}, TODAY, 4, 4, model=model)
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(staged['items']['old'], old['items']['old'])
+        self.assertNotIn('10.1000/test2', staged['items'])
+        self.assertEqual(set(staged['items']) - {'old'}, {'10.1000/test1', '10.1000/test3', '10.1000/test4'})
+        self.assertEqual(missing, misses)
+        self.assertEqual(stats['generated'], 3)
+        self.assertEqual(stats['skipped_validation'], 1)
+        self.assertTrue(stats['partial'])
+        self.assertFalse(stats['batch_stopped'])
+        self.assertEqual(error['stage'], 'validation')
+        self.assertEqual(error['scope'], 'item')
+
+    def test_invalid_output_json_is_item_failure_with_same_call_cap(self):
+        calls = []
+        def model(*args):
+            calls.append(1)
+            if len(calls) == 1:
+                raise q.QuicklookError('model_output_json')
+            return valid_output(), {}
+        staged, _, stats, error = q.batch([paper(1), paper(2), paper(3)], {'items': {}}, {},
+                                          {'model': 'mock'}, TODAY, 2, 2, model=model)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(set(staged['items']), {'10.1000/test2'})
+        self.assertEqual(stats['skipped_validation'], 1)
+        self.assertEqual(error['code'], 'model_output_json')
+
+    def test_global_failure_stops_after_verified_success_and_keeps_old_cache(self):
+        calls = []
+        def model(*args):
+            calls.append(1)
+            if len(calls) == 2:
+                raise urllib.error.HTTPError('https://provider.test/?token=offline-secret', 429,
+                                             'offline-secret', {}, None)
+            return valid_output(), {}
+        old = {'items': {'old': {'one_line': 'Keep me'}}}
+        staged, _, stats, error = q.batch([paper(1), paper(2), paper(3)], old, {},
+                                          {'model': 'mock'}, TODAY, 3, 3, model=model)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(set(staged['items']), {'old', '10.1000/test1'})
+        self.assertEqual(staged['items']['old'], old['items']['old'])
+        self.assertEqual(stats['generated'], 1)
+        self.assertTrue(stats['partial'])
+        self.assertTrue(stats['batch_stopped'])
+        self.assertEqual(error['scope'], 'batch')
+        self.assertEqual(error['http_status'], 429)
+        self.assertNotIn('offline-secret', json.dumps(stats))
+
+    def test_all_invalid_outputs_consume_cap_without_becoming_fresh_content(self):
+        calls = []
+        old = {'items': {'old': {'one_line': 'Keep me'}}, 'updatedAt': 'previous'}
+        def model(*args):
+            calls.append(1)
+            value = valid_output()
+            value['design'] = '研究纳入99999名患者。'
+            return value, {}
+        staged, _, stats, error = q.batch([paper(1), paper(2), paper(3)], old, {},
+                                          {'model': 'mock'}, TODAY, 2, 2, model=model)
         self.assertEqual(len(calls), 2)
         self.assertEqual(staged, old)
-        self.assertEqual(missing, misses)
         self.assertEqual(stats['generated'], 0)
-        self.assertEqual(error['stage'], 'validation')
+        self.assertEqual(stats['skipped_validation'], 2)
+        self.assertTrue(stats['failed'])
+        self.assertFalse(stats['partial'])
+        self.assertEqual(error['code'], 'numbers_not_in_abstract')
+
+    def test_invalid_unicode_item_does_not_block_verified_items_or_cache_encoding(self):
+        def model(cfg, title, journal, abstract):
+            output = valid_output()
+            if title == 'Invalid study':
+                output['title_zh'] = chr(0xD800)
+            return output, {}
+        staged, _, stats, error = q.batch([paper(title='Invalid study'), paper(2)], {'items': {}}, {},
+                                          {'model': 'mock'}, TODAY, 2, 2, model=model)
+        self.assertEqual(set(staged['items']), {'10.1000/test2'})
+        self.assertEqual(stats['skipped_validation'], 1)
+        self.assertEqual(error['code'], 'invalid_field_title_zh')
+        json.dumps(staged, ensure_ascii=False).encode('utf-8')
+        for field in ('text', 'quote'):
+            output = valid_output()
+            output['findings'][0][field] = chr(0xD800)
+            with self.subTest(field=field), self.assertRaisesRegex(q.QuicklookError, '^invalid_finding_shape$'):
+                q.validate(output, ABSTRACT)
+
+    def test_provider_envelope_auth_and_rate_failures_stop_batch(self):
+        for failure in (q.QuicklookError('model_response_shape'),
+                        *(urllib.error.HTTPError('https://provider.test/', status, 'offline-secret', {}, None)
+                          for status in (401, 403, 429))):
+            calls = []
+            def model(*args):
+                calls.append(1)
+                raise failure
+            old = {'items': {'old': {'one_line': 'Keep me'}}}
+            staged, _, stats, error = q.batch([paper(1), paper(2)], old, {},
+                                              {'model': 'mock'}, TODAY, 2, 2, model=model)
+            with self.subTest(error_type=type(failure).__name__, status=getattr(failure, 'code', None)):
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(staged, old)
+                self.assertTrue(stats['batch_stopped'])
+                self.assertEqual(stats['skipped_validation'], 0)
+                self.assertEqual(error['scope'], 'batch')
 
     def test_source_failure_and_model_http_failure_stop_without_leaking(self):
         old = {'items': {}}
@@ -199,6 +387,7 @@ class QuicklooksTests(unittest.TestCase):
                 self.assertTrue(json.loads(output.getvalue())['dry_run'])
             self.assertFalse(out.exists())
             self.assertFalse(diag.exists())
+            self.assertFalse((root / 'data/quicklook-status.json').exists())
 
     def test_main_failure_does_not_replace_existing_disk_cache(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -217,6 +406,66 @@ class QuicklooksTests(unittest.TestCase):
             self.assertEqual(out.read_text(), original)
             self.assertTrue(diag.exists())
             self.assertNotIn('fake-offline-key', diag.read_text())
+
+    def test_main_partial_is_nonzero_and_persists_only_verified_cache_and_safe_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'data').mkdir()
+            (root / '.local').mkdir()
+            (root / 'data/candidates.json').write_text(json.dumps({'items': []}))
+            (root / 'data/library.json').write_text(json.dumps({'papers': []}))
+            qcfg = {'model': 'mock', 'api_key': 'offline-secret', 'endpoint': 'https://provider.test/call'}
+            (root / '.local/llm.json').write_text(json.dumps(qcfg))
+            out = root / 'data/quicklooks.json'
+            old = {'items': {'old': {'one_line': 'Keep me'}}}
+            out.write_text(json.dumps(old))
+            def model(cfg, title, journal, abstract):
+                value = valid_output()
+                if title == 'Invalid study':
+                    value['findings'][0]['quote'] = 'invented evidence snippet'
+                return value, {}
+            partial = q.batch([paper(title='Invalid study'), paper(2)], old, {}, qcfg,
+                              TODAY, 2, 2, model=model)
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with patch.object(q, 'ROOT', root), patch.object(q, 'OUT', out), patch.object(q, 'MISS', root / '.local/misses.json'), patch.object(q, 'DIAGNOSTIC', root / '.local/diagnostic.json'), patch.object(q, 'batch', return_value=partial), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                self.assertEqual(q.main(['--call-model']), 1)
+            cached = json.loads(out.read_text())
+            self.assertEqual(set(cached['items']), {'old', '10.1000/test2'})
+            status = json.loads((root / 'data/quicklook-status.json').read_text())
+            self.assertEqual(status['outcome'], 'partial')
+            self.assertTrue(status['stats']['committed'])
+            self.assertEqual(status['stats']['generated'], 1)
+            self.assertEqual(status['stats']['skipped_validation'], 1)
+            self.assertEqual(status['failures'][0]['code'], 'quote_not_in_abstract')
+            self.assertIn('QUICKLOOK_ERROR', stderr.getvalue())
+            for value in (stdout.getvalue(), stderr.getvalue(), json.dumps(status)):
+                self.assertNotIn('offline-secret', value)
+                self.assertNotIn('invented evidence snippet', value)
+                self.assertNotIn('provider.test', value)
+
+    def test_missing_or_unsafe_config_is_not_success_and_has_safe_status(self):
+        for cfg, code in (({}, 'missing_config'),
+                          ({'model': 'mock', 'api_key': 'offline-secret', 'endpoint': 'http://provider.test/?token=offline-secret'}, 'unsafe_endpoint'),
+                          ({'model': 'mock', 'api_key': 'offline-secret', 'endpoint': 'https://['}, 'unsafe_endpoint')):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'data').mkdir()
+                (root / '.local').mkdir()
+                (root / 'data/candidates.json').write_text(json.dumps({'items': []}))
+                (root / 'data/library.json').write_text(json.dumps({'papers': []}))
+                (root / '.local/llm.json').write_text(json.dumps(cfg))
+                out = root / 'data/quicklooks.json'
+                original = '{"items":{"old":{"one_line":"Keep me"}}}'
+                out.write_text(original)
+                stderr = io.StringIO()
+                with patch.object(q, 'ROOT', root), patch.object(q, 'OUT', out), patch.object(q, 'MISS', root / '.local/misses.json'), contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as failure:
+                    q.main(['--call-model'])
+                self.assertEqual(failure.exception.code, 2)
+                self.assertEqual(out.read_text(), original)
+                status = json.loads((root / 'data/quicklook-status.json').read_text())
+                self.assertEqual(status['outcome'], 'failed')
+                self.assertEqual(status['error']['code'], code)
+                self.assertNotIn('offline-secret', stderr.getvalue() + json.dumps(status))
 
 
 if __name__ == '__main__':

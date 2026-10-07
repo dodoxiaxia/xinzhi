@@ -1,16 +1,31 @@
 name: daily-refresh
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'app.js'
+      - 'style.css'
+      - 'icon.svg'
+      - 'edge/**'
+      - 'scripts/**'
+      - 'editorial/**'
+      - '.github/workflows/daily.yml'
   schedule:
     - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
     - cron: '7 */2 * * *'   # 每 2 小时:轻量刷新,内容有变化才发布
   workflow_dispatch:
     inputs:
       mode:
-        description: 'full=完整刷新(默认) / fast=轻量刷新(Cloudflare 定时器使用)'
+        description: 'full=完整刷新(默认) / fast=人工临时轻量刷新'
         default: 'full'
         type: choice
         options: [full, fast]
+      allow_fast_dispatch:
+        description: '确认人工临时快刷；旧外部定时器的重复 fast 请求默认忽略'
+        default: false
+        type: boolean
 
 concurrency:
   group: daily-refresh
@@ -20,7 +35,15 @@ permissions:
   contents: write
 
 jobs:
+  ignored-dispatch:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.allow_fast_dispatch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo "::notice::已忽略未确认的 fast dispatch；定时快刷由 GitHub 每两小时运行，人工临时快刷请勾选 allow_fast_dispatch。此门禁不代表外部定时器已停用。"
   refresh:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.mode != 'fast' || inputs.allow_fast_dispatch)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -31,13 +54,25 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 恢复数据(state 分支:data/ public/ 等私有数据,不含历史)
+        id: restore_state
         run: |
+          rm -f docs/last-refresh.json docs/deployment-status.json
           if git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
             git fetch --depth=1 origin state
-            git archive FETCH_HEAD | tar -x -C .
+            RESTORED_STATE_SHA=$(git rev-parse FETCH_HEAD)
+            echo "sha=$RESTORED_STATE_SHA" >> "$GITHUB_OUTPUT"
+            # State carries runtime data only; never let it overwrite main code.
+            git archive "$RESTORED_STATE_SHA" data public | tar -x -C .
+            for STATE_DOC in public-manifest.json last-refresh.json deployment-status.json; do
+              if git cat-file -e "$RESTORED_STATE_SHA:docs/$STATE_DOC" 2>/dev/null; then
+                git archive "$RESTORED_STATE_SHA" "docs/$STATE_DOC" | tar -x -C .
+              fi
+            done
           else
             echo "::error::没有 state 分支,请先运行 scripts/seed_state.sh 播种一次"; exit 1
           fi
+          # A restored report describes an older run, never this attempt.
+          rm -f docs/last-refresh.json docs/deployment-status.json
 
       - uses: actions/setup-python@v5
         with:
@@ -47,30 +82,67 @@ jobs:
         id: refresh
         run: python3 scripts/ci_daily.py ${{ ((github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
 
-      - name: 保存数据到 state 分支(覆盖式,不累积历史)
-        if: steps.refresh.outcome == 'success' && steps.refresh.outputs.deploy == 'true'
-        run: |
-          set -e
-          T=$(mktemp -d)
-          mkdir -p "$T/s/docs"
-          cp -r data public "$T/s/"
-          cp docs/public-manifest.json docs/last-refresh.json "$T/s/docs/" 2>/dev/null || true
-          cd "$T/s"
-          git init -q -b state
-          git config user.name "xinzhi-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add -A
-          git commit -qm "state $(date -u +%F)"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
-
       - uses: actions/setup-node@v4
         if: steps.refresh.outputs.deploy == 'true'
         with:
           node-version: '20'
 
       - name: 发布到 Cloudflare Pages
+        id: deploy
         if: steps.refresh.outputs.deploy == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx --yes wrangler@3 pages deploy public --project-name dryz-xinzhi --branch main --commit-dirty=true
+
+      - name: 记录部署结果(刷新成功不等于发布成功)
+        if: always()
+        run: >-
+          python3 scripts/finalize_pipeline.py
+          --refresh-outcome '${{ steps.refresh.outcome }}'
+          --deployment-outcome '${{ steps.deploy.outcome }}'
+          --state-outcome 'pending'
+          --deployment-requested '${{ steps.refresh.outputs.deploy }}'
+          --run-url 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          --code-sha '${{ github.sha }}'
+          --run-attempt '${{ github.run_attempt }}'
+
+      - name: 发布成功后保存 state(覆盖式,不累积历史)
+        id: save_state
+        if: steps.refresh.outcome == 'success' && steps.deploy.outcome == 'success'
+        run: |
+          set -e
+          T=$(mktemp -d)
+          mkdir -p "$T/s/docs"
+          cp -r data public "$T/s/"
+          cp docs/public-manifest.json docs/last-refresh.json docs/deployment-status.json "$T/s/docs/"
+          cd "$T/s"
+          git init -q -b state
+          git config user.name "xinzhi-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          git commit -qm "state $(date -u +%F)"
+          git push --force-with-lease=refs/heads/state:${{ steps.restore_state.outputs.sha }} "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
+
+      - name: 记录流水线最终结果
+        if: always()
+        run: >-
+          python3 scripts/finalize_pipeline.py
+          --refresh-outcome '${{ steps.refresh.outcome }}'
+          --deployment-outcome '${{ steps.deploy.outcome }}'
+          --state-outcome '${{ steps.save_state.outcome }}'
+          --deployment-requested '${{ steps.refresh.outputs.deploy }}'
+          --run-url 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          --code-sha '${{ github.sha }}'
+          --run-attempt '${{ github.run_attempt }}'
+
+      - name: 上传成功或失败的流水线证据
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-final-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            docs/deployment-status.json
+            docs/last-refresh.json
+            docs/public-manifest.json
+          if-no-files-found: error

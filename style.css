@@ -868,3 +868,10 @@ html[data-style="c"] .site-footer { border-top: 0; }
 .weekly-demo > summary { cursor: pointer; font-size: 13.5px; color: var(--text-muted); padding: 6px 0; list-style: none; }
 .weekly-demo > summary::before { content: '▸ '; }
 .weekly-demo[open] > summary::before { content: '▾ '; }
+
+.content-status { display:flex; flex-wrap:wrap; gap:8px 24px; padding:10px 24px; font-size:12px; line-height:1.6; color:var(--text-muted); border-bottom:1px solid var(--border); }
+.content-status b { color:var(--text-secondary); font-weight:600; }
+.weekly-abstract { margin-top:8px; font-size:13px; line-height:1.7; }
+.weekly-abstract summary { cursor:pointer; color:var(--accent); }
+.weekly-abstract p { white-space:pre-wrap; color:var(--text-secondary); overflow-wrap:anywhere; }
+@media (max-width:720px) { .content-status { padding:8px 16px; gap:4px 16px; } }

@@ -1,0 +1,278 @@
+"""Offline feed/health regressions: no publishers, RSS services or credentials."""
+from copy import deepcopy
+import datetime
+import importlib
+import json
+from pathlib import Path
+import socket
+import tempfile
+import unittest
+from unittest.mock import patch
+import urllib.error
+
+import refresh_feeds as feeds
+
+
+NOW = datetime.datetime(2026, 10, 7, 6, tzinfo=datetime.timezone.utc)
+CHECKED = NOW.isoformat()
+SOURCE = {'id': 's1', 'name': 'Heart', 'url': 'https://example.org/rss', 'enabled': True}
+
+
+def rss(title='AI-enabled cardiac screening', link='https://example.org/article', date='2026-10-06T12:00:00Z'):
+    return ('<rss><channel><item><title>' + title + '</title><link>' + link + '</link><pubDate>' + date + '</pubDate><description>Abstract</description></item></channel></rss>').encode()
+
+
+def report(source, *, ok=True, raw=1, status='ok', code=None):
+    return {'id': source['id'], 'source': source['name'], 'url': source['url'],
+            'checkedAt': CHECKED, 'ok': ok, 'status': status, 'rawItems': raw if ok else None,
+            'items': raw if ok else 0, 'code': code, 'attempted': True}
+
+
+def parsed(source=SOURCE, **kwargs):
+    return feeds.parse_feed(rss(**kwargs), source, checked_at=CHECKED)['items']
+
+
+def previous(source=SOURCE):
+    items = parsed(source)
+    items[0]['fetchedAt'] = '2026-10-07T02:00:00+00:00'
+    items[0].pop('sourceUrl')
+    return {'reports': [{'source': source['name'], 'url': source['url'], 'ok': True, 'items': 1}], 'items': items}
+
+
+class OfflineTests(unittest.TestCase):
+    def setUp(self):
+        self.guards = [patch.object(socket.socket, 'connect', side_effect=AssertionError('Network forbidden')),
+                       patch('socket.create_connection', side_effect=AssertionError('Network forbidden'))]
+        for guard in self.guards:
+            guard.start()
+            self.addCleanup(guard.stop)
+
+
+class ParserTests(OfflineTests):
+    def test_rss_atom_and_rdf_direct_members(self):
+        payloads = [rss(),
+                    b'<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>Cardiac AI</title><link rel="self" href="https://example.org/feed"/><link href="https://example.org/article"/><published>2026-10-06</published></entry></feed>',
+                    b'<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/"><channel rdf:about="https://example.org"/><item><title>Cardiac AI</title><link>https://example.org/article</link></item></rdf:RDF>']
+        for kind, payload in zip(('rss', 'atom', 'rdf'), payloads):
+            value = feeds.parse_feed(payload, SOURCE, checked_at=CHECKED)
+            self.assertEqual((value['feedType'], value['rawItems'], value['parser']), (kind, 1, 'strict'))
+            self.assertEqual(value['items'][0]['url'], 'https://example.org/article')
+
+    def test_html_plaintext_and_feed_looking_nested_tags_rejected(self):
+        for raw in (b'<html><body><item><title>Cardiac AI</title></item></body></html>',
+                    b'<html><rss><channel/></rss></html>', b'Site Unavailable',
+                    b'<feed xmlns="http://www.w3.org/1999/xhtml"/>', b'<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>'):
+            with self.assertRaises(feeds.FeedParseError) as caught:
+                feeds.parse_feed(raw, SOURCE)
+            self.assertEqual(caught.exception.status, 'not_feed')
+
+    def test_rss_missing_channel_truncated_or_mismatched_xml_not_empty(self):
+        for raw in (b'<rss/>', b'<rss><channel><item>', b'<rss><channel><item></channel></rss>'):
+            with self.assertRaises(feeds.FeedParseError) as caught:
+                feeds.parse_feed(raw, SOURCE)
+            self.assertEqual(caught.exception.status, 'parse_error')
+
+    def test_bounded_text_recovery_does_not_rebuild_structure(self):
+        value = feeds.parse_feed(rss(title='Cardiac AI P<0.05 & benefit'), SOURCE)
+        self.assertEqual(value['parser'], 'recovered')
+        self.assertIn('P<0.05 & benefit', value['items'][0]['title'])
+        self.assertEqual(set(value['parserWarnings']), {'bare_ampersand', 'text_less_than'})
+
+    def test_cdata_entities_and_namespace_date_retained(self):
+        value = feeds.parse_feed(rss(title='<![CDATA[Heart & AI]]>'), SOURCE)
+        self.assertEqual(value['parser'], 'strict')
+        self.assertEqual(value['items'][0]['title'], 'Heart & AI')
+        namespaced = b'<rss xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><item><title>Cardiac AI</title><link>https://example.org/article</link><dc:date>2026-10-06</dc:date></item></channel></rss>'
+        self.assertTrue(feeds.parse_feed(namespaced, SOURCE)['items'][0]['date'].startswith('2026-10-06'))
+
+    def test_dtd_utf16_and_unknown_entities_rejected(self):
+        dtd = '<!DOCTYPE rss [<!ENTITY payload "Cardiac AI">]><rss><channel><item><title>&payload;</title></item></channel></rss>'
+        for raw in (dtd.encode(), dtd.encode('utf-16'), rss(title='Cardiac AI &UndefinedEntity;')):
+            with self.assertRaises(feeds.FeedParseError) as caught:
+                feeds.parse_feed(raw, SOURCE)
+            self.assertEqual(caught.exception.status, 'parse_error')
+
+    def test_oversize_and_bad_encoding_are_not_recovered(self):
+        for raw in (b'x' * (feeds.MAX_BYTES + 1), rss().replace(b'Cardiac', b'Card\xffiac').replace(b'AI-enabled', b'AI\xff-enabled')):
+            with self.assertRaises(feeds.FeedParseError):
+                feeds.parse_feed(raw, SOURCE)
+
+    def test_raw_items_distinct_from_filtered_and_empty(self):
+        valid = feeds.parse_feed(rss(title='Unrelated gardening news'), {**SOURCE, 'name': 'Other'})
+        self.assertEqual(valid['rawItems'], 1)
+        self.assertEqual(valid['classifiedItems'], 0)
+        empty = feeds.parse_feed(b'<rss><channel/></rss>', SOURCE)
+        self.assertEqual((empty['rawItems'], empty['classifiedItems']), (0, 0))
+
+    def test_credential_article_links_omitted(self):
+        value = feeds.parse_feed(rss(link='https://example.org/article?token=must-not-appear'), SOURCE)
+        self.assertEqual(value['rawItems'], 1)
+        self.assertEqual(value['items'], [])
+
+
+class HealthTests(OfflineTests):
+    def test_current_valid_zero_filtered_zero_and_failure_are_distinct(self):
+        sources = [SOURCE, {**SOURCE, 'id': 's2', 'url': 'https://second.org/rss'}, {**SOURCE, 'id': 's3', 'url': 'https://third.org/rss'}]
+        old = parsed(sources[1], date='2020-01-01')
+        fetched = [(report(sources[0], raw=0, status='empty_feed'), []),
+                   (report(sources[1]), old), (report(sources[2], ok=False, status='parse_error'), [])]
+        result, health = feeds.build_results(sources, fetched, now=NOW)
+        self.assertEqual([row['status'] for row in health['sources']], ['empty_feed', 'filtered_empty', 'parse_error'])
+        self.assertEqual([row['rawItems'] for row in health['sources']], [0, 1, None])
+        self.assertEqual([row['eligibleItems'] for row in health['sources']], [0, 0, None])
+        self.assertEqual(result['candidateCount'], 0)
+
+    def test_failure_preserves_same_endpoint_cache_without_refreshing_time(self):
+        old = previous()
+        initial = deepcopy(old)
+        result, health = feeds.build_results([SOURCE], [(report(SOURCE, ok=False, status='http_error', code=403), [])],
+                                             previous_feeds=old, previous_health={'sources': [{'id': 's1', 'url': SOURCE['url'], 'status': 'ok', 'checkedAt': '2026-09-29T09:00:00Z'}]}, now=NOW)
+        self.assertEqual(old, initial)
+        self.assertEqual(result['candidateCount'], 1)
+        self.assertEqual(result['cachedItemCount'], 1)
+        self.assertEqual(result['items'][0]['fetchedAt'], '2026-10-07T02:00:00+00:00')
+        self.assertEqual(health['sources'][0]['checkedAt'], CHECKED)
+        self.assertEqual(health['sources'][0]['status'], 'http_error')
+        self.assertEqual(health['sources'][0]['lastSuccessfulAt'], '2026-09-29T09:00:00Z')
+        self.assertEqual(health['sources'][0]['lastCachedFetchAt'], '2026-10-07T02:00:00+00:00')
+
+    def test_changed_endpoint_and_expired_cache_not_relabelled(self):
+        old = previous()
+        changed = {**SOURCE, 'url': 'https://different.org/rss'}
+        result, _ = feeds.build_results([changed], [(report(changed, ok=False), [])], previous_feeds=old, now=NOW)
+        self.assertEqual(result['candidateCount'], 0)
+        old['items'][0]['date'] = '2020-01-01'
+        result, _ = feeds.build_results([SOURCE], [(report(SOURCE, ok=False), [])], previous_feeds=old, now=NOW)
+        self.assertEqual(result['candidateCount'], 0)
+        self.assertEqual(result['excluded']['olderThan14Days'], 1)
+
+    def test_changed_endpoint_does_not_inherit_prior_success_timestamp(self):
+        changed = {**SOURCE, 'url': 'https://different.org/rss'}
+        old_health = {'sources': [{'id': SOURCE['id'], 'url': SOURCE['url'], 'status': 'ok',
+                                  'checkedAt': '2026-09-29T09:00:00Z', 'lastSuccessfulAt': '2026-10-06T09:00:00Z'}]}
+        _, health = feeds.build_results([changed], [(report(changed, ok=False), [])],
+                                       previous_feeds=previous(), previous_health=old_health, now=NOW)
+        self.assertIsNone(health['sources'][0]['lastSuccessfulAt'])
+        self.assertIsNone(health['sources'][0]['lastCachedFetchAt'])
+
+    def test_duplicate_names_are_not_cache_identity(self):
+        second = {**SOURCE, 'id': 's2', 'url': 'https://other.org/rss'}
+        old = previous()
+        old['reports'].append({'source': second['name'], 'url': second['url'], 'ok': True, 'items': 0})
+        result, health = feeds.build_results([SOURCE, second], [(report(SOURCE, ok=False), []), (report(second, ok=False), [])], previous_feeds=old, now=NOW)
+        self.assertEqual(result['candidateCount'], 1)
+        self.assertEqual([row['cachedItems'] for row in health['sources']], [1, 0])
+
+    def test_successful_empty_feed_does_not_keep_obsolete_source_cache(self):
+        result, _ = feeds.build_results([SOURCE], [(report(SOURCE, raw=0, status='empty_feed'), [])], previous_feeds=previous(), now=NOW)
+        self.assertEqual(result['candidateCount'], 0)
+        self.assertEqual(result['cachedItemCount'], 0)
+
+    def test_fresh_duplicate_wins_over_failed_source_cache(self):
+        fresh_source = {**SOURCE, 'id': 's2', 'url': 'https://other.org/rss'}
+        old = previous()
+        new = parsed(fresh_source)
+        old['items'][0]['doi'] = new[0]['doi'] = '10.1234/same'
+        new[0]['summary'] = 'Fresh summary'
+        result, _ = feeds.build_results([SOURCE, fresh_source], [(report(SOURCE, ok=False), []), (report(fresh_source), new)], previous_feeds=old, now=NOW)
+        self.assertEqual(result['candidateCount'], 1)
+        self.assertEqual(result['items'][0]['summary'], 'Fresh summary')
+        self.assertEqual(result['cachedItemCount'], 0)
+
+    def test_14_day_and_future_date_boundaries(self):
+        item = {'date': (NOW - datetime.timedelta(days=14)).isoformat()}
+        self.assertTrue(feeds.eligible(item, NOW)[0])
+        item['date'] = (NOW - datetime.timedelta(days=14, microseconds=1)).isoformat()
+        self.assertEqual(feeds.eligible(item, NOW), (False, 'olderThan14Days'))
+        item['date'] = (NOW + datetime.timedelta(days=2)).isoformat()
+        self.assertEqual(feeds.eligible(item, NOW), (False, 'future'))
+
+    def test_no_permanent_source_filter_and_82_scope_stays_website_only(self):
+        library = json.loads((feeds.ROOT / 'data/library.json').read_text())
+        chosen = feeds.select_sources(library, all_sources=True)
+        self.assertEqual(len(chosen), 82)
+        self.assertEqual(sum(row['name'] == 'OpenAI News' for row in chosen), 1)
+        # This API deliberately accepts no previous health selection input.
+        self.assertEqual({row['url'] for row in chosen}, {row['url'] for row in library['feeds'] if row['enabled'] or row['name'] == 'OpenAI News'})
+
+    def test_main_collects_once_and_writes_current_health_despite_old_blocked_status(self):
+        library = json.loads((feeds.ROOT / 'data/library.json').read_text())
+        chosen = feeds.select_sources(library, all_sources=True)
+        observed = [(report(source, raw=0, status='empty_feed'), []) for source in chosen]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'data').mkdir()
+            (root / 'data/library.json').write_text(json.dumps(library))
+            (root / 'data/source-health.json').write_text(json.dumps({'checkedAt': '2026-09-29T00:00:00Z',
+                'sources': [{'id': source['id'], 'status': 'http_error'} for source in chosen]}))
+            with patch.object(feeds, 'ROOT', root), patch.object(feeds, 'collect', return_value=observed) as collector, patch('builtins.print'):
+                self.assertEqual(feeds.main(['--all']), 0)
+            self.assertEqual(collector.call_count, 1)
+            self.assertEqual(len(collector.call_args.args[0]), 82)
+            output = json.loads((root / 'data/source-health.json').read_text())
+            self.assertEqual(len(output['sources']), 82)
+            self.assertEqual(output['summary'], {'empty_feed': 82})
+            self.assertNotEqual(output['checkedAt'], '2026-09-29T00:00:00Z')
+            self.assertEqual({path.name for path in (root / 'data').iterdir()},
+                             {'library.json', 'feeds.json', 'feeds.js', 'source-health.json', 'source-health.js'})
+
+    def test_host_block_prevents_repeat_requests_but_reports_every_source(self):
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        seen = []
+        def fixture(source):
+            seen.append(source['id'])
+            return report(source, ok=False, status='http_error', code=403), []
+        collected = feeds.collect([SOURCE, same], fixture)
+        self.assertEqual(seen, ['s1'])
+        self.assertEqual(len(collected), 2)
+        self.assertEqual(collected[1][0]['status'], 'not_checked_host_blocked')
+        self.assertFalse(collected[1][0]['attempted'])
+        self.assertIn('checkedAt', collected[1][0])
+
+    def test_fetch_once_emits_strict_health_and_http200_non_feed_failure(self):
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def getcode(self): return 200
+            def read(self, size):
+                self.size = size
+                return b'<html><body>Site Unavailable</body></html>'
+        with patch('refresh_feeds.urllib.request.urlopen', return_value=Response()) as opener:
+            current, items = feeds.fetch(SOURCE)
+        self.assertEqual(opener.call_count, 1)
+        self.assertEqual((current['status'], current['ok'], current['httpStatus']), ('not_feed', False, 200))
+        self.assertEqual(items, [])
+
+    def test_network_diagnostics_do_not_expose_proxy_url_or_secret_values(self):
+        error = urllib.error.URLError('proxy https://user:secret@example.org?token=must-not-appear')
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=error):
+            current, _ = feeds.fetch(SOURCE)
+        serialized = json.dumps(current)
+        self.assertNotIn('secret', serialized)
+        self.assertNotIn('must-not-appear', serialized)
+        self.assertEqual(current['errorClass'], 'URLError')
+        secret_source = {**SOURCE, 'url': 'https://user:secret@example.org/rss?token=must-not-appear'}
+        with patch('refresh_feeds.urllib.request.urlopen') as opener:
+            current, _ = feeds.fetch(secret_source)
+        self.assertFalse(opener.called)
+        self.assertNotIn('must-not-appear', json.dumps(current))
+
+    def test_tunnel403_also_stops_host_without_logging_proxy_credentials(self):
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        error = urllib.error.URLError('Tunnel connection failed: 403 Forbidden https://user:secret@proxy.example')
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=error) as opener:
+            current = feeds.fetch_group([SOURCE, same])
+        self.assertEqual(opener.call_count, 1)
+        self.assertEqual(current[0][0]['code'], 403)
+        self.assertEqual(current[1][0]['status'], 'not_checked_host_blocked')
+        self.assertNotIn('secret', json.dumps(current))
+
+    def test_audit_import_has_no_network_or_file_write(self):
+        with (patch('refresh_feeds.urllib.request.urlopen', side_effect=AssertionError('Audit import must not fetch')),
+              patch.object(Path, 'write_text', side_effect=AssertionError('Audit import must not write'))):
+            import audit_sources
+            importlib.reload(audit_sources)
+
+
+if __name__ == '__main__':
+    unittest.main()

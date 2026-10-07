@@ -1,6 +1,6 @@
 # 心知｜心血管与AI医疗文献学习站
 
-公开网站：https://learn.dryz.info/ 。v7已由用户手动发布并完成公网核验；上线状态、日期和权限以 [当前交付状态](docs/当前交付状态.md) 为准。接手维护先读 [其他Agent交接](docs/其他Agent维护交接.md)；旧v2/v6记录仅是历史。
+公开网站：https://learn.dryz.info/ 。源码版本 v13.5；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
 ## 阅读和内容范围
 
@@ -27,7 +27,7 @@ python3 scripts/package_release.py
 
 构建使用公开字段白名单，精选独立归档，若旧精选消失、缺元数据、存在私有路径或多余公开文件则停止。模型流程及小批量预算见交接和 [AI速览说明](docs/AI速览方案B.md)。GLM初稿成功不等于来源核对或公网发布。
 
-可仅预览公开五文件：
+完整恢复 state 后可预览公开六文件：
 
 ```sh
 python3 -m http.server 8765 --bind 127.0.0.1 --directory public
@@ -37,6 +37,6 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory public
 
 ## 部署边界
 
-只上传package_release.py生成的公开ZIP到Cloudflare现有dryz-xinzhi项目Production；包内必须仅有index.html、public.js、style.css、icon.svg、_headers。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。上线后核对公司域名实际页面、公开文件哈希和关键交互，才记录成功。登录、扩展上传权限或设备不可用时保留原站。
+GitHub Actions 构建后将六个公开文件发布到 Cloudflare Pages 现有 `dryz-xinzhi` 项目 Production：index.html、public.js、style.css、icon.svg、_headers、_worker.js。手动发布也必须用同一白名单包。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。Pages 发布成功和公网页面核验分别记录；失败保留上次有效站点与 state。缺完整摘要缓存时构建停止，不能用题录版覆盖已有摘要。
 
 界面及聚合思路参考 https://github.com/KKKKhazix/AIHOT ，原参考快照589f79eff09470b31ba8a7f1d9eb62d36ff2be6c；未复制其品牌与后端代码。原文版权归各来源所有。
