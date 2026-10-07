@@ -44,6 +44,20 @@ class AbstractQualityTests(unittest.TestCase):
             self.assertEqual(out['summary'].count(number),p['summary'].count(number))
         self.assertEqual(aq.normalize_paper(out),out)
 
+    def test_exact_parser_paragraph_separator_variant_still_uses_verified_sections(self):
+        p = self.case('10.1161/jaha.126.050490')
+        p['summary'] = p['summary'].replace('2026. BackgroundA', '2026.\n\nBackgroundA', 1)
+        expected_hash = '57ec97fe259b795747d5966689af9e89f072388e5b3dfab42400bf39f3364507'
+        self.assertEqual(hashlib.sha256(p['summary'].encode()).hexdigest(), expected_hash)
+        self.assertIn(expected_hash, self.evidence[p['doi']]['matchingSummaryHashes'])
+        out = aq.normalize_paper(p)
+        self.assertEqual([s['label'] for s in out['abstractSections']], ['Background', 'Methods', 'Results', 'Conclusions'])
+        self.assertNotIn('MethodsAmong', out['summary'])
+        for token in ('3369', '2824', '2.34', '1.19', '4.59', '0.01', '1.89', '1.18', '3.03', '0.008'):
+            self.assertEqual(out['summary'].count(token), p['summary'].count(token))
+        changed = {**p, 'summary': p['summary'].replace('3369', '3370')}
+        self.assertEqual(aq.normalize_paper(changed), changed)
+
     def test_ehj_funding_is_retained_as_metadata_and_not_an_abstract_or_pick(self):
         p=self.case('10.1093/eurheartj/ehag713');out=aq.normalize_paper(p)
         self.assertEqual(out['summary'],'')
