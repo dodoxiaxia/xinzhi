@@ -8,9 +8,44 @@
     "failed values cleared; adoption uses ready records only",
     "request abort, downstream cancellation and ASSETS stream errors stop upstream reader"
   ],
-  "offlineWorkerChecks": 218,
-  "offlineBrowserChecks": 692,
+  "offlineWorkerChecks": 219,
+  "offlineBrowserChecks": 987,
   "browserOfflineOnly": true,
   "resourceGatePassed": false,
-  "productionPublished": false
+  "productionPublished": false,
+  "stickyViewportStyleCombinations": 16,
+  "preview403Evidence": {
+    "productionChanged": false,
+    "modelCalls": 0,
+    "stateWrites": 0,
+    "probes": [],
+    "resourceGatePassed": false,
+    "previewUrl": "https://3f577b35.dryz-xinzhi.pages.dev",
+    "deploymentId": "3f577b35-9077-4c4f-be65-e2079d3a5c56",
+    "version": "3e5ac332ce377ae7a0254e49e987ee1f32455f5d609f135328339c23dda40267",
+    "error": {
+      "type": "HTTPError",
+      "httpStatus": 403
+    },
+    "sourceSha": "5c46f0f5c973fa0940fc18af3ad1a582abb0f2a9",
+    "runId": 37675847598,
+    "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37675847598",
+    "httpProbeStoppedAfter403": true,
+    "retryOrBypassPerformed": false,
+    "liveCpuMemoryVerified": false,
+    "productionPerformanceReleaseHeld": true
+  },
+  "mandatoryLiveGatePassed": false,
+  "productionPerformancePublished": false,
+  "publicAllowlistTestChanged": "Validate private reviewer field names recursively in bootstrap, permit legitimate public abstract prose about independent reviewers",
+  "productionReleaseReference": {
+    "source": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+    "state": "d2f5743a0a4a7875b600569fe98541cc948524a4",
+    "release": "v14.2.12"
+  },
+  "offlineFixtureDataState": "ffcd8fa4356656458509484fe7e83bb4f46a54fb",
+  "finalProductionDataMustBeRevalidated": true,
+  "offlinePythonTests": 543,
+  "pythonSuitePassed": true,
+  "productionHoldReason": "Isolated real preview returned HTTP403 at first public-data request; CPU/memory and GET/HEAD/concurrency gates remain unverified"
 }

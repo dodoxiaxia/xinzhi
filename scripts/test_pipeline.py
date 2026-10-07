@@ -28,7 +28,22 @@ class PipelineTests(unittest.TestCase):
   source=(ROOT/'public/index.html').read_text()
   # v14 reads saved theme/style before paint. Preferences are allowed; private
   # library data and credentials still must not appear in the static page.
-  for forbidden in ('weeklyNotes','当前路径','/Users/','data/library.js','reviewer','QA临时记录','GITHUB_LIBRARY_TOKEN','PDF_DOWNLOAD_PASSPHRASE'):
+  for forbidden in ('weeklyNotes','当前路径','/Users/','data/library.js','QA临时记录','GITHUB_LIBRARY_TOKEN','PDF_DOWNLOAD_PASSPHRASE'):
    self.assertNotIn(forbidden,source)
+  # A public abstract may legitimately describe independent reviewers. Check
+  # private field names structurally rather than banning that English word.
+  marker='<script data-public-data-boot>window.PUBLIC_DATA_BOOT='
+  if marker in source:
+   boot,_=json.JSONDecoder().raw_decode(source.split(marker,1)[1])
+   self.assert_public_metadata(boot)
   self.assertNotIn('library.json',str(files))
+ def assert_public_metadata(self,value):
+  if isinstance(value,dict):
+   self.assertTrue({'reviewer','weeklyNotes','当前路径','GITHUB_LIBRARY_TOKEN','PDF_DOWNLOAD_PASSPHRASE'}.isdisjoint(value))
+   for item in value.values():self.assert_public_metadata(item)
+  elif isinstance(value,list):
+   for item in value:self.assert_public_metadata(item)
+ def test_public_reviewers_text_is_allowed_but_review_identity_field_is_not(self):
+  self.assert_public_metadata({'summary':'Data extracted by 2 independent reviewers.'})
+  with self.assertRaises(AssertionError):self.assert_public_metadata({'data':{'paper':{'reviewer':'fixture-private-reviewer'}}})
 if __name__=='__main__':unittest.main()

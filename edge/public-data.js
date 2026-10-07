@@ -44,7 +44,7 @@ async function handlePublicData(request, env) {
   const start = encoder.encode(';\n;\nwindow.' + match[2] + '='), stop = encoder.encode(';\n;\n');
   try {
     const asset = await env.ASSETS.fetch(new Request(assetUrl, { signal: request.signal }));
-    if (!asset.ok || !asset.body) return publicDataError(503, 'data_unavailable');
+    if (!asset.ok || !asset.body) { if (asset.body) await asset.body.cancel().catch(() => {}); return publicDataError(503, 'data_unavailable'); }
     reader = asset.body.getReader();
     request.signal.addEventListener('abort', abort, { once: true });
     while (pending.length < header.length) {

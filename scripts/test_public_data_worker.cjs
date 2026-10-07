@@ -30,7 +30,7 @@ function environment(text=bundle, chunk=7, status=200) {
  const missing=await handler(new Request('https://fixture.invalid/public-data/'+version+'/RADAR.json'),environment(bundle.split('\n;\nwindow.RADAR=')[0]).env);eq(missing.status,503);
  const truncated=await handler(new Request('https://fixture.invalid/public-data/'+version+'/RADAR.json'),environment(bundle.slice(0,bundle.indexOf('\n;\nwindow.RECENT_RADAR='))).env);await assert.rejects(()=>truncated.text());checks++;
  const head=await handler(new Request('https://fixture.invalid/public-data/'+version+'/FEEDS.json',{method:'HEAD'}),environment().env);eq(head.status,200);eq(await head.text(),'');
- const denied=await handler(new Request('https://fixture.invalid/public-data/'+version+'/FEEDS.json'),environment('',7,503).env);eq(denied.status,503);
+ const denial=environment('unavailable',7,503),denied=await handler(new Request('https://fixture.invalid/public-data/'+version+'/FEEDS.json'),denial.env);eq(denied.status,503);eq(denial.cancelled(),true);
  // Genuine cancellation/abort and upstream failures: assert no subsequent reads.
  function controlled(text, {chunk=8, abortAt=0, aborter=null, errorAt=0}={}) {
   const bytes=new TextEncoder().encode(text);let offset=0,reads=0,cancelled=0;
