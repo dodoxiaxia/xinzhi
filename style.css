@@ -386,6 +386,19 @@ aside.sidebar {
 .load-more-btn:hover { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 .empty-state { padding: 72px 20px; text-align: center; color: var(--text-muted); }
 .empty-state h3 { font-family: var(--font-serif); font-size: 18px; color: var(--text-primary); margin-bottom: 8px; }
+.doi-search-notice, .doi-identity-notice, .doi-library-notice { padding: 18px 20px; margin: 12px 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); }
+.doi-search-notice h3 { margin: 0 0 6px; font-size: 18px; color: var(--text-primary); }
+.doi-search-notice p, .doi-identity-notice p { margin: 6px 0 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.doi-identity-notice { border-left: 3px solid var(--accent); }
+.doi-library-notice { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--text-muted); }
+.doi-empty { padding: 38px 20px; }
+.doi-empty .btn-sm { margin-top: 16px; }
+.doi-filter-badge { max-width: 100%; min-width: 0; }
+.doi-filter-value { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.doi-filter-badge .filter-badge-remove { flex-shrink: 0; }
+.fulltext-state { font-size: 12px; color: var(--text-muted); }
+.fulltext-review { color: var(--accent); }
+.card-actions > div:last-child { flex-wrap: wrap; }
 
 /* ============ Reader drawer ============ */
 .drawer-backdrop { position: fixed; inset: 0; z-index: 90; background: rgba(20, 18, 15, .45); opacity: 0; pointer-events: none; transition: opacity .25s; }

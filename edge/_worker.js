@@ -26,6 +26,8 @@ const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), {
 
 // Build replaces this public ID -> {doi,title} map. Never include private paths or credentials.
 const PDF_LIBRARY = {};
+// Public reviewed policy projection; build validates its source commit and schema.
+const DOI_ADJUDICATIONS = {};
 const PDF_REPOSITORY = 'dodoxiaxia/AI-';
 const PDF_INDEX_PATH = '文献索引/文献索引.csv';
 const PDF_MAX_BYTES = 20 * 1024 * 1024;
@@ -50,8 +52,8 @@ const pdfEscape = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&am
 function pdfOfficialLink(doi) {
   return doi ? '<p><a href="' + pdfEscape('https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/')) + '" target="_blank" rel="noopener noreferrer">前往官网原文</a></p>' : '';
 }
-function pdfHtml(body, status = 200) {
-  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · PDF 下载</title><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>PDF 下载</h1>' + body + '<p><a href="/?mode=library">返回文献库</a></p></main></body></html>', {
+function pdfHtml(body, status = 200, heading = 'PDF 下载') {
+  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + '<p><a href="/?mode=library">返回文献库</a></p></main></body></html>', {
     status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
   });
 }
@@ -115,6 +117,11 @@ async function pdfVerifyPassphrase(passphrase, env) {
 // Timeout covers headers AND the streamed body. Authorization is sent only to api.github.com.
 async function pdfRead(url, maxBytes, options = {}) {
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort();
+    else options.signal.addEventListener('abort', abort, { once:true });
+  }
   const timer = setTimeout(() => controller.abort(), PDF_NETWORK_TIMEOUT_MS);
   try {
     let current = new URL(url), response;
@@ -157,7 +164,7 @@ async function pdfRead(url, maxBytes, options = {}) {
   } catch (error) {
     if (error instanceof PdfFailure) throw error;
     pdfFail(controller.signal.aborted ? 'pdf_timeout' : 'pdf_upstream', controller.signal.aborted ? 504 : 502);
-  } finally { clearTimeout(timer); }
+  } finally { clearTimeout(timer); if (options.signal) options.signal.removeEventListener('abort', abort); }
 }
 function pdfJson(bytes, code = 'pdf_upstream') {
   try { return JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); }
@@ -256,6 +263,333 @@ async function handlePdf(request, env) {
     if (error instanceof PdfFailure && error.code === 'pdf_passphrase_invalid' && id && (request.headers.get('accept') || '').includes('text/html')) return pdfPassphraseForm(id, doi, true);
     return pdfError(request, error instanceof PdfFailure ? error.code : 'pdf_server', error instanceof PdfFailure ? error.status : 500, doi);
   }
+}
+
+// Supplemental records/PDFs live independently of static bibliography, editorial decisions and AI caches.
+const LIBRARY_PREFIX = 'library:paper:';
+const LIBRARY_TASK_MS = 45000;
+const LIBRARY_MAX_PDF_BYTES = 10 * 1024 * 1024;
+const libraryCatalogCache = new Map();
+const LIBRARY_RETRY_SECONDS = 300;
+const libraryLocalActive = new Set();
+const LIBRARY_PDF_HOSTS = ['ncbi.nlm.nih.gov','europepmc.org','ebi.ac.uk','nature.com','springer.com','springernature.com','biomedcentral.com','plos.org','frontiersin.org','jmir.org','bmj.com','jamanetwork.com','ahajournals.org','academic.oup.com','oup.com','nejm.org','thelancet.com','sciencedirect.com','cell.com','wiley.com','arxiv.org','medrxiv.org','biorxiv.org','researchsquare.com','zenodo.org','hal.science','osf.io','figshare.com'];
+class LibraryFailure extends Error {
+  constructor(code, status = 502) { super(code); this.code = code; this.status = status; }
+}
+const libraryFail = (code, status = 502) => { throw new LibraryFailure(code, status); };
+function libraryDoi(value) {
+  if (typeof value !== 'string' || value.length > 500) return '';
+  let doi = value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '');
+  try { doi = decodeURIComponent(doi); } catch { return ''; }
+  doi = doi.toLowerCase();
+  return /^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(doi) && !/[<>?#@\\]/.test(doi) ? doi : '';
+}
+function libraryText(value, limit = 800) {
+  if (typeof value !== 'string' || value.length > 8000) return '';
+  const text = stripTags(value).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+  return text.length <= limit && !/(?:\/(?:Users|home|workspace|tmp)\/|file:\/\/|\.local\/|\b(?:ghp_|github_pat_)|\bbearer\s+\S+)/i.test(text) ? text : '';
+}
+function libraryPaper(record, expectedDoi = '') {
+  const input = record && record.version === 1 && record.paper;
+  if (!input || (expectedDoi && input.doi !== expectedDoi) || libraryDoi(input.doi) !== input.doi || !/^doi-[a-f0-9]{16}$/.test(input.id || '') || !libraryText(input.title) || !['available','pending','review'].includes(input.fulltextStatus)) return null;
+  if (input.fulltextStatus === 'available' && (!record.pdf || !/^library:pdf:[a-f0-9]{64}$/.test(record.pdf.key || '') || record.pdf.key !== 'library:pdf:' + record.pdf.sha256 || !Number.isInteger(record.pdf.size) || record.pdf.size < 8 || record.pdf.size > LIBRARY_MAX_PDF_BYTES)) return null;
+  const paper = { id:input.id, doi:input.doi, title:libraryText(input.title), journal:libraryText(input.journal || '', 300),
+    url:'https://doi.org/' + encodeURIComponent(input.doi).replace(/%2F/gi, '/'), authors:(Array.isArray(input.authors) ? input.authors : []).map(name => libraryText(name, 200)).filter(Boolean).slice(0, 30),
+    date:/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(input.date || '') ? input.date : '', datePrecision:['day','month','year'].includes(input.datePrecision) ? input.datePrecision : '',
+    dateBasis:libraryText(input.dateBasis || '', 100), ingestedAt:typeof input.ingestedAt === 'string' && !isNaN(Date.parse(input.ingestedAt)) ? input.ingestedAt : '',
+    metadataStatus:'external_bibliography_checked', fulltextStatus:input.fulltextStatus, basis:'官方题录来源关联 · 未做医学全文审阅' };
+  return paper;
+}
+async function libraryGet(kv, key) {
+  try { return await kv.get(key, 'json'); } catch { libraryFail('library_storage', 503); }
+}
+async function libraryPut(kv, key, value, options) {
+  try { await kv.put(key, value, options); } catch (error) { libraryFail(error && (error.status === 429 || /\b429\b/.test(String(error.message || ''))) ? 'library_retry_later' : 'library_storage', error && (error.status === 429 || /\b429\b/.test(String(error.message || ''))) ? 429 : 503); }
+}
+function libraryQuery(request) {
+  const url = new URL(request.url), values = url.searchParams.getAll('doi');
+  if (values.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'doi')) libraryFail('library_bad_doi', 400);
+  const doi = libraryDoi(values[0]);
+  if (!doi) libraryFail('library_bad_doi', 400);
+  return { url, doi };
+}
+function libraryConfig(env) {
+  if (!env.QL_KV) libraryFail('library_not_configured', 503);
+  if (env.PDF_DOWNLOAD_ENABLED !== 'true') libraryFail('library_disabled', 503);
+}
+async function libraryAuthorize(request, env, url) {
+  const site = request.headers.get('sec-fetch-site');
+  if (site && !['same-origin','none'].includes(site)) pdfFail('pdf_origin', 403);
+  const origin = request.headers.get('origin');
+  if (origin) {
+    let parsed; try { parsed = new URL(origin).origin; } catch { pdfFail('pdf_origin', 403); }
+    if (parsed !== url.origin) pdfFail('pdf_origin', 403);
+  }
+  await pdfVerifyPassphrase(await pdfReadPassphrase(request), env);
+}
+function libraryForm(doi, route, invalid = false) {
+  return pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : route === '/api/acquire' ? '输入全文口令，按 DOI 获取文献并加入文献库。公开来源可能无法提供 PDF。' : '输入全文口令即可下载已获取的 PDF。') + '</p><form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (route === '/api/acquire' ? '获取并加入文献库' : '下载 PDF') + '</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载');
+}
+function libraryResult(request, paper, error = '', cached = false) {
+  const status = paper.fulltextStatus;
+  const downloadUrl = status === 'available' ? '/api/fulltext?doi=' + encodeURIComponent(paper.doi) : '';
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true, paper, status, cached, ...(error ? { error } : {}), ...(downloadUrl ? { downloadUrl } : {}) }, status === 'available' ? 200 : 202);
+  const message = status === 'available' ? '已获取并加入文献库，可下载 PDF。题录与文件同步可能稍有延迟，下载暂未就绪时请稍后重试。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。' : '题录已加入文献库，暂未取得可下载 PDF。可稍后重试。';
+  return pdfHtml('<p>' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? '<p><a href="' + pdfEscape(downloadUrl) + '">下载 PDF</a></p>' : '') + '<p>文件来源与完整性核验不代表医学全文审阅。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202);
+}
+function libraryError(request, error, doi = '', route = '') {
+  if (error instanceof PdfFailure) {
+    if (error.code === 'pdf_passphrase_invalid' && doi && (request.headers.get('accept') || '').includes('text/html')) return libraryForm(doi, route, true);
+    return pdfError(request, error.code, error.status, doi);
+  }
+  const code = error instanceof LibraryFailure ? error.code : 'library_server', status = error instanceof LibraryFailure ? error.status : 500;
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:false, error:code }, status);
+  const messages = { library_bad_doi:'请输入有效 DOI。', library_not_configured:'文献补录服务尚未完成配置。', library_disabled:'全文获取暂未启用。', library_storage:'文献存储暂时不可用，未确认入库成功。',
+    library_not_found:'尚无可下载的全文，请先获取并加入文献库。', library_busy:'这篇文献正在处理，请稍后查看。', library_retry_later:'这篇文献刚尝试过获取，请稍后重试。', library_limit:'今日按需获取次数已达到限制，请稍后再试。',
+    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
+    library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
+  return pdfHtml('<p>' + pdfEscape(messages[code] || messages.library_server) + '</p>' + pdfOfficialLink(doi), status);
+}
+function librarySafeUrl(value, pdf = false) {
+  let url; try { url = new URL(value); } catch { libraryFail('library_identity', 409); }
+  const host = url.hostname.toLowerCase();
+  if (url.protocol !== 'https:' || url.port || url.username || url.password || url.hash || host.includes(':') || /^\d+(?:\.\d+)*$/.test(host) || !host.includes('.') || /(?:^|\.)(?:localhost|local|internal|invalid|test|lan|home|onion)$/.test(host)) libraryFail('library_identity', 409);
+  if (pdf ? !LIBRARY_PDF_HOSTS.some(trusted => host === trusted || host.endsWith('.' + trusted)) : !['api.crossref.org','api.openalex.org','api.unpaywall.org'].includes(host)) libraryFail('library_identity', 409);
+  return url;
+}
+async function libraryRead(value, context, pdf = false) {
+  const controller = new AbortController(), abort = () => controller.abort();
+  if (context.signal.aborted) libraryFail('library_timeout', 504);
+  context.signal.addEventListener('abort', abort, { once:true });
+  const timer = setTimeout(abort, PDF_NETWORK_TIMEOUT_MS);
+  let response;
+  try {
+    let url = librarySafeUrl(value, pdf);
+    for (let hop = 0; hop <= 3; hop++) {
+      response = await fetch(url.href, { method:'GET', redirect:'manual', signal:controller.signal, headers:{ accept:pdf ? 'application/pdf, application/octet-stream' : 'application/json', 'user-agent':'XinZhiDoiLibrary/1.0' } });
+      if (![301,302,303,307,308].includes(response.status)) break;
+      const location = response.headers.get('location');
+      if (!location || hop === 3) libraryFail('library_identity', 409);
+      if (response.body) await response.body.cancel();
+      url = librarySafeUrl(new URL(location, url).href, pdf);
+    }
+    if (!response.ok) { if (response.body) await response.body.cancel(); libraryFail(response.status === 404 ? 'library_metadata_unavailable' : 'library_upstream', response.status === 404 ? 404 : 502); }
+    if (pdf && !/^(?:application\/(?:pdf|octet-stream))(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) libraryFail('library_identity', 409);
+    const limit = pdf ? LIBRARY_MAX_PDF_BYTES : 1024 * 1024, declared = response.headers.get('content-length');
+    if (declared && (!/^\d+$/.test(declared) || Number(declared) > limit)) libraryFail('library_identity', 409);
+    const reader = response.body && response.body.getReader(); if (!reader) libraryFail('library_upstream');
+    const chunks = []; let length = 0;
+    while (true) {
+      const result = await reader.read(); if (result.done) break;
+      length += result.value.byteLength;
+      if (length > limit) { await reader.cancel(); libraryFail('library_identity', 409); }
+      chunks.push(result.value);
+    }
+    const bytes = new Uint8Array(length); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    if (pdf) return bytes;
+    try { return JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); } catch { libraryFail('library_upstream'); }
+  } catch (error) {
+    if (response && response.body && !response.body.locked) { try { await response.body.cancel(); } catch { /* best effort */ } }
+    if (error instanceof LibraryFailure) throw error;
+    libraryFail(controller.signal.aborted ? 'library_timeout' : 'library_upstream', controller.signal.aborted ? 504 : 502);
+  } finally { clearTimeout(timer); context.signal.removeEventListener('abort', abort); }
+}
+function libraryPublication(message) {
+  for (const [field, label] of [['published-online','Crossref published-online'],['published-print','Crossref published-print'],['published','Crossref published']]) {
+    const parts = message[field] && message[field]['date-parts'] && message[field]['date-parts'][0];
+    if (!Array.isArray(parts) || !parts.length || parts.length > 3 || parts.some(n => !Number.isInteger(n))) continue;
+    const [year, month, day] = parts;
+    if (year < 1600 || year > 2200 || (month !== undefined && (month < 1 || month > 12)) || (day !== undefined && (day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()))) continue;
+    return { date:parts.map((n, i) => String(n).padStart(i ? 2 : 4, '0')).join('-'), datePrecision:['year','month','day'][parts.length - 1], dateBasis:label };
+  }
+  return { date:'', datePrecision:'', dateBasis:'发表日期未知' };
+}
+async function libraryMetadata(doi, context) {
+  const payload = await libraryRead('https://api.crossref.org/works/' + encodeURIComponent(doi), context);
+  const message = payload && payload.message;
+  if (!message || libraryDoi(message.DOI) !== doi || !Array.isArray(message.title) || !libraryText(message.title[0])) libraryFail('library_identity', 409);
+  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]), journal:libraryText((message['container-title'] || [])[0] || '', 300),
+    authors:(Array.isArray(message.author) ? message.author : []).slice(0, 30).map(author => libraryText([author && author.given, author && author.family].filter(Boolean).join(' '), 200)).filter(Boolean),
+    url:'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/'), ...libraryPublication(message), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
+}
+function libraryValidatePdf(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length < 8 || bytes.length > LIBRARY_MAX_PDF_BYTES || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-' || !/%%EOF\s*$/.test(new TextDecoder().decode(bytes.slice(-1024)))) libraryFail('library_identity', 409);
+}
+async function libraryGithub(paper, env, context) {
+  const decision = DOI_ADJUDICATIONS.decisions && DOI_ADJUDICATIONS.decisions[paper.doi];
+  if (decision && decision.action === 'hold') return null; // Known wrong bindings never become a PDF candidate.
+  const token = env.GITHUB_LIBRARY_TOKEN;
+  if (typeof token !== 'string' || !token.trim()) libraryFail('library_not_configured', 503);
+  let commit = env.PDF_GITHUB_COMMIT;
+  if (!commit) { const latest = pdfJson(await pdfRead('https://api.github.com/repos/' + PDF_REPOSITORY + '/commits/main', 262144, { token, signal:context.signal })); commit = latest && latest.sha; }
+  if (typeof commit !== 'string' || !/^[a-f0-9]{40}$/i.test(commit)) libraryFail('library_not_configured', 503);
+  commit = commit.toLowerCase();
+  const entries = pdfCsv(await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token, signal:context.signal, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) }));
+  const rows = entries.filter(row => libraryDoi(row.DOI) === paper.doi);
+  if (!rows.length) return null;
+  if (rows.length !== 1) libraryFail('library_identity', 409);
+  const row = rows[0], title = pdfTitle(row['题名']);
+  const accepted = decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit ? decision.acceptedTitles : [paper.title];
+  if (!Array.isArray(accepted) || !accepted.some(value => pdfTitle(value) === title) || (decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit && pdfTitle(decision.metadata && decision.metadata.title) !== pdfTitle(paper.title))) libraryFail('library_identity', 409);
+  const path = pdfSafePath(row['当前路径']), checksum = row.SHA256.trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(checksum)) libraryFail('library_identity', 409);
+  const endpoint = pdfContentsUrl(path, commit), metadata = pdfJson(await pdfRead(endpoint, 2 * 1024 * 1024, { token, signal:context.signal, file:true, accept:'application/vnd.github+json' }));
+  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 8 || metadata.size > LIBRARY_MAX_PDF_BYTES) libraryFail('library_identity', 409);
+  const bytes = await pdfRead(endpoint, LIBRARY_MAX_PDF_BYTES, { token, signal:context.signal, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
+  libraryValidatePdf(bytes);
+  if (bytes.length !== metadata.size || await pdfDigest('SHA-256', bytes) !== checksum) libraryFail('library_identity', 409);
+  const prefix = new TextEncoder().encode('blob ' + bytes.length + '\0'), blob = new Uint8Array(prefix.length + bytes.length); blob.set(prefix); blob.set(bytes, prefix.length);
+  if (await pdfDigest('SHA-1', blob) !== metadata.sha.toLowerCase()) libraryFail('library_identity', 409);
+  return { bytes, source:'github', commit };
+}
+async function libraryOa(paper, context) {
+  let review = false;
+  const candidates = [], seen = new Set();
+  const add = value => { if (typeof value === 'string' && !seen.has(value) && seen.size < 3) { seen.add(value); candidates.push(value); } };
+  try {
+    const data = await libraryRead('https://api.unpaywall.org/v2/' + encodeURIComponent(paper.doi) + '?email=shijunxia1988%40gmail.com', context);
+    if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
+    else if (data.is_oa === true) { add(data.best_oa_location && data.best_oa_location.url_for_pdf); for (const location of (Array.isArray(data.oa_locations) ? data.oa_locations : []).slice(0, 10)) add(location.url_for_pdf); }
+  } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
+  for (const provider of [0, 1]) {
+    if (provider) {
+      try {
+        const data = await libraryRead('https://api.openalex.org/works/doi:' + encodeURIComponent(paper.doi) + '?select=doi,title,open_access,best_oa_location,locations&mailto=shijunxia1988%40gmail.com', context);
+        if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
+        else if (data.open_access && data.open_access.is_oa === true) {
+          const locations = [data.best_oa_location, ...(Array.isArray(data.locations) ? data.locations : []).slice(0, 10)];
+          for (const location of locations) if (location && location.is_oa === true) add(location.pdf_url);
+        }
+      } catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
+    }
+    for (const candidate of candidates.splice(0)) {
+      try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); return { bytes, source:'oa' }; }
+      catch (error) { if (context.signal.aborted) throw error; review = review || error.code === 'library_identity'; }
+    }
+  }
+  return { review };
+}
+async function librarySoftGate(kv, request, doi) {
+  const now = Date.now(), lockKey = 'library:lock:' + doi, lock = await libraryGet(kv, lockKey);
+  if (libraryLocalActive.has(doi) || (lock && lock.until > now)) libraryFail('library_busy', 409);
+  const attempt = await libraryGet(kv, 'library:attempt:' + doi);
+  if (attempt && attempt.retryAfter > now) libraryFail('library_retry_later', 429);
+  const day = new Date(now).toISOString().slice(0, 10), ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  for (const [key, limit] of [['library:cap:' + day, 30], ['library:ip:' + day + ':' + (await pdfDigest('SHA-256', new TextEncoder().encode(ip))).slice(0, 16), 20]]) {
+    const count = await libraryGet(kv, key), n = Number.isInteger(count) && count >= 0 ? count : 0;
+    if (n >= limit) libraryFail('library_limit', 429);
+    await libraryPut(kv, key, JSON.stringify(n + 1), { expirationTtl:172800 });
+  }
+  if (libraryLocalActive.has(doi)) libraryFail('library_busy', 409);
+  const owner = crypto.randomUUID();
+  libraryLocalActive.add(doi);
+  try { await libraryPut(kv, lockKey, JSON.stringify({ owner, until:now + LIBRARY_TASK_MS + 15000 }), { expirationTtl:90 }); }
+  catch (error) { libraryLocalActive.delete(doi); throw error; }
+  return async () => { libraryLocalActive.delete(doi); try { const current = await kv.get(lockKey, 'json'); if (current && current.owner === owner) await kv.delete(lockKey); } catch { /* Best effort: KV locks/caps are advisory, not atomic. */ } };
+}
+async function libraryStoredPdf(kv, record) {
+  let value; try { value = await kv.get(record.pdf.key, 'arrayBuffer'); } catch { libraryFail('library_storage', 503); }
+  if (!value) libraryFail('library_sync_pending', 503);
+  const bytes = new Uint8Array(value);
+  if (bytes.length !== record.pdf.size) libraryFail('library_integrity', 502);
+  try { libraryValidatePdf(bytes); } catch { libraryFail('library_integrity', 502); }
+  if (await pdfDigest('SHA-256', bytes) !== record.pdf.sha256) libraryFail('library_integrity', 502);
+  return bytes;
+}
+async function librarySave(kv, paper, fetched, error) {
+  const key = LIBRARY_PREFIX + paper.doi;
+  const current = await libraryGet(kv, key), ready = libraryPaper(current, paper.doi);
+  if (ready && ready.fulltextStatus === 'available') { await libraryStoredPdf(kv, current); return ready; } // A failed/slow attempt must not overwrite observed success.
+  let pdf;
+  if (fetched && fetched.bytes) {
+    const checksum = await pdfDigest('SHA-256', fetched.bytes), blobKey = 'library:pdf:' + checksum;
+    await libraryPut(kv, blobKey, fetched.bytes.buffer.slice(fetched.bytes.byteOffset, fetched.bytes.byteOffset + fetched.bytes.byteLength));
+    pdf = { key:blobKey, sha256:checksum, size:fetched.bytes.length, source:fetched.source, ...(fetched.commit ? { commit:fetched.commit } : {}) };
+    paper = { ...paper, fulltextStatus:'available' };
+  }
+  const latestRecord = await libraryGet(kv, key), latest = libraryPaper(latestRecord, paper.doi);
+  if (latest && latest.fulltextStatus === 'available') { await libraryStoredPdf(kv, latestRecord); return latest; }
+  await libraryPut(kv, key, JSON.stringify({ version:1, paper, ...(pdf ? { pdf } : {}) }));
+  libraryCatalogCache.clear();
+  if (paper.fulltextStatus !== 'available') await libraryPut(kv, 'library:attempt:' + paper.doi, JSON.stringify({ status:paper.fulltextStatus, error, retryAfter:Date.now() + LIBRARY_RETRY_SECONDS * 1000 }), { expirationTtl:600 });
+  return libraryPaper({ version:1, paper, ...(pdf ? { pdf } : {}) }, paper.doi);
+}
+async function handleLibrary(request, env) {
+  try {
+    if (request.method !== 'GET') libraryFail('library_method', 405);
+    if (!env.QL_KV) libraryFail('library_not_configured', 503);
+    const url = new URL(request.url);
+    if (url.searchParams.has('doi')) {
+      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+      if (paper) return json({ ok:true, found:true, paper, status:paper.fulltextStatus });
+      const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+      return json({ ok:true, found:false, ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status, ...(Number.isFinite(attempt.retryAfter) ? { retryAfter:attempt.retryAfter } : {}) } : {}) });
+    }
+    if ([...url.searchParams.keys()].some(key => !['cursor','limit'].includes(key)) || url.searchParams.getAll('cursor').length > 1 || url.searchParams.getAll('limit').length > 1) libraryFail('library_bad_doi', 400);
+    const cursor = url.searchParams.get('cursor') || '', rawLimit = url.searchParams.get('limit') || '20';
+    if (cursor.length > 2000 || /[\x00-\x1f]/.test(cursor) || !/^\d{1,2}$/.test(rawLimit) || Number(rawLimit) < 1 || Number(rawLimit) > 20) libraryFail('library_bad_doi', 400);
+    const cacheKey = rawLimit + ':' + cursor, cachedPage = libraryCatalogCache.get(cacheKey);
+    if (cachedPage && cachedPage.kv === env.QL_KV && cachedPage.until > Date.now()) return json(cachedPage.payload);
+    let listing; try { listing = await env.QL_KV.list({ prefix:LIBRARY_PREFIX, limit:Number(rawLimit), ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
+    if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
+    const papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGet(env.QL_KV, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
+    const payload = { ok:true, papers, ...(!listing.list_complete && typeof listing.cursor === 'string' ? { cursor:listing.cursor } : {}) };
+    if (libraryCatalogCache.size >= 50) libraryCatalogCache.clear();
+    libraryCatalogCache.set(cacheKey, { payload, kv:env.QL_KV, until:Date.now() + 30000 });
+    return json(payload);
+  } catch (error) { return libraryError(request, error); }
+}
+async function handleAcquire(request, env) {
+  let doi = '', release;
+  const controller = new AbortController(); let timer;
+  try {
+    const parsed = libraryQuery(request); doi = parsed.doi;
+    if (request.method === 'GET') return libraryForm(doi, '/api/acquire');
+    if (request.method !== 'POST') libraryFail('library_method', 405);
+    await libraryAuthorize(request, env, parsed.url); libraryConfig(env);
+    const cachedRecord = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), cached = libraryPaper(cachedRecord, doi);
+    if (cached && cached.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, cachedRecord); return libraryResult(request, cached, '', true); }
+    if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT !== undefined && (typeof env.PDF_GITHUB_COMMIT !== 'string' || !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT)))) libraryFail('library_not_configured', 503);
+    release = await librarySoftGate(env.QL_KV, request, doi);
+    timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
+    const context = { signal:controller.signal };
+    let paper = await libraryMetadata(doi, context);
+    let fetched = null, review = false;
+    try { fetched = await libraryGithub(paper, env, context); }
+    catch (error) { if (controller.signal.aborted) libraryFail('library_timeout', 504); if (error.code === 'library_not_configured') throw error; review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code); }
+    if (!fetched) {
+      const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else review = review || oa.review;
+    }
+    if (controller.signal.aborted) libraryFail('library_timeout', 504);
+    paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : 'pending' };
+    const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : 'library_metadata_unavailable');
+    return libraryResult(request, saved, saved.fulltextStatus === 'available' ? '' : review ? 'library_identity' : 'library_metadata_unavailable');
+  } catch (error) {
+    if (release && doi && env.QL_KV) {
+      try {
+        const observed = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+        if (!observed || observed.fulltextStatus !== 'available') await libraryPut(env.QL_KV, 'library:attempt:' + doi, JSON.stringify({ status:error.code === 'library_identity' ? 'review' : 'pending', retryAfter:Date.now() + LIBRARY_RETRY_SECONDS * 1000 }), { expirationTtl:600 });
+      } catch { /* Preserve the original fixed error if storage/cooldown is unavailable. */ }
+    }
+    return libraryError(request, error, doi, '/api/acquire');
+  }
+  finally { clearTimeout(timer); if (release) await release(); }
+}
+async function handleFulltext(request, env) {
+  let doi = '';
+  try {
+    const parsed = libraryQuery(request); doi = parsed.doi;
+    if (request.method === 'GET') return libraryForm(doi, '/api/fulltext');
+    if (request.method !== 'POST') libraryFail('library_method', 405);
+    await libraryAuthorize(request, env, parsed.url); libraryConfig(env);
+    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
+    if (!paper || paper.fulltextStatus !== 'available') libraryFail('library_not_found', 404);
+    const bytes = await libraryStoredPdf(env.QL_KV, record);
+    const name = Array.from(paper.title.replace(/[\x00-\x1f\x7f\/\\":<>|?*]/g, ' ')).slice(0, 120).join('') + '.pdf';
+    const encoded = encodeURIComponent(name).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase());
+    return new Response(bytes, { headers:{ 'content-type':'application/pdf', 'content-length':String(bytes.length), 'content-disposition':"attachment; filename=\"article.pdf\"; filename*=UTF-8''" + encoded, 'cache-control':'private, no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'no-referrer', 'content-security-policy':"default-src 'none'; frame-ancestors 'none'" } });
+  } catch (error) { return libraryError(request, error, doi, '/api/fulltext'); }
 }
 
 function normKey(pmid, doi) {
@@ -1076,6 +1410,9 @@ async function handleAI(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/library') return handleLibrary(request, env);
+    if (url.pathname === '/api/acquire') return handleAcquire(request, env);
+    if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
     if (url.pathname === '/api/pdf') return handlePdf(request, env);
     if (url.pathname === '/api/ql') {
       try { return await handle(request, env); } catch (e) { return json({ ok: false, error: 'server' }, 500); }

@@ -104,6 +104,162 @@
       allPapersMap.set(p.id, p);
     }
   });
+  const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
+  const DOI_FULLTEXT = new Map();
+  const DOI_LOOKUPS = new Map();
+  const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
+
+  function exactDoi(value) {
+    if (typeof value !== 'string' || value.length > 500) return '';
+    let doi = value.trim();
+    if (/^https?:\/\//i.test(doi)) {
+      try {
+        const url = new URL(doi);
+        if (!['doi.org', 'dx.doi.org'].includes(url.hostname.toLowerCase()) || url.username || url.password || url.search || url.hash) return '';
+        doi = decodeURIComponent(url.pathname.slice(1));
+      } catch (e) { return ''; }
+    } else doi = doi.replace(/^doi:\s*/i, '');
+    return /^10\.\d{4,9}\/[^\s<>"?#@\x00-\x1f\x7f]+$/.test(doi) && /^[\x20-\x7e]+$/.test(doi) ? doi.toLowerCase() : '';
+  }
+  function doiTitleKey(value) {
+    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim();
+  }
+  function sameDoiTitle(left, right) {
+    return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
+  }
+  function supplementalPaper(raw) {
+    if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
+    const doi = exactDoi(raw.doi);
+    if (!doi || typeof raw.title !== 'string' || !raw.title.trim() || raw.title.length > 800) return null;
+    const p = {
+      id: raw.id, doi, title: raw.title, journal: typeof raw.journal === 'string' ? raw.journal.slice(0, 200) : '',
+      authors: Array.isArray(raw.authors) ? raw.authors.filter(a => typeof a === 'string').slice(0, 30).map(a => a.slice(0, 120)) : [],
+      date: typeof raw.date === 'string' && /^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(raw.date) ? raw.date : '',
+      dateBasis: typeof raw.dateBasis === 'string' ? raw.dateBasis.slice(0, 160) : '发表日期未知',
+      datePrecision: ['day', 'month', 'year'].includes(raw.datePrecision) ? raw.datePrecision : 'unknown',
+      url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
+      metadataStatus: 'external_bibliography_checked',
+      fulltextStatus: ['available', 'pending', 'review'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
+      basis: '官方题录 · 非全文精读，未经医生终审', tags: [], studyDesign: '研究类型待核验', quantitativeMetrics: {}
+    };
+    normalizePaper(p);
+    p.cleanJournal = p.journal;
+    p.publisher = '其他学术刊物';
+    const lane = laneOf(p);
+    p.clinicalTier = lane === 'cardio' ? '心血管综合与其他' : lane === 'aimed' ? 'AI医疗与数字医学' : lane === 'aitech' ? 'AI行业动态' : '顶级综合与科学';
+    p.category = lane === 'cardio' ? isCrossAI(p) ? '交叉研究' : '心血管' : lane === 'aimed' ? 'AI医疗' : lane === 'aitech' ? 'AI前沿' : '综合医学';
+    return p;
+  }
+  function mergeSupplementalPaper(raw) {
+    const p = supplementalPaper(raw);
+    if (!p) return false;
+    const occupied = allPapersMap.get(p.id);
+    if (occupied && exactDoi(occupied.doi) !== p.doi) return false;
+    if (occupied && STATIC_DOI_PAPERS.includes(occupied) && !sameDoiTitle(occupied.title, p.title)) {
+      p.id = 'supplemental-' + p.id;
+      const alias = allPapersMap.get(p.id);
+      if (alias && (STATIC_DOI_PAPERS.includes(alias) || exactDoi(alias.doi) !== p.doi)) return false;
+    }
+    DOI_FULLTEXT.set(p.doi, p);
+    DOI_LOOKUPS.set(p.doi, { state: 'complete', found: true });
+    const existing = STATIC_DOI_PAPERS.filter(item => exactDoi(item.doi) === p.doi);
+    const matching = existing.find(item => sameDoiTitle(item.title, p.title));
+    // Preserve every static object and ID, including HOLD and editorial fields.
+    if (existing.length) {
+      if (matching) {
+        for (let i = LIBRARY.papers.length - 1; i >= 0; i--) {
+          const item = LIBRARY.papers[i];
+          if (!STATIC_DOI_PAPERS.includes(item) && exactDoi(item.doi) === p.doi) LIBRARY.papers.splice(i, 1);
+        }
+        if (!LIBRARY.papers.some(item => exactDoi(item.doi) === p.doi && sameDoiTitle(item.title, p.title))) LIBRARY.papers.push(matching);
+      }
+      // A conflicting official title stays separate; it cannot inherit the old guide.
+      if (!matching) {
+        const index = LIBRARY.papers.findIndex(item => item.id === p.id && !STATIC_DOI_PAPERS.includes(item));
+        if (index < 0) LIBRARY.papers.push(p); else LIBRARY.papers[index] = p;
+        allPapersMap.set(p.id, p);
+      }
+    } else {
+      const index = LIBRARY.papers.findIndex(item => exactDoi(item.doi) === p.doi);
+      if (index < 0) LIBRARY.papers.push(p);
+      else LIBRARY.papers[index] = p;
+      allPapersMap.set(p.id, p);
+    }
+    _maxDateCache = null;
+    return true;
+  }
+  function exactDoiPapers(doi) {
+    const matches = [...CURATED, ...FEEDS.items, ...LIBRARY.papers].filter(p => exactDoi(p.doi) === doi);
+    const preferred = papers => papers.find(p => p.hasDraft) || papers.find(p => PDF_LIBRARY_IDS.has(String(p.id))) || papers[0];
+    const supplemental = DOI_FULLTEXT.get(doi);
+    if (supplemental) {
+      const matching = preferred(matches.filter(p => sameDoiTitle(p.title, supplemental.title)));
+      return [matching || supplemental];
+    }
+    return matches.length ? [preferred(matches)] : [];
+  }
+  function fulltextConflict(p) {
+    const record = p && DOI_FULLTEXT.get(exactDoi(p.doi));
+    return record && !sameDoiTitle(p.title, record.title) ? record : null;
+  }
+  function acquireDoiUrl(doi) { return exactDoi(doi) ? '/api/acquire?doi=' + encodeURIComponent(exactDoi(doi)) : ''; }
+  async function libraryJson(url) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(url, { method: 'GET', headers: { accept: 'application/json' }, cache: 'no-store', signal: controller.signal });
+      if (!response.ok) { const error = new Error('library_unavailable'); error.status = response.status; throw error; }
+      const result = await response.json();
+      if (!result || result.ok !== true) throw new Error('library_unavailable');
+      return result;
+    } finally { clearTimeout(timer); }
+  }
+  function refreshSupplementalView() {
+    updateHeaderBadges();
+    renderSidebarFilters();
+    renderStream();
+    if (state.activeDrawerPaper) openReaderDrawer(allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper);
+  }
+  async function lookupSupplementalDoi(doi, retry = false) {
+    if (!doi || (!retry && DOI_LOOKUPS.has(doi)) || DOI_LOOKUPS.get(doi)?.state === 'loading') return;
+    DOI_LOOKUPS.set(doi, { state: 'loading' });
+    try {
+      const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
+      if (result.found === true) {
+        if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
+      } else if (result.found === false) {
+        const previous = DOI_FULLTEXT.get(doi);
+        if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
+        DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
+      }
+      else throw new Error('library_unavailable');
+    } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
+    if (exactDoi(state.search) === doi) refreshSupplementalView();
+  }
+  function loadSupplementalLibrary(refresh = false) {
+    if (SUPPLEMENTAL_LIBRARY.promise) return SUPPLEMENTAL_LIBRARY.promise;
+    if (refresh) { SUPPLEMENTAL_LIBRARY.cursor = ''; SUPPLEMENTAL_LIBRARY.more = false; }
+    SUPPLEMENTAL_LIBRARY.state = 'loading';
+    const run = async () => {
+      try {
+        const visited = new Set();
+        for (let page = 0; page < 5; page++) {
+          const cursor = SUPPLEMENTAL_LIBRARY.cursor;
+          const result = await libraryJson('/api/library?limit=20' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
+          if (!Array.isArray(result.papers) || result.papers.length > 20) throw new Error('library_unavailable');
+          result.papers.forEach(mergeSupplementalPaper);
+          const next = typeof result.cursor === 'string' && result.cursor.length <= 2000 ? result.cursor : '';
+          if (next && (next === cursor || visited.has(next))) throw new Error('library_unavailable');
+          SUPPLEMENTAL_LIBRARY.cursor = next; SUPPLEMENTAL_LIBRARY.more = !!next;
+          if (!next) break;
+          visited.add(next);
+        }
+        SUPPLEMENTAL_LIBRARY.state = 'complete';
+      } catch (e) { SUPPLEMENTAL_LIBRARY.state = e.status === 404 ? 'unsupported' : 'error'; }
+      finally { SUPPLEMENTAL_LIBRARY.promise = null; SUPPLEMENTAL_LIBRARY.refreshedAt = Date.now(); refreshSupplementalView(); }
+    };
+    SUPPLEMENTAL_LIBRARY.promise = run();
+    return SUPPLEMENTAL_LIBRARY.promise;
+  }
 
   // Safe storage (private mode / blocked storage must not break the page)
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -383,7 +539,7 @@
     if (list) state._digestList = list;
     const l = state._digestList || [];
     const top = l.filter(p => p.pmid || p.doi).slice(0, 8);
-    if (AI_AVAIL !== true || state.mode === 'weekly' || top.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+    if (exactDoi(state.search) || AI_AVAIL !== true || state.mode === 'weekly' || top.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false; el.innerHTML = briefHtml('digest', top);
   }
   // ---- Public-abstract study services: GET only reads cache; POST requires a click. ----
@@ -623,11 +779,20 @@
     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
   }
   function pdfDownloadUrl(p) {
+    if (p && typeof DOI_FULLTEXT !== 'undefined') {
+      const doi = exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
+      if (record) return sameDoiTitle(p.title, record.title) && record.fulltextStatus === 'available' ? '/api/fulltext?doi=' + encodeURIComponent(doi) : '';
+    }
     return p && PDF_LIBRARY_IDS.has(String(p.id)) ? '/api/pdf?id=' + encodeURIComponent(p.id) : '';
   }
   function pdfDownloadLink(p) {
+    const conflict = fulltextConflict(p);
+    if (conflict) return `<span class="fulltext-state fulltext-review" title="官方题名：${esc(conflict.title)}">题录对应待核实</span>`;
     const url = pdfDownloadUrl(p);
-    return url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>` : '';
+    if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>`;
+    const doi = p && exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
+    const label = record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';
+    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquireDoiUrl(doi))}" target="_blank" rel="noopener" class="btn-sm">${record ? '再次获取全文' : '获取全文并加入文献库'}</a>` : '';
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;
@@ -801,6 +966,8 @@
       + (laneOf(p) === 'cardio' || isCrossAI(p) ? 3 : 0) + (p.summary ? 2 : 0) + (p.abstractSections && p.abstractSections.length ? 1 : 0);
   }
   function getFilteredArticles() {
+    const doi = exactDoi(state.search);
+    if (doi) return exactDoiPapers(doi);
     const list = getCurrentDataset();
     const curated = state.mode === 'curated';
     const arr = list.filter(p => matchesFilters(p, false));
@@ -1129,10 +1296,56 @@
   }
 
   // Main Render Stream
+  function applyDoiSearchLayout(doi) {
+    const special = state.mode === 'weekly' || state.mode === 'sources';
+    const stream = $('#streamSection'), weekly = $('#weeklySection'), sources = $('#sourcesSection');
+    if (stream) stream.hidden = !doi && special;
+    if (weekly) weekly.hidden = !!doi || state.mode !== 'weekly';
+    if (sources) sources.hidden = !!doi || state.mode !== 'sources';
+    const noSidebar = !!doi || special || state.mode === 'curated';
+    const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
+    const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
+    const app = $('.app-container');
+    if (app) {
+      app.classList.toggle('full-width-layout', noSidebar);
+      app.classList.toggle('weekly-layout', !doi && state.mode === 'weekly');
+      app.classList.toggle('sources-layout', !doi && state.mode === 'sources');
+    }
+  }
+  function supplementalLibraryNotice() {
+    if (SUPPLEMENTAL_LIBRARY.state === 'error') return '<div class="doi-library-notice">补录文献暂未加载，已保留现有文献。<button class="btn-sm" data-action="refresh-doi-library">重试加载</button></div>';
+    if (SUPPLEMENTAL_LIBRARY.more) return '<div class="doi-library-notice">还有补录文献未显示。<button class="btn-sm" data-action="load-doi-library">继续加载补录</button></div>';
+    return '';
+  }
+  function renderDoiStream(doi, streamEl, loadMoreBtn) {
+    const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
+    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+    const filters = $('#activeFiltersBar');
+    if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
+    const pendingLookup = !lookup || lookup.state === 'loading';
+    const uncertain = lookup && ['error', 'unsupported'].includes(lookup.state);
+    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : '站内暂未收录这个 DOI。';
+    let conflictNotice = '';
+    const record = DOI_FULLTEXT.get(doi);
+    if (record) {
+      const conflicts = STATIC_DOI_PAPERS.filter(p => exactDoi(p.doi) === doi && !sameDoiTitle(p.title, record.title));
+      if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
+    }
+    streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
+    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p><button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}"${pendingLookup ? ' disabled' : ''}>刷新收录状态</button></div>`
+      + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
+      + (!papers.length ? `<div class="empty-state doi-empty"><h3>${pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献'}</h3><p>输入全文口令后，尝试获取这篇文献并加入文献库。</p><a href="${esc(acquireDoiUrl(doi))}" target="_blank" rel="noopener" class="btn-sm btn-primary">获取全文并加入文献库</a></div>` : '');
+    if (loadMoreBtn) loadMoreBtn.hidden = true;
+    if (!lookup) lookupSupplementalDoi(doi);
+  }
   function renderStream() {
     const streamEl = $('#articlesStream');
     const loadMoreBtn = $('#loadMoreBtn');
     if (!streamEl) return;
+
+    const doi = exactDoi(state.search);
+    applyDoiSearchLayout(doi);
+    if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
@@ -1152,6 +1365,7 @@
           <button class="btn-sm btn-primary" id="clearAllFiltersBtn" style="margin-top:12px;">重置所有筛选</button>
         </div>
       `;
+      if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
       if (loadMoreBtn) loadMoreBtn.hidden = true;
       return;
     }
@@ -1195,6 +1409,7 @@
       streamEl.innerHTML = visibleItems.map(renderArticleCard).join('');
     }
 
+    if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
     if (loadMoreBtn) {
       loadMoreBtn.hidden = visibleItems.length >= filtered.length;
     }
@@ -1774,7 +1989,11 @@
     }
     window.scrollTo({ top: 0 });
 
-    if (newMode === 'sources') {
+    if (exactDoi(state.search)) {
+      if (newMode === 'sources') renderSourcesHealth();
+      if (newMode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); }
+      renderStream();
+    } else if (newMode === 'sources') {
       renderSourcesHealth();
       syncUrl();
     } else if (newMode === 'weekly') {
@@ -2051,6 +2270,10 @@
 
   // Global Document Clicks Delegation
   document.addEventListener('click', e => {
+    const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
+    if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
+    if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
+    if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
     // 1. Clinical Tier click
     const tierBtn = e.target.closest('[data-filter-tier]');
     if (tierBtn) {
@@ -2308,6 +2531,14 @@
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
   if (searchInput && state.search) searchInput.value = state.search;
   switchMode(state.mode, true);
+  loadSupplementalLibrary();
+  const refreshLibraryAfterReturn = () => {
+    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < 2000) return;
+    loadSupplementalLibrary(true);
+    const doi = exactDoi(state.search); if (doi) lookupSupplementalDoi(doi, true);
+  };
+  window.addEventListener('focus', refreshLibraryAfterReturn);
+  window.addEventListener('pageshow', event => { if (event.persisted) refreshLibraryAfterReturn(); });
   fetch('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } }).then(r => r.ok ? r.json() : Promise.reject())
     .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
     .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });

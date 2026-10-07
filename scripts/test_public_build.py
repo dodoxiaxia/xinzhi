@@ -9,6 +9,25 @@ def write_legacy(root,draft,date='2026-09-29'):
  (root/'editorial/legacy_published_guides.json').write_text(json.dumps({'schema_version':1,'guides':{key:{'content_sha256':content_sha256(draft,key),'published_on':date}}}))
 
 class PublicBuildTests(unittest.TestCase):
+ def test_doi_policy_projection_is_pinned_and_contains_only_reviewed_identities(self):
+  out=b.doi_adjudication_registry()
+  self.assertEqual(out['sourceCommit'],'fed03f8d789429fc84c94cefcb4b636d75ec9ee3')
+  self.assertEqual(out['decisions']['10.1016/j.landig'],{'action':'hold','acceptedTitles':[],'metadata':None})
+  for row in out['decisions'].values():
+   self.assertEqual(set(row),{'action','acceptedTitles','metadata'})
+  self.assertNotIn('reason',json.dumps(out))
+  self.assertNotIn('evidence',json.dumps(out))
+ def test_malformed_doi_policy_blocks_build_projection(self):
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);(root/'config').mkdir()
+   source=b.load('config/public_library_adjudications.json')
+   for change in ('source','schema','identity'):
+    policy=json.loads(json.dumps(source))
+    if change=='source':policy['sourceCommit']='invalid'
+    elif change=='schema':policy['decisions'][0]['unknown']='unreviewed'
+    else:policy['decisions'][1]['doi']='10.1000/private?token=bad'
+    (root/'config/public_library_adjudications.json').write_text(json.dumps(policy))
+    with patch.object(b,'ROOT',root),self.assertRaises(ValueError):b.doi_adjudication_registry()
  def test_pdf_allowlist_contains_only_public_identity(self):
   papers=[{'id':'public-one','title':'Published title','doi':'https://doi.org/10.1234/ONE','repo_path':'private/paper.pdf','pdf_sha256':'private'}, {'id':'title-only','title':'Exact published title'}, {'id':'missing','doi':''}, {'id':'__proto__','doi':'10.1234/unsafe'}]
   out=b.pdf_library_registry(papers)
