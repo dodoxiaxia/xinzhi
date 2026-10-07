@@ -76,6 +76,61 @@ def public_quicklook(item):
     out['findings']=[{k:v for k,v in x.items() if k in {'text','quote'}} for x in out.get('findings',[]) if isinstance(x,dict)]
     return out
 
+def public_weekly_board(raw):
+    """Finite, validated public-abstract contract. Never emit private cache/ledger fields."""
+    from week_precompute import validate, text_hash, TASKS, CATEGORIES, CAVEAT
+    if not raw:return None
+    if raw.get('schemaVersion')!=1 or raw.get('scope')!='public-abstract':
+        raise ValueError('Invalid weekly board schema')
+    rows=raw.get('items')
+    if not isinstance(rows,list) or len(rows)>30:raise ValueError('Invalid weekly board count')
+    safe=[];seen=set()
+    for row in rows:
+        allowed={'id','paperID','doi','pmid','rank','category','date','title','sourceHash','abstract','abstractSource','abstractSourceUrl','titleZh','precomputeStatus','missingTasks','allowAutomaticGeneration'}
+        out={k:v for k,v in row.items() if k in allowed}
+        if out.get('paperID') in seen or out.get('category') not in CATEGORIES:raise ValueError('Invalid weekly board identity/category')
+        seen.add(out.get('paperID'))
+        if text_hash(out['title'],out['abstract'])!=out['sourceHash']:raise ValueError('Weekly board source hash mismatch')
+        out['abstractSourceUrl']=safe_url(out.get('abstractSourceUrl'))
+        out['allowAutomaticGeneration']=False
+        p={'title':out['title'],'abstract':out['abstract']}
+        if out.get('titleZh'):out['titleZh']=validate('title',{'title_zh':out['titleZh']},p)['title_zh']
+        out['translation']=validate('translate',row['translation'],p) if row.get('translation') else None
+        out['quicklook']=public_quicklook(validate('quicklook',row['quicklook'],p)) if row.get('quicklook') else None
+        study=row.get('study')
+        if study:
+            if study.get('scope')!='public-abstract' or study.get('task')!='study' or len(study.get('papers',[]))!=1:raise ValueError('Invalid weekly study')
+            paper=study['papers'][0]
+            fields=validate('study',{f:paper.get(f) for f in ('question','population','design','comparator','endpoints','results')},p)
+            # Preserve the existing study renderer's exact shape, sanitize provenance.
+            single={k:paper[k] for k in ('n','key','title','doi','pmid','journal','status','sourceFingerprint','generatedAt','model','abstract_source') if k in paper}
+            single.update(fields,source_url=safe_url(paper.get('source_url','')))
+            out['study']={k:study[k] for k in ('task','schemaVersion','scope','missingKeys','checklist','generatedAt','model','generatedBy') if k in study}
+            out['study'].update(papers=[single],caveat=CAVEAT)
+        else:out['study']=None
+        # Compute coverage states; do not trust an unvalidated ready flag.
+        present={'translate':bool(out['translation']),'quicklook':bool(out['quicklook']),'study':bool(out['study'])}
+        out['missingTasks']=[t for t in TASKS if not present[t]]
+        out['precomputeStatus']='ready' if all(present.values()) else 'partial' if any(present.values()) else 'pending'
+        out['generationMeta']={t:{k:v for k,v in m.items() if k in {'modelVersion','generatedAt','promptVersion','origin'}} for t,m in row.get('generationMeta',{}).items() if t in TASKS and isinstance(m,dict)}
+        safe.append(out)
+    window={k:v for k,v in raw.get('window',{}).items() if k in {'start','end','timezone','days','target','eligible','selected','eligibleByCategory','excluded','shortfallReason'}}
+    categories=[{k:v for k,v in c.items() if k in {'key','count','eligible','reason'}} for c in raw.get('categories',[]) if isinstance(c,dict)]
+    return {'schemaVersion':1,'scope':'public-abstract','generatedAt':raw.get('generatedAt'),'caveat':CAVEAT,'window':window,'categories':categories,'items':safe,'coverage':{'title':sum(bool(r.get('titleZh')) for r in safe),**{t:sum(bool(r[{'translate':'translation','study':'study','quicklook':'quicklook'}[t]]) for r in safe) for t in TASKS}}}
+
+def pregenerated_map(weekly):
+    result={}
+    for row in (weekly or {}).get('items',[]):
+        meta={k:row.get(k) for k in ('paperID','sourceHash','precomputeStatus','missingTasks','allowAutomaticGeneration','abstractSource','abstractSourceUrl','generationMeta')}
+        entry={'translation':row.get('translation'),'quicklook':row.get('quicklook'),'study':row.get('study'),'meta':meta}
+        keys=[]
+        if row.get('pmid'):keys.append('pmid:'+str(row['pmid']))
+        if row.get('doi'):keys.append('doi:'+str(row['doi']).lower())
+        for key in keys:
+            if key in result and result[key]!=entry:raise ValueError('Conflicting precomputed paper alias')
+            result[key]=entry
+    return result
+
 def public_health(source, pubmed, now):
     from refresh_feeds import safe_url as sanitized_url
     from source_fallbacks import coverage
@@ -214,7 +269,7 @@ def main():
             for i,x in enumerate(ids):
                 if x in byid:byid[x]['autoPick']={'d':d,'r':i+1}
         for i,x in enumerate(picks.get('weekly',[])):
-            if x in byid:byid[x]['weeklyPick']=i+1;byid[x]['weeklyAt']=picks.get('updatedAt')
+            if x in byid:byid[x]['weeklyPick']=i+1;byid[x]['weeklyAt']=picks.get('updatedAt');byid[x]['weeklyCategory']={'心血管':'cardio','综合医学':'general','AI医疗':'aimed','AI前沿':'aitech'}.get(picks.get('weeklyCategories',{}).get(x))
         print('auto picks:',sum(1 for q in candidates['items'] if q.get('autoPick')),'weekly:',len(picks.get('weekly',[])))
     fullp=ROOT/'data/archive-full.json'
     if fullp.exists():
@@ -226,14 +281,31 @@ def main():
             if v and v.get('a'):
                 q['abstractSections']=[{'label':x.get('l',''),'text':x.get('t','')} for x in v['a']];filled+=1
         print('candidates filled from private store:',filled)
+    weekly=public_weekly_board(load('data/weekly-board.json')) if (ROOT/'data/weekly-board.json').exists() else None
+    if weekly:
+        byid={q['id']:q for q in candidates['items']}
+        for q in candidates['items']:
+            for field in ('weeklyPick','weeklyAt','weeklyCategory'):q.pop(field,None)
+        for row in weekly['items']:
+            if row['id'] not in byid:raise ValueError('Weekly board paper missing from current candidates')
+            q=byid[row['id']]
+            q.update(title=row['title'],doi=row.get('doi',''),pmid=row.get('pmid',''),weeklyPick=row['rank'],weeklyAt=weekly['generatedAt'],weeklyCategory={'心血管':'cardio','综合医学':'general','AI医疗':'aimed','AI前沿':'aitech'}[row['category']],date=row['date'],datePrecision='day',dateBasis='Europe PMC firstPublicationDate' if row['abstractSource']=='Europe PMC' else q.get('dateBasis'),summary=row['abstract'],abstractSections=[])
+            if row['titleZh']:q['titleZh']=row['titleZh']
     radar=make_radar(c['items'],tz)
     ql=load('data/quicklooks.json').get('items',{}) if (ROOT/'data/quicklooks.json').exists() else {}
     ql={k:public_quicklook(val) for k,val in ql.items()}
+    if weekly:
+        from week_precompute import validate as validate_week_task
+        for row in weekly['items']:
+            key=row.get('doi') or 'pmid-'+str(row.get('pmid'))
+            if key in ql:
+                try:validate_week_task('quicklook',ql[key],row)
+                except ValueError:ql.pop(key)  # Preserve original cache; hide stale evidence from this board.
     public_index=re.sub(r'<script src="data/library\.js"></script>.*?<script src="app\.js"></script>','<script src="public.js"></script>',(ROOT/'index.html').read_text(),flags=re.DOTALL)
     if 'data/library.js' in public_index or 'public.js' not in public_index:raise ValueError('Script bundling failed')
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status)]+([js('RADAR',radar)] if radar else [])+[(ROOT/'app.js').read_text()])
+    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status)]+([js('WEEKLY_BOARD',weekly),js('PREGENERATED',pregenerated_map(weekly))] if weekly else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'app.js').read_text()])
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
     worker=(ROOT/'edge/_worker.js').read_text()
     placeholder='const PDF_LIBRARY = {};'
@@ -252,7 +324,7 @@ def main():
     # The receipt describes the bytes we constructed and validated, never replacements.
     manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
     assert {p['path'] for p in manifest}==PUBLIC
-    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz)},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {}},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     # curated-archive is both input and sanitized output; record its final bytes.
     build_after=provenance(ROOT)
     expected_inputs=dict(inputs_before)
