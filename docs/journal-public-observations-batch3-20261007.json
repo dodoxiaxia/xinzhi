@@ -1,0 +1,171 @@
+{
+  "scope": "site_journals_including_two_current_frontiers_labels",
+  "notes": [
+    "Frontiers table has one aggregate JIF quartile per journal without category enumeration or selection policy; this aggregate is not assigned to a JCR category.",
+    "BMJ brochure explicitly footnotes 2025 Journal Citation Reports, Clarivate Analytics 2026; page 3 Heart JIF 4.4 and page 4 EBM JIF 10.8 are distinct from CiteScore."
+  ],
+  "observations": [
+    {
+      "name": "Cardiovascular Diabetology",
+      "sourceId": "public-springer-12933",
+      "url": "https://link.springer.com/journal/12933",
+      "label": "Cardiovascular Diabetology: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 15.6,
+      "year": 2025,
+      "issns": [
+        "1475-2840"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "BMC Medical Education",
+      "sourceId": "public-springer-12909",
+      "url": "https://link.springer.com/journal/12909",
+      "label": "BMC Medical Education: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 4.2,
+      "year": 2025,
+      "issns": [
+        "1472-6920"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "BMC Medical Informatics and Decision Making",
+      "sourceId": "public-springer-12911",
+      "url": "https://link.springer.com/journal/12911",
+      "label": "BMC Medical Informatics and Decision Making: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 5.5,
+      "year": 2025,
+      "issns": [
+        "1472-6947"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "BMC Medicine",
+      "sourceId": "public-springer-12916",
+      "url": "https://link.springer.com/journal/12916",
+      "label": "BMC Medicine: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 8.7,
+      "year": 2025,
+      "issns": [
+        "1741-7015"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "BMC Cardiovascular Disorders",
+      "sourceId": "public-springer-12872",
+      "url": "https://link.springer.com/journal/12872",
+      "label": "BMC Cardiovascular Disorders: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 3.1,
+      "year": 2025,
+      "issns": [
+        "1471-2261"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Journal of Imaging Informatics in Medicine",
+      "sourceId": "public-springer-10278",
+      "url": "https://link.springer.com/journal/10278",
+      "label": "Journal of Imaging Informatics in Medicine: Springer Nature public journal metrics",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 3.1,
+      "year": 2025,
+      "issns": [
+        "2948-2933"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Heart",
+      "sourceId": "public-bmj-brochure2026",
+      "url": "https://info.bmj.com/view/1051614497",
+      "label": "BMJ official Journals & Products brochure: 2025 JCR data, Clarivate 2026 footnote",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 4.4,
+      "year": 2025,
+      "issns": [
+        "1468-201X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "The BMJ",
+      "sourceId": "public-bmj-brochure2026",
+      "url": "https://info.bmj.com/view/1051614497",
+      "label": "BMJ official Journals & Products brochure: 2025 JCR data, Clarivate 2026 footnote",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 55.1,
+      "year": 2025,
+      "issns": [
+        "1756-1833"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "BMJ Evidence-Based Medicine",
+      "sourceId": "public-bmj-brochure2026",
+      "url": "https://info.bmj.com/view/1051614497",
+      "label": "BMJ official Journals & Products brochure: 2025 JCR data, Clarivate 2026 footnote",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 10.8,
+      "year": 2025,
+      "issns": [
+        "2515-4478"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Frontiers in Digital Health",
+      "sourceId": "public-frontiers-impact2026",
+      "url": "https://www.frontiersin.org/about/impact",
+      "label": "Frontiers official impact table: 2026 JCR release, 2025 data (CiteScore excluded)",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 5.2,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Frontiers in Medicine",
+      "sourceId": "public-frontiers-impact2026",
+      "url": "https://www.frontiersin.org/about/impact",
+      "label": "Frontiers official impact table: 2026 JCR release, 2025 data (CiteScore excluded)",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 3.6,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Frontiers in Physiology",
+      "sourceId": "public-frontiers-impact2026",
+      "url": "https://www.frontiersin.org/about/impact",
+      "label": "Frontiers official impact table: 2026 JCR release, 2025 data (CiteScore excluded)",
+      "verifiedAt": "2026-10-07T14:37:01Z",
+      "value": 4.3,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-10-07T14:34:13Z",
+  "verifiedAt": "2026-10-07T14:37:01Z",
   "notice": "期刊指标只描述期刊，不用于判断单篇研究质量。",
   "sources": {
     "edition-2026": {
@@ -372,6 +372,60 @@
       "url": "https://www.wolterskluwer.com/en/solutions/ovid/arteriosclerosis-thrombosis-and-vascular-biology-504",
       "kind": "publisher_public",
       "verifiedAt": "2026-10-07T14:34:13Z"
+    },
+    "identity-frontiers-physiology": {
+      "label": "Frontiers in Physiology: publisher ISSN",
+      "url": "https://www.frontiersin.org/journals/physiology/about",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-springer-12933": {
+      "label": "Cardiovascular Diabetology: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/12933",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-springer-12909": {
+      "label": "BMC Medical Education: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/12909",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-springer-12911": {
+      "label": "BMC Medical Informatics and Decision Making: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/12911",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-springer-12916": {
+      "label": "BMC Medicine: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/12916",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-springer-12872": {
+      "label": "BMC Cardiovascular Disorders: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/12872",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-springer-10278": {
+      "label": "Journal of Imaging Informatics in Medicine: Springer Nature public journal metrics",
+      "url": "https://link.springer.com/journal/10278",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-bmj-brochure2026": {
+      "label": "BMJ official Journals & Products brochure: 2025 JCR data, Clarivate 2026 footnote",
+      "url": "https://info.bmj.com/view/1051614497",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
+    },
+    "public-frontiers-impact2026": {
+      "label": "Frontiers official impact table: 2026 JCR release, 2025 data (CiteScore excluded)",
+      "url": "https://www.frontiersin.org/about/impact",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:37:01Z"
     }
   },
   "journals": [
@@ -689,100 +743,132 @@
       "id": "j-3b1e2a96d9d4",
       "name": "BMC Cardiovascular Disorders",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1471-2261"
+      ],
+      "identitySources": [
+        "public-springer-12872"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 3.1,
+        "year": 2025,
+        "sources": [
+          "public-springer-12872"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
       "id": "j-edf17fb82911",
       "name": "BMC Medical Education",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1472-6920"
+      ],
+      "identitySources": [
+        "public-springer-12909"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 4.2,
+        "year": 2025,
+        "sources": [
+          "public-springer-12909"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
       "id": "j-ba7f95f3eda4",
       "name": "BMC Medical Informatics and Decision Making",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1472-6947"
+      ],
+      "identitySources": [
+        "public-springer-12911"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 5.5,
+        "year": 2025,
+        "sources": [
+          "public-springer-12911"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
       "id": "j-bcc2e7f15197",
       "name": "BMC Medicine",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1741-7015"
+      ],
+      "identitySources": [
+        "public-springer-12916"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 8.7,
+        "year": 2025,
+        "sources": [
+          "public-springer-12916"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -819,25 +905,33 @@
       "id": "j-f55150b33466",
       "name": "BMJ Evidence-Based Medicine",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2515-4478"
+      ],
+      "identitySources": [
+        "public-bmj-brochure2026"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 10.8,
+        "year": 2025,
+        "sources": [
+          "public-bmj-brochure2026"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -871,25 +965,33 @@
       "aliases": [
         "Cardiovascular diabetology"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1475-2840"
+      ],
+      "identitySources": [
+        "public-springer-12933"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 15.6,
+        "year": 2025,
+        "sources": [
+          "public-springer-12933"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -1775,25 +1877,30 @@
         "2673-253X"
       ],
       "identitySources": [
-        "fdgth"
+        "fdgth",
+        "public-frontiers-impact2026"
       ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "公开页显示 IF，但未标明指标年份，未作为已核实 JIF 展示"
+        "status": "verified",
+        "value": 5.2,
+        "year": 2025,
+        "sources": [
+          "public-frontiers-impact2026"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "出版社 2026 年版汇总表列出 JIF 分区，但未列逐学科类别、各类别分区及汇总选择规则，不能据单个汇总 Q 代表完整 JCR。"
       }
     },
     {
@@ -1803,25 +1910,33 @@
         "Heart (British Cardiac Society)",
         "Heart Online First"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1468-201X"
+      ],
+      "identitySources": [
+        "public-bmj-brochure2026"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 4.4,
+        "year": 2025,
+        "sources": [
+          "public-bmj-brochure2026"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -3058,25 +3173,33 @@
       "id": "j-c56a766b57b8",
       "name": "Journal of Imaging Informatics in Medicine",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2948-2933"
+      ],
+      "identitySources": [
+        "public-springer-10278"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 3.1,
+        "year": 2025,
+        "sources": [
+          "public-springer-10278"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -5017,25 +5140,33 @@
         "BMJ",
         "BMJ (Clinical research ed.)"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1756-1833"
+      ],
+      "identitySources": [
+        "public-bmj-brochure2026"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 55.1,
+        "year": 2025,
+        "sources": [
+          "public-bmj-brochure2026"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -6330,6 +6461,71 @@
         "categories": [],
         "categoryCoverage": "unverified",
         "reason": "未核实完整 JCR 学科与分区"
+      }
+    },
+    {
+      "id": "j-0b3ee75fd4e7",
+      "name": "Frontiers in Medicine",
+      "aliases": [],
+      "issns": [],
+      "identitySources": [
+        "public-frontiers-impact2026"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 3.6,
+        "year": 2025,
+        "sources": [
+          "public-frontiers-impact2026"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社 2026 年版汇总表列出 JIF 分区，但未列逐学科类别、各类别分区及汇总选择规则，不能据单个汇总 Q 代表完整 JCR。"
+      }
+    },
+    {
+      "id": "j-bbb59ad6102e",
+      "name": "Frontiers in Physiology",
+      "aliases": [],
+      "issns": [
+        "1664-042X"
+      ],
+      "identitySources": [
+        "identity-frontiers-physiology",
+        "public-frontiers-impact2026"
+      ],
+      "kind": "journal",
+      "jif": {
+        "status": "verified",
+        "value": 4.3,
+        "year": 2025,
+        "sources": [
+          "public-frontiers-impact2026"
+        ],
+        "verifiedAt": "2026-10-07T14:37:01Z",
+        "reason": ""
+      },
+      "jcr": {
+        "status": "unverified",
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [],
+        "categoryCoverage": "unverified",
+        "reason": "出版社 2026 年版汇总表列出 JIF 分区，但未列逐学科类别、各类别分区及汇总选择规则，不能据单个汇总 Q 代表完整 JCR。"
       }
     }
   ],
