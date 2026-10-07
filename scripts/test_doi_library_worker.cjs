@@ -6,7 +6,7 @@ const doi='10.1000/exact',title='Exact cardiovascular trial',commit='a'.repeat(4
 const pdf=Buffer.from('%PDF-1.7\nSynthetic DOI fixture\n%%EOF\n');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const blob=bytes=>createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
-const baseEnv={PDF_DOWNLOAD_ENABLED:'true',PDF_DOWNLOAD_PASSPHRASE:'synthetic-passphrase',GITHUB_LIBRARY_TOKEN:'synthetic-private-token',PDF_GITHUB_COMMIT:commit};
+const baseEnv={PDF_DOWNLOAD_ENABLED:'true',PDF_DOWNLOAD_PASSPHRASE:'synthetic-passphrase',GITHUB_LIBRARY_TOKEN:'synthetic-private-token',PDF_GITHUB_COMMIT:commit,FULLTEXT_ASYNC_ENABLED:'false'};
 const key='library:paper:'+doi;
 function csv(rows){const cell=s=>/[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;return [['题名','DOI','期刊','实际出版日期','日期来源','当前路径','SHA256'],...rows].map(r=>r.map(cell).join(',')).join('\r\n')+'\r\n';}
 const row=[title,doi,'Heart','2026-10-07','publisher',file,hash(pdf)];
@@ -24,7 +24,9 @@ function harness(options={}){
   delete:async k=>{if(options.beforeDelete)options.beforeDelete(k,values);values.delete(k);},
   list:async opts=>{lists.push(opts);if(options.listError)throw Error('synthetic list failure');const keys=[...values.keys()].filter(k=>k.startsWith(opts.prefix)).sort();const offset=Number(opts.cursor||0),slice=keys.slice(offset,offset+opts.limit);return {keys:slice.map(name=>({name})),list_complete:offset+slice.length>=keys.length,...(offset+slice.length<keys.length?{cursor:String(offset+slice.length)}:{})};}
  };
- const fetch=async(url,init)=>{const u=new URL(url);calls.push({url:u,init});assert.equal(init.method,'GET');assert.equal(init.redirect,'manual');assert(!u.href.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!JSON.stringify(init.headers).includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!init.body);
+ const fetch=async(url,init)=>{const u=new URL(url);calls.push({url:u,init});assert.equal(init.method,'GET');assert(!u.href.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!JSON.stringify(init.headers).includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!init.body);
+  if(u.hostname==='token.actions.githubusercontent.com'){assert.equal(init.redirect,'error');assert(!init.headers.authorization);return Response.json({keys:options.jwks||[]});}
+  assert.equal(init.redirect,'manual');
   if(u.hostname==='api.crossref.org'){assert(!init.headers.authorization);return options.crossrefResponse?options.crossrefResponse(u,init):Response.json(crossref(options.crossref||{}));}
   if(u.hostname==='api.unpaywall.org'){assert(!init.headers.authorization);return options.unpaywallResponse?options.unpaywallResponse(u,init):Response.json(options.oa?{doi,title,is_oa:true,best_oa_location:{url_for_pdf:options.oaUrl||'https://journals.plos.org/article/fixture.pdf'}}:{doi,title,is_oa:false});}
   if(u.hostname==='api.openalex.org'){assert(!init.headers.authorization);return Response.json(options.openalex||{doi:'https://doi.org/'+doi,title,open_access:{is_oa:false},locations:[]});}
@@ -37,7 +39,7 @@ function harness(options={}){
  };
  const timers=options.fastTimers?(callback,ms)=>setTimeout(callback,Math.min(ms,15)):setTimeout;
  const ClockDate=options.clock?class extends Date {constructor(...args){super(...(args.length?args:[options.clock.now]));}static now(){return options.clock.now;}}:Date;
- const context=vm.createContext({URL,URLSearchParams,Response,Request,TextEncoder,TextDecoder,Uint8Array,AbortController,setTimeout:timers,clearTimeout,crypto:webcrypto,fetch,console,Date:ClockDate});
+ const context=vm.createContext({URL,URLSearchParams,Response,Request,TextEncoder,TextDecoder,Uint8Array,AbortController,setTimeout:timers,clearTimeout,crypto:webcrypto,fetch,console,Date:ClockDate,atob});
  const policy=options.policy||{};
  vm.runInContext(source.replace('const DOI_ADJUDICATIONS = {};','const DOI_ADJUDICATIONS = '+JSON.stringify(policy)+';').replace('export default {','globalThis.worker = {'),context);
  const env={...baseEnv,QL_KV:kv};
@@ -54,7 +56,8 @@ function passiveHtml(html){
  assert(!html.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));
  assert(!html.includes(baseEnv.GITHUB_LIBRARY_TOKEN));
 }
-(async()=>{
+module.exports={harness,doi,title,pdf,hash,record,seed,error};
+if(require.main===module)(async()=>{
  let h=harness();
  for(const route of ['/api/acquire','/api/fulltext']){const res=await h.request(route,{method:'GET',env:{QL_KV:undefined,GITHUB_LIBRARY_TOKEN:undefined,PDF_DOWNLOAD_ENABLED:undefined}});assert.equal(res.status,200);assert.equal(res.headers.get('referrer-policy'),'same-origin');const html=await res.text();assert(html.includes('method="post"'));assert(html.includes('autocomplete="current-password"'));assert(!html.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));}
  assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);

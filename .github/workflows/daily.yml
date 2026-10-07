@@ -9,10 +9,12 @@ on:
       - 'style.css'
       - 'icon.svg'
       - 'edge/**'
+      - 'workers/cron-dispatch/**'
       - 'scripts/**'
       - 'editorial/**'
       - 'config/public_library_adjudications.json'
       - '.github/workflows/daily.yml'
+      - '.github/workflows/fulltext.yml'
   schedule:
     - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
     - cron: '7 */2 * * *'   # 每 2 小时:轻量刷新,内容有变化才发布
@@ -96,6 +98,8 @@ jobs:
           node scripts/test_edge_worker.cjs
           node scripts/test_pdf_worker.cjs
           node scripts/test_doi_library_worker.cjs
+          node scripts/test_fulltext_jobs.cjs
+          node scripts/test_fulltext_dispatcher.cjs
           node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_study_services.cjs
           node scripts/test_study_evidence_regression.cjs
@@ -114,6 +118,16 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_apply_public_library.py'
           python3 -m unittest discover -s scripts -p 'test_publication_dates.py'
           PYTHONPATH=scripts python3 -c 'from package_release import public_payloads; public_payloads()'
+
+      - name: 更新全文队列调度器并确认既有受保护配置
+        if: steps.refresh.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@3 deploy --config workers/cron-dispatch/wrangler.toml > /tmp/fulltext-dispatch-deploy.log
+          cat /tmp/fulltext-dispatch-deploy.log
+          python3 scripts/check_fulltext_dispatcher.py /tmp/fulltext-dispatch-deploy.log
 
       - name: 发布到 Cloudflare Pages
         id: deploy
