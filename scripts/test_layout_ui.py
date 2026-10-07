@@ -175,6 +175,44 @@ def main():
                             page.screenshot(path=str(out / f'{mode}-{"desktop" if width == 1440 else "mobile"}.png'))
                 print(f'Layout checks passed: style {style}', flush=True)
 
+            for style in ['a', 'b', 'c', 'd']:
+                for width in [1440, 1024, 768, 390, 320]:
+                    label = f'curated/{style}/{width}'
+                    page.set_viewport_size({'width': width, 'height': 1000 if width > 640 else 900})
+                    page.goto(base + f'?mode=curated&view=cards&style={style}', wait_until='load')
+                    expect(page.locator('#streamRail')).to_be_visible()
+                    expect(page.locator('#modeNote')).to_be_hidden()
+                    check(page.get_by_text('带“摘要核对”标记的是', exact=False).count() == 0, label + ': green-box paragraph removed')
+                    check(page.locator('#streamRail #homeIntro').count() == 1 and page.locator('#streamRail #laneBar').count() == 1, label + ': both red-box blocks moved together')
+                    body, rail = page.locator('.stream-content').bounding_box(), page.locator('#streamRail').bounding_box()
+                    if width > 1000:
+                        check(rail['x'] >= body['x'] + body['width'] and body['width'] > rail['width'] * 2, label + ': wide reading column and right tools')
+                    else:
+                        check(body['y'] >= rail['y'] + rail['height'], label + ': tools and text stack')
+                    cards = page.locator('#articlesStream .article-card')
+                    if cards.count() > 1:
+                        a, b = [cards.nth(i).bounding_box() for i in [0, 1]]
+                        check(abs(a['x'] - b['x']) < 1 and b['y'] > a['y'], label + ': long abstracts remain one column')
+                    topic = page.locator('#laneBar [data-filter-tag]').first
+                    if topic.count():
+                        topic.focus()
+                        topic.press('Enter')
+                        expect(page.locator('#laneBar [data-filter-tag].active')).to_be_visible()
+                        expect(page.locator('[data-clear="tag"]')).to_be_visible()
+                        page.locator('[data-clear="tag"]').click()
+                    overflow(page, label)
+                    if style == 'a' and width in [1440, 390]:
+                        page.screenshot(path=str(out / f'curated-{"desktop" if width == 1440 else "mobile"}.png'))
+                    page.locator('[data-mode="candidates"]').click()
+                    expect(page.locator('#streamRail')).to_be_hidden()
+                    check(page.locator('#streamLaneSlot #laneBar').count() == 1, label + ': radar classification restored to main area')
+                    expect(page.locator('#modeNote')).to_be_visible()
+                    page.locator('[data-mode="curated"]').click()
+                    expect(page.locator('#streamRail #laneBar')).to_be_visible()
+                    check(page.locator('#laneBar').count() == 1, label + ': return without duplicate filters')
+                    records.append({'style': style, 'width': width, 'mode': 'curated', 'overflow': False})
+                print(f'Curated reading-column checks passed: style {style}', flush=True)
+
             check(len(posts) == 0, 'Opening/navigating pages never generates paid content')
             for width in [1440, 320]:
                 for mode in ['curated', 'candidates', 'library']:

@@ -138,14 +138,11 @@
     <main class="main-content">
       <!-- Stream Section (for Candidates, Curated, Library) -->
       <section id="streamSection">
+        <div class="stream-reading-layout">
+        <div class="stream-content">
         <!-- Stream Toolbar -->
-        <ol class="home-intro" id="homeIntro" hidden>
-          <li><b>每日精选</b><span>人工核对导读 + 每日自动精选</span></li>
-          <li><b>本周精读</b><span>近 7 天榜单每天更新；全文精读按期发布</span></li>
-          <li><b>晨会清单</b><span>任意文献点“加入晨会单”，汇总后复制或导出</span></li>
-        </ol>
         <div class="mode-note" id="modeNote" role="note"></div>
-        <div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div>
+        <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
         <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
         <div class="browse-bar" id="browseBar" hidden>
           <label class="journal-picker">期刊 / 信源<select id="journalSelect" aria-label="选择期刊或信源"></select></label>
@@ -184,6 +181,16 @@
 
         <!-- Load More Button -->
         <button id="loadMoreBtn" class="load-more-btn" hidden>显示更多</button>
+        </div>
+        <aside class="stream-rail" id="streamRail" aria-label="阅读导航与主题" hidden>
+          <ol class="home-intro" id="homeIntro" hidden>
+            <li><b>每日精选</b><span>人工核对导读 + 每日自动精选</span></li>
+            <li><b>本周精读</b><span>近 7 天榜单每天更新；全文精读按期发布</span></li>
+            <li><b>晨会清单</b><span>任意文献点“加入晨会单”，汇总后复制或导出</span></li>
+          </ol>
+          <div id="curatedTopicsSlot"></div>
+        </aside>
+        </div>
       </section>
 
       <!-- Weekly Deep Read Section (Journal Club) -->

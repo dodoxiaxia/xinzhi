@@ -1008,6 +1008,25 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
 .abstract-reader .tr-box .ql-meta, .abstract-reader .tr-box .translation-note { font-size: 12px; color: var(--text-muted); }
 .abstract-reader .tr-box .translation-error { font-size: 13px; color: var(--amber); }
 .weekly-demo:focus-within, .weekly-card-actions .btn-sm:focus-visible { outline-color: var(--accent); }
+
+/* Curated: long abstracts stay in one wide reading column; tools sit to the right. */
+.app-container.curated-layout .main-content, html[data-style="b"] .app-container.curated-layout .main-content { max-width: none; }
+.stream-content, .stream-rail { min-width: 0; }
+.curated-layout .stream-reading-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 32px; align-items: start; }
+.stream-rail .home-intro { grid-template-columns: minmax(0, 1fr); margin: 0 0 28px; }
+.stream-rail .home-intro li, html[data-style="c"] .stream-rail .home-intro li { padding: 16px 0; border-left: 0; box-shadow: none; background: none; border-radius: 0; }
+.stream-rail .home-intro li + li { border-top: 1px solid var(--border); }
+.stream-rail .lane-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.stream-rail .lane-label { flex-basis: 100%; margin-bottom: 4px; font-weight: 600; }
+.stream-rail .lane-chip { max-width: 100%; white-space: normal; text-align: left; }
+@media (max-width: 1000px) {
+  .curated-layout .stream-reading-layout { display: flex; flex-direction: column; gap: 20px; }
+  .stream-content, .stream-rail { width: 100%; }
+  .stream-rail { order: -1; }
+  .stream-rail .home-intro { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 14px; }
+  .stream-rail .home-intro li, html[data-style="c"] .stream-rail .home-intro li { padding: 10px 8px; }
+  .stream-rail .home-intro li + li { border-top: 0; border-left: 1px solid var(--border); }
+}
 @media (min-width: 721px) and (max-width: 1250px) {
   .header-container { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; gap: 8px 18px; }
   .header-nav { height: 40px; justify-content: flex-end; }
