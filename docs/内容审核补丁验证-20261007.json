@@ -1,0 +1,85 @@
+{
+  "baseline_code_sha": "7273f12ba7639d766a78adeb72eb52195cba2120",
+  "verified_state_sha": "5bd97f75220bd10e508fa7fa5bbdbec879cb18d0",
+  "initial_code_sha": "9482c3a0493e9f168f71988f503392ee69156874",
+  "initial_state_sha": "6abf0e4406698c34fdff9da4a43a68382183da98",
+  "tested_on": "2026-10-07",
+  "offline": true,
+  "python_tests": {
+    "command": "python3 -m unittest discover -s scripts -p 'test_*.py'",
+    "count": 224,
+    "result": "passed"
+  },
+  "reading_tests": {
+    "command": "node scripts/test_reading_logic.cjs",
+    "reading_assertions": 20,
+    "api_message_assertions": 6,
+    "result": "passed"
+  },
+  "edge_tests": {
+    "command": "node scripts/test_edge_worker.cjs",
+    "result": "passed, unchanged Worker"
+  },
+  "study_services_tests": {
+    "command": "node scripts/test_study_services.cjs",
+    "result": "passed, unchanged services"
+  },
+  "study_ui_tests": {
+    "command": "node scripts/test_study_ui.cjs",
+    "assertions": 83,
+    "result": "passed, unchanged UI"
+  },
+  "build": {
+    "command": "python3 scripts/build_public.py",
+    "public_file_count": 6,
+    "counts": {
+      "radar": 856,
+      "library": 1219,
+      "checked_guides": 12,
+      "ai_quicklooks_unchecked": 15,
+      "radar_archive_titles": 12636,
+      "titles_zh": 14994
+    },
+    "result": "passed"
+  },
+  "package": {
+    "command": "python3 scripts/package_release.py",
+    "result": "passed, local only"
+  },
+  "content_integrity": {
+    "legacy_guides": 12,
+    "all_legacy_text_hashes_preserved": true,
+    "all_legacy_publication_dates_preserved": true,
+    "dates": {
+      "2026-09-29": 11,
+      "2026-09-30": 1
+    },
+    "public_library_ids_preserved": true,
+    "public_library_count": 1219,
+    "private_review_fields_in_public_data": 0
+  },
+  "files": [
+    "scripts/build_public.py",
+    "scripts/editorial_review.py",
+    "scripts/prepare_editorial_handoff.py",
+    "scripts/test_editorial_review.py",
+    "scripts/test_public_build.py",
+    "editorial/legacy_published_guides.json",
+    "editorial/content_backlog_20261007.json",
+    "docs/内容积压与终审交接-20261007.md",
+    "docs/内容审核补丁验证-20261007.json"
+  ],
+  "medical_review_performed": false,
+  "external_model_calls": 0,
+  "remote_writes": false,
+  "deployed": false,
+  "logs": {
+    "build.log": "9b8506366f7cfe2835c4a7439141e50fcd2f82b564641d575bab1dc350c91b3d",
+    "package.log": "7076ea772a9f8114207883a2a78f7beb882470bbb10e9da3128d9f3694659e44",
+    "python-tests.log": "c15b67f6bee80da9dad945df7f446ac29aef27c52f3d5a4c726c6504edb195d7",
+    "reading-tests.log": "df9ab4fecbceac992a0a24291f000b1806171ca33f4fd579c2ffa4946575567f",
+    "edge-tests.log": "81e81ee3ca1edf8d9d954ef15865eb4ba606b2fedf489f1510e95281f81cf3f8",
+    "study-services-tests.log": "571cbd5582eb9359eef1f3b1ce362e667976c70ddf9dda4a2db8259130a3ac79",
+    "study-ui-tests.log": "b84b04c1cf7994dbf7d5a7f9fa98e94dca2cdc6adf7683679a922f4dfd2bd0de"
+  }
+}

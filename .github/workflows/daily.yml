@@ -93,10 +93,19 @@ jobs:
           node --check app.js
           node scripts/test_reading_logic.cjs
           node scripts/test_edge_worker.cjs
+          node scripts/test_pdf_worker.cjs
           node scripts/test_study_services.cjs
           node scripts/test_study_ui.cjs
+          node scripts/test_source_health_ui.cjs
+          node scripts/test_weekly_window.cjs
           python3 -m unittest discover -s scripts -p 'test_public_build.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
+          python3 -m unittest discover -s scripts -p 'test_release_build.py'
+          python3 -m unittest discover -s scripts -p 'test_editorial_review.py'
+          python3 -m unittest discover -s scripts -p 'test_feed_health.py'
+          python3 -m unittest discover -s scripts -p 'test_source_fallbacks.py'
+          python3 -m unittest discover -s scripts -p 'test_sync_public_library.py'
+          PYTHONPATH=scripts python3 -c 'from package_release import public_payloads; public_payloads()'
 
       - name: 发布到 Cloudflare Pages
         id: deploy

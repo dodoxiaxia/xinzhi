@@ -3,19 +3,41 @@
 """Reproducible, allowlisted public build. No credentials, PDFs or private paths."""
 import datetime, hashlib, json, re, shutil
 from pathlib import Path
+from release_integrity import input_hashes, ordinary_file, provenance, replace_unchanged_input
+from editorial_review import article_key, publication_date
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
-PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh'}
-DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','reviewer','source_checked','source_url','source_date','attribution','published','fulltext_status'}
+PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
+DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
-SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error'}
-RELEASE = 'v13.6'
+SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
+RELEASE = 'v14.0'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
 def safe_url(v):
     return v if isinstance(v,str) and re.match(r'^https?://',v,re.I) else ''
+def legacy_guides():
+    # The frozen publication registry is required even when state history is absent.
+    try:
+        registry=load('editorial/legacy_published_guides.json')
+        if not isinstance(registry,dict) or type(registry.get('schema_version')) is not int or registry['schema_version']!=1:
+            raise ValueError('Unsupported registry schema')
+        guides=registry.get('guides')
+        if not isinstance(guides,dict) or not guides:raise ValueError('Empty or invalid registry')
+        for key,row in guides.items():
+            if not isinstance(key,str) or not key or key!=key.strip().lower() or not isinstance(row,dict):
+                raise ValueError('Invalid registered identity')
+            digest,date=row.get('content_sha256'),row.get('published_on')
+            if not isinstance(digest,str) or not re.fullmatch(r'[a-f0-9]{64}',digest):
+                raise ValueError('Invalid registered content hash')
+            if not isinstance(date,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',date):
+                raise ValueError('Invalid registered publication date')
+            datetime.date.fromisoformat(date)
+        return guides
+    except (OSError,ValueError,TypeError,KeyError) as exc:
+        raise ValueError('Legacy publication registry is missing or invalid; hold public build') from exc
 def pdf_library_registry(papers):
     """Only published IDs, DOIs and titles go into the server's download allowlist."""
     registry={}
@@ -33,14 +55,18 @@ def pdf_library_registry(papers):
             raise ValueError('Conflicting PDF library identity')
         registry[paper_id]=identity
     return registry
-def public_paper(p):
+def public_paper(p,editorial_drafts=None):
     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
     out['url']=safe_url(out.get('url',''))
     out['abstractSections']=[{k:v for k,v in s.items() if k in {'label','text'}} for s in out.get('abstractSections',[]) if isinstance(s,dict)]
     out['quantitativeMetrics']={k:v for k,v in out.get('quantitativeMetrics',{}).items() if k in {'sampleSize','followUp','trialId','effectSizes'}}
-    d=p.get('draftData') or {}
-    out['hasDraft']=bool(p.get('hasDraft') and d.get('source_checked') is True and d.get('published') is not False)
-    if out['hasDraft']:out['draftData']={k:v for k,v in d.items() if k in DRAFT_FIELDS}
+    # Main editorial decisions override stale draftData in every state cache.
+    d=(editorial_drafts.get(article_key(p),{}) if editorial_drafts is not None else p.get('draftData')) or {}
+    date=publication_date(d,article_key(p),legacy_guides()) if (d if editorial_drafts is not None else p.get('hasDraft')) else None
+    if date and d.get('content_kind')=='weekly':
+        raise ValueError('Weekly handoff requires the dedicated issue renderer')
+    out['hasDraft']=bool(date)
+    if date:out['draftData']={**{k:v for k,v in d.items() if k in DRAFT_FIELDS},'published':date}
     return out
 
 def public_quicklook(item):
@@ -50,26 +76,44 @@ def public_quicklook(item):
     out['findings']=[{k:v for k,v in x.items() if k in {'text','quote'}} for x in out.get('findings',[]) if isinstance(x,dict)]
     return out
 
+def public_health(source, pubmed, now):
+    from refresh_feeds import safe_url as sanitized_url
+    from source_fallbacks import coverage
+    out={k:v for k,v in source.items() if k in SOURCE_FIELDS}
+    if 'responseUrl' in out:out['responseUrl']=sanitized_url(safe_url(out['responseUrl']))
+    if 'excludedItems' in out:
+        out['excludedItems']={k:v for k,v in out['excludedItems'].items()
+                              if k in {'undated','future','olderThan14Days','unclassifiedOrInvalid'} and type(v) is int and v>=0}
+    out['pubmedFallback']=coverage(source,pubmed,now)
+    return out
+
 def make_archive(candidates,library):
     """Keep checked articles readable after they leave the rolling radar."""
     path=ROOT/'data/curated-archive.json'
     previous=load('data/curated-archive.json').get('papers',[]) if path.exists() else []
     pool={str(p.get('doi') or p.get('id')).lower():p for p in previous+library+candidates}
     editorial=load('editorial/source_checked_drafts.json')
+    keys=[article_key(d) for d in editorial['articles']]
+    if len(keys)!=len(set(keys)):raise ValueError('Duplicate editorial article identity')
     # A latest-edition-only replacement must not silently erase historical guides.
     checked_keys={str(d.get('doi') or d.get('id') or '').lower() for d in editorial['articles'] if d.get('source_checked') is True}
     old_keys={str(p.get('doi') or p.get('id') or '').lower() for p in previous if p.get('hasDraft') and (p.get('draftData') or {}).get('source_checked') is True}
     if old_keys-checked_keys:raise ValueError('Existing checked guides missing from editorial; explicit withdrawal required: '+','.join(sorted(old_keys-checked_keys)))
     archive=[]
     for draft in editorial['articles']:
-        if draft.get('source_checked') is not True or draft.get('published') is False:continue
-        key=str(draft.get('doi') or draft.get('id') or '').lower()
+        key=article_key(draft)
+        date=publication_date(draft,key,legacy_guides())
+        if not date:
+            # Hold the last production build when a pending revision replaces
+            # published history. Only an explicit withdrawal may remove it.
+            if key in old_keys and draft.get('published') is not False and (draft.get('review') or {}).get('state')!='withdrawn':
+                raise ValueError('Pending revision cannot replace published history: '+key)
+            continue
         if not key or key not in pool:raise ValueError('Checked article has no archived metadata: '+key)
         p=dict(pool[key]);d=dict(draft)
         from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, extract_tags
         p.update(cleanJournal=clean_journal_name(p.get('journal')), publisher=classify_publisher(p.get('journal'),p.get('url')), clinicalTier=classify_clinical_tier(p.get('journal'),p.get('title','')), studyDesign=classify_study_design(p.get('title',''),p.get('summary',''),p.get('pubTypes',())), tags=extract_tags(p.get('title',''),p.get('summary','')))
-        old=next((x for x in previous if str(x.get('doi') or x.get('id')).lower()==key),{})
-        d['published']=draft.get('published') or (old.get('draftData') or {}).get('published') or editorial.get('prepared_on') or draft.get('source_date')
+        d['published']=date
         p.update(hasDraft=True,draftData=d);archive.append(public_paper(p))
     return archive
 
@@ -137,14 +181,20 @@ def validate_public(text):
         if re.search(pattern,text):raise ValueError('Public build contains a private field or path')
 
 def main():
+    build_before = provenance(ROOT)
+    inputs_before = build_before['inputs']
+    legacy_guides()  # Required publication registry, even when article lists are empty.
     DEST.mkdir(exist_ok=True)
     extra={p.name for p in DEST.iterdir()}-PUBLIC
     if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
     archive=make_archive(c['items'],l['papers'])
-    library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p) for p in l['papers']]}
-    candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p) for p in c['items']]}
-    health={'checkedAt':h.get('checkedAt'),'sources':[{k:v for k,v in s.items() if k in SOURCE_FIELDS} for s in h['sources']]}
+    editorial_drafts={article_key(d):d for d in load('editorial/source_checked_drafts.json')['articles']}
+    library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p,editorial_drafts) for p in l['papers']]}
+    candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p,editorial_drafts) for p in c['items']]}
+    pubmed=load('data/pubmed.json') if (ROOT/'data/pubmed.json').is_file() else {}
+    now=datetime.datetime.now(datetime.timezone.utc)
+    health={'checkedAt':h.get('checkedAt'),'sources':[public_health(s,pubmed,now) for s in h['sources']]}
     tz=json.loads((ROOT/'data/translations.json').read_text()) if (ROOT/'data/translations.json').exists() else {}
     def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower())
     for q in candidates['items']+library['papers']:
@@ -191,14 +241,30 @@ def main():
     worker=worker.replace(placeholder,'const PDF_LIBRARY = '+json.dumps(pdf_library_registry(library['papers']),ensure_ascii=False,separators=(',',':'))+';')
     files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
-    for name,value in files.items():(DEST/name).write_text(value,encoding='utf-8')
+    payloads={name:value.encode('utf-8') for name,value in files.items()}
+    if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')
+    for name,value in payloads.items():(DEST/name).write_bytes(value)
     # Local generated assets use the same sanitized archive/quicklooks as the public build.
-    (ROOT/'data/curated-archive.json').write_text(json.dumps({'papers':archive},ensure_ascii=False,indent=2))
+    archive_text=json.dumps({'papers':archive},ensure_ascii=False,indent=2)
+    replace_unchanged_input(ROOT,'data/curated-archive.json',archive_text.encode('utf-8'),inputs_before['data/curated-archive.json'])
     (ROOT/'data/curated.js').write_text(js('CURATED',archive))
     (ROOT/'data/quicklooks.js').write_text(js('QUICKLOOKS',ql))
-    manifest=[{'path':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(DEST.iterdir())]
+    # The receipt describes the bytes we constructed and validated, never replacements.
+    manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
     assert {p['path'] for p in manifest}==PUBLIC
     meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(l['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz)},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    # curated-archive is both input and sanitized output; record its final bytes.
+    build_after=provenance(ROOT)
+    expected_inputs=dict(inputs_before)
+    expected_inputs['data/curated-archive.json']=hashlib.sha256(archive_text.encode('utf-8')).hexdigest()
+    if build_after['inputs']!=expected_inputs or build_after['codeSha']!=build_before['codeSha']:
+        raise ValueError('Build inputs or checkout changed before completion; rebuild public')
+    if {p.name for p in DEST.iterdir()}!=PUBLIC:
+        raise ValueError('Public outputs changed before completion; rebuild public')
+    for name,content in payloads.items():
+        if ordinary_file(ROOT,'public/'+name).read_bytes()!=content:
+            raise ValueError('Public output changed before completion: '+name)
+    meta['buildProvenance']=build_after
     (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
     print(json.dumps({'built':len(manifest),'release':meta['release'],'counts':meta['counts']},ensure_ascii=False))
 if __name__=='__main__':main()

@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "assessed_on": "2026-10-07",
+  "baseline_code_sha": "7273f12ba7639d766a78adeb72eb52195cba2120",
+  "verified_state_sha": "5bd97f75220bd10e508fa7fa5bbdbec879cb18d0",
+  "evidence_scope": "Repository main/state, accessible cloud workspace and project Library documents. Historical reports are not recovered originals or new medical review.",
+  "published_guides": {
+    "count": 12,
+    "publication_dates": {
+      "2026-09-29": 11,
+      "2026-09-30": 1
+    },
+    "evidence_basis": "abstract",
+    "physician_review": "not_done",
+    "original_text_found": true
+  },
+  "pending_guides": [
+    {
+      "id": "pmid-42814420",
+      "topic": "SWEDEGRAFT extended follow-up",
+      "prepared_on": "2026-10-01",
+      "original_found": false,
+      "missing": [
+        "reviewed draft",
+        "official abstract receipt",
+        "original content hash"
+      ],
+      "historical_record": "docs/核验记录-20261001.md",
+      "physician_review": "not_evidenced",
+      "published": false
+    },
+    {
+      "id": "pmid-42814450",
+      "topic": "Heart failure and CKM comorbidity",
+      "prepared_on": "2026-10-01",
+      "original_found": false,
+      "missing": [
+        "reviewed draft",
+        "official abstract receipt",
+        "original content hash"
+      ],
+      "historical_record": "docs/核验记录-20261001.md",
+      "physician_review": "not_evidenced",
+      "published": false
+    },
+    {
+      "id": "pmid-42808436",
+      "topic": "Periaortic adipose CTA phenotype",
+      "prepared_on": "2026-10-01",
+      "original_found": false,
+      "missing": [
+        "reviewed draft",
+        "official abstract receipt",
+        "original content hash"
+      ],
+      "historical_record": "docs/核验记录-20261001.md",
+      "physician_review": "not_evidenced",
+      "published": false
+    }
+  ],
+  "weekly_backlog": {
+    "doi": "10.1038/s41746-026-03282-1",
+    "title": "Automating clinical information retrieval from Finnish electronic health records using large language models",
+    "journal": "npj Digital Medicine",
+    "target_week": {
+      "start": "2026-09-28",
+      "end": "2026-10-04"
+    },
+    "status": "historical_backlog",
+    "abstract_guide_published_on": "2026-09-29",
+    "fulltext_original_found": false,
+    "historical_review_reported": "Prior reports describe a 15-page official public PDF, 17 claims and a V3 reviewed learning report; originals and hashes are currently missing.",
+    "missing": [
+      "weekly-ready receipt",
+      "learning-report body",
+      "evidence table",
+      "independent review report",
+      "fixed source PDF hash and download receipt"
+    ],
+    "physician_review": "not_evidenced",
+    "published": false,
+    "historical_records": [
+      "docs/核验记录-20261002.md",
+      "docs/核验记录-20261003.md",
+      "docs/核验记录-20261004.md",
+      "docs/核验记录-20261005.md"
+    ]
+  },
+  "current_week": {
+    "start": "2026-10-05",
+    "end": "2026-10-11",
+    "friday": "2026-10-09",
+    "status": "before_friday",
+    "overdue": false,
+    "published": false
+  },
+  "actions_taken": {
+    "medical_review_performed": false,
+    "external_model_calls": 0,
+    "deployment": false,
+    "remote_writes": false
+  },
+  "integration_blockers": [
+    "Recover originals and validate fixed hashes",
+    "Authenticated physician identity and mobile review UI",
+    "Trusted review/audit service adapter",
+    "Dedicated weekly issue renderer and original-week classification",
+    "Final integration and production evidence by original task only"
+  ],
+  "initial_code_sha": "9482c3a0493e9f168f71988f503392ee69156874",
+  "initial_state_sha": "6abf0e4406698c34fdff9da4a43a68382183da98"
+}

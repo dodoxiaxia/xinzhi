@@ -1,11 +1,36 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="light">
+<html lang="zh-CN" data-theme="light" data-style="a">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>心知 AIHOT-Med · 心血管与AI医疗前沿文献情报台</title>
   <meta name="description" content="面向科室同事的心血管与 AI 医疗每日精选、每周精读与文献雷达。所有导读均标注核对范围，仅供学习讨论。">
   <meta name="theme-color" content="#ffffff">
+  <script>
+    // Resolve appearance before CSS and body paint; storage may be unavailable.
+    (function () {
+      const root = document.documentElement, params = new URLSearchParams(location.search);
+      const read = key => { try { return localStorage.getItem(key); } catch (e) { return null; } };
+      const choose = (values, query, saved, fallback) => values.includes(query) ? query : values.includes(saved) ? saved : fallback;
+      const style = choose(['a', 'b', 'c', 'd'], params.get('style'), read('xz-style'), 'a');
+      let systemTheme = 'light';
+      try { if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) systemTheme = 'dark'; } catch (e) {}
+      const theme = choose(['light', 'dark'], params.get('theme'), read('xinzhi_theme'), systemTheme);
+      const backgrounds = { light: { a: '#eef2f7', b: '#ffffff', c: '#f0f2f4', d: '#f5f2ea' }, dark: { a: '#0e1520', b: '#121212', c: '#121517', d: '#14120f' } };
+      const bars = { light: { a: '#ffffff', b: '#d13a1f', c: '#ffffff', d: '#f5f2ea' }, dark: { a: '#141d2b', b: '#b8321a', c: '#1c2024', d: '#14120f' } };
+      function apply(theme, style) {
+        if (!['light', 'dark'].includes(theme) || !['a', 'b', 'c', 'd'].includes(style)) return;
+        if (root.dataset.theme !== theme) root.dataset.theme = theme;
+        if (root.dataset.style !== style) root.dataset.style = style;
+        root.style.colorScheme = theme;
+        root.style.backgroundColor = backgrounds[theme][style];
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = bars[theme][style];
+      }
+      window.XINZHI_BOOT = { theme, style, apply };
+      apply(theme, style);
+    })();
+  </script>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
 </head>
@@ -16,7 +41,7 @@
     <div class="header-container">
       <div class="brand-section">
         <a href="./" class="brand-logo" id="brandLogo" aria-label="心知 AIHOT-Med 首页">
-          <span class="brand-mark" aria-hidden="true">心知</span>
+          <img class="brand-mark brand-image" src="icon.svg" width="44" height="44" alt="" decoding="async">
           <span class="brand-text">
             <span class="logo-title">AIHOT-Med</span>
             <small>心血管 × AI 医疗文献</small>
@@ -53,11 +78,10 @@
           <span>晨会清单</span>
           <span class="huddle-counter" id="huddleCounter">0</span>
         </button>
+        <button class="source-status-btn" id="sourceStatusBtn" type="button" data-mode="sources" aria-controls="sourcesSection" aria-pressed="false">信源状态</button>
       </div>
     </div>
   </header>
-
-  <div class="content-status" id="contentStatus" role="note" aria-label="内容更新时间"></div>
 
   <!-- App Main Layout -->
   <div class="app-container">
@@ -112,13 +136,6 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
-      <nav class="content-tools" aria-label="站点工具">
-        <button class="source-status-btn" id="sourceStatusBtn" type="button" data-mode="sources" aria-controls="sourcesSection" aria-pressed="false">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg>
-          <span>信源状态</span>
-        </button>
-      </nav>
-
       <!-- Stream Section (for Candidates, Curated, Library) -->
       <section id="streamSection">
         <!-- Stream Toolbar -->
@@ -171,11 +188,11 @@
 
       <!-- Weekly Deep Read Section (Journal Club) -->
       <section id="weeklySection" class="weekly-container" hidden>
-        <div class="weekly-status" id="weeklyStatus" role="note"></div>
-        <div class="issue-list" id="issueList" aria-label="精读期次"></div>
         <div class="next-candidates" id="weeklyAuto"></div>
-        <div class="next-candidates" id="nextCandidates"></div>
-        <details class="weekly-demo"><summary>第 01 期 · 全文精读体例示范（2025 年论文，非本周新文）· 点击展开</summary>
+        <aside class="weekly-deep-read" aria-label="全文精读">
+        <h3 class="next-title">全文精读</h3>
+        <div class="issue-list" id="issueList" aria-label="精读期次" hidden></div>
+        <details class="weekly-demo"><summary><span class="content-label">第 01 期 · 体例示范</span><strong>AI 指导的持续性房颤消融：获益与临床边界</strong><small>TAILORED-AF · Nature Medicine · 2025 年论文，非本周新文</small><span class="weekly-read-link">展开精读 →</span></summary>
         <div class="weekly-hero">
           <span class="design-pill design-rct">第 01 期 · 全文精读示范</span> <span class="tag-pill">论文发表于 2025-02 · 用作精读体例示范，非当周新文</span>
           <h2>AI 指导的持续性房颤消融：获益与临床边界</h2>
@@ -321,17 +338,15 @@
           </div>
         </div>
         </details>
+        <div class="next-candidates" id="nextCandidates"></div>
+        </aside>
       </section>
 
       <!-- Sources Observability Section -->
       <section id="sourcesSection" hidden>
-        <div class="stream-toolbar">
-          <div>
-            <h3 style="font-size: 16px; font-weight: 600;">学术订阅健康监测</h3>
-            <p id="sourcesHealthMeta" class="results-meta">正在统计信源可用率...</p>
-          </div>
-        </div>
-        <p class="text-muted" style="font-size:12px;margin-bottom:10px;">此页供维护者排查抓取问题；来源状态为最近一次自动检查结果，与文献内容质量无关。</p>
+        <div class="sources-heading"><h2>信源状态</h2><p>最近一次订阅检查。有效空源也计为获取成功；异常时保留旧缓存。抓取状态不代表文献质量。</p></div>
+        <div class="sources-summary" id="sourcesHealthSummary" aria-label="信源检查概况"></div>
+        <p id="sourcesHealthMeta" class="source-report-age" role="note"></p>
         <div class="sources-grid" id="sourcesHealthGrid">
           <!-- Dynamically populated -->
         </div>

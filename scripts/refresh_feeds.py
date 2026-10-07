@@ -411,9 +411,30 @@ def _report(source, **fields):
             'checkedAt': utcnow().isoformat(), **fields}
 
 
+def non_feed_reason(raw, response_url):
+    """Classify public landing/challenge pages without retaining their text."""
+    value, _ = _diagnostic_text(raw[:100_000])
+    lower = value.lower()
+    if any(marker in lower for marker in ('just a moment', 'checking your browser',
+                                          'enable javascript and cookies', '_cf_chl_',
+                                          'verify you are human', 'access denied')):
+        return 'publisher_access_challenge'
+    parts = urlsplit(response_url)
+    if 'cookies_not_supported' in parts.query.lower():
+        return 'publisher_cookie_requirement'
+    if re.search(r'/(?:login|signin|sign-in|sso)(?:/|$)', parts.path, re.I):
+        return 'publisher_login_page'
+    if parts.hostname == 'link.springer.com' and re.match(r'^/journal/\d+(?:/articles)?/?$', parts.path):
+        return 'feed_redirected_to_journal_page'
+    return 'html_instead_of_feed'
+
+
 def fetch(source):
     started = utcnow().isoformat()
     code = None
+    response_meta = {}
+    raw = b''
+    response_url = source['url']
     try:
         if has_credentials(source['url']):
             return _report(source, ok=False, status='configuration_error', items=0, rawItems=None,
@@ -422,19 +443,24 @@ def fetch(source):
         with urllib.request.urlopen(request, timeout=15) as response:
             raw = response.read(MAX_BYTES + 1)
             code = response.getcode()
+            response_url = response.geturl()
+            response_meta = {'responseUrl': safe_url(response_url),
+                             'responseContentType': response.headers.get('Content-Type', '').split(';', 1)[0].strip().lower()[:120]}
         checked = utcnow().isoformat()
         details = parse_feed(raw, source, checked_at=checked)
         items = details.pop('items')
         return _report(source, ok=True, status='empty_feed' if details['rawItems'] == 0 else 'ok',
                        items=len(items), startedAt=started, checkedAt=checked, httpStatus=code,
-                       attempted=True, **details), items
+                       attempted=True, **response_meta, **details), items
     except urllib.error.HTTPError as error:
         return _report(source, ok=False, status='http_error', items=0, rawItems=None,
                        startedAt=started, httpStatus=error.code, code=error.code, attempted=True,
                        error='HTTP ' + str(error.code), errorClass=type(error).__name__), []
     except FeedParseError as error:
         return _report(source, ok=False, status=error.status, items=0, rawItems=None,
-                       startedAt=started, attempted=True, httpStatus=code, error=str(error), errorClass=type(error).__name__, **error.metadata), []
+                       startedAt=started, attempted=True, httpStatus=code, error=str(error), errorClass=type(error).__name__,
+                       **({'failureReason': non_feed_reason(raw, response_url)} if error.status == 'not_feed' else {}),
+                       **response_meta, **error.metadata), []
     except urllib.error.URLError as error:
         # A tunnel denial is still an access refusal. Inspect only for a status
         # code and never serialize the exception's proxy/redirect URL string.
@@ -451,17 +477,20 @@ def fetch(source):
 
 
 def fetch_group(sources, fetcher=fetch):
-    results, blocked = [], None
+    results, blocked, blocked_reason = [], None, None
     for source in sources:
-        if blocked:
+        if blocked or blocked_reason:
             report = _report(source, ok=False, status='not_checked_host_blocked', items=0, rawItems=None,
-                             attempted=False, error='Same host returned HTTP ' + str(blocked) + '; URL not requested', code=blocked)
+                             attempted=False, error=('Same host returned HTTP ' + str(blocked) if blocked else 'Same host requires interactive access') + '; URL not requested',
+                             code=blocked, blockedReason=blocked_reason or 'http_access_refusal')
             results.append((report, []))
             continue
         report, items = fetcher(source)
         results.append((report, items))
         if report.get('code', report.get('httpStatus')) in {401, 403, 429}:
             blocked = report.get('code', report.get('httpStatus'))
+        if report.get('failureReason') in {'publisher_access_challenge', 'publisher_cookie_requirement', 'publisher_login_page'}:
+            blocked_reason = report['failureReason']
     return results
 
 
@@ -513,6 +542,10 @@ def build_results(sources, fetched, *, previous_feeds=None, previous_health=None
         report['eligibleItems'] = sum(eligible(item, now)[0] for item in items) if report['ok'] else None
         report['classifiedItems'] = len(items) if report['ok'] else None
         if report['ok']:
+            reasons = Counter(eligible(item, now)[1] for item in items if not eligible(item, now)[0])
+            report['excludedItems'] = {reason: reasons[reason] for reason in ('undated', 'future', 'olderThan14Days')}
+            report['excludedItems']['unclassifiedOrInvalid'] = max(0, report['rawItems'] - len(items))
+            report['latestPublishedAt'] = max((dateval(item.get('date', '')) for item in items), default=None) or None
             fresh.extend(items)
             if report['rawItems'] and not report['eligibleItems']:
                 report['status'] = 'filtered_empty'

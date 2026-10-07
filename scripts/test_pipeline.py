@@ -21,7 +21,7 @@ class PipelineTests(unittest.TestCase):
  def test_strips_source_markup(self):self.assertEqual(clean('<b>Heart &amp; AI</b>'),'Heart & AI')
  def test_library_unique_and_paths_not_exposed(self):
   data=json.loads((ROOT/'data/library.json').read_text());ids=[p['id'] for p in data['papers']]
-  self.assertEqual(len(ids),len(set(ids)));self.assertNotIn('/Users/',json.dumps(data));self.assertEqual(data['stats']['indexRows'],1287)
+  self.assertEqual(len(ids),len(set(ids)));self.assertNotIn('/Users/',json.dumps(data));self.assertEqual(data['stats']['papers'],len(ids))
  def test_public_allowlist(self):
   files={p.name for p in (ROOT/'public').iterdir()}
   self.assertEqual(files,{'index.html','style.css','public.js','icon.svg','_headers','_worker.js'})

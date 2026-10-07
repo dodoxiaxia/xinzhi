@@ -322,6 +322,8 @@ class HealthTests(OfflineTests):
 
     def test_fetch_once_emits_strict_health_and_http200_non_feed_failure(self):
         class Response:
+            headers = {'Content-Type': 'text/html'}
+            def geturl(self): return SOURCE['url']
             def __enter__(self): return self
             def __exit__(self, *args): return False
             def getcode(self): return 200
@@ -333,6 +335,42 @@ class HealthTests(OfflineTests):
         self.assertEqual(opener.call_count, 1)
         self.assertEqual((current['status'], current['ok'], current['httpStatus']), ('not_feed', False, 200))
         self.assertEqual(items, [])
+        self.assertEqual(current['failureReason'], 'html_instead_of_feed')
+
+    def test_http200_access_challenge_stops_same_host_without_retry(self):
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        calls = []
+        def get(source):
+            calls.append(source['id'])
+            return {**report(source, ok=False, status='not_feed', code=200),
+                    'failureReason': 'publisher_access_challenge'}, []
+        current = feeds.fetch_group([SOURCE, same], fetcher=get)
+        self.assertEqual(calls, ['s1'])
+        self.assertEqual(current[1][0]['status'], 'not_checked_host_blocked')
+        self.assertEqual(current[1][0]['blockedReason'], 'publisher_access_challenge')
+
+    def test_diagnostic_redirect_credentials_and_body_are_not_retained(self):
+        class Response:
+            headers = {'Content-Type': 'text/html; charset=utf-8'}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def getcode(self): return 200
+            def geturl(self): return 'https://link.springer.com/journal/12933/articles?error=cookies_not_supported&code=private-secret'
+            def read(self, size): return b'<html><title>Public landing page</title><body>private response text</body></html>'
+        with patch('refresh_feeds.urllib.request.urlopen', return_value=Response()):
+            current, _ = feeds.fetch(SOURCE)
+        self.assertEqual(current['failureReason'], 'publisher_cookie_requirement')
+        self.assertEqual(current['responseContentType'], 'text/html')
+        self.assertNotIn('private-secret', json.dumps(current))
+        self.assertNotIn('private response text', json.dumps(current))
+
+    def test_filtered_zero_reports_actual_exclusion_reasons(self):
+        items = parsed(date='2020-01-01') + parsed(link='https://example.org/two', date='')
+        feeds_data, health = feeds.build_results([SOURCE], [(report(SOURCE, raw=3), items)], now=NOW)
+        row = health['sources'][0]
+        self.assertEqual(row['status'], 'filtered_empty')
+        self.assertEqual(row['excludedItems'], {'undated': 1, 'future': 0, 'olderThan14Days': 1, 'unclassifiedOrInvalid': 1})
+        self.assertTrue(row['latestPublishedAt'].startswith('2020-01-01'))
 
     def test_network_diagnostics_do_not_expose_proxy_url_or_secret_values(self):
         error = urllib.error.URLError('proxy https://user:secret@example.org?token=must-not-appear')

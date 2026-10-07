@@ -1,0 +1,129 @@
+{
+  "baselineCodeSha": "7273f12ba7639d766a78adeb72eb52195cba2120",
+  "stateSha": "5bd97f75220bd10e508fa7fa5bbdbec879cb18d0",
+  "verifiedAt": "2026-10-07T07:57:20.121829+00:00",
+  "mode": "local_only",
+  "pythonTests": {
+    "sourcePatch": 214,
+    "combinedWithContentPatch": 237,
+    "result": "passed"
+  },
+  "nodeAssertions": {
+    "sourceHealth": 22,
+    "reading": 20,
+    "apiErrorMessages": 6,
+    "studyUi": 83,
+    "result": "passed"
+  },
+  "unchangedEdgeAndStudyServiceTests": "passed; offline mocks only",
+  "fixedStateCounts": {
+    "radar": 856,
+    "library": 1219,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 15,
+    "radar_archive_titles": 12636,
+    "titles_zh": 14994
+  },
+  "publicAssets": {
+    "sourcePatch": {
+      "files": 6,
+      "sha256": {
+        "_headers": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab",
+        "_worker.js": "8829cdefe49eba63874a482d0744e2c01d233c16a35c1e0c4646209a796e85ee",
+        "icon.svg": "fa9fdf8f1f28bd387149f445f5943748be3d20a997c3abebb1eef4cf9e03abc1",
+        "index.html": "f5b5a1a02eff88484cdf0e2d891523dd9d84319a634a72376722e9bda65f3ffd",
+        "public.js": "177531a3241a5285cfd365893e0accf75006dc11bfa604c3f08fae5622242e30",
+        "style.css": "e5017eab906d773152ea812aa72e020899968cf07577cd0c6896a1189e072d28"
+      },
+      "ordinaryFilesAllowlistVerified": true
+    },
+    "combinedPatch": {
+      "files": 6,
+      "sha256": {
+        "_headers": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab",
+        "_worker.js": "8829cdefe49eba63874a482d0744e2c01d233c16a35c1e0c4646209a796e85ee",
+        "icon.svg": "fa9fdf8f1f28bd387149f445f5943748be3d20a997c3abebb1eef4cf9e03abc1",
+        "index.html": "f5b5a1a02eff88484cdf0e2d891523dd9d84319a634a72376722e9bda65f3ffd",
+        "public.js": "7578ac1584aaa3ef96a52efdd63706d2ae2510829220a54b4ea578a8e437190d",
+        "style.css": "e5017eab906d773152ea812aa72e020899968cf07577cd0c6896a1189e072d28"
+      },
+      "ordinaryFilesAllowlistVerified": true
+    }
+  },
+  "contentIntegrity": {
+    "legacyGuides": 12,
+    "frozenHashesAndDatesPreserved": true,
+    "libraryIdsPreserved": 1219,
+    "privateReviewFields": 0
+  },
+  "files": [
+    "app.js",
+    "scripts/build_public.py",
+    "scripts/fetch_pubmed.py",
+    "scripts/refresh_feeds.py",
+    "scripts/source_fallbacks.py",
+    "scripts/test_feed_health.py",
+    "scripts/test_source_fallbacks.py",
+    "scripts/test_source_health_ui.cjs",
+    "docs/信源故障诊断与补丁-20261007.md",
+    "docs/信源补丁验证-20261007.json"
+  ],
+  "sourceHashes": {
+    "app.js": "96633a011526fc396ed134dc7797657df4ad77bee85d437262e2c2c265dbdbc5",
+    "scripts/build_public.py": "15e9c42ba8780d41a7327a848f71724f1774c1a179a4d6b9312dba0b6aa1e4fb",
+    "scripts/fetch_pubmed.py": "bb58fd00eae0708e8c7f0e33287c26d4fb527155a7bf79e055316ba927e81dd3",
+    "scripts/refresh_feeds.py": "1ee461952cc2ca248a86e435c11b3c125e8e23c92bede3c579a796de2d0fcfd4",
+    "scripts/source_fallbacks.py": "d17134e9ed1122b878f2511d9420584b5954646496c9d9afabc44df4ec003f8b",
+    "scripts/test_feed_health.py": "90dd500b4a9b3f00964c95d3a5ee4b55336c4284b5649706f722f7f0e87251b0",
+    "scripts/test_source_fallbacks.py": "074ac2e75976010f5b0e14540d4f42a32bee1b8b8e37c6e5a26015566918aca2",
+    "scripts/test_source_health_ui.cjs": "ec7789c0a5a7fe923a3df34ada4f7769c2d9b1e2c8880bac4435e1ea71fddf99"
+  },
+  "evidenceHashes": {
+    "live-public.js": "0cdf533386db4027f840e37680967036b3b937254d07f682a7d6071183a26e06",
+    "live-health.json": "30c5e59422dca15a247f14e946e36e7fc604d245d51ba59d39711022b82805d3",
+    "python-tests.log": "e9dd5bd5a4c70aaed373e56f3c2349dd71f9ebdd2b3806fb716bce0b5ac92c1c",
+    "source-ui-tests.log": "4ada5c6cd1eec783fd4675afb3450e64b065d600bf552e3d6489ebf62c65708f",
+    "edge-tests.log": "81e81ee3ca1edf8d9d954ef15865eb4ba606b2fedf489f1510e95281f81cf3f8",
+    "study-services-tests.log": "0ab9f9904a5c59f1e863b297e46f2c4a80f09835244cb0f7433e00fda5763f2e",
+    "sample-replay.json": "8379dabbb68e6144500360b6169fb9690245f82f890c7102b57656fdf6b29522",
+    "nature-targeted-check.json": "6ec35c6c95fd76f82f6548a7f49993647b9d309c0c0a9a1e8e165961ef4e7ce9",
+    "nrc-pubmed-check.json": "01e7f08348abee6d813d65ec29a8610142a961d50180e7b3c93bc65eb7ce6339"
+  },
+  "initialLiveReport": {
+    "checkedAt": "2026-10-07T07:22:33.932623+00:00",
+    "sources": 82,
+    "ok": 50,
+    "filteredEmpty": 21,
+    "notFeed": 11
+  },
+  "officialProbeResults": {
+    "NatureReviewsCardiologyRss": {
+      "raw": 8,
+      "eligible": 2
+    },
+    "NatureMachineIntelligenceRss": {
+      "raw": 8
+    },
+    "npjDigitalMedicineRss": {
+      "raw": 8
+    },
+    "JamaCardiologyCurrentIssue": {
+      "raw": 28,
+      "olderThan14Days": 28,
+      "latestPublishedAt": "2026-09-01"
+    },
+    "CardiovascularDiabetology": "HTTP200 HTML; redirected to official Springer journal page, cookies_not_supported",
+    "NrcPubmed30Days": {
+      "totalHits": 19,
+      "requestedLimit": 5
+    }
+  },
+  "completeFeedRefreshRun": false,
+  "productionWritten": false,
+  "externalModelCalled": false,
+  "libraryUpload": {
+    "result": "failed",
+    "library_file_id": null,
+    "reason": "prepared-upload helper hosted apps tools/list returned HTTP401; stopped"
+  }
+}

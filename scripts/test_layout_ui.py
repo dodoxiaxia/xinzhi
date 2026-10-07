@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+"""Offline browser QA for the public layout; every API/model response is mocked.
+
+Run after scripts/build_public.py. Requires Python Playwright and Chromium.
+Screenshots/results go to ignored .local/layout-qa; no production writes.
+"""
+import argparse
+import functools
+import base64
+import hashlib
+import json
+import shutil
+import threading
+import xml.etree.ElementTree as ET
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+
+from playwright.sync_api import expect, sync_playwright
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_ZH = '离线界面测试译文：此文字仅验证中英布局，不是这篇文献的翻译。'
+
+
+class QuietHandler(SimpleHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--browser', default=shutil.which('chromium'))
+    parser.add_argument('--output', default=str(ROOT / '.local/layout-qa'))
+    args = parser.parse_args()
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+    if not (ROOT / 'public/public.js').is_file():
+        parser.error('Build public first: python3 scripts/build_public.py')
+    server = ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(ROOT / 'public')))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = f'http://127.0.0.1:{server.server_port}/'
+    checks, errors, posts, records = [], [], [], []
+    controls = {'lookup': 'absent', 'post': 'success', 'abstract': 'empty'}
+
+    def check(value, label):
+        assert value, label
+        checks.append(label)
+
+    icon = ET.fromstring((ROOT / 'public/icon.svg').read_text())
+    logo_image = icon.find('{http://www.w3.org/2000/svg}image')
+    check(logo_image is not None, 'Public icon embeds the user logo')
+    logo_bytes = base64.b64decode(logo_image.attrib['href'].split(',', 1)[1], validate=True)
+    check(hashlib.sha256(logo_bytes).hexdigest() == '8afd21b439f6e1e3ab49ae3cc8127926fc61311df6ce88b878dd145ec07dd6c5', 'Embedded logo preserves exact user PNG bytes')
+
+    def mock(route):
+        request = route.request
+        url = urlsplit(request.url)
+        query = parse_qs(url.query)
+        task = query.get('task', [''])[0]
+        if url.path.startswith('/api/'):
+            if request.method == 'POST':
+                payload = request.post_data_json
+                posts.append(payload)
+                if controls['post'] == 'abort':
+                    return route.abort('failed')
+                if controls['post'] == 'bad_json':
+                    return route.fulfill(content_type='application/json', body='{broken')
+                if controls['post'] == 'provider_error':
+                    return route.fulfill(json={'ok': False, 'error': 'model_failed', 'detail': 'fetch_connection'})
+                if controls['post'] == 'empty':
+                    return route.fulfill(json={'ok': True, 'tr': {'abstract_zh': '', 'title_zh': ''}})
+                return route.fulfill(json={'ok': True, 'tr': {'abstract_zh': FIXTURE_ZH, 'title_zh': ''}})
+            if task == 'translate':
+                if controls['lookup'] == 'abort':
+                    return route.abort('failed')
+                if controls['lookup'] == 'cached':
+                    return route.fulfill(json={'ok': True, 'found': True, 'tr': {'abstract_zh': FIXTURE_ZH, 'title_zh': ''}})
+                return route.fulfill(json={'ok': True, 'found': False})
+            if url.path == '/api/ql':
+                return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': controls['lookup'] not in ['off', 'cached']})
+            return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
+        if url.hostname == 'www.ebi.ac.uk':
+            if controls['abstract'] == 'abort':
+                return route.abort('failed')
+            rows = [{'abstractText': 'Offline abstract fixture only, used to verify interrupted reading recovery.', 'pmid': '1001'}] if controls['abstract'] == 'success' else []
+            return route.fulfill(json={'resultList': {'result': rows}})
+        if url.hostname != '127.0.0.1':
+            return route.abort('blockedbyclient')
+        return route.continue_()
+
+    def overflow(page, label):
+        geometry = page.evaluate('''() => ({width: innerWidth, document: document.documentElement.scrollWidth,
+          drawer: document.querySelector('.reader-drawer.open') ? [document.querySelector('#drawerBody').scrollWidth, document.querySelector('#drawerBody').clientWidth] : null})''')
+        check(geometry['document'] <= geometry['width'] + 1, label + ': no page overflow')
+        if geometry['drawer']:
+            check(geometry['drawer'][0] <= geometry['drawer'][1] + 1, label + ': no reader overflow')
+
+    def open_weekly(page, width=1440):
+        page.set_viewport_size({'width': width, 'height': 1000 if width > 640 else 900})
+        page.goto(base + '?mode=weekly&style=a', wait_until='load')
+        expect(page.locator('.weekly-auto-item')).to_have_count(8)
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(**({'executable_path': args.browser} if args.browser else {}), args=['--no-sandbox'])
+            context = browser.new_context()
+            context.route('**/*', mock)
+            context.add_init_script('''(() => {
+              const nativeFetch = window.fetch;
+              window.fetch = (url, options) => {
+                const result = nativeFetch(url, options);
+                if (options?.method === 'POST' && JSON.parse(options.body || '{}').task === 'translate' && window.__translationDelay)
+                  return result.then(r => new Promise(resolve => setTimeout(() => resolve(r), window.__translationDelay)));
+                return result;
+              };
+            })()''')
+            page = context.new_page()
+            page.on('pageerror', lambda e: errors.append(str(e)))
+            for style in ['a', 'b', 'c', 'd']:
+                for width in [1440, 1024, 768, 390, 320]:
+                    page.set_viewport_size({'width': width, 'height': 1000 if width > 640 else 900})
+                    for mode in ['weekly', 'sources']:
+                        label = f'{style}/{width}/{mode}'
+                        page.goto(base + f'?mode={mode}&view=compact&style={style}', wait_until='load')
+                        expect(page.locator('#weeklySection' if mode == 'weekly' else '#sourcesSection')).to_be_visible()
+                        logo = page.locator('#brandLogo .brand-image')
+                        expect(logo).to_be_visible()
+                        check(logo.evaluate('(i) => i.complete && i.naturalWidth > 0'), label + ': logo loaded')
+                        size = logo.bounding_box()
+                        check(abs(size['width'] - size['height']) < 1 and size['width'] == 44, label + ': square logo ratio retained')
+                        expect(page.locator('#brandLogo .logo-title')).to_have_text('AIHOT-Med')
+                        overflow(page, label)
+                        check(page.locator('#contentStatus').count() == 0, label + ': no top timestamp strip')
+                        huddle, source = page.locator('#openHuddleBtn').bounding_box(), page.locator('#sourceStatusBtn').bounding_box()
+                        check(source['x'] >= huddle['x'] + huddle['width'] - 1, label + ': source entry right of huddle')
+                        if mode == 'weekly':
+                            expect(page.locator('.weekly-auto-item')).to_have_count(8)
+                            first, second = [page.locator('.weekly-auto-item').nth(i).bounding_box() for i in [0, 1]]
+                            board, deep = page.locator('#weeklyAuto').bounding_box(), page.locator('.weekly-deep-read').bounding_box()
+                            if width > 1000:
+                                check(abs(first['y'] - second['y']) < 2 and second['x'] > first['x'], label + ': two card columns')
+                                check(deep['x'] >= board['x'] + board['width'] and board['width'] > deep['width'] * 2, label + ': narrow right deep read')
+                                check(board['width'] + deep['width'] > width * .9, label + ': weekly board uses available page width')
+                            elif width <= 640:
+                                check(abs(first['x'] - second['x']) < 2 and second['y'] > first['y'], label + ': stacked mobile cards')
+                            check(page.locator('#weeklySection').get_by_text('尚未发布', exact=False).count() == 0, label + ': no unpublished placeholder')
+                            if width == 320:
+                                page.locator('.weekly-demo > summary').click()
+                                overflow(page, label + '/expanded deep read')
+                        else:
+                            data = page.evaluate('window.SOURCE_HEALTH')
+                            count = len(data['sources'])
+                            expect(page.locator('.source-item')).to_have_count(count)
+                            successful = sum(s.get('status') in ['ok', 'empty_feed', 'filtered_empty'] for s in data['sources'])
+                            check(page.locator('.sources-summary strong').all_text_contents() == [str(count), str(successful), str(count-successful)], label + ': real health counts')
+                            cached = sum(bool(s.get('cachedItems')) for s in data['sources'])
+                            expect(page.locator('.source-cache-note')).to_have_count(cached)
+                            check(page.locator('.source-item-foot').count() == count, label + ': per-source check dates retained')
+                        records.append({'style': style, 'width': width, 'mode': mode, 'overflow': False})
+                        if style == 'a' and width in [1440, 390]:
+                            page.screenshot(path=str(out / f'{mode}-{"desktop" if width == 1440 else "mobile"}.png'))
+                print(f'Layout checks passed: style {style}', flush=True)
+
+            check(len(posts) == 0, 'Opening/navigating pages never generates paid content')
+            for width in [1440, 320]:
+                for mode in ['curated', 'candidates', 'library']:
+                    page.set_viewport_size({'width': width, 'height': 900})
+                    page.goto(base + f'?mode={mode}&style=a', wait_until='load')
+                    overflow(page, f'header/{mode}/{width}')
+                    page.locator('#sourceStatusBtn').click()
+                    expect(page.locator('#sourcesSection')).to_be_visible()
+                    expect(page.locator('#sourceStatusBtn')).to_have_attribute('aria-pressed', 'true')
+                    page.locator(f'.nav-tab-btn[data-mode="{mode}"]').click()
+                    check(page.locator('.nav-tab-btn.active').get_attribute('data-mode') == mode, f'{mode}/{width}: switching back returns to view')
+            print('Header and mode-return checks passed', flush=True)
+
+            open_weekly(page)
+            page.locator('.weekly-card-actions [data-action="toggle-huddle"]').nth(0).click()
+            expect(page.locator('.weekly-card-actions [data-action="toggle-huddle"]').nth(0)).to_have_text('已入晨会 ✓')
+            page.locator('.weekly-card-actions [data-action="toggle-huddle"]').nth(1).click()
+            expect(page.locator('#huddleCounter')).to_have_text('2')
+            page.locator('#openHuddleBtn').click()
+            expect(page.locator('[aria-label="晨会证据对照"]')).to_be_visible()
+            check(page.locator('[data-action="compare-select"]').count() == 2, 'v13.6 explicit comparison selection preserved')
+            page.locator('#closeHuddleModalBtn').click()
+            check(len(posts) == 0, 'Morning-list changes only read caches, never generate')
+            check(bool(page.evaluate('window.CONTENT_STATUS.radarUpdatedAt')), 'Content timestamps remain in source data')
+
+            open_weekly(page)
+            paper_id = page.locator('.weekly-card-actions [data-action="open-drawer"]').first.get_attribute('data-paper-id')
+            original = page.evaluate('(id) => { const p = window.FEEDS.items.find(p => p.id === id); return p.abstractSections?.map(s => s.text).join(" ") || p.summary; }', paper_id)
+            read_button = page.locator('.weekly-card-actions [data-action="open-drawer"]').first
+            read_button.click()
+            expect(page.locator('[data-action="ai-translate"]')).to_be_visible()
+            check(original[:60] in page.locator('.abstract-original').inner_text(), 'English original remains readable')
+            check(page.locator('[aria-label="研究结构与全文核对"]').count() == 1, 'v13.6 study feature preserved')
+            page.evaluate('window.__translationDelay = 500')
+            page.evaluate('''id => { const b = document.createElement('button'); b.dataset.action='ai-translate'; b.dataset.paperId=id; document.body.append(b); b.click(); b.click(); b.remove(); }''', paper_id)
+            expect(page.locator('.abstract-translation')).to_contain_text('正在翻译摘要')
+            expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
+            check(len(posts) == 1, 'Rapid repeated clicks produce one translation request')
+            check(set(posts[0]) == {'task', 'pmid', 'doi'}, 'Translation API still sends identifiers only')
+            en, zh = page.locator('.abstract-original').bounding_box(), page.locator('.abstract-translation').bounding_box()
+            check(zh['x'] >= en['x'] + en['width'], 'Desktop English and Chinese use two columns')
+            check('未经人工核对' in page.locator('.abstract-translation').inner_text(), 'Translation disclaimer retained')
+            page.locator('.abstract-reader').scroll_into_view_if_needed()
+            page.screenshot(path=str(out / 'reader-desktop-fixture.png'))
+            page.set_viewport_size({'width': 390, 'height': 900})
+            en, zh = page.locator('.abstract-original').bounding_box(), page.locator('.abstract-translation').bounding_box()
+            check(zh['y'] > en['y'], 'Mobile translation stacks below English')
+            overflow(page, 'translated-reader/mobile')
+            page.locator('.abstract-reader').scroll_into_view_if_needed()
+            page.screenshot(path=str(out / 'reader-mobile-fixture.png'))
+            page.locator('#drawerCloseBtn').click()
+            read_button.click()
+            expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
+            check(len(posts) == 1, 'Reopening completed reader does not generate again')
+
+            for outcome in ['abort', 'provider_error', 'bad_json', 'empty']:
+                controls['post'] = outcome
+                open_weekly(page)
+                page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+                page.locator('[data-action="ai-translate"]').click()
+                expect(page.locator('[data-action="ai-translate"]')).to_have_text('重试翻译')
+                check(FIXTURE_ZH not in page.locator('.abstract-translation').inner_text(), outcome + ': no invented translation')
+                check(original[:60] in page.locator('.abstract-original').inner_text(), outcome + ': original retained after failure')
+                if outcome == 'abort':
+                    expect(page.locator('.translation-error')).to_contain_text('网络中断')
+                    page.screenshot(path=str(out / 'reader-interrupted.png'))
+                controls['post'] = 'success'
+                page.locator('[data-action="ai-translate"]').click()
+                expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
+
+            controls['lookup'] = 'abort'
+            open_weekly(page)
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('[data-action="tr-check"]')).to_be_visible()
+            controls['lookup'] = 'absent'
+            page.locator('[data-action="tr-check"]').click()
+            expect(page.locator('[data-action="ai-translate"]')).to_be_visible()
+            check(True, 'Interrupted cache lookup can be retried')
+
+            controls['lookup'] = 'cached'
+            before = len(posts)
+            open_weekly(page)
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
+            check(page.locator('[data-action="ai-translate"]').count() == 0 and len(posts) == before, 'Saved translation readable when generation is disabled')
+            controls['lookup'] = 'off'
+            open_weekly(page)
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('.abstract-translation')).to_contain_text('翻译服务暂不可用')
+            check(page.locator('[data-action="ai-translate"]').count() == 0, 'Unavailable translation shows a concise state')
+
+            controls['lookup'] = 'absent'
+            open_weekly(page)
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('[data-action="ai-translate"]')).to_be_visible()
+            page.evaluate('window.__translationDelay = 1200')
+            page.locator('[data-action="ai-translate"]').click()
+            expect(page.locator('.abstract-translation')).to_contain_text('正在翻译摘要')
+            page.locator('#drawerCloseBtn').click()
+            second_read = page.locator('.weekly-card-actions [data-action="open-drawer"]').nth(1)
+            second_id = second_read.get_attribute('data-paper-id')
+            second_title = page.evaluate('(id) => window.FEEDS.items.find(p => p.id === id).title', second_id)
+            second_read.click()
+            expect(page.locator('.drawer-title-en')).to_have_text(second_title)
+            page.wait_for_timeout(1400)
+            expect(page.locator('.drawer-title-en')).to_have_text(second_title)
+            check(FIXTURE_ZH not in page.locator('.abstract-translation').inner_text(), 'Late translation never takes over another paper')
+            page.locator('#drawerCloseBtn').click()
+            page.locator('#sourceStatusBtn').click()
+            page.locator('[data-mode="weekly"]').click()
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)
+            check(True, 'Returning to the original paper retains completed translation')
+
+            open_weekly(page)
+            controls['abstract'] = 'abort'
+            page.evaluate('''id => { const p = window.FEEDS.items.find(p => p.id === id); p.summary=''; p.abstractSections=[]; }''', paper_id)
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('.abstract-original')).to_contain_text('获取公开摘要失败')
+            check(page.locator('.abstract-translation').count() == 0, 'Failed abstract fetch never presents an invented bilingual body')
+            page.locator('#drawerCloseBtn').click()
+            controls['abstract'] = 'success'
+            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            expect(page.locator('.abstract-original')).to_contain_text('Offline abstract fixture only')
+            check(True, 'Closing and reopening retries an interrupted public abstract fetch')
+            check(not errors, 'No browser JavaScript errors')
+            browser.close()
+    finally:
+        server.shutdown()
+        result = {'passed_assertions': len(checks), 'layouts': records, 'page_errors': errors, 'mocked_translation_posts': len(posts), 'fixture_notice': 'All API requests mocked; translation screenshots contain explicit offline test text, not a real paper translation.'}
+        (out / 'results.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+    print(f'{len(checks)} browser assertions passed; {len(records)} layouts; screenshots: {out}')
+
+
+if __name__ == '__main__':
+    main()

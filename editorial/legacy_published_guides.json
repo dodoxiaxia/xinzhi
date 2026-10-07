@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "baseline_code_sha": "9482c3a0493e9f168f71988f503392ee69156874",
+  "verified_state_sha": "6abf0e4406698c34fdff9da4a43a68382183da98",
+  "scope": "Previously published abstract guides only; not physician reviewed. Frozen text/date identity; do not extend this list for new content.",
+  "guides": {
+    "10.1038/s41746-026-03282-1": {
+      "content_sha256": "6837163d13dde2d7a55927553b97c51ef5da99dd78da549b2f07e813e41aa4a3",
+      "published_on": "2026-09-29"
+    },
+    "10.1038/s41746-026-03312-y": {
+      "content_sha256": "2a1a3abb3f92434a4652fda277a55d0a6b576ad8cd481f4391129745b6626207",
+      "published_on": "2026-09-29"
+    },
+    "10.1093/ehjdh/ztag149": {
+      "content_sha256": "fc262bda65a1165f5fc354f459ca5cf0ac7016a504d1a071d30187c131429873",
+      "published_on": "2026-09-29"
+    },
+    "10.1093/ehjdh/ztag152": {
+      "content_sha256": "7a336a72950a4a9ba30499fa3339bd8c0a7f58c739c19480fd2f773f72d48262",
+      "published_on": "2026-09-29"
+    },
+    "10.1161/hypertensionaha.126.27847": {
+      "content_sha256": "5c9905bd24d94abce152a7846c70163c7ea46ce0d51be5485115bb05a67c5bae",
+      "published_on": "2026-09-29"
+    },
+    "10.1016/j.jacep.2026.07.006": {
+      "content_sha256": "1eaad7615a2f552136546cf5bad1bfdf8ad9fc9b491ec35485c264f2b2b4b89e",
+      "published_on": "2026-09-29"
+    },
+    "10.1161/jaha.125.049033": {
+      "content_sha256": "154a866a3af91f415955e8c2258fce5b4f37446c61f596cb6262a31639913193",
+      "published_on": "2026-09-29"
+    },
+    "10.1136/heartjnl-2025-326305": {
+      "content_sha256": "b4b5816552c7d67d929257320034095cd0ce4a919819f32eb7887c08361b8989",
+      "published_on": "2026-09-29"
+    },
+    "10.1016/j.hrthm.2026.09.031": {
+      "content_sha256": "d92da42d0608c13dcd750eed58db2032a949521d6d4ec8477db0136253436189",
+      "published_on": "2026-09-29"
+    },
+    "10.1161/atvbaha.126.325247": {
+      "content_sha256": "35914a40187257f2cfc61d9662215b40c21f2eb249ac6031453baa8f6bf4c474",
+      "published_on": "2026-09-29"
+    },
+    "10.1161/jaha.126.050964": {
+      "content_sha256": "75f0d78d783edac7711b8034b5bb864107506ded1a6be453ba812fdc18c6e8c7",
+      "published_on": "2026-09-29"
+    },
+    "10.1161/jaha.126.050723": {
+      "content_sha256": "cbc0f54fedfcbff469749144c844aa0d4923140f48e4ee7636e172c0487c7d7a",
+      "published_on": "2026-09-30"
+    }
+  }
+}
