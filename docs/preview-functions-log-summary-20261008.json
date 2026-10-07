@@ -1,0 +1,41 @@
+{
+  "requests": [
+    {
+      "resource": "current_pages_project",
+      "retried": false,
+      "status": 200
+    },
+    {
+      "resource": "exact_existing_preview_deployment",
+      "retried": false,
+      "status": 200
+    },
+    {
+      "resource": "exact_existing_production_deployment",
+      "retried": false,
+      "status": 200
+    }
+  ],
+  "previewUsesFunctions": true,
+  "productionUsesFunctions": true,
+  "previewRouteRequests": 0,
+  "resourceGatePassed": false,
+  "evidenceSource": {
+    "runId": 37704183978,
+    "jobId": 113074510052,
+    "commit": "d4542b70535bc6acc82c05c9023f3b48ab3f049f",
+    "loggedAt": "2026-10-07T23:47:00.6007033Z",
+    "artifactId": 11519046324,
+    "artifactDownloadStatus": 403,
+    "fullReportRead": false
+  },
+  "productionMainVerified": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+  "previewDeploymentId": "3f577b35-9077-4c4f-be65-e2079d3a5c56",
+  "previewSourcePreviouslyVerified": "5c46f0f5c973fa0940fc18af3ad1a582abb0f2a9",
+  "reviewedHeldCandidate": "53bee6b1f5b5b9cd1f5cca4bcede8921806e4b10",
+  "currentConfigurationDifferences": "not-read: full artifact download denied; only uses_functions summary available in existing job log",
+  "protectionChanges": 0,
+  "newApplicationRequests": 0,
+  "actualCpuMemoryMeasured": false
+}
+
