@@ -130,7 +130,8 @@
     pageSize: 20,
     page: 1,
     huddle: (function () { try { const v = JSON.parse(safeGet('xinzhi_huddle_ids') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } })(),
-    activeDrawerPaper: null
+    activeDrawerPaper: null,
+    huddleCompare: [] // Explicit selection, kept only in this browser session.
   };
 
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
@@ -358,6 +359,175 @@
     if (AI_AVAIL !== true || state.mode === 'weekly' || top.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false; el.innerHTML = briefHtml('digest', top);
   }
+  // ---- Public-abstract study services: GET only reads cache; POST requires a click. ----
+  const STUDY_FIELDS = [['question', '研究问题'], ['population', '研究对象'], ['design', '研究设计'], ['comparator', '干预与对照'], ['endpoints', '研究终点'], ['results', '主要结果']];
+  const STUDY_RESULTS = {}; const COMPARE_RESULTS = {};
+  function studyKey(p) {
+    return p.pmid ? 'pmid:' + String(p.pmid) : (p.doi ? 'doi:' + String(p.doi).toLowerCase() : '');
+  }
+  function studyIds(p) {
+    return { pmid: p.pmid ? String(p.pmid) : '', doi: p.doi ? String(p.doi) : '' };
+  }
+  function selectedComparePapers() {
+    const seen = new Set();
+    return state.huddle.filter(id => state.huddleCompare.includes(id)).map(id => allPapersMap.get(id)).filter(p => {
+      const key = p && studyKey(p);
+      const doi = p?.doi && 'doi:' + String(p.doi).toLowerCase();
+      if (!key || seen.has(key) || (doi && seen.has(doi))) return false;
+      seen.add(key); if (doi) seen.add(doi); return true;
+    });
+  }
+  function compareKey(list) {
+    return JSON.stringify(list.map(studyKey).sort());
+  }
+  function setCompareSelection(id, checked) {
+    const paper = allPapersMap.get(id);
+    if (!state.huddle.includes(id) || !paper || !studyKey(paper)) return false;
+    if (!checked) { state.huddleCompare = state.huddleCompare.filter(x => x !== id); return true; }
+    if (state.huddleCompare.includes(id)) return true;
+    const selected = selectedComparePapers();
+    if (selected.length >= 4) { showToast('最多选择 4 篇，请先取消一篇'); return false; }
+    if (selected.some(p => studyKey(p) === studyKey(paper) || (p.doi && paper.doi && String(p.doi).toLowerCase() === String(paper.doi).toLowerCase()))) { showToast('这篇文献已在对照中，请勿重复选择'); return false; }
+    state.huddleCompare.push(id); return true;
+  }
+  function studyResultOf(j, task) {
+    const r = j && j[task];
+    if (!r || r.schemaVersion !== 1 || r.scope !== 'public-abstract' || !Array.isArray(r.papers) || r.papers.length > 4) return null;
+    if (!Array.isArray(r.checklist) || r.checklist.some(x => typeof x !== 'string')) return null;
+    if (r.papers.some(p => !p || typeof p.key !== 'string' || !['available', 'unavailable'].includes(p.status))) return null;
+    return r;
+  }
+  function studyMissingReason(reason) {
+    return { no_abstract: '未找到公开摘要', metadata_timeout: '公开摘要获取暂未完成', metadata_error: '公开摘要获取暂时失败', abstract_too_long: '公开摘要超过处理范围' }[reason] || '此篇公开摘要暂不可用';
+  }
+  function studyRows(result, requested) {
+    // Keep every selected paper visible, including unavailable or omitted items.
+    return requested.map((p, i) => {
+      const key = studyKey(p);
+      const row = result.papers.find(x => x.key === key || (p.pmid && x.pmid && String(x.pmid) === String(p.pmid)) || (p.doi && x.doi && String(x.doi).toLowerCase() === String(p.doi).toLowerCase()));
+      return row ? { ...row, n: i + 1 } : { ...studyIds(p), key, n: i + 1, title: p.title || '', journal: p.cleanJournal || p.journal || '', status: 'unavailable', reason: 'no_abstract' };
+    });
+  }
+  function studyFieldHtml(paper, field) {
+    if (paper.status !== 'available') return '<span class="study-missing">' + esc(studyMissingReason(paper.reason)) + '</span>';
+    const value = paper[field];
+    const text = value && typeof value.text === 'string' && value.text ? value.text : '摘要未提供';
+    const quote = value && typeof value.quote === 'string' ? value.quote : '';
+    return `<p class="study-field-text">${esc(text)}</p>${quote ? `<details class="study-quote"><summary>核对摘要原句</summary><blockquote>${esc(quote)}</blockquote></details>` : ''}`;
+  }
+  function studySourceHtml(paper) {
+    const url = safeSourceUrl({ url: paper.source_url || '' });
+    const source = paper.abstract_source || '公开摘要';
+    return `<span>${esc(source)}</span>${url ? ` · <a href="${esc(url)}" target="_blank" rel="noopener">摘要来源 ↗</a>` : ''}`;
+  }
+  function studyMetaHtml(result, cached) {
+    const time = result.generatedAt ? contentDate(result.generatedAt) : '';
+    return `<p class="study-boundary">仅根据公开摘要生成，未经人工核对。各篇结果不作质量排名，不合并效应量。</p><p class="study-meta">${result.generatedBy === 'metadata-only' ? '摘要获取状态 · 未调用模型' : cached ? '读取已有结果' : '本次生成'}${time ? ' · 生成时间（北京时间）：' + esc(time) : ''}${result.model ? ' · ' + esc(result.model) : ''}</p>`;
+  }
+  function studyChecklistHtml(result) {
+    return `<details class="study-checklist"><summary>全文核对清单（待查事项）</summary><p>以下是阅读全文时需要核对的问题，并非已发现论文存在这些缺陷。</p><ul>${result.checklist.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>${result.caveat ? `<p class="study-boundary">${esc(result.caveat)}</p>` : ''}`;
+  }
+  function studyResultHtml(result, requested, cached, task) {
+    const rows = studyRows(result, requested);
+    const content = task === 'compare'
+      ? `<div class="study-table-scroll" role="region" aria-label="逐篇公开摘要证据对照表" tabindex="0"><table class="study-table"><caption>逐篇证据对照 · 可横向滚动</caption><thead><tr><th scope="col">核对项目</th>${rows.map(p => `<th scope="col"><span class="study-paper-number">${p.n}.</span> ${esc(p.title)}<small>${esc(p.journal || '')}</small>${p.status !== 'available' ? `<small class="study-missing">${esc(studyMissingReason(p.reason))}</small>` : ''}</th>`).join('')}</tr></thead><tbody>${STUDY_FIELDS.map(([field, label]) => `<tr><th scope="row">${label}</th>${rows.map(p => `<td>${studyFieldHtml(p, field)}</td>`).join('')}</tr>`).join('')}<tr><th scope="row">摘要来源</th>${rows.map(p => `<td>${studySourceHtml(p)}</td>`).join('')}</tr></tbody></table></div>`
+      : rows.map(p => `<div class="study-paper">${p.status !== 'available' ? `<p class="study-missing">${esc(studyMissingReason(p.reason))}</p>` : ''}<dl class="study-fields">${STUDY_FIELDS.map(([field, label]) => `<div><dt>${label}</dt><dd>${studyFieldHtml(p, field)}</dd></div>`).join('')}</dl><p class="study-meta">${studySourceHtml(p)}</p></div>`).join('');
+    return studyMetaHtml(result, cached) + content + studyChecklistHtml(result) + `<button class="btn-sm" data-action="study-copy" data-task="${task}"${task === 'study' ? ` data-paper-id="${esc(requested[0].id)}"` : ''}>复制${task === 'compare' ? '证据对照' : '研究结构'}与核对清单</button>`;
+  }
+  function studyBoxHtml(paper) {
+    const key = studyKey(paper); if (!key) return '';
+    const rec = STUDY_RESULTS[key];
+    let content = '<p class="study-meta" role="status">正在检查已有结果，不会调用模型…</p>';
+    if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
+    else if (rec?.state === 'loading') content = '<p class="study-meta" role="status">正在从公开来源读取摘要并提取研究结构，请稍候…</p>';
+    else if (rec && rec.state !== 'checking') {
+      content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">${rec.state === 'error' ? '重试生成研究结构' : '提取研究结构与核对清单'}</button><p class="study-meta">点击后由模型读取公开摘要；不会读取全文。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到已有结果。' : '研究结构服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? `<button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">重查已有结果</button>` : ''}`);
+    }
+    return `<section class="drawer-section study-box" aria-label="研究结构与全文核对"><div class="drawer-section-title">研究结构与全文核对 <small>公开摘要服务</small></div>${content}</section>`;
+  }
+  function studyCheck(paper, retry = false) {
+    const key = studyKey(paper); if (!key || (STUDY_RESULTS[key] && !retry)) return;
+    STUDY_RESULTS[key] = { state: 'checking' };
+    fetch('/api/ai?task=study&k=' + encodeURIComponent(key), { headers: { accept: 'application/json' } })
+      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
+      .then(j => {
+        const result = studyResultOf(j, 'study');
+        STUDY_RESULTS[key] = result && j.found ? { state: 'done', result, cached: true, canGenerate: !!j.canGenerate } : (j.ok ? { state: 'ready', canGenerate: !!j.canGenerate } : { state: 'error', phase: 'lookup', msg: aiErrorMessage(j, 'study'), canGenerate: false });
+      })
+      .catch(() => { STUDY_RESULTS[key] = { state: 'error', phase: 'lookup', msg: '无法读取已有结果，请稍后重试。', canGenerate: false }; })
+      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+  }
+  function aiStudy(paper) {
+    const key = studyKey(paper), previous = STUDY_RESULTS[key];
+    if (!key || !previous?.canGenerate || previous.state === 'loading') return;
+    STUDY_RESULTS[key] = { state: 'loading', canGenerate: true }; openReaderDrawer(paper);
+    fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'study', ...studyIds(paper) }) })
+      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
+      .then(j => {
+        const result = studyResultOf(j, 'study');
+        STUDY_RESULTS[key] = result && (j.ok || result.generatedBy === 'metadata-only') ? { state: 'done', result, cached: !!j.cached, canGenerate: j.canGenerate !== false } : { state: 'error', msg: aiErrorMessage(j, 'study'), canGenerate: j.error !== 'generation_off' && j.error !== 'not_configured' };
+      })
+      .catch(() => { STUDY_RESULTS[key] = { state: 'error', msg: '网络错误，请稍后重试。', canGenerate: true }; })
+      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+  }
+  function compareBoxHtml(list) {
+    const selected = selectedComparePapers(), valid = selected.length >= 2 && selected.length <= 4;
+    const key = valid ? compareKey(selected) : '', rec = key && COMPARE_RESULTS[key];
+    let content = '<p class="study-meta">请在上方明确勾选 2–4 篇有 PMID/DOI 的文献。</p>';
+    if (valid) {
+      if (rec?.state === 'done') content = studyResultHtml(rec.result, selected, rec.cached, 'compare') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? '<button class="btn-sm" data-action="ai-compare">重新获取所选文献的公开摘要</button>' : '');
+      else if (!rec || rec.state === 'checking') content = '<p class="study-meta" role="status">正在检查这组文献的已有结果，不会调用模型…</p>';
+      else if (rec.state === 'loading') content = '<p class="study-meta" role="status">正在逐篇读取公开摘要并整理证据对照，请稍候…</p>';
+      else content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm btn-primary" data-action="ai-compare">${rec.state === 'error' ? '重试' : '生成'}所选 ${selected.length} 篇证据对照</button><p class="study-meta">点击后调用模型。仅发送文献标识，不发送个人清单文本；无摘要文献仍保留在结果中。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到这组文献的已有结果。' : '证据对照服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? '<button class="btn-sm" data-action="compare-check">重查已有结果</button>' : ''}`);
+    }
+    return `<section class="study-box compare-box" aria-label="晨会证据对照" tabindex="-1"><div class="drawer-section-title">晨会证据对照 <small>已选 ${selected.length}/4 篇</small></div><p class="study-boundary">按各篇公开摘要逐项核对研究问题、对象、设计、对照、终点与结果。不会据此排名或合并研究结论。</p>${content}</section>`;
+  }
+  function compareCheck(retry = false) {
+    const list = selectedComparePapers(); if (list.length < 2 || list.length > 4) return;
+    const key = compareKey(list); if (COMPARE_RESULTS[key] && !retry) return;
+    COMPARE_RESULTS[key] = { state: 'checking' };
+    fetch('/api/ai?task=compare&keys=' + encodeURIComponent(key), { headers: { accept: 'application/json' } })
+      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
+      .then(j => {
+        const result = studyResultOf(j, 'compare');
+        COMPARE_RESULTS[key] = result && j.found ? { state: 'done', result, cached: true, canGenerate: !!j.canGenerate } : (j.ok ? { state: 'ready', canGenerate: !!j.canGenerate } : { state: 'error', phase: 'lookup', msg: aiErrorMessage(j, 'compare'), canGenerate: false });
+      })
+      .catch(() => { COMPARE_RESULTS[key] = { state: 'error', phase: 'lookup', msg: '无法读取已有结果，请稍后重试。', canGenerate: false }; })
+      .then(() => { if ($('#huddleModalBackdrop.open') && compareKey(selectedComparePapers()) === key) openHuddleModal(); });
+  }
+  function aiCompare() {
+    const list = selectedComparePapers(); if (list.length < 2 || list.length > 4) { showToast('请明确选择 2–4 篇有 PMID/DOI 的文献'); return; }
+    const key = compareKey(list), previous = COMPARE_RESULTS[key];
+    if (!previous?.canGenerate || previous.state === 'loading') return;
+    COMPARE_RESULTS[key] = { state: 'loading', canGenerate: true }; openHuddleModal();
+    fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'compare', items: list.map(studyIds) }) })
+      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
+      .then(j => {
+        const result = studyResultOf(j, 'compare');
+        COMPARE_RESULTS[key] = result && (j.ok || result.generatedBy === 'metadata-only') ? { state: 'done', result, cached: !!j.cached, canGenerate: j.canGenerate !== false } : { state: 'error', msg: aiErrorMessage(j, 'compare'), canGenerate: j.error !== 'generation_off' && j.error !== 'not_configured' };
+      })
+      .catch(() => { COMPARE_RESULTS[key] = { state: 'error', msg: '网络错误，请稍后重试。', canGenerate: true }; })
+      .then(() => { if ($('#huddleModalBackdrop.open') && compareKey(selectedComparePapers()) === key) openHuddleModal(); });
+  }
+  function studyCopyText(result, requested) {
+    let text = '公开摘要研究结构与证据对照（未经人工核对）\n不作质量排名，不合并效应量。\n';
+    studyRows(result, requested).forEach(p => {
+      text += `\n${p.n}. ${p.title}\n${p.journal || ''}\n`;
+      if (p.status !== 'available') text += studyMissingReason(p.reason) + '\n';
+      else STUDY_FIELDS.forEach(([field, label]) => {
+        const value = p[field];
+        text += `${label}：${value && typeof value.text === 'string' ? value.text : '摘要未提供'}\n`;
+        if (value && typeof value.quote === 'string' && value.quote) text += `摘要原句：${value.quote}\n`;
+      });
+      const source = safeSourceUrl({ url: p.source_url || '' });
+      text += `摘要来源：${p.abstract_source || '公开摘要'}${source ? ' ' + source : ''}\n`;
+    });
+    text += '\n全文核对清单（待查事项，并非已发现的论文缺陷）\n' + result.checklist.map(x => '- ' + x).join('\n');
+    if (result.caveat) text += '\n证据边界：' + result.caveat;
+    if (result.generatedAt) text += '\n生成时间：' + result.generatedAt;
+    return text;
+  }
+  // ---- End public-abstract study services. ----
   const AI_ERR = { daily_cap: '今日 AI 解读额度已用完，明天再试。', ip_cap: '你今天的解读次数已达上限。', no_abstract: '各公开渠道都没有找到这篇的摘要。',
     model_failed: 'AI 服务未能完成处理，未保存。请稍后重试。', in_progress: '这篇正在被生成，稍后刷新即可查看。',
     generation_off: 'AI 功能暂未开放。', not_configured: 'AI 服务尚未配置完成，需要维护者处理。', server: '服务暂时出错，请稍后重试。', need_two: '至少需要 2 篇文献。', bad_key: '这篇缺少 PMID/DOI，无法处理。' };
@@ -366,19 +536,22 @@
     provider_rate_limit: '模型服务暂时限流，请稍后重试。',
     provider_unavailable: '模型服务暂不可用，请稍后重试。',
     request_timeout: '模型服务响应超时，请稍后重试。',
+    provider_network_error: '模型服务处理时发生网络错误，请稍后重试。',
+    provider_budget: '今天的模型调用次数已达上限；已保存结果仍可阅读。',
+    budget_unavailable: '暂时无法核对模型调用额度，请稍后重试。',
+    model_redirect: '模型接口地址发生跳转，需要维护者检查配置。',
+    endpoint_invalid: '模型接口地址配置无效，需要维护者处理。',
+    endpoint_insecure: '模型接口需要使用有效的 HTTPS 地址。',
+    fetch_dns: '暂时无法连接模型服务，请稍后重试。',
+    fetch_tls: '暂时无法连接模型服务，请稍后重试。',
+    fetch_connection: '暂时无法连接模型服务，请稍后重试。',
+    fetch_timeout: '暂时无法连接模型服务，请稍后重试。',
     transport_error: '暂时无法连接模型服务，请稍后重试。',
     output_truncated: '模型结果未完整返回，已自动重试但仍未完成，未保存。请稍后重试。',
     output_json: '模型结果格式不正确，已自动重试，未保存。请稍后重试。',
     output_shape: '模型没有返回可用结果，未保存。请稍后重试。',
     output_empty: '模型返回了空结果，未保存。请稍后重试。',
     output_blocked: '模型服务没有提供这次结果，未保存。',
-    provider_network_error: '模型服务处理时发生网络错误，请稍后重试。',
-    model_redirect: '模型接口地址发生跳转，需要维护者检查配置。',
-    endpoint_invalid: '模型接口地址配置无效，需要维护者处理。',
-    endpoint_insecure: '模型接口需要使用有效的 HTTPS 地址。',
-    fetch_dns: '模型接口域名暂时无法解析，需要维护者检查。',
-    fetch_tls: '连接模型服务时安全连接失败，需要维护者检查。',
-    fetch_connection: '连接模型服务时连接中断，请稍后重试。',
     output_incomplete: '模型未正常完成这次处理，未保存。请稍后重试。',
     context_limit: '摘要超出了模型服务的处理范围，需要维护者检查配置。',
     missing_numbers: '译文遗漏了原文数字，未保存。请重试。',
@@ -1240,6 +1413,8 @@
           ${hasAbstract ? trBoxHtml(paper) : ''}
         </div>
 
+        ${studyBoxHtml(paper)}
+
         ${(hasAbstract || draft) ? appraisalSection : ''}
 
         ${citationSection}
@@ -1269,6 +1444,7 @@
 
     if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
     trCheck(paper);
+    studyCheck(paper);
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).
     const needsAbs = !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
@@ -1358,8 +1534,12 @@
     const modal = $('#huddleModalBackdrop');
     const body = $('#huddleModalBody');
     if (!modal || !body) return;
+    const activeControl = body.contains(document.activeElement) ? document.activeElement.closest('[data-action]') : null;
+    const focusAction = activeControl ? { action: activeControl.dataset.action, paperId: activeControl.dataset.paperId, mode: activeControl.dataset.mode } : null;
 
     const list = state.huddle.map(id => allPapersMap.get(id)).filter(Boolean);
+    state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && allPapersMap.has(id));
+    const selected = selectedComparePapers();
 
     if (list.length === 0) {
       body.innerHTML = `
@@ -1369,7 +1549,7 @@
         </div>
       `;
     } else {
-      body.innerHTML = list.map((p, i) => `
+      body.innerHTML = '<p class="study-selection-help" id="compareSelectionHelp">勾选 2–4 篇生成证据对照；选择仅保留在当前浏览器会话，勾选不会调用模型。</p>' + list.map((p, i) => `
         <div class="huddle-item">
           <div class="huddle-item-content">
             <h4>${i + 1}. ${esc(p.draftData?.title_zh || p.title)}</h4>
@@ -1378,15 +1558,22 @@
               <span>${esc(p.studyDesign || '研究类型待核验')}</span> · 
               <span>${esc(p.date ? p.date.slice(0, 10) : '')}</span>
             </div>
+            <label class="study-select"><input type="checkbox" data-action="compare-select" data-paper-id="${esc(p.id)}" aria-label="将 ${esc(p.title)} 纳入证据对照" aria-describedby="compareSelectionHelp" ${state.huddleCompare.includes(p.id) ? 'checked' : ''} ${!studyKey(p) || (!state.huddleCompare.includes(p.id) && selected.length >= 4) ? 'disabled' : ''}>纳入证据对照${!studyKey(p) ? '（缺少 PMID/DOI）' : ''}</label>
           </div>
           <button class="btn-sm" data-action="remove-huddle" data-paper-id="${esc(p.id)}">移出</button>
         </div>
-      `).join('') + (AI_AVAIL === true ? briefHtml('huddle', list) : '');
+      `).join('') + compareBoxHtml(list) + (AI_AVAIL === true ? briefHtml('huddle', list) : '');
     }
 
-    if(!modal.classList.contains('open')) huddleLastFocus=document.activeElement;
+    const newlyOpened = !modal.classList.contains('open');
+    if(newlyOpened) huddleLastFocus=document.activeElement;
     modal.classList.add('open'); document.body.classList.add('dialog-open');
-    $('#closeHuddleModalBtn')?.focus({preventScroll:true});
+    if(newlyOpened) $('#closeHuddleModalBtn')?.focus({preventScroll:true});
+    else if (focusAction) {
+      const nextControl = [...body.querySelectorAll('[data-action]')].find(x => x.dataset.action === focusAction.action && x.dataset.paperId === focusAction.paperId && x.dataset.mode === focusAction.mode);
+      (nextControl || body.querySelector('.compare-box') || $('#closeHuddleModalBtn'))?.focus({ preventScroll: true });
+    }
+    compareCheck();
   }
 
   function closeHuddleModal() {
@@ -1888,6 +2075,21 @@
     if (ttAction) { const paper = allPapersMap.get(ttAction.dataset.paperId); if (paper) aiTitle(paper); return; }
     const trAction = e.target.closest('[data-action="ai-translate"]');
     if (trAction) { const paper = allPapersMap.get(trAction.dataset.paperId); if (paper) aiTranslate(paper); return; }
+    const studyAction = e.target.closest('[data-action="ai-study"]');
+    if (studyAction) { const paper = allPapersMap.get(studyAction.dataset.paperId); if (paper) aiStudy(paper); return; }
+    const studyCheckAction = e.target.closest('[data-action="study-check"]');
+    if (studyCheckAction) { const paper = allPapersMap.get(studyCheckAction.dataset.paperId); if (paper) { studyCheck(paper, true); openReaderDrawer(paper); } return; }
+    if (e.target.closest('[data-action="ai-compare"]')) { aiCompare(); return; }
+    if (e.target.closest('[data-action="compare-check"]')) { compareCheck(true); openHuddleModal(); return; }
+    const studyCopyAction = e.target.closest('[data-action="study-copy"]');
+    if (studyCopyAction) {
+      const task = studyCopyAction.dataset.task;
+      const paper = task === 'study' && allPapersMap.get(studyCopyAction.dataset.paperId);
+      const requested = paper ? [paper] : selectedComparePapers();
+      const rec = task === 'study' ? STUDY_RESULTS[paper && studyKey(paper)] : COMPARE_RESULTS[compareKey(requested)];
+      if (rec?.state === 'done') copyToClipboard(studyCopyText(rec.result, requested), '已复制研究结构、摘要原句与全文核对清单');
+      return;
+    }
     const briefAction = e.target.closest('[data-action="ai-brief"]');
     if (briefAction) {
       const mode = briefAction.dataset.mode;
@@ -1986,6 +2188,14 @@
   });
 
   // Morning Huddle Modal Events
+  $('#huddleModalBody')?.addEventListener('change', e => {
+    const checkbox = e.target.closest('[data-action="compare-select"]');
+    if (!checkbox) return;
+    const id = checkbox.dataset.paperId;
+    if (!setCompareSelection(id, checkbox.checked)) { checkbox.checked = false; return; }
+    openHuddleModal();
+    [...$('#huddleModalBody').querySelectorAll('[data-action="compare-select"]')].find(x => x.dataset.paperId === id)?.focus({ preventScroll: true });
+  });
   $('#openHuddleBtn')?.addEventListener('click', openHuddleModal);
   $('#closeHuddleModalBtn')?.addEventListener('click', closeHuddleModal);
   $('#huddleModalBackdrop')?.addEventListener('click', e => {
@@ -1995,6 +2205,7 @@
   $('#copyHuddleSummaryBtn')?.addEventListener('click', copyHuddleSummary);
   $('#clearHuddleBtn')?.addEventListener('click', () => {
     state.huddle = [];
+    state.huddleCompare = [];
     updateHuddleCounter();
     openHuddleModal();
     renderStream();

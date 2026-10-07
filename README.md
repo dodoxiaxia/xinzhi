@@ -1,6 +1,6 @@
 # 心知｜心血管与AI医疗文献学习站
 
-公开网站：https://learn.dryz.info/ 。源码版本 v13.5.3；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
+公开网站：https://learn.dryz.info/ 。源码版本 v13.6；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
 ## 阅读和内容范围
 
@@ -21,6 +21,9 @@
 ```sh
 python3 -m unittest discover -s scripts -p 'test_*.py'
 node scripts/test_reading_logic.cjs
+node scripts/test_edge_worker.cjs
+node scripts/test_study_services.cjs
+node scripts/test_study_ui.cjs
 python3 scripts/build_public.py
 python3 scripts/package_release.py
 ```
@@ -36,6 +39,8 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory public
 本地预览为 http://127.0.0.1:8765/ 。
 
 ## 部署边界
+
+v13.6 在阅读抽屉增加“研究结构与全文核对”，晨会清单增加明确选择 2–4 篇的“逐篇证据对照”。仅处理服务器取得的公开摘要，展示逐字引文及缺项；打开页面和选择只读缓存，点击生成才调用模型。模型生成与中文语义仍需回查原文，不能当作全文精读或质量评审。运行配置、缓存、次数限制与连接诊断见 [AI 服务说明](docs/AI解读部署说明.md)。
 
 GitHub Actions 构建后将六个公开文件发布到 Cloudflare Pages 现有 `dryz-xinzhi` 项目 Production：index.html、public.js、style.css、icon.svg、_headers、_worker.js。手动发布也必须用同一白名单包。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。Pages 发布成功和公网页面核验分别记录；失败保留上次有效站点与 state。缺完整摘要缓存时构建停止，不能用题录版覆盖已有摘要。
 

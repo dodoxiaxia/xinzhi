@@ -87,6 +87,17 @@ jobs:
         with:
           node-version: '20'
 
+      - name: 发布前验证公开摘要服务（离线，不调用模型）
+        if: steps.refresh.outputs.deploy == 'true'
+        run: |
+          node --check app.js
+          node scripts/test_reading_logic.cjs
+          node scripts/test_edge_worker.cjs
+          node scripts/test_study_services.cjs
+          node scripts/test_study_ui.cjs
+          python3 -m unittest discover -s scripts -p 'test_public_build.py'
+          python3 -m unittest discover -s scripts -p 'test_package_release.py'
+
       - name: 发布到 Cloudflare Pages
         id: deploy
         if: steps.refresh.outputs.deploy == 'true'
