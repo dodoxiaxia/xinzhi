@@ -1,0 +1,2676 @@
+{
+  "codeSha": "03e2c7c98b2ba80583962df2e6da29d110e67c99",
+  "stateSha": "652e67852f87ffdacab1582f8e5723cab32ab3b9",
+  "checkedAt": "2026-10-07T09:24:05Z",
+  "labelsBeforeAliasFix": 208,
+  "entries": [
+    {
+      "name": "ACM会议稿",
+      "kind": "conference",
+      "aliases": [
+        "ACM会议稿"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "AI Agent Trends",
+      "kind": "unknown",
+      "aliases": [
+        "AI Agent Trends"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "AI Co-Clinician",
+      "kind": "unknown",
+      "aliases": [
+        "AI Co-Clinician"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "AI评论",
+      "kind": "blog",
+      "aliases": [
+        "AI评论"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "AMIA会议稿",
+      "kind": "conference",
+      "aliases": [
+        "AMIA会议稿"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "American Heart Journal",
+      "kind": "journal",
+      "aliases": [
+        "American Heart Journal"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "American Journal of Physiology - Heart and Circulatory Physiology",
+      "kind": "journal",
+      "aliases": [
+        "American Journal of Physiology - Heart and Circulatory Physiology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Annals of Internal Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Annals of Internal Medicine"
+      ],
+      "occurrences": {
+        "library.json": 10
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Arabian Journal for Science and Engineering",
+      "kind": "journal",
+      "aliases": [
+        "Arabian Journal for Science and Engineering"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Archivos de Bronconeumología",
+      "kind": "journal",
+      "aliases": [
+        "Archivos de Bronconeumología"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Arteriosclerosis, Thrombosis, and Vascular Biology",
+      "kind": "journal",
+      "aliases": [
+        "ATVB",
+        "Arteriosclerosis, Thrombosis, and Vascular Biology"
+      ],
+      "occurrences": {
+        "candidates.json": 5,
+        "curated-archive.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Artificial Intelligence",
+      "kind": "journal",
+      "aliases": [
+        "Artificial Intelligence"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMC Cardiovascular Disorders",
+      "kind": "journal",
+      "aliases": [
+        "BMC Cardiovascular Disorders"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMC Medical Education",
+      "kind": "journal",
+      "aliases": [
+        "BMC Medical Education"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMC Medical Informatics and Decision Making",
+      "kind": "journal",
+      "aliases": [
+        "BMC Medical Informatics and Decision Making"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMC Medicine",
+      "kind": "journal",
+      "aliases": [
+        "BMC Medicine"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMJ Digital Health & AI",
+      "kind": "journal",
+      "aliases": [
+        "BMJ Digital Health & AI",
+        "BMJ Digital Health & AI current issue",
+        "BMJ Digital Health & AI recent issues",
+        "BMJ digital health & AI"
+      ],
+      "occurrences": {
+        "library.json": 16,
+        "candidates.json": 7,
+        "radar-archive.json": 77,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMJ Evidence-Based Medicine",
+      "kind": "journal",
+      "aliases": [
+        "BMJ Evidence-Based Medicine"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "BMJ Open",
+      "kind": "journal",
+      "aliases": [
+        "BMJ Open"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Cardiovascular Diabetology",
+      "kind": "journal",
+      "aliases": [
+        "Cardiovascular Diabetology",
+        "Cardiovascular diabetology"
+      ],
+      "occurrences": {
+        "candidates.json": 1,
+        "radar-archive.json": 382,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Cardiovascular Research",
+      "kind": "journal",
+      "aliases": [
+        "Cardiovascular Research",
+        "Cardiovascular research"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "candidates.json": 16,
+        "radar-archive.json": 303,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Cell Reports Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Cell Reports Medicine"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation",
+      "kind": "journal",
+      "aliases": [
+        "Circulation"
+      ],
+      "occurrences": {
+        "library.json": 6,
+        "candidates.json": 27,
+        "radar-archive.json": 477,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation Research",
+      "kind": "journal",
+      "aliases": [
+        "Circulation Research",
+        "Circulation research"
+      ],
+      "occurrences": {
+        "candidates.json": 11,
+        "radar-archive.json": 238,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation: Arrhythmia and Electrophysiology",
+      "kind": "journal",
+      "aliases": [
+        "Circulation. Arrhythmia and electrophysiology",
+        "Circulation: AE",
+        "Circulation: Arrhythmia and Electrophysiology"
+      ],
+      "occurrences": {
+        "candidates.json": 6,
+        "radar-archive.json": 98,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation: Cardiovascular Imaging",
+      "kind": "journal",
+      "aliases": [
+        "Circ CV Imaging",
+        "Circulation. Cardiovascular imaging",
+        "Circulation: Cardiovascular Imaging"
+      ],
+      "occurrences": {
+        "candidates.json": 10,
+        "radar-archive.json": 113,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation: Cardiovascular Interventions",
+      "kind": "journal",
+      "aliases": [
+        "Circ: Cardiovascular Interventions",
+        "Circulation. Cardiovascular interventions",
+        "Circulation: Cardiovascular Interventions"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "candidates.json": 8,
+        "radar-archive.json": 158,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation: Cardiovascular Quality and Outcomes",
+      "kind": "journal",
+      "aliases": [
+        "Circulation: CQO",
+        "Circulation: Cardiovascular Quality and Outcomes"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation: Genomic and Precision Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Circ Genomic and Precision Medicine",
+        "Circulation. Genomic and precision medicine",
+        "Circulation: Genomic and Precision Medicine"
+      ],
+      "occurrences": {
+        "candidates.json": 13,
+        "radar-archive.json": 78,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Circulation: Heart Failure",
+      "kind": "journal",
+      "aliases": [
+        "Circ Heart Failure",
+        "Circulation. Heart failure",
+        "Circulation: Heart Failure"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "radar-archive.json": 174,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Clinician of the Future",
+      "kind": "unknown",
+      "aliases": [
+        "Clinician of the Future"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Communications Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Communications Medicine"
+      ],
+      "occurrences": {
+        "library.json": 16,
+        "candidates.json": 15,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Communications Psychology",
+      "kind": "journal",
+      "aliases": [
+        "Communications Psychology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Computers in Biology and Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Computers in Biology and Medicine"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Diagnostics",
+      "kind": "journal",
+      "aliases": [
+        "Diagnostics"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "EMNLP",
+      "kind": "conference",
+      "aliases": [
+        "EMNLP"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Europace",
+      "kind": "journal",
+      "aliases": [
+        "Europace",
+        "Europace : European pacing, arrhythmias, and cardiac electrophysiology : journal of the working groups on cardiac pacing, arrhythmias, and cardiac cellular electrophysiology of the European Society of Cardiology"
+      ],
+      "occurrences": {
+        "library.json": 2,
+        "candidates.json": 11,
+        "radar-archive.json": 362,
+        "source-health.json": 2
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Heart Journal",
+      "kind": "journal",
+      "aliases": [
+        "EHJ: Advance Access",
+        "EHJ: Current Issue",
+        "European Heart Journal",
+        "European heart journal"
+      ],
+      "occurrences": {
+        "library.json": 19,
+        "candidates.json": 36,
+        "radar-archive.json": 1412,
+        "source-health.json": 2
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Heart Journal - Cardiovascular Imaging",
+      "kind": "journal",
+      "aliases": [
+        "European Heart Journal - Cardiovascular Imaging",
+        "European heart journal. Cardiovascular Imaging"
+      ],
+      "occurrences": {
+        "candidates.json": 18,
+        "radar-archive.json": 341
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Heart Journal - Cardiovascular Pharmacotherapy",
+      "kind": "journal",
+      "aliases": [
+        "EHJ - Cardiovascular Pharmacotherapy",
+        "European Heart Journal - Cardiovascular Pharmacotherapy",
+        "European heart journal. Cardiovascular pharmacotherapy"
+      ],
+      "occurrences": {
+        "library.json": 2,
+        "candidates.json": 6,
+        "radar-archive.json": 99,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Heart Journal - Digital Health",
+      "kind": "journal",
+      "aliases": [
+        "EHJ- Digital Health Advance Access",
+        "European Heart Journal - Digital Health",
+        "European heart journal. Digital health"
+      ],
+      "occurrences": {
+        "library.json": 17,
+        "candidates.json": 2,
+        "radar-archive.json": 181,
+        "curated-archive.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Heart Journal Supplements",
+      "kind": "journal",
+      "aliases": [
+        "European Heart Journal Supplements"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Journal of Clinical Nutrition",
+      "kind": "journal",
+      "aliases": [
+        "European Journal of Clinical Nutrition"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "European Journal of Heart Failure",
+      "kind": "journal",
+      "aliases": [
+        "Euro J Heart Failure",
+        "European Journal of Heart Failure",
+        "European journal of heart failure"
+      ],
+      "occurrences": {
+        "candidates.json": 11,
+        "radar-archive.json": 320,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Frontiers in Digital Health",
+      "kind": "journal",
+      "aliases": [
+        "Frontiers in Digital Health"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Heart",
+      "kind": "journal",
+      "aliases": [
+        "Heart",
+        "Heart (British Cardiac Society)",
+        "Heart Online First"
+      ],
+      "occurrences": {
+        "library.json": 2,
+        "candidates.json": 14,
+        "radar-archive.json": 438,
+        "curated-archive.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Heart Rhythm",
+      "kind": "journal",
+      "aliases": [
+        "Heart Rhythm",
+        "Heart rhythm"
+      ],
+      "occurrences": {
+        "library.json": 5,
+        "candidates.json": 28,
+        "radar-archive.json": 733,
+        "curated-archive.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Heart Rhythm O2",
+      "kind": "journal",
+      "aliases": [
+        "Heart Rhythm O2"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Hypertension",
+      "kind": "journal",
+      "aliases": [
+        "Hypertension",
+        "Hypertension (Dallas, Tex. : 1979)"
+      ],
+      "occurrences": {
+        "candidates.json": 7,
+        "radar-archive.json": 312,
+        "curated-archive.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "IEEE International Conference on Healthcare Informatics",
+      "kind": "conference",
+      "aliases": [
+        "IEEE International Conference on Healthcare Informatics"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "IJCAI",
+      "kind": "conference",
+      "aliases": [
+        "IJCAI"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Infection",
+      "kind": "journal",
+      "aliases": [
+        "Infection"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Informatics in Medicine Unlocked",
+      "kind": "journal",
+      "aliases": [
+        "Informatics in Medicine Unlocked"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Information Fusion",
+      "kind": "journal",
+      "aliases": [
+        "Information Fusion"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Intelligent Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Intelligent Medicine"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Intelligent Systems with Applications",
+      "kind": "journal",
+      "aliases": [
+        "Intelligent Systems with Applications"
+      ],
+      "occurrences": {
+        "library.json": 7
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "International Journal of Cardiology",
+      "kind": "journal",
+      "aliases": [
+        "IJC",
+        "International Journal of Cardiology"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "candidates.json": 26,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "International Journal of Medical Informatics",
+      "kind": "journal",
+      "aliases": [
+        "International Journal of Medical Informatics"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "International Journal of Telemedicine and Applications",
+      "kind": "journal",
+      "aliases": [
+        "International Journal of Telemedicine and Applications"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC",
+      "kind": "journal",
+      "aliases": [
+        "JACC"
+      ],
+      "occurrences": {
+        "library.json": 12,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC Asia",
+      "kind": "journal",
+      "aliases": [
+        "JACC Asia"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Advances",
+      "kind": "journal",
+      "aliases": [
+        "JACC. Advances",
+        "JACC: Advances"
+      ],
+      "occurrences": {
+        "library.json": 2,
+        "candidates.json": 30,
+        "radar-archive.json": 845,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Basic to Translational Science",
+      "kind": "journal",
+      "aliases": [
+        "JACC: Basic to Translational Science"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Cardiovascular Imaging",
+      "kind": "journal",
+      "aliases": [
+        "JACC. Cardiovascular imaging",
+        "JACC: Cardio Imaging",
+        "JACC: Cardiovascular Imaging"
+      ],
+      "occurrences": {
+        "candidates.json": 6,
+        "radar-archive.json": 160,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Cardiovascular Interventions",
+      "kind": "journal",
+      "aliases": [
+        "JACC. Cardiovascular interventions",
+        "JACC: Cardiovascular Interventions"
+      ],
+      "occurrences": {
+        "candidates.json": 1,
+        "radar-archive.json": 483,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Case Reports",
+      "kind": "journal",
+      "aliases": [
+        "JACC: Case Reports"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Clinical Electrophysiology",
+      "kind": "journal",
+      "aliases": [
+        "JACC. Clinical electrophysiology",
+        "JACC: CE",
+        "JACC: Clinical Electrophysiology"
+      ],
+      "occurrences": {
+        "candidates.json": 5,
+        "radar-archive.json": 467,
+        "curated-archive.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JACC: Heart Failure",
+      "kind": "journal",
+      "aliases": [
+        "JACC. Heart failure",
+        "JACC: Heart Failure"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "candidates.json": 8,
+        "radar-archive.json": 315,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA",
+      "kind": "journal",
+      "aliases": [
+        "JAMA",
+        "JAMA Current Issue",
+        "JAMA Online First"
+      ],
+      "occurrences": {
+        "library.json": 35,
+        "candidates.json": 117,
+        "radar-archive.json": 281,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Cardiology",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Cardiology",
+        "JAMA Cardiology Current Issue",
+        "JAMA Cardiology Online First",
+        "JAMA cardiology",
+        "JAMA: Cardiology Topic Collection"
+      ],
+      "occurrences": {
+        "library.json": 4,
+        "candidates.json": 15,
+        "radar-archive.json": 275,
+        "source-health.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Health Forum",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Health Forum"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Internal Medicine",
+      "kind": "journal",
+      "aliases": [
+        "JAMA IM Current Issue",
+        "JAMA IM Online First",
+        "JAMA Internal Medicine",
+        "JAMA internal medicine"
+      ],
+      "occurrences": {
+        "library.json": 8,
+        "candidates.json": 48,
+        "radar-archive.json": 60,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Network Open",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Network Open",
+        "JAMA Network Open Most Read",
+        "JAMA Network Open New Online",
+        "JAMA network open"
+      ],
+      "occurrences": {
+        "library.json": 19,
+        "candidates.json": 42,
+        "radar-archive.json": 402,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Neurology",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Neurology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Oncology",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Oncology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Ophthalmology",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Ophthalmology"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Otolaryngology-Head & Neck Surgery",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Otolaryngology-Head & Neck Surgery"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Pediatrics",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Pediatrics"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Psychiatry",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Psychiatry"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JAMA Surgery",
+      "kind": "journal",
+      "aliases": [
+        "JAMA Surgery"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JMIR AI",
+      "kind": "journal",
+      "aliases": [
+        "JMIR AI"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JMIR Biomedical Engineering",
+      "kind": "journal",
+      "aliases": [
+        "JMIR Biomedical Engineering"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JMIR Medical Informatics",
+      "kind": "journal",
+      "aliases": [
+        "JMIR Medical Informatics"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "JN Learning",
+      "kind": "collection",
+      "aliases": [
+        "JN Learning"
+      ],
+      "occurrences": {
+        "library.json": 11
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Journal of Arrhythmia",
+      "kind": "journal",
+      "aliases": [
+        "Journal of Arrhythmia"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of Biomedical Informatics",
+      "kind": "journal",
+      "aliases": [
+        "Journal of Biomedical Informatics"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of Cardiovascular Electrophysiology",
+      "kind": "journal",
+      "aliases": [
+        "JCE",
+        "Journal of Cardiovascular Electrophysiology",
+        "Journal of cardiovascular electrophysiology"
+      ],
+      "occurrences": {
+        "candidates.json": 18,
+        "radar-archive.json": 373,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of Clinical Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Journal of Clinical Medicine"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of Imaging Informatics in Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Journal of Imaging Informatics in Medicine"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of Thoracic Disease",
+      "kind": "journal",
+      "aliases": [
+        "Journal of Thoracic Disease"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of the American Heart Association",
+      "kind": "journal",
+      "aliases": [
+        "JAHA",
+        "Journal of the American Heart Association"
+      ],
+      "occurrences": {
+        "candidates.json": 58,
+        "radar-archive.json": 1406,
+        "curated-archive.json": 3,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Journal of the American Medical Informatics Association",
+      "kind": "journal",
+      "aliases": [
+        "JAMIA-1",
+        "JAMIA-2",
+        "Journal of the American Medical Informatics Association"
+      ],
+      "occurrences": {
+        "library.json": 2,
+        "candidates.json": 7,
+        "source-health.json": 2
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "KDD",
+      "kind": "conference",
+      "aliases": [
+        "KDD"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Leukemia",
+      "kind": "journal",
+      "aliases": [
+        "Leukemia"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Life",
+      "kind": "journal",
+      "aliases": [
+        "Life"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Medical Journal of Australia",
+      "kind": "journal",
+      "aliases": [
+        "Medical Journal of Australia"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Medicina",
+      "kind": "journal",
+      "aliases": [
+        "Medicina"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Medicine"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "NEJM AI",
+      "kind": "journal",
+      "aliases": [
+        "NEJM AI"
+      ],
+      "occurrences": {
+        "library.json": 106,
+        "radar-archive.json": 17
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "NEJM Catalyst",
+      "kind": "journal",
+      "aliases": [
+        "NEJM Catalyst"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "NEJM Evidence",
+      "kind": "journal",
+      "aliases": [
+        "NEJM Evidence"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "candidates.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "National Science Review",
+      "kind": "journal",
+      "aliases": [
+        "National Science Review"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature",
+      "kind": "journal",
+      "aliases": [
+        "Nature"
+      ],
+      "occurrences": {
+        "library.json": 26,
+        "candidates.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Aging",
+      "kind": "journal",
+      "aliases": [
+        "Nature Aging"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Biomedical Engineering",
+      "kind": "journal",
+      "aliases": [
+        "Nature Biomedical Engineering"
+      ],
+      "occurrences": {
+        "library.json": 21
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Biotechnology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Biotechnology"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Cancer",
+      "kind": "journal",
+      "aliases": [
+        "Nature Cancer"
+      ],
+      "occurrences": {
+        "library.json": 8,
+        "candidates.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Cardiovascular Research",
+      "kind": "journal",
+      "aliases": [
+        "Nature Cardiovascular Research"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Communications",
+      "kind": "journal",
+      "aliases": [
+        "Nature Communications"
+      ],
+      "occurrences": {
+        "library.json": 13,
+        "candidates.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Computational Science",
+      "kind": "journal",
+      "aliases": [
+        "Nature Computational Science"
+      ],
+      "occurrences": {
+        "library.json": 5
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Electronics",
+      "kind": "journal",
+      "aliases": [
+        "Nature Electronics"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Health",
+      "kind": "journal",
+      "aliases": [
+        "Nature Health"
+      ],
+      "occurrences": {
+        "library.json": 17
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Human Behaviour",
+      "kind": "journal",
+      "aliases": [
+        "Nature Human Behaviour"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Machine Intelligence",
+      "kind": "journal",
+      "aliases": [
+        "Nature Machine Intelligence"
+      ],
+      "occurrences": {
+        "library.json": 137,
+        "candidates.json": 6,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Materials",
+      "kind": "journal",
+      "aliases": [
+        "Nature Materials"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Nature Medicine",
+        "Nature medicine"
+      ],
+      "occurrences": {
+        "library.json": 50,
+        "candidates.json": 30,
+        "radar-archive.json": 114,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Mental Health",
+      "kind": "journal",
+      "aliases": [
+        "Nature Mental Health"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Metabolism",
+      "kind": "journal",
+      "aliases": [
+        "Nature Metabolism"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Methods",
+      "kind": "journal",
+      "aliases": [
+        "Nature Methods"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Microbiology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Microbiology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature News",
+      "kind": "news",
+      "aliases": [
+        "Nature News"
+      ],
+      "occurrences": {
+        "library.json": 29
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Nature Protocols",
+      "kind": "journal",
+      "aliases": [
+        "Nature Protocols"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Bioengineering",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Bioengineering"
+      ],
+      "occurrences": {
+        "library.json": 6
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Cancer",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Cancer"
+      ],
+      "occurrences": {
+        "library.json": 4
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Cardiology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Cardiology"
+      ],
+      "occurrences": {
+        "library.json": 6,
+        "candidates.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Clinical Oncology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Clinical Oncology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Gastroenterology & Hepatology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Gastroenterology & Hepatology"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Neurology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Neurology"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Psychology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Psychology"
+      ],
+      "occurrences": {
+        "library.json": 19,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Nature Reviews Urology",
+      "kind": "journal",
+      "aliases": [
+        "Nature Reviews Urology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Neural Computing and Applications",
+      "kind": "journal",
+      "aliases": [
+        "Neural Computing and Applications"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "New England Journal of Medicine",
+      "kind": "journal",
+      "aliases": [
+        "NEJM",
+        "New England Journal of Medicine",
+        "The New England journal of medicine"
+      ],
+      "occurrences": {
+        "library.json": 40,
+        "candidates.json": 25,
+        "radar-archive.json": 115,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "News Center",
+      "kind": "news",
+      "aliases": [
+        "News Center"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "OpenAI News",
+      "kind": "news",
+      "aliases": [
+        "OpenAI News"
+      ],
+      "occurrences": {
+        "candidates.json": 30,
+        "source-health.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "PNAS",
+      "kind": "journal",
+      "aliases": [
+        "PNAS",
+        "PNAS-current"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "PNAS Nexus",
+      "kind": "journal",
+      "aliases": [
+        "PNAS Nexus"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Pacing and Clinical Electrophysiology",
+      "kind": "journal",
+      "aliases": [
+        "Pacing and Clinical Electrophysiology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Postgraduate Medical Journal",
+      "kind": "journal",
+      "aliases": [
+        "Postgraduate Medical Journal"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Progress in Cardiovascular Diseases",
+      "kind": "journal",
+      "aliases": [
+        "Progress in Cardio Dis"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "PubMed: 中国心血管病报告",
+      "kind": "collection",
+      "aliases": [
+        "CN CVD2022"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "PubMed: 丹麦房颤队列追踪",
+      "kind": "collection",
+      "aliases": [
+        "danish cohort atrial fibrillation"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "PubMed: 安贞团队论文追踪",
+      "kind": "collection",
+      "aliases": [
+        "AZ team"
+      ],
+      "occurrences": {
+        "source-health.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "PubMed: 房颤专病追踪",
+      "kind": "collection",
+      "aliases": [
+        "PubMed: 房颤专病追踪",
+        "atrial fibrillation"
+      ],
+      "occurrences": {
+        "candidates.json": 23,
+        "source-health.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Science",
+      "kind": "journal",
+      "aliases": [
+        "Science",
+        "Science Magazine"
+      ],
+      "occurrences": {
+        "library.json": 30,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Science Advances",
+      "kind": "journal",
+      "aliases": [
+        "Science Advances",
+        "Science Advances: ToC"
+      ],
+      "occurrences": {
+        "library.json": 3,
+        "candidates.json": 2,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Science Robotics",
+      "kind": "journal",
+      "aliases": [
+        "Science Robotics"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Scientific Reports",
+      "kind": "journal",
+      "aliases": [
+        "Scientific Reports"
+      ],
+      "occurrences": {
+        "library.json": 16
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Springer图书",
+      "kind": "book",
+      "aliases": [
+        "Springer图书"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "State of Generative AI",
+      "kind": "unknown",
+      "aliases": [
+        "State of Generative AI"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Stroke",
+      "kind": "journal",
+      "aliases": [
+        "Stroke"
+      ],
+      "occurrences": {
+        "candidates.json": 17,
+        "radar-archive.json": 475,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Stroke and Vascular Neurology",
+      "kind": "journal",
+      "aliases": [
+        "Stroke and Vascular Neurology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "TechRxiv",
+      "kind": "preprint",
+      "aliases": [
+        "TechRxiv"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "Technological Forecasting and Social Change",
+      "kind": "journal",
+      "aliases": [
+        "Technological Forecasting and Social Change"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The BMJ",
+      "kind": "journal",
+      "aliases": [
+        "BMJ (Clinical research ed.)",
+        "The BMJ"
+      ],
+      "occurrences": {
+        "library.json": 13,
+        "candidates.json": 6,
+        "radar-archive.json": 74,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Clinical Teacher",
+      "kind": "journal",
+      "aliases": [
+        "The Clinical Teacher"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet",
+      "kind": "journal",
+      "aliases": [
+        "Lancet (London, England)",
+        "The Lancet"
+      ],
+      "occurrences": {
+        "library.json": 18,
+        "candidates.json": 30,
+        "radar-archive.json": 116,
+        "source-health.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Diabetes & Endocrinology",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Diabetes & Endocrinology"
+      ],
+      "occurrences": {
+        "candidates.json": 11,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Digital Health",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Digital Health"
+      ],
+      "occurrences": {
+        "library.json": 43,
+        "candidates.json": 5,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Global Health",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Global Health"
+      ],
+      "occurrences": {
+        "candidates.json": 13,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Healthy Longevity",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Healthy Longevity"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Neurology",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Neurology"
+      ],
+      "occurrences": {
+        "candidates.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Oncology",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Oncology"
+      ],
+      "occurrences": {
+        "candidates.json": 10,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Primary Care",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Primary Care"
+      ],
+      "occurrences": {
+        "library.json": 4
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Public Health",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Public Health"
+      ],
+      "occurrences": {
+        "candidates.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "The Lancet Rheumatology",
+      "kind": "journal",
+      "aliases": [
+        "The Lancet Rheumatology"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Trends in Cardiovascular Medicine",
+      "kind": "journal",
+      "aliases": [
+        "Trends in Cardiovascular Medicine"
+      ],
+      "occurrences": {
+        "library.json": 1,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Unknown",
+      "kind": "unknown",
+      "aliases": [
+        "Unknown"
+      ],
+      "occurrences": {
+        "library.json": 6
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "Working Papers",
+      "kind": "preprint",
+      "aliases": [
+        "Working Papers"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "arXiv",
+      "kind": "preprint",
+      "aliases": [
+        "arXiv"
+      ],
+      "occurrences": {
+        "library.json": 76
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "eClinicalMedicine",
+      "kind": "journal",
+      "aliases": [
+        "eClinicalMedicine"
+      ],
+      "occurrences": {
+        "library.json": 4,
+        "candidates.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "eLife",
+      "kind": "journal",
+      "aliases": [
+        "eLife"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "medRxiv",
+      "kind": "preprint",
+      "aliases": [
+        "medRxiv"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "nejm系列",
+      "kind": "collection",
+      "aliases": [
+        "nejm系列"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "npj Artificial Intelligence",
+      "kind": "journal",
+      "aliases": [
+        "npj Artificial Intelligence"
+      ],
+      "occurrences": {
+        "library.json": 13
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "npj Cardiovascular Health",
+      "kind": "journal",
+      "aliases": [
+        "npj Cardiovascular Health"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "npj Digital Medicine",
+      "kind": "journal",
+      "aliases": [
+        "NPJ Digital Medicine",
+        "NPJ digital medicine",
+        "npj Digital Medicine"
+      ],
+      "occurrences": {
+        "library.json": 127,
+        "candidates.json": 12,
+        "radar-archive.json": 1013,
+        "curated-archive.json": 2,
+        "source-health.json": 1
+      },
+      "jifStatus": "verified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "npj Gut and Liver",
+      "kind": "journal",
+      "aliases": [
+        "npj Gut and Liver"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "npj Health Systems",
+      "kind": "journal",
+      "aliases": [
+        "npj Health Systems"
+      ],
+      "occurrences": {
+        "library.json": 15,
+        "source-health.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华传染病杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华传染病杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华健康管理学杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华健康管理学杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华儿科杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华儿科杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华内科杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华内科杂志"
+      ],
+      "occurrences": {
+        "library.json": 6
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华医学教育杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华医学教育杂志"
+      ],
+      "occurrences": {
+        "library.json": 2
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华医学杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华医学杂志"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华围产医学杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华围产医学杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华外科杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华外科杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华心血管病杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华心血管病杂志"
+      ],
+      "occurrences": {
+        "library.json": 6
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华放射肿瘤学杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华放射肿瘤学杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华病理学杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华病理学杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华眼科杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华眼科杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华精神科杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华精神科杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华结核和呼吸杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华结核和呼吸杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华胸部外科电子杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华胸部外科电子杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华药械研究与临床",
+      "kind": "journal",
+      "aliases": [
+        "中华药械研究与临床"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中华行为医学与脑科学杂志",
+      "kind": "journal",
+      "aliases": [
+        "中华行为医学与脑科学杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中国全科医学",
+      "kind": "journal",
+      "aliases": [
+        "中国全科医学"
+      ],
+      "occurrences": {
+        "library.json": 3
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中国卫生政策研究",
+      "kind": "journal",
+      "aliases": [
+        "中国卫生政策研究"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中国小儿急救医学",
+      "kind": "journal",
+      "aliases": [
+        "中国小儿急救医学"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "中国科学：信息科学",
+      "kind": "journal",
+      "aliases": [
+        "中国科学：信息科学"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "会议与会议稿",
+      "kind": "conference",
+      "aliases": [
+        "会议与会议稿"
+      ],
+      "occurrences": {
+        "library.json": 4
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "医学信息学研究稿",
+      "kind": "unknown",
+      "aliases": [
+        "医学信息学研究稿"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "博客与评论",
+      "kind": "blog",
+      "aliases": [
+        "博客与评论"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "not_applicable",
+      "jcrStatus": "not_applicable"
+    },
+    {
+      "name": "国际麻醉学与复苏杂志",
+      "kind": "journal",
+      "aliases": [
+        "国际麻醉学与复苏杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "实用心脑肺血管病杂志",
+      "kind": "journal",
+      "aliases": [
+        "实用心脑肺血管病杂志"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    },
+    {
+      "name": "计算机辅助设计与图形学学报",
+      "kind": "journal",
+      "aliases": [
+        "计算机辅助设计与图形学学报"
+      ],
+      "occurrences": {
+        "library.json": 1
+      },
+      "jifStatus": "unverified",
+      "jcrStatus": "unverified"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_work
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
     'index.html', 'app.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
     'scripts/source_fallbacks.py', 'editorial/legacy_published_guides.json', 'data/pubmed.json',

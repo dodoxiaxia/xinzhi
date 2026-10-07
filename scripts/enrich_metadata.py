@@ -37,7 +37,7 @@ _JOURNAL_GROUPS = {
     'European Heart Journal - Cardiovascular Pharmacotherapy': ['EHJ - Cardiovascular Pharmacotherapy', 'EHJ - Cardiovasc Pharmacotherapy'],
     'European Heart Journal - Cardiovascular Imaging': [],
     'European Heart Journal Supplements': [],
-    'European Journal of Heart Failure': ['EJHF'],
+    'European Journal of Heart Failure': ['EJHF', 'Euro J Heart Failure'],
     'Cardiovascular Research': [], 'Europace': [],
     'JACC': [], 'JACC: Advances': ['JACC Advances'],
     'JACC: Clinical Electrophysiology': ['JACC: CE'],
@@ -50,9 +50,9 @@ _JOURNAL_GROUPS = {
     'International Journal of Cardiology': ['IJC', 'Int. J. Cardiology (IJC)'],
     'Heart Rhythm': [], 'Heart Rhythm O2': [],
     'Heart': ['Heart Online First', 'Heart (British Cardiac Society)'],
-    'The BMJ': ['BMJ'],
+    'The BMJ': ['BMJ', 'BMJ (Clinical research ed.)'],
     'BMJ Digital Health & AI': ['BMJ Digital Health', 'BMJ Digital Health & AI current issue', 'BMJ Digital Health & AI recent issues'],
-    'The Lancet': [],
+    'The Lancet': ['Lancet (London, England)'],
     'The Lancet Digital Health': ['Lancet Digital Health'],
     'The Lancet Primary Care': ['Lancet Primary Care'],
     'The Lancet Rheumatology': ['Lancet Rheumatology'],
@@ -98,6 +98,7 @@ for _name in (
 _JOURNAL_ALIASES = {_journal_key(alias): canonical
                     for canonical, aliases in _JOURNAL_GROUPS.items()
                     for alias in [canonical, *aliases]}
+_JOURNAL_ALIASES[_journal_key('Progress in Cardio Dis')] = 'Progress in Cardiovascular Diseases'
 
 
 def clean_journal_name(journal):
