@@ -98,6 +98,16 @@
       "url": "https://www.frontiersin.org/journals/digital-health/about",
       "kind": "publisher_public",
       "verifiedAt": "2026-10-07T09:24:05Z"
+    },
+    "user-jcr-2025-reference": {
+      "label": "用户提供参考表：2025JCRIF-分区（2024 数据年 / 2025 发布版）",
+      "url": null,
+      "kind": "user_reference",
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "scope": "matched_site_journals_only"
     }
   },
   "journals": [
@@ -5611,6 +5621,658 @@
         "categoryCoverage": "unverified",
         "reason": "未核实完整 JCR 学科与分区"
       }
+    }
+  ],
+  "historicalReferences": [
+    {
+      "journalId": "j-0961a699e950",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-0bb7adaf437f",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CLINICAL NEUROLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-0ef0972d2e5f",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ENGINEERING, ELECTRICAL & ELECTRONIC(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-14fcd8fb5144",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "GASTROENTEROLOGY & HEPATOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-176c39e38676",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ONCOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-1a61b3c65f73",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "PUBLIC, ENVIRONMENTAL & OCCUPATIONAL HEALTH(SCIE, SSCI)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-20a7bc362115",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MULTIDISCIPLINARY SCIENCES(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-26240bd42e3b",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MULTIDISCIPLINARY SCIENCES(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-2ed78740b6fe",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ONCOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-3b262a002f52",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-45e7db772e92",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-4603f2941d73",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "BIOCHEMICAL RESEARCH METHODS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-482ca59f3eba",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-5288574fa0b3",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ONCOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-540e8155203a",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-5fccbb64e8e7",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "PUBLIC, ENVIRONMENTAL & OCCUPATIONAL HEALTH(SCIE, SSCI)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-6109ab3bc9df",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ENDOCRINOLOGY & METABOLISM(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-6b41f6ec5528",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CLINICAL NEUROLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-712a8499ae92",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CLINICAL NEUROLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-7be1c39ae2db",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ENDOCRINOLOGY & METABOLISM(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-7c7a0f89c94b",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ONCOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-8e165c3a78c4",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "BIOCHEMICAL RESEARCH METHODS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-90242c8cf91e",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ROBOTICS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-91444c745ca4",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MULTIDISCIPLINARY SCIENCES(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-94b95de5f753",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "PSYCHOLOGY, MULTIDISCIPLINARY(ESCI)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-9d948c73e0ad",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MULTIDISCIPLINARY SCIENCES(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-a769ec16388f",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-ac6901741d2f",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "SURGERY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-afc31abe926e",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MICROBIOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-afe279386de9",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ENGINEERING, BIOMEDICAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-b417132033f2",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "RHEUMATOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-b4b4546689fd",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-b6e148883444",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "PEDIATRICS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-c5b385a592e1",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-c64cf1836c23",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-c71ce8ccf3b4",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MULTIDISCIPLINARY SCIENCES(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-cacb4f2498ee",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-d8d8f93e4807",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-dcd49442d7ae",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-e130fe7da202",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-e2a0a0e8aa05",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(ESCI)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-e4756f9afc90",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "GERIATRICS & GERONTOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-e9c30224892e",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-ef5cb136ef7c",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "ONCOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-f0fb0c53a7b3",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "PSYCHIATRY(SCIE, SSCI)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-f382ff4aab4f",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-f948c5812598",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "BIOTECHNOLOGY & APPLIED MICROBIOLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-f98b4fec0fae",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "CARDIAC & CARDIOVASCULAR SYSTEMS(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-fb9d4a298fc8",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "UROLOGY & NEPHROLOGY(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
+    },
+    {
+      "journalId": "j-fe314b262b90",
+      "dataYear": 2024,
+      "releaseYear": 2025,
+      "category": "MEDICINE, GENERAL & INTERNAL(SCIE)",
+      "quartile": "Q1",
+      "sources": [
+        "user-jcr-2025-reference"
+      ],
+      "checkedAt": "2026-10-07T09:37:13Z",
+      "status": "historical_reference_unverified",
+      "categoryCoverage": "reference_single_category"
     }
   ]
 }

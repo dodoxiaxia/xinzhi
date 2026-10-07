@@ -8,7 +8,7 @@
 
 完整逐刊来源覆盖见 [coverage CSV](journal-metrics-coverage-20261007.csv)，缺失见 [unverified CSV](journal-metrics-unverified-20261007.csv)，原始别名及出现次数见 [inventory JSON](journal-metrics-inventory-20261007.json)。14 刊有核实 JIF，168 标签 JIF 未核实；全部 182 个适用/身份不清标签的 JCR 分区仍未核实，23 标签为不适用。8 刊公开学科与 JIF 排名已记录，但不以排名比例推算 Q 值。没有混用 JCI 排名、CiteScore、SJR 或中科院分区。
 
-后续收到的 5 份“供参考”表已按 [有限覆盖审计](journal-reference-audit-20261007.md)纳入：受支持字节访问 403，预览可见范围匹配 73 标签/74 记录；2024 JIF/2025 JCR 与官方较新值分开，50 单学科 Q 候选及 18 多学科单 Q 行只进私有中间表，未变成已核当前指标。新增 5 个参考表回归检查通过，journal Python 总数为 18。
+后续收到的 5 份“供参考”表已按 [有限覆盖审计](journal-reference-audit-20261007.md)核对：受支持字节访问 403，预览可见范围匹配 73 标签/74 记录。用户进一步明确请求有限历史展示后，按 [历史参考策略](journal-reference-history-20261007.md)加入 50 条单学科 2024 Q，状态始终为用户历史参考、待官方核对；18 条多学科单 Q 仍只进私有未映射报告。官方 2025 JIF 与当前 JCR 对象完全不变。journal Python 总数为 25，Node 为 43。
 
 ## 核实来源
 
@@ -44,13 +44,14 @@
 ```js
 const JM = window.JournalMetrics;
 JM.resolve(paper);          // paper/string/ISSN 精确映射；名称与 ISSN 冲突时未核实
+JM.historicalReferences(paper); // 独立 2024 历史参考，不覆盖 resolve 的当前指标
 JM.renderBadge(paper);      // 无交互 span，可放在筛选 button 内
 JM.renderDetails(paper);    // 原生 details/summary，必须放在 button/a 外
 JM.compactText(paper);      // option、分享/Markdown 用纯文本
 JM.detailText(paper);       // 完整学科、年份、状态与边界说明
 ```
 
-示例：`IF 18.0 (2025) · JCR 未核实 (2026)`；非期刊：`IF/JCR 不适用`。多学科只在完整核实时显示全体不同分区 `Q1/Q3`，不选最好分区。部分学科已有明确 Q 值时显示 `Q1/Q3*`，展开说明覆盖不完整；当前真实数据没有 Q 值。类别排名和分区是不同字段。期刊指标只描述期刊，不给单篇文献评级，不参与现有优先级排序。
+示例：`IF 18.0 (2025) · JCR 未核实 (2026)`；历史参考示例：`IF 45.6 (2025) · JCR 2024 Q1 · 用户提供参考表 · 待官方核对`；非期刊：`IF/JCR 不适用`。当前多学科只在完整核实时显示全体不同分区 `Q1/Q3`，不选最好分区。部分学科已有明确 Q 值时显示 `Q1/Q3*`，展开说明覆盖不完整；当前官方数据没有 Q 值，历史层另记 50 条未核实参考。类别排名和分区是不同字段。期刊指标只描述期刊，不给单篇文献评级，不参与现有优先级排序。
 
 `journal-metrics.css` 是提供布局任务合并的样式片段，未自动改变 style.css。badge 可在两个完整 token 之间换行；展开内容允许长学科/URL换行。原始本地 index 预览尚未加新的 scripts；集成时可用 public/index.html + 已打包 public.js 预览，或明确加开发用注册表脚本。
 
