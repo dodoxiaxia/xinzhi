@@ -2622,7 +2622,6 @@
   // Initialize
   updateHeaderBadges();
   updateHuddleCounter();
-  renderSidebarFilters();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
   if (searchInput && state.search) searchInput.value = state.search;
   switchMode(state.mode, true);
