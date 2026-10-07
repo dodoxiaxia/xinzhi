@@ -1058,3 +1058,23 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
 .weekly-abstract summary { cursor:pointer; color:var(--accent); }
 .weekly-abstract p { white-space:pre-wrap; color:var(--text-secondary); overflow-wrap:anywhere; }
 @media (max-width:720px) { .content-status { padding:8px 16px; gap:4px 16px; } }
+
+/* Shared journal indicator component. */
+.journal-metrics-badge { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .4rem; max-width: 100%; min-width: 0; font-size: .72rem; line-height: 1.45; color: var(--text-muted, #566375); vertical-align: baseline; }
+.journal-metric-token { white-space: nowrap; }
+.journal-metrics-details { min-width: 0; max-width: 100%; font-size: .78rem; line-height: 1.5; }
+.journal-metrics-details summary { cursor: pointer; overflow-wrap: anywhere; }
+.journal-metrics-details p, .journal-metrics-details li { overflow-wrap: anywhere; }
+.journal-metrics-details small { display: block; }
+.journal-metrics-details summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+
+.journal-filter-label { min-width: 0; flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; overflow-wrap: anywhere; }
+.journal-filter-item .journal-metrics-details { margin: 0 12px 10px; }
+.compact-meta { flex-wrap: wrap; }
+.source-journal-metrics { margin: 8px 0; }
+.drawer-header #drawerJournalBadges { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px; min-width: 0; }
+.huddle-item-meta .journal-metrics-badge { display: inline-flex; }
+[data-journal-metrics] { display: block; margin-top: 6px; }
+
+.static-journal-metric { display: block; margin-top: 6px; }
+.static-journal-metric [data-journal-metrics] { display: inline; margin-left: 6px; }

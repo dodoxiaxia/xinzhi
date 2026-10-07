@@ -111,6 +111,7 @@ def main():
             page.evaluate('''() => {
               const ids=[...document.querySelectorAll('.weekly-auto-item')].slice(0,2).map(e=>e.dataset.paperId);
               window.FEEDS.items.filter(p=>ids.includes(p.id)).forEach(p=>{p._testWeeklyPick=p.weeklyPick;delete p.weeklyPick;});
+              window.PREGENERATED={}; // Exercise on-demand requests separately from actual embedded caches.
             }''')
 
     try:
