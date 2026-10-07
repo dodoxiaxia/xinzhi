@@ -36,7 +36,8 @@ function harness(options={}){
   return options.pdfResponse?options.pdfResponse(u,init):new Response(pdf,{headers:{'content-type':'application/pdf'}});
  };
  const timers=options.fastTimers?(callback,ms)=>setTimeout(callback,Math.min(ms,15)):setTimeout;
- const context=vm.createContext({URL,URLSearchParams,Response,Request,TextEncoder,TextDecoder,Uint8Array,AbortController,setTimeout:timers,clearTimeout,crypto:webcrypto,fetch,console});
+ const ClockDate=options.clock?class extends Date {constructor(...args){super(...(args.length?args:[options.clock.now]));}static now(){return options.clock.now;}}:Date;
+ const context=vm.createContext({URL,URLSearchParams,Response,Request,TextEncoder,TextDecoder,Uint8Array,AbortController,setTimeout:timers,clearTimeout,crypto:webcrypto,fetch,console,Date:ClockDate});
  const policy=options.policy||{};
  vm.runInContext(source.replace('const DOI_ADJUDICATIONS = {};','const DOI_ADJUDICATIONS = '+JSON.stringify(policy)+';').replace('export default {','globalThis.worker = {'),context);
  const env={...baseEnv,QL_KV:kv};
@@ -46,6 +47,13 @@ function harness(options={}){
 async function error(response,status,code){assert.equal(response.status,status);const text=await response.text();assert(!text.includes(baseEnv.GITHUB_LIBRARY_TOKEN));assert(!text.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!text.includes(file));const body=JSON.parse(text);assert.equal(body.ok,false);assert.equal(body.error,code);assert.equal(response.headers.get('cache-control'),'no-store');}
 function record(fulltextStatus='available',changes={}){const paper={id:'doi-'+hash(doi).slice(0,16),doi,title,journal:'Heart',authors:['Jane Doe'],date:'2026-10-07',datePrecision:'day',dateBasis:'Crossref published-online',ingestedAt:'2026-10-07T04:00:00Z',metadataStatus:'external_bibliography_checked',fulltextStatus,...changes};return {version:1,paper,...(fulltextStatus==='available'?{pdf:{key:'library:pdf:'+hash(pdf),sha256:hash(pdf),size:pdf.length,source:'oa'}}:{})};}
 function seed(h,rec=record()){h.values.set(key,JSON.stringify(rec));h.values.set('library:pdf:'+hash(pdf),pdf);}
+function passiveHtml(html){
+ assert(!/<script\b/i.test(html),'retry pages never run automatic acquisition scripts');
+ assert(!/<meta\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(html),'retry pages never automatically refresh');
+ assert(!/\bon(?:load|click|submit)\s*=/i.test(html),'retry requires explicit form submission');
+ assert(!html.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));
+ assert(!html.includes(baseEnv.GITHUB_LIBRARY_TOKEN));
+}
 (async()=>{
  let h=harness();
  for(const route of ['/api/acquire','/api/fulltext']){const res=await h.request(route,{method:'GET',env:{QL_KV:undefined,GITHUB_LIBRARY_TOKEN:undefined,PDF_DOWNLOAD_ENABLED:undefined}});assert.equal(res.status,200);assert.equal(res.headers.get('referrer-policy'),'same-origin');const html=await res.text();assert(html.includes('method="post"'));assert(html.includes('autocomplete="current-password"'));assert(!html.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));}
@@ -88,6 +96,28 @@ function seed(h,rec=record()){h.values.set(key,JSON.stringify(rec));h.values.set
  h=harness();h.values.set('library:lock:'+doi,JSON.stringify({owner:'other-owner',until:Date.now()+60000}));await error(await h.request(),409,'library_busy');assert.equal(h.calls.length,0);
  h=harness({crossrefResponse:()=>{h.values.set('library:lock:'+doi,JSON.stringify({owner:'another-owner',until:Date.now()+60000}));return Response.json(crossref());}});assert.equal((await h.request()).status,200);assert.equal(JSON.parse(h.values.get('library:lock:'+doi)).owner,'another-owner');
  h=harness();const today=new Date().toISOString().slice(0,10);h.values.set('library:cap:'+today,'30');await error(await h.request(),429,'library_limit');assert.equal(h.calls.length,0);
+
+ // Authorization/identity holds are not countdowns; repeat only reads the saved record.
+ const fixedNow=Date.parse('2026-10-07T04:05:06.000Z'),clock={now:fixedNow},attemptKey='library:attempt:'+doi;
+ h=harness({rows:[],oa:false,clock});const waiting=await h.request('/api/acquire',{headers:{accept:'text/html'}}),waitingHtml=await waiting.text();assert.equal(waiting.status,202);assert.equal(waiting.headers.get('retry-after'),null);assert(waitingHtml.includes('Hamburg'));assert(!waitingHtml.includes('5 分钟'));passiveHtml(waitingHtml);const callsAtHold=h.calls.length;clock.now+=900000;const repeated=await h.request();assert.equal(repeated.status,202);assert.equal((await repeated.json()).cached,true);assert.equal(h.calls.length,callsAtHold);
+ const waitingForm=await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}});assert.equal(waitingForm.headers.get('retry-after'),null);passiveHtml(await waitingForm.text());const lookup=await(await h.request('/api/library',{method:'GET'})).json();assert(!Object.hasOwn(lookup,'retryAfter'));
+ // Preserve main's exact busy/quota/cache synchronization deadlines.
+ h=harness({clock:{now:fixedNow}});h.values.set('library:lock:'+doi,JSON.stringify({owner:'other-owner',until:fixedNow+41000}));
+ const busy=await h.request(),busyBody=await busy.clone().json();await error(busy,409,'library_busy');assert.equal(busyBody.retryAfter,fixedNow+41000);assert.equal(busyBody.retryAfterSeconds,41);assert.equal(busy.headers.get('retry-after'),'41');assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
+ h=harness({clock:{now:fixedNow}});h.values.set('library:cap:2026-10-07','30');
+ const capped=await h.request(),cappedBody=await capped.clone().json();await error(capped,429,'library_limit');assert.equal(cappedBody.retryAfter,Date.parse('2026-10-08T00:00:00.000Z'));assert.equal(cappedBody.retryAfterSeconds,71694);assert.equal(capped.headers.get('retry-after'),'71694');assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
+ const cappedHtml=await (await h.request('/api/acquire',{headers:{accept:'text/html'}})).text();assert(cappedHtml.includes('额度重置后可再试'));assert(cappedHtml.includes('北京时间 2026-10-08 08:00:00 起'));passiveHtml(cappedHtml);
+ h=harness({clock:{now:fixedNow},putError:k=>k.startsWith('library:cap:'),rateError:true});const kvLimited=await h.request(),kvLimitedBody=await kvLimited.clone().json();await error(kvLimited,429,'library_retry_later');assert.equal(kvLimitedBody.retryAfter,fixedNow+60000);assert.equal(kvLimited.headers.get('retry-after'),'60');assert.equal(h.calls.length,0);
+ h=harness({clock:{now:fixedNow}});seed(h);h.values.delete('library:pdf:'+hash(pdf));
+ for(const route of ['/api/fulltext','/api/acquire']){
+  const syncing=await h.request(route),syncBody=await syncing.clone().json();await error(syncing,503,'library_sync_pending');assert.equal(syncBody.retryAfter,fixedNow+60000);assert.equal(syncBody.retryAfterSeconds,60);assert.equal(syncing.headers.get('retry-after'),'60');
+  const syncHtml=await (await h.request(route,{headers:{accept:'text/html'}})).text();assert(syncHtml.includes('1 分钟后手动重试'));assert(syncHtml.includes('北京时间 2026-10-07 12:06:06 起'));assert(syncHtml.includes('href="'+route+'?doi=10.1000%2Fexact"'));passiveHtml(syncHtml);
+ }
+ assert.equal(h.calls.length,0);assert.equal(h.writes.length,0,'checking storage synchronization must not trigger acquisition');
+ h=harness({clock:{now:fixedNow}});seed(h);h.values.set(attemptKey,JSON.stringify({status:'pending',retryAfter:fixedNow+300000}));
+ const readyLookup=await (await h.request('/api/library',{method:'GET'})).json();assert.equal(readyLookup.found,true);assert.equal(readyLookup.status,'available');assert(!Object.hasOwn(readyLookup,'retryAfter'));assert(!Object.hasOwn(readyLookup,'retryAfterSeconds'));
+ const readyForm=await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}}),readyFormHtml=await readyForm.text();assert.equal(readyForm.status,200);assert.equal(readyForm.headers.get('retry-after'),null);assert(!readyFormHtml.includes('后手动重试'));assert(!readyFormHtml.includes('北京时间'));passiveHtml(readyFormHtml);
+ assert.equal(h.calls.length,0);assert.equal(h.writes.length,0,'an observed successful record supersedes a stale failed-attempt deadline');
 
  h=harness();seed(h,record('available',{hash:'secret',doctorApproved:true,hasDraft:true,draftData:{secret:'private'},repo_path:file}));let listing=await h.request('/api/library',{method:'GET',query:''});assert.equal(listing.status,200);const listed=await listing.json();assert.equal(listed.papers.length,1);assert(!JSON.stringify(listed).includes(file));for(const field of ['hash','doctorApproved','hasDraft','draftData','repo_path','pdf','sha256','key'])assert(!Object.hasOwn(listed.papers[0],field));assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
  await h.request('/api/library',{method:'GET',query:''});assert.equal(h.lists.length,1,'public short cache reduces list operations');
