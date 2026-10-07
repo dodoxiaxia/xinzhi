@@ -4,6 +4,7 @@ Publisher fetch health stays independent of fallback evidence. Never infer a
 successful fallback from configuration alone or a zero-result truncated query.
 """
 import datetime
+import hashlib
 import re
 from enrich_metadata import clean_journal_name
 
@@ -25,7 +26,9 @@ ALIASES = {
 ADDITIONAL_JOURNALS = ('Nature Reviews Cardiology', 'Nature Aging', 'Nature Cancer',
                        'Communications Medicine', 'Nature Reviews Psychology',
                        'Nature Communications', 'Nature Machine Intelligence', 'npj Health Systems')
-TOPIC_SCOPED_JOURNALS = set(ADDITIONAL_JOURNALS) - {'Nature Reviews Cardiology', 'Communications Medicine'}
+# Health-systems research is already within the medical watch scope. A narrow
+# AI/cardio word list excludes relevant agentic health-data articles.
+TOPIC_SCOPED_JOURNALS = set(ADDITIONAL_JOURNALS) - {'Nature Reviews Cardiology', 'Communications Medicine', 'npj Health Systems'}
 TOPIC_TERM = '(' + ' OR '.join('"' + term + '"[Title/Abstract]' for term in
     ('cardiovascular', 'cardiac', 'coronary', 'atrial', 'heart failure', 'hypertension',
      'stroke', 'artificial intelligence', 'machine learning', 'deep learning',
@@ -45,6 +48,21 @@ def journal_key(value):
 def journal_query(journal):
     term = '"' + journal + '"[Journal]'
     return '(' + term + ' AND ' + TOPIC_TERM + ')' if journal in TOPIC_SCOPED_JOURNALS else term
+
+
+def snapshot_query_scope(journal, query):
+    """Describe the stored journal clause, never today's query configuration."""
+    if not isinstance(query, str) or not query.strip():
+        return 'unknown'
+    term = re.escape('"' + journal + '"[Journal]')
+    scoped = re.search(term + r'\s+AND\s+\(([^()]*)\)', query, re.I)
+    if scoped:
+        constraint = scoped.group(1)
+        if re.sub(r'\s+', ' ', constraint).casefold() == TOPIC_TERM[1:-1].casefold():
+            return 'cardiovascular_or_ai'
+        date_window = r'"\d{4}/\d{2}/\d{2}"\[Date - Publication\]\s*:\s*"\d{4}/\d{2}/\d{2}"\[Date - Publication\]'
+        return 'journal' if re.fullmatch(date_window, constraint.strip(), re.I) else 'unknown'
+    return 'journal' if re.search(term + r'\s*(?=\)|OR\b|$)', query, re.I) else 'unknown'
 
 
 def coverage(source, pubmed, now):
@@ -74,8 +92,10 @@ def coverage(source, pubmed, now):
     except ValueError:
         stale = True
         checked_at = None
+    query = pubmed.get('query')
     return {'provider': 'PubMed', 'journal': journal, 'configured': configured,
             'observedItems': len(rows), 'eligibleItems': eligible,
             'checkedAt': checked_at, 'queryTruncated': pubmed.get('truncated') is True,
-            'stale': stale, 'queryScope': 'cardiovascular_or_ai' if journal in TOPIC_SCOPED_JOURNALS else 'journal',
+            'stale': stale, 'queryScope': snapshot_query_scope(journal, query),
+            'queryHash': hashlib.sha256(query.encode()).hexdigest() if isinstance(query, str) and query.strip() else None,
             'status': 'records_observed' if rows else 'no_records_observed' if configured else 'not_configured'}

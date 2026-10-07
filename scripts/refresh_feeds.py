@@ -9,6 +9,7 @@ import datetime
 import email.utils
 import hashlib
 import html
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
@@ -411,17 +412,44 @@ def _report(source, **fields):
             'checkedAt': utcnow().isoformat(), **fields}
 
 
+class _AccessPageHints(HTMLParser):
+    """Observe verification resources and canonical/form targets; never fetch them."""
+    def __init__(self):
+        super().__init__()
+        self.verification = False
+        self.cookie_requirement = False
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        keys = ('src',) if tag in {'img', 'script', 'iframe'} else ('action',) if tag == 'form' else ()
+        if tag == 'link' and 'canonical' in (attrs.get('rel') or '').lower().split():
+            keys = ('href',)
+        for key in keys:
+            try:
+                parts = urlsplit(attrs.get(key) or '')
+            except ValueError:
+                continue
+            self.verification |= parts.hostname == 'verify.nature.com'
+            self.cookie_requirement |= 'cookies_not_supported' in parts.query.lower()
+
+
 def non_feed_reason(raw, response_url):
     """Classify public landing/challenge pages without retaining their text."""
     value, _ = _diagnostic_text(raw[:100_000])
     lower = value.lower()
-    if any(marker in lower for marker in ('just a moment', 'checking your browser',
+    hints = _AccessPageHints()
+    try:
+        hints.feed(value)
+    except (AssertionError, ValueError):
+        # Malformed HTML still stays a failed feed; diagnostic hints are optional.
+        pass
+    parts = urlsplit(response_url)
+    if hints.cookie_requirement or 'cookies_not_supported' in parts.query.lower():
+        return 'publisher_cookie_requirement'
+    if hints.verification or any(marker in lower for marker in ('just a moment', 'checking your browser',
                                           'enable javascript and cookies', '_cf_chl_',
                                           'verify you are human', 'access denied')):
         return 'publisher_access_challenge'
-    parts = urlsplit(response_url)
-    if 'cookies_not_supported' in parts.query.lower():
-        return 'publisher_cookie_requirement'
     if re.search(r'/(?:login|signin|sign-in|sso)(?:/|$)', parts.path, re.I):
         return 'publisher_login_page'
     if parts.hostname == 'link.springer.com' and re.match(r'^/journal/\d+(?:/articles)?/?$', parts.path):
@@ -455,6 +483,8 @@ def fetch(source):
     except urllib.error.HTTPError as error:
         return _report(source, ok=False, status='http_error', items=0, rawItems=None,
                        startedAt=started, httpStatus=error.code, code=error.code, attempted=True,
+                       responseUrl=safe_url(error.geturl()),
+                       responseContentType=(error.headers.get('Content-Type', '') if error.headers else '').split(';', 1)[0].strip().lower()[:120],
                        error='HTTP ' + str(error.code), errorClass=type(error).__name__), []
     except FeedParseError as error:
         return _report(source, ok=False, status=error.status, items=0, rawItems=None,
