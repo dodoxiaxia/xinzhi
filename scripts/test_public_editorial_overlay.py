@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class CurrentEditorial(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.saved = load_board(ROOT)
+        cls.saved = load_board(ROOT, include_supplements=False)
 
     def test_full_correction_passes_original_validators_and_provenance(self):
         safe = public_weekly_board(self.saved)

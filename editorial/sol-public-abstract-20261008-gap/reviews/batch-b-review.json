@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-07T18:05:33.841622+00:00",
+  "reviewType": "independent-public-abstract-machine-review",
+  "reviewer": "gap_sol_review_b",
+  "requestedModel": "gpt-6.1-sol",
+  "backendModelVerified": false,
+  "modelVersion": "sol-session-model-unobserved",
+  "scope": {
+    "ranks": [
+      22,
+      23,
+      24
+    ],
+    "source": "provided-public-abstract-snapshot-only",
+    "humanReview": false,
+    "medicalReview": false,
+    "fullTextReview": false,
+    "networkUsed": false,
+    "externalApiUsed": false,
+    "privatePdfUsed": false,
+    "sourceDraftCacheLedgerModifiedByReviewer": false
+  },
+  "inputs": [
+    {
+      "path": "/workspace/week-sol-gap-20261008/editorial/sol-public-abstract-20261008-gap/sources.json",
+      "sha256": "e1c9d1994ad833ffe6c8e376a680aa65d0208e99a5a58d0c1b818a27935a2490"
+    },
+    {
+      "path": "/workspace/week-sol-gap-20261008/editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+      "sha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+    }
+  ],
+  "validator": {
+    "path": "/workspace/week-sol-gap-20261008/scripts/validate_week_precompute.cjs",
+    "sha256": "757320aee89e9d340948d291c04cf25b13a1d22f666ce9f43fe5570699510320",
+    "rulesRelaxed": false,
+    "passedTasks": 6,
+    "quoteCount": 11,
+    "allQuotesExactContinuous": true
+  },
+  "reviewHistory": [
+    {
+      "rank": 22,
+      "field": "quicklook.one_line",
+      "code": "abstract_scope_overclaim",
+      "status": "resolved",
+      "firstDraftSha256": "3a62b4118a6d9613ed6f5dd9100937d09a7a48b1b0c366885942065021490083",
+      "originalText": "个体化消融方案与较低复发相关，灌注的独立贡献未被分离。",
+      "issue": "未限定摘要证据范围，可能被理解为已确认整个研究未分析灌注独立贡献；本复核未读全文。",
+      "finalText": "个体化消融方案与较低复发相关；摘要未单独比较灌注的效果。",
+      "resolution": "将结论明确限定为“摘要未单独比较灌注的效果”；已全读最终三篇稿件并重新运行全部六项生产校验。"
+    }
+  ],
+  "papers": [
+    {
+      "rank": 22,
+      "paperID": "doi:10.1111/jce.70522",
+      "doi": "10.1111/jce.70522",
+      "pmid": "42836744",
+      "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+      "sourceDate": "2026-10-06",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836744/",
+      "pass": true,
+      "issues": [],
+      "resolvedIssues": [
+        {
+          "rank": 22,
+          "field": "quicklook.one_line",
+          "code": "abstract_scope_overclaim",
+          "status": "resolved",
+          "firstDraftSha256": "3a62b4118a6d9613ed6f5dd9100937d09a7a48b1b0c366885942065021490083",
+          "originalText": "个体化消融方案与较低复发相关，灌注的独立贡献未被分离。",
+          "issue": "未限定摘要证据范围，可能被理解为已确认整个研究未分析灌注独立贡献；本复核未读全文。",
+          "finalText": "个体化消融方案与较低复发相关；摘要未单独比较灌注的效果。",
+          "resolution": "将结论明确限定为“摘要未单独比较灌注的效果”；已全读最终三篇稿件并重新运行全部六项生产校验。"
+        }
+      ],
+      "identityCheck": {
+        "pass": true,
+        "doiPmidAndSourceHashMatch": true,
+        "sourceHashRecomputed": true,
+        "dateWithinSnapshotWindow": true,
+        "dateVerificationScope": "仅对应sources.json日期2026-10-06及窗口2026-10-02至2026-10-08；draft无独立日期字段，未联网重新验证发布日期。"
+      },
+      "fieldReviews": {
+        "translate.title_zh + quicklook.title_zh": {
+          "pass": true,
+          "evidence": "两处中文标题准确保留持续性AF、VoM乙醇灌注与个体化策略。"
+        },
+        "translate.abstract_zh": {
+          "pass": true,
+          "evidence": "背景、方法、结果和结论完整。118例、男性71%、62 ± 10岁、59/59组、2022年8月至2024年8月、1年随访、60%灌注、14%因无LVA不做额外消融、两例阻滞例外、总体22%复发、13.5%对30.5%（p = 0.02）、HR 0.41 [0.17-0.94]（p = 0.04）及不良事件阴性均对应；HR与无复发的原文表述保留，未自行修正原文。"
+        },
+        "quicklook.one_line": {
+          "pass": true,
+          "evidence": "最终稿限定为摘要未单独比较灌注效果，首轮范围问题已解决。"
+        },
+        "quicklook.design": {
+          "pass": true,
+          "evidence": "前瞻性、单中心、倾向评分匹配观察比较，整体个体化方案对照单纯PVI；未称随机试验或单独灌注因果效果。"
+        },
+        "quicklook.findings": {
+          "pass": true,
+          "evidence": "三项finding中的数值、方向及比较对象对应各自引句；复发比较明确针对整体方案，不良事件阴性保留。"
+        },
+        "quicklook.limits": {
+          "pass": true,
+          "evidence": "原摘要无专门局限陈述；缺项说明准确，不代表研究无局限。"
+        },
+        "quicklook.why_read": {
+          "pass": true,
+          "evidence": "LVA引导整体方案的观察结果与灌注独立效果区分合理，没有提出诊疗推荐。"
+        }
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactContinuousSubstring": true,
+          "quote": "In the tailored group, VoM ethanol infusion was performed in 60% of patients, while ablation beyond pulmonary veins was not performed in 14% of patients due to LVA absence."
+        },
+        {
+          "findingIndex": 2,
+          "exactContinuousSubstring": true,
+          "quote": "At 1-year follow-up, 22% of patients had atrial arrhythmia recurrence. The risk of recurrence was significantly lower in the tailored approach group (13.5% vs. 30.5%, p = 0.02)."
+        },
+        {
+          "findingIndex": 3,
+          "exactContinuousSubstring": true,
+          "quote": "A tailored approach was independently associated with freedom from atrial arrhythmia recurrence (HR 0.41 [0.17-0.94], p = 0.04). No significant differences in adverse events were observed between groups."
+        }
+      ],
+      "productionValidator": {
+        "translate": {
+          "pass": true,
+          "exitCode": 0,
+          "returnedValueUnchanged": true
+        },
+        "quicklook": {
+          "pass": true,
+          "exitCode": 0,
+          "returnedValueUnchanged": true
+        }
+      }
+    },
+    {
+      "rank": 23,
+      "paperID": "doi:10.1111/jce.70525",
+      "doi": "10.1111/jce.70525",
+      "pmid": "42836740",
+      "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+      "sourceDate": "2026-10-06",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836740/",
+      "pass": true,
+      "issues": [],
+      "resolvedIssues": [],
+      "identityCheck": {
+        "pass": true,
+        "doiPmidAndSourceHashMatch": true,
+        "sourceHashRecomputed": true,
+        "dateWithinSnapshotWindow": true,
+        "dateVerificationScope": "仅对应sources.json日期2026-10-06及窗口2026-10-02至2026-10-08；draft无独立日期字段，未联网重新验证发布日期。"
+      },
+      "fieldReviews": {
+        "translate.title_zh + quicklook.title_zh": {
+          "pass": true,
+          "evidence": "标题对应ASD处理状态、AF消融后长期结局及真实世界队列。"
+        },
+        "translate.abstract_zh": {
+          "pass": true,
+          "evidence": "完整覆盖背景、目的、方法、结果与结论。总计27 675例，房间隔完整27 134、未修补232、经皮119、外科190例；分组之和正确。首次AF消融、三项比较、重叠加权、Cox模型、3个月空白期、房性复发和次要复合心血管结局保留。未修补HR 1.27、95% CI 1.07-1.51、p = 0.006及3个月至1年；外科HR 1.21、95% CI 1.01-1.46、p = 0.038及1年后；经皮HR 1.07、95% CI 0.83-1.38、p = 0.589与复合心血管阴性均对应。"
+        },
+        "quicklook.one_line": {
+          "pass": true,
+          "evidence": "不同ASD状态与不同复发时间模式符合原文结论。"
+        },
+        "quicklook.design": {
+          "pass": true,
+          "evidence": "真实世界队列、房间隔状态分组、重叠加权与Cox模型准确，无随机或处理疗效的因果断言。"
+        },
+        "quicklook.findings": {
+          "pass": true,
+          "evidence": "四项分别对应未修补、外科、经皮及心血管复合结果；HR、置信区间、p值和不同时间段准确；未将阴性当等效。"
+        },
+        "quicklook.limits": {
+          "pass": true,
+          "evidence": "原摘要无明确局限段，缺项表述准确。"
+        },
+        "quicklook.why_read": {
+          "pass": true,
+          "evidence": "关注处理状态、时间模式和风险分层，明确无显著差异不代表等效，无治疗指令。"
+        }
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactContinuousSubstring": true,
+          "quote": "Compared with an intact septum, unrepaired ASD was associated with a higher recurrence risk (hazard ratio [HR], 1.27; 95% CI, 1.07-1.51; p = 0.006), with excess risk mainly observed between 3 months and 1 year after ablation."
+        },
+        {
+          "findingIndex": 2,
+          "exactContinuousSubstring": true,
+          "quote": "Surgical repair was also associated with higher recurrence risk (HR, 1.21; 95% CI, 1.01-1.46; p = 0.038), with differences emerging beyond 1 year."
+        },
+        {
+          "findingIndex": 3,
+          "exactContinuousSubstring": true,
+          "quote": "Percutaneous closure was not associated with increased recurrence risk (HR, 1.07; 95% CI, 0.83-1.38; p = 0.589)."
+        },
+        {
+          "findingIndex": 4,
+          "exactContinuousSubstring": true,
+          "quote": "Composite cardiovascular outcomes did not differ significantly across groups."
+        }
+      ],
+      "productionValidator": {
+        "translate": {
+          "pass": true,
+          "exitCode": 0,
+          "returnedValueUnchanged": true
+        },
+        "quicklook": {
+          "pass": true,
+          "exitCode": 0,
+          "returnedValueUnchanged": true
+        }
+      }
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1111/jce.70526",
+      "doi": "10.1111/jce.70526",
+      "pmid": "42836742",
+      "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+      "sourceDate": "2026-10-06",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836742/",
+      "pass": true,
+      "issues": [],
+      "resolvedIssues": [],
+      "identityCheck": {
+        "pass": true,
+        "doiPmidAndSourceHashMatch": true,
+        "sourceHashRecomputed": true,
+        "dateWithinSnapshotWindow": true,
+        "dateVerificationScope": "仅对应sources.json日期2026-10-06及窗口2026-10-02至2026-10-08；draft无独立日期字段，未联网重新验证发布日期。"
+      },
+      "fieldReviews": {
+        "translate.title_zh + quicklook.title_zh": {
+          "pass": true,
+          "evidence": "标题对应胸内阻抗与快速性心律失常发生的时间关联。"
+        },
+        "translate.abstract_zh": {
+          "pass": true,
+          "evidence": "完整覆盖背景、回顾性队列方法、结果和结论。117例植入器械患者、中位668天、89 637人日、28%复发性AF、平均AF负荷0.27、15%患者中773次VT发作准确，未把负荷转为百分比或混淆患者数与发作数。患者特异性γ与事件前后负荷比较保留；AF降低事件γ 0.68对0.48（p = 0.04）；六例VT患者γ 0.52对0.21（p = 0.82）；AF及VT升高事件阴性；合并发作层4对7天（p < 0.001）、48%发作在降低后3天内均准确。"
+        },
+        "quicklook.one_line": {
+          "pass": true,
+          "evidence": "区分后续AF关联及VT患者层、发作层结果，没有把VT患者层写为显著。"
+        },
+        "quicklook.design": {
+          "pass": true,
+          "evidence": "植入器械患者的回顾性队列和时间关联分析准确，无因果或已验证预测性能宣称。"
+        },
+        "quicklook.findings": {
+          "pass": true,
+          "evidence": "四项分别覆盖AF患者特异性结果、六例VT患者层阴性、升高事件阴性及VT合并发作层显著；分母、单位和比较方向均准确。"
+        },
+        "quicklook.limits": {
+          "pass": true,
+          "evidence": "原摘要未提供明确局限，缺项表述准确。"
+        },
+        "quicklook.why_read": {
+          "pass": true,
+          "evidence": "提醒VT分析单位不同，结果不同；未从时间关联扩展为临床预警、干预或诊疗建议。"
+        }
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "exactContinuousSubstring": true,
+          "quote": "For impedance decreases, event-related γ for AF was higher than control γ computed for randomly placed events (median 0.68 vs. 0.48, p = 0.04)."
+        },
+        {
+          "findingIndex": 2,
+          "exactContinuousSubstring": true,
+          "quote": "For VT, event-related γ did not differ significantly from control γ (six patients; median 0.52 vs. 0.21, p = 0.82)."
+        },
+        {
+          "findingIndex": 3,
+          "exactContinuousSubstring": true,
+          "quote": "No significant differences were observed for impedance increases in either the AF or VT analysis."
+        },
+        {
+          "findingIndex": 4,
+          "exactContinuousSubstring": true,
+          "quote": "In the pooled episode-level analysis, an impedance decrease was associated with a shorter time to VT occurrence than an impedance increase (median 4 vs. 7 days, p < 0.001), with 48% of VT episodes occurring within 3 days after an impedance decrease."
+        }
+      ],
+      "productionValidator": {
+        "translate": {
+          "pass": true,
+          "exitCode": 0,
+          "returnedValueUnchanged": true
+        },
+        "quicklook": {
+          "pass": true,
+          "exitCode": 0,
+          "returnedValueUnchanged": true
+        }
+      }
+    }
+  ],
+  "overallPass": true,
+  "blockingIssues": [],
+  "caveat": "仅依据公开摘要进行模型独立审读及原生产机械校验，未经人工、医学或全文复核；请求gpt-6.1-sol，但未核验实际后端模型。发布日期只对应本地快照，未独立联网查验。"
+}

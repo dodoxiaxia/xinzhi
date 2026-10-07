@@ -14,12 +14,15 @@ import week_precompute as w
 
 ORIGIN = 'sol-session-public-abstract'
 MODEL = 'sol-session-model-unobserved'
+OUTPUT_DIRECTORIES = ('editorial/sol-public-abstract-20261007',
+                      'editorial/sol-public-abstract-20261008-gap')
 
 
 def output_target(output, inputs):
     target = output.resolve()
-    allowed = (w.ROOT / 'editorial/sol-public-abstract-20261007').resolve()
-    if (not target.is_relative_to(allowed) or not target.name.endswith('-board.json')
+    allowed = [(w.ROOT / directory).resolve() for directory in OUTPUT_DIRECTORIES]
+    if (not any(target.is_relative_to(directory) for directory in allowed)
+            or not target.name.endswith('-board.json')
             or target in {p.resolve() for p in inputs if p is not None}):
         raise ValueError('preview_output_must_be_separate_dedicated_board_artifact')
     return target

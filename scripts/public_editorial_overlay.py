@@ -11,16 +11,40 @@ import week_precompute as w
 from preview_sol_public_overlay import preview
 
 DIRECTORY = 'editorial/sol-public-abstract-20261007'
+SUPPLEMENTS = (('editorial/sol-public-abstract-20261008-gap', 'gap-cache.json'),)
 
 
-def load_board(root):
-    base = Path(root) / DIRECTORY
-    paths = [base / 'sources.json', base / 'corrected-cache.json']
+def _load_package(root, directory, cache_file):
+    base = Path(root) / directory
+    paths = [base / 'sources.json', base / cache_file]
     if not any(p.exists() for p in paths):
         return None
     if not all(p.is_file() and not p.is_symlink() for p in paths):
         raise ValueError('incomplete_public_editorial_overlay')
     return preview(*(json.loads(p.read_text()) for p in paths))
+
+
+def load_board(root, *, include_supplements=True):
+    result = _load_package(root, DIRECTORY, 'corrected-cache.json')
+    if not include_supplements:
+        return result
+    for directory, cache_file in SUPPLEMENTS:
+        supplement = _load_package(root, directory, cache_file)
+        if not supplement:
+            continue
+        if result is None:
+            result = supplement
+            continue
+        # Only actual validated content can supersede an older source-bound row.
+        byid = {p['paperID']: p for p in result['items']}
+        for row in supplement['items']:
+            if row.get('translation') or row.get('quicklook'):
+                byid[row['paperID']] = copy.deepcopy(row)
+        result['items'] = list(byid.values())
+    if result:
+        result['coverage'] = {'title': sum(bool(p.get('titleZh')) for p in result['items']),
+                              **{t: sum(bool(p.get(f)) for p in result['items']) for t, f in [('translate', 'translation'), ('study', 'study'), ('quicklook', 'quicklook')]}}
+    return result
 
 
 def matches(current, editorial):

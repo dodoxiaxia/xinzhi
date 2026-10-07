@@ -1,0 +1,427 @@
+{
+ "schemaVersion": 1,
+ "entries": {
+  "20aca89052ee5fac5458292a3d4e7672a1c1685f75aad7e8f69dd69c35e912e2": {
+   "paperID": "doi:10.1038/s41591-026-04704-z",
+   "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+   "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+   "validatorVersion": "translation-number-occurrences-v2",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "translate",
+   "value": {
+    "title_zh": "体内BCMA CAR-T治疗复发／难治性多发性骨髓瘤的延长随访",
+    "abstract_zh": "体内嵌合抗原受体T细胞（CAR-T）治疗的长期结局数据仍然有限。我们此前报告了体内B细胞成熟抗原（BCMA）CAR-T（ESO-T01）治疗四例复发／难治性多发性骨髓瘤患者的初步安全性和疗效数据；患者未接受白细胞单采和淋巴细胞清除，随访最长达3个月。主要终点包括安全性和耐受性，次要终点包括疗效、药代动力学和药效动力学。所有患者均出现双阶段细胞因子释放综合征（1-3级）和血液学毒性（≥3级）。一例患者出现1级免疫效应细胞相关神经毒性综合征。客观缓解率达到100%（两例严格完全缓解和两例部分缓解）。本文更新最长随访15个月的长期安全性和缓解持久性数据。未发生免疫原性或整合相关毒性，初次报告之后也未出现与ESO-T01相关的重要不良事件。四例患者中，一例维持严格完全缓解达15个月。中位无进展生存期为4.0个月（范围3.0-15.0个月）。疾病进展后，多种挽救治疗使总生存期延长至输注后5.5-10.9个月。三例患者复发或进展，均伴髓外受累，并最终在随访期间死亡。一例患者在接受体外制备的CAR-T治疗后，伴随其强劲扩增获得了持久缓解。总体而言，这些更新结果为体内CAR-T治疗的安全性和疗效提供了更多认识。所观察到的持续性有限，提示必须进一步优化体内CAR-T平台。ClinicalTrials.gov注册号：NCT06691685。"
+   },
+   "generatedAt": "2026-10-07T18:02:37.384142+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1038/s41591-026-04704-z",
+   "pmid": "42839103",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839103/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+   "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "4d0eada6ab7cdfde68e7bb761f89f596ef2612f3761584708239fed69ae33c70": {
+   "paperID": "doi:10.1038/s41591-026-04704-z",
+   "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+   "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+   "validatorVersion": "literal-findings-same-quote-numbers-v1",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "quicklook",
+   "value": {
+    "title_zh": "体内BCMA CAR-T治疗复发／难治性多发性骨髓瘤的延长随访",
+    "one_line": "一例严格完全缓解维持较久，其余患者复发或进展并在随访中死亡。",
+    "design": "四例复发／难治性多发性骨髓瘤患者的体内BCMA CAR-T治疗延长随访。",
+    "limits": "所观察到的体内CAR-T持续性有限，需要进一步优化平台。",
+    "why_read": "关注体内CAR-T长期结局，以及早期缓解与后续复发、挽救治疗的区别。",
+    "findings": [
+     {
+      "text": "初期所有患者均发生双阶段细胞因子释放综合征和血液学毒性，客观缓解率为100%。",
+      "quote": "All patients developed dual-phase cytokine release syndrome (grades 1-3) and hematotoxicities (grade ≥3). One patient developed grade 1 immune effector cell-associated neurotoxicity syndrome. The objective response rate reached 100% (two stringent complete response and two partial response)."
+     },
+     {
+      "text": "未发生免疫原性或整合相关毒性，初次报告后未出现与该治疗相关的重要不良事件。",
+      "quote": "No immunogenicity‑ or integration‑related toxicities occurred, and no important adverse events related to ESO-T01 emerged beyond the initial report."
+     },
+     {
+      "text": "一例维持严格完全缓解15个月；中位无进展生存期为4.0个月，范围3.0-15.0个月。",
+      "quote": "Of the four patients, one maintained stringent complete response for 15 months. The median progression-free survival was 4.0 (range 3.0-15.0) months."
+     },
+     {
+      "text": "三例发生复发或进展且均伴髓外受累，最终在随访中死亡；一例经体外制备CAR-T治疗获得持久缓解。",
+      "quote": "Three patients experienced relapse or progression, all with extramedullary involvement, and eventually died during follow-up. One patient achieved durable response with robust expansion from ex vivo CAR-T."
+     }
+    ]
+   },
+   "generatedAt": "2026-10-07T18:02:37.615956+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1038/s41591-026-04704-z",
+   "pmid": "42839103",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839103/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+   "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "21da94eb1521562bc18ca0999b6d99f645ae415ee4523d26e9bca93badc13356": {
+   "paperID": "doi:10.1038/s41591-026-04673-3",
+   "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+   "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+   "validatorVersion": "translation-number-occurrences-v2",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "translate",
+   "value": {
+    "title_zh": "尿液细胞游离RNA用于膀胱癌检测与治疗反应预测",
+    "abstract_zh": "尿液生物标志物有望改善泌尿生殖系统恶性肿瘤的无创检测和分子特征分析。本文介绍尿液细胞游离RNA（cfRNA）片段随机引物引发和亲和捕获后通过测序进行富集分析的方法（uRARE-seq），这是一种用于尿液cfRNA谱分析的液体活检方法，并将其应用于癌症患者和对照者的683份尿液样本。尿液cfRNA含有来自泌尿生殖组织的转录本；在前列腺癌、肾癌或膀胱癌患者中，还含有肿瘤来源的转录本。uRARE-seq检测局限性膀胱癌时，在特异度为90%的条件下，敏感度为95%。该方法优于尿液肿瘤DNA分析，且不受场效应突变存在的影响。尿液cfRNA分析还可敏感地检测微小残留病灶，并区分手术后的完全分子学缓解与膀胱内卡介苗（BCG）治疗后的完全分子学缓解。对BCG治疗获得完全缓解者的治疗前尿液富含T细胞和其他免疫特征，提示已存在抗肿瘤免疫反应，而未缓解者的增殖相关基因表达更高。在114例患者的治疗前尿液中，这种生物学差异使研究者得以开发一种生物标志物，用于预测BCG相较于化疗的治疗反应可能性（曲线下面积为0.93），该标志物与复发风险密切相关。因此，尿液cfRNA分析是一种有前景的膀胱癌生物标志物方法，也可能适用于其他泌尿系统恶性肿瘤，但仍需要前瞻性研究来评估其临床效用。"
+   },
+   "generatedAt": "2026-10-07T18:02:37.843488+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1038/s41591-026-04673-3",
+   "pmid": "42827132",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827132/",
+   "sourceDate": "2026-10-02",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+   "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "95790677bf60b3bff5f0b1cde04e285906ba01caea6b80524d5975a98b5b7037": {
+   "paperID": "doi:10.1038/s41591-026-04673-3",
+   "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+   "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+   "validatorVersion": "literal-findings-same-quote-numbers-v1",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "quicklook",
+   "value": {
+    "title_zh": "尿液细胞游离RNA用于膀胱癌检测与治疗反应预测",
+    "one_line": "尿液cfRNA兼具膀胱癌检测和疗效预测潜力，临床效用仍需前瞻性评估。",
+    "design": "以癌症患者和对照者的683份尿液样本评估uRARE-seq液体活检方法。",
+    "limits": "仍需前瞻性研究评估其临床效用。",
+    "why_read": "把尿液无创检测、残留病灶监测和治疗反应预测联系起来。",
+    "findings": [
+     {
+      "text": "检测局限性膀胱癌时，在90%特异度下敏感度为95%；表现优于尿液肿瘤DNA分析，且不受场效应突变影响。",
+      "quote": "uRARE-seq demonstrated 95% sensitivity at 90% specificity for detecting localized bladder cancer. The method outperformed urine tumor DNA analysis and was unaffected by the presence of field-effect mutations."
+     },
+     {
+      "text": "可敏感检测微小残留病灶，并区分手术后与膀胱内BCG治疗后的完全分子学缓解。",
+      "quote": "Urine cfRNA analysis also sensitively detected minimal residual disease and distinguished complete molecular responses after surgery from those after intravesical Bacillus Calmette-Guérin (BCG)."
+     },
+     {
+      "text": "BCG完全缓解者的治疗前尿液富含T细胞及其他免疫特征；未缓解者的增殖相关基因表达更高。",
+      "quote": "Pretreatment urine from complete responders to BCG was enriched for T cell and other immune signatures, suggesting a preexisting antitumor immune response, whereas nonresponders showed higher expression of proliferation-related genes."
+     },
+     {
+      "text": "在114例患者的治疗前尿液中开发了预测BCG相较于化疗的治疗反应可能性的标志物，曲线下面积为0.93，并与复发风险密切相关。",
+      "quote": "In pretreatment urine from 114 patients, this biological difference enabled development of a biomarker predicting likelihood of response to BCG versus chemotherapy (area under the curve 0.93) that was strongly associated with risk of recurrence."
+     }
+    ]
+   },
+   "generatedAt": "2026-10-07T18:02:38.058169+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1038/s41591-026-04673-3",
+   "pmid": "42827132",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827132/",
+   "sourceDate": "2026-10-02",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+   "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "61471711848c8b767a2993a2b12b3e17d0b7db1cdade4f88ae634d040dba9d42": {
+   "paperID": "doi:10.1093/europace/euag272",
+   "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+   "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+   "validatorVersion": "translation-number-occurrences-v2",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "translate",
+   "value": {
+    "title_zh": "室性心律失常高危患者的升钾方案：随机POTCAST试验的一项预先指定观察性分析",
+    "abstract_zh": "背景与目的：POTCAST试验（n=1,200）显示，在植入式心律转复除颤器（ICD）患者中，将血浆钾水平控制在正常范围高值可减少室性心律失常。我们比较了用于升高血浆钾的三种方案下血浆钾水平的变化，并描述了各方案的结局。方法：我们研究了POTCAST中600名对照组参与者和572名完成钾水平上调的干预组参与者。干预组参与者根据血浆钾上调后的治疗分为：a）盐皮质激素受体拮抗剂（MRA）单药治疗，b）钾补充剂单药治疗，或c）二者联合治疗。主要终点为持续性室性心律失常、适当的ICD治疗、因心律失常或心力衰竭住院，或全因死亡的复合终点。安全性结局包括死亡及电解质／肾脏异常。结果：六个月后，MRA组血浆钾由4.12升至4.27 mmol/L（p=0.004），钾补充剂组由3.99升至4.24 mmol/L（p<0.001），联合治疗组由3.98升至4.34 mmol/L（p<0.001）。对照组中29%（n=175）的参与者发生主要终点，MRA组为22%（n=16），钾补充剂组为21%（n=31），联合治疗组为22%（n=72）（方案间p=0.8）。对照组低钾血症发生率为13%；接受MRA、钾补充剂和联合治疗的参与者中分别为3%、9%和5%。对照组高钾血症发生率为0.2%；接受MRA、钾补充剂和联合治疗的参与者中分别为0%、3%和4%（方案间p>0.1）。结论：MRA、钾补充剂或二者联合治疗均提高了钾水平。所有方案均与数值上低于对照组的终点发生率相关。我们未检出各方案间终点或安全性存在统计学显著差异。"
+   },
+   "generatedAt": "2026-10-07T18:02:38.254799+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1093/europace/euag272",
+   "pmid": "42834820",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834820/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+   "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "0e7186be9a93f97b2a575040a7110254bb3c87dfd1a6d6f49524d56c3d1bd2a2": {
+   "paperID": "doi:10.1093/europace/euag272",
+   "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+   "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+   "validatorVersion": "literal-findings-same-quote-numbers-v1",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "quicklook",
+   "value": {
+    "title_zh": "室性心律失常高危患者的升钾方案：随机POTCAST试验的一项预先指定观察性分析",
+    "one_line": "预先指定观察性分析中，三种升钾方案均升高血钾，方案间未检出显著结局差异。",
+    "design": "POTCAST随机试验的预先指定观察性分析，按钾水平上调后的治疗方案分组。",
+    "limits": "摘要未提供明确局限。",
+    "why_read": "了解不同升钾方案的结局与电解质异常数据，供评估高危患者治疗选择。",
+    "findings": [
+     {
+      "text": "六个月后，MRA、钾补充剂及联合治疗均提高血浆钾水平。",
+      "quote": "After six months, plasma potassium increased from 4.12 to 4.27 mmol/L (p=0.004) with MRA, from 3.99 to 4.24 mmol/L (p<0.001) with potassium-supplements, and from 3.98 to 4.34 mmol/L (p<0.001) with combination-therapy."
+     },
+     {
+      "text": "主要终点发生率：对照组29%，MRA组22%，钾补充剂组21%，联合治疗组22%；方案间p=0.8。",
+      "quote": "The primary endpoint occurred in 29% (n=175) of controls, 22% (n=16) in the MRA group, 21% (n=31) in the potassium-supplements group and in 22% (n=72) in the combination-therapy group (p=0.8 between regimens)."
+     },
+     {
+      "text": "低钾血症发生率：对照组13%，MRA组3%，钾补充剂组9%，联合治疗组5%。",
+      "quote": "Hypokalemia occurred in 13% of controls and in 3%, 9%, and 5% of participants receiving MRA, potassium-supplements and combination-therapy, respectively."
+     },
+     {
+      "text": "高钾血症发生率：对照组0.2%，MRA组0%，钾补充剂组3%，联合治疗组4%；方案间p>0.1。",
+      "quote": "Hyperkalemia occurred in 0.2% of controls and in 0%, 3%, and 4% of participants receiving MRA, potassium-supplements, and combination-therapy (p>0.1 between regimens)."
+     }
+    ]
+   },
+   "generatedAt": "2026-10-07T18:02:38.468581+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1093/europace/euag272",
+   "pmid": "42834820",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834820/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+   "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "154888b535e7df076febe062e872cb0b1b0fc7cf1a72fa561f7a2da12ec02108": {
+   "paperID": "doi:10.1111/jce.70522",
+   "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+   "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+   "validatorVersion": "translation-number-occurrences-v2",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "translate",
+   "value": {
+    "title_zh": "优化持续性心房颤动消融：Marshall静脉乙醇灌注在个体化策略中的附加价值",
+    "abstract_zh": "背景：持续性心房颤动（AF）患者导管消融后的结局仍不理想。低电压区（LVA）作为心房纤维化的替代指标，因其与心律失常复发相关而被作为消融靶点。Marshall静脉（VoM）乙醇灌注已成为一种可能提高消融疗效的辅助策略。我们评估了在持续性AF患者中，根据是否存在LVA进行引导并纳入VoM乙醇灌注的个体化消融策略的有效性。\n\n方法：这项前瞻性、单中心研究纳入2022年8月至2024年8月期间因持续性AF转诊接受导管消融的患者。患者接受根据是否存在LVA进行引导的个体化消融策略。评估操作终点和1年结局，并与仅接受肺静脉隔离（PVI）的倾向评分匹配队列进行比较。\n\n结果：研究共纳入118例患者（男性占71%，平均年龄62 ± 10岁）：个体化策略组59例，倾向评分匹配对照组59例。在个体化组中，60%的患者接受VoM乙醇灌注，14%的患者因不存在LVA而未接受肺静脉以外的消融。除两例患者外，所有消融线均实现双向阻滞。在1年随访时，22%的患者出现房性心律失常复发。个体化策略组的复发风险显著较低（13.5%对30.5%，p = 0.02）。个体化策略与未发生房性心律失常复发独立相关（HR 0.41 [0.17-0.94]，p = 0.04）。组间不良事件无显著差异。\n\n结论：在持续性AF患者中，与单纯PVI相比，根据LVA引导的个体化消融与1年时显著较低的心律失常复发相关。"
+   },
+   "generatedAt": "2026-10-07T18:02:38.653167+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1111/jce.70522",
+   "pmid": "42836744",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836744/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+   "draftFileSha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+  },
+  "558b55c55e3f47c38ed9e9a7770ba9e857142cd8faaad5562b8d30a172e4c853": {
+   "paperID": "doi:10.1111/jce.70522",
+   "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+   "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+   "validatorVersion": "literal-findings-same-quote-numbers-v1",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "quicklook",
+   "value": {
+    "title_zh": "优化持续性心房颤动消融：Marshall静脉乙醇灌注在个体化策略中的附加价值",
+    "one_line": "个体化消融方案与较低复发相关；摘要未单独比较灌注的效果。",
+    "design": "前瞻性单中心观察研究，以倾向评分匹配比较个体化消融与单纯肺静脉隔离。",
+    "limits": "摘要未提供明确局限。",
+    "why_read": "了解按低电压区选择消融方案的观察性结果，区分整体方案与灌注的独立效果。",
+    "findings": [
+     {
+      "text": "个体化组中，60%接受Marshall静脉乙醇灌注；14%因无低电压区而未做肺静脉以外的消融。",
+      "quote": "In the tailored group, VoM ethanol infusion was performed in 60% of patients, while ablation beyond pulmonary veins was not performed in 14% of patients due to LVA absence."
+     },
+     {
+      "text": "1年随访时，个体化组复发风险较低（13.5%对30.5%，p = 0.02）；这一比较针对整体方案。",
+      "quote": "At 1-year follow-up, 22% of patients had atrial arrhythmia recurrence. The risk of recurrence was significantly lower in the tailored approach group (13.5% vs. 30.5%, p = 0.02)."
+     },
+     {
+      "text": "个体化方案与无房性心律失常复发独立相关（HR 0.41 [0.17-0.94]，p = 0.04）；组间不良事件无显著差异。",
+      "quote": "A tailored approach was independently associated with freedom from atrial arrhythmia recurrence (HR 0.41 [0.17-0.94], p = 0.04). No significant differences in adverse events were observed between groups."
+     }
+    ]
+   },
+   "generatedAt": "2026-10-07T18:02:38.877994+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1111/jce.70522",
+   "pmid": "42836744",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836744/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+   "draftFileSha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+  },
+  "a7af14fba3384cf7ecbf9cb97df3a3773fe3270aef1e8ddd7d463839042e5062": {
+   "paperID": "doi:10.1111/jce.70525",
+   "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+   "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+   "validatorVersion": "translation-number-occurrences-v2",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "translate",
+   "value": {
+    "title_zh": "房间隔缺损处理状态与心房颤动消融后的长期结局：一项真实世界队列研究",
+    "abstract_zh": "背景：随着更多房间隔缺损（ASD）成人患者存活至较高年龄并接受心房颤动（AF）消融，用于指导消融后风险分层的证据仍然有限。\n\n目的：评估不同ASD处理状态下首次AF消融后的长期结局，并与房间隔完整者比较。\n\n方法：这项真实世界队列研究纳入27 675例接受首次AF消融的患者，根据房间隔状态分为房间隔完整（n = 27 134）、未修补ASD（n = 232）、经皮封堵（n = 119）或外科修补（n = 190）。分别构建各ASD状态与房间隔完整者的三项两两比较。采用倾向评分重叠加权平衡基线特征，并使用Cox比例风险模型评估结局。主要结局为3个月空白期后的房性心律失常复发；次要结局为复合心血管结局。\n\n结果：与房间隔完整者相比，未修补ASD与较高复发风险相关（风险比[HR]，1.27；95% CI，1.07-1.51；p = 0.006），额外风险主要见于消融后3个月至1年。外科修补也与较高复发风险相关（HR，1.21；95% CI，1.01-1.46；p = 0.038），差异在1年之后出现。经皮封堵与复发风险增加无关联（HR，1.07；95% CI，0.83-1.38；p = 0.589）。各组复合心血管结局无显著差异。\n\n结论：ASD处理状态识别出AF消融后房性心律失常复发的不同时间模式，提示在消融后风险评估中，不应将ASD视为单一的二分类状况。"
+   },
+   "generatedAt": "2026-10-07T18:02:39.050356+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1111/jce.70525",
+   "pmid": "42836740",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836740/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+   "draftFileSha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+  },
+  "725b6f4f01450cd6b7b686e8cb02a7b2410aa1b82ee3314f18eec3bac2b9d8fd": {
+   "paperID": "doi:10.1111/jce.70525",
+   "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+   "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+   "validatorVersion": "literal-findings-same-quote-numbers-v1",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "quicklook",
+   "value": {
+    "title_zh": "房间隔缺损处理状态与心房颤动消融后的长期结局：一项真实世界队列研究",
+    "one_line": "不同房间隔缺损处理状态对应不同复发时间模式。",
+    "design": "真实世界队列，按房间隔状态分组，以倾向评分重叠加权和Cox模型比较。",
+    "limits": "摘要未提供明确局限。",
+    "why_read": "风险分层可关注缺损处理状态及复发时间模式，无显著差异不代表等效。",
+    "findings": [
+     {
+      "text": "未修补ASD较房间隔完整者复发风险高（HR 1.27；95% CI 1.07-1.51；p = 0.006），额外风险主要在消融后3个月至1年。",
+      "quote": "Compared with an intact septum, unrepaired ASD was associated with a higher recurrence risk (hazard ratio [HR], 1.27; 95% CI, 1.07-1.51; p = 0.006), with excess risk mainly observed between 3 months and 1 year after ablation."
+     },
+     {
+      "text": "外科修补较房间隔完整者复发风险高（HR 1.21；95% CI 1.01-1.46；p = 0.038），差异在1年后出现。",
+      "quote": "Surgical repair was also associated with higher recurrence risk (HR, 1.21; 95% CI, 1.01-1.46; p = 0.038), with differences emerging beyond 1 year."
+     },
+     {
+      "text": "经皮封堵较房间隔完整者未见复发风险增加关联（HR 1.07；95% CI 0.83-1.38；p = 0.589），不能据此认定等效。",
+      "quote": "Percutaneous closure was not associated with increased recurrence risk (HR, 1.07; 95% CI, 0.83-1.38; p = 0.589)."
+     },
+     {
+      "text": "各组复合心血管结局无显著差异。",
+      "quote": "Composite cardiovascular outcomes did not differ significantly across groups."
+     }
+    ]
+   },
+   "generatedAt": "2026-10-07T18:02:39.276972+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1111/jce.70525",
+   "pmid": "42836740",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836740/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+   "draftFileSha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+  },
+  "1e180f210c093b252c9b1a2828adffa84231f6eabd497840dd0f929c5972ed5d": {
+   "paperID": "doi:10.1111/jce.70526",
+   "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+   "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+   "validatorVersion": "translation-number-occurrences-v2",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "translate",
+   "value": {
+    "title_zh": "胸内阻抗与快速性心律失常发生的时间关联",
+    "abstract_zh": "背景：本研究考察每日胸内阻抗是否与心房颤动（AF）及室性心动过速（VT）的发生存在时间关联。\n\n方法：这项回顾性队列研究纳入117例植入心脏电子器械的患者，中位随访668天，相当于89 637人日。28%的患者发生复发性AF（平均AF负荷0.27），15%的患者共发生773次VT发作。将每日胸内阻抗表示为相对于参考阻抗的数值，进行分析以识别阻抗降低和升高事件。使用患者特异性关联强度指标（γ）量化阻抗事件与快速性心律失常负荷的时间关联，该指标比较事件后的与事件前的快速性心律失常负荷。\n\n结果：对于阻抗降低，AF的事件相关γ高于针对随机放置事件计算的对照γ（中位数0.68对0.48，p = 0.04）。对于VT，事件相关γ与对照γ无显著差异（六例患者；中位数0.52对0.21，p = 0.82）。在AF或VT分析中，阻抗升高均未见显著差异。在合并的发作层面分析中，相比阻抗升高，阻抗降低与更短的VT发生时间相关（中位数4对7天，p < 0.001），48%的VT发作发生于阻抗降低后的3天内。\n\n结论：胸内阻抗降低与随后发生AF存在时间关联，并在发作层面与更短的VT发生时间相关。这些发现提示，每日胸内阻抗可能提供快速性心律失常发生前短期变化的信息。"
+   },
+   "generatedAt": "2026-10-07T18:02:39.598895+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1111/jce.70526",
+   "pmid": "42836742",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836742/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+   "draftFileSha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+  },
+  "2b4904da1e404ffeb10e1037fcd9735844372dbb306182b2b56e87ea414dfaac": {
+   "paperID": "doi:10.1111/jce.70526",
+   "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+   "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+   "validatorVersion": "literal-findings-same-quote-numbers-v1",
+   "generationPromptVersion": "unobserved",
+   "generationVersionKnown": false,
+   "modelVersion": "sol-session-model-unobserved",
+   "task": "quicklook",
+   "value": {
+    "title_zh": "胸内阻抗与快速性心律失常发生的时间关联",
+    "one_line": "阻抗降低与后续房颤相关；室速患者层与发作层结果不同。",
+    "design": "植入心脏电子器械患者的回顾性队列，分析每日阻抗与心律失常的时间关联。",
+    "limits": "摘要未提供明确局限。",
+    "why_read": "查看每日阻抗与短期心律失常的关联，注意室速分析单位不同且结果并不一致。",
+    "findings": [
+     {
+      "text": "患者特异性指标分析中，阻抗降低后AF的事件相关γ高于随机事件对照γ（中位数0.68对0.48，p = 0.04）。",
+      "quote": "For impedance decreases, event-related γ for AF was higher than control γ computed for randomly placed events (median 0.68 vs. 0.48, p = 0.04)."
+     },
+     {
+      "text": "VT患者层分析未见事件相关γ与对照γ的显著差异（六例患者；中位数0.52对0.21，p = 0.82）。",
+      "quote": "For VT, event-related γ did not differ significantly from control γ (six patients; median 0.52 vs. 0.21, p = 0.82)."
+     },
+     {
+      "text": "阻抗升高在AF和VT分析中均未见显著差异。",
+      "quote": "No significant differences were observed for impedance increases in either the AF or VT analysis."
+     },
+     {
+      "text": "合并发作层分析中，阻抗降低后较升高后更早发生VT（中位数4对7天，p < 0.001）；48%的VT发作在降低后的3天内。",
+      "quote": "In the pooled episode-level analysis, an impedance decrease was associated with a shorter time to VT occurrence than an impedance increase (median 4 vs. 7 days, p < 0.001), with 48% of VT episodes occurring within 3 days after an impedance decrease."
+     }
+    ]
+   },
+   "generatedAt": "2026-10-07T18:02:39.778963+00:00",
+   "origin": "sol-session-public-abstract",
+   "scope": "public-abstract",
+   "reviewStatus": "machine-validated-unreviewed",
+   "doi": "10.1111/jce.70526",
+   "pmid": "42836742",
+   "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836742/",
+   "sourceDate": "2026-10-06",
+   "generationRoute": "in-session-public-abstract-editorial",
+   "draftFile": "editorial/sol-public-abstract-20261008-gap/drafts/batch-b.json",
+   "draftFileSha256": "6866ad28a342c8937d8286e8fbeead0308733d514f93f4edf9da32c824899ef4"
+  }
+ }
+}

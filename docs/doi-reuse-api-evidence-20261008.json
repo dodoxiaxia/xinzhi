@@ -1,0 +1,62 @@
+{
+  "recordedAt": "2026-10-07T18:03:09.889924+00:00",
+  "candidateBase": "655975cf75ed1a08d5a8ce03a2847c4a31af5f9f",
+  "productionObservedAtStart": "377aa936df7962261e693ccf1406ae18cc0856be",
+  "productionAtStartRelease": "v14.2.6",
+  "protectedApiReadback": true,
+  "productionBrowserJourneyVerified": false,
+  "browserBlocker": "Execution proxy certificate not trusted by Chromium; no bypass attempted",
+  "candidateDirectDownloadProductionVerified": false,
+  "candidateDirectDownloadOfflineBrowserVerified": true,
+  "asyncWorkApiObservedError": "job_disabled",
+  "dispatchOrExecutionStarted": false,
+  "newPublisherDownloads": 0,
+  "formalLibraryWrites": 0,
+  "websiteCacheRecordsAddedFromExistingArchive": 2,
+  "threeSideCompleteClaimed": false,
+  "macCurrentReadback": false,
+  "githubCurrentCommit": "911e283101177585229beef88fd51d32531581e4",
+  "bothIndexSha256": "f7ad67b3f5a73ab1ceb16e2874da16b78fbf6b017f4020ad2058cec3c6715816",
+  "ledgerSha256": "b2a6d3dbf01656c9347646198001cf5a200590bb633d734f4a671174979f2d33",
+  "records": [
+    {
+      "doi": "10.1001/jamanetworkopen.2026.37533",
+      "acquireHttpStatus": 200,
+      "available": true,
+      "repeatCached": true,
+      "downloadHttpStatus": 200,
+      "downloadBytes": 1202764,
+      "sha256": "7234844b6174ea61ee7200f7af83b948a4c7ab6ee42fc58ed47b3f31a1cb04c4",
+      "strictVerified": true,
+      "pages": 16,
+      "verification": "strict_pdf_verifier: both parsers, all pages, first-page DOI/title",
+      "existingFormalArchive": true
+    },
+    {
+      "doi": "10.1111/jce.70522",
+      "acquireHttpStatus": 200,
+      "available": true,
+      "repeatCached": true,
+      "downloadHttpStatus": 200,
+      "downloadBytes": 623576,
+      "sha256": "3c638d2ffe6d3b2f1ba463dbbb76e6cbe0630275ae28938a2a1779a7f3739c48",
+      "strictVerified": true,
+      "pages": 9,
+      "verification": "strict_pdf_verifier: both parsers, all pages, first-page DOI/title",
+      "existingFormalArchive": true
+    },
+    {
+      "doi": "10.1371/journal.pone.0174944",
+      "acquireHttpStatus": 200,
+      "available": true,
+      "repeatCached": true,
+      "downloadHttpStatus": 200,
+      "downloadBytes": 1428808,
+      "sha256": "690575cc821768ed4999307fc0e58965c4b1e49fec1aab117a8e5e2409e0015b",
+      "strictVerified": true,
+      "pages": 14,
+      "verification": "strict_pdf_verifier: both parsers, all pages, first-page DOI/title",
+      "existingFormalArchive": false
+    }
+  ]
+}

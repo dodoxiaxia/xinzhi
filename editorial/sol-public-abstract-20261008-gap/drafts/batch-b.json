@@ -1,0 +1,108 @@
+{
+  "papers": [
+    {
+      "rank": 22,
+      "paperID": "doi:10.1111/jce.70522",
+      "doi": "10.1111/jce.70522",
+      "pmid": "42836744",
+      "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+      "translate": {
+        "title_zh": "优化持续性心房颤动消融：Marshall静脉乙醇灌注在个体化策略中的附加价值",
+        "abstract_zh": "背景：持续性心房颤动（AF）患者导管消融后的结局仍不理想。低电压区（LVA）作为心房纤维化的替代指标，因其与心律失常复发相关而被作为消融靶点。Marshall静脉（VoM）乙醇灌注已成为一种可能提高消融疗效的辅助策略。我们评估了在持续性AF患者中，根据是否存在LVA进行引导并纳入VoM乙醇灌注的个体化消融策略的有效性。\n\n方法：这项前瞻性、单中心研究纳入2022年8月至2024年8月期间因持续性AF转诊接受导管消融的患者。患者接受根据是否存在LVA进行引导的个体化消融策略。评估操作终点和1年结局，并与仅接受肺静脉隔离（PVI）的倾向评分匹配队列进行比较。\n\n结果：研究共纳入118例患者（男性占71%，平均年龄62 ± 10岁）：个体化策略组59例，倾向评分匹配对照组59例。在个体化组中，60%的患者接受VoM乙醇灌注，14%的患者因不存在LVA而未接受肺静脉以外的消融。除两例患者外，所有消融线均实现双向阻滞。在1年随访时，22%的患者出现房性心律失常复发。个体化策略组的复发风险显著较低（13.5%对30.5%，p = 0.02）。个体化策略与未发生房性心律失常复发独立相关（HR 0.41 [0.17-0.94]，p = 0.04）。组间不良事件无显著差异。\n\n结论：在持续性AF患者中，与单纯PVI相比，根据LVA引导的个体化消融与1年时显著较低的心律失常复发相关。"
+      },
+      "quicklook": {
+        "title_zh": "优化持续性心房颤动消融：Marshall静脉乙醇灌注在个体化策略中的附加价值",
+        "one_line": "个体化消融方案与较低复发相关；摘要未单独比较灌注的效果。",
+        "design": "前瞻性单中心观察研究，以倾向评分匹配比较个体化消融与单纯肺静脉隔离。",
+        "findings": [
+          {
+            "text": "个体化组中，60%接受Marshall静脉乙醇灌注；14%因无低电压区而未做肺静脉以外的消融。",
+            "quote": "In the tailored group, VoM ethanol infusion was performed in 60% of patients, while ablation beyond pulmonary veins was not performed in 14% of patients due to LVA absence."
+          },
+          {
+            "text": "1年随访时，个体化组复发风险较低（13.5%对30.5%，p = 0.02）；这一比较针对整体方案。",
+            "quote": "At 1-year follow-up, 22% of patients had atrial arrhythmia recurrence. The risk of recurrence was significantly lower in the tailored approach group (13.5% vs. 30.5%, p = 0.02)."
+          },
+          {
+            "text": "个体化方案与无房性心律失常复发独立相关（HR 0.41 [0.17-0.94]，p = 0.04）；组间不良事件无显著差异。",
+            "quote": "A tailored approach was independently associated with freedom from atrial arrhythmia recurrence (HR 0.41 [0.17-0.94], p = 0.04). No significant differences in adverse events were observed between groups."
+          }
+        ],
+        "limits": "摘要未提供明确局限。",
+        "why_read": "了解按低电压区选择消融方案的观察性结果，区分整体方案与灌注的独立效果。"
+      }
+    },
+    {
+      "rank": 23,
+      "paperID": "doi:10.1111/jce.70525",
+      "doi": "10.1111/jce.70525",
+      "pmid": "42836740",
+      "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+      "translate": {
+        "title_zh": "房间隔缺损处理状态与心房颤动消融后的长期结局：一项真实世界队列研究",
+        "abstract_zh": "背景：随着更多房间隔缺损（ASD）成人患者存活至较高年龄并接受心房颤动（AF）消融，用于指导消融后风险分层的证据仍然有限。\n\n目的：评估不同ASD处理状态下首次AF消融后的长期结局，并与房间隔完整者比较。\n\n方法：这项真实世界队列研究纳入27 675例接受首次AF消融的患者，根据房间隔状态分为房间隔完整（n = 27 134）、未修补ASD（n = 232）、经皮封堵（n = 119）或外科修补（n = 190）。分别构建各ASD状态与房间隔完整者的三项两两比较。采用倾向评分重叠加权平衡基线特征，并使用Cox比例风险模型评估结局。主要结局为3个月空白期后的房性心律失常复发；次要结局为复合心血管结局。\n\n结果：与房间隔完整者相比，未修补ASD与较高复发风险相关（风险比[HR]，1.27；95% CI，1.07-1.51；p = 0.006），额外风险主要见于消融后3个月至1年。外科修补也与较高复发风险相关（HR，1.21；95% CI，1.01-1.46；p = 0.038），差异在1年之后出现。经皮封堵与复发风险增加无关联（HR，1.07；95% CI，0.83-1.38；p = 0.589）。各组复合心血管结局无显著差异。\n\n结论：ASD处理状态识别出AF消融后房性心律失常复发的不同时间模式，提示在消融后风险评估中，不应将ASD视为单一的二分类状况。"
+      },
+      "quicklook": {
+        "title_zh": "房间隔缺损处理状态与心房颤动消融后的长期结局：一项真实世界队列研究",
+        "one_line": "不同房间隔缺损处理状态对应不同复发时间模式。",
+        "design": "真实世界队列，按房间隔状态分组，以倾向评分重叠加权和Cox模型比较。",
+        "findings": [
+          {
+            "text": "未修补ASD较房间隔完整者复发风险高（HR 1.27；95% CI 1.07-1.51；p = 0.006），额外风险主要在消融后3个月至1年。",
+            "quote": "Compared with an intact septum, unrepaired ASD was associated with a higher recurrence risk (hazard ratio [HR], 1.27; 95% CI, 1.07-1.51; p = 0.006), with excess risk mainly observed between 3 months and 1 year after ablation."
+          },
+          {
+            "text": "外科修补较房间隔完整者复发风险高（HR 1.21；95% CI 1.01-1.46；p = 0.038），差异在1年后出现。",
+            "quote": "Surgical repair was also associated with higher recurrence risk (HR, 1.21; 95% CI, 1.01-1.46; p = 0.038), with differences emerging beyond 1 year."
+          },
+          {
+            "text": "经皮封堵较房间隔完整者未见复发风险增加关联（HR 1.07；95% CI 0.83-1.38；p = 0.589），不能据此认定等效。",
+            "quote": "Percutaneous closure was not associated with increased recurrence risk (HR, 1.07; 95% CI, 0.83-1.38; p = 0.589)."
+          },
+          {
+            "text": "各组复合心血管结局无显著差异。",
+            "quote": "Composite cardiovascular outcomes did not differ significantly across groups."
+          }
+        ],
+        "limits": "摘要未提供明确局限。",
+        "why_read": "风险分层可关注缺损处理状态及复发时间模式，无显著差异不代表等效。"
+      }
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1111/jce.70526",
+      "doi": "10.1111/jce.70526",
+      "pmid": "42836742",
+      "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+      "translate": {
+        "title_zh": "胸内阻抗与快速性心律失常发生的时间关联",
+        "abstract_zh": "背景：本研究考察每日胸内阻抗是否与心房颤动（AF）及室性心动过速（VT）的发生存在时间关联。\n\n方法：这项回顾性队列研究纳入117例植入心脏电子器械的患者，中位随访668天，相当于89 637人日。28%的患者发生复发性AF（平均AF负荷0.27），15%的患者共发生773次VT发作。将每日胸内阻抗表示为相对于参考阻抗的数值，进行分析以识别阻抗降低和升高事件。使用患者特异性关联强度指标（γ）量化阻抗事件与快速性心律失常负荷的时间关联，该指标比较事件后的与事件前的快速性心律失常负荷。\n\n结果：对于阻抗降低，AF的事件相关γ高于针对随机放置事件计算的对照γ（中位数0.68对0.48，p = 0.04）。对于VT，事件相关γ与对照γ无显著差异（六例患者；中位数0.52对0.21，p = 0.82）。在AF或VT分析中，阻抗升高均未见显著差异。在合并的发作层面分析中，相比阻抗升高，阻抗降低与更短的VT发生时间相关（中位数4对7天，p < 0.001），48%的VT发作发生于阻抗降低后的3天内。\n\n结论：胸内阻抗降低与随后发生AF存在时间关联，并在发作层面与更短的VT发生时间相关。这些发现提示，每日胸内阻抗可能提供快速性心律失常发生前短期变化的信息。"
+      },
+      "quicklook": {
+        "title_zh": "胸内阻抗与快速性心律失常发生的时间关联",
+        "one_line": "阻抗降低与后续房颤相关；室速患者层与发作层结果不同。",
+        "design": "植入心脏电子器械患者的回顾性队列，分析每日阻抗与心律失常的时间关联。",
+        "findings": [
+          {
+            "text": "患者特异性指标分析中，阻抗降低后AF的事件相关γ高于随机事件对照γ（中位数0.68对0.48，p = 0.04）。",
+            "quote": "For impedance decreases, event-related γ for AF was higher than control γ computed for randomly placed events (median 0.68 vs. 0.48, p = 0.04)."
+          },
+          {
+            "text": "VT患者层分析未见事件相关γ与对照γ的显著差异（六例患者；中位数0.52对0.21，p = 0.82）。",
+            "quote": "For VT, event-related γ did not differ significantly from control γ (six patients; median 0.52 vs. 0.21, p = 0.82)."
+          },
+          {
+            "text": "阻抗升高在AF和VT分析中均未见显著差异。",
+            "quote": "No significant differences were observed for impedance increases in either the AF or VT analysis."
+          },
+          {
+            "text": "合并发作层分析中，阻抗降低后较升高后更早发生VT（中位数4对7天，p < 0.001）；48%的VT发作在降低后的3天内。",
+            "quote": "In the pooled episode-level analysis, an impedance decrease was associated with a shorter time to VT occurrence than an impedance increase (median 4 vs. 7 days, p < 0.001), with 48% of VT episodes occurring within 3 days after an impedance decrease."
+          }
+        ],
+        "limits": "摘要未提供明确局限。",
+        "why_read": "查看每日阻抗与短期心律失常的关联，注意室速分析单位不同且结果并不一致。"
+      }
+    }
+  ]
+}
