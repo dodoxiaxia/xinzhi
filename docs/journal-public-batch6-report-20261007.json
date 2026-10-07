@@ -1,0 +1,122 @@
+{
+  "baseCommit": "7f7b2b7431925932a60c2dac8f29373c1f546a0b",
+  "stateSha": "6135056e3d544816ff3554a8e6241f60e3274698",
+  "mode": "reviewable_overlay_not_published",
+  "beforeOfficialJif": 94,
+  "afterOfficialJif": 100,
+  "afterOfficialCompleteJcr": 2,
+  "newOfficialQuartiles": 0,
+  "surfacesAfterApplyingOverlay": {
+    "library": {
+      "allPapers": 1268,
+      "officialJif": 765,
+      "officialCompleteJcr": 2
+    },
+    "radar": {
+      "allPapers": 868,
+      "officialJif": 626,
+      "officialCompleteJcr": 0
+    },
+    "picks": {
+      "allPapers": 25,
+      "officialJif": 20,
+      "officialCompleteJcr": 0
+    }
+  },
+  "added": [
+    {
+      "name": "Journal of Arrhythmia",
+      "jif": 1.9,
+      "dataYear": 2025,
+      "jcrReleaseYear": 2026,
+      "source": "https://www.wolterskluwer.com/en/solutions/ovid/journal-of-arrhythmia-14318",
+      "occurrences": {
+        "library": 2,
+        "radar": 0,
+        "picks": 0
+      }
+    },
+    {
+      "name": "Science Advances",
+      "jif": 13.9,
+      "dataYear": 2025,
+      "jcrReleaseYear": 2026,
+      "source": "https://www.wolterskluwer.com/en/solutions/ovid/science-advances-15526",
+      "occurrences": {
+        "library": 3,
+        "radar": 2,
+        "picks": 0
+      }
+    },
+    {
+      "name": "The Clinical Teacher",
+      "jif": 1.7,
+      "dataYear": 2025,
+      "jcrReleaseYear": 2026,
+      "source": "https://www.wolterskluwer.com/en/solutions/ovid/clinical-teacher-the-2626",
+      "occurrences": {
+        "library": 1,
+        "radar": 0,
+        "picks": 0
+      }
+    },
+    {
+      "name": "Science",
+      "jif": 47.3,
+      "dataYear": 2025,
+      "jcrReleaseYear": 2026,
+      "source": "https://www.wolterskluwer.com/en/solutions/ovid/science-1250",
+      "occurrences": {
+        "library": 30,
+        "radar": 0,
+        "picks": 0
+      }
+    },
+    {
+      "name": "Postgraduate Medical Journal",
+      "jif": 3.6,
+      "dataYear": 2025,
+      "jcrReleaseYear": 2026,
+      "source": "https://academic.oup.com/pmj/pages/about",
+      "occurrences": {
+        "library": 1,
+        "radar": 0,
+        "picks": 0
+      }
+    },
+    {
+      "name": "Journal of Thoracic Disease",
+      "jif": 2.3,
+      "dataYear": 2025,
+      "jcrReleaseYear": 2026,
+      "source": "https://jtd.amegroups.org/announcement/view/10124",
+      "occurrences": {
+        "library": 1,
+        "radar": 0,
+        "picks": 0
+      }
+    }
+  ],
+  "blocked": [
+    {
+      "name": "JAHA",
+      "url": "https://www.ahajournals.org/metrics",
+      "result": "HTTP 403; stopped; Wiley public catalogue/overview omit JIF data year/value"
+    },
+    {
+      "name": "Heart Rhythm",
+      "url": "https://www.mea.elsevierhealth.com/heart-rhythm-15475271.html",
+      "result": "Official title/print ISSN verified; no JIF/year. Indexed homepage footnote mentions JCR 2025/Clarivate 2026 but did not establish own JIF value. Comparison-page 2.8 belongs to Heart Rhythm O2, not Heart Rhythm."
+    },
+    {
+      "name": "Journal of Thoracic Disease",
+      "url": "https://cdn.amegroups.cn/static/image/8275b69ca7dae8526f4e4990bbdc9e46/2025_Journal_IF.png",
+      "result": "Reader unsupported octet-stream; one ordinary direct image read HTTP 403; stopped. No category Q copied or inferred."
+    },
+    {
+      "name": "European Heart Journal Supplements",
+      "url": "https://academic.oup.com/eurheartjsupp/pages/About",
+      "result": "Official citation table publishes 2025 Scopus CiteScore 4.0, no JIF/JCR quartile; not substituted."
+    }
+  ]
+}

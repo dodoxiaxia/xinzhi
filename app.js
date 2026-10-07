@@ -924,7 +924,11 @@
   function updateHeaderBadges() {
     const cb = $('#candCountBadge'); if (cb) cb.textContent = radarDefaultCount();
     const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
-    const lb = $('#libCountBadge'); if (lb) lb.textContent = LIBRARY.papers.length;
+    const lb = $('#libCountBadge'); if (lb) {
+      lb.textContent = LIBRARY.papers.length;
+      lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
+      lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+    }
 
   }
 
@@ -975,7 +979,9 @@
       set('minor', state.minor ? '1' : '', '');
       set('reading', usesLane()?state.reading:'', '');
       set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
-      if (viewInUrl) u.searchParams.set('view', state.viewMode);
+      const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
+        || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
+      if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
       history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
@@ -1252,9 +1258,11 @@
     const container = $('#activeFiltersBar');
     if (!container) return;
 
-    let chips = `<span class="results-meta">共找到 <b>${totalCount}</b> 篇文献</span>`;
+    let chips = `<span class="results-meta">共找到 <b>${totalCount}</b> 篇文献${usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
 
     if (state.search) {
+      const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
+      chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
       chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button class="filter-badge-remove" data-clear="search">&times;</button></span>`;
     }
     if (state.clinicalTier) {
@@ -1862,11 +1870,18 @@
     const list = state.huddle.map(id => allPapersMap.get(id)).filter(Boolean);
     state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && allPapersMap.has(id));
     const selected = selectedComparePapers();
+    ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn'].forEach(id => {
+      const button = $('#' + id);
+      if (!button) return;
+      button.disabled = list.length === 0;
+      if (!list.length) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
+      else button.removeAttribute('aria-describedby');
+    });
 
     if (list.length === 0) {
       body.innerHTML = `
         <div class="empty-state" style="padding:30px;">
-          <p>精选清单当前为空</p>
+          <p id="huddleEmptyHelp" role="status">精选清单当前为空，添加文献后可清空、复制或导出。</p>
           <small style="color:var(--text-muted);">从文献列表中点击“加入精选清单”，即可将心仪文献加入讨论清单。</small>
         </div>
       `;
@@ -2261,11 +2276,14 @@
   // Hotkey '/' for search
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
+      if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey
+        || $('#huddleModalBackdrop.open') || $('#readerDrawer.open')
+        || document.activeElement?.matches('input,textarea,select') || document.activeElement?.isContentEditable) return;
       e.preventDefault();
       searchInput?.focus();
     } else if (e.key === 'Tab') {
       const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open');
-      if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
+      if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
     } else if (e.key === 'Escape') {
       closeReaderDrawer();
       closeHuddleModal();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-10-07T14:45:58Z",
+  "verifiedAt": "2026-10-07T15:05:03Z",
   "notice": "期刊指标只描述期刊，不用于判断单篇研究质量。",
   "sources": {
     "edition-2026": {
@@ -540,6 +540,54 @@
       "url": "https://onlinelibrary.wiley.com/journal/20479980",
       "kind": "publisher_public",
       "verifiedAt": "2026-10-07T14:45:58Z"
+    },
+    "batch6-ovid-journal-of-arrhythmia-14318": {
+      "label": "Journal of Arrhythmia: official Ovid public catalogue, explicit JIF data year",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/journal-of-arrhythmia-14318",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-ovid-science-advances-15526": {
+      "label": "Science Advances: official Ovid public catalogue, explicit JIF data year",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/science-advances-15526",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-ovid-clinical-teacher-the-2626": {
+      "label": "The Clinical Teacher: official Ovid public catalogue, explicit JIF data year",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/clinical-teacher-the-2626",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-ovid-science-1250": {
+      "label": "Science: official Ovid public catalogue, explicit JIF data year",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/science-1250",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-pmj": {
+      "label": "Postgraduate Medical Journal: current OUP public metrics",
+      "url": "https://academic.oup.com/pmj/pages/about",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-jtd-announcement": {
+      "label": "JTD publisher AME announcement, 23 June 2026: explicit 2025 citation year",
+      "url": "https://jtd.amegroups.org/announcement/view/10124",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-identity-heartrhythm": {
+      "label": "Heart Rhythm: official Elsevier Health catalogue title and ISSN",
+      "url": "https://www.mea.elsevierhealth.com/heart-rhythm-15475271.html",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    "batch6-identity-circoutcomes-title": {
+      "label": "Publisher 2026 media kit explicitly states former and current Circulation title",
+      "url": "https://mediakits.wkadcenter.com/mediakit/circulation-population-health-and-outcomes",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T15:05:03Z"
     }
   },
   "journals": [
@@ -1381,10 +1429,13 @@
       "name": "Circulation: Cardiovascular Quality and Outcomes",
       "aliases": [
         "Circulation: CQO",
-        "Circulation: Outcomes"
+        "Circulation: Outcomes",
+        "Circulation: Population Health and Outcomes"
       ],
       "issns": [],
-      "identitySources": [],
+      "identitySources": [
+        "batch6-identity-circoutcomes-title"
+      ],
       "kind": "journal",
       "jif": {
         "status": "unverified",
@@ -2074,10 +2125,15 @@
       "id": "j-63e6c94458cf",
       "name": "Heart Rhythm",
       "aliases": [
-        "Heart rhythm"
+        "Heart rhythm",
+        "HeartRhythm"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1547-5271"
+      ],
+      "identitySources": [
+        "batch6-identity-heartrhythm"
+      ],
       "kind": "journal",
       "jif": {
         "status": "unverified",
@@ -3273,25 +3329,33 @@
       "id": "j-bef66d0eaca0",
       "name": "Journal of Arrhythmia",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1880-4276"
+      ],
+      "identitySources": [
+        "batch6-ovid-journal-of-arrhythmia-14318"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 1.9,
+        "year": 2025,
+        "sources": [
+          "batch6-ovid-journal-of-arrhythmia-14318"
+        ],
+        "verifiedAt": "2026-10-07T15:05:03Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -3418,25 +3482,34 @@
       "id": "j-1a590d5a46ef",
       "name": "Journal of Thoracic Disease",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2072-1439",
+        "2077-6624"
+      ],
+      "identitySources": [
+        "batch6-jtd-announcement"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 2.3,
+        "year": 2025,
+        "sources": [
+          "batch6-jtd-announcement"
+        ],
+        "verifiedAt": "2026-10-07T15:05:03Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -4978,25 +5051,45 @@
       "id": "j-7f1ea44c6f71",
       "name": "Postgraduate Medical Journal",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1469-0756",
+        "0032-5473"
+      ],
+      "identitySources": [
+        "batch6-pmj"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 3.6,
+        "year": 2025,
+        "sources": [
+          "batch6-pmj"
+        ],
+        "verifiedAt": "2026-10-07T15:05:03Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
-        "categories": [],
-        "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
+        "categories": [
+          {
+            "name": "Medicine, General & Internal",
+            "quartile": null,
+            "rank": 64,
+            "total": 336,
+            "sources": [
+              "batch6-pmj"
+            ],
+            "verifiedAt": "2026-10-07T15:05:03Z"
+          }
+        ],
+        "categoryCoverage": "publisher_reported",
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -5140,25 +5233,33 @@
       "aliases": [
         "Science Magazine"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "0036-8075"
+      ],
+      "identitySources": [
+        "batch6-ovid-science-1250"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 47.3,
+        "year": 2025,
+        "sources": [
+          "batch6-ovid-science-1250"
+        ],
+        "verifiedAt": "2026-10-07T15:05:03Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -5167,25 +5268,33 @@
       "aliases": [
         "Science Advances: ToC"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2375-2548"
+      ],
+      "identitySources": [
+        "batch6-ovid-science-advances-15526"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 13.9,
+        "year": 2025,
+        "sources": [
+          "batch6-ovid-science-advances-15526"
+        ],
+        "verifiedAt": "2026-10-07T15:05:03Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -5444,25 +5553,33 @@
       "id": "j-1c8f92415594",
       "name": "The Clinical Teacher",
       "aliases": [],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1743-4971"
+      ],
+      "identitySources": [
+        "batch6-ovid-clinical-teacher-the-2626"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 1.7,
+        "year": 2025,
+        "sources": [
+          "batch6-ovid-clinical-teacher-the-2626"
+        ],
+        "verifiedAt": "2026-10-07T15:05:03Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
