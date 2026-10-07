@@ -1,5 +1,6 @@
 """Offline regression for long E-utilities queries and failure propagation."""
 import datetime
+import http.client
 import unittest
 import urllib.error
 import urllib.parse
@@ -48,6 +49,26 @@ class PubmedRequestTests(unittest.TestCase):
         error = urllib.error.HTTPError('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', 414, 'Request-URI Too Long', {}, None)
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=error), self.assertRaises(urllib.error.HTTPError):
             fetch_pubmed.request('esearch.fcgi', {'term':'public query ' * 500})
+
+    def test_incomplete_response_is_discarded_before_identical_retry(self):
+        broken, complete = MagicMock(), MagicMock()
+        broken.__enter__.return_value.read.side_effect = http.client.IncompleteRead(b'partial XML')
+        complete.__enter__.return_value.read.return_value = b'<complete-public-xml/>'
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[broken, complete]) as opener, patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            result = fetch_pubmed.request('efetch.fcgi', {'db':'pubmed','id':'123,456','retmode':'xml'})
+        self.assertEqual(result, b'<complete-public-xml/>')
+        self.assertEqual(opener.call_count, 2)
+        self.assertIs(opener.call_args_list[0].args[0], opener.call_args_list[1].args[0])
+        broken.__exit__.assert_called_once()
+        sleep.assert_called_once_with(0.5)
+
+    def test_repeated_incomplete_response_stops_after_three_attempts(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.side_effect = http.client.IncompleteRead(b'partial XML')
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', return_value=response) as opener, patch.object(fetch_pubmed.time, 'sleep') as sleep, self.assertRaises(http.client.IncompleteRead):
+            fetch_pubmed.request('efetch.fcgi', {'db':'pubmed','id':'123','retmode':'xml'})
+        self.assertEqual(opener.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [0.5, 1.0])
 
 
 if __name__ == '__main__':
