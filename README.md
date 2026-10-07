@@ -1,6 +1,6 @@
 # 心知｜心血管与AI医疗文献学习站
 
-公开网站：https://learn.dryz.info/ 。源码版本 v14.1.1；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
+公开网站：https://learn.dryz.info/ 。源码版本 v14.1.2；实际发布结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
 ## 阅读和内容范围
 
