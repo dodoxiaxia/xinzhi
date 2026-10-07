@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-10-07T14:28:04Z",
+  "verifiedAt": "2026-10-07T14:34:13Z",
   "notice": "期刊指标只描述期刊，不用于判断单篇研究质量。",
   "sources": {
     "edition-2026": {
@@ -354,6 +354,24 @@
       "url": "https://ai.jmir.org/about-journal/indexing-and-impact-factor",
       "kind": "publisher_public",
       "verifiedAt": "2026-10-07T14:28:04Z"
+    },
+    "public-ovid-jamainternal": {
+      "label": "JAMA Internal Medicine: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-internal-medicine-505",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:34:13Z"
+    },
+    "public-ovid-jamacardio": {
+      "label": "JAMA Cardiology: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-cardiology-13841",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:34:13Z"
+    },
+    "public-ovid-atvb": {
+      "label": "Arteriosclerosis, Thrombosis, and Vascular Biology: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/arteriosclerosis-thrombosis-and-vascular-biology-504",
+      "kind": "publisher_public",
+      "verifiedAt": "2026-10-07T14:34:13Z"
     }
   },
   "journals": [
@@ -613,25 +631,33 @@
       "aliases": [
         "ATVB"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "1079-5642"
+      ],
+      "identitySources": [
+        "public-ovid-atvb"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 8.8,
+        "year": 2025,
+        "sources": [
+          "public-ovid-atvb"
+        ],
+        "verifiedAt": "2026-10-07T14:34:13Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -2473,25 +2499,33 @@
         "JAMA cardiology",
         "JAMA: Cardiology Topic Collection"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2380-6583"
+      ],
+      "identitySources": [
+        "public-ovid-jamacardio"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 15.2,
+        "year": 2025,
+        "sources": [
+          "public-ovid-jamacardio"
+        ],
+        "verifiedAt": "2026-10-07T14:34:13Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
@@ -2527,25 +2561,33 @@
         "JAMA IM Online First",
         "JAMA internal medicine"
       ],
-      "issns": [],
-      "identitySources": [],
+      "issns": [
+        "2168-6106"
+      ],
+      "identitySources": [
+        "public-ovid-jamainternal"
+      ],
       "kind": "journal",
       "jif": {
-        "status": "unverified",
-        "value": null,
-        "year": null,
-        "sources": [],
-        "verifiedAt": null,
-        "reason": "未核实官方 JIF 年份和值"
+        "status": "verified",
+        "value": 26.3,
+        "year": 2025,
+        "sources": [
+          "public-ovid-jamainternal"
+        ],
+        "verifiedAt": "2026-10-07T14:34:13Z",
+        "reason": ""
       },
       "jcr": {
         "status": "unverified",
-        "dataYear": null,
-        "releaseYear": null,
-        "editionSources": [],
+        "dataYear": 2025,
+        "releaseYear": 2026,
+        "editionSources": [
+          "edition-2026"
+        ],
         "categories": [],
         "categoryCoverage": "unverified",
-        "reason": "未核实完整 JCR 学科与分区"
+        "reason": "该官方公开页面明确列出 JIF 年份和值，但未列完整 JCR 逐学科分区；排名不推算为分区。"
       }
     },
     {
