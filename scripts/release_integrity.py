@@ -11,6 +11,7 @@ from pathlib import Path
 PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
+    '.github/workflows/daily.yml',
     '.github/workflows/fulltext.yml', 'scripts/fulltext_queue_runner.cjs',
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',
@@ -19,6 +20,7 @@ INPUTS = (
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'public-data-loader.js', 'edge/public-data.js', 'scripts/public_data_bundle.py', 'scripts/ci_daily.py',
     'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',

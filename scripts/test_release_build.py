@@ -35,6 +35,9 @@ def synthetic_root(root):
     shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
                     root / 'journal-metrics.js')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'citation-export.js', root / 'citation-export.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'public-data-loader.js', root / 'public-data-loader.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'edge/public-data.js', root / 'edge/public-data.js')
+    shutil.copyfile(Path(builder.__file__).parent / 'public_data_bundle.py', root / 'scripts/public_data_bundle.py')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',

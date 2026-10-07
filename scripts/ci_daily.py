@@ -28,7 +28,7 @@ BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
-BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR)\s*=\s*')
+BUNDLE_DATA = re.compile(r'\bwindow\.(?:PUBLIC_DATA_VERSION|LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RECENT_RADAR|RADAR)\s*=\s*')
 
 
 def stable_data(value):
@@ -74,6 +74,9 @@ def content_hash():
         payload = path.read_bytes() if path.exists() else b'<missing>'
         if name == 'public.js':
             payload = stable_bundle(payload.decode('utf-8')).encode('utf-8')
+        elif name == 'index.html' and path.exists():
+            from public_data_bundle import stable_index
+            payload = stable_index(payload.decode('utf-8')).encode('utf-8')
         digest.update(name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
     return digest.hexdigest()
 

@@ -354,9 +354,19 @@ def main():
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
+    from public_data_bundle import prepare, inline_boot
+    public_data={'LIBRARY':library,'FEEDS':candidates,'SOURCE_HEALTH':health,'CURATED':archive,
+                 'QUICKLOOKS':ql,'CONTENT_STATUS':status,'JOURNAL_METRICS':metrics}
+    if weekly:public_data['WEEKLY_BOARD']=weekly
+    if prepared:public_data['PREGENERATED']=prepared
+    if radar:public_data['RADAR']=radar
+    app_code='\n;\n'.join((ROOT/name).read_text() for name in ('journal-metrics.js','citation-export.js','app.js'))
+    loader=(ROOT/'public-data-loader.js').read_text()
+    data_worker=(ROOT/'edge/public-data.js').read_text()
+    bundle,boot=prepare(public_data,app_code,loader+'\n;\n'+data_worker)
+    public_index=inline_boot(public_index,boot,loader,app_code)
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
-    worker=(ROOT/'edge/_worker.js').read_text()
+    worker=data_worker.replace("const PUBLIC_DATA_VERSION = '';",'const PUBLIC_DATA_VERSION = '+json.dumps(boot['version'])+';')+'\n'+(ROOT/'edge/_worker.js').read_text()
     placeholder='const PDF_LIBRARY = {};'
     if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
     # A public DOI correction is not evidence for rebinding a private PDF.

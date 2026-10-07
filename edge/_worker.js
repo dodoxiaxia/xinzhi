@@ -1761,6 +1761,9 @@ async function handleAI(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/public-data/')) {
+      try { return await handlePublicData(request, env); } catch { return publicDataError(503, 'data_unavailable'); }
+    }
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);

@@ -1,0 +1,1311 @@
+{
+  "purpose": "Offline candidate for the unified release task 01a11479; no deployment",
+  "branch": "perf/lazy-public-data-20261007",
+  "baseline": {
+    "main": "da5852595d5bff1a1e4a1311f0536651fd811059",
+    "state": "ffcd8fa4356656458509484fe7e83bb4f46a54fb",
+    "release": "v14.2.11"
+  },
+  "tests": {
+    "python": 537,
+    "publicWorker": 206,
+    "actualPublicBrowser": 885,
+    "browserPassed": true,
+    "originalDataConserved": true,
+    "existingPrivacyAndSixFileGuards": true,
+    "modelCalls": 0,
+    "productionCalls": 0
+  },
+  "limitations": [
+    "Offline only. No live site or Cloudflare Worker quota acceptance.",
+    "The complete artifact grows, while bare-home bytes and parsing shrink.",
+    "FCP of the page shell regresses with the larger HTML; useful article readiness is measured separately.",
+    "Full library remains in bootstrap to preserve existing DOI/PDF identity guarantees.",
+    "Page memory supports offline tab switches; no persistent offline reload implemented."
+  ],
+  "sizes": {
+    "main": "da5852595d5bff1a1e4a1311f0536651fd811059",
+    "state": "ffcd8fa4356656458509484fe7e83bb4f46a54fb",
+    "offline": true,
+    "all_original_globals_preserved": [
+      "LIBRARY",
+      "FEEDS",
+      "SOURCE_HEALTH",
+      "CURATED",
+      "QUICKLOOKS",
+      "CONTENT_STATUS",
+      "JOURNAL_METRICS",
+      "WEEKLY_BOARD",
+      "PREGENERATED",
+      "RADAR"
+    ],
+    "public_privacy_scan": "passed existing allowlist and private-path checks",
+    "six_files": [
+      "_headers",
+      "_worker.js",
+      "icon.svg",
+      "index.html",
+      "public.js",
+      "style.css"
+    ],
+    "sizes": {
+      "_headers": {
+        "baseline": 327,
+        "candidate": 327,
+        "baseline_gzip": 207,
+        "candidate_gzip": 207,
+        "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+      },
+      "_worker.js": {
+        "baseline": 327861,
+        "candidate": 332340,
+        "baseline_gzip": 107595,
+        "candidate_gzip": 109089,
+        "sha256": "91801906d8de4fc3a15ad00a0de6ca50f061b74d3839824ab150bb800b9960aa"
+      },
+      "icon.svg": {
+        "baseline": 743255,
+        "candidate": 743255,
+        "baseline_gzip": 556617,
+        "candidate_gzip": 556617,
+        "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+      },
+      "index.html": {
+        "baseline": 28890,
+        "candidate": 2235555,
+        "baseline_gzip": 10449,
+        "candidate_gzip": 421379,
+        "sha256": "9b06f96233469dbf2698e56a8ba274f9585fc076cac81e0c237fe3064854ce0c"
+      },
+      "public.js": {
+        "baseline": 9154824,
+        "candidate": 9284879,
+        "baseline_gzip": 2504162,
+        "candidate_gzip": 2551889,
+        "sha256": "5813e775bfa38b9e6ce0ee4d4ea1284b64d45cc0792288fc2a855407ebc4508f"
+      },
+      "style.css": {
+        "baseline": 90241,
+        "candidate": 90241,
+        "baseline_gzip": 16935,
+        "candidate_gzip": 16935,
+        "sha256": "dd034769fc44a584309205c44fbae6c2f08dc8788ed241e7cb86188e4159978d"
+      }
+    },
+    "data_sizes": {
+      "PUBLIC_DATA_VERSION": 66,
+      "LIBRARY": 1025283,
+      "FEEDS": 2656912,
+      "SOURCE_HEALTH": 91599,
+      "CURATED": 59819,
+      "QUICKLOOKS": 39358,
+      "CONTENT_STATUS": 279,
+      "JOURNAL_METRICS": 144695,
+      "WEEKLY_BOARD": 177254,
+      "PREGENERATED": 289254,
+      "RADAR": 4481196,
+      "RECENT_RADAR": 126497
+    }
+  },
+  "coldStart": {
+    "offline": true,
+    "chromium": "151.0.7922.173",
+    "cpuThrottle": 4,
+    "method": "Five alternating cold contexts per variant per condition. Simulated network delays each complete response by 150ms plus gzip size at 1MiB/s; no real bandwidth shaping or live CDN evidence.",
+    "rows": [
+      {
+        "kind": "baseline",
+        "network": "local",
+        "i": 0,
+        "dclMs": 1570.800000000745,
+        "usefulFirstScreenMs": 1570.199999999255,
+        "fcpMs": 680,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 618.013,
+        "taskMs": 1479.476,
+        "heapBytes": 17583008,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "candidate",
+        "network": "local",
+        "i": 0,
+        "dclMs": 1089.7000000029802,
+        "usefulFirstScreenMs": 1106.1000000014901,
+        "fcpMs": 544,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 223.406,
+        "taskMs": 1276.8809999999999,
+        "heapBytes": 5807040,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "candidate",
+        "network": "local",
+        "i": 1,
+        "dclMs": 1205.4000000022352,
+        "usefulFirstScreenMs": 1233.800000000745,
+        "fcpMs": 508,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 255.58199999999997,
+        "taskMs": 1457.2359999999999,
+        "heapBytes": 5823212,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "baseline",
+        "network": "local",
+        "i": 1,
+        "dclMs": 1513.300000000745,
+        "usefulFirstScreenMs": 1512.800000000745,
+        "fcpMs": 332,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 653.239,
+        "taskMs": 1497.301,
+        "heapBytes": 23177696,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "baseline",
+        "network": "local",
+        "i": 2,
+        "dclMs": 1499.0999999977648,
+        "usefulFirstScreenMs": 1497.7999999970198,
+        "fcpMs": 300,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 661.318,
+        "taskMs": 1389.575,
+        "heapBytes": 22898672,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "candidate",
+        "network": "local",
+        "i": 2,
+        "dclMs": 1219.3999999985099,
+        "usefulFirstScreenMs": 1233,
+        "fcpMs": 596,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 238.018,
+        "taskMs": 1381.354,
+        "heapBytes": 5837152,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "candidate",
+        "network": "local",
+        "i": 3,
+        "dclMs": 1148.2000000029802,
+        "usefulFirstScreenMs": 1177.2000000029802,
+        "fcpMs": 548,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 246.68200000000002,
+        "taskMs": 1364.83,
+        "heapBytes": 3997456,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "baseline",
+        "network": "local",
+        "i": 3,
+        "dclMs": 1603,
+        "usefulFirstScreenMs": 1600.699999999255,
+        "fcpMs": 304,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 745.742,
+        "taskMs": 1568.6979999999999,
+        "heapBytes": 17594804,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "baseline",
+        "network": "local",
+        "i": 4,
+        "dclMs": 1579.2000000029802,
+        "usefulFirstScreenMs": 1576.800000000745,
+        "fcpMs": 316,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 680.354,
+        "taskMs": 1538.328,
+        "heapBytes": 17582356,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "candidate",
+        "network": "local",
+        "i": 4,
+        "dclMs": 1156.1000000014901,
+        "usefulFirstScreenMs": 1177,
+        "fcpMs": 544,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 249.076,
+        "taskMs": 1351.618,
+        "heapBytes": 3997860,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "baseline",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 0,
+        "dclMs": 4220.199999999255,
+        "usefulFirstScreenMs": 4218.300000000745,
+        "fcpMs": 696,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 691.458,
+        "taskMs": 1416.017,
+        "heapBytes": 17568760,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "candidate",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 0,
+        "dclMs": 1712.3999999985099,
+        "usefulFirstScreenMs": 1709.699999999255,
+        "fcpMs": 1088,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 274.367,
+        "taskMs": 1236.7459999999999,
+        "heapBytes": 3957820,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "candidate",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 1,
+        "dclMs": 1697.800000000745,
+        "usefulFirstScreenMs": 1692.3999999985099,
+        "fcpMs": 1064,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 233.67,
+        "taskMs": 1255.978,
+        "heapBytes": 3571840,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "baseline",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 1,
+        "dclMs": 4175.300000000745,
+        "usefulFirstScreenMs": 4174.800000000745,
+        "fcpMs": 716,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 653.471,
+        "taskMs": 1366.291,
+        "heapBytes": 17552156,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "baseline",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 2,
+        "dclMs": 4148.5,
+        "usefulFirstScreenMs": 4147.699999999255,
+        "fcpMs": 640,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 652.451,
+        "taskMs": 1323.144,
+        "heapBytes": 23172588,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "candidate",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 2,
+        "dclMs": 1685.300000000745,
+        "usefulFirstScreenMs": 1676.5,
+        "fcpMs": 1096,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 224.90699999999998,
+        "taskMs": 1235.913,
+        "heapBytes": 3572236,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "candidate",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 3,
+        "dclMs": 1729.5,
+        "usefulFirstScreenMs": 1722.300000000745,
+        "fcpMs": 1088,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 224.268,
+        "taskMs": 1276.5040000000001,
+        "heapBytes": 3571764,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      },
+      {
+        "kind": "baseline",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 3,
+        "dclMs": 4183.10000000149,
+        "usefulFirstScreenMs": 4181.39999999851,
+        "fcpMs": 688,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 657.9209999999999,
+        "taskMs": 1508.323,
+        "heapBytes": 17532880,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "baseline",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 4,
+        "dclMs": 4171.89999999851,
+        "usefulFirstScreenMs": 4169.89999999851,
+        "fcpMs": 640,
+        "feedRows": 13546,
+        "radarRows": 12635,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 688.331,
+        "taskMs": 1418.0140000000001,
+        "heapBytes": 17519208,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 28913,
+            "gzipBytes": 10742
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "public.js",
+            "method": "GET",
+            "bytes": 9154841,
+            "gzipBytes": 2524785
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 10760505,
+        "networkGzipBytes": 3659670
+      },
+      {
+        "kind": "candidate",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "i": 4,
+        "dclMs": 1754.699999999255,
+        "usefulFirstScreenMs": 1750.7999999970198,
+        "fcpMs": 1228,
+        "feedRows": 39,
+        "radarRows": 0,
+        "library": 1264,
+        "badge": "769",
+        "scriptMs": 243.887,
+        "taskMs": 1334.721,
+        "heapBytes": 3565520,
+        "requests": [
+          {
+            "name": "index.html",
+            "method": "GET",
+            "bytes": 2235578,
+            "gzipBytes": 428534
+          },
+          {
+            "name": "style.css",
+            "method": "GET",
+            "bytes": 90241,
+            "gzipBytes": 17113
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          },
+          {
+            "name": "index.html",
+            "method": "HEAD",
+            "bytes": 0,
+            "gzipBytes": 0
+          },
+          {
+            "name": "icon.svg",
+            "method": "GET",
+            "bytes": 743255,
+            "gzipBytes": 553515
+          }
+        ],
+        "networkRawBytes": 3812329,
+        "networkGzipBytes": 1552677
+      }
+    ],
+    "summaries": [
+      {
+        "kind": "baseline",
+        "network": "local",
+        "dclMs": 1570.800000000745,
+        "usefulFirstScreenMs": 1570.199999999255,
+        "fcpMs": 316,
+        "scriptMs": 661.318,
+        "taskMs": 1497.301,
+        "heapBytes": 17594804
+      },
+      {
+        "kind": "candidate",
+        "network": "local",
+        "dclMs": 1156.1000000014901,
+        "usefulFirstScreenMs": 1177.2000000029802,
+        "fcpMs": 544,
+        "scriptMs": 246.68200000000002,
+        "taskMs": 1364.83,
+        "heapBytes": 5807040
+      },
+      {
+        "kind": "baseline",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "dclMs": 4175.300000000745,
+        "usefulFirstScreenMs": 4174.800000000745,
+        "fcpMs": 688,
+        "scriptMs": 657.9209999999999,
+        "taskMs": 1416.017,
+        "heapBytes": 17552156
+      },
+      {
+        "kind": "candidate",
+        "network": "simulated-gzip-1MiBps-150ms",
+        "dclMs": 1712.3999999985099,
+        "usefulFirstScreenMs": 1709.699999999255,
+        "fcpMs": 1088,
+        "scriptMs": 233.67,
+        "taskMs": 1255.978,
+        "heapBytes": 3571840
+      }
+    ]
+  },
+  "workerCost": {
+    "offline": true,
+    "method": "Node native Web Streams; 64KiB ASSETS fixture chunks. Process CPU includes fixture copies; not Cloudflare quota measurement.",
+    "rows": [
+      {
+        "name": "FEEDS",
+        "i": 0,
+        "bytes": 2656912,
+        "wallMs": 12.712817000000001,
+        "cpuMs": 13.957
+      },
+      {
+        "name": "FEEDS",
+        "i": 1,
+        "bytes": 2656912,
+        "wallMs": 7.360512999999997,
+        "cpuMs": 7.697
+      },
+      {
+        "name": "FEEDS",
+        "i": 2,
+        "bytes": 2656912,
+        "wallMs": 7.332580000000007,
+        "cpuMs": 8.111
+      },
+      {
+        "name": "FEEDS",
+        "i": 3,
+        "bytes": 2656912,
+        "wallMs": 9.910364999999999,
+        "cpuMs": 22.843
+      },
+      {
+        "name": "FEEDS",
+        "i": 4,
+        "bytes": 2656912,
+        "wallMs": 4.317673999999997,
+        "cpuMs": 5.631
+      },
+      {
+        "name": "RECENT_RADAR",
+        "i": 0,
+        "bytes": 126497,
+        "wallMs": 11.134377,
+        "cpuMs": 24.973
+      },
+      {
+        "name": "RECENT_RADAR",
+        "i": 1,
+        "bytes": 126497,
+        "wallMs": 6.298400999999998,
+        "cpuMs": 7.881
+      },
+      {
+        "name": "RECENT_RADAR",
+        "i": 2,
+        "bytes": 126497,
+        "wallMs": 8.972774000000015,
+        "cpuMs": 13.745
+      },
+      {
+        "name": "RECENT_RADAR",
+        "i": 3,
+        "bytes": 126497,
+        "wallMs": 9.532995,
+        "cpuMs": 20.227
+      },
+      {
+        "name": "RECENT_RADAR",
+        "i": 4,
+        "bytes": 126497,
+        "wallMs": 6.594009,
+        "cpuMs": 6.651
+      },
+      {
+        "name": "RADAR",
+        "i": 0,
+        "bytes": 4481196,
+        "wallMs": 9.709861999999987,
+        "cpuMs": 21.155
+      },
+      {
+        "name": "RADAR",
+        "i": 1,
+        "bytes": 4481196,
+        "wallMs": 10.513183999999995,
+        "cpuMs": 12.768
+      },
+      {
+        "name": "RADAR",
+        "i": 2,
+        "bytes": 4481196,
+        "wallMs": 7.813783999999998,
+        "cpuMs": 7.982
+      },
+      {
+        "name": "RADAR",
+        "i": 3,
+        "bytes": 4481196,
+        "wallMs": 10.546324999999996,
+        "cpuMs": 24.6
+      },
+      {
+        "name": "RADAR",
+        "i": 4,
+        "bytes": 4481196,
+        "wallMs": 7.8992819999999995,
+        "cpuMs": 17.187
+      }
+    ]
+  }
+}
