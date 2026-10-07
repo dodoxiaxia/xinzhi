@@ -54,7 +54,7 @@ eq(html.includes('榜单更新于 2026-10-06T00:00:00Z'),true,'pick metadata win
 eq(html.includes('更新已超过 6 小时，时效待确认'),true,'six-hour stale board warning');
 eq(html.includes('阅读原摘要'),true,'original reader button preserved');
 eq(html.includes('阅读摘要 · 中英对照'),false,'missing translation is not advertised as bilingual');
-eq(html.includes('加入晨会单'),true,'huddle button preserved');
+eq(html.includes('加入精选清单'),true,'saved selection button preserved with updated visible name');
 html=render([paper('2026-10-07',{weeklyAt:'2026-10-06T20:00:00Z'})]);
 eq(html.includes('更新已超过 6 小时'),false,'exact six hours remains within threshold');
 html=render([paper('2026-10-07',{weeklyAt:'2026-10-06T19:59:59Z'})]);

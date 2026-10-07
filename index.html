@@ -70,8 +70,8 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
         </button>
 
-        <button class="huddle-btn" id="openHuddleBtn" aria-label="打开晨会清单">
-          <span>晨会清单</span>
+        <button class="huddle-btn" id="openHuddleBtn" aria-label="打开精选清单">
+          <span>精选清单</span>
           <span class="huddle-counter" id="huddleCounter">0</span>
         </button>
         <button class="source-status-btn" id="sourceStatusBtn" type="button" data-mode="sources" aria-controls="sourcesSection" aria-pressed="false">信源状态</button>
@@ -182,7 +182,7 @@
           <ol class="home-intro" id="homeIntro" hidden>
             <li><b>每日精选</b><span>人工核对导读 + 每日自动精选</span></li>
             <li><b>本周精读</b><span>近 7 天榜单每天更新；全文精读按期发布</span></li>
-            <li><b>晨会清单</b><span>任意文献点“加入晨会单”，汇总后复制或导出</span></li>
+            <li><b>精选清单</b><span>任意文献点“加入精选清单”，汇总后复制或导出</span></li>
           </ol>
           <div id="curatedTopicsSlot"></div>
         </aside>
@@ -329,7 +329,7 @@
           </div>
 
           <div class="clinical-question-box" style="margin-top:24px;">
-            <b>科室晨会讨论思考三问：</b>
+            <b>文献讨论思考三问：</b>
             <p>1. 终点迁移：“无房颤”达标而“无任何房性心律失常”两组未见显著差异（60% vs 60%，不能据此认定等效），在指导患者术后抗凝停药与症状缓解上有何本质差别？</p>
             <p>2. 代价权衡：当总手术时长增加 86 分钟、射频放电翻倍时，是否会抵消消融团队的日间手术周转效率与液体负荷风险？</p>
             <p>3. 脉冲电场（PFA）时代外推：该系统基于射频能量开发，若结合局灶型 PFA 导管，其消融深度、透壁性与房速转化率是否会发生颠覆？</p>
@@ -375,7 +375,7 @@
 
     <div class="drawer-footer">
       <button class="btn-sm btn-share" id="drawerCopyShareBtn">复制微信群文案</button>
-      <button class="btn-sm" id="drawerHuddleToggleBtn">加入晨会单</button>
+      <button class="btn-sm" id="drawerHuddleToggleBtn">加入精选清单</button>
       <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" hidden>下载 PDF</a>
       <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerExternalLink">官网原文 ↗</a>
     </div>
@@ -383,9 +383,9 @@
 
   <!-- Morning Huddle Modal -->
   <div class="modal-backdrop" id="huddleModalBackdrop">
-    <div class="modal-dialog" role="dialog" aria-modal="true" aria-label="晨会清单">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-label="精选清单">
       <div class="modal-header">
-        <h3 style="font-size: 16px; font-weight: 600;">今日晨会文献研讨清单</h3>
+        <h3 style="font-size: 16px; font-weight: 600;">精选文献清单</h3>
         <button class="drawer-close-btn" id="closeHuddleModalBtn" aria-label="关闭">&times;</button>
       </div>
 
@@ -396,7 +396,7 @@
       <div class="modal-footer">
         <button class="btn-sm" id="clearHuddleBtn">清空清单</button>
         <div style="display: flex; gap: 8px;">
-          <button class="btn-sm btn-share" id="copyHuddleSummaryBtn">复制晨会汇总</button>
+          <button class="btn-sm btn-share" id="copyHuddleSummaryBtn">复制精选汇总</button>
           <button class="btn-sm btn-primary" id="exportHuddleMdBtn">导出 Markdown</button>
         </div>
       </div>

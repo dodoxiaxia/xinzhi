@@ -1016,6 +1016,12 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
 .abstract-original, .abstract-translation { min-width: 0; overflow-wrap: anywhere; }
 .abstract-translation { border-left: 1px solid var(--border); padding-left: 28px; }
 .abstract-column-title { font: 600 13px var(--font-sans); color: var(--text-muted); margin-bottom: 14px; }
+.abstract-jump-nav { display: none; }
+.abstract-column-title { scroll-margin-top: 58px; }
+@media (max-width: 720px) {
+  .abstract-jump-nav { display: flex; position: sticky; top: -1px; z-index: 2; gap: 8px; padding: 8px 0 12px; margin-bottom: 10px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+  .abstract-jump-nav .btn-sm { flex: 1; min-height: 44px; justify-content: center; }
+}
 .abstract-reader .tr-box { margin: 0; padding: 0; background: none; border: 0; }
 .abstract-reader .tr-box > p { margin: 0 0 14px; font-size: 16px; line-height: 1.9; }
 .abstract-reader .tr-box .ql-meta, .abstract-reader .tr-box .translation-note { font-size: 12px; color: var(--text-muted); }
