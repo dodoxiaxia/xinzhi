@@ -198,10 +198,66 @@ def public_feed(feed):
     return out
 
 
-def stage_library(rows, previous, provenance, tree, lfs, generated_at=None):
+def source_identity_migrations(previous_rows, final_rows, previous_public):
+    """Carry an already public ID through owner-confirmed source corrections.
+
+    Only an unchanged, valid private index checksum can establish continuity.
+    The checksum remains in memory; returned evidence contains public metadata.
+    """
+    final_by_sha = collections.defaultdict(list)
+    final_dois = {normalize_doi(row['DOI']) for row in final_rows if row['DOI'].strip()}
+    for row in final_rows:
+        checksum = row['SHA256'].strip().lower()
+        if re.fullmatch(r'[0-9a-f]{64}', checksum):
+            final_by_sha[checksum].append(row)
+    old_by_doi = {normalize_doi(p['doi']): p for p in previous_public if p.get('doi')}
+    old_by_title = collections.defaultdict(list)
+    for paper in previous_public:
+        old_by_title[title_key(paper.get('title', ''), paper.get('journal', ''))].append(paper)
+    migrations, evidence = {}, {}
+    for old in previous_rows:
+        targets = final_by_sha.get(old['SHA256'].strip().lower(), [])
+        identities = {}
+        for row in targets:
+            doi = normalize_doi(row['DOI'])
+            pmid = normalize_pmid(row.get('PMID', row.get('pmid', '')))
+            key = 'doi:' + doi if doi else 'pmid:' + pmid if pmid else 'sha:' + row['SHA256'].strip().lower()
+            identities[key] = row
+        if len(identities) != 1:
+            continue  # Ambiguous continuity must not silently select a target.
+        key, target = next(iter(identities.items()))
+        old_doi, new_doi = normalize_doi(old['DOI']), normalize_doi(target['DOI'])
+        if old_doi and old_doi != new_doi and old_doi in final_dois:
+            # The public article identified by this DOI still exists. Keep its
+            # public ID there; a corrected private PDF binding cannot steal it.
+            continue
+        old_title, new_title = public_text(old['题名']), public_text(target['题名'])
+        if old_doi == new_doi and old_title == new_title and old['期刊'] == target['期刊']:
+            continue
+        paper = old_by_doi.get(old_doi) if old_doi else None
+        candidates = old_by_title.get(title_key(old_title, public_text(old['期刊'])), [])
+        paper = paper or (candidates[0] if len(candidates) == 1 else None)
+        if paper is None:
+            continue
+        if key in migrations and migrations[key] != paper['id']:
+            raise SyncError('source_migration_identity_conflict')
+        migrations[key] = paper['id']
+        evidence[paper['id']] = {'id': paper['id'], 'oldDoi': normalize_doi(paper.get('doi', '')),
+                                 'newDoi': new_doi, 'oldTitle': public_text(paper.get('title', '')),
+                                 'newTitle': new_title, 'basis': 'unchanged_indexed_pdf_sha256'}
+    return migrations, [evidence[key] for key in sorted(evidence)]
+
+
+def stage_library(rows, previous, provenance, tree, lfs, generated_at=None, source_final=False,
+                  identity_migrations=None, migration_evidence=None):
     """Strict row whitelist, DOI/PMID dedup, stable public IDs and no silent deletion."""
     if not isinstance(previous, dict) or not isinstance(previous.get('papers'), list):
         raise SyncError('previous_library_required')
+    if type(source_final) is not bool:
+        raise SyncError('invalid_source_final_status')
+    identity_migrations = identity_migrations or {}
+    if identity_migrations and not source_final:
+        raise SyncError('source_migrations_require_final_confirmation')
     old = previous['papers']
     identities, titles, old_ids = {}, collections.defaultdict(list), {}
     for paper in old:
@@ -243,6 +299,13 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None):
                             'date': date, 'datePrecision': precision, 'dateBasis': basis})
     papers, matched_ids, used_ids = [], set(), set()
     metadata_conflicts, corrections, pmids = [], [], {}
+    source_dois = {p['doi'] for copies in groups.values() for p in copies if p['doi']}
+    source_pmids = {p['pmid'] for copies in groups.values() for p in copies if p['pmid']}
+    public_title_identities = collections.defaultdict(set)
+    for copies in groups.values():
+        for p in copies:
+            if p['doi'] or p['pmid']:
+                public_title_identities[title_key(p['title'], p['journal'])].add((p['doi'], p['pmid']))
     for key, copies in sorted(groups.items()):
         if len({p['pmid'] for p in copies if p['pmid']}) > 1:
             raise SyncError('duplicate_identity_conflict')
@@ -251,6 +314,11 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None):
         if len({json.dumps(p, sort_keys=True) for p in copies}) > 1:
             metadata_conflicts.append({'doi': record['doi'], 'copies': len(copies), 'status': 'source_records_differ'})
         match = identities.get('doi:' + record['doi']) if record['doi'] else None
+        migrated_id = identity_migrations.get(key)
+        if migrated_id:
+            if migrated_id not in old_ids or (match and match['id'] != migrated_id):
+                raise SyncError('source_migration_identity_conflict')
+            match = old_ids[migrated_id]
         pmid_match = identities.get('pmid:' + record['pmid']) if record['pmid'] else None
         if match and pmid_match and match['id'] != pmid_match['id']:
             raise SyncError('previous_library_identity_conflict')
@@ -261,7 +329,15 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None):
             match = old_ids.get(hashlib.sha256(key[4:].encode()).hexdigest()[:16])
         fallback = titles.get(title_key(record['title'], record['journal']), [])
         if match is None and len(fallback) == 1:
-            match = fallback[0]
+            candidate = fallback[0]
+            old_doi = normalize_doi(candidate.get('doi', ''))
+            old_pmid = normalize_pmid(str(candidate.get('pmid') or ''))
+            # A same-title addition with another strong identity must not steal
+            # the ID of an existing article that remains in the final source.
+            doi_claimed = old_doi and old_doi != record['doi'] and old_doi in source_dois
+            pmid_claimed = old_pmid and old_pmid != record['pmid'] and old_pmid in source_pmids
+            if not doi_claimed and not pmid_claimed:
+                match = candidate
         public_key = ('doi:' + record['doi'] if record['doi'] else 'pmid:' + record['pmid'] if record['pmid']
                       else 'title:' + title_key(record['title'], record['journal']))
         identifier = match.get('id') if match else hashlib.sha256(public_key.encode()).hexdigest()[:16]
@@ -299,8 +375,14 @@ def stage_library(rows, previous, provenance, tree, lfs, generated_at=None):
               'publicPapersBefore': len(old), 'publicPapersAfter': len(papers), 'matchedExisting': len(matched_ids),
               'added': len(papers) - len(matched_ids), 'removed': 0, 'identifierCorrections': corrections,
               'sourceMetadataConflicts': metadata_conflicts, 'pdfAudit': pdf_audit(rows, tree, lfs),
+              'sourceIdentityMigrations': migration_evidence or [],
+              'requiresPublicMetadataReview': bool(metadata_conflicts),
+              'sameTitleDistinctIdentifiers': [
+                  {'dois': sorted({doi for doi, _ in identities if doi}),
+                   'pmids': sorted({pmid for _, pmid in identities if pmid})}
+                  for _, identities in sorted(public_title_identities.items()) if len(identities) > 1],
               'ingestedAtKnown': 0, 'publicFulltextAvailable': 0, 'published': False,
-              'sourceIsFinal': False, 'requiresFinalSourceRevalidation': True}
+              'sourceIsFinal': source_final, 'requiresFinalSourceRevalidation': not source_final}
     return data, report
 
 
@@ -348,11 +430,21 @@ def main(argv=None):
     parser.add_argument('--source', type=Path, required=True)
     parser.add_argument('--source-commit', required=True)
     parser.add_argument('--previous-library', type=Path, default=ROOT / 'data/library.json')
+    parser.add_argument('--source-final', action='store_true', help='Source SHA explicitly confirmed final by its owner; does not authorize publication')
+    parser.add_argument('--previous-source-commit', help='Explicit old source SHA for index-identity continuity; requires --source-final')
     args = parser.parse_args(argv)
     try:
         previous = json.loads(args.previous_library.read_text(encoding='utf-8'))
         rows, tree, lfs, provenance = load_source(args.source, args.source_commit)
-        data, report = stage_library(rows, previous, provenance, tree, lfs)
+        migrations, evidence = {}, []
+        if args.previous_source_commit:
+            if not args.source_final:
+                raise SyncError('source_migrations_require_final_confirmation')
+            old_rows, _, _, _ = load_source(args.source, args.previous_source_commit)
+            migrations, evidence = source_identity_migrations(old_rows, rows, previous['papers'])
+            provenance['previousSourceCommit'] = args.previous_source_commit
+        data, report = stage_library(rows, previous, provenance, tree, lfs, source_final=args.source_final,
+                                     identity_migrations=migrations, migration_evidence=evidence)
         write_candidate(data, report)
     except SyncError as error:
         print(json.dumps({'error': str(error)}), file=sys.stderr)

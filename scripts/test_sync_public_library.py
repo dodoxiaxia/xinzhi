@@ -132,6 +132,7 @@ class SyncTests(unittest.TestCase):
         second, _ = self.stage(list(reversed(rows)))
         self.assertEqual(first, second)
         self.assertEqual(len(report['sourceMetadataConflicts']), 1)
+        self.assertTrue(report['requiresPublicMetadataReview'])
 
     def test_no_silent_deletion_of_previous_public_records(self):
         previous = {'papers': [{'id': 'lost', 'title': 'Unrelated', 'journal': 'Other', 'doi': '10.1234/lost'}]}
@@ -143,6 +144,61 @@ class SyncTests(unittest.TestCase):
         data, report = self.stage(previous=previous)
         self.assertEqual(data['papers'][0]['id'], 'stable')
         self.assertEqual(report['identifierCorrections'], [{'id': 'stable', 'oldDoi': '10.1234/old', 'newDoi': '10.1234/trial'}])
+
+    def test_same_title_new_doi_never_steals_existing_id_when_original_doi_remains(self):
+        previous = {'papers': [{'id': 'stable', 'title': 'A clinical trial', 'journal': 'Heart', 'doi': '10.1234/z-original'}]}
+        data, report = self.stage([row(DOI='10.1234/a-addition'), row(DOI='10.1234/z-original')], previous)
+        papers = {p['doi']: p for p in data['papers']}
+        self.assertEqual(len(papers), 2)
+        self.assertEqual(papers['10.1234/z-original']['id'], 'stable')
+        self.assertNotEqual(papers['10.1234/a-addition']['id'], 'stable')
+        self.assertEqual(report['sameTitleDistinctIdentifiers'], [
+            {'dois': ['10.1234/a-addition', '10.1234/z-original'], 'pmids': []}])
+
+    def test_confirmed_final_source_does_not_upgrade_publication_or_fulltext_status(self):
+        data, report = sync.stage_library([row()], {'papers': []}, {'sourceCommit': 'c' * 40}, {}, set(), source_final=True)
+        self.assertTrue(report['sourceIsFinal'])
+        self.assertFalse(report['requiresFinalSourceRevalidation'])
+        self.assertFalse(report['published'])
+        self.assertFalse(data['papers'][0]['localAvailable'])
+        self.assertEqual(data['papers'][0]['fulltextStatus'], 'not_verified')
+
+    def test_owner_confirmed_identity_correction_retains_id_via_private_checksum_continuity(self):
+        old = row(DOI='10.1234/wrong', 题名='Wrong source title')
+        final = row(DOI='10.1234/correct', 题名='Correct source title')
+        previous = {'papers': [{'id': 'stable', 'title': old['题名'], 'journal': 'Heart', 'doi': old['DOI']}]}
+        migrations, evidence = sync.source_identity_migrations([old], [final], previous['papers'])
+        data, report = sync.stage_library([final], previous, {}, {}, set(), source_final=True,
+                                         identity_migrations=migrations, migration_evidence=evidence)
+        self.assertEqual(data['papers'][0]['id'], 'stable')
+        self.assertEqual(data['papers'][0]['title'], final['题名'])
+        self.assertEqual(data['papers'][0]['doi'], final['DOI'])
+        self.assertNotIn('a' * 64, json.dumps(report))
+        with self.assertRaisesRegex(sync.SyncError, 'source_migrations_require_final_confirmation'):
+            sync.stage_library([final], previous, {}, {}, set(), identity_migrations=migrations)
+
+    def test_missing_or_ambiguous_private_checksum_cannot_establish_identity_migration(self):
+        previous = [{'id': 'stable', 'title': 'Wrong', 'journal': 'Heart', 'doi': '10.1234/wrong'}]
+        for checksum in ('', 'bad'):
+            migrations, _ = sync.source_identity_migrations([row(DOI='10.1234/wrong', SHA256=checksum)],
+                                                          [row(DOI='10.1234/correct', SHA256=checksum)], previous)
+            self.assertEqual(migrations, {})
+        migrations, _ = sync.source_identity_migrations([row(DOI='10.1234/wrong')],
+                                                       [row(DOI='10.1234/one'), row(DOI='10.1234/two')], previous)
+        self.assertEqual(migrations, {})
+
+    def test_corrected_private_pdf_binding_does_not_move_a_still_present_public_doi_id(self):
+        old = row(DOI='10.1234/original', 题名='Original public article')
+        finals = [row(DOI='10.1234/corrected', 题名='Corrected PDF title'),
+                  row(DOI='10.1234/original', 题名='Original public article', SHA256='b' * 64)]
+        previous = {'papers': [{'id': 'stable', 'title': old['题名'], 'journal': 'Heart', 'doi': old['DOI']}]}
+        migrations, evidence = sync.source_identity_migrations([old], finals, previous['papers'])
+        self.assertEqual(migrations, {})
+        data, _ = sync.stage_library(finals, previous, {}, {}, set(), source_final=True,
+                                     identity_migrations=migrations, migration_evidence=evidence)
+        by_doi = {p['doi']: p for p in data['papers']}
+        self.assertEqual(by_doi['10.1234/original']['id'], 'stable')
+        self.assertNotEqual(by_doi['10.1234/corrected']['id'], 'stable')
 
     def test_suspicious_bibliographic_values_fail_without_echo(self):
         for title in ('/Users/private/file.pdf', 'person@example.test', 'api_key=secret', 'private/book.pdf'):
