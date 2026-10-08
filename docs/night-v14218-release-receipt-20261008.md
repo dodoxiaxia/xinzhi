@@ -20,10 +20,11 @@
 
 刷新后未出现的唯一规范身份为 DOI `10.1038/s41467-026-78213-5`（Game theory driven multi-agent framework mitigates language model hallucination），不是周榜内容被覆盖。RSS PubMed 追踪参数导致 id 随 ff 改变的问题仍在，本版未修。源健康本轮 82 个：ok 54、filtered_empty 23、not_feed 5；后 5 个仍需信源专项维护。本轮保留原调度，没有创建计划或调用外部下载任务。
 
-## 真实口令测试仍待完成
+## 真实口令测试已失败，根因待定位
 
-当前执行器无受支持的已登录/保存口令浏览器上下文，不绕过既有 1010/403/工具拒绝；最新生产 `PDF_GITHUB_COMMIT` 未读，不能凭缓存 manual_needed 猜配置。请只在网站内使用既有口令打开 [JACC 检查已归档全文并下载](https://learn.dryz.info/api/acquire/retry?doi=10.1016%2Fj.jacc.2024.02.026)。手动归档检查路径只查已有私有索引，不回退出版社；重复下载可验缓存命中。若仍失败，先用 [来源版本快检](https://learn.dryz.info/api/fulltext-source?doi=10.1016%2Fj.jacc.2024.02.026) 核对 configuredCommit/resolvedCommit/candidateFound；不要将口令发到聊天或公开 issue。
+用户已于 UTC 03:56:23 左右报告真实 JACC 口令下载失败，截图对应 library_upstream 和默认 300 秒冷却。生产验收失败，不能称已有全文已正常可取；停止盲试下载。最新配置和真实失败阶段仍未知，原代码将底层 stage/code 抹去。本执行器的状态读取工具不可访问，且没有 Cloudflare 运行日志或支持的已登录口令上下文。
 
+详见 [生产诊断检查点](night-v14218-production-pdf-diagnosis-20261008.md) 和 [对象级拒绝离线反例](night-v14218-embedded-lfs-errors-20261008.json)。两个 HTTP200+对象403/429反例只证明现有错误分类缺口，不能证明本次真实 batch 内容。父线程和本线程已请用户仅做一次现有口令保护的来源快检，不读取 PDF、不清暂停；安全阶段诊断候选另行准备。
 原作者另在其授权上下文回读真实既有 JACC 原件并严格双解析验证，不代替本次生产口令入口验收。主发布本轮真实私有 PDF/出版社下载、私有索引写、正式归档写均 0。
 
 ## 后续桥候选隔离

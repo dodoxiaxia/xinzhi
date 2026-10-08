@@ -1,0 +1,44 @@
+{
+  "scope": "synthetic-offline-counterexamples-not-production-root-cause",
+  "sourceSHA": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+  "actualWorker": "/workspace/xinzhi-night-iterations-20261007/published-v14.2.18/_worker.js",
+  "actualWorkerSHA256": "00b5c7f578f3cd08224b6f9b9f46b50c45f8ea2246e5f9a593eb667595e28768",
+  "generatedAt": "2026-10-08T04:01:32.508Z",
+  "observedProductionEvent": "User-reported acquire/retry failure at 2026-10-08 03:56:23 UTC; actual batch content, request trace and Cloudflare logs unavailable.",
+  "cases": [
+    {
+      "scenario": "batch_http_200_object_error_403",
+      "batchHTTPStatus": 200,
+      "embeddedErrorCode": 403,
+      "httpStatus": 502,
+      "error": "library_upstream",
+      "paused": false,
+      "retryAfter": 1791432392564,
+      "retryAfterISO": "2026-10-08T04:06:32.564Z",
+      "retryAfterSeconds": 300,
+      "paperStatus": "pending",
+      "batchPOSTs": 1,
+      "objectGETs": 0,
+      "pdfWrites": 0,
+      "htmlShowsGenericLibraryUpstream": true,
+      "secretOrActionCredentialInHtml": false
+    },
+    {
+      "scenario": "batch_http_200_object_error_429",
+      "batchHTTPStatus": 200,
+      "embeddedErrorCode": 429,
+      "httpStatus": 502,
+      "error": "library_upstream",
+      "paused": false,
+      "retryAfter": 1791432392574,
+      "retryAfterISO": "2026-10-08T04:06:32.574Z",
+      "retryAfterSeconds": 300,
+      "paperStatus": "pending",
+      "batchPOSTs": 1,
+      "objectGETs": 0,
+      "pdfWrites": 0,
+      "htmlShowsGenericLibraryUpstream": true,
+      "secretOrActionCredentialInHtml": false
+    }
+  ]
+}

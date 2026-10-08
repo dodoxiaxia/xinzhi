@@ -27,3 +27,5 @@
 已请用户只做一次既有 [全文来源版本快检](https://learn.dryz.info/api/fulltext-source?doi=10.1016%2Fj.jacc.2024.02.026)：在网站内输入既有口令，返回 configuredCommit/resolvedCommit/candidateFound 或 error。此入口不下载 PDF、不写缓存；不聊天索密。该结果可先区分索引/版本与文件/LFS后续路径，不要继续盲试下载。若仍只有泛化 error，就需要现有安全控制台中本次请求日志，或先合入仅保存白名单 stage/code/status 的诊断候选；禁止日志含 token、口令、私有路径、签名 URL 或 response body。
 
 真正生产根因在本检查点仍未确认。继续保留已有有效缓存和暂停，不将离线 mock 成功或作者其它凭据上下文的 PDF 回读当作此次口令成功。
+
+两个确定离线反例的脱敏输出见 [night-v14218-embedded-lfs-errors-20261008.json](night-v14218-embedded-lfs-errors-20261008.json)：HTTP200/embedded403或429 → HTTP502/library_upstream、paused=false、300秒、objectGET=0、PDF writes=0。实际原因仍未知。
