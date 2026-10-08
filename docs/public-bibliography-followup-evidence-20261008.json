@@ -625,7 +625,7 @@
     "No private mother index, PDF or external model was accessed.",
     "No source online date was substituted with a print issue date.",
     "Policy is not wired into the public builder; integration task owns that step.",
-    "M8 duplicate claims are false-positive only against the recorded local baseline. Current remote state could not be refreshed due to GitHub authentication failure; historical merge is not established."
+    "M8 duplicates were not reproduced in both the recorded local baseline and the subsequently refreshed remote public state; historical merging remains unestablished."
   ],
   "localDuplicateChecks": [
     {
@@ -755,9 +755,38 @@
   "priorReviewCommit": "bc267debeb40e783d22e32be63ed788d57240440",
   "refreshedMain": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
   "remoteStateRefresh": {
-    "baselineRetained": "350addefc78f57362278ab73123924e852b179bb",
+    "confirmation": {
+      "checkedAt": "2026-10-08T01:51:55.640673+00:00",
+      "checks": [
+        {
+          "doi": "10.1016/j.landig.2025.100931",
+          "feedCount": 0,
+          "libraryCount": 1,
+          "publicIds": [
+            "f2ef8eba6b15c671"
+          ]
+        },
+        {
+          "doi": "10.1016/j.landig.2026.100983",
+          "feedCount": 0,
+          "libraryCount": 1,
+          "publicIds": [
+            "abebc81043af3725"
+          ]
+        }
+      ],
+      "credentialsModified": false,
+      "feedCount": 870,
+      "followupIdentityGuards": "passed",
+      "libraryCount": 1264,
+      "previewCount": 1263,
+      "publicBundleSha256": "75ea3df77e94546b03aaa4bf0dc4d1e14fc1711a676d72f9166ecfab6e344ed2",
+      "stateSha": "52f1be0ac1b7d34b1a5584a44195f1cbe3687a23"
+    },
     "credentialsModified": false,
-    "result": "blocked_authentication"
+    "initialAttempt": "transient_authentication_error",
+    "normalReadRecovered": true,
+    "result": "confirmed"
   },
   "schemaVersion": 1,
   "scope": "public_bibliography_only",

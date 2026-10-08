@@ -14,7 +14,7 @@
     "unresolved": 1,
     "verified": 7
   },
-  "currentRemoteStateConfirmed": false,
+  "currentRemoteStateConfirmed": true,
   "deployed": false,
   "existingSourceFilesChanged": 0,
   "idempotent": true,
@@ -41,7 +41,35 @@
   "rawSnapshotCount": 1268,
   "refreshedMain": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
   "relevantRegressionTests": 42,
-  "remoteStateRefresh": "blocked_authentication",
+  "remoteConfirmation": {
+    "checkedAt": "2026-10-08T01:51:55.640673+00:00",
+    "checks": [
+      {
+        "doi": "10.1016/j.landig.2025.100931",
+        "feedCount": 0,
+        "libraryCount": 1,
+        "publicIds": [
+          "f2ef8eba6b15c671"
+        ]
+      },
+      {
+        "doi": "10.1016/j.landig.2026.100983",
+        "feedCount": 0,
+        "libraryCount": 1,
+        "publicIds": [
+          "abebc81043af3725"
+        ]
+      }
+    ],
+    "credentialsModified": false,
+    "feedCount": 870,
+    "followupIdentityGuards": "passed",
+    "libraryCount": 1264,
+    "previewCount": 1263,
+    "publicBundleSha256": "75ea3df77e94546b03aaa4bf0dc4d1e14fc1711a676d72f9166ecfab6e344ed2",
+    "stateSha": "52f1be0ac1b7d34b1a5584a44195f1cbe3687a23"
+  },
+  "remoteStateRefresh": "confirmed",
   "sourceBase": "bc267debeb40e783d22e32be63ed788d57240440",
   "stateBaseline": "350addefc78f57362278ab73123924e852b179bb",
   "tests": "passed"
