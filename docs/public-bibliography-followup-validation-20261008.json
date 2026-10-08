@@ -1,0 +1,48 @@
+{
+  "actions": {
+    "alias": 1,
+    "correct": 6,
+    "hold_link": 1,
+    "retain": 2
+  },
+  "assignedPMIDs": 0,
+  "batchPdfHoldCount": 11,
+  "builderWired": false,
+  "combinedPdfHoldCount": 17,
+  "counts": {
+    "false-positive": 2,
+    "unresolved": 1,
+    "verified": 7
+  },
+  "currentRemoteStateConfirmed": false,
+  "deployed": false,
+  "existingSourceFilesChanged": 0,
+  "idempotent": true,
+  "inputPublicBundleSha256": "e29478ed7c1b730b3379912f3798ce7c8bfe02e0d29b2e1fb975955879910392",
+  "inputRawPublicSourceHashes": {
+    "data/library.json": "53d7b431a6d1f82c6eee8ec8f85dbc9b4623db07caae6a0905ffe626699e87cd",
+    "editorial/public_library_snapshot.json": "0524aa60bb72b452b021fef40a712e2a810e5caf3bc664a9e4b80447b8908ea2",
+    "editorial/public_library_snapshot_manifest.json": "6e9c740630a18808375d4557bcdf552069886f639227fac6e0fd2adc7c4d54eb"
+  },
+  "manufacturedIngestionDates": 0,
+  "newTests": 17,
+  "pdfRegistryExcludesCombinedHolds": true,
+  "policySha256": "f66218873d8eec6285ccee4e527c1dc8ec42838ccf931ab1898aacd088dbaa73",
+  "previewInputCount": 1264,
+  "previewNetworkRequests": 0,
+  "previewOutputCount": 1263,
+  "privateMotherIndexReads": 0,
+  "privatePdfBodiesRead": 0,
+  "qaDuplicateClaimLocalCounts": {
+    "10.1016/j.landig.2025.100931": 1,
+    "10.1016/j.landig.2026.100983": 1
+  },
+  "rawPublicSourcesUnchanged": true,
+  "rawSnapshotCount": 1268,
+  "refreshedMain": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "relevantRegressionTests": 42,
+  "remoteStateRefresh": "blocked_authentication",
+  "sourceBase": "bc267debeb40e783d22e32be63ed788d57240440",
+  "stateBaseline": "350addefc78f57362278ab73123924e852b179bb",
+  "tests": "passed"
+}

@@ -1,0 +1,836 @@
+{
+  "cases": [
+    {
+      "id": "c9dcd2b66a6ce72b",
+      "original": {
+        "date": "2026-06-17",
+        "dateBasis": "",
+        "doi": "",
+        "id": "c9dcd2b66a6ce72b",
+        "journal": "JN Learning",
+        "pmid": "",
+        "title": "AMA Ed Hub > JN Learning > By Topic > The Wizard of Oz in Medical AI The Wizard of Oz in Medical AI Published Online: June 17, 2026",
+        "url": ""
+      },
+      "publisherMetadata": {
+        "dateConflict": {
+          "crossrefPublishedOnline": "2026-07-14",
+          "publisherPublishedOnline": "2026-06-17",
+          "selected": "publisher_first_online"
+        },
+        "doi": "10.1001/jama.2026.6477",
+        "format": "multimedia/audio",
+        "journal": "JAMA",
+        "publishedOnline": "2026-06-17",
+        "sameTitleDateLearningPage": "https://edhub.ama-assn.org/jn-learning/audio-player/19071589",
+        "sourceUrl": "https://jamanetwork.com/journals/jama/fullarticle/2850538",
+        "title": "The Wizard of Oz in Medical AI"
+      },
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.6477",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              7,
+              14
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              7,
+              14
+            ]
+          ]
+        },
+        "published-print": null,
+        "requestedDoi": "10.1001/jama.2026.6477",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.6477",
+        "title": [
+          "The Wizard of Oz in Medical AI"
+        ]
+      }
+    },
+    {
+      "id": "5aa7bd3c3a9717e9",
+      "original": {
+        "date": "2026-04-13",
+        "dateBasis": "",
+        "doi": "10.1111/j.1475-6773",
+        "id": "5aa7bd3c3a9717e9",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE The First AI Drug Prescriber",
+        "url": "https://doi.org/10.1111/j.1475-6773"
+      },
+      "originalRegistry": {
+        "http": 404,
+        "requestedDoi": "10.1111/j.1475-6773",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1111%2Fj.1475-6773"
+      },
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.3533",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              12
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              12
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jama.2026.3533",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.3533",
+        "title": [
+          "The First AI Drug Prescriber"
+        ]
+      }
+    },
+    {
+      "id": "64d7382f06c6991f",
+      "original": {
+        "date": "2026-04-08",
+        "dateBasis": "",
+        "doi": "10.1093/jamia/ocae040",
+        "id": "64d7382f06c6991f",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE Workflow Blocking in Clinical Care",
+        "url": "https://doi.org/10.1093/jamia/ocae040"
+      },
+      "originalRegistry": {
+        "DOI": "10.1093/jamia/ocae040",
+        "container-title": [
+          "Journal of the American Medical Informatics Association"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2024,
+              3,
+              6
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2024,
+              3,
+              6
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2024,
+              4,
+              19
+            ]
+          ]
+        },
+        "requestedDoi": "10.1093/jamia/ocae040",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1093%2Fjamia%2Focae040",
+        "title": [
+          "Real world performance of the 21st Century Cures Act population-level application programming interface"
+        ]
+      },
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.3249",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              5
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              5
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jama.2026.3249",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.3249",
+        "title": [
+          "Workflow Blocking in Clinical Care"
+        ]
+      }
+    },
+    {
+      "id": "3bcf52b03b3bfd64",
+      "original": {
+        "date": "2026-03-02",
+        "dateBasis": "",
+        "doi": "10.3389/fmed.2024.1324963",
+        "id": "3bcf52b03b3bfd64",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE The Lost Aura of the Physician in the Age of Artificial Intelligence",
+        "url": "https://doi.org/10.3389/fmed.2024.1324963"
+      },
+      "originalRegistry": {
+        "DOI": "10.3389/fmed.2024.1324963",
+        "container-title": [
+          "Frontiers in Medicine"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2024,
+              3,
+              28
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2024,
+              3,
+              28
+            ]
+          ]
+        },
+        "published-print": null,
+        "requestedDoi": "10.3389/fmed.2024.1324963",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.3389%2Ffmed.2024.1324963",
+        "title": [
+          "Physician’s autonomy in the face of AI support: walking the ethical tightrope"
+        ]
+      },
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.0946",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              4,
+              7
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              4,
+              7
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jama.2026.0946",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.0946",
+        "title": [
+          "The Lost Aura of the Physician in the Age of Artificial Intelligence"
+        ]
+      }
+    },
+    {
+      "id": "14ac10d88baa1cf1",
+      "original": {
+        "date": "2026-01-14",
+        "dateBasis": "",
+        "doi": "10.1038/s41592-023-02150-0",
+        "id": "14ac10d88baa1cf1",
+        "journal": "JAMA Surgery",
+        "pmid": "",
+        "title": "Invited Commentary AI IN SURGERY",
+        "url": "https://doi.org/10.1038/s41592-023-02150-0"
+      },
+      "originalRegistry": {
+        "DOI": "10.1038/s41592-023-02150-0",
+        "container-title": [
+          "Nature Methods"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2024,
+              2
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2024,
+              2,
+              12
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2024,
+              2
+            ]
+          ]
+        },
+        "requestedDoi": "10.1038/s41592-023-02150-0",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1038%2Fs41592-023-02150-0",
+        "title": [
+          "Understanding metric-related pitfalls in image analysis validation"
+        ]
+      }
+    },
+    {
+      "id": "2e9a9023ee2212fc",
+      "original": {
+        "date": "",
+        "dateBasis": "",
+        "doi": "10.1093/ehjdh/ztag098/8713549",
+        "id": "2e9a9023ee2212fc",
+        "journal": "European Heart Journal - Digital Health",
+        "pmid": "",
+        "title": "1 Generating evidence using electronic alerts during routine care: a fully 2 automated randomised controlled trial of oral fluid restriction in acute",
+        "url": "https://doi.org/10.1093/ehjdh/ztag098/8713549"
+      },
+      "replacementRegistry": {
+        "DOI": "10.1093/ehjdh/ztag098",
+        "container-title": [
+          "European Heart Journal - Digital Health"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              23
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              23
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              23
+            ]
+          ]
+        },
+        "requestedDoi": "10.1093/ehjdh/ztag098",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag098",
+        "title": [
+          "Generating evidence using electronic alerts during routine care: a fully automated randomized controlled trial of oral fluid restriction in acute heart failure (THIRST alert trial)"
+        ]
+      }
+    },
+    {
+      "id": "205851dfec4a1c18",
+      "original": {
+        "date": "",
+        "dateBasis": "",
+        "doi": "10.1093/eurheartj/ehag494/8707083",
+        "id": "205851dfec4a1c18",
+        "journal": "European Heart Journal",
+        "pmid": "",
+        "title": "1 Artificial Intelligence in Biomedical Scientific Publishing 1) Editor-in-Chief of the Cardiovascular Research, Centre for Cardiovascular Science, Queen's",
+        "url": "https://doi.org/10.1093/eurheartj/ehag494/8707083"
+      },
+      "replacementRegistry": {
+        "DOI": "10.1093/eurheartj/ehag494",
+        "container-title": [
+          "European Heart Journal"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              12
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              12
+            ]
+          ]
+        },
+        "published-print": null,
+        "requestedDoi": "10.1093/eurheartj/ehag494",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1093%2Feurheartj%2Fehag494",
+        "title": [
+          "Artificial Intelligence in Biomedical Scientific Publishing"
+        ]
+      }
+    },
+    {
+      "id": "039a2a57e62585bb",
+      "original": {
+        "date": "",
+        "dateBasis": "",
+        "doi": "10.1093/ehjdh/ztag032/8488692",
+        "id": "039a2a57e62585bb",
+        "journal": "European Heart Journal - Digital Health",
+        "pmid": "",
+        "title": "2 Conversational AI for remote monitoring in heart failure: a prospective controlled pilot Short title: Conversational AI for Remote Monitoring in HF",
+        "url": "https://doi.org/10.1093/ehjdh/ztag032/8488692"
+      },
+      "replacementRegistry": {
+        "DOI": "10.1093/ehjdh/ztag032",
+        "container-title": [
+          "European Heart Journal - Digital Health"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              2,
+              17
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              2,
+              17
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              3,
+              4
+            ]
+          ]
+        },
+        "requestedDoi": "10.1093/ehjdh/ztag032",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag032",
+        "title": [
+          "Conversational AI for remote monitoring in heart failure: a prospective controlled pilot study"
+        ]
+      }
+    }
+  ],
+  "checkedOn": "2026-10-08",
+  "counts": {
+    "false-positive": 2,
+    "unresolved": 1,
+    "verified": 7
+  },
+  "deferredEvidence": [
+    {
+      "id": "570439f21b8b0333",
+      "original": {
+        "date": "2026-05-07",
+        "dateBasis": "",
+        "doi": "10.1097/acm.0000000000001323",
+        "id": "570439f21b8b0333",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE Promoting Clinical Expertise in the Age of AI",
+        "url": "https://doi.org/10.1097/acm.0000000000001323"
+      },
+      "originalRegistry": {
+        "DOI": "10.1097/acm.0000000000001323",
+        "container-title": [
+          "Academic Medicine"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2017,
+              1
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2017,
+              1
+            ]
+          ]
+        },
+        "requestedDoi": "10.1097/acm.0000000000001323",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1097%2Facm.0000000000001323",
+        "title": [
+          "Fostering the Development of Master Adaptive Learners: A Conceptual Model to Guide Skill Acquisition in Medical Education"
+        ]
+      },
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.6097",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              2
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              6,
+              2
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jama.2026.6097",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.6097",
+        "title": [
+          "Promoting Clinical Expertise in the Age of AI"
+        ]
+      }
+    },
+    {
+      "id": "38e57b97926cbb51",
+      "original": {
+        "date": "2026-04-29",
+        "dateBasis": "",
+        "doi": "10.1016/j.mayocp.2024.11",
+        "id": "38e57b97926cbb51",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE Artificial Intelligence Is Not the End of the Physician",
+        "url": "https://doi.org/10.1016/j.mayocp.2024.11"
+      },
+      "originalRegistry": {
+        "http": 404,
+        "requestedDoi": "10.1016/j.mayocp.2024.11",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1016%2Fj.mayocp.2024.11"
+      },
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.4356",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              26
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              26
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jama.2026.4356",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.4356",
+        "title": [
+          "Artificial Intelligence Is Not the End of the Physician"
+        ]
+      }
+    }
+  ],
+  "deferredReason": "Prepared before M8 arrived; omitted from this ten-item delivery to include the two new duplicate claims. Evidence retained for reuse only.",
+  "libraryReportRead": {
+    "claimedLibraryCount": 1268,
+    "fileId": "libfile_5c9d8c32aea88191a873a20644cb2c8f",
+    "lines": [
+      45,
+      51
+    ],
+    "section": "M8"
+  },
+  "limitations": [
+    "No cached PMID was promoted without independent verification.",
+    "The earlier PubMed 429 was respected: no PubMed request was made in this followup.",
+    "No private mother index, PDF or external model was accessed.",
+    "No source online date was substituted with a print issue date.",
+    "Policy is not wired into the public builder; integration task owns that step.",
+    "M8 duplicate claims are false-positive only against the recorded local baseline. Current remote state could not be refreshed due to GitHub authentication failure; historical merge is not established."
+  ],
+  "localDuplicateChecks": [
+    {
+      "counts": {
+        "FEEDS": 0,
+        "LIBRARY": 1,
+        "RAW_APPROVED": 1,
+        "RUNTIME_LIBRARY": 1
+      },
+      "doi": "10.1016/j.landig.2025.100931",
+      "historicalMerge": "not_established",
+      "matches": {
+        "FEEDS": [],
+        "LIBRARY": [
+          {
+            "date": "2026-01",
+            "dateBasis": "Crossref published-print（索引记录，未复核）",
+            "doi": "10.1016/j.landig.2025.100931",
+            "id": "f2ef8eba6b15c671",
+            "journal": "Lancet Digital Health",
+            "pmid": "",
+            "title": "Reasoning-driven large language models in medicine: opportunities, challenges, and the road ahead",
+            "url": "https://doi.org/10.1016/j.landig.2025.100931"
+          }
+        ],
+        "RAW_APPROVED": [
+          {
+            "date": "2026-01",
+            "dateBasis": "Crossref published-print（索引记录，未复核）",
+            "doi": "10.1016/j.landig.2025.100931",
+            "id": "f2ef8eba6b15c671",
+            "journal": "Lancet Digital Health",
+            "pmid": "",
+            "title": "Reasoning-driven large language models in medicine: opportunities, challenges, and the road ahead",
+            "url": "https://doi.org/10.1016/j.landig.2025.100931"
+          }
+        ],
+        "RUNTIME_LIBRARY": [
+          {
+            "date": "2026-01",
+            "dateBasis": "Crossref published-print（索引记录，未复核）",
+            "doi": "10.1016/j.landig.2025.100931",
+            "id": "f2ef8eba6b15c671",
+            "journal": "Lancet Digital Health",
+            "pmid": "",
+            "title": "Reasoning-driven large language models in medicine: opportunities, challenges, and the road ahead",
+            "url": "https://doi.org/10.1016/j.landig.2025.100931"
+          }
+        ]
+      },
+      "reportedFinding": "same_doi_duplicate",
+      "scope": "not_reproduced_in_recorded_local_public_baseline",
+      "sourceLines": [
+        48,
+        49
+      ],
+      "sourceReport": "libfile_5c9d8c32aea88191a873a20644cb2c8f",
+      "status": "false-positive"
+    },
+    {
+      "counts": {
+        "FEEDS": 0,
+        "LIBRARY": 1,
+        "RAW_APPROVED": 1,
+        "RUNTIME_LIBRARY": 1
+      },
+      "doi": "10.1016/j.landig.2026.100983",
+      "historicalMerge": "not_established",
+      "matches": {
+        "FEEDS": [],
+        "LIBRARY": [
+          {
+            "date": "2026-04",
+            "dateBasis": "Crossref published-print（索引记录，未复核）",
+            "doi": "10.1016/j.landig.2026.100983",
+            "id": "abebc81043af3725",
+            "journal": "Lancet Digital Health",
+            "pmid": "",
+            "title": "Can large language models help young researchers develop new clinical research ideas?",
+            "url": "https://doi.org/10.1016/j.landig.2026.100983"
+          }
+        ],
+        "RAW_APPROVED": [
+          {
+            "date": "2026-04",
+            "dateBasis": "Crossref published-print（索引记录，未复核）",
+            "doi": "10.1016/j.landig.2026.100983",
+            "id": "abebc81043af3725",
+            "journal": "Lancet Digital Health",
+            "pmid": "",
+            "title": "Can large language models help young researchers develop new clinical research ideas?",
+            "url": "https://doi.org/10.1016/j.landig.2026.100983"
+          }
+        ],
+        "RUNTIME_LIBRARY": [
+          {
+            "date": "2026-04",
+            "dateBasis": "Crossref published-print（索引记录，未复核）",
+            "doi": "10.1016/j.landig.2026.100983",
+            "id": "abebc81043af3725",
+            "journal": "Lancet Digital Health",
+            "pmid": "",
+            "title": "Can large language models help young researchers develop new clinical research ideas?",
+            "url": "https://doi.org/10.1016/j.landig.2026.100983"
+          }
+        ]
+      },
+      "reportedFinding": "same_doi_duplicate",
+      "scope": "not_reproduced_in_recorded_local_public_baseline",
+      "sourceLines": [
+        48,
+        49
+      ],
+      "sourceReport": "libfile_5c9d8c32aea88191a873a20644cb2c8f",
+      "status": "false-positive"
+    }
+  ],
+  "officialRequests": {
+    "crossrefExactMetadata": 15,
+    "crossrefTitleQueries": 2,
+    "limitedResponses": 0,
+    "publisherPages": 2,
+    "publisherSearches": 1,
+    "pubmed": 0,
+    "retries": 0
+  },
+  "priorReviewCommit": "bc267debeb40e783d22e32be63ed788d57240440",
+  "refreshedMain": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "remoteStateRefresh": {
+    "baselineRetained": "350addefc78f57362278ab73123924e852b179bb",
+    "credentialsModified": false,
+    "result": "blocked_authentication"
+  },
+  "schemaVersion": 1,
+  "scope": "public_bibliography_only",
+  "selectedCount": 10,
+  "stateBaseline": "350addefc78f57362278ab73123924e852b179bb",
+  "titleQueries": [
+    {
+      "candidateDoiTitles": [
+        {
+          "DOI": "10.1001/jama.2026.3533",
+          "journal": [
+            "JAMA"
+          ],
+          "title": [
+            "The First AI Drug Prescriber"
+          ]
+        },
+        {
+          "DOI": "10.12968/indn.2006.1.10.74387",
+          "journal": [
+            "Independent Nurse"
+          ],
+          "title": [
+            "Professional Prescriber series: Drug switches"
+          ]
+        },
+        {
+          "DOI": "10.1002/phar.1461",
+          "journal": [
+            "Pharmacotherapy: The Journal of Human Pharmacology and Drug Therapy"
+          ],
+          "title": [
+            "National Evaluation of Prescriber Drug Dispensing"
+          ]
+        }
+      ],
+      "http": 200,
+      "query": "The First AI Drug Prescriber",
+      "sourceUrl": "https://api.crossref.org/works?query.title=The+First+AI+Drug+Prescriber&rows=3&select=DOI%2Ctitle%2Ccontainer-title%2Cpublished-online%2Cpublished-print%2Cauthor"
+    },
+    {
+      "candidateDoiTitles": [
+        {
+          "DOI": "10.1001/jama.2026.3249",
+          "journal": [
+            "JAMA"
+          ],
+          "title": [
+            "Workflow Blocking in Clinical Care"
+          ]
+        },
+        {
+          "DOI": "10.1002/9781394433711.ch11",
+          "journal": [
+            "Cybersecurity for Medical Devices"
+          ],
+          "title": [
+            "Clinical Workflow Security: Bridging\n                    <scp>IT</scp>\n                    and Patient Care"
+          ]
+        },
+        {
+          "DOI": "10.1016/j.jaac.2018.07.503",
+          "journal": [
+            "Journal of the American Academy of Child &amp; Adolescent Psychiatry"
+          ],
+          "title": [
+            "Pathways in Clinical Care (PaCC): Addressing Important Clinical Issues Through Multidisciplinary Workflow Development"
+          ]
+        }
+      ],
+      "http": 200,
+      "query": "Workflow Blocking in Clinical Care",
+      "sourceUrl": "https://api.crossref.org/works?query.title=Workflow+Blocking+in+Clinical+Care&rows=3&select=DOI%2Ctitle%2Ccontainer-title%2Cpublished-online%2Cpublished-print%2Cauthor"
+    }
+  ]
+}

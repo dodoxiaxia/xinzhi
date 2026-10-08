@@ -1,0 +1,302 @@
+{
+  "batch": "public-bibliography-followup-20261008",
+  "checkedOn": "2026-10-08",
+  "entries": [
+    {
+      "action": "correct",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1001%2Fjama.2026.6477",
+        "https://jamanetwork.com/journals/jama/fullarticle/2850538",
+        "https://edhub.ama-assn.org/jn-learning/audio-player/19071589"
+      ],
+      "id": "c9dcd2b66a6ce72b",
+      "original": {
+        "doi": "",
+        "id": "c9dcd2b66a6ce72b",
+        "journal": "JN Learning",
+        "pmid": "",
+        "title": "AMA Ed Hub > JN Learning > By Topic > The Wizard of Oz in Medical AI The Wizard of Oz in Medical AI Published Online: June 17, 2026"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://jamanetwork.com/journals/jama/fullarticle/2850538",
+        "date": "2026-06-17",
+        "dateBasis": "JAMA 官网 published-online（已复核；Crossref 日期冲突）",
+        "datePrecision": "day",
+        "doi": "10.1001/jama.2026.6477",
+        "journal": "JAMA",
+        "onlineDate": "2026-06-17",
+        "title": "The Wizard of Oz in Medical AI",
+        "url": "https://doi.org/10.1001/jama.2026.6477"
+      },
+      "reason": "official_multimedia_record_with_navigation_contamination_not_a_menu_only_record",
+      "status": "verified"
+    },
+    {
+      "action": "correct",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1111%2Fj.1475-6773",
+        "https://api.crossref.org/works/10.1001%2Fjama.2026.3533"
+      ],
+      "id": "5aa7bd3c3a9717e9",
+      "original": {
+        "doi": "10.1111/j.1475-6773",
+        "id": "5aa7bd3c3a9717e9",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE The First AI Drug Prescriber"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.3533",
+        "doi": "10.1001/jama.2026.3533",
+        "issueDate": "2026-05",
+        "issueDateBasis": "Crossref published-print（刊期月，已复核）",
+        "issueDatePrecision": "month",
+        "journal": "JAMA",
+        "title": "The First AI Drug Prescriber",
+        "url": "https://doi.org/10.1001/jama.2026.3533"
+      },
+      "reason": "official_title_journal_and_identifier_confirmed",
+      "status": "verified"
+    },
+    {
+      "action": "correct",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1093%2Fjamia%2Focae040",
+        "https://api.crossref.org/works/10.1001%2Fjama.2026.3249"
+      ],
+      "id": "64d7382f06c6991f",
+      "original": {
+        "doi": "10.1093/jamia/ocae040",
+        "id": "64d7382f06c6991f",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE Workflow Blocking in Clinical Care"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.3249",
+        "doi": "10.1001/jama.2026.3249",
+        "issueDate": "2026-05",
+        "issueDateBasis": "Crossref published-print（刊期月，已复核）",
+        "issueDatePrecision": "month",
+        "journal": "JAMA",
+        "title": "Workflow Blocking in Clinical Care",
+        "url": "https://doi.org/10.1001/jama.2026.3249"
+      },
+      "reason": "official_title_journal_and_identifier_confirmed",
+      "status": "verified"
+    },
+    {
+      "action": "alias",
+      "canonicalId": "ffeb47ca0a734600",
+      "canonicalOriginal": {
+        "doi": "10.1001/jama.2026.0946",
+        "id": "ffeb47ca0a734600",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "The Lost Aura of the Physician in the Age of Artificial Intelligence"
+      },
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.3389%2Ffmed.2024.1324963",
+        "https://api.crossref.org/works/10.1001%2Fjama.2026.0946"
+      ],
+      "id": "3bcf52b03b3bfd64",
+      "original": {
+        "doi": "10.3389/fmed.2024.1324963",
+        "id": "3bcf52b03b3bfd64",
+        "journal": "JAMA",
+        "pmid": "",
+        "title": "AI IN MEDICINE The Lost Aura of the Physician in the Age of Artificial Intelligence"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.0946",
+        "doi": "10.1001/jama.2026.0946",
+        "issueDate": "2026-04",
+        "issueDateBasis": "Crossref published-print（刊期月，已复核）",
+        "issueDatePrecision": "month",
+        "journal": "JAMA",
+        "title": "The Lost Aura of the Physician in the Age of Artificial Intelligence",
+        "url": "https://doi.org/10.1001/jama.2026.0946"
+      },
+      "reason": "explicit_public_duplicate_of_existing_official_doi_identity_private_bindings_unverified",
+      "status": "verified"
+    },
+    {
+      "action": "hold_link",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1038%2Fs41592-023-02150-0"
+      ],
+      "id": "14ac10d88baa1cf1",
+      "original": {
+        "doi": "10.1038/s41592-023-02150-0",
+        "id": "14ac10d88baa1cf1",
+        "journal": "JAMA Surgery",
+        "pmid": "",
+        "title": "Invited Commentary AI IN SURGERY"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "doi": "",
+        "url": ""
+      },
+      "reason": "registered_doi_is_unrelated_nature_methods_article_column_title_does_not_identify_original",
+      "status": "unresolved"
+    },
+    {
+      "action": "correct",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag098"
+      ],
+      "id": "2e9a9023ee2212fc",
+      "original": {
+        "doi": "10.1093/ehjdh/ztag098/8713549",
+        "id": "2e9a9023ee2212fc",
+        "journal": "European Heart Journal - Digital Health",
+        "pmid": "",
+        "title": "1 Generating evidence using electronic alerts during routine care: a fully 2 automated randomised controlled trial of oral fluid restriction in acute"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag098",
+        "date": "2026-06-23",
+        "dateBasis": "Crossref published-online（已复核）",
+        "datePrecision": "day",
+        "doi": "10.1093/ehjdh/ztag098",
+        "issueDate": "2026-06",
+        "issueDateBasis": "Crossref published-print（刊期月，已复核）",
+        "issueDatePrecision": "month",
+        "journal": "European Heart Journal - Digital Health",
+        "onlineDate": "2026-06-23",
+        "title": "Generating evidence using electronic alerts during routine care: a fully automated randomized controlled trial of oral fluid restriction in acute heart failure (THIRST alert trial)",
+        "url": "https://doi.org/10.1093/ehjdh/ztag098"
+      },
+      "reason": "official_title_journal_and_identifier_confirmed",
+      "status": "verified"
+    },
+    {
+      "action": "correct",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1093%2Feurheartj%2Fehag494"
+      ],
+      "id": "205851dfec4a1c18",
+      "original": {
+        "doi": "10.1093/eurheartj/ehag494/8707083",
+        "id": "205851dfec4a1c18",
+        "journal": "European Heart Journal",
+        "pmid": "",
+        "title": "1 Artificial Intelligence in Biomedical Scientific Publishing 1) Editor-in-Chief of the Cardiovascular Research, Centre for Cardiovascular Science, Queen's"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://api.crossref.org/works/10.1093%2Feurheartj%2Fehag494",
+        "date": "2026-06-12",
+        "dateBasis": "Crossref published-online（已复核）",
+        "datePrecision": "day",
+        "doi": "10.1093/eurheartj/ehag494",
+        "journal": "European Heart Journal",
+        "onlineDate": "2026-06-12",
+        "title": "Artificial Intelligence in Biomedical Scientific Publishing",
+        "url": "https://doi.org/10.1093/eurheartj/ehag494"
+      },
+      "reason": "official_title_journal_and_identifier_confirmed",
+      "status": "verified"
+    },
+    {
+      "action": "correct",
+      "evidenceUrls": [
+        "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag032"
+      ],
+      "id": "039a2a57e62585bb",
+      "original": {
+        "doi": "10.1093/ehjdh/ztag032/8488692",
+        "id": "039a2a57e62585bb",
+        "journal": "European Heart Journal - Digital Health",
+        "pmid": "",
+        "title": "2 Conversational AI for remote monitoring in heart failure: a prospective controlled pilot Short title: Conversational AI for Remote Monitoring in HF"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {
+        "bibliographicEvidenceUrl": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag032",
+        "date": "2026-02-17",
+        "dateBasis": "Crossref published-online（已复核）",
+        "datePrecision": "day",
+        "doi": "10.1093/ehjdh/ztag032",
+        "issueDate": "2026-03",
+        "issueDateBasis": "Crossref published-print（刊期月，已复核）",
+        "issueDatePrecision": "month",
+        "journal": "European Heart Journal - Digital Health",
+        "onlineDate": "2026-02-17",
+        "title": "Conversational AI for remote monitoring in heart failure: a prospective controlled pilot study",
+        "url": "https://doi.org/10.1093/ehjdh/ztag032"
+      },
+      "reason": "official_title_journal_and_identifier_confirmed",
+      "status": "verified"
+    },
+    {
+      "action": "retain",
+      "evidenceUrls": [],
+      "id": "f2ef8eba6b15c671",
+      "localEvidence": {
+        "counts": {
+          "FEEDS": 0,
+          "LIBRARY": 1,
+          "RAW_APPROVED": 1,
+          "RUNTIME_LIBRARY": 1
+        },
+        "historicalMerge": "not_established",
+        "publicBundleSha256": "e29478ed7c1b730b3379912f3798ce7c8bfe02e0d29b2e1fb975955879910392",
+        "rawSnapshotSha256": "0524aa60bb72b452b021fef40a712e2a810e5caf3bc664a9e4b80447b8908ea2",
+        "reportLibraryFileId": "libfile_5c9d8c32aea88191a873a20644cb2c8f",
+        "runtimeLibrarySha256": "53d7b431a6d1f82c6eee8ec8f85dbc9b4623db07caae6a0905ffe626699e87cd",
+        "type": "normalized_public_doi_cardinality"
+      },
+      "original": {
+        "doi": "10.1016/j.landig.2025.100931",
+        "id": "f2ef8eba6b15c671",
+        "journal": "Lancet Digital Health",
+        "pmid": "",
+        "title": "Reasoning-driven large language models in medicine: opportunities, challenges, and the road ahead"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {},
+      "reason": "reported_same_doi_duplicate_not_reproduced_in_recorded_public_and_raw_baselines",
+      "status": "false-positive"
+    },
+    {
+      "action": "retain",
+      "evidenceUrls": [],
+      "id": "abebc81043af3725",
+      "localEvidence": {
+        "counts": {
+          "FEEDS": 0,
+          "LIBRARY": 1,
+          "RAW_APPROVED": 1,
+          "RUNTIME_LIBRARY": 1
+        },
+        "historicalMerge": "not_established",
+        "publicBundleSha256": "e29478ed7c1b730b3379912f3798ce7c8bfe02e0d29b2e1fb975955879910392",
+        "rawSnapshotSha256": "0524aa60bb72b452b021fef40a712e2a810e5caf3bc664a9e4b80447b8908ea2",
+        "reportLibraryFileId": "libfile_5c9d8c32aea88191a873a20644cb2c8f",
+        "runtimeLibrarySha256": "53d7b431a6d1f82c6eee8ec8f85dbc9b4623db07caae6a0905ffe626699e87cd",
+        "type": "normalized_public_doi_cardinality"
+      },
+      "original": {
+        "doi": "10.1016/j.landig.2026.100983",
+        "id": "abebc81043af3725",
+        "journal": "Lancet Digital Health",
+        "pmid": "",
+        "title": "Can large language models help young researchers develop new clinical research ideas?"
+      },
+      "privateBinding": "hold",
+      "publicPatch": {},
+      "reason": "reported_same_doi_duplicate_not_reproduced_in_recorded_public_and_raw_baselines",
+      "status": "false-positive"
+    }
+  ],
+  "schemaVersion": 1,
+  "scope": "public_bibliography_only",
+  "sourceBase": "bc267debeb40e783d22e32be63ed788d57240440"
+}
