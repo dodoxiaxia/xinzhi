@@ -46,16 +46,19 @@ def status_from_pubmed(publication_types=(), relations=()):
     types = {str(t).casefold().strip() for t in publication_types or ()}
     related = _relations(relations)
     kinds = {r['type'] for r in related}
+    # These describe this publication's own current status. A notice can itself
+    # be retracted or receive a concern; its older role/target must not hide it.
+    # RetractionOf describes the notice's target, never its own retraction.
+    if 'retracted publication' in types or 'RetractionIn' in kinds:
+        return 'retracted'
+    if 'ExpressionOfConcernIn' in kinds:
+        return 'concern'
     if types & {'retraction notice', 'retraction of publication'} or 'RetractionOf' in kinds:
         return 'retraction_notice'
     if 'expression of concern' in types or 'ExpressionOfConcernFor' in kinds:
         return 'concern_notice'
     if 'published erratum' in types or 'ErratumFor' in kinds:
         return 'correction_notice'
-    if 'retracted publication' in types or 'RetractionIn' in kinds:
-        return 'retracted'
-    if 'ExpressionOfConcernIn' in kinds:
-        return 'concern'
     return ''
 
 

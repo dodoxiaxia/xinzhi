@@ -145,5 +145,30 @@
     "publicationDateUiAssertions": 10,
     "publicBuildFiles": 6,
     "packagePassed": true
+  },
+  "officialXmlEvidence": {
+    "manifestPath": "docs/evidence/pubmed-study-status-20261008/manifest.json",
+    "rawPaths": [
+      "docs/evidence/pubmed-study-status-20261008/pubmed-verified.xml",
+      "docs/evidence/pubmed-study-status-20261008/pubmed-additional.xml"
+    ],
+    "copiedByteForByte": true,
+    "matchesOriginalSha256": true,
+    "newSourceRequests": 0
+  },
+  "supplement": {
+    "scope": "Original XML evidence plus own-publication status precedence for hypothetical future notice retractions",
+    "newSourceRequests": 0,
+    "currentVerifiedExamplesUnchanged": true,
+    "pythonTests": 567,
+    "pythonPassed": 567,
+    "publicationStatusPythonTests": 15,
+    "publicationStatusUiAssertions": 34,
+    "retractionOfIsTargetOnly": true,
+    "hypotheticalRegressions": [
+      "registered concern notice later retracted",
+      "correction notice later retracted",
+      "retraction notice target is not own status"
+    ]
   }
 }
