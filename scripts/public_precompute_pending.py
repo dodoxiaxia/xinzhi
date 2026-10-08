@@ -69,7 +69,7 @@ def pending_manifest(board, caches=(), prior_sources=()):
         current_aliases = aliases(p)
         related_sources = [old for old in previous if aliases(old) & current_aliases]
         related_entries = [e for e in entries if aliases(e) & current_aliases]
-        same_source = [e for e in related_entries if e.get('sourceHash') == p['sourceHash']]
+        same_source = [e for e in related_sources+related_entries if e.get('sourceHash') == p['sourceHash']]
         if any(e.get('paperID') != p['paperID'] for e in same_source):
             reason = 'identity_mapping_review_required'
         elif (related_sources or related_entries) and not any(
