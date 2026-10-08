@@ -1,0 +1,15 @@
+# v14.2.14：周榜覆盖与发布策略
+
+周榜换新、发布成功与预生成完成是三个不同状态。fast只复用已验证缓存；full现有模型步骤在预算、暂停或生成失败时可以没有新结果。此前雷达/文库数量检查不能证明新周榜预生成完整。
+
+本版在现有pipeline的发布检查中直接读取实际public.js的WEEKLY_BOARD和PREGENERATED，核对逐篇identity/sourceHash、DOI/PMID映射、实际字段、ready/missing标记及board/manifest计数。这里只读取已有公开结果，不访问模型、凭据、私有PDF或新的外部服务。
+
+有效但不完整的数据按publish_valid_content_with_explicit_pending继续发布，last-refresh及最终Actions证据写入weeklyContent.status、四类coverage、fullyPreparedPapers、titleTranslationQuicklookPreparedPapers、逐篇pending以及现有模型步骤的exit/outcome。快刷明确cache_only；full步骤返回0也不冒称生成成功。错误ready、已准备字段丢失、映射/哈希/计数不一致则停止这一损坏发布并保留失败记录。缺项本身不清缓存、不改7日窗口、不阻断整个站点。
+
+实际v14.2.13保存产物：24篇，题名/翻译/速览各19，study0；19篇partial、5篇pending、全部任务完成0篇，24篇都仍缺study。这些是保存快照，下一轮以新的实际报告为准。只读待办工具可进一步区分new identity、source hash变化或mapping问题，本补丁不臆测缺项原因，也不重复写入待审核草稿。
+
+复用已有每2小时fast与每日05:17 full。GLM保持开启，configured预生成attempt-limit8、时间与费用守卫、人工访问生成方式均保留；没有新调度、令牌、账号、模型调用、权限或自动清除暂停。生成稳定性及新的5篇审核稿需另以真实结果验收。
+
+16项新离线回归与30项既有pipeline检查通过，包括24/19/0真实形状、optional生成失败仍发布partial、fast不增加调用、虚假ready/映射损坏阻止发布并写失败回执。新套件已加入daily发布门槛，ci_daily源码也纳入输入指纹。最终部署与state结果以本版本Actions/回读为准。
+
+静态资源与AI数字校验合版候选继续隔离，本版不包含它们；Cloudflare1010、JACC实际下载、原AI失败组合仍未因此解决。
