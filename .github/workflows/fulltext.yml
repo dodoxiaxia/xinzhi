@@ -2,6 +2,16 @@ name: fulltext-queue
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Default queue, or supervised authorized request claim/update'
+        type: choice
+        options: [queue, authorized_claim, authorized_update]
+        default: queue
+      request_json:
+        description: 'Strict claim filter or processing receipt JSON; no tokens, URLs or private PDF paths'
+        type: string
+        default: '{}'
   push:
     branches: [main]
     paths:
@@ -18,7 +28,7 @@ permissions:
 
 jobs:
   download:
-    if: github.ref == 'refs/heads/main' && vars.FULLTEXT_ASYNC_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && vars.FULLTEXT_ASYNC_ENABLED == 'true' && (github.event_name != 'workflow_dispatch' || inputs.mode == 'queue')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -30,3 +40,25 @@ jobs:
           node-version: '20'
       - name: 领取全文任务并回写网站（不读取模型或 PDF 凭据）
         run: node scripts/fulltext_queue_runner.cjs
+  authorized-handoff:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && vars.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED == 'true' && inputs.mode != 'queue'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 受控领取或处理回执（不唤醒 Mac、不取 PDF）
+        env:
+          HANDOFF_ACTION: ${{ inputs.mode }}
+          HANDOFF_REQUEST_JSON: ${{ inputs.request_json }}
+        run: node scripts/authorized_handoff_runner.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: authorized-handoff-${{ github.run_id }}
+          path: authorized-handoff.json
+          retention-days: 3
+          if-no-files-found: error

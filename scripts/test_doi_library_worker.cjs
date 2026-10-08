@@ -38,6 +38,7 @@ function harness(options={}){
    assert.equal(u.searchParams.get('ref'),options.commit||commit);
    if(decoded.endsWith('/contents/文献索引/文献索引.csv'))return new Response(csv(options.rows||[row]));
    if(decoded.endsWith('/contents/文献索引/按需全文增量.json'))return options.delta?Response.json(options.delta):new Response('missing',{status:404});
+   if(decoded.includes('/contents/zcode-workflows/doi-handoff-receipts/'))return options.handoffReceiptResponse?options.handoffReceiptResponse(u,init):options.handoffReceipt?Response.json(options.handoffReceipt):new Response('missing',{status:404});
    assert(decoded.endsWith('/contents/'+file));if(init.headers.accept==='application/vnd.github+json')return Response.json(options.metadata||{type:'file',path:file,size:(options.pointer||fixturePdf).length,sha:blob(options.pointer||fixturePdf)});
    return options.githubPdfResponse?options.githubPdfResponse(u,init):new Response(options.pointer||fixturePdf,{headers:{'content-type':'application/pdf'}});}
   assert(u.hostname==='journals.plos.org'||u.hostname==='www.nature.com'||u.hostname==='raw.githubusercontent.com','unexpected external host '+u.hostname);assert(!init.headers.authorization);

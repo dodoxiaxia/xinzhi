@@ -335,6 +335,9 @@ const FULLTEXT_OIDC_AUDIENCE = 'https://learn.dryz.info/api/fulltext-worker';
 const FULLTEXT_WORKFLOW_REF = 'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main';
 const FULLTEXT_JOB_LEASE_MS = 180000;
 const FULLTEXT_JOB_LIFETIME_MS = 86400000;
+const AUTHORIZED_PREFIX = 'library:authorized:';
+const AUTHORIZED_READY_PREFIX = 'library:authorized-ready:';
+const authorizedOperations = new WeakMap();
 let fulltextOidcKeys;
 const libraryLocalActive = new Set();
 const LIBRARY_PDF_HOSTS = ['ncbi.nlm.nih.gov','europepmc.org','ebi.ac.uk','nature.com','springer.com','springernature.com','biomedcentral.com','plos.org','frontiersin.org','jmir.org','bmj.com','jamanetwork.com','ahajournals.org','academic.oup.com','oup.com','nejm.org','thelancet.com','sciencedirect.com','cell.com','wiley.com','arxiv.org','medrxiv.org','biorxiv.org','researchsquare.com','zenodo.org','hal.science','osf.io','figshare.com'];
@@ -588,7 +591,7 @@ async function libraryGithub(paper, env, context) {
   const raw = await pdfRead(endpoint, LIBRARY_MAX_PDF_BYTES, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
   const bytes = await pdfGithubBytes(metadata, raw, checksum, { token, signal:context.signal, pauseOnDenied:true, limit:LIBRARY_MAX_PDF_BYTES, ...(incremental ? {expectedSize:deltaBytes} : {}) });
   libraryValidatePdf(bytes);
-  return { bytes, source:incremental ? 'github_delta' : 'github', commit };
+  return { bytes, source:incremental ? 'github_delta' : 'github', commit, indexSha256:inspection.indexSha256 };
 }
 async function libraryOa(paper, context) {
   let review = false, unavailable = false, retryAfter = 0;
@@ -673,10 +676,11 @@ async function handleLibrary(request, env) {
     const url = new URL(request.url);
     if (url.searchParams.has('doi')) {
       const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
-      if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus });
+      const handoff = env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED === 'true' ? authorizedPublic(await libraryGet(env.QL_KV, AUTHORIZED_PREFIX + doi), doi) : null;
+      if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus, ...(handoff ? { handoff } : {}) });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       const job = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
-      if (paper) { const observed = libraryObservedPaper(paper, attempt, job && ['queued','running'].includes(job.state)); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(attempt && attempt.paused ? { paused:true, error:'library_paused' } : {}), ...(job ? { job } : {}) }); }
+      if (paper) { const observed = libraryObservedPaper(paper, attempt, job && ['queued','running'].includes(job.state)); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(attempt && attempt.paused ? { paused:true, error:'library_paused' } : {}), ...(job ? { job } : {}), ...(handoff ? { handoff } : {}) }); }
       return json({ ok:true, found:false, ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status, ...libraryRetryInfo(attempt.retryAfter) } : {}) });
     }
     if ([...url.searchParams.keys()].some(key => !['cursor','limit'].includes(key)) || url.searchParams.getAll('cursor').length > 1 || url.searchParams.getAll('limit').length > 1) libraryFail('library_bad_doi', 400);
@@ -749,7 +753,130 @@ function fulltextJwtPart(value) {
   try { return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); }
   catch { libraryFail('job_auth', 401); }
 }
-async function fulltextJobAuthorize(request) {
+function authorizedRecord(value, doi = '') {
+  return value && value.version === 1 && libraryDoi(value.doi) === value.doi && (!doi || value.doi === doi)
+    && /^request-[a-f0-9]{32}$/.test(value.id || '') && libraryText(value.title)
+    && value.requestVersion === 1 && value.idempotencyKey === 'website:'+value.id
+    && ['submitted','claimed','pending_browser','downloaded','verified','sync_pending','blocked','complete'].includes(value.state)
+    && [value.createdAt,value.updatedAt].every(n => Number.isSafeInteger(n) && n > 0) ? value : null;
+}
+function authorizedPublic(value, doi = '') {
+  const record = authorizedRecord(value, doi); if (!record) return null;
+  const messages = { submitted:'授权请求已提交，尚未领取。网站不会自动唤醒 Mac。', claimed:'受控接单流程已领取；尚未确认 Mac 下载领取。',
+    pending_browser:'执行者报告待授权浏览器处理，尚无全文核验回执。', downloaded:'执行者报告文件已落地，尚未核验。', verified:'已收到本地严格核验回执，归档各侧尚待确认。',
+    sync_pending:'全文核验回执已到，部分归档侧仍待同步。', blocked:'授权流程已暂停，需要处理具体阻塞后确认恢复。', complete:'已核对受控执行者三端回读回执及 GitHub 原件。' };
+  return { id:record.id, doi:record.doi, state:record.state, message:messages[record.state], executorClaimed:record.executorProven === true,
+    requestVersion:record.requestVersion,...(record.claimProof ? {claimProof:record.claimProof} : {}),
+    archive:{ complete:record.archiveComplete === true, sides:record.archiveSides || {mac:'pending',github:'pending',drive:'pending'} },
+    ...(record.reason ? { reason:record.reason } : {}) };
+}
+async function authorizedSerial(kv, name, operation) {
+  let pending = authorizedOperations.get(kv); if (!pending) { pending = new Map(); authorizedOperations.set(kv, pending); }
+  const prior = pending.get(name) || Promise.resolve();
+  const next = prior.catch(() => {}).then(operation); pending.set(name, next);
+  try { return await next; } finally { if (pending.get(name) === next) pending.delete(name); }
+}
+async function authorizedSubmit(env, paper) {
+  return authorizedSerial(env.QL_KV, paper.doi, async () => {
+    const key = AUTHORIZED_PREFIX + paper.doi, current = await libraryGet(env.QL_KV, key);
+    if (current) { if (!authorizedRecord(current, paper.doi)) libraryFail('job_bad_request', 409); return current; }
+    const id = 'request-' + (await pdfDigest('SHA-256', new TextEncoder().encode(paper.doi))).slice(0,32), now = Date.now();
+    const record = { version:1,id,doi:paper.doi,title:paper.title,requestVersion:1,idempotencyKey:'website:'+id,state:'submitted',createdAt:now,updatedAt:now,executorProven:false,archiveComplete:false };
+    await libraryPut(env.QL_KV,AUTHORIZED_READY_PREFIX+id,JSON.stringify({doi:paper.doi,id}));
+    await libraryPut(env.QL_KV,key,JSON.stringify(record)); return record;
+  });
+}
+function authorizedResponse(request, record, paper) {
+  const handoff = authorizedPublic(record, paper.doi);
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true,paper,status:paper.fulltextStatus,handoff,archive:handoff.archive },202);
+  return pdfHtml('<p>题录已保存，全文尚未完成入库。</p><p>'+pdfEscape(paper.title)+'</p><p role="status">'+pdfEscape(handoff.message)+'</p><p>请求 ID：'+pdfEscape(handoff.id)+'</p>'
+    +'<p><a href="/api/acquire?doi='+pdfEscape(encodeURIComponent(paper.doi))+'">查看请求状态</a></p><p>没有自动重试倒计时；授权工具、登录或验证码阻塞需人工处理。</p>'+pdfOfficialLink(paper.doi),202,'授权全文请求');
+}
+async function authorizedClaim(env, owner, input) {
+  // This mutex is only within one isolate. Global serialization relies on the sole OIDC workflow's concurrency group.
+  return authorizedSerial(env.QL_KV, 'claim', async () => {
+    const keys = input.doi ? [{name:AUTHORIZED_PREFIX+input.doi}] : (await env.QL_KV.list({prefix:AUTHORIZED_READY_PREFIX,limit:30})).keys;
+    if (!Array.isArray(keys) || keys.length > 30) libraryFail('library_storage',503);
+    for (const entry of keys) {
+      if (typeof entry.name !== 'string') continue;
+      let doi = input.doi;
+      if (!doi) { if (!entry.name.startsWith(AUTHORIZED_READY_PREFIX)) continue; const pointer = await libraryGet(env.QL_KV,entry.name); if (!pointer || libraryDoi(pointer.doi) !== pointer.doi) continue; doi = pointer.doi; }
+      const key = AUTHORIZED_PREFIX+doi, record = authorizedRecord(await libraryGet(env.QL_KV,key),doi);
+      if (!record || record.state !== 'submitted' && !(record.state === 'claimed' && record.owner === owner)) continue;
+      const attempt = await libraryGet(env.QL_KV,'library:attempt:'+record.doi);
+      if (attempt && attempt.paused) { if (input.doi) libraryFail('library_paused',423); continue; }
+      const claimed = record.state === 'claimed' ? record : { ...record,state:'claimed',owner,
+        claimId:'claim-'+crypto.randomUUID().replace(/-/g,''),updatedAt:Date.now() };
+      claimed.handoffOwner = 'github-workflow:'+FULLTEXT_WORKFLOW_REF+':run:'+claimed.owner;
+      if (!claimed.claimProof) claimed.claimProof = await pdfDigest('SHA-256',new TextEncoder().encode(JSON.stringify([claimed.id,claimed.claimId,claimed.owner,claimed.doi,claimed.title,claimed.handoffOwner,claimed.requestVersion,claimed.idempotencyKey,'website-'+claimed.id])));
+      if (record.state !== 'claimed') await libraryPut(env.QL_KV,key,JSON.stringify(claimed));
+      const observed = authorizedRecord(await libraryGet(env.QL_KV,key),record.doi);
+      if (!observed || observed.owner !== owner || observed.claimId !== claimed.claimId || observed.state !== 'claimed') libraryFail('job_stale',409);
+      await env.QL_KV.delete(AUTHORIZED_READY_PREFIX+record.id);
+      return { version:1,website_request_id:record.id,claim_id:claimed.claimId,doi:record.doi,title:record.title,
+        dispatcher_run_id:claimed.owner,claim_proof:claimed.claimProof,backend_status_url:'https://learn.dryz.info/api/library?doi='+encodeURIComponent(record.doi),
+        owner:claimed.handoffOwner,request_version:claimed.requestVersion,idempotency_key:claimed.idempotencyKey,fencing_guarantee:'single_controlled_dispatcher_only',
+        official_url:'https://doi.org/'+record.doi,batch_id:'website-'+record.id,source_policy:'existing_then_oa_then_authorized',
+        ledger_requirement:'existing_canonical_ledger_exact_owner_or_hold',executor_claimed:false,archive_complete:false };
+    }
+    return null;
+  });
+}
+async function authorizedEvidence(env, record, input) {
+  if (!/^[a-f0-9]{40}$/.test(input.receipt_commit || '')) libraryFail('job_bad_request',400);
+  const path = 'zcode-workflows/doi-handoff-receipts/'+record.id+'.json';
+  const proof = pdfJson(await pdfRead(pdfContentsUrl(path,input.receipt_commit),262144,{token:env.GITHUB_LIBRARY_TOKEN,file:true,pauseOnDenied:true,accept:'application/vnd.github.raw+json',rawPath:pdfRawPath(path,input.receipt_commit)}));
+  const content = proof && proof.content, verification = proof && proof.verification, ledger = proof && proof.ledger;
+  if (!proof || proof.version !== 1 || proof.website_request_id !== record.id || proof.batch_id !== 'website-'+record.id || proof.doi !== record.doi || pdfTitle(proof.title) !== pdfTitle(record.title)
+      || !ledger || ledger.key !== 'doi:'+record.doi || ledger.owner_request_id !== record.id || !Number.isInteger(ledger.items) || ledger.items < 871
+      || ledger.handoff_owner !== record.handoffOwner || ledger.request_version !== record.requestVersion || ledger.idempotency_key !== record.idempotencyKey
+      || ledger.canonical !== true || !/^[a-f0-9]{64}$/.test(ledger.snapshot_sha256 || '') || !Number.isFinite(Date.parse(ledger.checked_at || ''))
+      || Date.parse(ledger.checked_at) < record.createdAt || Date.parse(ledger.checked_at) > Date.now()+300000
+      || !content || !/^[a-f0-9]{64}$/.test(content.sha256 || '') || !Number.isInteger(content.bytes) || content.bytes < 8 || content.bytes > LIBRARY_MAX_PDF_BYTES
+      || !Number.isInteger(content.pages) || content.pages < 1 || !verification || verification.verified !== true || verification.method !== 'dual_parser_all_pages_title_doi') libraryFail('job_bad_request',409);
+  const sides = proof.sides || {}, state = {mac:'pending',github:'pending',drive:'pending'}; let actualGithubIndex = '', motherRowVerified = false;
+  const good = side => side && side.verified === true && side.sha256 === content.sha256 && side.bytes === content.bytes;
+  if (!good(sides.mac) || sides.mac.identity_verified !== true) libraryFail('job_bad_request',409); state.mac = 'verified';
+  if (good(sides.github)) {
+    if (!/^[a-f0-9]{40}$/.test(sides.github.commit || '')) libraryFail('job_bad_request',409);
+    const controller = new AbortController(), timer = setTimeout(()=>controller.abort(),LIBRARY_TASK_MS);
+    try {
+      const fetched = await libraryGithub({doi:record.doi,title:record.title},{...env,PDF_GITHUB_COMMIT:sides.github.commit,DOI_LOOKUP_LATEST_MAIN:'false'},{signal:controller.signal});
+      if (!fetched || fetched.bytes.length !== content.bytes || await pdfDigest('SHA-256',fetched.bytes) !== content.sha256) libraryFail('library_identity',409);
+      const stored = libraryPaper(await libraryGet(env.QL_KV,LIBRARY_PREFIX+record.doi),record.doi); if (!stored) libraryFail('library_identity',409);
+      await librarySave(env.QL_KV,{...stored,fulltextStatus:'available'},fetched,'');state.github = 'verified'; actualGithubIndex = fetched.indexSha256; motherRowVerified = fetched.source === 'github';
+    } finally { clearTimeout(timer); }
+  }
+  if (good(sides.drive) && sides.drive.account === 'dryz@dryz.info' && sides.drive.content_read_back === true && /^[A-Za-z0-9_-]{10,100}$/.test(sides.drive.file_id || '') && sides.drive.root_id === '1TE_Vk8ySIdN9-1XmF7AaP1momKEsjYyE') state.drive = 'verified';
+  const indexes = proof.indexes || {}, fingerprints = ['mac','github','drive'].map(side => indexes[side] && indexes[side].sha256);
+  const complete = motherRowVerified && actualGithubIndex === fingerprints[1] && Object.values(state).every(value=>value==='verified') && fingerprints.every(value=>/^[a-f0-9]{64}$/.test(value || '') && value === fingerprints[0]);
+  if (input.state === 'complete' && !complete) libraryFail('job_bad_request',409);
+  return { executorProven:true,archiveSides:state,archiveComplete:input.state === 'complete' && complete,receiptCommit:input.receipt_commit };
+}
+async function authorizedUpdate(env, input) {
+  return authorizedSerial(env.QL_KV,input.doi,async()=>{
+    const key = AUTHORIZED_PREFIX+input.doi, record = authorizedRecord(await libraryGet(env.QL_KV,key),input.doi);
+    if (!record || record.id !== input.id || record.claimId !== input.claim_id || record.state === 'submitted') libraryFail('job_stale',409);
+    if (record.state === 'blocked') libraryFail('library_paused',423);
+    if (input.ledger_key !== 'doi:'+input.doi || input.owner_request_id !== input.id || input.owner !== record.handoffOwner
+        || input.request_version !== record.requestVersion || input.idempotency_key !== record.idempotencyKey || input.batch_id !== 'website-'+record.id) libraryFail('job_bad_request',409);
+    if (record.state === 'complete') return authorizedPublic(record,input.doi);
+    const ranks = {claimed:0,pending_browser:1,downloaded:2,verified:3,sync_pending:4,complete:5};
+    if (input.state !== 'blocked' && ranks[input.state] < (ranks[record.state] || 0)) libraryFail('job_stale',409);
+    let evidence = {};
+    try { if (['verified','sync_pending','complete'].includes(input.state)) evidence = await authorizedEvidence(env,record,input); }
+    catch (error) {
+      if (error instanceof LibraryFailure && error.code === 'library_paused') {
+        await libraryPut(env.QL_KV,key,JSON.stringify({...record,state:'blocked',reason:'source_failed',updatedAt:Date.now()}));
+        await libraryPut(env.QL_KV,'library:attempt:'+record.doi,JSON.stringify({status:'pending',error:'library_paused',paused:true,retryAfter:error.retryAfter || 0}));
+      }
+      throw error;
+    }
+    const next = {...record,...evidence,state:input.state,reason:input.reason || '',updatedAt:Date.now()};
+    await libraryPut(env.QL_KV,key,JSON.stringify(next));return authorizedPublic(next,input.doi);
+  });
+}
+async function fulltextJobAuthorize(request, authorizedOnly = false) {
   const auth = request.headers.get('authorization') || '';
   if (auth.length > 16000 || !auth.startsWith('Bearer ')) libraryFail('job_auth', 401);
   const parts = auth.slice(7).split('.');
@@ -758,6 +885,7 @@ async function fulltextJobAuthorize(request) {
   try { header = JSON.parse(new TextDecoder().decode(fulltextJwtPart(parts[0]))); claims = JSON.parse(new TextDecoder().decode(fulltextJwtPart(parts[1]))); }
   catch { libraryFail('job_auth', 401); }
   const now = Math.floor(Date.now() / 1000);
+  if (authorizedOnly && claims.event_name !== 'workflow_dispatch') libraryFail('job_auth',401);
   if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(header.kid)
       || claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== FULLTEXT_OIDC_AUDIENCE
       || claims.repository !== 'dodoxiaxia/xinzhi' || String(claims.repository_id) !== '1397425558'
@@ -796,9 +924,15 @@ async function fulltextJobInput(request) {
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   let input; try { input = JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); } catch { libraryFail('job_bad_request', 400); }
-  if (!input || typeof input !== 'object' || Array.isArray(input) || !['claim','run'].includes(input.action)
-      || Object.keys(input).some(k => !(input.action === 'claim' ? ['action'] : ['action','doi','id','leaseId']).includes(k))
-      || (input.action === 'run' && (!libraryDoi(input.doi) || input.doi !== libraryDoi(input.doi) || !/^[a-f0-9-]{36}$/.test(input.id || '') || !/^[a-f0-9-]{36}$/.test(input.leaseId || '')))) libraryFail('job_bad_request', 400);
+  const fields = { claim:['action'],run:['action','doi','id','leaseId'],authorized_claim:['action','doi'],
+    authorized_update:['action','doi','id','claim_id','state','ledger_key','owner_request_id','reason','receipt_commit','owner','request_version','idempotency_key','batch_id'] };
+  if (!input || typeof input !== 'object' || Array.isArray(input) || typeof input.action !== 'string' || !Object.hasOwn(fields,input.action) || Object.keys(input).some(key=>!fields[input.action].includes(key))) libraryFail('job_bad_request',400);
+  if (input.action === 'run' && (!libraryDoi(input.doi) || input.doi !== libraryDoi(input.doi) || !/^[a-f0-9-]{36}$/.test(input.id || '') || !/^[a-f0-9-]{36}$/.test(input.leaseId || ''))) libraryFail('job_bad_request',400);
+  if (input.action === 'authorized_claim' && input.doi !== undefined && (!libraryDoi(input.doi) || libraryDoi(input.doi) !== input.doi)) libraryFail('job_bad_request',400);
+  if (input.action === 'authorized_update' && (!libraryDoi(input.doi) || input.doi !== libraryDoi(input.doi) || !/^request-[a-f0-9]{32}$/.test(input.id || '')
+      || !/^claim-[a-f0-9]{32}$/.test(input.claim_id || '') || !['pending_browser','downloaded','verified','sync_pending','blocked','complete'].includes(input.state)
+      || input.reason !== undefined && !['login_required','captcha','http403','http429','browser_tool_unavailable','ownership_conflict','archive_confirmation_required','source_failed'].includes(input.reason)
+      || input.state === 'blocked' && !input.reason || input.receipt_commit !== undefined && !/^[a-f0-9]{40}$/.test(input.receipt_commit))) libraryFail('job_bad_request',400);
   return input;
 }
 async function fulltextClaim(env, owner) {
@@ -862,6 +996,7 @@ async function fulltextRun(env, owner, input) {
       paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : sourceUnavailable ? 'pending' : 'manual_needed' };
       const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : sourceUnavailable ? 'library_upstream' : 'library_manual_needed', sourceRetryAfter);
       paper = saved.paper;
+      if (paper.fulltextStatus === 'manual_needed' && env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED === 'true') await authorizedSubmit(env,paper);
       if (!fetched && !review && sourceUnavailable) libraryFail('library_upstream', 502, sourceRetryAfter);
     }
     final = { ...job, state:paper.fulltextStatus, updatedAt:Date.now(), reason:'' };
@@ -881,10 +1016,15 @@ async function fulltextRun(env, owner, input) {
 async function handleFulltextWorker(request, env) {
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('job_bad_request', 405);
-    if (env.FULLTEXT_ASYNC_ENABLED !== 'true') libraryFail('job_disabled', 503);
-    const owner = await fulltextJobAuthorize(request);
-    libraryConfig(env);
+    if (env.FULLTEXT_ASYNC_ENABLED !== 'true' && env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED !== 'true') libraryFail('job_disabled', 503);
     const input = await fulltextJobInput(request);
+    const owner = await fulltextJobAuthorize(request,input.action.startsWith('authorized_'));
+    libraryConfig(env);
+    if (input.action.startsWith('authorized_')) {
+      if (env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED !== 'true') libraryFail('job_disabled',503);
+      return json({ok:true,...(input.action === 'authorized_claim' ? {handoff:await authorizedClaim(env,owner,input)} : {handoff:await authorizedUpdate(env,input)})});
+    }
+    if (env.FULLTEXT_ASYNC_ENABLED !== 'true') libraryFail('job_disabled',503);
     if (input.action === 'claim') return json({ ok:true, job:await fulltextClaim(env, owner) });
     return json({ ok:true, job:await fulltextRun(env, owner, input) });
   } catch (error) { return json({ ok:false, error:error instanceof LibraryFailure ? error.code : 'job_server' }, error instanceof LibraryFailure ? error.status : 500); }
@@ -923,6 +1063,9 @@ async function handleAcquire(request, env) {
       const stored = env.QL_KV ? libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi) : null;
       const attempt = env.QL_KV && (!stored || stored.fulltextStatus !== 'available') ? await libraryGet(env.QL_KV, 'library:attempt:' + doi) : null;
       if (attempt && attempt.paused) libraryFail('library_paused', 423, attempt.retryAfter || 0);
+      if (env.QL_KV && env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED === 'true' && stored && stored.fulltextStatus !== 'available' && parsed.url.pathname !== '/api/acquire/retry') {
+        const handoff = authorizedRecord(await libraryGet(env.QL_KV,AUTHORIZED_PREFIX+doi),doi);if (handoff) return authorizedResponse(request,handoff,stored);
+      }
       if (env.QL_KV && env.FULLTEXT_ASYNC_ENABLED === 'true' && parsed.url.pathname !== '/api/acquire/retry') {
         const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
         if (job) return fulltextJobResponse(request, job, stored);
@@ -940,6 +1083,7 @@ async function handleAcquire(request, env) {
     const previousAttempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     const priorJob = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
     const observed = libraryObservedPaper(cached, previousAttempt, fulltextJobActive(priorJob)), manual = observed && observed.fulltextStatus === 'manual_needed';
+    const priorHandoff = env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED === 'true' ? authorizedRecord(await libraryGet(env.QL_KV,AUTHORIZED_PREFIX+doi),doi) : null;
     if (env.FULLTEXT_ASYNC_ENABLED === 'true' && !manual) return fulltextEnqueue(request, env, doi, cached);
     release = await librarySoftGate(env.QL_KV, request, doi, manual);
     timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
@@ -948,13 +1092,14 @@ async function handleAcquire(request, env) {
     let fetched = null, review = false, sourceUnavailable = false, sourceRetryAfter = 0;
     try { fetched = await libraryGithub(paper, env, context); }
     catch (error) { if (controller.signal.aborted) libraryFail('library_timeout', 504); if (['library_not_configured','library_paused'].includes(error.code)) throw error; review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code); sourceUnavailable = !review; sourceRetryAfter = error.retryAfter || 0; }
-    if (!manual && !fetched && !review && !sourceUnavailable) {
+    if ((!manual || env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED === 'true' && !priorHandoff) && !fetched && !review && !sourceUnavailable) {
       const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; sourceRetryAfter = oa.retryAfter || 0; }
     }
     if (controller.signal.aborted) libraryFail('library_timeout', 504);
     paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : sourceUnavailable ? 'pending' : 'manual_needed' };
     const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : sourceUnavailable ? 'library_upstream' : 'library_manual_needed', sourceRetryAfter);
     if (saved.paper.fulltextStatus !== 'available' && sourceUnavailable) libraryFail('library_upstream', 502, saved.retryAfter);
+    if (saved.paper.fulltextStatus === 'manual_needed' && env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED === 'true') return authorizedResponse(request,await authorizedSubmit(env,saved.paper),saved.paper);
     return await libraryAcquireResult(request, env, saved.paper, parsed.download, saved.paper.fulltextStatus === 'available' ? '' : review ? 'library_identity' : 'library_manual_needed', false, saved.retryAfter);
   } catch (error) {
     if (release && doi && env.QL_KV) {
@@ -984,7 +1129,6 @@ async function handleFulltext(request, env) {
     return libraryPdfResponse(paper, bytes);
   } catch (error) { return libraryError(request, error, doi, '/api/fulltext'); }
 }
-
 async function handleFulltextSource(request, env) {
   let doi = '';
   const controller = new AbortController(); let timer;

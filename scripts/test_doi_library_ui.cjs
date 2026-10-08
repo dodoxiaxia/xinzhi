@@ -64,6 +64,13 @@ async function helpers() {
   c.mergeSupplementalPaper(apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
   const manual = c.LIBRARY.papers.find(p => p.doi === '10.1234/manual');
   assert.equal(manual.fulltextStatus, 'manual_needed');assert(c.pdfDownloadLink(manual).includes('全文需人工处理'));assert(c.pdfDownloadLink(manual).includes('查看处理状态'));assert(!c.pdfDownloadLink(manual).includes('再次获取全文'));assert.equal(c.pdfDownloadUrl(manual), '');
+  for(const [status,label] of Object.entries({submitted:'待授权接单',claimed:'接单已领取，下载待确认',pending_browser:'待授权浏览器',downloaded:'已落地，待核验',verified:'已核验，待归档',sync_pending:'各侧待同步',blocked:'授权流程暂停',complete:'回执完整，缓存待同步'})) {
+    c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:true,paper:apiPaper(manual.doi,manual.title,'manual_needed'),handoff:{id:'request-'+'a'.repeat(32),doi:manual.doi,state:status}})});
+    await c.lookupSupplementalDoi(manual.doi,true);assert(c.pdfDownloadLink(manual).includes(label),status);assert(c.pdfDownloadLink(manual).includes('查看授权请求'));assert.equal(c.pdfDownloadUrl(manual),'','handoff state does not create PDF availability');
+  }
+  c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:true,paper:apiPaper(manual.doi,manual.title,'available'),handoff:{id:'request-'+'a'.repeat(32),doi:'10.1234/other',state:'complete'}})});
+  await c.lookupSupplementalDoi(manual.doi,true);assert.equal(c.DOI_LOOKUPS.get(manual.doi).state,'error');assert.equal(c.pdfDownloadUrl(manual),'','invalid handoff cannot import optimistic availability');
+  c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:false})});
   const job = { id: '00000000-0000-4000-8000-000000000001', doi: pending.doi, state: 'queued' };
   c.mergeDoiJob(pending.doi, job); assert(c.pdfDownloadLink(pending).includes('全文排队中')); assert(c.pdfDownloadLink(pending).includes('查看任务'));
   c.mergeDoiJob(pending.doi, { ...job, state: 'running' }); assert(c.pdfDownloadLink(pending).includes('全文获取中'));
