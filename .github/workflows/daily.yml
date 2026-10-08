@@ -122,6 +122,7 @@ jobs:
           node scripts/test_weekly_window.cjs
           node scripts/test_publication_dates_ui.cjs
           node scripts/test_publication_status_ui.cjs
+          node scripts/test_public_content_priority.cjs
           node scripts/test_journal_metrics.cjs
           python3 -m unittest discover -s scripts -p 'test_week_precompute*.py'
           python3 -m unittest discover -s scripts -p 'test_sol_public_overlay.py'
@@ -140,6 +141,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_public_library_quality.py'
           python3 -m unittest discover -s scripts -p 'test_public_bibliography_review.py'
           python3 -m unittest discover -s scripts -p 'test_publication_status.py'
+          python3 -m unittest discover -s scripts -p 'test_public_content_corrections.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
           python3 -m unittest discover -s scripts -p 'test_release_build.py'
           python3 -m unittest discover -s scripts -p 'test_editorial_review.py'
