@@ -1,0 +1,1283 @@
+{
+  "countsByHeuristic": {
+    "doi_appended_resource_id": 5,
+    "doi_template_placeholder": 1,
+    "doi_truncated_shape": 2,
+    "nfkc_query_variant": 53,
+    "title_header_or_author_text": 12,
+    "title_navigation_or_learning_path": 11,
+    "title_section_prefix": 11
+  },
+  "datasetCounts": {
+    "FEEDS": 874,
+    "LIBRARY": 1264
+  },
+  "denominator": 2138,
+  "prefixBasedErrors": 0,
+  "privatePdfBodiesRead": 0,
+  "publicBundleSha256": "bfa4abc5a930ee0d885e5cad2da46ac2721cb1a19d2a2778ca54129ff870f85c",
+  "remoteRequests": 0,
+  "reviewCounts": {
+    "falsepositive": 0,
+    "unresolved": 79,
+    "verified": 3
+  },
+  "schemaVersion": 1,
+  "scope": "public_library_and_dynamic_metadata",
+  "suspectCount": 82,
+  "suspects": [
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-10",
+      "doi": "10.3760/cma.j.cn112147-20260429-00244",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "9dc05981fde4e0b2",
+      "journal": "中华结核和呼吸杂志",
+      "pmid": "",
+      "queryTitle": "人工智能驱动的重症肺炎早期预警:从数据整合到临床决策的路径与挑战",
+      "status": "unresolved",
+      "title": "人工智能驱动的重症肺炎早期预警：从数据整合到临床决策的路径与挑战",
+      "url": "https://doi.org/10.3760/cma.j.cn112147-20260429-00244"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-10",
+      "doi": "10.12114/j.issn.1007-9572.2025.0560",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "23e46da86670a038",
+      "journal": "中国全科医学",
+      "pmid": "",
+      "queryTitle": "中国基层医疗卫生机构人工智能研究实践及潜在数据贫困问题:一项范围综述",
+      "status": "unresolved",
+      "title": "中国基层医疗卫生机构人工智能研究实践及潜在数据贫困问题：一项范围综述",
+      "url": "https://doi.org/10.12114/j.issn.1007-9572.2025.0560"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-10",
+      "doi": "10.12114/j.issn.1007-9572.2025.0130",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "18d63e1569f16d7f",
+      "journal": "中国全科医学",
+      "pmid": "",
+      "queryTitle": "基于融合三维U-Net与Transformer的深度学习网络对腹部CT图像中结直肠癌病灶的自动分割:一项多中心、多设备研究",
+      "status": "unresolved",
+      "title": "基于融合三维U-Net与Transformer的深度学习网络对腹部CT图像中结直肠癌病灶的自动分割：一项多中心、多设备研究",
+      "url": "https://doi.org/10.12114/j.issn.1007-9572.2025.0130"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-21",
+      "doi": "10.3760/cma.j.cn112139-20260730-00329",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "a76a3fd5e0e70fd7",
+      "journal": "中华外科杂志",
+      "pmid": "42765414",
+      "queryTitle": "基于CT血管造影的深度学习模型在钝性胸主动脉损伤SVS II、III型鉴别中的价值:一项回顾性多中心阶段性研究",
+      "status": "unresolved",
+      "title": "基于CT血管造影的深度学习模型在钝性胸主动脉损伤SVS Ⅱ、Ⅲ型鉴别中的价值：一项回顾性多中心阶段性研究",
+      "url": "https://doi.org/10.3760/cma.j.cn112139-20260730-00329"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-21",
+      "doi": "10.3760/cma.j.cn112139-20260603-00245",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "47e6d48cc22b6000",
+      "journal": "中华外科杂志",
+      "pmid": "42765408",
+      "queryTitle": "胃肠外科手术人工智能风险评估专家共识(2026版)",
+      "status": "unresolved",
+      "title": "胃肠外科手术人工智能风险评估专家共识（2026版）",
+      "url": "https://doi.org/10.3760/cma.j.cn112139-20260603-00245"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-01",
+      "doi": "10.1038/s41592-02603182-y",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "f4a9f4c8e2731bac",
+      "journal": "Unknown",
+      "pmid": "",
+      "queryTitle": "生物医学基础模型如何评估:把“高分”拆成能够检",
+      "status": "unresolved",
+      "title": "⽣物医学基础模型如何评估：把“⾼分”拆成能够检",
+      "url": "https://doi.org/10.1038/s41592-02603182-y"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-01",
+      "doi": "10.3760/cma.j.cn112148-20240325-00168",
+      "flags": [
+        "title_header_or_author_text"
+      ],
+      "id": "bfbe651b166397c8",
+      "journal": "Unknown",
+      "pmid": "",
+      "queryTitle": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "status": "unresolved",
+      "title": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20240325-00168"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-01",
+      "doi": "10.3760/cma.j.cn112148-20240321-00160",
+      "flags": [
+        "title_header_or_author_text"
+      ],
+      "id": "ad08646e5e51765d",
+      "journal": "Unknown",
+      "pmid": "",
+      "queryTitle": "中华心血管病杂志 2024 年 5 月第 52 卷第 5 期",
+      "status": "unresolved",
+      "title": "中华心血管病杂志 2024 年 5 月第 52 卷第 5 期",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20240321-00160"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-01",
+      "doi": "10.3760/cma.j.cn112148-20240107-00014",
+      "flags": [
+        "title_header_or_author_text"
+      ],
+      "id": "aca12a490d96f945",
+      "journal": "Unknown",
+      "pmid": "",
+      "queryTitle": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "status": "unresolved",
+      "title": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20240107-00014"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-01",
+      "doi": "10.3760/cma.j.cn112137-20250509-01141",
+      "flags": [
+        "title_header_or_author_text"
+      ],
+      "id": "61d7937cd97568ee",
+      "journal": "Unknown",
+      "pmid": "",
+      "queryTitle": "中华医学杂志 2025 年 7 月 15 日第 105 卷第 26 期",
+      "status": "unresolved",
+      "title": "中华医学杂志 2025 年 7 月 15 日第 105 卷第 26 期",
+      "url": "https://doi.org/10.3760/cma.j.cn112137-20250509-01141"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09-01",
+      "doi": "10.1038/s41591-026-04215x",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "164a51af9a2ff42e",
+      "journal": "Unknown",
+      "pmid": "",
+      "queryTitle": "卷一 · 器官与疾病的边界条件",
+      "status": "unresolved",
+      "title": "卷⼀ · 器官与疾病的边界条件",
+      "url": "https://doi.org/10.1038/s41591-026-04215x"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-09",
+      "doi": "10.3760/cma.j.cn112148-20260611-00390",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "399123983f064328",
+      "journal": "中华心血管病杂志",
+      "pmid": "",
+      "queryTitle": "人工智能驱动心脏康复的模式变革:前沿应用、临床证据与未来展望",
+      "status": "unresolved",
+      "title": "人工智能驱动心脏康复的模式变革：前沿应用、临床证据与未来展望",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20260611-00390"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-08-17",
+      "doi": "",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "9e19b55a773cdd3e",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE Will Autonomous AI Exceed AI-Aided Physicians as the Best Medical Care?",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE Will Autonomous AI Exceed AI-Aided Physicians as the Best Medical Care?",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-08-03",
+      "doi": "10.1002/dta.1857",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "93b958551c8bf865",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE The Need to Avoid a Regulatory Gray Zone in Digital Wellness",
+      "reason": "old_doi_identifies_unrelated_2015_drug_testing_article",
+      "reviewAction": "correct",
+      "status": "verified",
+      "title": "AI IN MEDICINE The Need to Avoid a Regulatory Gray Zone in Digital Wellness",
+      "url": "https://doi.org/10.1002/dta.1857"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-06-22",
+      "doi": "10.1016/j.jacc.2024",
+      "flags": [
+        "doi_truncated_shape",
+        "title_section_prefix"
+      ],
+      "id": "a97bbb0a11844693",
+      "journal": "JAMA Internal Medicine",
+      "pmid": "",
+      "queryTitle": "Invited Commentary LESS IS MORE",
+      "reason": "truncated_doi_404_column_header_does_not_identify_article",
+      "reviewAction": "hold_link",
+      "status": "unresolved",
+      "title": "Invited Commentary LESS IS MORE",
+      "url": "https://doi.org/10.1016/j.jacc.2024"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-06-17",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path"
+      ],
+      "id": "c9dcd2b66a6ce72b",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "AMA Ed Hub > JN Learning > By Topic > The Wizard of Oz in Medical AI The Wizard of Oz in Medical AI Published Online: June 17, 2026",
+      "status": "unresolved",
+      "title": "AMA Ed Hub > JN Learning > By Topic > The Wizard of Oz in Medical AI The Wizard of Oz in Medical AI Published Online: June 17, 2026",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-06-04",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path"
+      ],
+      "id": "eb8cbd765531aae1",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "AMA Ed Hub > JN Learning > By Topic > Teaching AI to Read Patient Hi... PATHOLOGY AND LABORATORY MEDICINE ",
+      "status": "unresolved",
+      "title": "AMA Ed Hub > JN Learning > By Topic > Teaching AI to Read Patient Hi... PATHOLOGY AND LABORATORY MEDICINE ",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-05-09",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "21b0fa17f44a9666",
+      "journal": "nejm系列",
+      "pmid": "",
+      "queryTitle": "首页 期刊 专业领域 动画解读 医学人文 课程 关于我们   AI能说“我不知道”吗?",
+      "status": "unresolved",
+      "title": "首页 期刊 专业领域 动画解读 医学人文 课程 关于我们   AI能说“我不知道”吗？",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-05-07",
+      "doi": "10.1097/acm.0000000000001323",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "570439f21b8b0333",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE Promoting Clinical Expertise in the Age of AI",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE Promoting Clinical Expertise in the Age of AI",
+      "url": "https://doi.org/10.1097/acm.0000000000001323"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-05-07",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path"
+      ],
+      "id": "0d5068861de9d55a",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "AMA Ed Hub > JN Learning > By Topic > AI at the Policy Table ARTIFICIAL INTELLIGENCE",
+      "status": "unresolved",
+      "title": "AMA Ed Hub > JN Learning > By Topic > AI at the Policy Table ARTIFICIAL INTELLIGENCE",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-04-29",
+      "doi": "10.1016/j.mayocp.2024.11",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "38e57b97926cbb51",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE Artificial Intelligence Is Not the End of the Physician",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE Artificial Intelligence Is Not the End of the Physician",
+      "url": "https://doi.org/10.1016/j.mayocp.2024.11"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-04-29",
+      "doi": "",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "2ab0aaed8f0338a6",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE A Licensure Framework for Autonomous Clinical AI",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE A Licensure Framework for Autonomous Clinical AI",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-04-13",
+      "doi": "10.1111/j.1475-6773",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "5aa7bd3c3a9717e9",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE The First AI Drug Prescriber",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE The First AI Drug Prescriber",
+      "url": "https://doi.org/10.1111/j.1475-6773"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-04-08",
+      "doi": "10.1093/jamia/ocae040",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "64d7382f06c6991f",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE Workflow Blocking in Clinical Care",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE Workflow Blocking in Clinical Care",
+      "url": "https://doi.org/10.1093/jamia/ocae040"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-03-02",
+      "doi": "10.3389/fmed.2024.1324963",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "3bcf52b03b3bfd64",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "AI IN MEDICINE The Lost Aura of the Physician in the Age of Artificial Intelligence",
+      "status": "unresolved",
+      "title": "AI IN MEDICINE The Lost Aura of the Physician in the Age of Artificial Intelligence",
+      "url": "https://doi.org/10.3389/fmed.2024.1324963"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-02-23",
+      "doi": "10.1016/s2589-7500(20)30185-0",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "4944fe87d59c5e7b",
+      "journal": "JAMA Internal Medicine",
+      "pmid": "",
+      "queryTitle": "AI AND CLINICAL CARE Measuring the Return on Investment for Clinician-Facing",
+      "reason": "old_doi_identifies_unrelated_2020_mammography_article",
+      "reviewAction": "correct",
+      "status": "verified",
+      "title": "AI AND CLINICAL CARE Measuring the Return on Investment for Clinician-Facing",
+      "url": "https://doi.org/10.1016/s2589-7500(20)30185-0"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-02-12",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path"
+      ],
+      "id": "c4d7d85a25801c54",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "2026/2/13 10:28 Stumbling Toward AI in the Clinic | Artificial Intelligence | JN Learning | AMA Ed Hub AMA Ed Hub > JN Learning > By Topic > Stumbling Toward AI in the Cli...",
+      "status": "unresolved",
+      "title": "2026/2/13 10:28 Stumbling Toward AI in the Clinic | Artificial Intelligence | JN Learning | AMA Ed Hub AMA Ed Hub > JN Learning > By Topic > Stumbling Toward AI in the Cli...",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-01-29",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path"
+      ],
+      "id": "7756da1b6429de3a",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "AMA Ed Hub > JN Learning > By Topic > Chatting With a Chatbot: The H... ARTIFICIAL INTELLIGENCE",
+      "status": "unresolved",
+      "title": "AMA Ed Hub > JN Learning > By Topic > Chatting With a Chatbot: The H... ARTIFICIAL INTELLIGENCE",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2026-01-14",
+      "doi": "10.1038/s41592-023-02150-0",
+      "flags": [
+        "title_section_prefix"
+      ],
+      "id": "14ac10d88baa1cf1",
+      "journal": "JAMA Surgery",
+      "pmid": "",
+      "queryTitle": "Invited Commentary AI IN SURGERY",
+      "status": "unresolved",
+      "title": "Invited Commentary AI IN SURGERY",
+      "url": "https://doi.org/10.1038/s41592-023-02150-0"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2025-10-06",
+      "doi": "10.1016/j.seizure.2020",
+      "flags": [
+        "doi_truncated_shape"
+      ],
+      "id": "c759155ffcc3990c",
+      "journal": "JAMA",
+      "pmid": "",
+      "queryTitle": "Timing Is Everything—Temporal Medicine for Episodic Illness Ammar Kheder, MD",
+      "status": "unresolved",
+      "title": "Timing Is Everything—Temporal Medicine for Episodic Illness Ammar Kheder, MD",
+      "url": "https://doi.org/10.1016/j.seizure.2020"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "2017-03-08",
+      "doi": "10.1155/2017/1562919",
+      "flags": [
+        "doi_appended_resource_id"
+      ],
+      "id": "24c4de6c221582bf",
+      "journal": "International Journal of Telemedicine and Applications",
+      "pmid": "",
+      "queryTitle": "Clinical Decision Support Systems for Comorbidity: Architecture, Algorithms, and Applications",
+      "status": "unresolved",
+      "title": "Clinical Decision Support Systems for Comorbidity: Architecture, Algorithms, and Applications",
+      "url": "https://doi.org/10.1155/2017/1562919"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112147-20250728-00445",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "ff675e7f93c288e1",
+      "journal": "中华结核和呼吸杂志",
+      "pmid": "",
+      "queryTitle": "人工智能在呼吸罕见病诊疗中的应用和研究进展 华中科技大学同济医学院附属同济医院急诊和危重症医学科,武汉 430030",
+      "status": "unresolved",
+      "title": "人工智能在呼吸罕见病诊疗中的应用和研究进展 华中科技大学同济医学院附属同济医院急诊和危重症医学科，武汉 430030",
+      "url": "https://doi.org/10.3760/cma.j.cn112147-20250728-00445"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "fe807c5e899065cf",
+      "journal": "Nature Machine Intelligence",
+      "pmid": "",
+      "queryTitle": "A级文献辅助阅读 2026年7月 用算法泛化量化人工智能|辅助阅读",
+      "status": "unresolved",
+      "title": "A级文献辅助阅读 2026年7月 用算法泛化量化人工智能｜辅助阅读",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "fd5c634f6d575bbf",
+      "journal": "Nature News",
+      "pmid": "",
+      "queryTitle": "合作伙伴内容: 合作伙伴对本文内容负全部责任。 人工智能如何帮助诊断致命的心脏疾病",
+      "status": "unresolved",
+      "title": "合作伙伴内容： 合作伙伴对本文内容负全部责任。 人工智能如何帮助诊断致命的心脏疾病",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn102012-20250820-00064",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "fcb747587f32ffd5",
+      "journal": "中华药械研究与临床",
+      "pmid": "",
+      "queryTitle": "医学人工智能开创药械研究新图景 南京大学,南京 210023;中国科学院深圳先进技术研究院 医学成像科学与技术系统",
+      "status": "unresolved",
+      "title": "医学人工智能开创药械研究新图景 南京大学，南京 210023；中国科学院深圳先进技术研究院 医学成像科学与技术系统",
+      "url": "https://doi.org/10.3760/cma.j.cn102012-20250820-00064"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.12114/j.issn.1007-9572.2025.0128",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "fbbb89dde75ae04a",
+      "journal": "中国全科医学",
+      "pmid": "",
+      "queryTitle": "全科医学与人工智能融合背景下阻塞性睡眠呼吸暂停的 1.510120 广东省广州市,广州医科大学附属第一医院全科医学科",
+      "status": "unresolved",
+      "title": "全科医学与人工智能融合背景下阻塞性睡眠呼吸暂停的 1.510120 广东省广州市，广州医科大学附属第一医院全科医学科",
+      "url": "https://doi.org/10.12114/j.issn.1007-9572.2025.0128"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.issn.1673-4912.2025.04.014",
+      "flags": [
+        "title_header_or_author_text",
+        "nfkc_query_variant"
+      ],
+      "id": "f95d27af85bff614",
+      "journal": "中国小儿急救医学",
+      "pmid": "",
+      "queryTitle": "中国小儿急救医学 2025 年 4 月第 32 卷 第 4 期 Chin Pediatr Emerg Med,Apr. 2025,Vol.32,No.4 · 311 · 人工智能在儿童急诊分诊中的应用进展",
+      "status": "unresolved",
+      "title": "中国小儿急救医学 2025 年 4 月第 32 卷 第 4 期 Chin Pediatr Emerg Med，Apr. 2025，Vol.32，No.4 · 311 · 人工智能在儿童急诊分诊中的应用进展",
+      "url": "https://doi.org/10.3760/cma.j.issn.1673-4912.2025.04.014"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path",
+        "nfkc_query_variant"
+      ],
+      "id": "f7a1a7c8011f2291",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "教育中心 > JN Learning > 按主题 > 透过眼睛看健康...... 透过眼睛和人工智能看健康",
+      "status": "unresolved",
+      "title": "教育中心 > JN Learning > 按主题 > 透过眼睛看健康…… 透过眼睛和人工智能看健康",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112138-20251203-00739",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "f65a2eb5afdfbd39",
+      "journal": "中华内科杂志",
+      "pmid": "",
+      "queryTitle": "人工智能慢病管理新范式:在守正创新中 上海交通大学医学院附属第六人民医院内分泌代谢科,上海 200233",
+      "status": "unresolved",
+      "title": "人工智能慢病管理新范式：在守正创新中 上海交通大学医学院附属第六人民医院内分泌代谢科，上海 200233",
+      "url": "https://doi.org/10.3760/cma.j.cn112138-20251203-00739"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "e93e925a3b8298e6",
+      "journal": "Science",
+      "pmid": "",
+      "queryTitle": "Scientific computing in an AI world Scientific computing must integrate AI with simulation and focus on energy-efficient methods and systems",
+      "status": "unresolved",
+      "title": "Scientiﬁc computing in an AI world Scientific computing must integrate AI with simulation and focus on energy-efficient methods and systems",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.12114/j.issn.1007-9572.2025.0314",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "e794f8db8572c2c3",
+      "journal": "中国全科医学",
+      "pmid": "",
+      "queryTitle": "·中国全科医疗 / 社区卫生服务工作研究· 人工智能赋能基层医疗卫生服务:进展与挑战",
+      "status": "unresolved",
+      "title": "·中国全科医疗 / 社区卫生服务工作研究· 人工智能赋能基层医疗卫生服务：进展与挑战",
+      "url": "https://doi.org/10.12114/j.issn.1007-9572.2025.0314"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_header_or_author_text",
+        "nfkc_query_variant"
+      ],
+      "id": "e641a1d632ec13fe",
+      "journal": "中华传染病杂志",
+      "pmid": "",
+      "queryTitle": "—376 — 中华传染病杂志2025 年6 月第43 卷第6 期 Chin J Infect Dis,June 2025 ,Vol. 43 ,No. 6 人工智能在肝病诊疗中的应用进展",
+      "status": "unresolved",
+      "title": "—３７６ — 中华传染病杂志２０２５ 年６ 月第４３ 卷第６ 期 Ｃｈｉｎ Ｊ Ｉｎｆｅｃｔ Ｄｉｓ，Ｊｕｎｅ ２０２５ ，Ｖｏｌ． ４３ ，Ｎｏ． ６ 人工智能在肝病诊疗中的应用进展",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112138-20250103-00007",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "e2cb91b49545c04e",
+      "journal": "中华内科杂志",
+      "pmid": "",
+      "queryTitle": "内分泌性高血压筛查专家共识(2025 版) 中国医师协会内分泌代谢科医师分会 中国内分泌性高血压协作组",
+      "status": "unresolved",
+      "title": "内分泌性高血压筛查专家共识（2025 版） 中国医师协会内分泌代谢科医师分会 中国内分泌性高血压协作组",
+      "url": "https://doi.org/10.3760/cma.j.cn112138-20250103-00007"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_header_or_author_text",
+        "nfkc_query_variant"
+      ],
+      "id": "e15b3cca2eb997ce",
+      "journal": "中华医学教育杂志",
+      "pmid": "",
+      "queryTitle": "􀅰 8 􀅰 中华医学教育杂志 2026 年 1 月第 46 卷第 1 期 Chin J Med EduꎬJanuary 2026ꎬVol􀆰 46ꎬNo􀆰 1 􀅰人工智能在医学教育中的应用􀅰",
+      "status": "unresolved",
+      "title": "􀅰 ８ 􀅰 中华医学教育杂志 ２０２６ 年 １ 月第 ４６ 卷第 １ 期 Ｃｈｉｎ Ｊ Ｍｅｄ ＥｄｕꎬＪａｎｕａｒｙ ２０２６ꎬＶｏｌ􀆰 ４６ꎬＮｏ􀆰 １ 􀅰人工智能在医学教育中的应用􀅰",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_header_or_author_text",
+        "nfkc_query_variant"
+      ],
+      "id": "dea80544c290a631",
+      "journal": "中华医学教育杂志",
+      "pmid": "",
+      "queryTitle": "中华医学教育杂志 2026 年 1 月第 46 卷第 1 期 Chin J Med EduꎬJanuary 2026ꎬVol􀆰 46ꎬNo􀆰 1 􀅰 1 􀅰 􀅰人工智能在医学教育中的应用􀅰",
+      "status": "unresolved",
+      "title": "中华医学教育杂志 ２０２６ 年 １ 月第 ４６ 卷第 １ 期 Ｃｈｉｎ Ｊ Ｍｅｄ ＥｄｕꎬＪａｎｕａｒｙ ２０２６ꎬＶｏｌ􀆰 ４６ꎬＮｏ􀆰 １ 􀅰 １ 􀅰 􀅰人工智能在医学教育中的应用􀅰",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "dc99ff131de77354",
+      "journal": "Nature Computational Science",
+      "pmid": "",
+      "queryTitle": "B级文献辅助阅读 2026年7月 AI 是否真正民主化知识工作|辅助阅读",
+      "status": "unresolved",
+      "title": "B级文献辅助阅读 2026年7月 AI 是否真正民主化知识工作｜辅助阅读",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "d8c7143654897e89",
+      "journal": "Nature Medicine",
+      "pmid": "",
+      "queryTitle": "迈向医疗人工智能超级智能的测试 研究人员迫切需要一个严格的、基于任务的框架来定义和衡量医疗人工智能的“超级智能”,因为现有的基",
+      "status": "unresolved",
+      "title": "迈向医疗人工智能超级智能的测试 研究人员迫切需要一个严格的、基于任务的框架来定义和衡量医疗人工智能的“超级智能”，因为现有的基",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112148-20251127-00829",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "d6f2bc9283561539",
+      "journal": "中华心血管病杂志",
+      "pmid": "",
+      "queryTitle": "多模态影像评估:心力衰竭精准诊疗的 首都医科大学附属北京安贞医院心力衰竭和心肌病中心,北京 100029",
+      "status": "unresolved",
+      "title": "多模态影像评估：心力衰竭精准诊疗的 首都医科大学附属北京安贞医院心力衰竭和心肌病中心，北京 100029",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20251127-00829"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112139-20250814-00403",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "c59254f2da15c9e8",
+      "journal": "中华外科杂志",
+      "pmid": "",
+      "queryTitle": "智能外科医理数融合的鸿沟与跨越路径 南方医科大学珠江医院普通外科中心肝胆一科,广州 510280;2 南方医科大学珠江医院",
+      "status": "unresolved",
+      "title": "智能外科医理数融合的鸿沟与跨越路径 南方医科大学珠江医院普通外科中心肝胆一科，广州 510280；2 南方医科大学珠江医院",
+      "url": "https://doi.org/10.3760/cma.j.cn112139-20250814-00403"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112138-20250422-00231",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "c353b525073bf029",
+      "journal": "中华内科杂志",
+      "pmid": "",
+      "queryTitle": "国家基层肥胖症综合管理技术指南(2025) 中华医学会糖尿病学分会 国家基本公共卫生服务项目基层糖尿病防治管理办公室",
+      "status": "unresolved",
+      "title": "国家基层肥胖症综合管理技术指南（2025） 中华医学会糖尿病学分会 国家基本公共卫生服务项目基层糖尿病防治管理办公室",
+      "url": "https://doi.org/10.3760/cma.j.cn112138-20250422-00231"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path",
+        "nfkc_query_variant"
+      ],
+      "id": "c327815c033c5d93",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "教育中心 > JN Learning > 按主题 > 跃入......什么?一个...... 跃向......什么?罗伯特·瓦赫特博士访谈录",
+      "status": "unresolved",
+      "title": "教育中心 > JN Learning > 按主题 > 跃入……什么？一个…… 跃向……什么？罗伯特·瓦赫特博士访谈录",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn113903-20240607-00413",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "ba7e49be0f30217e",
+      "journal": "中华围产医学杂志",
+      "pmid": "",
+      "queryTitle": "人工智能在产科领域的研究进展 广州医科大学附属第三医院妇产科,广州 510000;2 广东省产科重大疾病重点实验室,",
+      "status": "unresolved",
+      "title": "人工智能在产科领域的研究进展 广州医科大学附属第三医院妇产科，广州 510000；2 广东省产科重大疾病重点实验室，",
+      "url": "https://doi.org/10.3760/cma.j.cn113903-20240607-00413"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3877/cma.j.issn.2095-8773.2025.02.04",
+      "flags": [
+        "title_header_or_author_text",
+        "nfkc_query_variant"
+      ],
+      "id": "b4aa5a216d097e45",
+      "journal": "中华胸部外科电子杂志",
+      "pmid": "",
+      "queryTitle": "· 96 · 中华胸部外科电子杂志 2025 年 5 月第 12 卷第 2 期 Chin J Thorac Surg(Electronic Edition),May 2025,Vol. 12,No. 2 人工智能驱动食管癌新辅助精准治疗",
+      "status": "unresolved",
+      "title": "· 96 · 中华胸部外科电子杂志 2025 年 5 月第 12 卷第 2 期 Chin J Thorac Surg（Electronic Edition），May 2025，Vol. 12，No. 2 人工智能驱动食管癌新辅助精准治疗",
+      "url": "https://doi.org/10.3877/cma.j.issn.2095-8773.2025.02.04"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.1093/ehjdh/ztag011/8431732",
+      "flags": [
+        "doi_appended_resource_id",
+        "title_header_or_author_text"
+      ],
+      "id": "b157bb0d131bf3d5",
+      "journal": "European Heart Journal - Digital Health",
+      "pmid": "",
+      "queryTitle": "1 Title: The Digital Divide in Cardiovascular Care: Who Gets Left Behind? 3 Authors: Joshua J Hon1, Gerald Carr-White2",
+      "reason": "official_title_journal_and_both_authors_match_resource_id_is_not_doi",
+      "reviewAction": "correct",
+      "status": "verified",
+      "title": "1 Title: The Digital Divide in Cardiovascular Care: Who Gets Left Behind? 3 Authors: Joshua J Hon1, Gerald Carr-White2",
+      "url": "https://doi.org/10.1093/ehjdh/ztag011/8431732"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "a72fff3c7502aacf",
+      "journal": "中国卫生政策研究",
+      "pmid": "",
+      "queryTitle": "Chinese Journal of Health Policy,Jul. 2025,Vol. 18 No. 7 医疗健康领域中对话式人工智能的评估范式:系统综述",
+      "status": "unresolved",
+      "title": "Chinese Journal of Health Policy，Jul. 2025，Vol. 18 No. 7 医疗健康领域中对话式人工智能的评估范式：系统综述",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path",
+        "nfkc_query_variant"
+      ],
+      "id": "a1827d2d88979d69",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "教育中心 > JN Learning > 按主题 > 与聊天机器人聊天:H... 与聊天机器人对话:首批临床聊天机器",
+      "status": "unresolved",
+      "title": "教育中心 > JN Learning > 按主题 > 与聊天机器人聊天：H... 与聊天机器人对话：首批临床聊天机器",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "9fffe80c22c1085d",
+      "journal": "npj Artificial Intelligence",
+      "pmid": "",
+      "queryTitle": "回顾 公开权限 发布时间:2026年3月5日 医疗保健中的人工智能代理:应用、评估和未来方向",
+      "status": "unresolved",
+      "title": "回顾 公开权限 发布时间：2026年3⽉5⽇ 医疗保健中的⼈⼯智能代理：应⽤、评估和未来⽅向",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112138-20250318-00163",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "9c411f602dbf9e25",
+      "journal": "中华内科杂志",
+      "pmid": "",
+      "queryTitle": "导管消融在心房颤动合并心力衰竭患者中的研究进展 中南大学湘雅医学院附属长沙医院(长沙市第一医院)心血管内科,长沙 410005",
+      "status": "unresolved",
+      "title": "导管消融在心房颤动合并心力衰竭患者中的研究进展 中南大学湘雅医学院附属长沙医院（长沙市第一医院）心血管内科，长沙 410005",
+      "url": "https://doi.org/10.3760/cma.j.cn112138-20250318-00163"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path",
+        "nfkc_query_variant"
+      ],
+      "id": "945f31da036b6b7d",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "2026/2/13 10:28 临床人工智能探索之路 | 人工智能 | JN Learning | AMA Ed Hub 教育中心 > JN Learning > 按主题 > 在Cli中跌跌撞撞地走向人工智能......",
+      "status": "unresolved",
+      "title": "2026/2/13 10:28 临床人工智能探索之路 | 人工智能 | JN Learning | AMA Ed Hub 教育中心 > JN Learning > 按主题 > 在Cli中跌跌撞撞地走向人工智能……",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "9284abd6c5a6a69e",
+      "journal": "The Lancet",
+      "pmid": "",
+      "queryTitle": "Atrial fibrillation 3 Rhythm control in atrial fibrillation",
+      "status": "unresolved",
+      "title": "Atrial ﬁbrillation 3 Rhythm control in atrial ﬁbrillation",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112137-20250725-01852",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "8ad88c8345e3f99d",
+      "journal": "中华医学杂志",
+      "pmid": "",
+      "queryTitle": "复旦大学附属华山医院运动医学科,上海 200040 【摘要】 人工智能技术,尤其是深度学习算法和硬件设备的飞速发展,正在深刻变革运动医学的",
+      "status": "unresolved",
+      "title": "复旦大学附属华山医院运动医学科，上海 200040 【摘要】 人工智能技术，尤其是深度学习算法和硬件设备的飞速发展，正在深刻变革运动医学的",
+      "url": "https://doi.org/10.3760/cma.j.cn112137-20250725-01852"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.1145/nnnnnnn.nnnnnnn",
+      "flags": [
+        "doi_template_placeholder"
+      ],
+      "id": "814b860e19382e2f",
+      "journal": "arXiv",
+      "pmid": "",
+      "queryTitle": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels",
+      "reason": "placeholder_doi_404_no_exact_official_title_match_preprint_retained",
+      "reviewAction": "hold_link",
+      "status": "unresolved",
+      "title": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels",
+      "url": "https://doi.org/10.1145/nnnnnnn.nnnnnnn"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn321761",
+      "flags": [
+        "title_header_or_author_text",
+        "nfkc_query_variant"
+      ],
+      "id": "7ea4a0b8de8805b6",
+      "journal": "国际麻醉学与复苏杂志",
+      "pmid": "",
+      "queryTitle": "100 国际麻醉学与复苏杂志 2025 年 1 月第 46 卷第 1 期 Int J Anesth Resus,January 2025,Vol. 46,No.1 人工智能在麻醉学领域的应用进展",
+      "status": "unresolved",
+      "title": "100 国际麻醉学与复苏杂志 2025 年 1 月第 46 卷第 1 期 Int J Anesth Resus，January 2025，Vol. 46，No.1 人工智能在麻醉学领域的应用进展",
+      "url": "https://doi.org/10.3760/cma.j.cn321761"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path",
+        "nfkc_query_variant"
+      ],
+      "id": "71c19dbab6fdabc3",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "教育中心 > JN Learning > 按主题 > 面向患者的AI工具已上线...... 面向患者的人工智能工具已经问世",
+      "status": "unresolved",
+      "title": "教育中心 > JN Learning > 按主题 > 面向患者的AI工具已上线…… 面向患者的人工智能工具已经问世",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "67e69de65cea2cc6",
+      "journal": "The Lancet",
+      "pmid": "",
+      "queryTitle": "协调健康人工智能以防止防御性升级 如今,能够分析医学影像、病历和理赔数据的人工",
+      "status": "unresolved",
+      "title": "协调健康人工智能以防止防御性升级 如今，能够分析医学影像、病历和理赔数据的人工",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "64890a43692cb6bc",
+      "journal": "Science",
+      "pmid": "",
+      "queryTitle": "家  消息  所有新闻  人工智能会产生幻觉,因为它被训练成伪造它不知道的答案。 人工智能会产生幻觉,因为它被训练成伪造它不知道的答案。",
+      "status": "unresolved",
+      "title": "家  消息  所有新闻  人工智能会产生幻觉，因为它被训练成伪造它不知道的答案。 人工智能会产生幻觉，因为它被训练成伪造它不知道的答案。",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "5c69c9dff773355c",
+      "journal": "Nature Computational Science",
+      "pmid": "",
+      "queryTitle": "A级文献辅助阅读 2026年7月 可靠决策算法为什么需要因果推理|辅助阅读",
+      "status": "unresolved",
+      "title": "A级文献辅助阅读 2026年7月 可靠决策算法为什么需要因果推理｜辅助阅读",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3724/sp.j.1089.2024.2024-00052",
+      "flags": [
+        "title_header_or_author_text"
+      ],
+      "id": "5a74f7ef8b50bef5",
+      "journal": "计算机辅助设计与图形学学报",
+      "pmid": "",
+      "queryTitle": "第 36 卷 第 5 期 计算机辅 助 设计与图 形 学学报 Vol.36 No.5 2024 年 5 月 Journal of Computer-Aided Design & Computer Graphics May 2024",
+      "status": "unresolved",
+      "title": "第 36 卷 第 5 期 计算机辅 助 设计与图 形 学学报 Vol.36 No.5 2024 年 5 月 Journal of Computer-Aided Design & Computer Graphics May 2024",
+      "url": "https://doi.org/10.3724/sp.j.1089.2024.2024-00052"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "title_navigation_or_learning_path"
+      ],
+      "id": "58d4fea842780ffa",
+      "journal": "JN Learning",
+      "pmid": "",
+      "queryTitle": "AMA Ed Hub > JN Learning > By Topic > AI Scribes Are Here, but Is He... ARTIFICIAL INTELLIGENCE",
+      "status": "unresolved",
+      "title": "AMA Ed Hub > JN Learning > By Topic > AI Scribes Are Here, but Is He... ARTIFICIAL INTELLIGENCE",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112148-20250714-00507",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "4836895cc484759f",
+      "journal": "中华心血管病杂志",
+      "pmid": "",
+      "queryTitle": "人工智能在高血压领域中的应用进展与挑战 首都医科大学附属北京安贞医院高血压科 北京市心肺血管疾病研究所,北京 100029",
+      "status": "unresolved",
+      "title": "人工智能在高血压领域中的应用进展与挑战 首都医科大学附属北京安贞医院高血压科 北京市心肺血管疾病研究所，北京 100029",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20250714-00507"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "38338340cbcd4297",
+      "journal": "npj Digital Medicine",
+      "pmid": "",
+      "queryTitle": "A级文献辅助阅读 2026年7月 临床编码嵌入如何支持知识接地医学 AI|辅助阅读",
+      "status": "unresolved",
+      "title": "A级文献辅助阅读 2026年7月 临床编码嵌入如何支持知识接地医学 AI｜辅助阅读",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.1093/ehjdh/ztag098/8713549",
+      "flags": [
+        "doi_appended_resource_id"
+      ],
+      "id": "2e9a9023ee2212fc",
+      "journal": "European Heart Journal - Digital Health",
+      "pmid": "",
+      "queryTitle": "1 Generating evidence using electronic alerts during routine care: a fully 2 automated randomised controlled trial of oral fluid restriction in acute",
+      "status": "unresolved",
+      "title": "1 Generating evidence using electronic alerts during routine care: a fully 2 automated randomised controlled trial of oral fluid restriction in acute",
+      "url": "https://doi.org/10.1093/ehjdh/ztag098/8713549"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "25570acb972fdecd",
+      "journal": "Nature News",
+      "pmid": "",
+      "queryTitle": "“人工智能医生”有多好——他们会接管 《自然》与专家讨论人工智能系统是否会很快诊断出人类。",
+      "status": "unresolved",
+      "title": "“⼈⼯智能医⽣”有多好——他们会接管 《⾃然》与专家讨论⼈⼯智能系统是否会很快诊断出⼈类。",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "22eb9b2b14417285",
+      "journal": "Science",
+      "pmid": "",
+      "queryTitle": "家  消息  所有新闻  我们如何才能知道人工智能是否足够智能,能够进行科学研究? 我们如何才能知道人工智能是否足够智能,能够进行科学研究?",
+      "status": "unresolved",
+      "title": "家  消息  所有新闻  我们如何才能知道人工智能是否足够智能，能够进行科学研究？ 我们如何才能知道人工智能是否足够智能，能够进行科学研究？",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112151-20251117-00756",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "210786a80401e24f",
+      "journal": "中华病理学杂志",
+      "pmid": "",
+      "queryTitle": "人工智能时代病理学的坚守与创新 中国医学科学院 北京协和医学院 北京协和医院病理科 国家病理质控中心,北京",
+      "status": "unresolved",
+      "title": "人工智能时代病理学的坚守与创新 中国医学科学院 北京协和医学院 北京协和医院病理科 国家病理质控中心，北京",
+      "url": "https://doi.org/10.3760/cma.j.cn112151-20251117-00756"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.1093/eurheartj/ehag494/8707083",
+      "flags": [
+        "doi_appended_resource_id"
+      ],
+      "id": "205851dfec4a1c18",
+      "journal": "European Heart Journal",
+      "pmid": "",
+      "queryTitle": "1 Artificial Intelligence in Biomedical Scientific Publishing 1) Editor-in-Chief of the Cardiovascular Research, Centre for Cardiovascular Science, Queen's",
+      "status": "unresolved",
+      "title": "1 Artificial Intelligence in Biomedical Scientific Publishing 1) Editor-in-Chief of the Cardiovascular Research, Centre for Cardiovascular Science, Queen's",
+      "url": "https://doi.org/10.1093/eurheartj/ehag494/8707083"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "1bbe4270de5e9a6e",
+      "journal": "会议与会议稿",
+      "pmid": "",
+      "queryTitle": "KC Cho,纽约大学Glen de Vries健康统计学讲席教授、计算机科学与数据科学教授。机器翻译领域先驱(GRU架 构共同提出者),Prescient Design联合创始人(被Genentech收购),NYUtron临床语言模型主要研究者。",
+      "status": "unresolved",
+      "title": "KC Cho，纽约⼤学Glen de Vries健康统计学讲席教授、计算机科学与数据科学教授。机器翻译领域先驱（GRU架 构共同提出者），Prescient Design联合创始⼈（被Genentech收购），NYUtron临床语⾔模型主要研究者。",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.12114/j.issn.1008-5971.2025.00.106",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "134291c70fe4356c",
+      "journal": "实用心脑肺血管病杂志",
+      "pmid": "",
+      "queryTitle": "Pract J Cardiac Cereb Pneum Vasc Dis June 2025,Vol.33 No.6 http://www.syxnf.net 人工智能在肺栓塞领域应用的研究进展",
+      "status": "unresolved",
+      "title": "Pract J Cardiac Cereb Pneum Vasc Dis June 2025，Vol.33 No.6 http://www.syxnf.net 人工智能在肺栓塞领域应用的研究进展",
+      "url": "https://doi.org/10.12114/j.issn.1008-5971.2025.00.106"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "12d94ba5a7edd367",
+      "journal": "TechRxiv",
+      "pmid": "",
+      "queryTitle": "临床需求与人工智能能力的对齐:A 齐鹏 , Jiatong Li 黄思瑞 ,义阳江 开松公 荣格·丁 叶世杰 ,",
+      "status": "unresolved",
+      "title": "临床需求与人工智能能力的对齐：A 齐鹏 , Jiatong Li 黄思瑞 ，义阳江 开松公 荣格·丁 叶世杰 ,",
+      "url": ""
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.3760/cma.j.cn112148-20251223-00901",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "0a57c2bbe65ac9ff",
+      "journal": "中华心血管病杂志",
+      "pmid": "",
+      "queryTitle": "心电及影像大模型在心血管疾病中的应用 清华大学北京清华长庚医院心血管内科,北京 102218",
+      "status": "unresolved",
+      "title": "心电及影像大模型在心血管疾病中的应用 清华大学北京清华长庚医院心血管内科，北京 102218",
+      "url": "https://doi.org/10.3760/cma.j.cn112148-20251223-00901"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "10.1093/ehjdh/ztag032/8488692",
+      "flags": [
+        "doi_appended_resource_id"
+      ],
+      "id": "039a2a57e62585bb",
+      "journal": "European Heart Journal - Digital Health",
+      "pmid": "",
+      "queryTitle": "2 Conversational AI for remote monitoring in heart failure: a prospective controlled pilot Short title: Conversational AI for Remote Monitoring in HF",
+      "status": "unresolved",
+      "title": "2 Conversational AI for remote monitoring in heart failure: a prospective controlled pilot Short title: Conversational AI for Remote Monitoring in HF",
+      "url": "https://doi.org/10.1093/ehjdh/ztag032/8488692"
+    },
+    {
+      "dataset": "LIBRARY",
+      "date": "",
+      "doi": "",
+      "flags": [
+        "nfkc_query_variant"
+      ],
+      "id": "011dd91605992e3a",
+      "journal": "Nature News",
+      "pmid": "",
+      "queryTitle": "人工智能头像正在重塑中国的社会—— 数字人员正在履行从经营医院到讲课到提供陪伴的⻆色。",
+      "status": "unresolved",
+      "title": "⼈⼯智能头像正在重塑中国的社会—— 数字⼈员正在履⾏从经营医院到讲课到提供陪伴的⻆⾊。",
+      "url": ""
+    }
+  ]
+}

@@ -36,8 +36,9 @@ class QualityTests(unittest.TestCase):
         no_identity_before = {p['id'] for p in raw if not p['doi'] and not p['url']}
         no_identity_after = {p['id'] for p in projected if not p['doi'] and not p['url']}
         self.assertEqual(len(no_identity_before), 245)
-        self.assertEqual(no_identity_after, no_identity_before - quality.NAVIGATION.keys())
-        self.assertEqual(len(no_identity_after), 242)
+        self.assertEqual(len(no_identity_after), 244)
+        self.assertEqual(no_identity_after, (no_identity_before - quality.NAVIGATION.keys()) |
+                         {'a97bbb0a11844693', '814b860e19382e2f'})
         self.assertEqual(raw, before)
 
     def test_agentic_official_metadata_deduplicates_only_enumerated_ids_and_holds_pdf_binding(self):
@@ -51,7 +52,7 @@ class QualityTests(unittest.TestCase):
         self.assertEqual((p['date'], p['onlineDate'], p['issueDate']), ('2026-04-10', '2026-04-10', '2026-03'))
         self.assertEqual((p['volume'], p['issue']), ('8', '3'))
         self.assertEqual(audit['aliases'][0]['canonicalId'], quality.AGENTIC_IDS[0])
-        self.assertEqual(audit['pdfBindingHoldIds'], [quality.AGENTIC_IDS[0]])
+        self.assertEqual(set(audit['pdfBindingHoldIds']), {quality.AGENTIC_IDS[0], *quality.DOI_REVIEW})
         self.assertFalse(p['localAvailable'])
         self.assertEqual(p['fulltextStatus'], 'not_verified')
         self.assertIsNone(p['ingestedAt'])
@@ -79,7 +80,8 @@ class QualityTests(unittest.TestCase):
         by_id = {p['id']: p for p in projected}
         self.assertEqual(by_id['a762c60c31fbd3e2']['date'], '2026-09-26')
         self.assertEqual(by_id['another-sep1-paper']['date'], '2026-09-01')
-        targeted = set(quality.NAVIGATION) | set(quality.AGENTIC_IDS) | set(quality.ONLINE_CORRECTIONS)
+        targeted = (set(quality.NAVIGATION) | set(quality.AGENTIC_IDS) |
+                    set(quality.ONLINE_CORRECTIONS) | set(quality.DOI_REVIEW))
         for p in raw:
             if p['id'] not in targeted:
                 self.assertEqual(by_id[p['id']], p)

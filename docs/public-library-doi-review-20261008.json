@@ -1,0 +1,320 @@
+{
+  "cases": [
+    {
+      "action": "correct",
+      "original": {
+        "doi": "10.1002/dta.1857",
+        "id": "93b958551c8bf865",
+        "journal": "JAMA",
+        "title": "AI IN MEDICINE The Need to Avoid a Regulatory Gray Zone in Digital Wellness"
+      },
+      "originalRegistry": {
+        "DOI": "10.1002/dta.1857",
+        "container-title": [
+          "Drug Testing and Analysis"
+        ],
+        "http": 200,
+        "published-online": {
+          "date-parts": [
+            [
+              2015,
+              11,
+              2
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2016,
+              3
+            ]
+          ]
+        },
+        "requestedDoi": "10.1002/dta.1857",
+        "resource": {
+          "primary": {
+            "URL": "https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/dta.1857"
+          }
+        },
+        "sourceUrl": "https://api.crossref.org/works/10.1002%2Fdta.1857",
+        "title": [
+          "Consumers' perceptions of the dietary supplement health and education act: implications and recommendations"
+        ]
+      },
+      "reason": "old_doi_identifies_unrelated_2015_drug_testing_article",
+      "replacementRegistry": {
+        "DOI": "10.1001/jama.2026.14789",
+        "container-title": [
+          "JAMA"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              9,
+              1
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              9,
+              1
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jama.2026.14789",
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjama.2026.14789",
+        "title": [
+          "The Need to Avoid a Regulatory Gray Zone in Digital Wellness"
+        ]
+      },
+      "status": "verified"
+    },
+    {
+      "action": "correct",
+      "original": {
+        "doi": "10.1016/s2589-7500(20)30185-0",
+        "id": "4944fe87d59c5e7b",
+        "journal": "JAMA Internal Medicine",
+        "title": "AI AND CLINICAL CARE Measuring the Return on Investment for Clinician-Facing"
+      },
+      "originalRegistry": {
+        "DOI": "10.1016/s2589-7500(20)30185-0",
+        "container-title": [
+          "The Lancet Digital Health"
+        ],
+        "http": 200,
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2020,
+              9
+            ]
+          ]
+        },
+        "requestedDoi": "10.1016/s2589-7500(20)30185-0",
+        "resource": {
+          "primary": {
+            "URL": "https://linkinghub.elsevier.com/retrieve/pii/S2589750020301850"
+          }
+        },
+        "sourceUrl": "https://api.crossref.org/works/10.1016%2Fs2589-7500%2820%2930185-0",
+        "title": [
+          "Effect of artificial intelligence-based triaging of breast cancer screening mammograms on cancer detection and radiologist workload: a retrospective simulation study"
+        ]
+      },
+      "reason": "old_doi_identifies_unrelated_2020_mammography_article",
+      "replacementRegistry": {
+        "DOI": "10.1001/jamainternmed.2025.7627",
+        "container-title": [
+          "JAMA Internal Medicine"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              1
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              5,
+              1
+            ]
+          ]
+        },
+        "requestedDoi": "10.1001/jamainternmed.2025.7627",
+        "sourceUrl": "https://api.crossref.org/works/10.1001%2Fjamainternmed.2025.7627",
+        "title": [
+          "Measuring the Return on Investment for Clinician-Facing Artificial Intelligence Technologies"
+        ]
+      },
+      "status": "verified"
+    },
+    {
+      "action": "correct",
+      "matchedPublicAuthors": [
+        "Joshua J Hon",
+        "Gerald Carr-White"
+      ],
+      "original": {
+        "doi": "10.1093/ehjdh/ztag011/8431732",
+        "id": "b157bb0d131bf3d5",
+        "journal": "European Heart Journal - Digital Health",
+        "title": "1 Title: The Digital Divide in Cardiovascular Care: Who Gets Left Behind? 3 Authors: Joshua J Hon1, Gerald Carr-White2"
+      },
+      "originalRegistry": {
+        "http": 404,
+        "requestedDoi": "10.1093/ehjdh/ztag011/8431732",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag011%2F8431732"
+      },
+      "reason": "official_title_journal_and_both_authors_match_resource_id_is_not_doi",
+      "replacementRegistry": {
+        "DOI": "10.1093/ehjdh/ztag011",
+        "container-title": [
+          "European Heart Journal - Digital Health"
+        ],
+        "http": 200,
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              1,
+              21
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              1,
+              21
+            ]
+          ]
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              1,
+              27
+            ]
+          ]
+        },
+        "requestedDoi": "10.1093/ehjdh/ztag011",
+        "sourceUrl": "https://api.crossref.org/works/10.1093%2Fehjdh%2Fztag011",
+        "title": [
+          "The digital divide in cardiovascular care: who gets left behind?"
+        ]
+      },
+      "status": "verified"
+    },
+    {
+      "action": "hold_link",
+      "articleRetained": true,
+      "original": {
+        "doi": "10.1016/j.jacc.2024",
+        "id": "a97bbb0a11844693",
+        "journal": "JAMA Internal Medicine",
+        "title": "Invited Commentary LESS IS MORE"
+      },
+      "originalRegistry": {
+        "http": 404,
+        "requestedDoi": "10.1016/j.jacc.2024",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1016%2Fj.jacc.2024"
+      },
+      "reason": "truncated_doi_404_column_header_does_not_identify_article",
+      "status": "unresolved"
+    },
+    {
+      "action": "hold_link",
+      "articleRetained": true,
+      "original": {
+        "doi": "10.1145/nnnnnnn.nnnnnnn",
+        "id": "814b860e19382e2f",
+        "journal": "arXiv",
+        "title": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels"
+      },
+      "originalRegistry": {
+        "http": 404,
+        "requestedDoi": "10.1145/nnnnnnn.nnnnnnn",
+        "retry": false,
+        "sourceUrl": "https://api.crossref.org/works/10.1145%2Fnnnnnnn.nnnnnnn"
+      },
+      "reason": "placeholder_doi_404_no_exact_official_title_match_preprint_retained",
+      "status": "unresolved"
+    }
+  ],
+  "checkedOn": "2026-10-08",
+  "counts": {
+    "falsepositive": 0,
+    "unresolved": 2,
+    "verified": 3
+  },
+  "crossrefTitleQueries": [
+    {
+      "candidateCount": 3,
+      "key": "regulatory",
+      "query": "The Need to Avoid a Regulatory Gray Zone in Digital Wellness",
+      "sourceUrl": "https://api.crossref.org/works?query.title=The+Need+to+Avoid+a+Regulatory+Gray+Zone+in+Digital+Wellness&rows=3&select=DOI%2Ctitle%2Ccontainer-title%2Cpublished-online%2Cpublished-print%2Cauthor"
+    },
+    {
+      "candidateCount": 3,
+      "key": "roi",
+      "query": "Measuring the Return on Investment for Clinician-Facing",
+      "sourceUrl": "https://api.crossref.org/works?query.title=Measuring+the+Return+on+Investment+for+Clinician-Facing&rows=3&select=DOI%2Ctitle%2Ccontainer-title%2Cpublished-online%2Cpublished-print%2Cauthor"
+    },
+    {
+      "candidateCount": 3,
+      "key": "divide",
+      "query": "The Digital Divide in Cardiovascular Care Who Gets Left Behind",
+      "sourceUrl": "https://api.crossref.org/works?query.title=The+Digital+Divide+in+Cardiovascular+Care+Who+Gets+Left+Behind&rows=3&select=DOI%2Ctitle%2Ccontainer-title%2Cpublished-online%2Cpublished-print%2Cauthor"
+    },
+    {
+      "candidateCount": 3,
+      "key": "clinconsensus",
+      "query": "ClinConsensus A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels",
+      "sourceUrl": "https://api.crossref.org/works?query.title=ClinConsensus+A+Consensus-Based+Benchmark+for+Evaluating+Chinese+Medical+LLMs+across+Difficulty+Levels&rows=3&select=DOI%2Ctitle%2Ccontainer-title%2Cpublished-online%2Cpublished-print%2Cauthor"
+    }
+  ],
+  "limitations": [
+    "A 404 is not evidence that an article does not exist.",
+    "PubMed returned one HTTP 429 in the targeted batch; no subsequent PubMed batch or retry was made.",
+    "No PMID or private PDF identity was assigned.",
+    "First two replacements have only print issue dates; existing unreviewed source dates are retained."
+  ],
+  "mainBase": "0edf01932612c9f2a68bde3e638be27a42f187bf",
+  "pubmedQueries": [
+    {
+      "count": 0,
+      "key": "regulatory",
+      "pmids": [],
+      "query": "\"The Need to Avoid a Regulatory Gray Zone in Digital Wellness\"[Title]",
+      "sourceUrl": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%22The+Need+to+Avoid+a+Regulatory+Gray+Zone+in+Digital+Wellness%22%5BTitle%5D&retmode=json&retmax=5"
+    },
+    {
+      "count": 0,
+      "key": "roi",
+      "pmids": [],
+      "query": "\"Measuring the Return on Investment\"[Title] AND \"JAMA Intern Med\"[Journal]",
+      "sourceUrl": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%22Measuring+the+Return+on+Investment%22%5BTitle%5D+AND+%22JAMA+Intern+Med%22%5BJournal%5D&retmode=json&retmax=5"
+    },
+    {
+      "http": 429,
+      "key": "divide",
+      "retry": false
+    },
+    {
+      "count": 0,
+      "key": "column",
+      "pmids": [],
+      "query": "\"Invited Commentary LESS IS MORE\"[Title]",
+      "sourceUrl": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%22Invited+Commentary+LESS+IS+MORE%22%5BTitle%5D&retmode=json&retmax=5"
+    },
+    {
+      "count": 0,
+      "key": "clinconsensus",
+      "pmids": [],
+      "query": "\"ClinConsensus\"[Title]",
+      "sourceUrl": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%22ClinConsensus%22%5BTitle%5D&retmode=json&retmax=5"
+    }
+  ],
+  "scope": "public_bibliography_only",
+  "stateBase": "350addefc78f57362278ab73123924e852b179bb"
+}
