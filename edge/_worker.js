@@ -220,23 +220,25 @@ async function pdfLfsRead(url, init, limit, options) {
   if (options.signal && options.signal.aborted) pdfFail('pdf_timeout', 504);
   if (options.signal) options.signal.addEventListener('abort', abort, { once:true });
   const timer = setTimeout(abort, PDF_NETWORK_TIMEOUT_MS);
+  let reader;
   try {
-    const response = await fetch(url, { ...init, redirect:'error', signal:controller.signal });
+    const response = await awaitAbort(fetch(url, { ...init, redirect:'error', signal:controller.signal }), controller.signal, 'pdf_timeout');
     if (!response.ok) {
-      if (response.body) await response.body.cancel();
+      if (response.body) response.body.cancel().catch(() => {});
       if (options.pauseOnDenied && [401,403,429].includes(response.status)) libraryFail('library_paused', 423, response.status === 429 ? libraryUpstreamRetry(response) : 0);
       pdfFail('pdf_upstream', 502);
     }
     const size = response.headers.get('content-length');
     if (size && (!/^\d+$/.test(size) || Number(size) > limit)) pdfFail('pdf_too_large', 413);
-    const reader = response.body && response.body.getReader(); if (!reader) pdfFail('pdf_upstream');
+    reader = response.body && response.body.getReader(); if (!reader) pdfFail('pdf_upstream');
     let count = 0; const chunks = [];
-    while (true) { const result = await reader.read(); if (result.done) break; count += result.value.length; if (count > limit) { await reader.cancel(); pdfFail('pdf_too_large', 413); } chunks.push(result.value); }
+    while (true) { const result = await awaitAbort(reader.read(), controller.signal, 'pdf_timeout'); if (result.done) break; count += result.value.length; if (count > limit) { reader.cancel().catch(() => {}); pdfFail('pdf_too_large', 413); } chunks.push(result.value); }
     const bytes = new Uint8Array(count); let at = 0; for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.length; } return bytes;
   } catch (error) {
+    if (reader) reader.cancel().catch(() => {});
     if (error instanceof PdfFailure || options.pauseOnDenied && error instanceof LibraryFailure) throw error;
     pdfFail(controller.signal.aborted ? 'pdf_timeout' : 'pdf_upstream', controller.signal.aborted ? 504 : 502);
-  } finally { clearTimeout(timer); if (options.signal) options.signal.removeEventListener('abort', abort); }
+  } finally { clearTimeout(timer); controller.abort(); if (options.signal) options.signal.removeEventListener('abort', abort); }
 }
 async function pdfGithubBytes(metadata, raw, checksum, options = {}) {
   // LFS stores a Git blob for the pointer; the PDF is bound by the pointer's SHA256 and size.
