@@ -11,7 +11,8 @@ import week_precompute as w
 from preview_sol_public_overlay import preview
 
 DIRECTORY = 'editorial/sol-public-abstract-20261007'
-SUPPLEMENTS = (('editorial/sol-public-abstract-20261008-gap', 'gap-cache.json'),)
+SUPPLEMENTS = (('editorial/sol-public-abstract-20261008-gap', 'gap-cache.json'),
+               ('editorial/sol-public-abstract-20261008b-gap', 'gap-cache.json'))
 
 
 def _load_package(root, directory, cache_file):

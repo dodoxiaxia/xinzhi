@@ -1,0 +1,41 @@
+{
+ "schemaVersion": 1,
+ "scope": "public-abstract",
+ "window": {
+  "start": "2026-10-02",
+  "end": "2026-10-08",
+  "timezone": "Asia/Shanghai",
+  "days": 7,
+  "target": 24,
+  "eligible": 78,
+  "selected": 24,
+  "eligibleByCategory": {
+   "心血管": 68,
+   "综合医学": 8,
+   "AI医疗": 1,
+   "AI前沿": 1
+  },
+  "excluded": {
+   "duplicates": 0,
+   "unverified_publication_date": 304,
+   "no_complete_public_abstract": 63,
+   "low_relevance": 31,
+   "correction_comment_letter": 11,
+   "outside_window": 387
+  },
+  "shortfallReason": null
+ },
+ "selected": 24,
+ "coverage": {
+  "title": 24,
+  "translate": 24,
+  "quicklook": 24
+ },
+ "pendingPapers": 0,
+ "contentComplete": true,
+ "items": [],
+ "studyMissing": 24,
+ "externalModelApiRequests": 0,
+ "runtimeCacheWrites": 0,
+ "ledgerWrites": 0
+}

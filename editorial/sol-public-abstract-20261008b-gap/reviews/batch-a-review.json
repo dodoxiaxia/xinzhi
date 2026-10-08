@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "reviewType": "independent-public-abstract-editorial-review",
+  "reviewedAt": "2026-10-08T01:01:55.252887+00:00",
+  "requestedModel": "gpt-6.1-sol",
+  "actualBackend": "unverified",
+  "modelVerification": "Requested model recorded; actual serving backend is not observable or verified.",
+  "humanMedicalFullTextReview": false,
+  "publicAbstractOnly": true,
+  "scope": {
+    "ranks": [
+      1,
+      3,
+      11
+    ],
+    "fields": [
+      "rank",
+      "paperID",
+      "doi",
+      "pmid",
+      "sourceHash",
+      "translate.title_zh",
+      "translate.abstract_zh",
+      "quicklook.title_zh",
+      "quicklook.one_line",
+      "quicklook.design",
+      "quicklook.findings[].text",
+      "quicklook.findings[].quote",
+      "quicklook.limits",
+      "quicklook.why_read"
+    ],
+    "evidenceBoundary": "Only the two local specified JSON inputs were used as content evidence. No network, external API, private PDF, or internal clinical material was consulted. This is model editorial review of supplied public abstracts, not human medical full-text review."
+  },
+  "inputs": [
+    {
+      "path": "/workspace/week-sol-gap-20261008b/editorial/sol-public-abstract-20261008b-gap/sources.json",
+      "sha256": "04be242f3d0703610cf0f8c410382e22ada064010ed9b742d32100b1026a6e08"
+    },
+    {
+      "path": "/workspace/week-sol-gap-20261008b/editorial/sol-public-abstract-20261008b-gap/drafts/batch-a.json",
+      "sha256": "528586d3c372fe69507f531e6800c252b7784add63683463fddeac7cec270ea7"
+    }
+  ],
+  "sourceHashCheck": "Draft sourceHash, paperID, DOI, PMID and rank exactly match the corresponding sources.json entry. The upstream sourceHash derivation algorithm was not independently reconstructed.",
+  "papers": [
+    {
+      "rank": 1,
+      "paperID": "doi:10.1001/jamacardio.2026.4445",
+      "doi": "10.1001/jamacardio.2026.4445",
+      "pmid": "42842238",
+      "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+      "pass": true,
+      "issues": [],
+      "identityChecks": {
+        "rank": true,
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "titleConsistency": true,
+      "fieldChecks": {
+        "title": "中文题名准确涵盖有无CKD、强化与标准降压、系统综述和荟萃分析；译文与QL题名一致。",
+        "translation": "完整覆盖摘要各段；检索日期2026年1月16日、至少1年随访、逆方差加权及按实际达到的组间SBP差异标准化均保留。27项/88 830名、每10 mmHg降低15%及RR/CI、CKD与非CKD估计绝对减少和SE、所有eGFR阈值及RR/CI均对应原文。结论明确归属于作者推荐。",
+        "one_line": "与摘要结论一致；具体eGFR阈值和肾衰竭阴性结果在findings中分开说明，未将eGFR下降等同肾衰竭。",
+        "design": "正确标为有无CKD成人降压随机临床试验的系统综述与荟萃分析。",
+        "findings": "四条均有连续原文支持；15%为每10 mmHg SBP的标准化相对风险减少。4.3(SE 1.2)与2.7(SE 0.4)均为估计绝对减少/1000人年。肾衰竭RR 0.97(CI 0.84-1.11)、持续eGFR下降57%与50%的阴性，与下降≥30%/≥40%风险分别增加42%/47%明确区分；未编造阈值或分母。",
+        "limits": "摘要无明确局限段，QL表述“摘要未提供明确局限”准确，不等同研究无局限。",
+        "why_read": "对应SBP标准化和不同肾脏结局，未增加摘要外治疗建议。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1189,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 2,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1423,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 3,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1627,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 4,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1904,
+          "numbersSupportedBySameQuote": true
+        }
+      ],
+      "numericReviewPass": true,
+      "denominatorReviewPass": true,
+      "negativeResultsReviewPass": true,
+      "causalScopeReviewPass": true
+    },
+    {
+      "rank": 3,
+      "paperID": "doi:10.1161/circep.126.015055",
+      "doi": "10.1161/circep.126.015055",
+      "pmid": "42841215",
+      "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+      "pass": true,
+      "issues": [],
+      "identityChecks": {
+        "rank": true,
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "titleConsistency": true,
+      "fieldChecks": {
+        "title": "中文题名准确保留LRFM门诊、房颤患者及随机对照试验系统综述/荟萃分析。",
+        "translation": "完整覆盖11项RCT/3364名、5项消融情境、平均年龄58–73岁、女性30%、持续性AF 18%、随访3–24月；主次终点、所有OR/CI/P/I2、SF36平均改善及三个阴性P值均对应原文。英文Eleven正确译为“十一”。背景关联未改写为因果。",
+        "one_line": "明确为消融后房颤复发；AF住院及生活质量结果分别陈述，其他阴性结局在findings中列明。",
+        "design": "正确为LRFM门诊对比常规照护的随机试验荟萃分析。",
+        "findings": "四条连续引文均匹配摘要。复发OR 0.34限定导管消融后；AF住院OR 0.70未外推成所有疾病风险；生活质量为SF36平均改善8.90(CI 6.91-10.90)，没有写成新疾病发生风险。心衰住院P=0.16、心血管死亡P=0.79、卒中/TIA P=0.83均用“未检出差异”，没有将阴性检验当等效。",
+        "limits": "“摘要未提供明确局限”与摘要范围一致。",
+        "why_read": "准确区分消融后复发情境与整体试验的住院、QoL和阴性结局。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "contiguousLiteralMatch": true,
+          "startOffset": 963,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 2,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1150,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 3,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1150,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 4,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1374,
+          "numbersSupportedBySameQuote": true
+        }
+      ],
+      "numericReviewPass": true,
+      "denominatorReviewPass": true,
+      "negativeResultsReviewPass": true,
+      "causalScopeReviewPass": true
+    },
+    {
+      "rank": 11,
+      "paperID": "doi:10.1001/jama.2026.17619",
+      "doi": "10.1001/jama.2026.17619",
+      "pmid": "42842242",
+      "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+      "pass": true,
+      "issues": [],
+      "identityChecks": {
+        "rank": true,
+        "paperID": true,
+        "doi": true,
+        "pmid": true,
+        "sourceHash": true
+      },
+      "titleConsistency": true,
+      "fieldChecks": {
+        "title": "中文题名保留严重疾病、黑人/白人老年人、ACP及EQUAL ACP随机试验；题名未夸大效应。",
+        "translation": "保留多中心整群随机、门诊层随机干预与个体层协助员种族一致性随机分配；10家(9初级保健/1老年医学)、≥65岁、12个月定义、正式和/或非正式ACP、非医务背景协助员的身份措辞均准确；未推断培训不足。所有人数、分子分母、调整后RR/CI及注册号均保留。791/427/364、409/382与分析样本789/668未擅自补齐或混用。",
+        "one_line": "先报告两个种族组内ACP完成率无显著差异，再报告合并样本交互作用显著；两类结论没有互相否定。",
+        "design": "正确为社区严重疾病黑人及白人老年人的多中心整群随机试验。",
+        "findings": "先黑人组152/213(71%) vs 131/213(62%)、调整RR 1.15(CI 0.83-1.59)，再白人组133/196(68%) vs 131/167(78%)、调整RR 0.88(CI 0.65-1.18)，均为组内阴性。随后列合并547/789(69%)、正式130/789、非正式523/668和交互作用调整RR 1.32(CI 1.03-1.69)。交互作用仅表示协助式相对自助式效应在黑人相较白人更高，未声称黑人组内疗效已显著。种族一致性保持“无关联”，未改为因果。",
+        "limits": "摘要未明确报告局限，未从分析人数差异猜测失访、缺失原因或补充分母。",
+        "why_read": "准确关注组内阴性与种族对干预相对效应的显著修饰。"
+      },
+      "quoteChecks": [
+        {
+          "findingIndex": 1,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1678,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 2,
+          "contiguousLiteralMatch": true,
+          "startOffset": 1870,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 3,
+          "contiguousLiteralMatch": true,
+          "startOffset": 2035,
+          "numbersSupportedBySameQuote": true
+        },
+        {
+          "findingIndex": 4,
+          "contiguousLiteralMatch": true,
+          "startOffset": 2414,
+          "numbersSupportedBySameQuote": true
+        }
+      ],
+      "numericReviewPass": true,
+      "denominatorReviewPass": true,
+      "negativeResultsReviewPass": true,
+      "causalScopeReviewPass": true,
+      "resolvedIssues": [
+        {
+          "id": "rank11-lay-facilitator-terminology",
+          "rank": 11,
+          "field": "translate.abstract_zh",
+          "severity": "non-blocking",
+          "status": "resolved",
+          "originalText": "非专业ACP协助员",
+          "replacementText": "非医务背景的ACP协助员",
+          "sourceText": "Both were delivered by lay ACP facilitators.",
+          "rationale": "lay描述协助员的非医务身份背景；原“非专业”可能被误读为未经培训或能力不足。更准确的新译避免这种未经摘要支持的推断，不改变设计、数字或效应。",
+          "verifiedAt": "2026-10-08T01:01:55.252887+00:00",
+          "finalDraftSha256": "528586d3c372fe69507f531e6800c252b7784add63683463fddeac7cec270ea7"
+        }
+      ]
+    }
+  ],
+  "overallPass": true,
+  "issues": [],
+  "blockers": [],
+  "offlineChecks": {
+    "method": "Local JSON parsing, exact identity comparisons, continuous quote substring checks, per-finding numeric multiset support, and semantic review of all translation/QL fields.",
+    "findingsChecked": 12,
+    "continuousQuotesPassed": 12,
+    "numericSameQuoteChecksPassed": 12,
+    "originalWeekPrecomputeValidatorRun": false,
+    "reason": "Optional original validator was unnecessary; independent local checks and exhaustive semantic review were used."
+  },
+  "resolvedIssues": [
+    {
+      "id": "rank11-lay-facilitator-terminology",
+      "rank": 11,
+      "field": "translate.abstract_zh",
+      "severity": "non-blocking",
+      "status": "resolved",
+      "originalText": "非专业ACP协助员",
+      "replacementText": "非医务背景的ACP协助员",
+      "sourceText": "Both were delivered by lay ACP facilitators.",
+      "rationale": "lay描述协助员的非医务身份背景；原“非专业”可能被误读为未经培训或能力不足。更准确的新译避免这种未经摘要支持的推断，不改变设计、数字或效应。",
+      "verifiedAt": "2026-10-08T01:01:55.252887+00:00",
+      "finalDraftSha256": "528586d3c372fe69507f531e6800c252b7784add63683463fddeac7cec270ea7"
+    }
+  ],
+  "revisionHistory": [
+    {
+      "previousDraftSha256": "a9e970eb0c7b7c5b6e688b7a09b1c2851404989415ba67e55cee29cd5bddbb2b",
+      "finalDraftSha256": "528586d3c372fe69507f531e6800c252b7784add63683463fddeac7cec270ea7",
+      "change": "仅将rank11的“非专业ACP协助员”替换为“非医务背景的ACP协助员”；反向字节替换恢复原SHA256，证明其余内容未变。",
+      "resolvedIssue": "rank11-lay-facilitator-terminology"
+    }
+  ],
+  "finalSixChecks": [
+    {
+      "check": "identity_and_source_hash_binding",
+      "pass": true,
+      "details": "rank/paperID/DOI/PMID/sourceHash均与sources条目一致；输入文件SHA256绑定为最终版本。"
+    },
+    {
+      "check": "chinese_titles_and_complete_translation",
+      "pass": true,
+      "details": "三篇中文题名与译文逐段重读；rank11术语修订已核实，不增加培训事实。"
+    },
+    {
+      "check": "all_quicklook_fields_and_design",
+      "pass": true,
+      "details": "QL六字段全部重核；随机试验荟萃分析与整群随机试验设计准确。"
+    },
+    {
+      "check": "numbers_denominators_and_effect_context",
+      "pass": true,
+      "details": "全部数字分母未变；R1每10 mmHg标准化、估计绝对值/SE和肾脏阈值，R3消融后复发与QoL均值，R11各分析分母准确。"
+    },
+    {
+      "check": "negative_results_interaction_causality_and_author_voice",
+      "pass": true,
+      "details": "阴性结局保留；R11先组内primary后合并interaction；未把关联当因果；R1recommendation归作者。"
+    },
+    {
+      "check": "continuous_quotes_and_same_quote_numeric_support",
+      "pass": true,
+      "details": "12条finding连续引文全部为原摘要子串，数字均在同条quote中有依据。"
+    }
+  ]
+}

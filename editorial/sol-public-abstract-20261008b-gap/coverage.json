@@ -1,0 +1,76 @@
+{
+  "papersGenerated": 5,
+  "tasksGenerated": 10,
+  "items": [
+    {
+      "rank": 1,
+      "paperID": "doi:10.1001/jamacardio.2026.4445",
+      "doi": "10.1001/jamacardio.2026.4445",
+      "pmid": "42842238",
+      "date": "2026-10-07",
+      "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42842238/",
+      "cacheKeys": {
+        "translate": "c354b24604e082f0abdc660bc69d2a1511830e527a34d1c92661cb0bfe0e6ef0",
+        "quicklook": "02aeb2e2dc2fafcd596b2d1a33226fdfbfb393d5ef26808611c1572644034264"
+      },
+      "review": "reviews/batch-a-review.json"
+    },
+    {
+      "rank": 3,
+      "paperID": "doi:10.1161/circep.126.015055",
+      "doi": "10.1161/circep.126.015055",
+      "pmid": "42841215",
+      "date": "2026-10-07",
+      "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841215/",
+      "cacheKeys": {
+        "translate": "5500bad313787d04aaf229c660dc1ce62d468c13b4340ca6be46b02f0eeb4ee3",
+        "quicklook": "183403ec8aedd1ffeccf57b2db1331b695f2a0da7e2947622cca765f31ffb921"
+      },
+      "review": "reviews/batch-a-review.json"
+    },
+    {
+      "rank": 11,
+      "paperID": "doi:10.1001/jama.2026.17619",
+      "doi": "10.1001/jama.2026.17619",
+      "pmid": "42842242",
+      "date": "2026-10-07",
+      "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42842242/",
+      "cacheKeys": {
+        "translate": "b5d90f8d6f0523aa65729f5b8e14b899b1fb71dafd1e7bb5656f251da3817f70",
+        "quicklook": "f9563c829c5aef73134d75009efe1a398ff503f701b847862eb4b866186434b7"
+      },
+      "review": "reviews/batch-a-review.json"
+    },
+    {
+      "rank": 17,
+      "paperID": "doi:10.1161/circep.125.014659",
+      "doi": "10.1161/circep.125.014659",
+      "pmid": "42841203",
+      "date": "2026-10-07",
+      "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841203/",
+      "cacheKeys": {
+        "translate": "3e6bc0cc927fef260f0d1533af109e957eea55b17102e5ef974faa5d45bcddfe",
+        "quicklook": "62aae3dafe2eef2f2b32203b0d1c3a838fb045f20aa8d1167c7be5d9cfb6a310"
+      },
+      "review": "reviews/batch-b-review.json"
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1111/jce.70524",
+      "doi": "10.1111/jce.70524",
+      "pmid": "42841812",
+      "date": "2026-10-07",
+      "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841812/",
+      "cacheKeys": {
+        "translate": "5a3faf13f25a8cd241980d43012f5d43c6bb4e52388b85c7025c7c16437f4640",
+        "quicklook": "7db79030a7caa037e7de5441d808046a9b51a08ab0e777a05d3d14584a712410"
+      },
+      "review": "reviews/batch-b-review.json"
+    }
+  ]
+}
