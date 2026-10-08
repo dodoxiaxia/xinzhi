@@ -1288,9 +1288,9 @@
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
           jHtml += `<div class="journal-filter-item"><button class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" data-filter-pub="${esc(pubName)}">
-            <span class="journal-filter-label"><span>${esc(jName)}</span>${journalMetricBadge(jName)}</span>
+            <span class="journal-filter-label"><span>${esc(jName)}</span></span>
             <span class="filter-count">${jCount}</span>
-          </button>${journalMetricDetails(jName)}</div>`;
+          </button></div>`;
         }
 
         accHtml += `

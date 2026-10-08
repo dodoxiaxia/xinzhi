@@ -156,11 +156,23 @@ def main():
                 if width <= 1000:
                     page.locator('#filterToggleBtn').click()
                 page.locator('.accordion-header').first.click()
-                detail = page.locator('.accordion-group.open .journal-metrics-details > summary').first
-                detail.focus()
-                detail.press('Enter')
-                expect(detail.locator('..')).to_have_attribute('open', '')
+                check(page.locator('#publisherAccordion .journal-metrics-badge, #publisherAccordion .journal-metrics-details').count() == 0, f'{width}: publisher sidebar has no metric blocks')
+                button = page.locator('.accordion-group.open [data-filter-journal]').first
+                sidebar_journal = button.get_attribute('data-filter-journal')
+                expect(button.locator('.journal-filter-label')).to_have_text(sidebar_journal)
+                check(int(button.locator('.filter-count').inner_text()) > 0, f'{width}: sidebar journal count retained')
+                button.focus()
+                button.press('Enter')
+                check(parse_qs(urlsplit(page.url).query).get('journal') == [sidebar_journal], f'{width}: sidebar keyboard filter retained')
                 overflow(page, f'{width}/sidebar')
+                if width <= 1000:
+                    page.locator('#sheetClose').click()
+                page.locator('[data-clear="journal"]').click()
+                page.locator('[data-clear="publisher"]').click()
+                if width <= 1000:
+                    page.locator('#filterToggleBtn').click()
+                page.locator('.accordion-header').filter(has_text='The Lancet Group').click()
+                page.screenshot(path=str(out / f'publisher-sidebar-{width}.png'))
                 if width <= 1000:
                     page.locator('#sheetClose').click()
                 journal = page.locator('#articlesStream .article-card .journal-badge').first.inner_text()
