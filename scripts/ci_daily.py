@@ -64,6 +64,87 @@ def stable_bundle(text):
     return ''.join(pieces)
 
 
+def weekly_content_status(text, counts, fast):
+    """Inspect published constants, never call a model or infer ready from selection."""
+    decoder, cursor, values = json.JSONDecoder(), 0, {}
+    for match in BUNDLE_DATA.finditer(text):
+        if match.start() < cursor:
+            continue
+        if text[cursor:match.start()].strip(' \t\r\n;'):
+            break
+        value, length = decoder.raw_decode(text[match.end():])
+        end = match.end() + length
+        if not text[end:].lstrip().startswith(';'):
+            raise ValueError('weekly public constants malformed')
+        name = match.group().split('.')[1].split('=')[0].strip()
+        if name in ('WEEKLY_BOARD', 'PREGENERATED'):
+            if name in values:
+                raise ValueError('duplicate weekly public constant')
+            values[name] = value
+        cursor = end
+    policy = {'name': 'publish_valid_content_with_explicit_pending',
+              'generationMode': 'cache_only' if fast else 'bounded_existing_full_step',
+              'nextGenerationTrigger': 'existing_daily_full_schedule',
+              'automaticGenerationOnPageLoad': False}
+    board = values.get('WEEKLY_BOARD')
+    if board is None:
+        if counts.get('weekly_board', 0) or any(counts.get('weekly_precomputed', {}).values()):
+            raise ValueError('prepared weekly content missing from public bundle')
+        return {'status': 'unavailable', 'selected': 0, 'pending': [], 'publicationPolicy': policy}
+    if not isinstance(board, dict) or not isinstance(board.get('items'), list):
+        raise ValueError('invalid public weekly board')
+    if not isinstance(board.get('window', {}), dict):
+        raise ValueError('invalid weekly coverage window')
+    rows, mapping = board['items'], values.get('PREGENERATED')
+    if len(rows) > 30 or not isinstance(mapping, dict):
+        raise ValueError('invalid public precomputed mapping')
+    tasks = {'translate': 'translation', 'study': 'study', 'quicklook': 'quicklook'}
+    coverage = dict.fromkeys(('title', *tasks), 0)
+    pending, seen, ready, partial, core_ready = [], set(), 0, 0, 0
+    for row in rows:
+        if not isinstance(row, dict) or row.get('paperID') in seen:
+            raise ValueError('invalid weekly coverage identity')
+        paper_id, source_hash = row.get('paperID'), row.get('sourceHash')
+        if not isinstance(paper_id, str) or not paper_id or not re.fullmatch('[a-f0-9]{64}', source_hash or ''):
+            raise ValueError('invalid weekly coverage source')
+        seen.add(paper_id)
+        present = {task: bool(row.get(field)) for task, field in tasks.items()}
+        missing = [task for task in tasks if not present[task]]
+        expected_status = 'ready' if not missing else 'partial' if any(present.values()) else 'pending'
+        if row.get('allowAutomaticGeneration') is not False:
+            raise ValueError('weekly page-load generation policy differs')
+        if row.get('precomputeStatus') != expected_status or row.get('missingTasks') != missing:
+            raise ValueError('weekly ready claim differs from actual fields')
+        keys = (['pmid:' + str(row['pmid'])] if row.get('pmid') else []) + (['doi:' + str(row['doi']).lower()] if row.get('doi') else [])
+        if not keys:
+            raise ValueError('weekly public alias missing')
+        for key in keys:
+            entry = mapping.get(key)
+            if not isinstance(entry, dict) or not isinstance(entry.get('meta'), dict):
+                raise ValueError('weekly public mapping missing')
+            if entry['meta'].get('paperID') != paper_id or entry['meta'].get('sourceHash') != source_hash:
+                raise ValueError('weekly public mapping source mismatch')
+            if any(entry.get(field) != row.get(field) for field in tasks.values()):
+                raise ValueError('weekly prepared fields differ from public mapping')
+        coverage['title'] += bool(row.get('titleZh'))
+        for task in tasks:
+            coverage[task] += present[task]
+        ready += not missing
+        partial += expected_status == 'partial'
+        core_ready += bool(row.get('titleZh')) and present['translate'] and present['quicklook']
+        missing_fields = (['title'] if not row.get('titleZh') else []) + missing
+        if missing_fields:
+            pending.append({'paperID': paper_id, 'sourceHash': source_hash, 'missingFields': missing_fields})
+    if board.get('coverage') != coverage or counts.get('weekly_precomputed', coverage) != coverage or counts.get('weekly_board', len(rows)) != len(rows):
+        raise ValueError('weekly coverage counts differ from published fields')
+    return {'status': 'empty' if not rows else 'partial' if pending else 'complete',
+            'selected': len(rows), 'coverage': coverage, 'fullyPreparedPapers': ready,
+            'titleTranslationQuicklookPreparedPapers': core_ready,
+            'partialPapers': partial, 'pendingPapers': len(rows) - ready - partial,
+            'pending': pending, 'window': {key: board.get('window', {}).get(key) for key in ('start', 'end', 'days', 'timezone')},
+            'publicationPolicy': policy}
+
+
 def content_hash():
     """Hash every public asset, ignoring only known bundle refresh timestamps."""
     if not (ROOT / 'public' / 'public.js').exists():
@@ -162,6 +243,18 @@ def main():
     if problems:
         print('SANITY FAILED:', problems, file=sys.stderr)
         return finish('failed', problems)
+    try:
+        report['weeklyContent'] = weekly_content_status((ROOT / 'public/public.js').read_text(), counts, fast)
+    except (ValueError, TypeError, KeyError, OSError) as exc:
+        return finish('failed', ['weekly coverage integrity failed: ' + str(exc)])
+    if report['weeklyContent']['status'] != 'complete':
+        report['warnings'] = ['weekly_precompute_' + report['weeklyContent']['status']]
+    generation = next((step for step in report['steps'] if step['script'].startswith('scripts/week_precompute.py --run ')), None)
+    report['weeklyContent']['generationStep'] = ({'outcome': 'not_requested_fast', 'exitCode': None} if fast else
+        {'outcome': 'not_reached', 'exitCode': None} if generation is None else
+        {'outcome': generation.get('outcome') or ('returned_without_generation_guarantee' if generation['exitCode'] == 0 else 'failed'),
+         'exitCode': generation['exitCode']})
+    print('WEEKLY CONTENT:', json.dumps({key: value for key, value in report['weeklyContent'].items() if key != 'pending'}, ensure_ascii=False), flush=True)
     changed = content_hash() != before
     report['changed'] = changed
     report['afterContentHash'] = content_hash()

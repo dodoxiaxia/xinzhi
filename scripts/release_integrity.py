@@ -11,6 +11,7 @@ from pathlib import Path
 PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
+    'scripts/ci_daily.py',
     '.github/workflows/fulltext.yml', 'scripts/fulltext_queue_runner.cjs',
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',
