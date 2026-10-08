@@ -1,0 +1,64 @@
+{
+  "stateSha": "0e9b75e078ba7208d645bdff16ef9dfacafc1e3d",
+  "coverage": {
+    "title": 21,
+    "translate": 21,
+    "study": 0,
+    "quicklook": 21
+  },
+  "plan": {
+    "maxPapers": 3,
+    "selectedPaperIDs": [
+      "doi:10.1093/ehjci/jeag280",
+      "doi:10.1136/heartjnl-2026-328438",
+      "doi:10.1136/heartjnl-2026-328566"
+    ],
+    "tasksByPaper": {
+      "doi:10.1093/ehjci/jeag280": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "doi:10.1136/heartjnl-2026-328438": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "doi:10.1136/heartjnl-2026-328566": [
+        "translate",
+        "study",
+        "quicklook"
+      ]
+    },
+    "reasons": {
+      "doi:10.1093/ehjci/jeag280": "new_identity",
+      "doi:10.1136/heartjnl-2026-328438": "new_identity",
+      "doi:10.1136/heartjnl-2026-328566": "new_identity"
+    },
+    "blocked": [],
+    "corePendingPapers": 3,
+    "studyMissing": 24,
+    "maxModelAttempts": 3,
+    "dailyAttemptCeiling": 8,
+    "dailyOutputTokenCeiling": 9600,
+    "perRequestOutputTokenCeiling": 5800
+  },
+  "historicalPause": "http_502:quote_not_in_abstract",
+  "actualApiCalls": 0,
+  "baseCodeSha": "1e6d028024c005e813fbec29828c33201ce09b2e",
+  "offlineRegression": {
+    "tests": 181,
+    "status": "passed",
+    "durationSeconds": 54.466,
+    "providerAndGitHubTransports": "fixtures",
+    "actualModelApiCalls": 0
+  },
+  "configVerification": {
+    "localModelEnvironmentPresent": false,
+    "localLlmJsonPresent": false,
+    "repositoryVariablesReadStatus": 403,
+    "checkpointOptInVerified": false,
+    "accountMoneyVerified": false
+  },
+  "deployed": false
+}

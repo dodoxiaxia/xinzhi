@@ -324,7 +324,7 @@ COMBINED_PROMPT = (
  'limits只能提炼摘要明确体现的局限，否则写摘要未提供。不要把待阅读全文核对的问题声称为已发现的缺陷。'
  '不得借用其他论文的信息，不编补无摘要，不声称读过全文或通过医学审查，不作诊疗推荐。')
 
-def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_call=None,checkpoint=None):
+def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_call=None,checkpoint=None,tasks_by_paper=None):
  report={'mode':'configured','reservedModelAttempts':0,'paidRequests':0,'generatedTasks':0,'stopped':False,'blocker':None}
  # The current workflow saves state only after successful deployment. A failed
  # runner would otherwise lose reservations and silently charge again next run.
@@ -365,7 +365,9 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
  item=None
  try:
   for p in selected:
-   missing=[task for task in TASKS if not find(cache,p,task)[0]]
+   requested=TASKS if tasks_by_paper is None else tasks_by_paper.get(p['paperID'],())
+   if any(task not in TASKS for task in requested):raise Halt('invalid_consumer_tasks')
+   missing=[task for task in TASKS if task in requested and not find(cache,p,task)[0]]
    if not missing:continue
    if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');break
    try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS)
@@ -394,6 +396,7 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
  except (Halt,ValueError) as exc:
   finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report)
  report['remainingBudget']=max(0,limit-daily['reservedAttempts'])
+ report['remainingOutputTokens']=max(0,MAX_DAILY_OUTPUT_TOKENS-daily['reservedOutputTokens'])
  return report
 
 def parse_configured_response(result):
@@ -414,10 +417,14 @@ def main(argv=None):
  ap.add_argument('--input',type=Path,default=ROOT/'data/candidates.json');ap.add_argument('--target',type=int,default=24)
  ap.add_argument('--run',action='store_true');ap.add_argument('--read-runtime-cache',action='store_true')
  ap.add_argument('--provider',choices=('configured','runtime'),default='configured')
+ ap.add_argument('--pending-only',action='store_true',help='Reuse the current board first; consume at most three source-bound gaps in CI')
+ ap.add_argument('--paper-limit',type=int,default=3)
  ap.add_argument('--attempt-limit',type=int,default=MAX_ATTEMPTS);ap.add_argument('--output',type=Path,default=ROOT/'data/weekly-board.json')
  args=ap.parse_args(argv)
  if not 20<=args.target<=30:ap.error('--target must be 20..30')
  if not 0<=args.attempt_limit<=MAX_ATTEMPTS:ap.error('--attempt-limit must be 0..8; local trial cap unchanged pending budget review')
+ if not 1<=args.paper_limit<=3:ap.error('--paper-limit must be 1..3')
+ if args.pending_only and (not args.run or args.provider!='configured' or args.read_runtime_cache):ap.error('--pending-only requires --run --provider configured')
  cache_path=ROOT/'data/week-precompute-cache.json';ledger_path=ROOT/'data/week-precompute-ledger.json'
  lock=ROOT/'.local/week-precompute.lock';lock.parent.mkdir(parents=True,exist_ok=True)
  try:fd=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
@@ -429,20 +436,30 @@ def main(argv=None):
   if not isinstance(cache,dict) or not isinstance(cache.get('entries'),dict) or not isinstance(ledger,dict) or not isinstance(ledger.get('days'),dict):
    print(json.dumps({'failed':True,'blocker':'invalid_checkpoint_format'}));return 1
   report={'mode':'offline','paidRequests':0,'reservedModelAttempts':0,'blocker':None}
+  from public_editorial_overlay import apply_board, load_board, DIRECTORY, SUPPLEMENTS
+  editorial=load_board(ROOT)
+  titles=read(ROOT/'data/translations.json',{})
+  targets,tasks_by_paper,consumer_plan=selected,None,None
+  def plan_pending():
+   from week_precompute_consumer import plan
+   current=apply_board(board(selected,window,cache,{'mode':'offline'},titles),editorial)
+   prior=[read(ROOT/directory/'sources.json',{'items':[]}) for directory in (DIRECTORY,*(d for d,_ in SUPPLEMENTS))]
+   return plan(selected,current,cache,prior,args.paper_limit)
+  if args.pending_only:targets,tasks_by_paper,consumer_plan=plan_pending()
   checkpoint=None
-  if args.run:
+  if args.run and (not args.pending_only or targets):
    from week_precompute_ci import initialize_checkpoint
    try:
     checkpoint=initialize_checkpoint(ROOT,ledger,cache)
     if checkpoint:atomic(cache_path,cache);atomic(ledger_path,ledger)
+    if args.pending_only:targets,tasks_by_paper,consumer_plan=plan_pending()
    except ValueError as exc:
     report.update(stopped=True,blocker=str(exc))
   if report.get('stopped'):pass
   elif args.read_runtime_cache or (args.run and args.provider=='runtime'):report=acquire_runtime(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,args.run,checkpoint=checkpoint)
-  elif args.run:report=configured_batch(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,checkpoint=checkpoint)
-  result=board(selected,window,cache,report,read(ROOT/'data/translations.json',{}))
-  from public_editorial_overlay import apply_board, load_board
-  result=apply_board(result,load_board(ROOT));atomic(args.output,result)
+  elif args.run and (not args.pending_only or targets):report=configured_batch(targets,cache,cache_path,ledger,ledger_path,args.attempt_limit,checkpoint=checkpoint,tasks_by_paper=tasks_by_paper)
+  if consumer_plan is not None:report['consumer']=consumer_plan
+  result=apply_board(board(selected,window,cache,report,titles),editorial);atomic(args.output,result)
   print(json.dumps({'window':window,'coverage':result['coverage'],'run':report},ensure_ascii=False))
   return 1 if report.get('stopped') else 0
  finally:lock.unlink(missing_ok=True)
