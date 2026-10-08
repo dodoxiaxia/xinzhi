@@ -1,0 +1,71 @@
+{
+  "branch": "codex/v2-content-corrections-20261008",
+  "baseMainSHA": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "initialStateSHA": "48ad7788e4065a1d3317feaeeed2f73d9e6774dd",
+  "verifiedStateSHA": "52f1be0ac1b7d34b1a5584a44195f1cbe3687a23",
+  "integrationOwner": "01a11479",
+  "status": "candidate; unpublished",
+  "scope": "Finite public title/abstract corrections from v2 report section 6",
+  "coverage": {
+    "titleCorrections": 20,
+    "nominatedTerminologyTitles": 3,
+    "cardioOncologyTermStandardizations": 17,
+    "cardioOncologyAlreadyConsistentRetained": 9,
+    "originalEnglishJournalTitleRetained": 1,
+    "quicklooksCorrected": 2,
+    "freeTextFieldsCorrected": 6,
+    "sourceQuoteExtensions": 1
+  },
+  "contracts": {
+    "identities": "paperID + exact DOI + PMID",
+    "titleCorrections": "exact approved source title SHA256 + exact prior wording; applied per public paper row",
+    "quicklookCorrections": "exact title+newline+public abstract SHA256; original abstract and finding numbers retained",
+    "sourceChange": "withhold affected quicklook until reviewed; original cache retained",
+    "knownSemanticRegressions": "withhold known unsupported species/framework claims in one_line/why_read/limits/design for these two exact sources only",
+    "provenance": "contentCorrection distinct from original generation metadata; public abstracts only",
+    "publicOutputs": [
+      "FEEDS titleZh",
+      "RADAR zh",
+      "WEEKLY_BOARD / PREGENERATED when current source matches",
+      "QUICKLOOKS"
+    ],
+    "automaticGenerationAdded": false
+  },
+  "testCommand": "PYTHONPATH=scripts python -m unittest test_public_build test_public_content_corrections test_public_editorial_overlay test_release_build test_week_precompute_integration test_week_coverage_status",
+  "externalModelAPICalls": 0,
+  "sharedCacheWrites": 0,
+  "credentialChanges": 0,
+  "privatePDFsOrIndicesRead": false,
+  "deploymentAttempted": false,
+  "pushSafety": {
+    "workflowFiles": [
+      ".github/workflows/daily.yml",
+      ".github/workflows/fulltext.yml"
+    ],
+    "pushBranchFilters": [
+      "main"
+    ],
+    "workflowFilesChanged": false,
+    "productionDispatchRequested": false
+  },
+  "limits": [
+    "This is offline public-output verification, not a live model/API or browser check.",
+    "Historical ENO1 quicklook is not in current candidate/RADAR; bound only to its currently public cached abstract and official title/PMID.",
+    "Shared online API/KV caches are unchanged. Existing app priority is PREGENERATED, then static QUICKLOOKS, then live cache; no app change.",
+    "Publishing and live endpoint verification remain with sole integration owner 01a11479."
+  ],
+  "evidenceFiles": [
+    "editorial/public_content_corrections.json",
+    "official-public-sources.json",
+    "current-public-fixtures.json",
+    "terminology-audit.json",
+    "current-state-verification.json",
+    "independent-sol-review.json"
+  ],
+  "finalTests": {
+    "result": "passed",
+    "tests": 76,
+    "elapsedSeconds": 56.195,
+    "scope": "offline including synthetic complete public build and injected model-failure pipeline cases; no actual provider request"
+  }
+}

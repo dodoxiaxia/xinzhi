@@ -1,0 +1,16 @@
+{
+  "status": "passed-after-alias-conflict-fix",
+  "reviewer": "independent existing Codex Sol session",
+  "requestedModel": "gpt-6.1-sol",
+  "reviewScope": "Public titles, official PubMed abstracts, exact source hashes, finite correction adapter; no full-text or medical review",
+  "officialSourcesIndependentlyRefetched": 5,
+  "knownTitleAliasConflict": "resolved: public output corrections now apply per paper; conflicting map keys retain prior value",
+  "exactExtendedQuoteVerified": true,
+  "independentFinalTestsPassed": [
+    "test_conflicting_shared_alias_cannot_inherit_another_title_correction",
+    "test_complete_offline_public_build_preserves_shared_inputs_and_pins_registry"
+  ],
+  "externalModelAPICalls": 0,
+  "sharedCacheWrites": 0,
+  "remainingReviewBlockers": []
+}

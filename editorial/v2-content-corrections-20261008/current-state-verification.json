@@ -1,0 +1,164 @@
+{
+  "mainSHA": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "checkedStateSHA": "52f1be0ac1b7d34b1a5584a44195f1cbe3687a23",
+  "scope": "public-source-only offline projection; not a live endpoint check",
+  "results": [
+    {
+      "paperID": "doi:10.1016/j.jacadv.2026.103042",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1038/s41591-026-04651-9",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1111/jce.70469",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2026.103279",
+      "task": "title",
+      "sourceRows": 2,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehag727",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehag144",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehag609",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1001/jamacardio.2026.2551",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/cvr/cvag146",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehag628",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehag077",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2026.102790",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2026.102781",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/ejhf/xuag067",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1016/j.hrthm.2026.04.050",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehaf860",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehaf869",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2025.102290",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2025.102256",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1002/ejhf.70005",
+      "task": "title",
+      "sourceRows": 1,
+      "currentInputAlreadyCorrected": false,
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1126/sciadv.aeg3270",
+      "task": "quicklook",
+      "sourceLocation": "public-cached-abstract-with-official-title",
+      "sourceHash": "98c6ef7aba1bdfbf3fff620cba8c0219f84e9ae8c99439a76beb6f85f04a7357",
+      "correctionApplies": true
+    },
+    {
+      "paperID": "doi:10.1161/circulationaha.125.079141",
+      "task": "quicklook",
+      "sourceLocation": "current-candidate",
+      "sourceHash": "ca963fac39c8193c5b96c5b8ebccd6a2a6a7147962444e0732f29a128a4982b1",
+      "correctionApplies": true
+    }
+  ],
+  "sharedCacheWrites": 0,
+  "deploymentAttempted": false,
+  "externalModelAPICalls": 0
+}
