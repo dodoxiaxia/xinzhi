@@ -78,6 +78,32 @@ class ConsumerTests(unittest.TestCase):
         self.assertEqual([p['paperID'] for p in targets], [selected[1]['paperID']])
         self.assertEqual(info['blocked'][0]['reason'], 'identity_mapping_review_required')
 
+    def test_real_store_doi_change_with_same_pmid_and_hash_requires_review(self):
+        for core in (0, 1):
+            with self.subTest(corePrepared=bool(core)):
+                _, selected, board, cache = self.fixture(count=1, core=core)
+                old = dict(selected[0], doi='10.1234/old-doi', paperID='doi:10.1234/old-doi')
+                w.store(cache, old, 'translate', tr(), 'existing', CLOCK.isoformat(), 'configured-precompute')
+                entry = next(iter(cache['entries'].values()))
+                self.assertNotIn('pmid', entry);self.assertNotIn('doi', entry)
+                prior = [{'items':[old]}]
+                before = copy.deepcopy((selected, board, cache, prior))
+                targets, tasks, info = plan(selected, board, cache, prior)
+                self.assertEqual(targets, []);self.assertEqual(tasks, {})
+                self.assertEqual(info['maxModelAttempts'], 0)
+                self.assertEqual(info['blocked'], [{'paperID':selected[0]['paperID'], 'reason':'identity_mapping_review_required'}])
+                self.assertEqual((selected, board, cache, prior), before)
+
+    def test_same_hash_without_shared_identity_does_not_merge_or_block(self):
+        _, selected, board, cache = self.fixture(count=1, core=0)
+        old = dict(selected[0], doi='10.1234/unrelated', paperID='doi:10.1234/unrelated', pmid='999')
+        w.store(cache, old, 'translate', tr(), 'existing', CLOCK.isoformat(), 'configured-precompute')
+        before = copy.deepcopy(cache)
+        targets, _, info = plan(selected, board, cache, [{'items':[old]}])
+        self.assertEqual(targets, selected)
+        self.assertEqual(info['reasons'], {selected[0]['paperID']:'new_identity'})
+        self.assertEqual(info['blocked'], []);self.assertEqual(cache, before)
+
     def test_stale_board_and_expanded_paper_limit_fail_closed(self):
         _, selected, board, cache = self.fixture(count=1,core=0)
         board['items'][0]['abstract'] += ' changed'

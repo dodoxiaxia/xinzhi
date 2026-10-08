@@ -10,6 +10,7 @@ from public_precompute_pending import aliases, pending_manifest
 def plan(selected, board, cache, prior_sources=(), paper_limit=3):
     if type(paper_limit) is not int or not 1 <= paper_limit <= 3:
         raise ValueError('consumer_paper_limit_must_be_1_to_3')
+    prior_sources = tuple(prior_sources)
     pending = pending_manifest(board, [cache], prior_sources)
     current = {p['paperID']: p for p in selected}
     rows = {p['paperID']: p for p in board['items']}
@@ -25,12 +26,13 @@ def plan(selected, board, cache, prior_sources=(), paper_limit=3):
     ordered += [p['paperID'] for p in board['items'] if p['paperID'] not in gaps]
     targets, tasks, blocked, reasons = [], {}, [], {}
     entries = list(cache.get('entries', {}).values())
+    entries += [old for snapshot in prior_sources for old in snapshot.get('items', [])]
     for identity in ordered:
         row, p = rows[identity], current[identity]
         gap = gaps.get(identity)
         reason = gap['reason'] if gap else 'study_only'
-        # A cache alias with a different canonical identity needs review, even
-        # when an editorial overlay has already supplied the core content.
+        # Source snapshots retain PMID/DOI aliases omitted by the real cache
+        # store. Check both, including when only study remains after reuse.
         conflict = any(e.get('sourceHash') == p['sourceHash']
                        and e.get('paperID') != identity and aliases(e) & aliases(p)
                        for e in entries)

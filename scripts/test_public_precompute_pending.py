@@ -63,6 +63,24 @@ class PendingManifest(unittest.TestCase):
         self.assertEqual(report['items'][0]['reason'],'identity_mapping_review_required')
         self.assertEqual(cache,original)
 
+    def test_real_store_old_doi_shared_pmid_and_hash_is_mapping_conflict(self):
+        old = copy.deepcopy(self.board['items'][1])
+        current = copy.deepcopy(old)
+        current['doi'] += '-corrected'
+        current['paperID'] = w.identity(current)
+        current.update(titleZh='', translation=None, quicklook=None)
+        board = {'items':[current], 'window':self.board['window']}
+        cache = {'entries':{}}
+        w.store(cache,old,'translate',old['translation'],'fixture-model','2026-10-08','configured-precompute')
+        entry = next(iter(cache['entries'].values()))
+        self.assertNotIn('pmid',entry);self.assertNotIn('doi',entry)
+        prior = [{'items':[old]}]
+        before = copy.deepcopy((board,cache,prior))
+        report = pending_manifest(board,[cache],prior)
+        self.assertEqual(report['items'][0]['reason'],'identity_mapping_review_required')
+        self.assertEqual(report['pendingPapers'],1)
+        self.assertEqual((board,cache,prior),before)
+
     def test_wrong_identity_metadata_and_invalid_original_hash_do_not_mark_complete(self):
         board,cache = self.fixture()
         for e in cache['entries'].values():
