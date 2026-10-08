@@ -51,7 +51,7 @@ function harness(options = {}) {
     return options.pdfResponse ? options.pdfResponse(target, init) : new Response(options.pdf || pdf);
   };
   const timers = options.timeoutMs ? (callback, ms) => setTimeout(callback, Math.min(ms, options.timeoutMs)) : setTimeout;
-  const context = vm.createContext({ URL, Response, Request, TextEncoder, TextDecoder, AbortController, setTimeout:timers, clearTimeout, Uint8Array, URLSearchParams, crypto:webcrypto, fetch, console });
+  const context = vm.createContext({btoa, URL, Response, Request, TextEncoder, TextDecoder, AbortController, setTimeout:timers, clearTimeout, Uint8Array, URLSearchParams, crypto:webcrypto, fetch, console });
   vm.runInContext(source, context);
   const request = async (passphrase, changes = {}, url = 'https://site.test/api/pdf?id=article', headers = {}, rawBody) => {
     const response = await context.worker.fetch(new Request(url, { method:'POST', headers:{ 'content-type':'application/x-www-form-urlencoded', ...headers }, body:rawBody === undefined ? new URLSearchParams({ passphrase:passphrase || '' }).toString() : rawBody }), { ...env, ...changes });

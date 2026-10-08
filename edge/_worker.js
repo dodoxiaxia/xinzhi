@@ -209,6 +209,59 @@ const pdfRawPath = (path, commit) => '/' + PDF_REPOSITORY + '/' + commit + '/' +
 async function pdfDigest(algorithm, bytes) {
   return [...new Uint8Array(await crypto.subtle.digest(algorithm, bytes))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
+async function pdfBlobDigest(bytes) {
+  const prefix = new TextEncoder().encode('blob ' + bytes.length + '\0'), blob = new Uint8Array(prefix.length + bytes.length);
+  blob.set(prefix); blob.set(bytes, prefix.length);
+  return pdfDigest('SHA-1', blob);
+}
+const PDF_LFS_HOSTS = new Set(['github-cloud.s3.amazonaws.com','github-cloud.s3.us-east-1.amazonaws.com','objects.githubusercontent.com','media.githubusercontent.com']);
+async function pdfLfsRead(url, init, limit, options) {
+  const controller = new AbortController(), abort = () => controller.abort();
+  if (options.signal && options.signal.aborted) pdfFail('pdf_timeout', 504);
+  if (options.signal) options.signal.addEventListener('abort', abort, { once:true });
+  const timer = setTimeout(abort, PDF_NETWORK_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { ...init, redirect:'error', signal:controller.signal });
+    if (!response.ok) {
+      if (response.body) await response.body.cancel();
+      if (options.pauseOnDenied && [401,403,429].includes(response.status)) libraryFail('library_paused', 423, response.status === 429 ? libraryUpstreamRetry(response) : 0);
+      pdfFail('pdf_upstream', 502);
+    }
+    const size = response.headers.get('content-length');
+    if (size && (!/^\d+$/.test(size) || Number(size) > limit)) pdfFail('pdf_too_large', 413);
+    const reader = response.body && response.body.getReader(); if (!reader) pdfFail('pdf_upstream');
+    let count = 0; const chunks = [];
+    while (true) { const result = await reader.read(); if (result.done) break; count += result.value.length; if (count > limit) { await reader.cancel(); pdfFail('pdf_too_large', 413); } chunks.push(result.value); }
+    const bytes = new Uint8Array(count); let at = 0; for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.length; } return bytes;
+  } catch (error) {
+    if (error instanceof PdfFailure || options.pauseOnDenied && error instanceof LibraryFailure) throw error;
+    pdfFail(controller.signal.aborted ? 'pdf_timeout' : 'pdf_upstream', controller.signal.aborted ? 504 : 502);
+  } finally { clearTimeout(timer); if (options.signal) options.signal.removeEventListener('abort', abort); }
+}
+async function pdfGithubBytes(metadata, raw, checksum, options = {}) {
+  // LFS stores a Git blob for the pointer; the PDF is bound by the pointer's SHA256 and size.
+  if (await pdfBlobDigest(raw) !== metadata.sha.toLowerCase()) pdfFail('pdf_integrity');
+  let bytes = raw;
+  if (new TextDecoder().decode(raw.slice(0, 42)).startsWith('version https://git-lfs.github.com/spec/v1')) {
+    const pointer = raw.length <= 1024 && /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:([a-f0-9]{64})\nsize ([1-9]\d*)\n?$/.exec(new TextDecoder().decode(raw));
+    if (!pointer || pointer[1] !== checksum || Number(pointer[2]) !== metadata.size || metadata.size > options.limit) pdfFail('pdf_integrity');
+    const batch = pdfJson(await pdfLfsRead('https://github.com/' + PDF_REPOSITORY + '.git/info/lfs/objects/batch', {
+      method:'POST', headers:{ accept:'application/vnd.git-lfs+json','content-type':'application/vnd.git-lfs+json', authorization:'Basic ' + btoa('x-access-token:' + options.token) },
+      body:JSON.stringify({ operation:'download', transfers:['basic'], objects:[{ oid:checksum, size:metadata.size }] })
+    }, 65536, options));
+    const object = batch && Array.isArray(batch.objects) && batch.objects.length === 1 && batch.objects[0];
+    if (!object || object.oid !== checksum || object.size !== metadata.size || object.error || batch.transfer && batch.transfer !== 'basic') pdfFail('pdf_upstream');
+    const action = object.actions && object.actions.download;
+    let target; try { target = new URL(action.href); } catch { pdfFail('pdf_upstream'); }
+    if (target.protocol !== 'https:' || !PDF_LFS_HOSTS.has(target.hostname) || target.port || target.username || target.password || target.hash
+        || action.header && Object.keys(action.header).length || action.expires_at && Date.parse(action.expires_at) <= Date.now()
+        || Number.isInteger(action.expires_in) && action.expires_in <= 0) pdfFail('pdf_upstream');
+    // The signed object URL comes only from GitHub's authenticated LFS download response. No credential is forwarded.
+    bytes = await pdfLfsRead(target.href, { method:'GET', headers:{ accept:'application/octet-stream' } }, options.limit, options);
+  }
+  if (bytes.length !== metadata.size || bytes.length < 8 || new TextDecoder().decode(bytes.slice(0,5)) !== '%PDF-' || await pdfDigest('SHA-256', bytes) !== checksum) pdfFail('pdf_integrity');
+  return bytes;
+}
 async function handlePdf(request, env) {
   let doi = '', id = '';
   try {
@@ -253,12 +306,8 @@ async function handlePdf(request, env) {
     const metadata = pdfJson(await pdfRead(endpoint, 2 * 1024 * 1024, { token, file:true, accept:'application/vnd.github+json' }));
     if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || typeof metadata.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(metadata.sha) || !Number.isInteger(metadata.size) || metadata.size < 8) pdfFail('pdf_integrity');
     if (metadata.size > PDF_MAX_BYTES) pdfFail('pdf_too_large', 413);
-    const bytes = await pdfRead(endpoint, PDF_MAX_BYTES, { token, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
-    if (bytes.byteLength !== metadata.size || bytes.byteLength < 8 || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') pdfFail('pdf_integrity');
-    if (await pdfDigest('SHA-256', bytes) !== checksum) pdfFail('pdf_integrity');
-    const prefix = new TextEncoder().encode('blob ' + bytes.byteLength + '\0'), blob = new Uint8Array(prefix.length + bytes.length);
-    blob.set(prefix); blob.set(bytes, prefix.length);
-    if (await pdfDigest('SHA-1', blob) !== metadata.sha.toLowerCase()) pdfFail('pdf_integrity');
+    const raw = await pdfRead(endpoint, PDF_MAX_BYTES, { token, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
+    const bytes = await pdfGithubBytes(metadata, raw, checksum, { token, limit:PDF_MAX_BYTES });
     const downloadTitle = Array.from(String(entry['题名'] || 'article').replace(/[\x00-\x1f\x7f\/\\":<>|?*]/g, ' ').trim()).slice(0, 120).join('') || 'article';
     const filename = downloadTitle.replace(/\.pdf$/i, '') + '.pdf';
     const encodedFilename = encodeURIComponent(filename).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase());
@@ -493,27 +542,48 @@ async function libraryGithub(paper, env, context) {
   if (decision && decision.action === 'hold') return null; // Known wrong bindings never become a PDF candidate.
   const token = env.GITHUB_LIBRARY_TOKEN;
   if (typeof token !== 'string' || !token.trim()) libraryFail('library_not_configured', 503);
-  let commit = env.PDF_GITHUB_COMMIT;
+  let commit = env.DOI_LOOKUP_LATEST_MAIN === 'true' ? '' : env.PDF_GITHUB_COMMIT;
   if (!commit) { const latest = pdfJson(await pdfRead('https://api.github.com/repos/' + PDF_REPOSITORY + '/commits/main', 262144, { token, signal:context.signal, pauseOnDenied:true })); commit = latest && latest.sha; }
   if (typeof commit !== 'string' || !/^[a-f0-9]{40}$/i.test(commit)) libraryFail('library_not_configured', 503);
   commit = commit.toLowerCase();
-  const entries = pdfCsv(await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token, signal:context.signal, pauseOnDenied:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) }));
+  const indexBytes = await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token, signal:context.signal, pauseOnDenied:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) });
+  const entries = pdfCsv(indexBytes);
   const rows = entries.filter(row => libraryDoi(row.DOI) === paper.doi);
-  if (!rows.length) return null;
+  const inspection = { resolvedCommit:commit,indexRowCount:entries.length,doiMatches:rows.length,indexSha256:await pdfDigest('SHA-256',indexBytes),pdfObjectRead:false };
+  let incremental = false, deltaBytes = 0;
+  if (!rows.length && env.DOI_GITHUB_DELTA_ENABLED === 'true') {
+    const deltaPath = '文献索引/按需全文增量.json';
+    let delta;
+    try { delta = pdfJson(await pdfRead(pdfContentsUrl(deltaPath, commit), 262144, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(deltaPath, commit) })); }
+    catch (error) { if (error.code !== 'pdf_not_found') throw error; }
+    if (delta) {
+      if (delta.version !== 1 || !Array.isArray(delta.entries) || delta.entries.length > 200) libraryFail('library_identity', 409);
+      const matches = delta.entries.filter(entry => entry && libraryDoi(entry.doi) === paper.doi);
+      if (matches.length > 1) libraryFail('library_identity', 409);
+      if (matches.length) {
+        const entry = matches[0], proof = entry.verification;
+        if (entry.doi !== paper.doi || pdfTitle(entry.title) !== pdfTitle(paper.title) || !/^[a-f0-9]{64}$/.test(entry.sha256 || '')
+            || !Number.isInteger(entry.bytes) || entry.bytes < 8 || entry.bytes > LIBRARY_MAX_PDF_BYTES || !proof || proof.verified !== true
+            || proof.method !== 'dual_parser_all_pages_title_doi' || !Number.isInteger(proof.pages) || proof.pages < 1
+            || proof.sha256 !== entry.sha256 || proof.bytes !== entry.bytes) libraryFail('library_identity', 409);
+        rows.push({ DOI:entry.doi, '题名':entry.title, '当前路径':pdfSafePath(entry.path), SHA256:entry.sha256 }); incremental = true; deltaBytes = entry.bytes;
+      }
+    }
+  }
+  if (!rows.length) return context.metadataOnly ? {...inspection,candidateFound:false} : null; // An index miss is not evidence that no file exists elsewhere.
   if (rows.length !== 1) libraryFail('library_identity', 409);
   const row = rows[0], title = pdfTitle(row['题名']);
   const accepted = decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit ? decision.acceptedTitles : [paper.title];
   if (!Array.isArray(accepted) || !accepted.some(value => pdfTitle(value) === title) || (decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit && pdfTitle(decision.metadata && decision.metadata.title) !== pdfTitle(paper.title))) libraryFail('library_identity', 409);
   const path = pdfSafePath(row['当前路径']), checksum = row.SHA256.trim().toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(checksum)) libraryFail('library_identity', 409);
+  if (context.metadataOnly) return {...inspection,candidateFound:true,source:incremental ? 'github_delta' : 'github'};
   const endpoint = pdfContentsUrl(path, commit), metadata = pdfJson(await pdfRead(endpoint, 2 * 1024 * 1024, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github+json' }));
-  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 8 || metadata.size > LIBRARY_MAX_PDF_BYTES) libraryFail('library_identity', 409);
-  const bytes = await pdfRead(endpoint, LIBRARY_MAX_PDF_BYTES, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
+  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 8 || metadata.size > LIBRARY_MAX_PDF_BYTES || incremental && metadata.size !== deltaBytes) libraryFail('library_identity', 409);
+  const raw = await pdfRead(endpoint, LIBRARY_MAX_PDF_BYTES, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
+  const bytes = await pdfGithubBytes(metadata, raw, checksum, { token, signal:context.signal, pauseOnDenied:true, limit:LIBRARY_MAX_PDF_BYTES });
   libraryValidatePdf(bytes);
-  if (bytes.length !== metadata.size || await pdfDigest('SHA-256', bytes) !== checksum) libraryFail('library_identity', 409);
-  const prefix = new TextEncoder().encode('blob ' + bytes.length + '\0'), blob = new Uint8Array(prefix.length + bytes.length); blob.set(prefix); blob.set(bytes, prefix.length);
-  if (await pdfDigest('SHA-1', blob) !== metadata.sha.toLowerCase()) libraryFail('library_identity', 409);
-  return { bytes, source:'github', commit };
+  return { bytes, source:incremental ? 'github_delta' : 'github', commit };
 }
 async function libraryOa(paper, context) {
   let review = false, unavailable = false, retryAfter = 0;
@@ -908,6 +978,24 @@ async function handleFulltext(request, env) {
     const bytes = await libraryStoredPdf(env.QL_KV, record);
     return libraryPdfResponse(paper, bytes);
   } catch (error) { return libraryError(request, error, doi, '/api/fulltext'); }
+}
+
+async function handleFulltextSource(request, env) {
+  let doi = '';
+  const controller = new AbortController(); let timer;
+  try {
+    const parsed = libraryQuery(request); doi = parsed.doi;
+    if (request.method === 'GET') return pdfHtml('<p>输入既有全文口令，仅核对网站正在读取的索引版本。不读取 PDF、不执行下载任务。</p><form method="post" action="/api/fulltext-source?doi='+pdfEscape(encodeURIComponent(doi))+'"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">核对全文读取版本</button></form>'+pdfOfficialLink(doi),200,'全文来源快检');
+    if (request.method !== 'POST') libraryFail('library_method',405);
+    await libraryAuthorize(request,env,parsed.url);libraryConfig(env);
+    if (!env.GITHUB_LIBRARY_TOKEN) libraryFail('library_not_configured',503);
+    const stored = libraryPaper(await libraryGet(env.QL_KV,LIBRARY_PREFIX+doi),doi);
+    timer = setTimeout(()=>controller.abort(),LIBRARY_TASK_MS);
+    const paper = stored || await libraryMetadata(doi,{signal:controller.signal});
+    const inspection = await libraryGithub(paper,env,{signal:controller.signal,metadataOnly:true});
+    return json({ok:true,doi,configuredCommit:env.PDF_GITHUB_COMMIT || null,doiLookupFollowsMain:env.DOI_LOOKUP_LATEST_MAIN === 'true' || !env.PDF_GITHUB_COMMIT,inspection:inspection || {policyHold:true,pdfObjectRead:false}},200,{'referrer-policy':'no-referrer','x-content-type-options':'nosniff'});
+  } catch (error) { return libraryError(request,error,doi,'/api/fulltext-source'); }
+  finally { clearTimeout(timer); }
 }
 
 function normKey(pmid, doi) {
@@ -1945,6 +2033,7 @@ export default {
     if (url.pathname === '/api/acquire') return handleAcquire(request, env);
     if (url.pathname === '/api/acquire/retry') return handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
+    if (url.pathname === '/api/fulltext-source') return handleFulltextSource(request, env);
     if (url.pathname === '/api/pdf') return handlePdf(request, env);
     if (url.pathname === '/api/ql') {
       try { return await handle(request, env); } catch (e) { return json({ ok: false, error: 'server' }, 500); }
