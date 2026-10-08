@@ -518,18 +518,53 @@
     return (valid ? embedded : null) || (window.QUICKLOOKS || {})[k] || LIVE_QL[k] || null;
   }
   // 一键 AI 解读：后端 /api/ql（Cloudflare _worker.js）。本地静态预览没有后端时自动隐藏按钮。
-  function aiApiCheck(paper) {
-    if (paper._aiChecked || (!paper.doi && !paper.pmid)) return;
-    paper._aiChecked = 1; paper._aiState = 'checking';
+  function aiRequest(url, options = {}, onSlow = null) {
+    // Bound headers and body even when an upstream ignores cancellation.
+    const controller = new AbortController(), paid = options.method === 'POST';
+    let deadlineTimer, slowTimer;
+    const deadline = new Promise((_, reject) => {
+      deadlineTimer = setTimeout(() => { const error = new Error('AI request deadline'); error.code = 'request_timeout'; reject(error); controller.abort(); }, paid ? 170000 : 15000);
+    });
+    if (paid && onSlow) slowTimer = setTimeout(onSlow, 45000);
+    return Promise.race([fetch(url, { ...options, signal: controller.signal }).then(r => r.json()), deadline])
+      .finally(() => { clearTimeout(deadlineTimer); if (slowTimer) clearTimeout(slowTimer); });
+  }
+  function aiTaskStatus(j) {
+    const value = j?.taskStatus || j?.task?.status;
+    return ['idle', 'waiting', 'completed', 'failed'].includes(value) ? value : '';
+  }
+  function aiWaitingMessage(j, timedOut = false) {
+    const seconds = Number(j?.retryAfterSeconds || j?.task?.retryAfterSeconds || 0);
+    return (timedOut ? '本次等待已到时限，完成状态尚未确认。' : '完成状态尚未确认。') + '请读取已有结果；不会自动重新提交。' + (seconds > 0 && seconds <= 180 ? '建议约 ' + Math.ceil(seconds) + ' 秒后重查。' : '');
+  }
+  function aiLookupRecord(j, previous, task, result) {
+    if (j?.found && result) return { state: 'done', result, cached: true, canGenerate: !!j.canGenerate };
+    if (!j?.ok) return { state: 'error', phase: 'lookup', msg: aiErrorMessage(j, task), canGenerate: false };
+    const status = aiTaskStatus(j);
+    if (status === 'waiting' || status === 'completed' || (previous?.state === 'waiting' && !status)) return { state: 'waiting', msg: aiWaitingMessage(j), canGenerate: false };
+    if (status === 'failed') return { state: 'error', msg: aiErrorMessage({ ...j, ...j.task }, task), canGenerate: !!j.canGenerate };
+    return { state: 'ready', canGenerate: !!j.canGenerate };
+  }
+  function aiPostRecord(j, task, result) {
+    if (result && (j.ok || result.generatedBy === 'metadata-only')) return { state: 'done', result, cached: !!j.cached, canGenerate: j.canGenerate !== false };
+    if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') return { state: 'waiting', msg: aiWaitingMessage(j), canGenerate: false };
+    return { state: 'error', msg: aiErrorMessage(j, task), canGenerate: j.error !== 'generation_off' && j.error !== 'not_configured' };
+  }
+  function aiApiCheck(paper, retry = false) {
+    if ((paper._aiChecked && !retry) || paper._aiLookupLoading || paper._aiState === 'loading' || (!paper.doi && !paper.pmid)) return;
+    const previous = paper._aiState, token = {}; paper._aiToken = token;
+    paper._aiChecked = 1; paper._aiLookupLoading = true; paper._aiState = 'checking';
     const k = paper.pmid ? 'pmid:' + paper.pmid : 'doi:' + String(paper.doi).toLowerCase();
-    fetch('/api/ql?k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
-      .then(r => r.ok ? r.json() : Promise.reject())
+    aiRequest('/api/ql?k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
       .then(j => {
-        if (j && j.found && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; paper._aiState = 'done'; }
-        else paper._aiState = j && j.canGenerate ? 'none' : 'off';
+        if (paper._aiToken !== token) return;
+        if (!j?.ok) throw Error('Lookup unavailable');
+        if (j.found && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; paper._aiState = 'done'; }
+        else if (aiTaskStatus(j) === 'waiting' || aiTaskStatus(j) === 'completed' || (previous === 'waiting' && !aiTaskStatus(j))) { paper._aiState = 'waiting'; paper._aiMsg = aiWaitingMessage(j); }
+        else { paper._aiState = j.canGenerate ? 'none' : 'off'; paper._aiMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'quicklook') : ''; if (paper._aiMsg && j.canGenerate) paper._aiState = 'error'; }
       })
-      .catch(() => { paper._aiState = 'off'; })
-      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+      .catch(() => { if (paper._aiToken === token) { paper._aiState = previous === 'waiting' ? 'waiting' : 'lookup-error'; paper._aiMsg = '已有解读读取失败，请重查；没有重新调用模型。'; } })
+      .finally(() => { if (paper._aiToken === token) paper._aiLookupLoading = false; if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
   // ---- 摘要翻译 / 多篇综述（同一后端 /api/ai，结果服务器端缓存、全站共享）----
   const LIVE_TR = {}; const BRIEFS = {}; let AI_AVAIL = null;
@@ -549,46 +584,56 @@
   }
   function trCheck(paper, retry = false) {
     const k = trKeyOf(paper);
-    if (!k || paper._trLookupState === 'loading' || (paper._trChecked && !retry)) return;
-    paper._trChecked = 1;
-    paper._trLookupState = 'loading';
-    fetch('/api/ai?task=translate&k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
-      .then(r => r.ok ? r.json() : Promise.reject())
+    if (!k || paper._trLookupState === 'loading' || paper._trState === 'loading' || (paper._trChecked && !retry)) return;
+    const previous = paper._trState, token = {}; paper._trToken = token;
+    paper._trChecked = 1; paper._trLookupState = 'loading';
+    aiRequest('/api/ai?task=translate&k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
       .then(j => {
+        if (paper._trToken !== token) return;
         if (!j || j.ok === false) throw new Error('Translation lookup unavailable');
         paper._trLookupState = 'done';
-        // The current translate GET contract returns cache only. Availability
-        // comes from the existing /api/ql probe unless a future response supplies it.
         paper._trCanGenerate = typeof j.canGenerate === 'boolean' ? j.canGenerate : undefined;
-        if (j.found && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; }
+        if (j.found && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; }
+        else if (aiTaskStatus(j) === 'waiting' || aiTaskStatus(j) === 'completed' || (previous === 'waiting' && !aiTaskStatus(j))) { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); }
+        else if (aiTaskStatus(j) === 'failed') { paper._trState = 'error'; paper._trMsg = aiErrorMessage({...j, ...j.task}, 'translate'); }
+        else paper._trState = '';
       })
-      .catch(() => { paper._trLookupState = 'error'; })
-      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+      .catch(() => { if (paper._trToken === token) { paper._trLookupState = 'error'; if (previous === 'waiting') { paper._trState = 'waiting'; paper._trMsg = '已有译文读取失败，请重查；没有重新调用模型。'; } } })
+      .finally(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
   function aiTranslate(paper) {
-    const k = trKeyOf(paper); if (!k || paper._trState === 'loading' || translationCanGenerate(paper) !== true) return;
-    paper._trState = 'loading'; openReaderDrawer(paper);
-    fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'translate', pmid: paper.pmid || '', doi: paper.doi || '' }) })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { if (j.ok && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
-      .catch(() => { paper._trState = 'error'; paper._trMsg = '网络中断，译文未生成。请重试。'; })
-      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+    const k = trKeyOf(paper); if (!k || ['loading', 'waiting'].includes(paper._trState) || paper._trLookupState === 'loading' || translationCanGenerate(paper) !== true) return;
+    const token = {}; paper._trToken = token; paper._trState = 'loading'; paper._trSlow = false; openReaderDrawer(paper);
+    const render = () => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); };
+    aiRequest('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'translate', pmid: paper.pmid || '', doi: paper.doi || '' }) }, () => { if (paper._trToken === token) { paper._trSlow = true; render(); } })
+      .then(j => { if (paper._trToken !== token) return; if (j.ok && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
+      .catch(error => { if (paper._trToken === token) { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(null, error.code === 'request_timeout'); } })
+      .finally(render);
   }
   function aiTitle(paper) {
-    if (paper._ttState === 'loading') return;
-    paper._ttState = 'loading'; paper._ttMsg = '翻译中…'; openReaderDrawer(paper);
-    fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'title', pmid: paper.pmid || '', doi: paper.doi || '' }) })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { if (j.ok && j.tt) { paper.titleZh = j.tt.title_zh; paper._ttMsg = ''; } else paper._ttMsg = aiErrorMessage(j, 'title'); })
-      .catch(() => { paper._ttMsg = '网络错误，请稍后重试。'; })
-      .then(() => { paper._ttState = ''; if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+    if (!trKeyOf(paper) || ['loading', 'waiting', 'checking'].includes(paper._ttState)) return;
+    const token = {}; paper._ttToken = token; paper._ttState = 'loading'; paper._ttMsg = '翻译中…'; openReaderDrawer(paper);
+    const render = () => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); };
+    aiRequest('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'title', pmid: paper.pmid || '', doi: paper.doi || '' }) }, () => { if (paper._ttToken === token) { paper._ttMsg = '标题翻译用时较长，无需重复点击。'; render(); } })
+      .then(j => { if (paper._ttToken !== token) return; if (j.ok && j.tt) { paper.titleZh = j.tt.title_zh; paper._ttState = ''; paper._ttMsg = ''; } else { paper._ttState = j.error === 'in_progress' || aiTaskStatus(j) === 'waiting' ? 'waiting' : ''; paper._ttMsg = paper._ttState === 'waiting' ? aiWaitingMessage(j) : aiErrorMessage(j, 'title'); } })
+      .catch(error => { if (paper._ttToken === token) { paper._ttState = 'waiting'; paper._ttMsg = aiWaitingMessage(null, error.code === 'request_timeout'); } })
+      .finally(render);
+  }
+  function aiTitleCheck(paper) {
+    const k = trKeyOf(paper); if (!k || paper._ttState === 'checking' || paper._ttState === 'loading') return;
+    const token = {}; paper._ttToken = token; paper._ttState = 'checking';
+    aiRequest('/api/ai?task=title&k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
+      .then(j => { if (paper._ttToken !== token) return; if (!j?.ok) throw Error('Title lookup unavailable'); if (j.found && j.tt?.title_zh) { paper.titleZh = j.tt.title_zh; paper._ttState = ''; paper._ttMsg = ''; } else if (['idle', 'failed'].includes(aiTaskStatus(j))) { paper._ttState = ''; paper._ttMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'title') : '上次任务已结束，未查到标题译文。可点击重试。'; } else { paper._ttState = 'waiting'; paper._ttMsg = aiWaitingMessage(j); } })
+      .catch(() => { if (paper._ttToken === token) { paper._ttState = 'waiting'; paper._ttMsg = '已有标题译文读取失败，请重查；没有重新调用模型。'; } })
+      .finally(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
     const editorial = preGeneratedOf(paper)?.meta?.generationMeta?.translate?.origin === 'sol-session-public-abstract';
     if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">${editorial ? 'Sol 会话依据公开摘要整理译文，未经人工医学终审；以英文原文为准。' : '机器翻译，未经人工核对；以英文原文为准。'}</p></div>`;
     if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
-    if (paper._trState === 'loading') return '<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…</p></div>';
+    if (paper._trState === 'loading') return `<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…${paper._trSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
+    if (paper._trState === 'waiting') return `<div class="tr-box"><p class="ql-meta" role="status">${esc(paper._trMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}"${paper._trLookupState === 'loading' ? ' disabled' : ''}>读取已有译文</button></div>`;
     if (!(paper.pmid || paper.doi)) return '<p class="ql-meta" role="status">缺少文献标识，暂无法翻译。</p>';
     if (paper._trLookupState === 'error') return `<div class="tr-box"><p class="ql-meta" role="status">译文读取失败。</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}">重新读取译文</button></div>`;
     if (paper._trLookupState !== 'done') return '<div class="tr-box"><p class="ql-meta" role="status">正在读取已有译文…</p></div>';
@@ -599,6 +644,7 @@
   function abstractTranslationStatus(paper) {
     if (validTranslation(LIVE_TR[trKeyOf(paper)])) return '中英对照';
     if (paper._trState === 'loading') return '译文生成中';
+    if (paper._trState === 'waiting') return '译文状态待确认';
     if (paper._trState === 'error' || paper._trLookupState === 'error') return '译文暂不可用';
     return paper.weeklyPick ? '译文待预生成' : '译文未生成';
   }
@@ -627,14 +673,14 @@
   function aiBrief(mode, list, rerender) {
     const items = briefItems(list); if (items.length < 2) { showToast('至少需要 2 篇有 PMID/DOI 的文献'); return; }
     const k = briefKey(mode, items);
-    if (BRIEFS[k] && BRIEFS[k].state === 'loading') return;
+    if (BRIEFS[k] && ['loading', 'waiting'].includes(BRIEFS[k].state)) return;
     const record = BRIEFS[k] = { state: 'loading', slow: false }, controller = new AbortController();
     const slowTimer = setTimeout(() => { if (BRIEFS[k] === record && record.state === 'loading') { record.slow = true; rerender(); } }, 45000);
-    const timer = setTimeout(() => { if (BRIEFS[k] === record && record.state === 'loading') { record.state = 'waiting'; record.timedOut = true; controller.abort(); rerender(); } }, 240000);
+    const timer = setTimeout(() => { if (BRIEFS[k] === record && record.state === 'loading') { record.state = 'waiting'; record.timedOut = true; controller.abort(); rerender(); } }, 170000);
     rerender();
     fetch('/api/ai', { method: 'POST', signal: controller.signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'brief', mode, items }) })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => { if (BRIEFS[k] === record && record.state === 'loading') BRIEFS[k] = j.ok && validBrief(j.brief) ? { state: 'done', brief: j.brief } : { state: 'error', msg: j.ok ? '综述结果不完整，未展示。请重试。' : aiErrorMessage(j, 'brief') }; })
+      .then(r => r.json())
+      .then(j => { if (BRIEFS[k] === record && record.state === 'loading') BRIEFS[k] = j.ok && validBrief(j.brief) ? { state: 'done', brief: j.brief } : j.error === 'in_progress' || aiTaskStatus(j) === 'waiting' ? { state: 'waiting', msg: aiWaitingMessage(j) } : { state: 'error', msg: j.ok ? '综述结果不完整，未展示。请重试。' : aiErrorMessage(j, 'brief') }; })
       .catch(() => { if (BRIEFS[k] === record && record.state === 'loading') BRIEFS[k] = { state: 'waiting', timedOut: false }; })
       .finally(() => { clearTimeout(slowTimer); clearTimeout(timer); rerender(); });
   }
@@ -643,17 +689,16 @@
     const k = briefKey(mode, items), record = BRIEFS[k];
     if (!record || record.state !== 'waiting' || record.checking) return;
     record.checking = true; rerender();
-    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
     const keys = items.map(x => x.pmid ? 'pmid:' + x.pmid : 'doi:' + x.doi);
-    fetch('/api/ai?task=brief&mode=' + encodeURIComponent(mode) + '&keys=' + encodeURIComponent(JSON.stringify(keys)), {signal: controller.signal, headers: {accept: 'application/json'}})
-      .then(r => r.ok ? r.json() : Promise.reject())
+    aiRequest('/api/ai?task=brief&mode=' + encodeURIComponent(mode) + '&keys=' + encodeURIComponent(JSON.stringify(keys)), {headers: {accept: 'application/json'}})
       .then(j => {
         if (BRIEFS[k] !== record) return;
         if (j.ok && j.found && validBrief(j.brief)) BRIEFS[k] = {state: 'done', brief: j.brief};
+        else if (j.ok && ['idle', 'failed'].includes(aiTaskStatus(j))) BRIEFS[k] = {state: 'error', msg: aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'brief') : '上次任务已结束，未查到已保存结果。可点击重新生成。'};
         else { record.checking = false; record.msg = j.ok && !j.found ? '尚未查到已保存结果，可稍后再查；没有重新调用模型。' : '已有结果暂不可读，可稍后再查。'; }
       })
       .catch(() => { if (BRIEFS[k] === record) { record.checking = false; record.msg = '已有结果读取失败，可稍后再查；没有重新调用模型。'; } })
-      .finally(() => { clearTimeout(timer); rerender(); });
+      .finally(() => { rerender(); });
   }
   function briefHtml(mode, list) {
     const items = briefItems(list); if (items.length < 2) return '';
@@ -661,7 +706,7 @@
     const label = mode === 'huddle' ? 'AI 生成前 ' + items.length + ' 篇讨论提纲' : 'AI 综述当前结果前 ' + items.length + ' 篇';
     if (!b || b.state === 'error') return `<div class="brief-box">${b ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm btn-primary" data-action="ai-brief" data-mode="${mode}">${label}</button><span class="text-muted brief-help">按当前顺序选最多 8 篇有标识的不同文献；基于可取得的公开摘要，结果全站共享。耗时随摘要与服务响应而变化。</span></div>`;
     if (b.state === 'loading') return `<div class="brief-box" aria-busy="true"><p class="ql-meta" role="status">正在读取摘要并生成，请稍候…${b.slow ? '用时较长，无需重复点击；不会自动重新提交。' : ''}</p></div>`;
-    if (b.state === 'waiting') return `<div class="brief-box"><p class="ql-meta" role="status">${b.timedOut ? '等待已超过 4 分钟，完成状态尚未确认' : '网络中断，完成状态尚未确认'}；后台可能仍在处理，未重新提交。</p>${b.msg ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm" data-action="brief-check" data-mode="${mode}"${b.checking ? ' disabled' : ''}>${b.checking ? '读取中…' : '读取已有综述'}</button></div>`;
+    if (b.state === 'waiting') return `<div class="brief-box"><p class="ql-meta" role="status">${b.timedOut ? '本次等待已到时限，完成状态尚未确认' : '网络中断，完成状态尚未确认'}；后台可能仍在处理，未重新提交。</p>${b.msg ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm" data-action="brief-check" data-mode="${mode}"${b.checking ? ' disabled' : ''}>${b.checking ? '读取中…' : '读取已有综述'}</button></div>`;
     const r = b.brief;
     const included = r.refs.length, omitted = Math.max(0, items.length - included);
     return `<div class="brief-box brief-done"><div class="drawer-section-title">${mode === 'huddle' ? '讨论提纲' : '综述速读'} <small class="ql-flag">模型根据公开摘要生成 · 未经人工核对</small></div>
@@ -719,14 +764,14 @@
     return r;
   }
   function studyMissingReason(reason) {
-    return { no_abstract: '未找到公开摘要', metadata_timeout: '公开摘要获取暂未完成', metadata_error: '公开摘要获取暂时失败', abstract_too_long: '公开摘要超过处理范围' }[reason] || '此篇公开摘要暂不可用';
+    return { no_abstract: '未找到公开摘要', metadata_timeout: '公开摘要获取暂未完成', metadata_error: '公开摘要获取暂时失败', abstract_too_long: '公开摘要超过处理范围', missing_result: '此篇未返回可核对结果', request_timeout: '本次任务未能在时限内完成' }[reason] || '此篇公开摘要暂不可用';
   }
   function studyRows(result, requested) {
     // Keep every selected paper visible, including unavailable or omitted items.
     return requested.map((p, i) => {
       const key = studyKey(p);
       const row = result.papers.find(x => x.key === key || (p.pmid && x.pmid && String(x.pmid) === String(p.pmid)) || (p.doi && x.doi && String(x.doi).toLowerCase() === String(p.doi).toLowerCase()));
-      return row ? { ...row, n: i + 1 } : { ...studyIds(p), key, n: i + 1, title: p.title || '', journal: p.cleanJournal || p.journal || '', status: 'unavailable', reason: 'no_abstract' };
+      return row ? { ...row, n: i + 1 } : { ...studyIds(p), key, n: i + 1, title: p.title || '', journal: p.cleanJournal || p.journal || '', status: 'unavailable', reason: 'missing_result' };
     });
   }
   function studyFieldHtml(paper, field) {
@@ -762,36 +807,31 @@
     let content = '<p class="study-meta" role="status">正在检查已有结果，不会调用模型…</p>';
     if (!rec && paper.weeklyPick) content = '<p class="study-meta" role="status">本篇研究结构尚未预生成。</p>';
     else if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
-    else if (rec?.state === 'loading') content = '<p class="study-meta" role="status">正在从公开来源读取摘要并提取研究结构，请稍候…</p>';
+    else if (rec?.state === 'loading') content = `<p class="study-meta" role="status">正在从公开来源读取摘要并提取研究结构，请稍候…${rec.slow ? '用时较长，无需重复点击。' : ''}</p>`;
+    else if (rec?.state === 'waiting') content = `<p class="study-meta" role="status">${esc(rec.msg || aiWaitingMessage())}</p><button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">读取已有研究结构</button>`;
     else if (rec && rec.state !== 'checking') {
       content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">${rec.state === 'error' ? '重试生成研究结构' : '提取研究结构与核对清单'}</button><p class="study-meta">点击后由模型读取公开摘要；不会读取全文。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到已有结果。' : '研究结构服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? `<button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">重查已有结果</button>` : ''}`);
     }
     return `<section class="drawer-section study-box" aria-label="研究结构与全文核对"><div class="drawer-section-title">研究结构与全文核对 <small>公开摘要服务</small></div>${content}</section>`;
   }
   function studyCheck(paper, retry = false) {
-    const key = studyKey(paper); if (!key || (STUDY_RESULTS[key] && !retry)) return;
-    STUDY_RESULTS[key] = { state: 'checking' };
-    fetch('/api/ai?task=study&k=' + encodeURIComponent(key), { headers: { accept: 'application/json' } })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => {
-        const result = studyResultOf(j, 'study');
-        STUDY_RESULTS[key] = result && j.found ? { state: 'done', result, cached: true, canGenerate: !!j.canGenerate } : (j.ok ? { state: 'ready', canGenerate: !!j.canGenerate } : { state: 'error', phase: 'lookup', msg: aiErrorMessage(j, 'study'), canGenerate: false });
-      })
-      .catch(() => { STUDY_RESULTS[key] = { state: 'error', phase: 'lookup', msg: '无法读取已有结果，请稍后重试。', canGenerate: false }; })
-      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+    const key = studyKey(paper), previous = STUDY_RESULTS[key];
+    if (!key || previous?.state === 'checking' || previous?.state === 'loading' || (previous && !retry)) return;
+    const record = STUDY_RESULTS[key] = { state: 'checking', previous };
+    aiRequest('/api/ai?task=study&k=' + encodeURIComponent(key), { headers: { accept: 'application/json' } })
+      .then(j => { if (STUDY_RESULTS[key] === record) STUDY_RESULTS[key] = aiLookupRecord(j, previous, 'study', studyResultOf(j, 'study')); })
+      .catch(() => { if (STUDY_RESULTS[key] === record) STUDY_RESULTS[key] = previous?.state === 'waiting' ? { ...previous, msg: '已有结果读取失败，请重查；没有重新调用模型。' } : { state: 'error', phase: 'lookup', msg: '无法读取已有结果，请稍后重试。', canGenerate: false }; })
+      .finally(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
   function aiStudy(paper) {
     const key = studyKey(paper), previous = STUDY_RESULTS[key];
-    if (!key || !previous?.canGenerate || previous.state === 'loading') return;
-    STUDY_RESULTS[key] = { state: 'loading', canGenerate: true }; openReaderDrawer(paper);
-    fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'study', ...studyIds(paper) }) })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => {
-        const result = studyResultOf(j, 'study');
-        STUDY_RESULTS[key] = result && (j.ok || result.generatedBy === 'metadata-only') ? { state: 'done', result, cached: !!j.cached, canGenerate: j.canGenerate !== false } : { state: 'error', msg: aiErrorMessage(j, 'study'), canGenerate: j.error !== 'generation_off' && j.error !== 'not_configured' };
-      })
-      .catch(() => { STUDY_RESULTS[key] = { state: 'error', msg: '网络错误，请稍后重试。', canGenerate: true }; })
-      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+    if (!key || !previous?.canGenerate || ['loading', 'checking', 'waiting'].includes(previous.state)) return;
+    const record = STUDY_RESULTS[key] = { state: 'loading', canGenerate: false }; openReaderDrawer(paper);
+    const render = () => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); };
+    aiRequest('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'study', ...studyIds(paper) }) }, () => { if (STUDY_RESULTS[key] === record) { record.slow = true; render(); } })
+      .then(j => { if (STUDY_RESULTS[key] === record) STUDY_RESULTS[key] = aiPostRecord(j, 'study', studyResultOf(j, 'study')); })
+      .catch(error => { if (STUDY_RESULTS[key] === record) STUDY_RESULTS[key] = { state: 'waiting', msg: aiWaitingMessage(null, error.code === 'request_timeout'), canGenerate: false }; })
+      .finally(render);
   }
   function compareBoxHtml(list) {
     const selected = selectedComparePapers(), valid = selected.length >= 2 && selected.length <= 4;
@@ -800,37 +840,32 @@
     if (valid) {
       if (rec?.state === 'done') content = studyResultHtml(rec.result, selected, rec.cached, 'compare') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate ? '<button class="btn-sm" data-action="ai-compare">重新获取所选文献的公开摘要</button>' : '');
       else if (!rec || rec.state === 'checking') content = '<p class="study-meta" role="status">正在检查这组文献的已有结果，不会调用模型…</p>';
-      else if (rec.state === 'loading') content = '<p class="study-meta" role="status">正在逐篇读取公开摘要并整理证据对照，请稍候…</p>';
+      else if (rec.state === 'loading') content = `<p class="study-meta" role="status">正在逐篇读取公开摘要并整理证据对照，请稍候…${rec.slow ? '用时较长，无需重复点击。' : ''}</p>`;
+      else if (rec.state === 'waiting') content = `<p class="study-meta" role="status">${esc(rec.msg || aiWaitingMessage())}</p><button class="btn-sm" data-action="compare-check">读取已有证据对照</button>`;
       else content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm btn-primary" data-action="ai-compare">${rec.state === 'error' ? '重试' : '生成'}所选 ${selected.length} 篇证据对照</button><p class="study-meta">点击后调用模型。仅发送文献标识，不发送个人清单文本；无摘要文献仍保留在结果中。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到这组文献的已有结果。' : '证据对照服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? '<button class="btn-sm" data-action="compare-check">重查已有结果</button>' : ''}`);
     }
     return `<section class="study-box compare-box" aria-label="精选证据对照" tabindex="-1"><div class="drawer-section-title">精选证据对照 <small>已选 ${selected.length}/4 篇</small></div><p class="study-boundary">按各篇公开摘要逐项核对研究问题、对象、设计、对照、终点与结果。不会据此排名或合并研究结论。</p>${content}</section>`;
   }
   function compareCheck(retry = false) {
     const list = selectedComparePapers(); if (list.length < 2 || list.length > 4) return;
-    const key = compareKey(list); if (COMPARE_RESULTS[key] && !retry) return;
-    COMPARE_RESULTS[key] = { state: 'checking' };
-    fetch('/api/ai?task=compare&keys=' + encodeURIComponent(key), { headers: { accept: 'application/json' } })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => {
-        const result = studyResultOf(j, 'compare');
-        COMPARE_RESULTS[key] = result && j.found ? { state: 'done', result, cached: true, canGenerate: !!j.canGenerate } : (j.ok ? { state: 'ready', canGenerate: !!j.canGenerate } : { state: 'error', phase: 'lookup', msg: aiErrorMessage(j, 'compare'), canGenerate: false });
-      })
-      .catch(() => { COMPARE_RESULTS[key] = { state: 'error', phase: 'lookup', msg: '无法读取已有结果，请稍后重试。', canGenerate: false }; })
-      .then(() => { if ($('#huddleModalBackdrop.open') && compareKey(selectedComparePapers()) === key) openHuddleModal(); });
+    const key = compareKey(list), previous = COMPARE_RESULTS[key];
+    if (previous?.state === 'checking' || previous?.state === 'loading' || (previous && !retry)) return;
+    const record = COMPARE_RESULTS[key] = { state: 'checking', previous };
+    aiRequest('/api/ai?task=compare&keys=' + encodeURIComponent(key), { headers: { accept: 'application/json' } })
+      .then(j => { if (COMPARE_RESULTS[key] === record) COMPARE_RESULTS[key] = aiLookupRecord(j, previous, 'compare', studyResultOf(j, 'compare')); })
+      .catch(() => { if (COMPARE_RESULTS[key] === record) COMPARE_RESULTS[key] = previous?.state === 'waiting' ? { ...previous, msg: '已有结果读取失败，请重查；没有重新调用模型。' } : { state: 'error', phase: 'lookup', msg: '无法读取已有结果，请稍后重试。', canGenerate: false }; })
+      .finally(() => { if ($('#huddleModalBackdrop.open') && compareKey(selectedComparePapers()) === key) openHuddleModal(); });
   }
   function aiCompare() {
     const list = selectedComparePapers(); if (list.length < 2 || list.length > 4) { showToast('请明确选择 2–4 篇有 PMID/DOI 的文献'); return; }
     const key = compareKey(list), previous = COMPARE_RESULTS[key];
-    if (!previous?.canGenerate || previous.state === 'loading') return;
-    COMPARE_RESULTS[key] = { state: 'loading', canGenerate: true }; openHuddleModal();
-    fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'compare', items: list.map(studyIds) }) })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
-      .then(j => {
-        const result = studyResultOf(j, 'compare');
-        COMPARE_RESULTS[key] = result && (j.ok || result.generatedBy === 'metadata-only') ? { state: 'done', result, cached: !!j.cached, canGenerate: j.canGenerate !== false } : { state: 'error', msg: aiErrorMessage(j, 'compare'), canGenerate: j.error !== 'generation_off' && j.error !== 'not_configured' };
-      })
-      .catch(() => { COMPARE_RESULTS[key] = { state: 'error', msg: '网络错误，请稍后重试。', canGenerate: true }; })
-      .then(() => { if ($('#huddleModalBackdrop.open') && compareKey(selectedComparePapers()) === key) openHuddleModal(); });
+    if (!previous?.canGenerate || ['loading', 'checking', 'waiting'].includes(previous.state)) return;
+    const record = COMPARE_RESULTS[key] = { state: 'loading', canGenerate: false }; openHuddleModal();
+    const render = () => { if ($('#huddleModalBackdrop.open') && compareKey(selectedComparePapers()) === key) openHuddleModal(); };
+    aiRequest('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'compare', items: list.map(studyIds) }) }, () => { if (COMPARE_RESULTS[key] === record) { record.slow = true; render(); } })
+      .then(j => { if (COMPARE_RESULTS[key] === record) COMPARE_RESULTS[key] = aiPostRecord(j, 'compare', studyResultOf(j, 'compare')); })
+      .catch(error => { if (COMPARE_RESULTS[key] === record) COMPARE_RESULTS[key] = { state: 'waiting', msg: aiWaitingMessage(null, error.code === 'request_timeout'), canGenerate: false }; })
+      .finally(render);
   }
   function studyCopyText(result, requested) {
     let text = '公开摘要研究结构与证据对照（未经人工核对）\n不作质量排名，不合并效应量。\n';
@@ -851,8 +886,8 @@
     return text;
   }
   // ---- End public-abstract study services. ----
-  const AI_ERR = { daily_cap: '今日 AI 解读额度已用完，明天再试。', ip_cap: '你今天的解读次数已达上限。', no_abstract: '各公开渠道都没有找到这篇的摘要。',
-    model_failed: 'AI 服务未能完成处理，未保存。请稍后重试。', in_progress: '这篇正在被生成，稍后刷新即可查看。',
+  const AI_ERR = { daily_cap: '今日 AI 解读额度已用完，明天再试。', ip_cap: '你今天的解读次数已达上限。', no_abstract: '本次已完成的公开来源查询未取得可用摘要。可查看官方原文。', metadata_timeout: '公开摘要读取超时，未生成结果。请稍后重试。', metadata_error: '公开摘要来源暂时不可读，未生成结果。请稍后重试。', request_timeout: '本次任务未能在时限内完成，未保存结果。可点击重试。', task_timeout: '本次任务未能在时限内完成，未保存结果。可点击重试。', task_cancelled: '本次任务已取消，未保存结果。可点击重试。',
+    model_failed: 'AI 服务未能完成处理，未保存。请稍后重试。', in_progress: '该任务仍在处理中，请读取已有结果确认进度。',
     generation_off: 'AI 功能暂未开放。', not_configured: 'AI 服务尚未配置完成，需要维护者处理。', server: '服务暂时出错，请稍后重试。', need_two: '至少需要 2 篇文献。', bad_key: '这篇缺少 PMID/DOI，无法处理。' };
   const AI_MODEL_ERR = {
     provider_auth: 'AI 服务认证失败，需要维护者修复配置。',
@@ -888,17 +923,19 @@
     return AI_MODEL_ERR[detail] || AI_ERR.model_failed;
   }
   function aiInterpret(paper) {
-    if (paper._aiState === 'loading') return;
-    paper._aiState = 'loading'; openReaderDrawer(paper);
-    fetch('/api/ql', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pmid: paper.pmid || '', doi: paper.doi || '' }) })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'server' })))
+    if (['loading', 'waiting', 'checking', 'lookup-error'].includes(paper._aiState)) return;
+    const token = {}; paper._aiToken = token; paper._aiState = 'loading'; paper._aiSlow = false; openReaderDrawer(paper);
+    const render = () => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); };
+    aiRequest('/api/ql', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pmid: paper.pmid || '', doi: paper.doi || '' }) }, () => { if (paper._aiToken === token) { paper._aiSlow = true; render(); } })
       .then(j => {
+        if (paper._aiToken !== token) return;
         if (j.ok && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; paper._aiState = 'done'; }
+        else if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') { paper._aiState = 'waiting'; paper._aiMsg = aiWaitingMessage(j); }
         else if (j.error === 'no_abstract') { paper._aiState = 'noabs'; }
         else { paper._aiState = 'error'; paper._aiMsg = aiErrorMessage(j, 'quicklook'); }
       })
-      .catch(() => { paper._aiState = 'error'; paper._aiMsg = '网络错误，请稍后重试。'; })
-      .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+      .catch(error => { if (paper._aiToken === token) { paper._aiState = 'waiting'; paper._aiMsg = aiWaitingMessage(null, error.code === 'request_timeout'); } })
+      .finally(render);
   }
   function hasAbstract(p) { return !!(p.summary || (p.abstractSections||[]).some(x=>x.text) || quicklookOf(p)?.abstract); }
   function datePrecision(p) {
@@ -1738,12 +1775,14 @@
         if (s === 'none' || s === 'error') return `<div class="drawer-section quicklook ai-ask">
           <div class="drawer-section-title">AI 解读</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
-          <p class="ql-meta">一键让模型根据公开摘要生成中文解读（约 10–20 秒；本站没有摘要时会依次到 PubMed、OpenAlex、Crossref 和期刊页面去找）。生成后会保存在本站，之后所有读者可直接查看；内容未经人工核对。</p>
+          <p class="ql-meta">点击后由模型根据公开摘要生成中文解读；生成时间取决于公开来源和模型响应。生成后会保存在本站，之后所有读者可直接查看；内容未经人工核对。</p>
           <button class="btn-sm btn-primary" data-action="ai-interpret" data-paper-id="${esc(paper.id)}">一键 AI 解读</button></div>`;
         if (s === 'noabs') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div>
-          <p class="ql-meta">已依次查询 Europe PMC、PubMed、OpenAlex、Crossref 和期刊页面的公开元数据，都没有这篇的摘要（多见于读者来信、述评、新闻），所以不生成解读，以免编造。请直接看原文。</p>
-          ${!paper.titleZh ? `<button class="btn-sm" data-action="ai-title" data-paper-id="${esc(paper.id)}">只翻译标题</button>` : ''}${paper._ttMsg ? `<span class="ql-meta" style="color:#b45309;"> ${esc(paper._ttMsg)}</span>` : ''}</div>`;
-        if (s === 'loading') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div><p class="ql-meta">正在读取公开摘要并生成解读，请稍候…</p></div>`;
+          <p class="ql-meta">本次已完成的公开来源查询未取得可用摘要，因此未生成解读。请查看官方原文；页面展示的摘要与服务本次可验证的来源可能不同。</p>
+          ${!paper.titleZh ? `<button class="btn-sm" data-action="${['waiting','checking'].includes(paper._ttState) ? 'title-check' : 'ai-title'}" data-paper-id="${esc(paper.id)}"${['loading','checking'].includes(paper._ttState) ? ' disabled' : ''}>${['waiting','checking'].includes(paper._ttState) ? '读取已有标题译文' : '只翻译标题'}</button>` : ''}${paper._ttMsg ? `<span class="ql-meta" style="color:#b45309;"> ${esc(paper._ttMsg)}</span>` : ''}</div>`;
+        if (s === 'waiting' || s === 'lookup-error') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div><p class="ql-meta" role="status">${esc(paper._aiMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="ai-check" data-paper-id="${esc(paper.id)}">读取已有解读</button></div>`;
+        if (s === 'checking') return '<div class="drawer-section quicklook ai-ask"><p class="ql-meta" role="status">正在读取已有解读…</p></div>';
+        if (s === 'loading') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div><p class="ql-meta">正在读取公开摘要并生成解读，请稍候…${paper._aiSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
         return '';
       })() : '';
 
@@ -2633,6 +2672,10 @@
       return;
     }
 
+    const aiCheckAction = e.target.closest('[data-action="ai-check"]');
+    if (aiCheckAction) { const paper = allPapersMap.get(aiCheckAction.dataset.paperId); if (paper) { aiApiCheck(paper, true); openReaderDrawer(paper); } return; }
+    const titleCheckAction = e.target.closest('[data-action="title-check"]');
+    if (titleCheckAction) { const paper = allPapersMap.get(titleCheckAction.dataset.paperId); if (paper) { aiTitleCheck(paper); openReaderDrawer(paper); } return; }
     const aiAction = e.target.closest('[data-action="ai-interpret"]');
     if (aiAction) {
       const paper = allPapersMap.get(aiAction.dataset.paperId);
@@ -2807,7 +2850,7 @@
   window.addEventListener('focus', refreshLibraryAfterReturn);
   window.addEventListener('pageshow', event => { if (event.persisted) refreshLibraryAfterReturn(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && doiJobActive(DOI_JOBS.get(exactDoi(state.search)))) lookupSupplementalDoi(exactDoi(state.search), true); });
-  fetch('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } }).then(r => r.ok ? r.json() : Promise.reject())
+  aiRequest('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } })
     .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
     .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
 

@@ -118,6 +118,8 @@ jobs:
           node scripts/test_study_evidence_regression.cjs
           node scripts/test_study_ui.cjs
           node scripts/test_brief_feedback.cjs
+          node scripts/test_ai_deadline_lifecycle.cjs
+          node scripts/test_ai_waiting_ui.cjs
           node scripts/test_source_health_ui.cjs
           node scripts/test_weekly_window.cjs
           node scripts/test_publication_dates_ui.cjs
@@ -138,6 +140,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_workflow.py'
           python3 -m unittest discover -s scripts -p 'test_release_decoupling.py'
           python3 -m unittest discover -s scripts -p 'test_public_build.py'
+          python3 -m unittest discover -s scripts -p 'test_public_abstract_sources.py'
           python3 -m unittest discover -s scripts -p 'test_public_library_quality.py'
           python3 -m unittest discover -s scripts -p 'test_public_bibliography_review.py'
           python3 -m unittest discover -s scripts -p 'test_publication_status.py'

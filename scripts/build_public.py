@@ -23,7 +23,7 @@ DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_ty
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 QL_FIELDS |= {'contentCorrection'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.2.15'
+RELEASE = 'v14.2.16'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -175,6 +175,45 @@ def pregenerated_map(weekly):
             if key in result and result[key]!=entry:raise ValueError('Conflicting precomputed paper alias')
             result[key]=entry
     return result
+
+def public_abstract_sources(weekly, catalogue, candidates):
+    """Finite source-matched public boards only; never project arbitrary caches."""
+    from urllib.parse import urlsplit
+    from week_precompute import text_hash
+    rows=list((weekly or {}).get('items',[]))+list((catalogue or {}).get('items',[]))
+    items=[]; aliases={}
+    allowed_hosts={'pubmed.ncbi.nlm.nih.gov','europepmc.org','www.ebi.ac.uk','doi.org','dx.doi.org'}
+    for row in rows:
+        title=row.get('title'); abstract=row.get('abstract'); paper_id=row.get('paperID')
+        pmid=str(row.get('pmid') or ''); doi=str(row.get('doi') or '').lower()
+        if not isinstance(title,str) or not title.strip() or len(title)>1000 or not isinstance(abstract,str) or not abstract.strip() or len(abstract)>32000:
+            raise ValueError('Public abstract snapshot text outside bounds')
+        if not isinstance(paper_id,str) or paper_id != ('doi:'+doi if doi else 'pmid:'+pmid):
+            raise ValueError('Public abstract snapshot paper identity invalid')
+        if (pmid and not re.fullmatch(r'[0-9]{1,9}',pmid)) or (doi and not re.fullmatch(r'10\.\d{4,9}/[^\s\x00-\x1f\x7f]+',doi)) or not (pmid or doi):
+            raise ValueError('Public abstract snapshot identifier invalid')
+        if row.get('sourceHash')!=text_hash(title,abstract):raise ValueError('Public abstract snapshot hash mismatch')
+        url=row.get('abstractSourceUrl') or ''; parsed=urlsplit(url)
+        if parsed.scheme!='https' or parsed.hostname not in allowed_hosts or parsed.username or parsed.password or parsed.port not in (None,443):
+            raise ValueError('Public abstract snapshot source URL invalid')
+        matches=[q for q in candidates if (pmid and str(q.get('pmid') or '')==pmid) or (doi and str(q.get('doi') or '').lower()==doi)]
+        if any(q.get('title')!=title or (pmid and q.get('pmid') and str(q['pmid'])!=pmid) or (doi and q.get('doi') and str(q['doi']).lower()!=doi) for q in matches):
+            raise ValueError('Public abstract snapshot candidate identity conflict')
+        journals={q.get('cleanJournal') or q.get('journal') or '' for q in matches}
+        if len(journals)>1:raise ValueError('Public abstract snapshot journal conflict')
+        journal=next(iter(journals),'')
+        if not isinstance(journal,str) or len(journal)>2000:raise ValueError('Public abstract snapshot journal outside bounds')
+        item={k:row.get(k,'') for k in ('paperID','title','abstract','sourceHash','abstractSource','abstractSourceUrl','date')}
+        item.update(pmid=pmid,doi=doi,journal=journal)
+        keys=[paper_id]+(['pmid:'+pmid] if pmid else [])+(['doi:'+doi] if doi else [])
+        previous=[aliases[k] for k in keys if k in aliases]
+        if previous:
+            if any(x!=item for x in previous):raise ValueError('Conflicting public abstract snapshot alias')
+            continue
+        if len(items)>=96:raise ValueError('Public abstract snapshot count outside bounds')
+        items.append(item)
+        for key in keys:aliases[key]=item
+    return {'schemaVersion':1,'scope':'published-public-abstract','items':items}
 
 def public_health(source, pubmed, now):
     from refresh_feeds import safe_url as sanitized_url
@@ -400,6 +439,10 @@ def main():
     doi_placeholder='const DOI_ADJUDICATIONS = {};'
     if worker.count(doi_placeholder)!=1:raise ValueError('DOI adjudication placeholder missing')
     worker=worker.replace(doi_placeholder,'const DOI_ADJUDICATIONS = '+json.dumps(doi_adjudication_registry(),ensure_ascii=False,separators=(',',':'))+';')
+    abstract_placeholder='const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null;'
+    if worker.count(abstract_placeholder)!=1:raise ValueError('Public abstract snapshot placeholder missing')
+    sources=public_abstract_sources(weekly,editorial_catalog,candidates['items'])
+    worker=worker.replace(abstract_placeholder,'const PUBLIC_ABSTRACT_SOURCES = '+json.dumps(sources,ensure_ascii=False,separators=(',',':'))+';')
     files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
