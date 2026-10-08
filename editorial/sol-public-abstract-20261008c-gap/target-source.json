@@ -1,0 +1,26 @@
+{
+  "id": "pmid-42841502",
+  "paperID": "doi:10.1161/jaha.126.050332",
+  "doi": "10.1161/jaha.126.050332",
+  "pmid": "42841502",
+  "rank": 24,
+  "category": "心血管",
+  "date": "2026-10-07",
+  "title": "Low Parental Income During Childhood Is Associated With Coronary Atherosclerosis in Midlife.",
+  "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+  "abstract": "BACKGROUND: Socioeconomic status (SES) is a major risk factor for coronary heart disease, but the life-course mechanisms and causal pathways remain poorly understood. Therefore, we investigated whether low childhood SES was associated with midlife coronary atherosclerosis and if any association could be explained by established risk factors in adulthood. METHODS: This observational cohort study included 15 640 participants, aged 50 to 64 years, from the population-based SCAPIS (Swedish Cardiopulmonary Bioimage Study) who underwent coronary computed tomography angiography. Coronary atherosclerosis was assessed by segment involvement score and coronary artery calcification score. Childhood SES was defined by parental disposable income at participant age 10 to 12 years retrieved from national registers. Associations between moderate-severe coronary atherosclerosis (segment involvement score ≥4 or coronary artery calcification >100) and childhood SES were estimated using multivariable logistic regression adjusting for adult lifestyle habits, adult SES, and traditional cardiovascular risk factors. RESULTS: Participants in the lowest versus highest parental income quintile were more likely to have moderate-severe coronary atherosclerosis (segment involvement score ≥4; odds ratio [OR], 1.43 [95% CI, 1.20-1.71], P<0.001). The association persisted after adjustment for adult lifestyle habits (OR, 1.42 [95% CI, 1.17-1.73], P<0.001), adult SES (OR, 1.31 [95% CI, 1.09-1.57], P=0.004), traditional cardiovascular risk factors (OR, 1.28 [95% CI, 1.06-1.53], P=0.008), and full adjustment (OR, 1.31 [95% CI, 1.07-1.61], P=0.010). Similar associations were observed for coronary artery calcification >100. CONCLUSIONS: Low childhood SES was associated with moderate-severe coronary atherosclerosis in midlife only partially explained by established risk factors in adulthood. Our findings suggest that childhood SES is a social determinant of long-term cardiovascular health that cannot be fully explained by established adult risk factors.",
+  "abstractSource": "PubMed",
+  "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841502/",
+  "titleZh": "儿童期父母低收入与中年冠状动脉粥样硬化相关。",
+  "translation": null,
+  "quicklook": null,
+  "study": null,
+  "generationMeta": {},
+  "precomputeStatus": "pending",
+  "missingTasks": [
+    "translate",
+    "study",
+    "quicklook"
+  ],
+  "allowAutomaticGeneration": false
+}

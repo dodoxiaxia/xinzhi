@@ -16,7 +16,8 @@ ORIGIN = 'sol-session-public-abstract'
 MODEL = 'sol-session-model-unobserved'
 OUTPUT_DIRECTORIES = ('editorial/sol-public-abstract-20261007',
                       'editorial/sol-public-abstract-20261008-gap',
-                      'editorial/sol-public-abstract-20261008b-gap')
+                      'editorial/sol-public-abstract-20261008b-gap',
+                      'editorial/sol-public-abstract-20261008c-gap')
 
 
 def output_target(output, inputs):
@@ -30,10 +31,25 @@ def output_target(output, inputs):
 
 
 def preview(sources, overlay, runtime_cache=None):
+    return _preview(sources, overlay, runtime_cache, expected_count=24)
+
+
+def preview_supplement(sources, overlay):
+    """Validate a finite public-source gap package, without copying the other 23 papers."""
+    count = len(sources.get('items', []))
+    if sources.get('scope') != 'public-abstract-supplement' or not 1 <= count <= 30:
+        raise ValueError('finite_public_supplement_required')
+    result = _preview(sources, overlay, expected_count=count)
+    for row in result['items']:
+        row['fillMissingOnly'] = True
+    return result
+
+
+def _preview(sources, overlay, runtime_cache=None, *, expected_count):
     if sources.get('schemaVersion') != 1 or sources.get('publicOnly') is not True:
         raise ValueError('public_source_snapshot_required')
     selected = copy.deepcopy(sources.get('items', []))
-    if len(selected) != 24 or len({p['paperID'] for p in selected}) != 24:
+    if len(selected) != expected_count or len({p['paperID'] for p in selected}) != expected_count:
         raise ValueError('fixed_24_identity_snapshot_required')
     byid = {p['paperID']: p for p in selected}
     for p in selected:
@@ -95,8 +111,14 @@ def main():
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     read = lambda p: json.loads(p.read_text())
-    result = preview(read(args.sources), read(args.overlay),
-                     read(args.runtime_cache) if args.runtime_cache else None)
+    sources = read(args.sources)
+    if sources.get('scope') == 'public-abstract-supplement':
+        if args.runtime_cache:
+            raise ValueError('supplement_runtime_cache_out_of_scope')
+        result = preview_supplement(sources, read(args.overlay))
+    else:
+        result = preview(sources, read(args.overlay),
+                         read(args.runtime_cache) if args.runtime_cache else None)
     if args.output:
         target = output_target(args.output, (args.sources, args.overlay, args.runtime_cache))
         w.atomic(target, result)

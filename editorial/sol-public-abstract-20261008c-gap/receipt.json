@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "branch": "codex/week-sol-gap-20261008c",
+  "sourceMainSha": "afe3ca1447beb12fb2441a101f816a781aa1ae2a",
+  "sourceStateSha": "efaaf69713fcc8b5468b9d0052daa672a666df0e",
+  "paperID": "doi:10.1161/jaha.126.050332",
+  "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+  "scope": "public-abstract",
+  "officialPublicSourceVerified": true,
+  "independentSolReviewPassed": true,
+  "productionValidatorTasksPassed": 2,
+  "literalFindingQuotes": 4,
+  "newPapersGenerated": 1,
+  "newCacheEntries": 2,
+  "existingPapersReused": 23,
+  "offlineCoverageBefore": {
+    "title": 24,
+    "translate": 23,
+    "study": 0,
+    "quicklook": 23
+  },
+  "offlineCoverageAfter": {
+    "title": 24,
+    "translate": 24,
+    "study": 0,
+    "quicklook": 24
+  },
+  "pendingBefore": 1,
+  "pendingAfter": 0,
+  "studyMissing": 24,
+  "selectionSourceAndWindowUnchanged": true,
+  "externalModelApiRequests": 0,
+  "providerUsage": null,
+  "runtimeCacheWrites": 0,
+  "ledgerWrites": 0,
+  "privatePDFsRead": false,
+  "humanMedicalFullTextReview": false,
+  "deployed": false,
+  "ledgerSha256": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "ledgerStillPaused": true,
+  "historicReservedAttempts": 4,
+  "historicReservedOutputTokens": 3800,
+  "accountBudgetVerified": false,
+  "requestedAuthoringModel": "existing Sol session",
+  "actualBackendModelVerified": false,
+  "tests": {
+    "command": "PYTHONPATH=scripts python -m unittest test_sol_gap_c_overlay test_sol_gap_b_overlay test_sol_gap_overlay test_public_precompute_pending test_sol_public_overlay test_public_editorial_overlay",
+    "passed": 42,
+    "elapsedSeconds": 244.827
+  },
+  "continuousPipeline": {
+    "discoveryAndPersistentQueue": "already integrated in .15; this new identity appears in actual state queue",
+    "incrementalAcceptance": "callable read-only verify_public_sol_gap.py; protects completed work",
+    "newSupplementProductionPolicy": "fill missing or validator-invalid tasks only",
+    "automatedSolAuthorAndReviewerConsumer": "not activated/verified",
+    "providerAndAccountBudget": "not reverified; existing ledger pause retained",
+    "runbook": "CONTINUOUS_HANDOFF.md"
+  },
+  "pushSafety": {
+    "workflowPushBranches": [
+      "main"
+    ],
+    "newWorkflowOrCron": false,
+    "productionDispatchRequested": false
+  }
+}

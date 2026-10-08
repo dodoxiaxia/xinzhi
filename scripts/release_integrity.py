@@ -17,6 +17,8 @@ INPUTS = (
     'editorial/sol-public-abstract-20261008-gap/gap-cache.json',
     'editorial/sol-public-abstract-20261008b-gap/sources.json',
     'editorial/sol-public-abstract-20261008b-gap/gap-cache.json',
+    'editorial/sol-public-abstract-20261008c-gap/sources.json',
+    'editorial/sol-public-abstract-20261008c-gap/gap-cache.json',
     '.github/workflows/fulltext.yml', 'scripts/fulltext_queue_runner.cjs',
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',

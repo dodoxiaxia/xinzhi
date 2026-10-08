@@ -8,11 +8,12 @@ import json
 from pathlib import Path
 
 import week_precompute as w
-from preview_sol_public_overlay import preview
+from preview_sol_public_overlay import preview, preview_supplement
 
 DIRECTORY = 'editorial/sol-public-abstract-20261007'
 SUPPLEMENTS = (('editorial/sol-public-abstract-20261008-gap', 'gap-cache.json'),
-               ('editorial/sol-public-abstract-20261008b-gap', 'gap-cache.json'))
+               ('editorial/sol-public-abstract-20261008b-gap', 'gap-cache.json'),
+               ('editorial/sol-public-abstract-20261008c-gap', 'gap-cache.json'))
 
 
 def _load_package(root, directory, cache_file):
@@ -22,7 +23,9 @@ def _load_package(root, directory, cache_file):
         return None
     if not all(p.is_file() and not p.is_symlink() for p in paths):
         raise ValueError('incomplete_public_editorial_overlay')
-    return preview(*(json.loads(p.read_text()) for p in paths))
+    sources, cache = (json.loads(p.read_text()) for p in paths)
+    return (preview_supplement(sources, cache) if sources.get('scope') == 'public-abstract-supplement'
+            else preview(sources, cache))
 
 
 def load_board(root, *, include_supplements=True):
@@ -66,9 +69,24 @@ def apply_board(current, editorial):
             continue
         for task, field in [('translate', 'translation'), ('quicklook', 'quicklook')]:
             if saved.get(field):
+                if saved.get('fillMissingOnly') and row.get(field):
+                    try:
+                        w.validate(task, row[field], row)
+                    except ValueError:
+                        pass  # Invalid evidence is a gap; valid completed work is reused.
+                    else:
+                        continue
                 row[field] = copy.deepcopy(saved[field])
                 row.setdefault('generationMeta', {})[task] = copy.deepcopy(saved['generationMeta'][task])
-        row['titleZh'] = saved['titleZh'] or row.get('titleZh', '')
+        keep_title = False
+        if saved.get('fillMissingOnly') and row.get('titleZh'):
+            try:
+                w.validate('title', {'title_zh':row['titleZh']}, row)
+                keep_title = True
+            except ValueError:
+                pass
+        if not keep_title:
+            row['titleZh'] = saved['titleZh'] or row.get('titleZh', '')
         row['missingTasks'] = [t for t, f in [('translate', 'translation'), ('study', 'study'), ('quicklook', 'quicklook')] if not row.get(f)]
         row['precomputeStatus'] = 'ready' if not row['missingTasks'] else 'partial'
     result['coverage'] = {'title': sum(bool(p.get('titleZh')) for p in result['items']),
