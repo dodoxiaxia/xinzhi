@@ -1,0 +1,7 @@
+# v14.2.16 static/numeric integration hold
+
+The sole publisher reserved v14.2.15 for the separate public-content, bibliography and official-publication-status release at afe3ca1447beb12fb2441a101f816a781aa1ae2a. This held static/numeric branch now reserves v14.2.16; it has not been deployed.
+
+The existing source integrates v14.2.14 coverage but does not yet contain the later v14.2.15 content fixes. Before any future publication, merge current main and retain all source-bound corrections and publication-status fields. In particular, extend and adversarially test the exact FEEDS and RADAR nested contracts for the new allowlisted publicationStatus/publicationStatuses projections: dropping retraction links or rejecting the new valid status fields is not acceptable. Do not copy entire public.js or worker source over newer main.
+
+Previously recorded static outputs/three ZIP receipts at 7ba90e0 remain historical and do not verify this version or head. Rebuild the exact final source, validate all ten roles/bytes/hashes and interruption recovery, repeat source/current-content tests and reader scenarios, and retain the outstanding independent-review/live-service gates. The static repair reference eefcc47bbb62a739c80f94e8826c98ea7fe233b6 remains unchanged. Numeric diagnostic fixtures still do not reproduce the user's two original failures. New H1/H2/M6 incidents remain open. GLM, strict source/numeric checks, private PDFs and shared runtime caches remain within their existing boundaries.
