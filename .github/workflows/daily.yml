@@ -6,6 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'app.js'
+      - 'public-data-loader.js'
       - 'citation-export.js'
       - 'style.css'
       - 'icon.svg'
@@ -101,6 +102,10 @@ jobs:
         if: steps.refresh.outputs.deploy == 'true'
         run: |
           node --check app.js
+          node scripts/test_public_static_assets.cjs
+          node --check public-data-loader.js
+          python3 -m unittest discover -s scripts -p 'test_public_data_bundle.py'
+          python3 -m unittest discover -s scripts -p 'test_public_assets.py'
           node --check citation-export.js
           node scripts/test_citation_export.cjs
           node scripts/test_reading_logic.cjs

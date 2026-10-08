@@ -23,8 +23,9 @@ class PipelineTests(unittest.TestCase):
   data=json.loads((ROOT/'data/library.json').read_text());ids=[p['id'] for p in data['papers']]
   self.assertEqual(len(ids),len(set(ids)));self.assertNotIn('/Users/',json.dumps(data));self.assertEqual(data['stats']['papers'],len(ids))
  def test_public_allowlist(self):
-  files={p.name for p in (ROOT/'public').iterdir()}
-  self.assertEqual(files,{'index.html','style.css','public.js','icon.svg','_headers','_worker.js'})
+  from public_assets import read_payloads, CORE, expected_paths
+  payloads=read_payloads(ROOT/'public');files=set(payloads)
+  self.assertTrue(CORE.issubset(files));self.assertEqual(files,expected_paths(payloads))
   source=(ROOT/'public/index.html').read_text()
   # v14 reads saved theme/style before paint. Preferences are allowed; private
   # library data and credentials still must not appear in the static page.

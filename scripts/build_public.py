@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 """Reproducible, allowlisted public build. No credentials, PDFs or private paths."""
 import datetime, hashlib, json, re, shutil
+from public_assets import CORE, MANIFEST, read_payloads, expected_paths, staged_public, publish_staged
 from pathlib import Path
 from apply_public_library import require_snapshot
 from release_integrity import input_hashes, ordinary_file, provenance, replace_unchanged_input
@@ -12,7 +13,7 @@ from journal_metrics import public_registry
 from public_library_quality import QUALITY_FIELDS, project_public_library
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
-PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
+PUBLIC = CORE  # The six required core files remain an explicit invariant.
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
 PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
@@ -262,7 +263,7 @@ def make_radar(candidates,tz=None):
             **({'dateBases':date_bases} if date_bases else {})}
 
 def validate_public(text):
-    forbidden=(r'/Users/',r'/home/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/')
+    forbidden=(r'/Users/',r'/home/',r'/workspace/',r'/tmp/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/')
     for pattern in forbidden:
         if re.search(pattern,text):raise ValueError('Public build contains a private field or path')
 
@@ -271,8 +272,8 @@ def main():
     inputs_before = build_before['inputs']
     legacy_guides()  # Required publication registry, even when article lists are empty.
     DEST.mkdir(exist_ok=True)
-    extra={p.name for p in DEST.iterdir()}-PUBLIC
-    if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
+    # Accept only an intact previous classic/static release before replacing it.
+    previous=read_payloads(DEST, allow_partial_classic=True)
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
     require_snapshot(l, ROOT)
     # Old state may predate the reviewed publisher correction. Correct before
@@ -354,9 +355,19 @@ def main():
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
+    from public_data_bundle import prepare, inline_boot
+    public_data={'LIBRARY':library,'FEEDS':candidates,'SOURCE_HEALTH':health,'CURATED':archive,
+                 'QUICKLOOKS':ql,'CONTENT_STATUS':status,'JOURNAL_METRICS':metrics}
+    if weekly:public_data['WEEKLY_BOARD']=weekly
+    if prepared:public_data['PREGENERATED']=prepared
+    if radar:public_data['RADAR']=radar
+    app_code='\n;\n'.join((ROOT/name).read_text() for name in ('journal-metrics.js','citation-export.js','app.js'))
+    loader=(ROOT/'public-data-loader.js').read_text()
+    data_worker=(ROOT/'edge/public-static-assets.js').read_text()
+    bundle,boot,data_assets=prepare(public_data,app_code,loader+'\n;\n'+data_worker)
+    public_index=inline_boot(public_index,boot,loader,app_code)
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
-    worker=(ROOT/'edge/_worker.js').read_text()
+    worker=data_worker+'\n'+(ROOT/'edge/_worker.js').read_text()
     placeholder='const PDF_LIBRARY = {};'
     if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
     # A public DOI correction is not evidence for rebinding a private PDF.
@@ -368,31 +379,33 @@ def main():
     files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
+    payloads.update(data_assets)
+    for value in data_assets.values(): validate_public(value.decode('utf-8'))
+    allowed=expected_paths(payloads)
     if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')
-    for name,value in payloads.items():(DEST/name).write_bytes(value)
-    # Local generated assets use the same sanitized archive/quicklooks as the public build.
-    archive_text=json.dumps({'papers':archive},ensure_ascii=False,indent=2)
-    replace_unchanged_input(ROOT,'data/curated-archive.json',archive_text.encode('utf-8'),inputs_before['data/curated-archive.json'])
-    (ROOT/'data/curated.js').write_text(js('CURATED',archive))
-    (ROOT/'data/quicklooks.js').write_text(js('QUICKLOOKS',ql))
-    # The receipt describes the bytes we constructed and validated, never replacements.
-    manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
-    assert {p['path'] for p in manifest}==PUBLIC
-    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {}},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
-    # curated-archive is both input and sanitized output; record its final bytes.
-    build_after=provenance(ROOT)
-    expected_inputs=dict(inputs_before)
-    expected_inputs['data/curated-archive.json']=hashlib.sha256(archive_text.encode('utf-8')).hexdigest()
-    if build_after['inputs']!=expected_inputs or build_after['codeSha']!=build_before['codeSha']:
-        raise ValueError('Build inputs or checkout changed before completion; rebuild public')
-    if {p.name for p in DEST.iterdir()}!=PUBLIC:
-        raise ValueError('Public outputs changed before completion; rebuild public')
-    for name,content in payloads.items():
-        if ordinary_file(ROOT,'public/'+name).read_bytes()!=content:
-            raise ValueError('Public output changed before completion: '+name)
-    meta['buildProvenance']=build_after
-    # Local audit only; the six-file public allowlist does not include this report.
-    (ROOT/'docs/public-library-quality-audit.json').write_text(json.dumps(library_quality,ensure_ascii=False,indent=2)+'\n')
-    (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
+    with staged_public(DEST, payloads) as stage:
+        # Local generated assets use the same sanitized archive/quicklooks as the public build.
+        archive_text=json.dumps({'papers':archive},ensure_ascii=False,indent=2)
+        replace_unchanged_input(ROOT,'data/curated-archive.json',archive_text.encode('utf-8'),inputs_before['data/curated-archive.json'])
+        (ROOT/'data/curated.js').write_text(js('CURATED',archive))
+        (ROOT/'data/quicklooks.js').write_text(js('QUICKLOOKS',ql))
+        # The receipt describes the bytes we constructed and validated, never replacements.
+        manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
+        assert {p['path'] for p in manifest}==allowed
+        meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {}},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+        # curated-archive is both input and sanitized output; record its final bytes.
+        build_after=provenance(ROOT)
+        expected_inputs=dict(inputs_before)
+        expected_inputs['data/curated-archive.json']=hashlib.sha256(archive_text.encode('utf-8')).hexdigest()
+        if build_after['inputs']!=expected_inputs or build_after['codeSha']!=build_before['codeSha']:
+            raise ValueError('Build inputs or checkout changed before completion; rebuild public')
+        if read_payloads(stage)!=payloads:
+            raise ValueError('Staged public outputs changed before completion; rebuild public')
+        meta['assetPolicy']={'schemaVersion':2,'manifest':MANIFEST,'version':boot['version']}
+        meta['buildProvenance']=build_after
+        publish_staged(DEST, stage, payloads, previous)
+        # Local audit only; the explicit public asset allowlist excludes this report.
+        (ROOT/'docs/public-library-quality-audit.json').write_text(json.dumps(library_quality,ensure_ascii=False,indent=2)+'\n')
+        (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
     print(json.dumps({'built':len(manifest),'release':meta['release'],'counts':meta['counts']},ensure_ascii=False))
 if __name__=='__main__':main()

@@ -3,6 +3,8 @@ import contextlib
 import datetime
 import io
 import json
+import multiprocessing
+import os
 import shutil
 import tempfile
 import unittest
@@ -14,12 +16,13 @@ import apply_public_library as snapshot_apply
 import sync_public_library as library_sync
 from package_release import PUBLIC, public_payloads
 from public_library_test_fixture import write_public_library_fixture
+from public_assets import read_payloads, exchange_directories
 
 
 def synthetic_root(root):
     for folder in ('scripts', 'data', 'editorial', 'edge', 'docs', 'config'):
         (root / folder).mkdir()
-    for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
+    for name in ('public_assets.py', 'public_data_bundle.py', 'build_public.py', 'release_integrity.py', 'enrich_metadata.py',
                  'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
                  'publication_dates.py', 'journal_metrics.py'):
         shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
@@ -35,6 +38,9 @@ def synthetic_root(root):
     shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
                     root / 'journal-metrics.js')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'citation-export.js', root / 'citation-export.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'public-data-loader.js', root / 'public-data-loader.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'edge/public-static-assets.js', root / 'edge/public-static-assets.js')
+    shutil.copyfile(Path(builder.__file__).parent / 'public_data_bundle.py', root / 'scripts/public_data_bundle.py')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
@@ -58,7 +64,8 @@ class ReleaseBuildTests(unittest.TestCase):
             synthetic_root(root)
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
-            self.assertEqual(set(public_payloads(root)), PUBLIC)
+            self.assertTrue(PUBLIC.issubset(public_payloads(root)))
+            self.assertIn('public-data-manifest.json', public_payloads(root))
             self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
             self.assertNotIn(b'citation-export.js', (root / 'public/index.html').read_bytes())
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())
@@ -92,7 +99,7 @@ class ReleaseBuildTests(unittest.TestCase):
                 original = Path.write_bytes
 
                 def update_during_write(path, content):
-                    if path == root / 'public/index.html':
+                    if path.name == 'index.html' and path.parent.name.startswith('.public-stage-'):
                         original(archive, update)
                     return original(path, content)
 
@@ -107,6 +114,8 @@ class ReleaseBuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             synthetic_root(root)
+            with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
+                builder.main()
             receipt = root / 'docs/public-manifest.json'
             receipt.write_text('previous receipt')
             original = Path.write_text
@@ -117,9 +126,62 @@ class ReleaseBuildTests(unittest.TestCase):
                 return original(path, text, *args, **kwargs)
 
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), patch.object(Path, 'write_text', replace_during_local_write), contextlib.redirect_stdout(io.StringIO()):
-                with self.assertRaisesRegex(ValueError, 'Public output changed'):
+                with self.assertRaisesRegex(ValueError, 'Public outputs changed'):
                     builder.main()
             self.assertEqual(receipt.read_text(), 'previous receipt')
+
+    def test_static_a_to_b_process_interruption_keeps_valid_tree_and_retry_recovers(self):
+        from test_public_data_bundle import fixture
+        # Exercise an actual process exit, so neither finally cleanup nor normal
+        # exception recovery is responsible for keeping the public tree intact.
+        for point in ('shard_write', 'after_exchange'):
+            with self.subTest(point=point), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); synthetic_root(root); dest = root / 'public'
+                radar = fixture()['RADAR']
+                with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', dest), patch.object(builder, 'make_radar', return_value=radar), contextlib.redirect_stdout(io.StringIO()):
+                    builder.main()
+                    before = read_payloads(dest)
+                    receipt = (root / 'docs/public-manifest.json').read_bytes()
+                    (root / 'app.js').write_text('// static release B')
+
+                    def interrupted_build():
+                        original_write = Path.write_bytes
+                        def write(path, content):
+                            result = original_write(path, content)
+                            if path.parent.name == 'public-data': os._exit(74)
+                            return result
+                        def exchange(left, right):
+                            exchange_directories(left, right); os._exit(74)
+                        target = patch.object(Path, 'write_bytes', write) if point == 'shard_write' else patch('public_assets.exchange_directories', exchange)
+                        with target: builder.main()
+
+                    process = multiprocessing.get_context('fork').Process(target=interrupted_build)
+                    process.start(); process.join(timeout=10)
+                    if process.is_alive(): process.kill(); process.join(); self.fail('Interrupted build did not exit')
+                    self.assertEqual(process.exitcode, 74)
+                    after = read_payloads(dest)
+                    if point == 'shard_write': self.assertEqual(after, before)
+                    else: self.assertNotEqual(after, before)  # Complete B already visible.
+                    self.assertEqual((root / 'docs/public-manifest.json').read_bytes(), receipt)
+                    builder.main()
+                    recovered = read_payloads(dest)
+                    self.assertNotEqual(recovered, before)
+                    self.assertEqual(len(recovered), 10)
+                    self.assertTrue(PUBLIC.issubset(public_payloads(root)))
+
+    def test_atomic_exchange_failure_leaves_previous_static_release_intact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); synthetic_root(root); dest = root / 'public'
+            with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', dest), contextlib.redirect_stdout(io.StringIO()):
+                builder.main(); before = read_payloads(dest)
+                receipt = (root / 'docs/public-manifest.json').read_bytes()
+                (root / 'app.js').write_text('// release B')
+                with patch('public_assets.exchange_directories', side_effect=OSError('unsupported filesystem')):
+                    with self.assertRaisesRegex(OSError, 'unsupported filesystem'): builder.main()
+                self.assertEqual(read_payloads(dest), before)
+                self.assertEqual((root / 'docs/public-manifest.json').read_bytes(), receipt)
+                builder.main()
+                self.assertNotEqual(read_payloads(dest), before)
 
 
 if __name__ == '__main__':

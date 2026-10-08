@@ -1,4 +1,5 @@
-"""Offline build provenance and preflight for the six-file manual release."""
+"""Offline provenance for classic six files or explicitly declared public assets."""
+from public_assets import CORE, MANIFEST, expected_paths
 import ast
 import datetime
 import hashlib
@@ -8,9 +9,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
+PUBLIC = CORE  # The six required core files remain an explicit invariant.
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
+    '.github/workflows/daily.yml',
     '.github/workflows/fulltext.yml', 'scripts/fulltext_queue_runner.cjs',
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',
@@ -19,6 +21,7 @@ INPUTS = (
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'public-data-loader.js', 'edge/public-static-assets.js', 'scripts/public_data_bundle.py', 'scripts/public_assets.py', 'scripts/ci_daily.py',
     'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
@@ -138,9 +141,20 @@ def validate_release(root, payloads, now=None):
         for field in ('radarUpdatedAt', 'healthCheckedAt'):
             require_fresh_timestamp(status[field], field, now)
         rows = manifest['files']
-        if not isinstance(rows, list) or len(rows) != len(PUBLIC) or {r['path'] for r in rows} != PUBLIC:
-            raise ValueError('Manifest must identify exactly the six public files')
-        if set(payloads) != PUBLIC:
+        allowed=expected_paths(payloads)
+        from build_public import validate_public
+        for name,content in payloads.items():
+            text=content.decode('utf-8');validate_public(text)
+            if name.endswith('.json'): validate_public(json.dumps(json.loads(text),ensure_ascii=False))
+        if MANIFEST in payloads:
+            doc=json.loads(payloads[MANIFEST])
+            if manifest.get('assetPolicy') != {'schemaVersion':2,'manifest':MANIFEST,'version':doc['version']}:
+                raise ValueError('Missing/mismatched explicit public asset migration policy')
+        elif manifest.get('assetPolicy'):
+            raise ValueError('Static asset policy cannot describe a classic package')
+        if not isinstance(rows, list) or len(rows) != len(allowed) or {r['path'] for r in rows} != allowed:
+            raise ValueError('Manifest must identify exactly the six core and all declared public files')
+        if set(payloads) != allowed:
             raise ValueError('Payload must contain exactly the six public files')
         for row in rows:
             content = payloads[row['path']]

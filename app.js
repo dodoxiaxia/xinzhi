@@ -39,7 +39,7 @@
   LIBRARY.papers.forEach(normalizePaper);
 
   // 365-day PubMed title archive (compact rows -> paper objects) feeds the radar's 30 / 90 / 365-day views
-  (function expandRadar() {
+  function expandRadar() {
     const R = window.RADAR;
     if (!R || !Array.isArray(R.rows)) return;
     const seen = new Set();
@@ -59,7 +59,8 @@
       normalizePaper(p);
       FEEDS.items.push(p);
     });
-  })();
+  }
+  expandRadar();
   CURATED.forEach(normalizePaper);
 
   // Chinese -> English search expansion (titles/abstracts are English)
@@ -105,12 +106,69 @@
       allPapersMap.set(p.id, p);
     }
   });
-  const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
+  const STATIC_LIBRARY_PAPERS = LIBRARY.papers.slice();
+  const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...STATIC_LIBRARY_PAPERS];
   const DOI_FULLTEXT = new Map();
   const DOI_LOOKUPS = new Map();
   const DOI_JOBS = new Map();
   const DOI_JOB_WATCH = { timer: null, doi: '', startedAt: 0 };
   const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
+  let pendingInitialDrawer = false, pendingStoredHuddle = false;
+  function publicDataReady(all = false) {
+    return !window.PublicData || window.PublicData.ready(state, all);
+  }
+  if (window.PublicData) window.PublicData.bind(data => {
+    const supplemental = [...DOI_FULLTEXT.values()];
+    // Rebuild only runtime catalog additions after the new static identities arrive.
+    // Keep approved static library objects and any live reader state intact.
+    for (let i = LIBRARY.papers.length - 1; i >= 0; i--) {
+      const paper = LIBRARY.papers[i];
+      if (!STATIC_LIBRARY_PAPERS.includes(paper) && DOI_FULLTEXT.has(exactDoi(paper.doi))) {
+        if (allPapersMap.get(paper.id) === paper) allPapersMap.delete(paper.id);
+        LIBRARY.papers.splice(i, 1);
+      }
+    }
+    if (data.FEEDS) {
+      const previous = new Map(FEEDS.items.map(p => [p.id, p]));
+      const papers = data.FEEDS.items.map(row => {
+        const paper = previous.get(row.id) || {};
+        Object.assign(paper, row); normalizePaper(paper); return paper;
+      });
+      FEEDS.items.length = 0; FEEDS.items.push(...papers);
+      FEEDS.updatedAt = data.FEEDS.updatedAt;
+    }
+    if (data.RADAR || data.RECENT_RADAR) { window.RADAR = data.RADAR || data.RECENT_RADAR; expandRadar(); }
+    STATIC_DOI_PAPERS.length = 0;
+    STATIC_DOI_PAPERS.push(...CURATED, ...FEEDS.items, ...STATIC_LIBRARY_PAPERS);
+    const indexed = new Set();
+    for (const paper of STATIC_DOI_PAPERS) if (paper.id && !indexed.has(paper.id)) {
+      allPapersMap.set(paper.id, paper); indexed.add(paper.id);
+    }
+    // Recheck cached supplemental identities against newly loaded static papers;
+    // never promote a runtime supplemental record into the static allowlist.
+    for (const cached of supplemental) {
+      if (!mergeSupplementalPaper(cached)) continue;
+      const restored = DOI_FULLTEXT.get(cached.doi);
+      if (restored && restored.id !== cached.id) {
+        if (!initialHuddleIds.has(cached.id)) {
+          state.huddle = state.huddle.map(id => id === cached.id ? restored.id : id);
+          state.huddleCompare = state.huddleCompare.map(id => id === cached.id ? restored.id : id);
+        }
+        if (state.activeDrawerPaper === cached) state.activeDrawerPaper = restored;
+        updateHuddleCounter();
+      }
+    }
+    _maxDateCache = null;
+  }, () => {
+    refreshSupplementalView();
+    if (pendingInitialDrawer && publicDataReady()) {
+      pendingInitialDrawer = false;
+      const list = getFilteredArticles(); if (list.length) openReaderDrawer(list[0]);
+    }
+    if (pendingStoredHuddle && publicDataReady(true)) {
+      pendingStoredHuddle = false; openHuddleModal();
+    }
+  });
 
   function exactDoi(value) {
     if (typeof value !== 'string' || value.length > 500) return '';
@@ -324,6 +382,7 @@
     activeDrawerPaper: null,
     huddleCompare: [] // Explicit selection, kept only in this browser session.
   };
+  const initialHuddleIds = new Set(state.huddle);
 
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
   if (!state.range) state.range = defaultRange(state.mode);
@@ -963,6 +1022,8 @@
   function radarDefaultCount() {
     const d = new Date(beijingToday() + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 13);
     const s0 = d.toISOString().slice(0, 10), t0 = beijingToday();
+    if (window.PublicData) return Object.entries(window.PublicData.counts.radarDates)
+      .reduce((total, [date, count]) => total + (date >= s0 && date <= t0 ? count : 0), 0);
     return FEEDS.items.filter(p => !p.minor && datePrecision(p) === 'day' && p.date.slice(0, 10) >= s0 && p.date.slice(0, 10) <= t0).length;
   }
   function updateHeaderBadges() {
@@ -1135,6 +1196,7 @@
 
   // Render Sidebar Filters with dynamic counts
   function renderSidebarFilters() {
+    if (!publicDataReady()) return;
     const all = getCurrentDataset();
     const facet = skip => all.filter(p => matchesFilters(p, false, skip));
     const dataset = facet('tier');
@@ -1485,6 +1547,10 @@
     const streamEl = $('#articlesStream');
     const loadMoreBtn = $('#loadMoreBtn');
     if (!streamEl) return;
+    if (!publicDataReady()) {
+      streamEl.replaceChildren(); if (loadMoreBtn) loadMoreBtn.hidden = true;
+      renderModeNote(); renderRangeBar(); syncUrl(); return;
+    }
 
     const doi = exactDoi(state.search);
     applyDoiSearchLayout(doi);
@@ -1923,6 +1989,9 @@
 
   let huddleLastFocus=null;
   function openHuddleModal() {
+    if (state.huddle.some(id => !STATIC_DOI_PAPERS.some(p => p.id === id)) && !publicDataReady(true)) {
+      pendingStoredHuddle = true; return;
+    }
     const modal = $('#huddleModalBackdrop');
     const body = $('#huddleModalBody');
     if (!modal || !body) return;
@@ -2126,6 +2195,7 @@
 
   // Switch App Mode (Candidates, Curated, Library, Weekly, Sources)
   function switchMode(newMode, keepRange) {
+    pendingInitialDrawer = false;
     if (!keepRange && newMode !== state.mode) state.range = defaultRange(newMode);
     state.mode = newMode;
     state.page = 1;
@@ -2775,8 +2845,9 @@
     .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
 
   if (urlParams.get('drawer') === 'first') {
-    const list = getFilteredArticles();
-    if (list.length > 0) openReaderDrawer(list[0]);
+    if (publicDataReady()) {
+      const list = getFilteredArticles(); if (list.length) openReaderDrawer(list[0]);
+    } else pendingInitialDrawer = true;
   }
 
 })();
