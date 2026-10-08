@@ -1,0 +1,21 @@
+{
+  "status": "held_candidate",
+  "productionBase": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+  "currentProduction": "0edf01932612c9f2a68bde3e638be27a42f187bf",
+  "newOfflineCases": 20,
+  "newCasesPassed": true,
+  "regressionsPassed": [
+    "test_study_services.cjs",
+    "test_study_evidence_regression.cjs",
+    "test_edge_worker.cjs",
+    "test_brief_feedback.cjs"
+  ],
+  "externalModelCalls": 0,
+  "externalMetadataCalls": 0,
+  "privatePdfReads": 0,
+  "originalUserPairReproduced": false,
+  "secondIdentityPending": true,
+  "actualFirstApiAbstractRecovered": false,
+  "boundedProviderAttempts": 2,
+  "productionDeployed": false
+}
