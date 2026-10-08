@@ -350,7 +350,7 @@
     "scope": "Actual integrated six-file public build, local intercepted Chromium only; no production API test"
   },
   "liveCustomDomain": "not_measured_existing_network_or_browser_restrictions_not_bypassed",
-  "productionProtectedPdfReadback": "pending_existing_website_passphrase_test_no_saved_supported_session",
+  "productionProtectedPdfReadback": "failed_user_reported_2026-10-08T03:56:23Z_approx",
   "pdfTestUrl": "https://learn.dryz.info/api/acquire/retry?doi=10.1016%2Fj.jacc.2024.02.026",
   "pdfSourceCheckUrl": "https://learn.dryz.info/api/fulltext-source?doi=10.1016%2Fj.jacc.2024.02.026",
   "productionPDF_GITHUB_COMMIT": "unknown_latest_live_value_not_read",
@@ -365,5 +365,18 @@
   "rootPrivatePdfDownloads": 0,
   "rootPublisherDownloads": 0,
   "rootPrivateIndexWrites": 0,
-  "formalArchiveWrites": 0
+  "formalArchiveWrites": 0,
+  "productionFailureCheckpoint": {
+    "reportedScreenshot": "image(20261008-035640).png",
+    "observedMessage": "文献来源暂时不可用，请稍后重试。",
+    "observedRetryTimeBJT": "2026-10-08 12:01:23",
+    "mappedCode": "library_upstream",
+    "httpStatus": "not_observed",
+    "actualFailedStage": "unknown_original_stage_discarded",
+    "upstreamRetryAfter": "not_proven_default_300s_is_fallback",
+    "liveProductionPDF_GITHUB_COMMIT": "unknown",
+    "rootLiveStatusRead": "web tool inaccessible; no alternate host/tool bypass",
+    "sourceCheckRequested": "one authenticated metadata-only check, no PDF/write",
+    "B": "paused_not_deployed"
+  }
 }
