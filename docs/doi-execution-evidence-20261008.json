@@ -23,7 +23,12 @@
     "macConsumerStarted": false,
     "canonicalLedgerWritten": false,
     "formalArchiveWritten": false,
-    "testReceiptType": "synthetic offline only"
+    "testReceiptType": "synthetic offline only",
+    "execution_state": "hold",
+    "ready_to_execute": false,
+    "hold_reason": "exclusion_unverified",
+    "executorClaimed": false,
+    "ledgerLatestVerified": false
   },
   "remaining": [
     "Production protected PDF request and configured source commit unverified",

@@ -9,6 +9,8 @@ async function runAuthorized(env=process.env,http=fetch,write,log=console.log){
   if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(key=>!fields.includes(key)))throw Error('invalid_handoff_input');
   const response=await call({action:env.HANDOFF_ACTION,...input},env,http);
   if(!Object.hasOwn(response,'handoff'))throw Error('invalid_handoff_result');
+  if(response.handoff && (response.handoff.execution_state!=='hold'||response.handoff.ready_to_execute!==false||response.handoff.hold_reason!=='exclusion_unverified'
+    || (env.HANDOFF_ACTION==='authorized_claim'?response.handoff.executor_claimed:response.handoff.executorClaimed)!==false))throw Error('invalid_handoff_execution_permission');
   await write({version:1,action:env.HANDOFF_ACTION,handoff:response.handoff});
   log(JSON.stringify({received:!!response.handoff,state:env.HANDOFF_ACTION==='authorized_claim'?(response.handoff?'claimed':'none'):response.handoff?.state||'none'}));
   return response.handoff;

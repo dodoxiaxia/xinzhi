@@ -254,7 +254,8 @@
       mergeDoiJob(doi, result.job);
       if (result.found === true) {
         const handoff = result.handoff;
-        if (handoff && (!/^request-[a-f0-9]{32}$/.test(handoff.id || '') || handoff.doi !== doi || !['submitted','claimed','pending_browser','downloaded','verified','sync_pending','blocked','complete'].includes(handoff.state))) throw new Error('library_unavailable');
+        if (handoff && (!/^request-[a-f0-9]{32}$/.test(handoff.id || '') || handoff.doi !== doi || !['submitted','claimed','pending_browser','downloaded','verified','sync_pending','blocked','complete'].includes(handoff.state)
+          || handoff.execution_state !== 'hold' || handoff.ready_to_execute !== false || handoff.hold_reason !== 'exclusion_unverified' || handoff.executorClaimed !== false)) throw new Error('library_unavailable');
         if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
         const record = DOI_FULLTEXT.get(doi);
         if (record) DOI_FULLTEXT.set(doi, {...record,handoff:handoff?{id:handoff.id,state:handoff.state}:null});
@@ -975,8 +976,8 @@
     if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>`;
     const doi = p && exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
     if (record?.handoff) {
-      const labels = {submitted:'待授权接单',claimed:'接单已领取，下载待确认',pending_browser:'待授权浏览器',downloaded:'已落地，待核验',verified:'已核验，待归档',sync_pending:'各侧待同步',blocked:'授权流程暂停',complete:'回执完整，缓存待同步'};
-      return '<span class="fulltext-state">'+labels[record.handoff.state]+'</span><a href="'+esc(acquireDoiUrl(doi))+'" target="_blank" rel="noopener" class="btn-sm">查看授权请求</a>';
+      const labels = {submitted:'待授权接单',claimed:'票据已领取，执行 hold',pending_browser:'待授权浏览器',downloaded:'已落地，待核验',verified:'已核验，待归档',sync_pending:'各侧待同步',blocked:'授权流程暂停',complete:'回执完整，缓存待同步'};
+      return '<span class="fulltext-state" title="排他执行证据未接通，不得启动下载">'+labels[record.handoff.state]+'</span><a href="'+esc(acquireDoiUrl(doi))+'" target="_blank" rel="noopener" class="btn-sm">查看授权请求</a>';
     }
     const manual = record?.fulltextStatus === 'manual_needed';
     const label = manual ? '全文需人工处理' : record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';

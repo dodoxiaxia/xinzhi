@@ -64,12 +64,14 @@ async function helpers() {
   c.mergeSupplementalPaper(apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
   const manual = c.LIBRARY.papers.find(p => p.doi === '10.1234/manual');
   assert.equal(manual.fulltextStatus, 'manual_needed');assert(c.pdfDownloadLink(manual).includes('全文需人工处理'));assert(c.pdfDownloadLink(manual).includes('查看处理状态'));assert(!c.pdfDownloadLink(manual).includes('再次获取全文'));assert.equal(c.pdfDownloadUrl(manual), '');
-  for(const [status,label] of Object.entries({submitted:'待授权接单',claimed:'接单已领取，下载待确认',pending_browser:'待授权浏览器',downloaded:'已落地，待核验',verified:'已核验，待归档',sync_pending:'各侧待同步',blocked:'授权流程暂停',complete:'回执完整，缓存待同步'})) {
-    c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:true,paper:apiPaper(manual.doi,manual.title,'manual_needed'),handoff:{id:'request-'+'a'.repeat(32),doi:manual.doi,state:status}})});
+  for(const [status,label] of Object.entries({submitted:'待授权接单',claimed:'票据已领取，执行 hold',pending_browser:'待授权浏览器',downloaded:'已落地，待核验',verified:'已核验，待归档',sync_pending:'各侧待同步',blocked:'授权流程暂停',complete:'回执完整，缓存待同步'})) {
+    c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:true,paper:apiPaper(manual.doi,manual.title,'manual_needed'),handoff:{id:'request-'+'a'.repeat(32),doi:manual.doi,state:status,execution_state:'hold',ready_to_execute:false,hold_reason:'exclusion_unverified',executorClaimed:false}})});
     await c.lookupSupplementalDoi(manual.doi,true);assert(c.pdfDownloadLink(manual).includes(label),status);assert(c.pdfDownloadLink(manual).includes('查看授权请求'));assert.equal(c.pdfDownloadUrl(manual),'','handoff state does not create PDF availability');
   }
   c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:true,paper:apiPaper(manual.doi,manual.title,'available'),handoff:{id:'request-'+'a'.repeat(32),doi:'10.1234/other',state:'complete'}})});
   await c.lookupSupplementalDoi(manual.doi,true);assert.equal(c.DOI_LOOKUPS.get(manual.doi).state,'error');assert.equal(c.pdfDownloadUrl(manual),'','invalid handoff cannot import optimistic availability');
+  c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:true,paper:apiPaper(manual.doi,manual.title,'available'),handoff:{id:'request-'+'a'.repeat(32),doi:manual.doi,state:'claimed',execution_state:'ready',ready_to_execute:true,hold_reason:'exclusion_unverified',executorClaimed:true}})});
+  await c.lookupSupplementalDoi(manual.doi,true);assert.equal(c.DOI_LOOKUPS.get(manual.doi).state,'error');assert.equal(c.pdfDownloadUrl(manual),'','unverified execution permission rejected before paper mutation');
   c.fetch=async()=>({ok:true,json:async()=>({ok:true,found:false})});
   const job = { id: '00000000-0000-4000-8000-000000000001', doi: pending.doi, state: 'queued' };
   c.mergeDoiJob(pending.doi, job); assert(c.pdfDownloadLink(pending).includes('全文排队中')); assert(c.pdfDownloadLink(pending).includes('查看任务'));
@@ -113,7 +115,7 @@ async function browserChecks() {
     ['10.1234/new', apiPaper('10.1234/new', 'New clinical title')],
     ['10.1234/pending', apiPaper('10.1234/pending', 'Pending clinical title', 'pending')]
   ]);
-  const jobs = new Map();
+  const jobs = new Map(), handoffs = new Map();
   let unsupported = false;
   const context = await browser.newContext(), page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
@@ -123,7 +125,7 @@ async function browserChecks() {
     assert(['GET', 'HEAD'].includes(req.method()), 'Typing/searching/loading never sends POST');
     if (u.pathname === '/api/library') {
       if (unsupported) return route.fulfill({ status: 404, json: { error: 'not_found' } });
-      if (u.searchParams.has('doi')) { const key = u.searchParams.get('doi'), p = records.get(key), job = jobs.get(key); return route.fulfill({ json: { ok: true, found: !!p, ...(p ? { paper: p, status: p.fulltextStatus } : {}), ...(job ? { job } : {}) } }); }
+      if (u.searchParams.has('doi')) { const key = u.searchParams.get('doi'), p = records.get(key), job = jobs.get(key), handoff=handoffs.get(key); return route.fulfill({ json: { ok: true, found: !!p, ...(p ? { paper: p, status: p.fulltextStatus } : {}), ...(job ? { job } : {}),...(handoff?{handoff}:{}) } }); }
       return route.fulfill({ json: { ok: true, papers: [...records.values()] } });
     }
     if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { ok: true, found: false, canGenerate: false } });
@@ -158,6 +160,10 @@ async function browserChecks() {
     assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(),0);
     assert.equal(await page.getByRole('link', {name:'再次获取全文',exact:true}).count(),0);
     await page.getByRole('link', {name:'查看处理状态',exact:true}).waitFor();
+    handoffs.set('10.1234/manual',{id:'request-'+'a'.repeat(32),doi:'10.1234/manual',state:'claimed',execution_state:'hold',ready_to_execute:false,hold_reason:'exclusion_unverified',executorClaimed:false});
+    await page.locator('[data-action="refresh-doi-status"]').click();await page.getByText('票据已领取，执行 hold',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('link',{name:'查看授权请求',exact:true}).count(),1);assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(),0);
+    assert((await page.getByText('票据已领取，执行 hold',{exact:true}).getAttribute('title')).includes('不得启动下载'));
     await page.locator('#globalSearch').fill('10.1234/unknown'); await page.locator('.doi-empty').waitFor();
     assert.equal(await page.locator('.doi-empty a').getAttribute('href'), '/api/acquire?doi=10.1234%2Funknown');
     await page.locator('#globalSearch').fill('10.1234/hold'); await page.locator('.doi-identity-notice').waitFor();
