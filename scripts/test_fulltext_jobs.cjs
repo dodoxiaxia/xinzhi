@@ -91,8 +91,23 @@ async function claimRun(h) {
  h.values.set(jobKey,original);assert.equal((await claimRun(h)).state,'available');
  h=await setup();await enqueue(h);const queuedRecord=JSON.parse(h.values.get(jobKey));h.values.set(jobKey,JSON.stringify({...queuedRecord,state:'running',attempts:3,owner:'9876',leaseId:'00000000-0000-4000-8000-000000000002',leaseUntil:Date.now()+60000}));
  assert.equal((await (await service(h,{action:'claim'})).json()).job,null);assert.equal(JSON.parse(h.values.get(jobKey)).state,'running','third active attempt is not prematurely failed');
+ // Ten older backoff tasks must not hide an eligible eleventh task.
+ h=await setup();await enqueue(h);
+ const target=JSON.parse(h.values.get(jobKey));
+ for(let n=0;n<10;n++){
+  const blockedDoi='10.1000/backoff-'+n,createdAt=Date.now()-100000+n,id=webcrypto.randomUUID();
+  const queueKey='library:queue:'+String(createdAt).padStart(13,'0')+':'+id;
+  const blocked={...target,id,doi:blockedDoi,createdAt,nextAttemptAt:Date.now()+600000,queueKey,attempts:1};
+  h.values.set('library:job:'+blockedDoi,JSON.stringify(blocked));h.values.set(queueKey,JSON.stringify({id,doi:blockedDoi}));
+ }
+ const firstPage=await (await service(h,{action:'claim'})).json();assert.equal(firstPage.job,null);assert.equal(typeof firstPage.cursor,'string');
+ const nextPage=await (await service(h,{action:'claim',cursor:firstPage.cursor})).json();assert.equal(nextPage.job.doi,doi);
+ assert.equal((await service(h,{action:'claim',cursor:'x'.repeat(701)})).status,400);
+ assert.equal((await service(h,{action:'claim',cursor:'x\n'})).status,400);
+ // Let the runner recover that lease, then traverse those same deferred entries.
+ h.values.set(jobKey,JSON.stringify(target));
  // Drive the real runner module through synthetic OIDC exchange and worker API.
- h=await setup();await enqueue(h);let oidcRequests=0;const logs=[];
+ let oidcRequests=0;const logs=[];
  const http=async(url,init)=>{
   if(new URL(url).hostname==='pipelines.actions.githubusercontent.com'){oidcRequests++;assert.equal(new URL(url).searchParams.get('audience'),ENDPOINT);return Response.json({value:await token(h)});}
   assert.equal(url,ENDPOINT);return h.context.worker.fetch(new Request(url,init),h.env);
@@ -103,5 +118,15 @@ async function claimRun(h) {
  h=await setup();await enqueue(h);
  assert.equal(await runQueue({...env,GITHUB_EVENT_NAME:'push'},http,value=>logs.push(value)),1,'first push waits for a real API before claims');
  assert.equal(await runQueue({...env,GITHUB_EVENT_NAME:'push'},async()=>new Response('<html>old site</html>'),value=>logs.push(value),async()=>{}),0);
+ h=await setup({rows:[],oa:false});await enqueue(h);
+ assert.equal(await runQueue(env,http,value=>logs.push(value)),1,'manual_needed is a completed source check, not an invalid runner result');
+ assert.equal(JSON.parse(h.values.get(jobKey)).state,'manual_needed');
+ let scans=0;
+ const scanHttp=async(url,init)=>new URL(url).hostname==='pipelines.actions.githubusercontent.com'
+  ? Response.json({value:await token(h)}) : Response.json({ok:true,job:null,cursor:String(++scans)});
+ assert.equal(await runQueue(env,scanHttp,value=>logs.push(value)),0);assert.equal(scans,10,'empty continuation scans have a fixed per-batch limit');
+ const repeated=async(url,init)=>new URL(url).hostname==='pipelines.actions.githubusercontent.com'
+  ? Response.json({value:await token(h)}) : Response.json({ok:true,job:null,cursor:'same-cursor'});
+ await assert.rejects(runQueue(env,repeated,value=>logs.push(value)),/invalid_claim/,'repeated cursor never loops indefinitely');
  console.log('Fulltext jobs passed: durable enqueue/dedup, OIDC scope/signature, runner execution, verified PDF return, bounded automatic retries, KV propagation and manual recovery.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

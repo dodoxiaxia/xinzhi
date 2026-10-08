@@ -43,7 +43,7 @@ class ReleaseDecouplingTests(unittest.TestCase):
 
     def test_site_release_only_deploys_pages(self):
         workflow = (ROOT / '.github/workflows/daily.yml').read_text()
-        deploys = re.findall(r'^\s*run: (npx[^\n]+deploy[^\n]+)$', workflow, re.MULTILINE)
+        deploys = re.findall(r'^\s*(?:run: )?(npx[^\n]+deploy[^\n]+)$', workflow, re.MULTILINE)
         self.assertEqual(deploys, ['npx --yes wrangler@3 pages deploy public --project-name dryz-xinzhi --branch main --commit-dirty=true'])
         self.assertNotRegex(workflow, r'npx[^\n]*deploy --config')
         self.assertNotIn('check_fulltext_dispatcher.py /tmp/', workflow)

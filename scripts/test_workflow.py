@@ -12,6 +12,26 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/daily.yml'
 
 
+class ReleaseHeadGateTests(unittest.TestCase):
+    def test_only_actual_publishers_enter_the_serial_release_group(self):
+        source = WORKFLOW.read_text()
+        prefix, jobs = source.split('\njobs:\n', 1)
+        self.assertNotRegex(prefix, re.compile(r'^concurrency:', re.MULTILINE))
+        ignored, refresh = jobs.split('\n  refresh:\n', 1)
+        self.assertNotIn('concurrency:', ignored)
+        self.assertIn('    concurrency:\n      group: daily-refresh\n      cancel-in-progress: false', refresh)
+
+    def test_head_is_checked_before_refresh_and_immediately_before_upload(self):
+        source = WORKFLOW.read_text()
+        guards = [match.start() for match in re.finditer('python3 scripts/check_release_head.py', source)]
+        self.assertEqual(len(guards), 2)
+        self.assertLess(guards[0], source.index('run: python3 scripts/ci_daily.py'))
+        upload = source.index('npx --yes wrangler@3 pages deploy')
+        self.assertLess(guards[1], upload)
+        self.assertEqual(source[guards[1]:upload].strip(), 'python3 scripts/check_release_head.py')
+        self.assertIn("-p 'test_release_head.py'", source)
+
+
 def refresh_argument(context):
     """Evaluate the actual workflow's small expression without executing code."""
     match = re.search(r'^\s*run:\s*python3 scripts/ci_daily\.py\s*\$\{\{(.*?)\}\}\s*$', WORKFLOW.read_text(), re.MULTILINE)

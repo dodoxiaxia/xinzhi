@@ -799,12 +799,12 @@ async function fulltextJobInput(request) {
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   let input; try { input = JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); } catch { libraryFail('job_bad_request', 400); }
   if (!input || typeof input !== 'object' || Array.isArray(input) || !['claim','run'].includes(input.action)
-      || Object.keys(input).some(k => !(input.action === 'claim' ? ['action'] : ['action','doi','id','leaseId']).includes(k))
+      || Object.keys(input).some(k => !(input.action === 'claim' ? ['action','cursor'] : ['action','doi','id','leaseId']).includes(k))
+      || (input.action === 'claim' && input.cursor !== undefined && (typeof input.cursor !== 'string' || !/^[\x21-\x7e]{1,700}$/.test(input.cursor)))
       || (input.action === 'run' && (!libraryDoi(input.doi) || input.doi !== libraryDoi(input.doi) || !/^[a-f0-9-]{36}$/.test(input.id || '') || !/^[a-f0-9-]{36}$/.test(input.leaseId || '')))) libraryFail('job_bad_request', 400);
   return input;
 }
-async function fulltextClaim(env, owner) {
-  let cursor;
+async function fulltextClaim(env, owner, cursor) {
   // Bound KV operations even when every listed task needs expiration cleanup.
   for (let page = 0; page < 2; page++) {
     let listing; try { listing = await env.QL_KV.list({ prefix:FULLTEXT_QUEUE_PREFIX, limit:5, ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
@@ -830,12 +830,13 @@ async function fulltextClaim(env, owner) {
       if (job.nextAttemptAt > now) continue;
       const claimed = { ...job, state:'running', owner, leaseId:crypto.randomUUID(), leaseUntil:now + FULLTEXT_JOB_LEASE_MS, updatedAt:now, attempts:job.attempts + 1 };
       await libraryPut(env.QL_KV, FULLTEXT_JOB_PREFIX + job.doi, JSON.stringify(claimed), { expirationTtl:604800 });
-      return { id:job.id, doi:job.doi, leaseId:claimed.leaseId };
+      return { job:{ id:job.id, doi:job.doi, leaseId:claimed.leaseId } };
     }
-    if (listing.list_complete || !listing.cursor) break;
+    if (listing.list_complete) return { job:null };
+    if (typeof listing.cursor !== 'string' || !/^[\x21-\x7e]{1,700}$/.test(listing.cursor)) libraryFail('library_storage', 503);
     cursor = listing.cursor;
   }
-  return null;
+  return { job:null, cursor };
 }
 async function fulltextRun(env, owner, input) {
   const key = FULLTEXT_JOB_PREFIX + input.doi, job = fulltextJobRecord(await libraryGet(env.QL_KV, key), input.doi);
@@ -887,7 +888,7 @@ async function handleFulltextWorker(request, env) {
     const owner = await fulltextJobAuthorize(request);
     libraryConfig(env);
     const input = await fulltextJobInput(request);
-    if (input.action === 'claim') return json({ ok:true, job:await fulltextClaim(env, owner) });
+    if (input.action === 'claim') return json({ ok:true, ...await fulltextClaim(env, owner, input.cursor) });
     return json({ ok:true, job:await fulltextRun(env, owner, input) });
   } catch (error) { return json({ ok:false, error:error instanceof LibraryFailure ? error.code : 'job_server' }, error instanceof LibraryFailure ? error.status : 500); }
 }

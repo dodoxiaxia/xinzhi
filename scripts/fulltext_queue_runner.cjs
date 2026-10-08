@@ -48,10 +48,17 @@ async function runQueue(env = process.env, http = fetch, log = console.log, wait
     }
     if (!ready) { log(JSON.stringify({ processed:0, status:'waiting_for_website_deploy' })); return 0; }
   }
-  let processed = 0;
-  for (let n = 0; n < 5; n++) {
-    const result = await call({ action:'claim' }, env, http);
-    if (!result.job) break;
+  let processed = 0, cursor = '', scans = 0;
+  const seen = new Set();
+  while (processed < 5 && scans < 10) {
+    scans++;
+    const result = await call({ action:'claim', ...(cursor ? { cursor } : {}) }, env, http);
+    if (!result.job) {
+      if (result.cursor === undefined) break;
+      if (typeof result.cursor !== 'string' || !/^[\x21-\x7e]{1,700}$/.test(result.cursor) || seen.has(result.cursor)) throw new Error('invalid_claim');
+      seen.add(result.cursor); cursor = result.cursor; continue;
+    }
+    cursor = ''; seen.clear();
     const job = result.job;
     if (typeof job.doi !== 'string' || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(job.doi)
         || typeof job.id !== 'string' || !/^[a-f0-9-]{36}$/.test(job.id) || typeof job.leaseId !== 'string' || !/^[a-f0-9-]{36}$/.test(job.leaseId)) throw new Error('invalid_claim');
@@ -61,9 +68,9 @@ async function runQueue(env = process.env, http = fetch, log = console.log, wait
       try { completed = await call({ action:'run', id:job.id, doi:job.doi, leaseId:job.leaseId }, env, http); break; }
       catch (error) { if (error.message !== 'job_sync_pending' || retry === 15) throw error; await wait(5000); }
     }
-    if (!completed.job || !['available','pending','review','queued','failed'].includes(completed.job.state)) throw new Error('invalid_result');
+    if (!completed.job || !['available','pending','manual_needed','review','queued','failed'].includes(completed.job.state)) throw new Error('invalid_result');
     processed++;
-    log(JSON.stringify({ task:n + 1, state:completed.job.state, attempts:completed.job.attempts }));
+    log(JSON.stringify({ task:processed, state:completed.job.state, attempts:completed.job.attempts }));
   }
   log(JSON.stringify({ processed }));
   return processed;

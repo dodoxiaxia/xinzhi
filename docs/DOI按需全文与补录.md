@@ -49,6 +49,8 @@ Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行�
 
 来源临时故障最多尝试 3 次，自动重试间隔分别至少 1 分钟、10 分钟，实际执行仍等待后台调度；没有可用全文或来源关联失败就结束，不无限重试。任务超过 24 小时仍未执行会显示失败并允许重新提交，已完成任务保留 7 天。首次提交计入现有日额度，自动重试不重复计额。
 
+流程审查修复：runner 接受 `manual_needed` 为一次查询已结束的结果，继续处理同批其它任务；不会把没有 PDF 来源误报为工作流异常。领取接口返回受保护的分页游标，runner 可继续越过前面尚未到重试时间的任务；每次领取最多检查 10 条，每批最多 10 次领取、执行 5 篇，防止无限扫描。游标只在 OIDC 授权工作接口中使用，公开队列信号仍只有有无任务。
+
 GitHub job 使用 `id-token: write` 临时身份调用 `/api/fulltext-worker`，固定验证 GitHub issuer/JWKS、RS256 签名、audience、本仓库名称和 numeric ID、main 分支、指定 `fulltext.yml`、GitHub 托管 runner、有效期和事件类型。它不使用或接收用户口令、GitHub PDF 凭据、PDF 正文或模型 Secret。文件检索仍在网站受保护后台执行，PDF 存入原 QL_KV，由网站供下载；不新建 GitHub 私有库写入或 Mac/Drive 归档流程。
 
 原方案拟复用 `xinzhi-cron` 既有 `GH_TOKEN`（仅本仓库 Actions 读写），但更换现网调度器职责及相关部署尚未完成协调。本 UI 候选不执行该切换、不申请新 token 或扩大权限；原 GitHub 两小时和每日调度保留。队列调度器源码仍保留供独立任务验收，不再作为 Pages 发布门禁。
