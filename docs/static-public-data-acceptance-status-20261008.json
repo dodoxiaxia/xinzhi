@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-10-08T00:14:25Z",
+  "productionMain": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+  "stateAtRead": "622b0d719496e84ac61af6ac155dcd73861dc0f6",
+  "deploymentAuthorizedForThisStep": false,
+  "newCandidateSource": null,
+  "newCandidateTestsRun": false,
+  "productionChanges": 0,
+  "previewRouteRequests": 0,
+  "credentialsRead": false,
+  "permissionChanges": 0,
+  "reviewDecision": "AWAIT_STATIC_CANDIDATE",
+  "dynamicCandidateDecision": "HOLD_DO_NOT_MERGE",
+  "dynamicCandidateSource": "53bee6b1f5b5b9cd1f5cca4bcede8921806e4b10",
+  "lastRefusal": {
+    "status": 403,
+    "errorCode": 1010,
+    "ray": "a470d49d4c81c47e-LAX",
+    "utc": "2026-10-07T23:54:21Z",
+    "resolved": false
+  },
+  "recentAutomation": {
+    "scheduled": {
+      "run": 37706195711,
+      "refresh": "success"
+    },
+    "unconfirmedFastDispatch": {
+      "run": 37706072130,
+      "ignoredDispatch": "success",
+      "refresh": "skipped"
+    }
+  },
+  "requiredIntegrationTouchpoints": [
+    "scripts/build_public.py",
+    "scripts/release_integrity.py",
+    "scripts/package_release.py",
+    "scripts/ci_daily.py",
+    "scripts/public_data_bundle.py",
+    "public-data-loader.js",
+    "edge/public-data.js",
+    "edge/_worker.js",
+    ".github/workflows/daily.yml"
+  ],
+  "gateStatuses": {
+    "exactCandidateAndFreshState": "pending",
+    "controlledPublicFileInventory": "pending",
+    "buildProvenanceAndPayloadIntegrity": "pending",
+    "dailyChangeDetection": "pending",
+    "staticAssetsRouting": "pending",
+    "browserCompatibilityAndRecovery": "pending",
+    "privatePdfAndApiAuthorizationRegression": "pending",
+    "realDeploymentReadbackAndResourceEvidence": "pending"
+  }
+}
+
