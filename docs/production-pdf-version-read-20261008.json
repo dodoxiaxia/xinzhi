@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-10-08T00:38:38.463181+00:00",
+  "target": "production.PDF_GITHUB_COMMIT",
+  "readOnly": true,
+  "projectRequests": 1,
+  "applicationRequests": 0,
+  "configWrites": 0,
+  "deploymentsCreated": 0,
+  "otherEnvironmentValuesRetained": false,
+  "httpStatus": 200,
+  "productionConfigFieldPresent": true,
+  "envVarsFieldPresent": true,
+  "envVarsIsObject": true,
+  "envVarCount": 7,
+  "canonicalDeploymentId": "9cc7e31e-07fc-43e1-979c-005c5722cf16",
+  "configured": false,
+  "nonSecretVersionFormatValid": false,
+  "runId": 37708828296,
+  "jobId": 113089601607,
+  "sourceSha": "b11401444e2b198601827f808655450fea2b0c6d",
+  "temporaryWorkflowRemoved": true,
+  "scope": "One authorized read of the non-secret PDF_GITHUB_COMMIT only; no other environment values retained"
+}
