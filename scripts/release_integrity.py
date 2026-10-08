@@ -12,6 +12,11 @@ PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_work
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
     'scripts/ci_daily.py',
+    'scripts/public_precompute_pending.py', 'data/public-precompute-pending.json',
+    'editorial/sol-public-abstract-20261008-gap/sources.json',
+    'editorial/sol-public-abstract-20261008-gap/gap-cache.json',
+    'editorial/sol-public-abstract-20261008b-gap/sources.json',
+    'editorial/sol-public-abstract-20261008b-gap/gap-cache.json',
     '.github/workflows/fulltext.yml', 'scripts/fulltext_queue_runner.cjs',
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',

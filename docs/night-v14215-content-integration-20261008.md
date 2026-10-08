@@ -1,0 +1,11 @@
+# v14.2.15：五篇公开摘要补齐与持续待办
+
+基于已成功发布的14覆盖策略7ed3157，恢复最新生产state52f1be0ac1b7d34b1a5584a44195f1cbe3687a23，合入独立审核包fe275efd9d43b3f6e3590daed25cdd4b5d4fa9f5。五篇都仍在当前24榜，当前identity/原文sourceHash与审核输入逐一一致，翻译和速览均通过原验证器；19篇复用。不用固定旧gap-board覆盖动态选题。
+
+最新14保存产物题名24、翻译/速览19、study0。本候选实际动态WEEK_BOARD重建后题名/翻译/速览24、核心待办0、study缺24。不能把核心完成称为所有研究结构完成、全文精读或稳定模型生成；最终线上覆盖以新run/state为准。
+
+现有ci_daily在WEEK_BOARD之后、BUILD之前，调用只读public_precompute_pending工具，按当前identity/sourceHash和现行任务版本复验，有限待办原子保存到data/public-precompute-pending.json，随已有state保存；last-refresh写核心coverage、pendingPapers、studyMissing与reasonCounts。new identity、源hash变化、身份mapping复核、已有身份缺任务分别记录。错误来源或格式停止本次损坏发布，保留旧待办；正常新缺项继续网站更新，不填旧日期或清缓存。标题/摘要输出来自公开源，待办不会调用模型、写runtime缓存/ledger或自动收费。queueKey不是收费请求ID，也不能替代实际生成校验。
+
+发布指纹明确增加两组补充sources/cache、待办工具和队列，保留原有代码/公开六文件/私有边界。daily复用当前触发，添加工具与gap回归；GLM、配置端点、预算attempt-limit8、暂停与未知余额守卫不改，不新增调度或权限。Sol会话审核包不是已经验证可被CI自动调用的API，生成连通/费用问题仍如实保留。
+
+9项待办/桥接（含完整24源shape、缓存ledger不变、坏source保留旧队列）、3项补充overlay、16项覆盖、30项旧pipeline检查通过。后续完整门槛和发布回执另录。不含静态性能或数字guard候选；共享缓存删除、鉴权扩大、HSTS等报告建议没有作为本次更改。

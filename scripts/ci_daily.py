@@ -145,6 +145,32 @@ def weekly_content_status(text, counts, fast):
             'publicationPolicy': policy}
 
 
+def record_precompute_pending(root):
+    """Persist a finite source-bound queue via the existing state save, without generation."""
+    from public_precompute_pending import pending_manifest
+    from public_editorial_overlay import DIRECTORY, SUPPLEMENTS
+    from week_precompute import atomic
+    board_path = root / 'data/weekly-board.json'
+    if not board_path.exists():
+        return {'status': 'unavailable', 'contentComplete': False}
+    board = json.loads(board_path.read_text())
+    cache_path = root / 'data/week-precompute-cache.json'
+    caches = [json.loads(cache_path.read_text())] if cache_path.exists() else []
+    prior_sources = []
+    for directory in (DIRECTORY, *(directory for directory, _ in SUPPLEMENTS)):
+        path = root / directory / 'sources.json'
+        if path.exists():
+            prior_sources.append(json.loads(path.read_text()))
+    pending = pending_manifest(board, caches, prior_sources)
+    atomic(root / 'data/public-precompute-pending.json', pending)
+    return {key: pending[key] for key in ('selected', 'coverage', 'pendingPapers', 'contentComplete', 'studyMissing')} | {
+        'status': 'empty' if not pending['selected'] else 'complete' if pending['contentComplete'] else 'pending',
+        'contentComplete': bool(pending['selected'] and pending['contentComplete']),
+        'reasonCounts': {reason: sum(item['reason'] == reason for item in pending['items']) for reason in sorted({item['reason'] for item in pending['items']})},
+        'queuePath': 'data/public-precompute-pending.json', 'externalModelApiRequests': 0,
+        'runtimeCacheWrites': 0, 'ledgerWrites': 0}
+
+
 def content_hash():
     """Hash every public asset, ignoring only known bundle refresh timestamps."""
     if not (ROOT / 'public' / 'public.js').exists():
@@ -224,6 +250,10 @@ def main():
     code = execute(WEEK_BOARD, 180, build=True)
     if code:
         return finish('failed', ['weekly public-abstract board failed'])
+    try:
+        report['precompute'] = record_precompute_pending(ROOT)
+    except (ValueError, TypeError, KeyError, OSError, AttributeError) as exc:
+        return finish('failed', ['public precompute queue failed: ' + type(exc).__name__])
     code = execute(BUILD, 300, build=True)
     if code:
         return finish('failed', ['public build failed'])
