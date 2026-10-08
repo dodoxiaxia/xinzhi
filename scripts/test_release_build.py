@@ -21,7 +21,7 @@ def synthetic_root(root):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
                  'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
-                 'publication_dates.py', 'journal_metrics.py'):
+                 'publication_dates.py', 'journal_metrics.py', 'publication_status.py'):
         shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
     for module in (snapshot_apply, library_sync):
         source = Path(module.__file__)
@@ -32,6 +32,8 @@ def synthetic_root(root):
                     root / 'config/public_library_adjudications.json')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'config/journal-metrics.json',
                     root / 'config/journal-metrics.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/publication-status.json',
+                    root / 'config/publication-status.json')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
                     root / 'journal-metrics.js')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'citation-export.js', root / 'citation-export.js')
@@ -68,6 +70,7 @@ class ReleaseBuildTests(unittest.TestCase):
             self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
             for name in ('app.js', 'citation-export.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
                          'config/public_library_adjudications.json',
+                         'scripts/publication_status.py', 'config/publication-status.json',
                          'editorial/public_library_snapshot.json',
                          'editorial/public_library_snapshot_manifest.json'):
                 with self.subTest(input=name):

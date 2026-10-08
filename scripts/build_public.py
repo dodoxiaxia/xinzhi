@@ -10,6 +10,7 @@ from sync_public_library import load_adjudications
 from publication_dates import DATE_CORRECTIONS, canonical_publication_date
 from journal_metrics import public_registry
 from public_library_quality import QUALITY_FIELDS, project_public_library
+from publication_status import annotate_publication, checked_records
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
@@ -75,8 +76,9 @@ def doi_adjudication_registry():
     }}
 def public_paper(p,editorial_drafts=None):
     from abstract_quality import normalize_paper
-    p=normalize_paper(p)
+    p=annotate_publication(normalize_paper(p), ROOT)
     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
+    if p.get('publicationStatus'):out['publicationStatus']=p['publicationStatus']
     if p.get('abstractStatus') in {'structured','available','missing','unverified','non_abstract_metadata'}:out['abstractStatus']=p['abstractStatus']
     if p.get('abstractSource') in {'Crossref','PubMed','RSS','Europe PMC'}:
         out['abstractSource']=p['abstractSource']
@@ -238,7 +240,7 @@ def make_radar(candidates,tz=None):
     pools={k:{} for k in ('jn','pub','tier','design','tag')}
     def idx(kind,val):
         d=pools[kind];return d.setdefault(val,len(d))
-    rows=[];seen=set();date_bases={}
+    rows=[];seen=set();date_bases={};publication_statuses={}
     for source_record in a.get('rows',[]):
         r=canonical_publication_date(source_record)
         if r.get('datePrecision')!='day':continue
@@ -250,17 +252,22 @@ def make_radar(candidates,tz=None):
         j=r.get('journal','');url='https://doi.org/'+r['doi'] if r.get('doi') else ''
         cj=_RADAR_JOURNAL_FIX.get(clean_journal_name(j),clean_journal_name(j))
         f=full.get(str(r['pmid']),{})
-        atext=' '.join(x.get('t','') for x in f.get('a',[]))
+        atext=' '.join((x.get('l','')+': ' if x.get('l') else '')+x.get('t','') for x in f.get('a',[]))
         pts=tuple(r.get('pubTypes',()))+tuple(f.get('pt',()))
+        annotated=annotate_publication(dict(r,summary=atext,pubTypes=pts,
+            pubmedRelations=f.get('pubmedRelations',r.get('pubmedRelations',()))), ROOT)
+        if annotated.get('publicationStatus'):
+            publication_statuses[str(r['pmid'])]=annotated['publicationStatus']
         if f.get('a') and r['date']>=floor:
             absmap[str(r['pmid'])]=[[x.get('l',''),x.get('t','')] for x in f['a']]
         rows.append([r['pmid'],r.get('doi',''),r['date'],idx('jn',cj),idx('pub',classify_publisher(j,url)),
-                     idx('tier',classify_clinical_tier(j,r['title'])),idx('design',classify_study_design(r['title'],atext,pts)),
+                     idx('tier',classify_clinical_tier(j,r['title'])),idx('design',annotated['studyDesign']),
                      [idx('tag',t) for t in extract_tags(r['title'],atext)],r['title']])
     if not rows:return None
     lists={k:[v for v,_ in sorted(d.items(),key=lambda kv:kv[1])] for k,d in pools.items()}
     return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):tz['pmid:%s'%r[0]] for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows,
-            **({'dateBases':date_bases} if date_bases else {})}
+            **({'dateBases':date_bases} if date_bases else {}),
+            **({'publicationStatuses':publication_statuses} if publication_statuses else {})}
 
 def validate_public(text):
     forbidden=(r'/Users/',r'/home/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/')
@@ -271,6 +278,7 @@ def main():
     build_before = provenance(ROOT)
     inputs_before = build_before['inputs']
     legacy_guides()  # Required publication registry, even when article lists are empty.
+    checked_records(str(ROOT))  # Missing official-status evidence blocks a complete release.
     DEST.mkdir(exist_ok=True)
     extra={p.name for p in DEST.iterdir()}-PUBLIC
     if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))

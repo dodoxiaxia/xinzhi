@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-08",
+  "records": [
+    {
+      "pmid": "41224473",
+      "doi": "10.1136/bmj-2024-083382",
+      "title": "Prevention of acute myocardial infarction induced heart failure by intracoronary infusion of mesenchymal stem cells: phase 3 randomised clinical trial (PREVENT-TAHA8).",
+      "pubTypes": [
+        "Journal Article",
+        "Randomized Controlled Trial",
+        "Clinical Trial, Phase III",
+        "Multicenter Study",
+        "Retracted Publication"
+      ],
+      "relations": [
+        {
+          "type": "ExpressionOfConcernIn",
+          "pmid": "41224475"
+        },
+        {
+          "type": "ErratumIn",
+          "pmid": "41916658"
+        },
+        {
+          "type": "RetractionIn",
+          "pmid": "41916660"
+        }
+      ],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/41224473/"
+      ]
+    },
+    {
+      "pmid": "41916660",
+      "doi": "10.1136/bmj.s579",
+      "title": "RETRACTION: Prevention of acute myocardial infarction induced heart failure by intracoronary infusion of mesenchymal stem cells: phase 3 randomised clinical trial (PREVENT-TAHA8).",
+      "pubTypes": [
+        "Journal Article",
+        "Retraction Notice"
+      ],
+      "relations": [
+        {
+          "type": "RetractionOf",
+          "pmid": "41224473"
+        }
+      ],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/41916660/"
+      ]
+    },
+    {
+      "pmid": "41224475",
+      "doi": "10.1136/bmj.r2388",
+      "title": "EXPRESSION OF CONCERN: Prevention of acute myocardial infarction induced heart failure by intracoronary infusion of mesenchymal stem cells: phase 3 randomised clinical trial.",
+      "pubTypes": [
+        "Journal Article",
+        "Expression of Concern"
+      ],
+      "relations": [
+        {
+          "type": "ExpressionOfConcernFor",
+          "pmid": "41224473"
+        }
+      ],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/41224475/"
+      ]
+    },
+    {
+      "pmid": "41412600",
+      "doi": "10.1136/bmj.r2558",
+      "title": "RETRACTION: Intraosseous versus intravenous vascular access in upper extremity among adults with out-of-hospital cardiac arrest: cluster randomised clinical trial (VICTOR trial).",
+      "pubTypes": [
+        "Journal Article",
+        "Retraction Notice"
+      ],
+      "relations": [
+        {
+          "type": "RetractionOf",
+          "pmid": "39043416"
+        }
+      ],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/41412600/"
+      ]
+    },
+    {
+      "pmid": "42104840",
+      "doi": "10.1161/circheartfailure.126.014205",
+      "title": "Rationale and Design of CARDIO-TTRansform, a Phase 3 Trial of Eplontersen in Transthyretin Amyloid Cardiomyopathy.",
+      "pubTypes": [
+        "Journal Article",
+        "Randomized Controlled Trial",
+        "Clinical Trial, Phase III"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/42104840/"
+      ]
+    },
+    {
+      "pmid": "41771068",
+      "doi": "10.1093/ejhf/xuaf016",
+      "title": "Rationale and design of a randomized, sham-controlled, clinical trial for evaluation of the Edwards APTURE transcatheter shunt system (ALT-FLOW II).",
+      "pubTypes": [
+        "Journal Article",
+        "Clinical Trial Protocol"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/41771068/"
+      ]
+    },
+    {
+      "pmid": "40920457",
+      "doi": "10.1002/ejhf.70013",
+      "title": "The CONDUCT-AF trial: Rationale and design of a prospective, randomized, multicentre study comparing conduction system and biventricular pacing in patients undergoing atrioventricular node ablation for heart failure with atrial fibrillation.",
+      "pubTypes": [
+        "Journal Article",
+        "Clinical Trial Protocol"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/40920457/"
+      ]
+    },
+    {
+      "pmid": "42418170",
+      "doi": "10.1001/jamacardio.2026.1686",
+      "title": "Interpreting the APERITIF Randomized Clinical Trial.",
+      "pubTypes": [
+        "Journal Article"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/42418170/",
+        "https://jamanetwork.com/journals/jamacardiology/article-abstract/2851276"
+      ],
+      "articleRole": "述评观点"
+    },
+    {
+      "pmid": "42418194",
+      "doi": "10.1001/jamacardio.2026.2069",
+      "title": "Interpreting the APERITIF Randomized Clinical Trial-Reply.",
+      "pubTypes": [
+        "Journal Article"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/42418194/",
+        "https://jamanetwork.com/journals/jamacardiology/article-abstract/2851275"
+      ],
+      "articleRole": "述评观点"
+    },
+    {
+      "pmid": "39043416",
+      "doi": "10.1136/bmj-2024-079878",
+      "title": "Intraosseous versus intravenous vascular access in upper extremity among adults with out-of-hospital cardiac arrest: cluster randomised clinical trial (VICTOR trial).",
+      "pubTypes": [
+        "Journal Article",
+        "Randomized Controlled Trial",
+        "Comparative Study",
+        "Retracted Publication"
+      ],
+      "relations": [
+        {
+          "type": "RetractionIn",
+          "pmid": "41412600"
+        }
+      ],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/39043416/"
+      ]
+    },
+    {
+      "pmid": "42836743",
+      "doi": "10.1111/jce.70517",
+      "title": "Impact of Ganglionated Plexus Ablation on Early Recurrence After Thoracoscopic Atrial Fibrillation Ablation: A Post Hoc Analysis of the AFACT Study.",
+      "pubTypes": [
+        "Journal Article"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/42836743/"
+      ]
+    },
+    {
+      "pmid": "42836296",
+      "doi": "10.1161/circulationaha.126.080384",
+      "title": "Lipid Burden and Efficacy of Preventive PCI of Vulnerable Atherosclerotic Coronary Plaques: Post Hoc Analysis From the PREVENT Trial.",
+      "pubTypes": [
+        "Journal Article"
+      ],
+      "relations": [],
+      "sources": [
+        "https://pubmed.ncbi.nlm.nih.gov/42836296/"
+      ]
+    }
+  ]
+}
