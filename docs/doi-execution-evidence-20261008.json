@@ -1,0 +1,34 @@
+{
+  "lfsReadExit": 0,
+  "bytes": 598792,
+  "pdfHeader": true,
+  "sha256": "e09bac70ec8e828f7927c36a724c59dd29114f6f6a397a4d136af4fe498024b1",
+  "publisherDownloads": 0,
+  "strictVerified": true,
+  "pages": 13,
+  "githubCommit": "401a33e5fc293f02057858695ef454856e7f42db",
+  "doi": "10.1016/j.jacc.2024.02.026",
+  "method": "existing strict verifier dual parsers/all pages/title/DOI",
+  "productionAuthenticatedRequestVerified": false,
+  "macDriveReadBackByThisTask": false,
+  "evidenceType": "real_existing_original_readback",
+  "motherIndex": {
+    "rows": 1509,
+    "sha256": "3cc7808a87a04608a53dc7624de1ead789ab354cb63e3f4d9edd43d6162e9f5d"
+  },
+  "originalAcquisition": "existing authorized Git LFS download protocol; one existing object",
+  "authorizedBridge": {
+    "productionClaimExecuted": false,
+    "productionReceiptExecuted": false,
+    "macConsumerStarted": false,
+    "canonicalLedgerWritten": false,
+    "formalArchiveWritten": false,
+    "testReceiptType": "synthetic offline only"
+  },
+  "remaining": [
+    "Production protected PDF request and configured source commit unverified",
+    "Mac/Drive content readback unverified in this task",
+    "Safe authorized browser tool and cross-executor exclusion not connected",
+    "New canonical receipt publication/formal archive requires exact scope confirmation"
+  ]
+}

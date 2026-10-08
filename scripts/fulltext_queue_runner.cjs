@@ -29,6 +29,7 @@ async function call(input, env, http) {
   const body = await readJson(response);
   if (!response.ok || !body || body.ok !== true) {
     const error = new Error(response.status === 409 && body.error === 'job_stale' ? 'job_sync_pending' : 'worker_unavailable');
+    error.code = ['job_disabled','job_bad_request','job_stale','job_auth','library_paused','library_storage','library_identity'].includes(body?.error) ? body.error : 'worker_unavailable';
     error.status = response.status; throw error;
   }
   return body;
@@ -61,12 +62,12 @@ async function runQueue(env = process.env, http = fetch, log = console.log, wait
       try { completed = await call({ action:'run', id:job.id, doi:job.doi, leaseId:job.leaseId }, env, http); break; }
       catch (error) { if (error.message !== 'job_sync_pending' || retry === 15) throw error; await wait(5000); }
     }
-    if (!completed.job || !['available','pending','review','queued','failed'].includes(completed.job.state)) throw new Error('invalid_result');
+    if (!completed.job || !['available','pending','review','queued','failed','manual_needed'].includes(completed.job.state)) throw new Error('invalid_result');
     processed++;
     log(JSON.stringify({ task:n + 1, state:completed.job.state, attempts:completed.job.attempts }));
   }
   log(JSON.stringify({ processed }));
   return processed;
 }
-module.exports = { runQueue, identityToken };
+module.exports = { runQueue, identityToken, call };
 if (require.main === module) runQueue().catch(error => { console.error(['oidc_unavailable','job_sync_pending','invalid_claim','invalid_result','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'fulltext_worker_unavailable'); process.exitCode = 1; });
