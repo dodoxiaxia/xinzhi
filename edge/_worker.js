@@ -764,13 +764,18 @@ function authorizedRecord(value, doi = '') {
 }
 function authorizedPublic(value, doi = '') {
   const record = authorizedRecord(value, doi); if (!record) return null;
-  const messages = { submitted:'授权请求已提交，尚未领取。网站不会自动唤醒 Mac。', claimed:'受控接单流程已领取；尚未确认 Mac 下载领取。',
+  const messages = { submitted:'授权请求已提交，尚未领取。网站不会自动唤醒 Mac。', claimed:'交接票据已领取；排他执行证据未接通，保持 hold，不得启动下载。',
     pending_browser:'执行者报告待授权浏览器处理，尚无全文核验回执。', downloaded:'执行者报告文件已落地，尚未核验。', verified:'已收到本地严格核验回执，归档各侧尚待确认。',
-    sync_pending:'全文核验回执已到，部分归档侧仍待同步。', blocked:'授权流程已暂停，需要处理具体阻塞后确认恢复。', complete:'已核对受控执行者三端回读回执及 GitHub 原件。' };
-  return { id:record.id, doi:record.doi, state:record.state, message:messages[record.state], executorClaimed:record.executorProven === true,
+    sync_pending:'全文核验回执已到，部分归档侧仍待同步。', blocked:'授权流程已暂停，需要处理具体阻塞后确认恢复。', complete:'已核对回执指定版本的三端证明及 GitHub 原件；未授予执行许可。' };
+  return { id:record.id, doi:record.doi, state:record.state, message:messages[record.state], ...authorizedExecutionHold(),executorClaimed:false,receiptVerified:record.receiptVerified === true,
+    createdAt:record.createdAt,...(Number.isSafeInteger(record.claimedAt)&&record.claimedAt>=record.createdAt?{claimedAt:record.claimedAt}:{}),
     requestVersion:record.requestVersion,...(record.claimProof ? {claimProof:record.claimProof} : {}),
-    archive:{ complete:record.archiveComplete === true, sides:record.archiveSides || {mac:'pending',github:'pending',drive:'pending'} },
+    ledgerLatestVerified:false,archive:{ complete:record.archiveComplete === true, sides:record.archiveSides || {mac:'pending',github:'pending',drive:'pending'} },
     ...(record.reason ? { reason:record.reason } : {}) };
+}
+function authorizedExecutionHold() {
+  // No exclusion verifier/consumer bridge exists in this candidate. Neither KV claims nor receipts grant execution.
+  return {execution_state:'hold',ready_to_execute:false,hold_reason:'exclusion_unverified'};
 }
 async function authorizedSerial(kv, name, operation) {
   let pending = authorizedOperations.get(kv); if (!pending) { pending = new Map(); authorizedOperations.set(kv, pending); }
@@ -791,11 +796,11 @@ async function authorizedSubmit(env, paper) {
 function authorizedResponse(request, record, paper) {
   const handoff = authorizedPublic(record, paper.doi);
   if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true,paper,status:paper.fulltextStatus,handoff,archive:handoff.archive },202);
-  return pdfHtml('<p>题录已保存，全文尚未完成入库。</p><p>'+pdfEscape(paper.title)+'</p><p role="status">'+pdfEscape(handoff.message)+'</p><p>请求 ID：'+pdfEscape(handoff.id)+'</p>'
+  return pdfHtml('<p>题录已保存，全文尚未完成入库。</p><p>'+pdfEscape(paper.title)+'</p><p role="status">'+pdfEscape(handoff.message)+'</p><p>执行状态：hold。排他执行证据未接通；票据和回执均不授权启动下载。</p><p>请求 ID：'+pdfEscape(handoff.id)+'</p>'
     +'<p><a href="/api/acquire?doi='+pdfEscape(encodeURIComponent(paper.doi))+'">查看请求状态</a></p><p>没有自动重试倒计时；授权工具、登录或验证码阻塞需人工处理。</p>'+pdfOfficialLink(paper.doi),202,'授权全文请求');
 }
 async function authorizedClaim(env, owner, input) {
-  // This mutex is only within one isolate. Global serialization relies on the sole OIDC workflow's concurrency group.
+  // Isolate mutex/workflow concurrency cannot prevent a different isolate claiming stale submitted KV data.
   return authorizedSerial(env.QL_KV, 'claim', async () => {
     const keys = input.doi ? [{name:AUTHORIZED_PREFIX+input.doi}] : (await env.QL_KV.list({prefix:AUTHORIZED_READY_PREFIX,limit:30})).keys;
     if (!Array.isArray(keys) || keys.length > 30) libraryFail('library_storage',503);
@@ -807,8 +812,9 @@ async function authorizedClaim(env, owner, input) {
       if (!record || record.state !== 'submitted' && !(record.state === 'claimed' && record.owner === owner)) continue;
       const attempt = await libraryGet(env.QL_KV,'library:attempt:'+record.doi);
       if (attempt && attempt.paused) { if (input.doi) libraryFail('library_paused',423); continue; }
+      const claimTime = Date.now();
       const claimed = record.state === 'claimed' ? record : { ...record,state:'claimed',owner,
-        claimId:'claim-'+crypto.randomUUID().replace(/-/g,''),updatedAt:Date.now() };
+        claimId:'claim-'+crypto.randomUUID().replace(/-/g,''),claimedAt:claimTime,updatedAt:claimTime };
       claimed.handoffOwner = 'github-workflow:'+FULLTEXT_WORKFLOW_REF+':run:'+claimed.owner;
       if (!claimed.claimProof) claimed.claimProof = await pdfDigest('SHA-256',new TextEncoder().encode(JSON.stringify([claimed.id,claimed.claimId,claimed.owner,claimed.doi,claimed.title,claimed.handoffOwner,claimed.requestVersion,claimed.idempotencyKey,'website-'+claimed.id])));
       if (record.state !== 'claimed') await libraryPut(env.QL_KV,key,JSON.stringify(claimed));
@@ -817,7 +823,7 @@ async function authorizedClaim(env, owner, input) {
       await env.QL_KV.delete(AUTHORIZED_READY_PREFIX+record.id);
       return { version:1,website_request_id:record.id,claim_id:claimed.claimId,doi:record.doi,title:record.title,
         dispatcher_run_id:claimed.owner,claim_proof:claimed.claimProof,backend_status_url:'https://learn.dryz.info/api/library?doi='+encodeURIComponent(record.doi),
-        owner:claimed.handoffOwner,request_version:claimed.requestVersion,idempotency_key:claimed.idempotencyKey,fencing_guarantee:'single_controlled_dispatcher_only',
+        owner:claimed.handoffOwner,request_version:claimed.requestVersion,idempotency_key:claimed.idempotencyKey,fencing_guarantee:'unverified',...authorizedExecutionHold(),
         official_url:'https://doi.org/'+record.doi,batch_id:'website-'+record.id,source_policy:'existing_then_oa_then_authorized',
         ledger_requirement:'existing_canonical_ledger_exact_owner_or_hold',executor_claimed:false,archive_complete:false };
     }
@@ -827,16 +833,20 @@ async function authorizedClaim(env, owner, input) {
 async function authorizedEvidence(env, record, input) {
   if (!/^[a-f0-9]{40}$/.test(input.receipt_commit || '')) libraryFail('job_bad_request',400);
   const path = 'zcode-workflows/doi-handoff-receipts/'+record.id+'.json';
-  const proof = pdfJson(await pdfRead(pdfContentsUrl(path,input.receipt_commit),262144,{token:env.GITHUB_LIBRARY_TOKEN,file:true,pauseOnDenied:true,accept:'application/vnd.github.raw+json',rawPath:pdfRawPath(path,input.receipt_commit)}));
+  const proofBytes = await pdfRead(pdfContentsUrl(path,input.receipt_commit),262144,{token:env.GITHUB_LIBRARY_TOKEN,file:true,pauseOnDenied:true,accept:'application/vnd.github.raw+json',rawPath:pdfRawPath(path,input.receipt_commit)});
+  const proof = pdfJson(proofBytes), proofSha256 = await pdfDigest('SHA-256',proofBytes);
   const content = proof && proof.content, verification = proof && proof.verification, ledger = proof && proof.ledger;
   if (!proof || proof.version !== 1 || proof.website_request_id !== record.id || proof.batch_id !== 'website-'+record.id || proof.doi !== record.doi || pdfTitle(proof.title) !== pdfTitle(record.title)
+      || proof.claim_id !== record.claimId || proof.dispatcher_run_id !== record.owner || proof.claim_proof !== record.claimProof || !Number.isSafeInteger(record.claimedAt) || record.claimedAt < record.createdAt
       || !ledger || ledger.key !== 'doi:'+record.doi || ledger.owner_request_id !== record.id || !Number.isInteger(ledger.items) || ledger.items < 871
       || ledger.handoff_owner !== record.handoffOwner || ledger.request_version !== record.requestVersion || ledger.idempotency_key !== record.idempotencyKey
-      || ledger.canonical !== true || !/^[a-f0-9]{64}$/.test(ledger.snapshot_sha256 || '') || !Number.isFinite(Date.parse(ledger.checked_at || ''))
-      || Date.parse(ledger.checked_at) < record.createdAt || Date.parse(ledger.checked_at) > Date.now()+300000
+      || !Number.isSafeInteger(ledger.snapshot_bytes) || ledger.snapshot_bytes < 1 || ledger.snapshot_bytes > 16777216
+      || ledger.ownership_checked !== true || typeof ledger.owner_queue !== 'string' || !ledger.owner_queue.trim() || ledger.owner_queue.length > 256 || /[\x00\r\n]/.test(ledger.owner_queue)
+      || ledger.canonical !== true || !/^[a-f0-9]{64}$/.test(ledger.snapshot_sha256 || '') || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)$/.test(ledger.checked_at || '') || !Number.isFinite(Date.parse(ledger.checked_at || ''))
+      || Date.parse(ledger.checked_at) < record.claimedAt || Date.parse(ledger.checked_at) < Date.now()-300000 || Date.parse(ledger.checked_at) > Date.now()+30000
       || !content || !/^[a-f0-9]{64}$/.test(content.sha256 || '') || !Number.isInteger(content.bytes) || content.bytes < 8 || content.bytes > LIBRARY_MAX_PDF_BYTES
       || !Number.isInteger(content.pages) || content.pages < 1 || !verification || verification.verified !== true || verification.method !== 'dual_parser_all_pages_title_doi') libraryFail('job_bad_request',409);
-  const sides = proof.sides || {}, state = {mac:'pending',github:'pending',drive:'pending'}; let actualGithubIndex = '', motherRowVerified = false;
+  const sides = proof.sides || {}, state = {mac:'pending',github:'pending',drive:'pending'}; let actualGithubIndex = '', motherRowVerified = false, cacheCandidate;
   const good = side => side && side.verified === true && side.sha256 === content.sha256 && side.bytes === content.bytes;
   if (!good(sides.mac) || sides.mac.identity_verified !== true) libraryFail('job_bad_request',409); state.mac = 'verified';
   if (good(sides.github)) {
@@ -846,14 +856,17 @@ async function authorizedEvidence(env, record, input) {
       const fetched = await libraryGithub({doi:record.doi,title:record.title},{...env,PDF_GITHUB_COMMIT:sides.github.commit,DOI_LOOKUP_LATEST_MAIN:'false'},{signal:controller.signal});
       if (!fetched || fetched.bytes.length !== content.bytes || await pdfDigest('SHA-256',fetched.bytes) !== content.sha256) libraryFail('library_identity',409);
       const stored = libraryPaper(await libraryGet(env.QL_KV,LIBRARY_PREFIX+record.doi),record.doi); if (!stored) libraryFail('library_identity',409);
-      await librarySave(env.QL_KV,{...stored,fulltextStatus:'available'},fetched,'');state.github = 'verified'; actualGithubIndex = fetched.indexSha256; motherRowVerified = fetched.source === 'github';
+      cacheCandidate = {paper:{...stored,fulltextStatus:'available'},fetched};state.github = 'verified'; actualGithubIndex = fetched.indexSha256; motherRowVerified = fetched.source === 'github';
     } finally { clearTimeout(timer); }
   }
   if (good(sides.drive) && sides.drive.account === 'dryz@dryz.info' && sides.drive.content_read_back === true && /^[A-Za-z0-9_-]{10,100}$/.test(sides.drive.file_id || '') && sides.drive.root_id === '1TE_Vk8ySIdN9-1XmF7AaP1momKEsjYyE') state.drive = 'verified';
   const indexes = proof.indexes || {}, fingerprints = ['mac','github','drive'].map(side => indexes[side] && indexes[side].sha256);
-  const complete = motherRowVerified && actualGithubIndex === fingerprints[1] && Object.values(state).every(value=>value==='verified') && fingerprints.every(value=>/^[a-f0-9]{64}$/.test(value || '') && value === fingerprints[0]);
+  const complete = motherRowVerified && indexes.github && indexes.github.commit === sides.github.commit && actualGithubIndex === fingerprints[1] && Object.values(state).every(value=>value==='verified') && fingerprints.every(value=>/^[a-f0-9]{64}$/.test(value || '') && value === fingerprints[0]);
   if (input.state === 'complete' && !complete) libraryFail('job_bad_request',409);
-  return { executorProven:true,archiveSides:state,archiveComplete:input.state === 'complete' && complete,receiptCommit:input.receipt_commit };
+  // All receipt validations finish before the first cache mutation. A rejected complete has no PDF/paper/archive write.
+  if (cacheCandidate) await librarySave(env.QL_KV,cacheCandidate.paper,cacheCandidate.fetched,'');
+  return { executorProven:false,receiptVerified:true,archiveSides:state,archiveComplete:input.state === 'complete' && complete,receiptCommit:input.receipt_commit,receiptSha256:proofSha256,
+    ledgerSnapshotSha256:ledger.snapshot_sha256,ledgerSnapshotBytes:ledger.snapshot_bytes,ledgerCheckedAt:ledger.checked_at,ledgerLatestVerified:false };
 }
 async function authorizedUpdate(env, input) {
   return authorizedSerial(env.QL_KV,input.doi,async()=>{
@@ -878,7 +891,7 @@ async function authorizedUpdate(env, input) {
     await libraryPut(env.QL_KV,key,JSON.stringify(next));return authorizedPublic(next,input.doi);
   });
 }
-async function fulltextJobAuthorize(request, authorizedOnly = false) {
+async function fulltextJobAuthorize(request) {
   const auth = request.headers.get('authorization') || '';
   if (auth.length > 16000 || !auth.startsWith('Bearer ')) libraryFail('job_auth', 401);
   const parts = auth.slice(7).split('.');
@@ -887,7 +900,6 @@ async function fulltextJobAuthorize(request, authorizedOnly = false) {
   try { header = JSON.parse(new TextDecoder().decode(fulltextJwtPart(parts[0]))); claims = JSON.parse(new TextDecoder().decode(fulltextJwtPart(parts[1]))); }
   catch { libraryFail('job_auth', 401); }
   const now = Math.floor(Date.now() / 1000);
-  if (authorizedOnly && claims.event_name !== 'workflow_dispatch') libraryFail('job_auth',401);
   if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(header.kid)
       || claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== FULLTEXT_OIDC_AUDIENCE
       || claims.repository !== 'dodoxiaxia/xinzhi' || String(claims.repository_id) !== '1397425558'
@@ -899,9 +911,9 @@ async function fulltextJobAuthorize(request, authorizedOnly = false) {
   if (!fulltextOidcKeys || fulltextOidcKeys.until < Date.now() || !fulltextOidcKeys.keys.some(k => k.kid === header.kid)) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch('https://token.actions.githubusercontent.com/.well-known/jwks', { method:'GET', redirect:'error', signal:controller.signal, headers:{ accept:'application/json' } });
+      const response = await awaitAbort(fetch('https://token.actions.githubusercontent.com/.well-known/jwks', { method:'GET', redirect:'error', signal:controller.signal, headers:{ accept:'application/json' } }),controller.signal,'job_auth_unavailable');
       if (!response.ok) libraryFail('job_auth_unavailable', 503);
-      const text = await response.text();
+      const text = await awaitAbort(response.text(),controller.signal,'job_auth_unavailable');
       if (text.length > 65536) libraryFail('job_auth_unavailable', 503);
       const payload = JSON.parse(text);
       if (!Array.isArray(payload.keys) || payload.keys.length > 20) libraryFail('job_auth_unavailable', 503);
@@ -915,14 +927,23 @@ async function fulltextJobAuthorize(request, authorizedOnly = false) {
     const key = await crypto.subtle.importKey('jwk', jwk, { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' }, false, ['verify']);
     if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fulltextJwtPart(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]))) libraryFail('job_auth', 401);
   } catch { libraryFail('job_auth', 401); }
-  return claims.run_id;
+  return {owner:claims.run_id,eventName:claims.event_name};
 }
 async function fulltextJobInput(request) {
   if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) libraryFail('job_bad_request', 400);
   const reader = request.body && request.body.getReader();
   if (!reader) libraryFail('job_bad_request', 400);
-  const chunks = []; let size = 0;
-  while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > 1024) { await reader.cancel(); libraryFail('job_bad_request', 413); } chunks.push(item.value); }
+  const chunks = []; let size = 0, finished = false;
+  const controller = new AbortController(), abort = () => controller.abort(), timer = setTimeout(abort,5000);
+  if (request.signal) { if (request.signal.aborted) abort(); else request.signal.addEventListener('abort',abort,{once:true}); }
+  try {
+    while (true) { const item = await awaitAbort(reader.read(),controller.signal,'job_body_timeout');if(item.done){finished=true;break;}size+=item.value.byteLength;if(size>1024)libraryFail('job_bad_request',413);chunks.push(item.value); }
+  } catch(error) { if(error instanceof LibraryFailure)throw error;libraryFail(controller.signal.aborted?'job_body_timeout':'job_bad_request',controller.signal.aborted?408:400); }
+  finally {
+    clearTimeout(timer);if(request.signal)request.signal.removeEventListener('abort',abort);
+    if(!finished)try{Promise.resolve(reader.cancel()).catch(()=>{});}catch{}
+    try{reader.releaseLock();}catch{}
+  }
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
   let input; try { input = JSON.parse(new TextDecoder('utf-8', { fatal:true }).decode(bytes)); } catch { libraryFail('job_bad_request', 400); }
@@ -1019,10 +1040,11 @@ async function handleFulltextWorker(request, env) {
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('job_bad_request', 405);
     if (env.FULLTEXT_ASYNC_ENABLED !== 'true' && env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED !== 'true') libraryFail('job_disabled', 503);
-    const input = await fulltextJobInput(request);
-    const owner = await fulltextJobAuthorize(request,input.action.startsWith('authorized_'));
+    const principal = await fulltextJobAuthorize(request);
+    const input = await fulltextJobInput(request), owner = principal.owner;
     libraryConfig(env);
     if (input.action.startsWith('authorized_')) {
+      if(principal.eventName!=='workflow_dispatch')libraryFail('job_auth',401);
       if (env.FULLTEXT_AUTHORIZED_HANDOFF_ENABLED !== 'true') libraryFail('job_disabled',503);
       return json({ok:true,...(input.action === 'authorized_claim' ? {handoff:await authorizedClaim(env,owner,input)} : {handoff:await authorizedUpdate(env,input)})});
     }
