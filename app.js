@@ -142,7 +142,7 @@
       datePrecision: ['day', 'month', 'year'].includes(raw.datePrecision) ? raw.datePrecision : 'unknown',
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
-      fulltextStatus: ['available', 'pending', 'review'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
+      fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
       basis: '官方题录 · 非全文精读，未经医生终审', tags: [], studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
@@ -210,7 +210,7 @@
   function mergeDoiJob(doi, raw) {
     if (!raw) { DOI_JOBS.delete(doi); return; }
     if (typeof raw.id !== 'string' || !/^[a-f0-9-]{36}$/.test(raw.id) || raw.doi !== doi
-        || !['queued', 'running', 'available', 'pending', 'review', 'failed'].includes(raw.state)) throw new Error('library_unavailable');
+        || !['queued', 'running', 'available', 'pending', 'review', 'failed', 'manual_needed'].includes(raw.state)) throw new Error('library_unavailable');
     DOI_JOBS.set(doi, { id: raw.id, doi, state: raw.state });
   }
   function watchDoiJob(doi) {
@@ -225,7 +225,7 @@
     const job = DOI_JOBS.get(doi);
     if (!job) return '';
     const labels = { queued: '全文任务已排队，页面会自动更新状态。', running: '后台正在获取全文，完成后会显示下载入口。',
-      available: '全文已取得，题录与文件正在同步，可刷新状态。', pending: '后台查询已结束，目前未找到可获取的全文。',
+      manual_needed: '题录已保存，全文需人工处理；等待不会自动获取。', available: '全文已取得，题录与文件正在同步，可刷新状态。', pending: '后台查询已结束，目前未找到可获取的全文。',
       review: '后台查询已结束，全文来源对应需要核验。', failed: '后台未能完成获取，可重新提交任务。' };
     return '<p class="doi-job-notice" role="status">' + labels[job.state] + ' <a href="' + esc(acquireDoiUrl(doi)) + '" target="_blank" rel="noopener">查看任务</a></p>';
   }
@@ -909,9 +909,10 @@
     const url = pdfDownloadUrl(p);
     if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>`;
     const doi = p && exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
-    const label = record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';
+    const manual = record?.fulltextStatus === 'manual_needed';
+    const label = manual ? '全文需人工处理' : record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';
     const acquire = job ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi);
-    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquire)}" target="_blank" rel="noopener" class="btn-sm">${record || job ? '再次获取全文' : '获取全文并加入文献库'}</a>` : '';
+    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquire)}" target="_blank" rel="noopener" class="btn-sm">${manual ? '查看处理状态' : record || job ? '再次获取全文' : '获取全文并加入文献库'}</a>` : '';
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;

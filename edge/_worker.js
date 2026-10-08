@@ -141,7 +141,8 @@ async function pdfRead(url, maxBytes, options = {}) {
     }
     if (!response.ok) {
       if (response.body) await response.body.cancel();
-      if (options.pauseOnDenied && [401,403,429].includes(response.status)) libraryFail('library_paused', 423);
+      if (options.pauseOnDenied && [401,403,429].includes(response.status)) libraryFail('library_paused', 423, response.status === 429 ? libraryUpstreamRetry(response) : 0);
+      if (options.pauseOnDenied && response.status === 503) libraryFail('library_upstream', 502, libraryUpstreamRetry(response));
       pdfFail(response.status === 404 && options.file ? 'pdf_not_found' : 'pdf_upstream', response.status === 404 && options.file ? 404 : 502);
     }
     const declared = response.headers.get('content-length');
@@ -299,13 +300,13 @@ function libraryText(value, limit = 800) {
 }
 function libraryPaper(record, expectedDoi = '') {
   const input = record && record.version === 1 && record.paper;
-  if (!input || (expectedDoi && input.doi !== expectedDoi) || libraryDoi(input.doi) !== input.doi || !/^doi-[a-f0-9]{16}$/.test(input.id || '') || !libraryText(input.title) || !['available','pending','review'].includes(input.fulltextStatus)) return null;
+  if (!input || (expectedDoi && input.doi !== expectedDoi) || libraryDoi(input.doi) !== input.doi || !/^doi-[a-f0-9]{16}$/.test(input.id || '') || !libraryText(input.title) || !['available','pending','review','manual_needed'].includes(input.fulltextStatus)) return null;
   if (input.fulltextStatus === 'available' && (!record.pdf || !/^library:pdf:[a-f0-9]{64}$/.test(record.pdf.key || '') || record.pdf.key !== 'library:pdf:' + record.pdf.sha256 || !Number.isInteger(record.pdf.size) || record.pdf.size < 8 || record.pdf.size > LIBRARY_MAX_PDF_BYTES)) return null;
   const paper = { id:input.id, doi:input.doi, title:libraryText(input.title), journal:libraryText(input.journal || '', 300),
     url:'https://doi.org/' + encodeURIComponent(input.doi).replace(/%2F/gi, '/'), authors:(Array.isArray(input.authors) ? input.authors : []).map(name => libraryText(name, 200)).filter(Boolean).slice(0, 30),
     date:/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(input.date || '') ? input.date : '', datePrecision:['day','month','year'].includes(input.datePrecision) ? input.datePrecision : '',
     dateBasis:libraryText(input.dateBasis || '', 100), ingestedAt:typeof input.ingestedAt === 'string' && !isNaN(Date.parse(input.ingestedAt)) ? input.ingestedAt : '',
-    metadataStatus:'external_bibliography_checked', fulltextStatus:input.fulltextStatus, basis:'官方题录来源关联 · 未做医学全文审阅' };
+    metadataStatus:'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
   return paper;
 }
 async function libraryGet(kv, key) {
@@ -352,6 +353,18 @@ function libraryRetryHint(retryAfter) {
   const time = new Date(info.retryAfter + 8 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
   return '<p>请在 ' + wait + '后手动重试（北京时间 ' + time + ' 起）。系统不会自动重试。</p>';
 }
+function libraryUpstreamRetry(response) {
+  const value = response.headers.get('retry-after');
+  if (!value || value.length > 100) return 0;
+  const deadline = /^\d{1,6}$/.test(value.trim()) ? Date.now() + Number(value.trim()) * 1000 : Date.parse(value);
+  return Number.isSafeInteger(deadline) && deadline > Date.now() && deadline <= Date.now() + 86400000 ? deadline : 0;
+}
+function libraryObservedPaper(paper, attempt, active = false) {
+  // Legacy no-PDF results used a generic five-minute cooldown; this projection never writes KV.
+  if (paper && paper.fulltextStatus === 'pending' && !active && !(attempt && attempt.paused)
+      && ((!attempt && paper.fulltextReason !== 'temporary') || attempt && attempt.error === 'library_metadata_unavailable')) return { ...paper, fulltextStatus:'manual_needed' };
+  return paper;
+}
 function libraryRetryResponse(response, retryAfter) {
   const info = libraryRetryInfo(retryAfter);
   if (info.retryAfterSeconds) response.headers.set('retry-after', String(info.retryAfterSeconds));
@@ -360,8 +373,8 @@ function libraryRetryResponse(response, retryAfter) {
 function libraryRetryLink(doi, route = '/api/acquire') {
   return doi ? '<p><a href="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + '">' + (route === '/api/fulltext' ? '再次下载 PDF' : '再次获取全文') + '</a></p>' : '';
 }
-function libraryForm(doi, route, invalid = false, retryAfter = 0) {
-  return libraryRetryResponse(pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : route === '/api/acquire' ? '输入一次全文口令，优先复用已有全文，再查询合法开放全文。取得 PDF 后保存题录并直接下载；需要订阅权限时显示待授权状态。' : '输入全文口令即可下载已获取的 PDF。') + '</p>' + (libraryRetryInfo(retryAfter).retryAfterSeconds ? libraryRetryHint(retryAfter) : '') + '<form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + (route === '/api/acquire' ? '&amp;download=1' : '') + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (route === '/api/acquire' ? '获取、保存并下载 PDF' : '下载 PDF') + '</button></form><p>网站缓存可用与正式三端归档分别确认。</p>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载'), retryAfter);
+function libraryForm(doi, route, invalid = false, retryAfter = 0, manual = false) {
+  return libraryRetryResponse(pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : manual ? '题录已保存，尚无可下载 PDF，需要人工处理。机构授权执行桥未接通，等待不会自动获取。完成归档后可输入口令检查已归档全文；只查询私有索引，不再次尝试出版社下载。' : route === '/api/acquire' ? '输入一次全文口令，优先复用已有全文，再查询合法开放全文。取得 PDF 后保存题录并直接下载；需要订阅权限时显示待授权状态。' : '输入全文口令即可下载已获取的 PDF。') + '</p>' + (libraryRetryInfo(retryAfter).retryAfterSeconds ? libraryRetryHint(retryAfter) : '') + '<form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + (route === '/api/acquire' ? '&amp;download=1' : '') + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (manual ? '检查已归档全文' : route === '/api/acquire' ? '获取、保存并下载 PDF' : '下载 PDF') + '</button></form><p>网站缓存可用与正式三端归档分别确认。</p>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载'), retryAfter);
 }
 function libraryArchiveStatus() {
   return { scope:'website_cache', state:'not_confirmed', complete:false, executionClaimed:false, ledgerChecked:false, sides:{github:'pending',drive:'pending',mac:'pending'} };
@@ -383,10 +396,12 @@ async function libraryAcquireResult(request, env, paper, download, error = '', c
 }
 function libraryResult(request, paper, error = '', cached = false, retryAfter = 0) {
   const status = paper.fulltextStatus;
+  if (['manual_needed','review'].includes(status)) retryAfter = 0;
   const downloadUrl = status === 'available' ? '/api/fulltext?doi=' + encodeURIComponent(paper.doi) : '';
   if (!(request.headers.get('accept') || '').includes('text/html')) return libraryRetryResponse(json({ ok:true, paper, status, cached, archive:libraryArchiveStatus(), ...(error ? { error } : {}), ...(downloadUrl ? { downloadUrl } : libraryRetryInfo(retryAfter)) }, status === 'available' ? 200 : 202), retryAfter);
-  const message = status === 'available' ? '全文已保存至网站缓存，可下载 PDF。如存储仍在同步，请约 1 分钟后再试。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。等待不代表核验会自动完成。' : '题录已保存，本次未取得可下载 PDF；未发现合法开放全文时，订阅全文需要授权下载流程。当前尚未接通机构授权执行桥。';
-  return libraryRetryResponse(pdfHtml('<p>' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? '<p><a href="' + pdfEscape(downloadUrl) + '">下载 PDF</a></p>' : libraryRetryHint(retryAfter) + (status === 'pending' ? '<p>等待后仍可能无法下载，需要订阅权限时请前往官方授权入口。</p>' : '') + libraryRetryLink(paper.doi)) + '<p>网站缓存可用不代表 Mac、GitHub、Drive 三端归档完成。文件来源与完整性核验不代表医学全文审阅。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202, '全文获取结果'), retryAfter);
+  const message = status === 'available' ? '全文已保存至网站缓存，可下载 PDF。如存储仍在同步，请约 1 分钟后再试。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。等待不代表核验会自动完成。' : '题录已保存，尚未取得可下载 PDF。题录保存不代表全文入库。';
+  const action = status === 'manual_needed' ? '<p>需要人工处理（manual_needed）。当前未找到可用 PDF 来源；机构授权执行桥尚未接通。等待或反复提交不会自动取得全文。</p><p><a href="/api/acquire/retry?doi=' + pdfEscape(encodeURIComponent(paper.doi)) + '">归档完成后检查已有全文</a></p>' : status === 'review' ? '<p>需人工核验来源对应后再处理。</p>' : libraryRetryHint(retryAfter) + libraryRetryLink(paper.doi);
+  return libraryRetryResponse(pdfHtml('<p>' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? '<p><a href="' + pdfEscape(downloadUrl) + '">下载 PDF</a></p>' : action) + '<p>网站缓存可用不代表 Mac、GitHub、Drive 三端归档完成。文件来源与完整性核验不代表医学全文审阅。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202, '全文获取结果'), retryAfter);
 }
 function libraryError(request, error, doi = '', route = '') {
   if (error instanceof PdfFailure) {
@@ -401,7 +416,8 @@ function libraryError(request, error, doi = '', route = '') {
     library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
     library_paused:'来源要求授权、验证或已限制请求，获取已暂停。请维护者确认后恢复，或由已授权机构浏览器处理。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
   const retryable = ['library_not_found','library_busy','library_retry_later','library_limit','library_timeout','library_upstream','library_sync_pending'].includes(code);
-  return libraryRetryResponse(pdfHtml('<p>' + pdfEscape(messages[code] || messages.library_server) + '</p>' + (retryAfter ? libraryRetryHint(retryAfter) : '') + (retryable ? libraryRetryLink(doi, code === 'library_sync_pending' ? route || '/api/fulltext' : '/api/acquire') : '') + pdfOfficialLink(doi), status), retryAfter);
+  const retryHint = code === 'library_paused' && retryAfter ? '<p>上游返回 Retry-After，限制期限为北京时间 ' + new Date(retryAfter + 28800000).toISOString().slice(0,19).replace('T',' ') + '。到期不会自动恢复，仍需维护者确认。</p>' : retryAfter ? libraryRetryHint(retryAfter) : '';
+  return libraryRetryResponse(pdfHtml('<p>' + pdfEscape(messages[code] || messages.library_server) + '</p>' + retryHint + (retryable ? libraryRetryLink(doi, code === 'library_sync_pending' ? route || '/api/fulltext' : '/api/acquire') : '') + pdfOfficialLink(doi), status), retryAfter);
 }
 function librarySafeUrl(value, pdf = false) {
   let url; try { url = new URL(value); } catch { libraryFail('library_identity', 409); }
@@ -426,7 +442,7 @@ async function libraryRead(value, context, pdf = false) {
       if (response.body) await response.body.cancel();
       url = librarySafeUrl(new URL(location, url).href, pdf);
     }
-    if (!response.ok) { if (response.body) await response.body.cancel(); libraryFail([401,403,429].includes(response.status) ? 'library_paused' : response.status === 404 ? 'library_metadata_unavailable' : 'library_upstream', [401,403,429].includes(response.status) ? 423 : response.status === 404 ? 404 : 502); }
+    if (!response.ok) { if (response.body) await response.body.cancel(); libraryFail([401,403,429].includes(response.status) ? 'library_paused' : response.status === 404 ? 'library_metadata_unavailable' : 'library_upstream', [401,403,429].includes(response.status) ? 423 : response.status === 404 ? 404 : 502, [429,503].includes(response.status) ? libraryUpstreamRetry(response) : 0); }
     if (pdf && /^text\/html(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) libraryFail('library_paused', 423);
     if (pdf && !/^(?:application\/(?:pdf|octet-stream))(?:\s*;|$)/i.test(response.headers.get('content-type') || '')) libraryFail('library_identity', 409);
     const limit = pdf ? LIBRARY_MAX_PDF_BYTES : 1024 * 1024, declared = response.headers.get('content-length');
@@ -498,14 +514,14 @@ async function libraryGithub(paper, env, context) {
   return { bytes, source:'github', commit };
 }
 async function libraryOa(paper, context) {
-  let review = false, unavailable = false;
+  let review = false, unavailable = false, retryAfter = 0;
   const candidates = [], seen = new Set();
   const add = value => { if (typeof value === 'string' && !seen.has(value) && seen.size < 3) { seen.add(value); candidates.push(value); } };
   try {
     const data = await libraryRead('https://api.unpaywall.org/v2/' + encodeURIComponent(paper.doi) + '?email=shijunxia1988%40gmail.com', context);
     if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
     else if (data.is_oa === true) { add(data.best_oa_location && data.best_oa_location.url_for_pdf); for (const location of (Array.isArray(data.oa_locations) ? data.oa_locations : []).slice(0, 10)) add(location.url_for_pdf); }
-  } catch (error) { if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); }
+  } catch (error) { if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
   for (const provider of [0, 1]) {
     if (provider) {
       try {
@@ -515,21 +531,21 @@ async function libraryOa(paper, context) {
           const locations = [data.best_oa_location, ...(Array.isArray(data.locations) ? data.locations : []).slice(0, 10)];
           for (const location of locations) if (location && location.is_oa === true) add(location.pdf_url);
         }
-      } catch (error) { if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); }
+      } catch (error) { if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
     }
     for (const candidate of candidates.splice(0)) {
       try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); return { bytes, source:'oa' }; }
-      catch (error) { if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); }
+      catch (error) { if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
     }
   }
-  return { review, unavailable };
+  return { review, unavailable, retryAfter };
 }
-async function librarySoftGate(kv, request, doi) {
+async function librarySoftGate(kv, request, doi, manualOnly = false) {
   const now = Date.now(), lockKey = 'library:lock:' + doi, lock = await libraryGet(kv, lockKey);
   if (libraryLocalActive.has(doi) || (lock && lock.until > now)) libraryFail('library_busy', 409, lock && lock.until > now ? lock.until : now + LIBRARY_TASK_MS + 15000);
   const attempt = await libraryGet(kv, 'library:attempt:' + doi);
-  if (attempt && attempt.paused === true) libraryFail('library_paused', 423);
-  if (attempt && attempt.retryAfter > now) libraryFail('library_retry_later', 429, attempt.retryAfter);
+  if (attempt && attempt.paused === true) libraryFail('library_paused', 423, attempt.retryAfter || 0);
+  if (attempt && attempt.retryAfter > now && !(manualOnly && attempt.error === 'library_metadata_unavailable')) libraryFail('library_retry_later', 429, attempt.retryAfter);
   const day = new Date(now).toISOString().slice(0, 10), ip = request.headers.get('cf-connecting-ip') || 'unknown';
   for (const [key, limit] of [['library:cap:' + day, 30], ['library:ip:' + day + ':' + (await pdfDigest('SHA-256', new TextEncoder().encode(ip))).slice(0, 16), 20]]) {
     const count = await libraryGet(kv, key), n = Number.isInteger(count) && count >= 0 ? count : 0;
@@ -552,7 +568,8 @@ async function libraryStoredPdf(kv, record) {
   if (await pdfDigest('SHA-256', bytes) !== record.pdf.sha256) libraryFail('library_integrity', 502);
   return bytes;
 }
-async function librarySave(kv, paper, fetched, error) {
+async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
+  if (paper.fulltextStatus === 'pending') paper = { ...paper, fulltextReason:'temporary' };
   const key = LIBRARY_PREFIX + paper.doi;
   const current = await libraryGet(kv, key), ready = libraryPaper(current, paper.doi);
   if (ready && ready.fulltextStatus === 'available') { await libraryStoredPdf(kv, current); return { paper:ready }; } // A failed/slow attempt must not overwrite observed success.
@@ -567,8 +584,9 @@ async function librarySave(kv, paper, fetched, error) {
   if (latest && latest.fulltextStatus === 'available') { await libraryStoredPdf(kv, latestRecord); return { paper:latest }; }
   await libraryPut(kv, key, JSON.stringify({ version:1, paper, ...(pdf ? { pdf } : {}) }));
   libraryCatalogCache.clear();
-  const retryAfter = paper.fulltextStatus !== 'available' ? Date.now() + LIBRARY_RETRY_SECONDS * 1000 : 0;
-  if (retryAfter) await libraryPut(kv, 'library:attempt:' + paper.doi, JSON.stringify({ status:paper.fulltextStatus, error, retryAfter }), { expirationTtl:600 });
+  const retryAfter = paper.fulltextStatus === 'pending' ? sourceRetryAfter || Date.now() + LIBRARY_RETRY_SECONDS * 1000 : 0;
+  const priorAttempt = paper.fulltextStatus !== 'available' ? await libraryGet(kv, 'library:attempt:' + paper.doi) : null;
+  if (paper.fulltextStatus !== 'available' && !(priorAttempt && priorAttempt.paused)) await libraryPut(kv, 'library:attempt:' + paper.doi, JSON.stringify({ status:paper.fulltextStatus, error, retryAfter }), retryAfter ? { expirationTtl:600 } : undefined);
   return { paper:libraryPaper({ version:1, paper, ...(pdf ? { pdf } : {}) }, paper.doi), retryAfter };
 }
 async function handleLibrary(request, env) {
@@ -581,7 +599,7 @@ async function handleLibrary(request, env) {
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       const job = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
-      if (paper) return json({ ok:true, found:true, paper, status:paper.fulltextStatus, ...(paper.fulltextStatus !== 'available' && attempt ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}) });
+      if (paper) { const observed = libraryObservedPaper(paper, attempt, job && ['queued','running'].includes(job.state)); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(attempt && attempt.paused ? { paused:true, error:'library_paused' } : {}), ...(job ? { job } : {}) }); }
       return json({ ok:true, found:false, ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status, ...libraryRetryInfo(attempt.retryAfter) } : {}) });
     }
     if ([...url.searchParams.keys()].some(key => !['cursor','limit'].includes(key)) || url.searchParams.getAll('cursor').length > 1 || url.searchParams.getAll('limit').length > 1) libraryFail('library_bad_doi', 400);
@@ -600,7 +618,7 @@ async function handleLibrary(request, env) {
 }
 function fulltextJobRecord(value, doi = '') {
   if (!value || value.version !== 1 || libraryDoi(value.doi) !== value.doi || (doi && value.doi !== doi)
-      || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.id || '') || !['queued','running','available','pending','review','failed'].includes(value.state)
+      || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.id || '') || !['queued','running','available','pending','review','failed','manual_needed'].includes(value.state)
       || ![value.createdAt,value.updatedAt,value.nextAttemptAt].every(n => Number.isSafeInteger(n) && n >= 0 && n < 8640000000000000 - 28800000)
       || !Number.isInteger(value.attempts) || value.attempts < 0 || value.attempts > 3
       || (value.state === 'running' && (!/^\d{1,20}$/.test(value.owner || '') || !Number.isSafeInteger(value.leaseUntil) || !/^[a-f0-9-]{36}$/.test(value.leaseId || '')))
@@ -615,7 +633,7 @@ function fulltextPublicJob(record, doi = '') {
   if (!job) return null;
   const state = ['queued','running'].includes(job.state) && !fulltextJobActive(job) ? 'failed' : job.state;
   const messages = { queued:job.attempts ? '来源暂时不可用，已安排自动重试。' : '已排队，等待后台获取全文。', running:'后台正在获取全文。',
-    available:'全文已取得，可下载。', pending:'后台已完成查询，目前未找到可获取的 PDF。', review:'全文来源对应需要核验，暂不提供下载。',
+    available:'全文已取得，可下载。', pending:'后台已完成查询，目前未找到可获取的 PDF。', manual_needed:'题录已保存，尚无可用 PDF 来源；机构授权执行桥未接通，需要人工处理。等待不会自动获取。', review:'全文来源对应需要核验，暂不提供下载。',
     failed:job.reason === 'library_paused' ? '来源要求授权、验证或已限流，任务暂停；需人工处理后恢复。' : job.reason === 'library_metadata_unavailable' ? '未能核实官方 DOI 题录，未新增文献。' : '后台未能完成获取，请稍后重新提交。' };
   return { id:job.id, doi:job.doi, state, attempts:job.attempts, createdAt:new Date(job.createdAt).toISOString(), updatedAt:new Date(job.updatedAt).toISOString(),
     message:messages[state], ...(['queued','running'].includes(state) ? { nextCheckSeconds:15 } : {}), ...(state === 'queued' && job.nextAttemptAt > Date.now() ? { nextAttemptAt:new Date(job.nextAttemptAt).toISOString() } : {}) };
@@ -623,6 +641,7 @@ function fulltextPublicJob(record, doi = '') {
 function fulltextJobResponse(request, record, paper = null) {
   const job = fulltextPublicJob(record, record.doi), active = ['queued','running'].includes(job.state);
   if (paper && paper.fulltextStatus === 'available') return libraryResult(request, paper, '', true);
+  if (paper && paper.fulltextStatus === 'manual_needed' && !active) return libraryResult(request, paper, 'library_manual_needed');
   const url = '/api/acquire?doi=' + encodeURIComponent(record.doi);
   if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:true, status:job.state, job, ...(paper ? { paper } : {}), statusUrl:url }, active ? 202 : 200, active ? { 'retry-after':'15' } : {});
   const next = job.nextAttemptAt ? '<p>下一次自动尝试不早于北京时间 ' + new Date(record.nextAttemptAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '，实际开始时间可能延迟。</p>' : '';
@@ -751,29 +770,30 @@ async function fulltextRun(env, owner, input) {
     else {
       const context = { signal:controller.signal };
       paper = await libraryMetadata(job.doi, context);
-      let fetched, review = false, sourceUnavailable = false;
+      let fetched, review = false, sourceUnavailable = false, sourceRetryAfter = 0;
       try { fetched = await libraryGithub(paper, env, context); }
       catch (error) {
         if (controller.signal.aborted) libraryFail('library_timeout', 504);
         if (['library_not_configured','library_paused'].includes(error.code)) throw error;
         review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code);
-        sourceUnavailable = !review;
+        sourceUnavailable = !review; sourceRetryAfter = error.retryAfter || 0;
       }
-      if (!fetched && !review && !sourceUnavailable) { const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; } }
+      if (!fetched && !review && !sourceUnavailable) { const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; sourceRetryAfter = oa.retryAfter || 0; } }
       if (controller.signal.aborted) libraryFail('library_timeout', 504);
       const current = fulltextJobRecord(await libraryGet(env.QL_KV, key), job.doi);
       if (!current || current.id !== job.id || current.owner !== owner || current.leaseId !== job.leaseId) libraryFail('job_stale', 409);
-      paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : 'pending' };
-      const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : 'library_metadata_unavailable');
+      paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : sourceUnavailable ? 'pending' : 'manual_needed' };
+      const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : sourceUnavailable ? 'library_upstream' : 'library_manual_needed', sourceRetryAfter);
       paper = saved.paper;
-      if (!fetched && !review && sourceUnavailable) libraryFail('library_upstream', 502);
+      if (!fetched && !review && sourceUnavailable) libraryFail('library_upstream', 502, sourceRetryAfter);
     }
     final = { ...job, state:paper.fulltextStatus, updatedAt:Date.now(), reason:'' };
   } catch (error) {
     if (error.code === 'job_stale') throw error;
+    if (error.code === 'library_paused') await libraryPut(env.QL_KV, 'library:attempt:' + job.doi, JSON.stringify({ status:'pending', error:'library_paused', paused:true, retryAfter:error.retryAfter || 0 }));
     const transient = ['library_timeout','library_upstream','library_storage','library_sync_pending','pdf_timeout','pdf_upstream'].includes(error.code);
     final = { ...job, state:transient && job.attempts < 3 ? 'queued' : error.code === 'library_identity' ? 'review' : 'failed',
-      updatedAt:Date.now(), nextAttemptAt:Date.now() + (job.attempts === 1 ? 60000 : 600000), reason:['library_metadata_unavailable','library_identity','library_paused'].includes(error.code) ? error.code : 'job_failed' };
+      updatedAt:Date.now(), nextAttemptAt:error.retryAfter || Date.now() + (job.attempts === 1 ? 60000 : 600000), reason:['library_metadata_unavailable','library_identity','library_paused'].includes(error.code) ? error.code : 'job_failed' };
   } finally { clearTimeout(timer); }
   const current = fulltextJobRecord(await libraryGet(env.QL_KV, key), job.doi);
   if (!current || current.id !== job.id || current.owner !== owner || current.leaseId !== job.leaseId) libraryFail('job_stale', 409);
@@ -824,43 +844,48 @@ async function handleAcquire(request, env) {
     const parsed = libraryQuery(request); doi = parsed.doi;
     if (request.method === 'GET') {
       const stored = env.QL_KV ? libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi) : null;
+      const attempt = env.QL_KV && (!stored || stored.fulltextStatus !== 'available') ? await libraryGet(env.QL_KV, 'library:attempt:' + doi) : null;
+      if (attempt && attempt.paused) libraryFail('library_paused', 423, attempt.retryAfter || 0);
       if (env.QL_KV && env.FULLTEXT_ASYNC_ENABLED === 'true' && parsed.url.pathname !== '/api/acquire/retry') {
         const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
         if (job) return fulltextJobResponse(request, job, stored);
         if (stored && stored.fulltextStatus === 'available') return libraryResult(request, stored, '', true);
       }
-      const attempt = env.QL_KV && (!stored || stored.fulltextStatus !== 'available') ? await libraryGet(env.QL_KV, 'library:attempt:' + doi) : null;
-      if (attempt && attempt.paused) libraryFail('library_paused', 423);
-      return libraryForm(doi, '/api/acquire', false, attempt && attempt.retryAfter);
+      const observed = libraryObservedPaper(stored, attempt), manual = observed && observed.fulltextStatus === 'manual_needed';
+      if (manual && parsed.url.pathname !== '/api/acquire/retry') return libraryResult(request, observed, 'library_manual_needed');
+      return libraryForm(doi, '/api/acquire', false, manual || stored && stored.fulltextStatus === 'review' ? 0 : attempt && attempt.retryAfter, manual);
     }
     if (request.method !== 'POST') libraryFail('library_method', 405);
     await libraryAuthorize(request, env, parsed.url); libraryConfig(env);
     const cachedRecord = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), cached = libraryPaper(cachedRecord, doi);
     if (cached && cached.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, cachedRecord); return await libraryAcquireResult(request, env, cached, parsed.download, '', true); }
     if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT !== undefined && (typeof env.PDF_GITHUB_COMMIT !== 'string' || !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT)))) libraryFail('library_not_configured', 503);
-    if (env.FULLTEXT_ASYNC_ENABLED === 'true') return fulltextEnqueue(request, env, doi, cached);
-    release = await librarySoftGate(env.QL_KV, request, doi);
+    const previousAttempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+    const priorJob = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
+    const observed = libraryObservedPaper(cached, previousAttempt, fulltextJobActive(priorJob)), manual = observed && observed.fulltextStatus === 'manual_needed';
+    if (env.FULLTEXT_ASYNC_ENABLED === 'true' && !manual) return fulltextEnqueue(request, env, doi, cached);
+    release = await librarySoftGate(env.QL_KV, request, doi, manual);
     timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
     const context = { signal:controller.signal };
-    let paper = await libraryMetadata(doi, context);
-    let fetched = null, review = false, sourceUnavailable = false;
+    let paper = manual ? observed : await libraryMetadata(doi, context);
+    let fetched = null, review = false, sourceUnavailable = false, sourceRetryAfter = 0;
     try { fetched = await libraryGithub(paper, env, context); }
-    catch (error) { if (controller.signal.aborted) libraryFail('library_timeout', 504); if (['library_not_configured','library_paused'].includes(error.code)) throw error; review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code); sourceUnavailable = !review; }
-    if (!fetched && !review && !sourceUnavailable) {
-      const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else review = review || oa.review;
+    catch (error) { if (controller.signal.aborted) libraryFail('library_timeout', 504); if (['library_not_configured','library_paused'].includes(error.code)) throw error; review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code); sourceUnavailable = !review; sourceRetryAfter = error.retryAfter || 0; }
+    if (!manual && !fetched && !review && !sourceUnavailable) {
+      const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; sourceRetryAfter = oa.retryAfter || 0; }
     }
     if (controller.signal.aborted) libraryFail('library_timeout', 504);
-    paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : 'pending' };
-    const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : 'library_metadata_unavailable');
-    if (saved.paper.fulltextStatus !== 'available' && sourceUnavailable) libraryFail('library_upstream', 502);
-    return await libraryAcquireResult(request, env, saved.paper, parsed.download, saved.paper.fulltextStatus === 'available' ? '' : review ? 'library_identity' : 'library_metadata_unavailable', false, saved.retryAfter);
+    paper = { ...paper, fulltextStatus:fetched ? 'available' : review ? 'review' : sourceUnavailable ? 'pending' : 'manual_needed' };
+    const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : sourceUnavailable ? 'library_upstream' : 'library_manual_needed', sourceRetryAfter);
+    if (saved.paper.fulltextStatus !== 'available' && sourceUnavailable) libraryFail('library_upstream', 502, saved.retryAfter);
+    return await libraryAcquireResult(request, env, saved.paper, parsed.download, saved.paper.fulltextStatus === 'available' ? '' : review ? 'library_identity' : 'library_manual_needed', false, saved.retryAfter);
   } catch (error) {
     if (release && doi && env.QL_KV) {
       try {
         const observed = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
         if (!observed || observed.fulltextStatus !== 'available') {
-          const paused = error.code === 'library_paused', retryAfter = paused ? 0 : Date.now() + LIBRARY_RETRY_SECONDS * 1000;
-          await libraryPut(env.QL_KV, 'library:attempt:' + doi, JSON.stringify({ status:error.code === 'library_identity' ? 'review' : 'pending', paused, retryAfter }), paused ? undefined : { expirationTtl:600 });
+          const paused = error.code === 'library_paused', retryAfter = error.retryAfter || (paused || error.code === 'library_identity' ? 0 : Date.now() + LIBRARY_RETRY_SECONDS * 1000);
+          await libraryPut(env.QL_KV, 'library:attempt:' + doi, JSON.stringify({ status:error.code === 'library_identity' ? 'review' : 'pending', error:error.code || 'library_server', paused, retryAfter }), paused || !retryAfter ? undefined : { expirationTtl:600 });
           error.retryAfter = retryAfter;
         }
       } catch { /* Preserve the original fixed error if storage/cooldown is unavailable. */ }

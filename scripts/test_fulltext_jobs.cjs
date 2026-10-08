@@ -63,7 +63,7 @@ async function claimRun(h) {
  assert.equal((await service(h,{action:'claim'},{method:'GET'})).status,405);
  assert.equal(h.writes.length,0);
  h=await setup();const closed=await enqueue(h);h.values.set('library:paper:'+doi,JSON.stringify(record('pending'))); // existing bibliography remains safe
- const pendingHarness=await setup({rows:[],oa:false});await enqueue(pendingHarness);const pending=await claimRun(pendingHarness);assert.equal(pending.state,'pending');
+ const pendingHarness=await setup({rows:[],oa:false});await enqueue(pendingHarness);const pending=await claimRun(pendingHarness);assert.equal(pending.state,'manual_needed');
  assert.equal([...pendingHarness.values.keys()].filter(k=>k.startsWith('library:paper:')).length,1);
  const pendingPage=await pendingHarness.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}});const pendingText=await pendingPage.text();assert(pendingText.includes('/api/acquire/retry?doi='));assert(!pendingText.includes('http-equiv="refresh"'));
  const retryForm=await pendingHarness.request('/api/acquire/retry',{method:'GET',headers:{accept:'text/html'}});assert.equal(retryForm.status,200);assert((await retryForm.text()).includes('<form method="post"'));

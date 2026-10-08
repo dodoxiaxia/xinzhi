@@ -108,6 +108,7 @@ jobs:
           node scripts/test_pdf_worker.cjs
           node scripts/test_doi_library_worker.cjs
           node scripts/test_doi_direct_download.cjs
+          node scripts/test_doi_manual_needed.cjs
           node scripts/test_fulltext_jobs.cjs
           node scripts/test_fulltext_activation.cjs
           node scripts/test_fulltext_dispatcher.cjs

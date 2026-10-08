@@ -29,8 +29,10 @@ function harness(options={}){
   assert.equal(init.redirect,'manual');
   if(u.hostname==='api.crossref.org'){assert(!init.headers.authorization);return options.crossrefResponse?options.crossrefResponse(u,init):Response.json(crossref(options.crossref||{}));}
   if(u.hostname==='api.unpaywall.org'){assert(!init.headers.authorization);return options.unpaywallResponse?options.unpaywallResponse(u,init):Response.json(options.oa?{doi,title,is_oa:true,best_oa_location:{url_for_pdf:options.oaUrl||'https://journals.plos.org/article/fixture.pdf'}}:{doi,title,is_oa:false});}
-  if(u.hostname==='api.openalex.org'){assert(!init.headers.authorization);return Response.json(options.openalex||{doi:'https://doi.org/'+doi,title,open_access:{is_oa:false},locations:[]});}
-  if(u.hostname==='api.github.com'){assert.equal(init.headers.authorization,'Bearer synthetic-private-token');const decoded=decodeURIComponent(u.pathname);if(decoded.endsWith('/commits/main'))return Response.json({sha:options.commit||commit});assert.equal(u.searchParams.get('ref'),options.commit||commit);
+  if(u.hostname==='api.openalex.org'){assert(!init.headers.authorization);if(options.openalexResponse)return options.openalexResponse(u,init);return Response.json(options.openalex||{doi:'https://doi.org/'+doi,title,open_access:{is_oa:false},locations:[]});}
+  if(u.hostname==='api.github.com'){assert.equal(init.headers.authorization,'Bearer synthetic-private-token');const decoded=decodeURIComponent(u.pathname);if(decoded.endsWith('/commits/main'))return Response.json({sha:options.commit||commit});
+   if(decoded.endsWith('/contents/文献索引/文献索引.csv')&&options.indexes){assert(Object.hasOwn(options.indexes,u.searchParams.get('ref')));return new Response(csv(options.indexes[u.searchParams.get('ref')]));}
+   assert.equal(u.searchParams.get('ref'),options.commit||commit);
    if(decoded.endsWith('/contents/文献索引/文献索引.csv'))return new Response(csv(options.rows||[row]));
    assert(decoded.endsWith('/contents/'+file));if(init.headers.accept==='application/vnd.github+json')return Response.json(options.metadata||{type:'file',path:file,size:pdf.length,sha:blob(pdf)});
    return options.githubPdfResponse?options.githubPdfResponse(u,init):new Response(pdf,{headers:{'content-type':'application/pdf'}});}
@@ -83,7 +85,7 @@ if(require.main===module)(async()=>{
  h.values.delete(stored.pdf.key);await error(await h.request('/api/fulltext'),503,'library_sync_pending');await error(await h.request('/api/acquire'),503,'library_sync_pending');assert.equal(h.calls.length,before);
 
  h=harness({rows:[],oa:true});assert.equal((await h.request()).status,200);assert.equal(JSON.parse(h.values.get(key)).pdf.source,'oa');assert(h.calls.some(c=>c.url.hostname==='journals.plos.org'));
- h=harness({rows:[],oa:false});const pending=await h.request();assert.equal(pending.status,202);assert.equal((await pending.json()).status,'pending');assert(!JSON.parse(h.values.get(key)).pdf);assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));await error(await h.request(),429,'library_retry_later');
+ h=harness({rows:[],oa:false});const pending=await h.request();assert.equal(pending.status,202);assert.equal((await pending.json()).status,'manual_needed');assert(!JSON.parse(h.values.get(key)).pdf);assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));assert.equal((await (await h.request()).json()).status,'manual_needed');
  h=harness({crossref:{DOI:'10.1000/other'}});await error(await h.request(),409,'library_identity');assert.equal(h.calls.length,1);assert(!h.values.has(key));const bad=await h.request('/api/library',{method:'GET'});assert.equal((await bad.json()).status,'review');
  h=harness({crossrefResponse:()=>new Response('not found',{status:404}),policy:{sourceCommit:commit,decisions:{[doi]:{action:'hold',acceptedTitles:[],metadata:null}}}});await error(await h.request(),404,'library_metadata_unavailable');assert.equal(h.calls.length,1);assert(!h.values.has(key));
  h=harness({policy:{sourceCommit:commit,decisions:{[doi]:{action:'hold',acceptedTitles:[],metadata:null}}},oa:true});assert.equal((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='api.github.com'));
@@ -105,37 +107,18 @@ if(require.main===module)(async()=>{
  h=harness({crossrefResponse:()=>{h.values.set('library:lock:'+doi,JSON.stringify({owner:'another-owner',until:Date.now()+60000}));return Response.json(crossref());}});assert.equal((await h.request()).status,200);assert.equal(JSON.parse(h.values.get('library:lock:'+doi)).owner,'another-owner');
  h=harness();const today=new Date().toISOString().slice(0,10);h.values.set('library:cap:'+today,'30');await error(await h.request(),429,'library_limit');assert.equal(h.calls.length,0);
 
- // Observe the persisted deadline, not a fresh five-minute window on every retry.
+ // Genuine temporary failure retains its deadline; no-source/manual cases have separate tests.
  const fixedNow=Date.parse('2026-10-07T04:05:06.000Z'),clock={now:fixedNow};
- h=harness({rows:[],oa:false,clock});
- const pendingHtmlResponse=await h.request('/api/acquire',{headers:{accept:'text/html'}}),pendingHtml=await pendingHtmlResponse.text();
- assert.equal(pendingHtmlResponse.status,202);assert.equal(pendingHtmlResponse.headers.get('retry-after'),'300');
- assert(pendingHtml.includes('本次未取得可下载 PDF'));assert(pendingHtml.includes('5 分钟后手动重试'));assert(pendingHtml.includes('北京时间 2026-10-07 12:10:06 起'));
- assert(pendingHtml.includes('系统不会自动重试'));assert(pendingHtml.includes('等待后仍可能无法下载'));
- assert(pendingHtml.includes('<a href="/api/acquire?doi=10.1000%2Fexact">再次获取全文</a>'));assert(!pendingHtml.includes('<form'));passiveHtml(pendingHtml);
- const attemptKey='library:attempt:'+doi,storedAttempt=JSON.parse(h.values.get(attemptKey));assert.equal(storedAttempt.retryAfter,fixedNow+300000);
- const callsAtPending=h.calls.length,writesAtPending=h.writes.length;
- clock.now+=65000;
- const early=await h.request(),earlyBody=await early.clone().json();await error(early,429,'library_retry_later');
- assert.equal(earlyBody.retryAfter,storedAttempt.retryAfter);assert.equal(earlyBody.retryAfterSeconds,235);assert.equal(early.headers.get('retry-after'),'235');
- assert.equal(h.calls.length,callsAtPending);assert.equal(h.writes.length,writesAtPending);assert.equal(JSON.parse(h.values.get(attemptKey)).retryAfter,storedAttempt.retryAfter);
- const earlyHtmlResponse=await h.request('/api/acquire',{headers:{accept:'text/html'}}),earlyHtml=await earlyHtmlResponse.text();assert.equal(earlyHtmlResponse.status,429);assert.equal(earlyHtmlResponse.headers.get('retry-after'),'235');
- assert(earlyHtml.includes('3 分钟 55 秒后手动重试'));assert(earlyHtml.includes('北京时间 2026-10-07 12:10:06 起'));passiveHtml(earlyHtml);
- const formResponse=await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}}),formHtml=await formResponse.text();assert.equal(formResponse.status,200);assert.equal(formResponse.headers.get('retry-after'),'235');
- assert(formHtml.includes('3 分钟 55 秒后手动重试'));assert(formHtml.includes('<form method="post" action="/api/acquire?doi=10.1000%2Fexact&amp;download=1">'));passiveHtml(formHtml);
- const publicRetry=await (await h.request('/api/library',{method:'GET'})).json();assert.equal(publicRetry.found,true);assert.equal(publicRetry.status,'pending');assert.equal(publicRetry.retryAfter,storedAttempt.retryAfter);assert.equal(publicRetry.retryAfterSeconds,235);
- assert.equal(h.calls.length,callsAtPending);assert.equal(h.writes.length,writesAtPending,'retry links and public lookup are read-only');
- const wrongHtml=await h.request('/api/acquire',{passphrase:'wrong',headers:{accept:'text/html'}});assert.equal(wrongHtml.status,403);const wrongBody=await wrongHtml.text();assert(wrongBody.includes('全文口令不正确'));assert(wrongBody.includes('type="password"'));assert(!wrongBody.includes('value="wrong"'));passiveHtml(wrongBody);
- assert.equal(h.calls.length,callsAtPending);assert.equal(h.writes.length,writesAtPending);
- clock.now=storedAttempt.retryAfter;
- assert.equal((await (await h.request('/api/library',{method:'GET'})).json()).retryAfterSeconds,0);
- const retried=await h.request();assert.equal(retried.status,202);assert(h.calls.length>callsAtPending,'the persisted deadline permits an explicit fresh attempt once expired');
- const retriedBody=await retried.json();assert.equal(retriedBody.retryAfter,JSON.parse(h.values.get(attemptKey)).retryAfter);assert.equal(retriedBody.retryAfter,clock.now+300000);assert.equal(retriedBody.retryAfterSeconds,300);
-
- // JSON and HTML responses both communicate the exact stored/request deadline.
- const jsonClock={now:fixedNow};h=harness({rows:[],oa:false,clock:jsonClock});const pendingJson=await h.request(),pendingBody=await pendingJson.json();
- assert.equal(pendingBody.retryAfter,JSON.parse(h.values.get(attemptKey)).retryAfter);assert.equal(pendingBody.retryAfterSeconds,300);assert.equal(pendingJson.headers.get('retry-after'),'300');
- h=harness({rows:[[ 'Wrong title',...row.slice(1)]],clock:{now:fixedNow}});const reviewResponse=await h.request('/api/acquire',{headers:{accept:'text/html'}}),reviewHtml=await reviewResponse.text();assert.equal(reviewResponse.status,202);assert(reviewHtml.includes('等待不代表核验会自动完成'));assert(reviewHtml.includes('5 分钟后手动重试'));passiveHtml(reviewHtml);
+ const attemptKey='library:attempt:'+doi;
+ h=harness({rows:[],clock,unpaywallResponse:()=>new Response('temporary',{status:503,headers:{'retry-after':'120'}})});
+ const temporary=await h.request();await error(temporary,502,'library_upstream');
+ const deadline=JSON.parse(h.values.get(attemptKey)).retryAfter;assert.equal(deadline,fixedNow+120000);
+ const callsAtFailure=h.calls.length,writesAtFailure=h.writes.length;clock.now+=65000;
+ const early=await h.request();await error(early,429,'library_retry_later');assert.equal(early.headers.get('retry-after'),'55');
+ assert.equal(h.calls.length,callsAtFailure);assert.equal(h.writes.length,writesAtFailure);assert.equal(JSON.parse(h.values.get(attemptKey)).retryAfter,deadline);
+ const publicRetry=await (await h.request('/api/library',{method:'GET'})).json();assert.equal(publicRetry.status,'pending');assert.equal(publicRetry.retryAfter,deadline);
+ const formResponse=await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}});assert.equal(formResponse.headers.get('retry-after'),'55');assert((await formResponse.text()).includes('55 秒后手动重试'));
+ h=harness({rows:[[ 'Wrong title',...row.slice(1)]],clock:{now:fixedNow}});const reviewResponse=await h.request('/api/acquire',{headers:{accept:'text/html'}}),reviewHtml=await reviewResponse.text();assert.equal(reviewResponse.status,202);assert(reviewHtml.includes('等待不代表核验会自动完成'));assert(!reviewHtml.includes('后手动重试'));assert.equal(reviewResponse.headers.get('retry-after'),null);passiveHtml(reviewHtml);
  h=harness({clock:{now:fixedNow}});h.values.set('library:lock:'+doi,JSON.stringify({owner:'other-owner',until:fixedNow+41000}));
  const busy=await h.request(),busyBody=await busy.clone().json();await error(busy,409,'library_busy');assert.equal(busyBody.retryAfter,fixedNow+41000);assert.equal(busyBody.retryAfterSeconds,41);assert.equal(busy.headers.get('retry-after'),'41');assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
  h=harness({clock:{now:fixedNow}});h.values.set('library:cap:2026-10-07','30');

@@ -61,6 +61,9 @@ async function helpers() {
   assert.equal(c.LIBRARY.papers.filter(p => p.doi === '10.1234/new').length, 1, 'Aliases and repeated pages deduplicate');
   const pending = c.LIBRARY.papers.find(p => p.doi === '10.1234/new');
   assert(c.pdfDownloadLink(pending).includes('待补全文')); assert(c.pdfDownloadLink(pending).includes('/api/acquire?doi=')); assert.equal(c.pdfDownloadUrl(pending), '');
+  c.mergeSupplementalPaper(apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
+  const manual = c.LIBRARY.papers.find(p => p.doi === '10.1234/manual');
+  assert.equal(manual.fulltextStatus, 'manual_needed');assert(c.pdfDownloadLink(manual).includes('全文需人工处理'));assert(c.pdfDownloadLink(manual).includes('查看处理状态'));assert(!c.pdfDownloadLink(manual).includes('再次获取全文'));assert.equal(c.pdfDownloadUrl(manual), '');
   const job = { id: '00000000-0000-4000-8000-000000000001', doi: pending.doi, state: 'queued' };
   c.mergeDoiJob(pending.doi, job); assert(c.pdfDownloadLink(pending).includes('全文排队中')); assert(c.pdfDownloadLink(pending).includes('查看任务'));
   c.mergeDoiJob(pending.doi, { ...job, state: 'running' }); assert(c.pdfDownloadLink(pending).includes('全文获取中'));
@@ -143,6 +146,11 @@ async function browserChecks() {
     assert.equal(await page.locator('a[href="/api/fulltext?doi=10.1234%2Fpending"]').count(), 0);
     records.set('10.1234/pending', apiPaper('10.1234/pending', 'Pending clinical title'));
     await page.locator('[data-action="refresh-doi-status"]').click(); await page.locator('a[href="/api/fulltext?doi=10.1234%2Fpending"]').waitFor();
+    records.set('10.1234/manual', apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
+    await page.locator('#globalSearch').fill('10.1234/manual');await page.getByText('全文需人工处理', {exact:true}).waitFor();
+    assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(),0);
+    assert.equal(await page.getByRole('link', {name:'再次获取全文',exact:true}).count(),0);
+    await page.getByRole('link', {name:'查看处理状态',exact:true}).waitFor();
     await page.locator('#globalSearch').fill('10.1234/unknown'); await page.locator('.doi-empty').waitFor();
     assert.equal(await page.locator('.doi-empty a').getAttribute('href'), '/api/acquire?doi=10.1234%2Funknown');
     await page.locator('#globalSearch').fill('10.1234/hold'); await page.locator('.doi-identity-notice').waitFor();
@@ -155,7 +163,7 @@ async function browserChecks() {
     assert((await page.locator('#articlesStream').innerText()).includes('旧导读保留'));
     for (const mode of ['sources', 'weekly']) {
       await page.goto(origin + '/?mode=' + mode + '&q=10.1234%2Farchive'); await page.locator('.doi-search-notice').waitFor();
-      await page.locator('[data-clear="search"]').click();
+      await page.getByRole('button', {name:'清除 DOI 检索',exact:true}).click();
       const selector = mode === 'sources' ? '#sourcesSection' : '#weeklySection';
       assert.equal(await page.locator(selector).isVisible(), true);
       assert((await page.locator(selector).innerText()).trim().length > 0, mode + ' restores initialized content after clearing DOI');
