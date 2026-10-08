@@ -43,9 +43,10 @@ const failures = [
 (async () => {
   const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true});
   try {
-    async function open(initial, rejectOnce = '') {
+    async function open(initial, rejectOnce = '', holdFeeds = false) {
       const context = await browser.newContext(), page = await context.newPage(), errors = [], requests = [];
-      let current = initial;
+      let current = initial, releaseFeeds;
+      const feedGate = new Promise(resolve=>releaseFeeds=resolve);
       page.on('pageerror',e=>errors.push(e.message));
       await page.route('**/*',async route=>{
         const u = new URL(route.request().url());
@@ -58,20 +59,23 @@ const failures = [
             window.adoptions.push(Object.keys(data));Object.assign(window,data)},()=>PublicData.ready(window.testState));
           PublicData.ready(window.testState);
         </script>`});
+        if (holdFeeds && u.pathname.startsWith('/public-data/feeds.')) await feedGate;
         const body = current.bodies.get(u.pathname);
         ok(body, 'request must reference a manifest-declared hash asset');
         return route.fulfill({contentType:'application/json',body});
       });
       await page.goto('https://static.invalid/');
-      return {page, requests, errors, restore:async()=>{current=good();await page.reload()}, close:async()=>{eq(errors,[],'no browser exceptions');await context.close()}};
+      return {page, requests, errors, releaseFeeds, restore:async()=>{current=good();await page.reload()}, close:async()=>{eq(errors,[],'no browser exceptions');await context.close()}};
     }
     for (const [name, label, mutate] of failures) {
       const values = {FEEDS:clone(feeds),RECENT_RADAR:clone(radar),RADAR:clone(radar)}; mutate(values[name]);
       const bad = release(values), row = bad.manifest.files.find(x=>x.name===name);
       eq(bad.boot.assets,bad.manifest.files,'bootstrap matches manifest '+label);
       eq(crypto.createHash('sha256').update(bad.bodies.get('/'+row.path)).digest('hex'),row.sha256,'corrupt nested payload has correctly bound SHA '+label);
-      const s = await open(bad);
+      const s = await open(bad, '', name==='RADAR');
       await s.page.waitForFunction(n=>PublicData.debug()[n]==='error',name);
+      // Prove FEEDS adoption happens after the bad RADAR entered error.
+      s.releaseFeeds();
       const other = name==='FEEDS'?'RADAR':'FEEDS';
       await s.page.waitForFunction(n=>PublicData.debug()[n]==='ready',other);
       eq(await s.page.evaluate(n=>window.adoptions.some(keys=>keys.includes(n)),name),false,'invalid nested data never applied '+label);
