@@ -97,6 +97,7 @@ def parse(root):
 
         # Publication types
         pub_types = [clean(''.join(pt.itertext())) for pt in article.findall('./PublicationTypeList/PublicationType')]
+        from publication_status import pubmed_relations
 
         # MeSH terms
         mesh_terms = [clean(''.join(m.find('DescriptorName').itertext())) for m in row.findall('.//MeshHeadingList/MeshHeading') if m.find('DescriptorName') is not None]
@@ -148,6 +149,7 @@ def parse(root):
             'lastAuthor': authors[-1] if len(authors) > 1 else '',
             'affiliations': affiliations,
             'pubTypes': pub_types,
+            'pubmedRelations': pubmed_relations(row),
             'meshTerms': mesh_terms,
             'abstractSections': abstract_sections,
             'sourceId': 'pubmed-journal-fallback',

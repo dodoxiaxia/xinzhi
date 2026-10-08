@@ -1028,6 +1028,9 @@ html[data-style="b"] .app-container.weekly-layout .main-content { max-width: non
 .brief-help, .brief-coverage { font-size: 12px; color: var(--text-muted); }
 .brief-coverage { flex-basis: 100%; }
 .design-pill.design-unverified { background: none !important; color: var(--text-muted) !important; font-weight: 400; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+.publication-status-pill { color: var(--text-primary); border: 1px solid currentColor; font-weight: 700; }
+.publication-status { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 8px 10px; margin: 6px 0; border: 1px solid var(--border); border-left: 3px solid var(--text-primary); border-radius: 4px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.publication-status strong { flex-basis: 100%; }
 .selection-storage-note { color: var(--text-muted); font-size: 12px; }
 @media (max-width: 720px) {
   html[data-style] header.app-header { position: sticky; top: 0; background: var(--bg-primary); }
