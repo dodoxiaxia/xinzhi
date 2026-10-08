@@ -1,0 +1,44 @@
+{
+  "release": "v14.2.13",
+  "productionParent": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+  "includedSources": [
+    "98031b4eb610166c702cb05446c569f7178e5b52",
+    "83f220c19cbed855ca5541e01d5aabb3f668115e"
+  ],
+  "inputState": "622b0d719496e84ac61af6ac155dcd73861dc0f6",
+  "pythonTests": 536,
+  "pythonPassed": true,
+  "nodeCheckCount": 21,
+  "nodePassed": true,
+  "offlineBrowserPassed": true,
+  "publicManifestPreflightPassed": true,
+  "publicFileCount": 6,
+  "providerCallsMadeByThisTask": 0,
+  "realPdfDownloadsMadeByThisTask": 0,
+  "productionJaccPostRequests": 0,
+  "jaccDownloadVerified": false,
+  "performanceHeld": true,
+  "aiNumberPatchIncluded": false,
+  "pdfVersionConfigRead": {
+    "checkedAt": "2026-10-08T00:38:38.463181+00:00",
+    "target": "production.PDF_GITHUB_COMMIT",
+    "readOnly": true,
+    "projectRequests": 1,
+    "applicationRequests": 0,
+    "configWrites": 0,
+    "deploymentsCreated": 0,
+    "otherEnvironmentValuesRetained": false,
+    "httpStatus": 200,
+    "productionConfigFieldPresent": true,
+    "envVarsFieldPresent": true,
+    "envVarsIsObject": true,
+    "envVarCount": 7,
+    "canonicalDeploymentId": "9cc7e31e-07fc-43e1-979c-005c5722cf16",
+    "configured": false,
+    "nonSecretVersionFormatValid": false,
+    "runId": 37708828296,
+    "jobId": 113089601607,
+    "sourceSha": "b11401444e2b198601827f808655450fea2b0c6d"
+  }
+}
+
