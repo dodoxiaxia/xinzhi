@@ -1,0 +1,208 @@
+{
+  "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+  "python": {
+    "tests": 628,
+    "seconds": 265.017,
+    "passed": true
+  },
+  "node": {
+    "functionalSuites": 27,
+    "syntaxChecks": 2,
+    "passed": true,
+    "commands": [
+      {
+        "command": "node --check app.js",
+        "exitCode": 0,
+        "seconds": 0.072
+      },
+      {
+        "command": "node --check citation-export.js",
+        "exitCode": 0,
+        "seconds": 0.042
+      },
+      {
+        "command": "node scripts/test_citation_export.cjs",
+        "exitCode": 0,
+        "seconds": 0.054
+      },
+      {
+        "command": "node scripts/test_reading_logic.cjs",
+        "exitCode": 0,
+        "seconds": 0.069
+      },
+      {
+        "command": "node scripts/test_edge_worker.cjs",
+        "exitCode": 0,
+        "seconds": 0.128
+      },
+      {
+        "command": "node scripts/test_pdf_worker.cjs",
+        "exitCode": 0,
+        "seconds": 0.279
+      },
+      {
+        "command": "node scripts/test_doi_library_worker.cjs",
+        "exitCode": 0,
+        "seconds": 0.556
+      },
+      {
+        "command": "node scripts/test_doi_direct_download.cjs",
+        "exitCode": 0,
+        "seconds": 0.227
+      },
+      {
+        "command": "node scripts/test_doi_manual_needed.cjs",
+        "exitCode": 0,
+        "seconds": 0.144
+      },
+      {
+        "command": "node scripts/test_github_lfs_reuse.cjs",
+        "exitCode": 0,
+        "seconds": 0.5
+      },
+      {
+        "command": "node scripts/test_lfs_deadline.cjs",
+        "exitCode": 0,
+        "seconds": 0.095
+      },
+      {
+        "command": "node scripts/test_pdf_diagnostics.cjs",
+        "exitCode": 0,
+        "seconds": 0.436
+      },
+      {
+        "command": "node scripts/test_doi_source_check.cjs",
+        "exitCode": 0,
+        "seconds": 0.189
+      },
+      {
+        "command": "node scripts/test_fulltext_jobs.cjs",
+        "exitCode": 0,
+        "seconds": 0.464
+      },
+      {
+        "command": "node scripts/test_fulltext_activation.cjs",
+        "exitCode": 0,
+        "seconds": 0.2
+      },
+      {
+        "command": "node scripts/test_fulltext_dispatcher.cjs",
+        "exitCode": 0,
+        "seconds": 0.096
+      },
+      {
+        "command": "node scripts/test_doi_library_ui.cjs --helpers-only",
+        "exitCode": 0,
+        "seconds": 0.059
+      },
+      {
+        "command": "node scripts/test_study_services.cjs",
+        "exitCode": 0,
+        "seconds": 0.286
+      },
+      {
+        "command": "node scripts/test_study_evidence_regression.cjs",
+        "exitCode": 0,
+        "seconds": 0.096
+      },
+      {
+        "command": "node scripts/test_study_ui.cjs",
+        "exitCode": 0,
+        "seconds": 0.085
+      },
+      {
+        "command": "node scripts/test_brief_feedback.cjs",
+        "exitCode": 0,
+        "seconds": 0.123
+      },
+      {
+        "command": "node scripts/test_ai_deadline_lifecycle.cjs",
+        "exitCode": 0,
+        "seconds": 0.319
+      },
+      {
+        "command": "node scripts/test_ai_waiting_ui.cjs",
+        "exitCode": 0,
+        "seconds": 0.063
+      },
+      {
+        "command": "node scripts/test_source_health_ui.cjs",
+        "exitCode": 0,
+        "seconds": 0.074
+      },
+      {
+        "command": "node scripts/test_weekly_window.cjs",
+        "exitCode": 0,
+        "seconds": 0.113
+      },
+      {
+        "command": "node scripts/test_publication_dates_ui.cjs",
+        "exitCode": 0,
+        "seconds": 0.055
+      },
+      {
+        "command": "node scripts/test_publication_status_ui.cjs",
+        "exitCode": 0,
+        "seconds": 0.058
+      },
+      {
+        "command": "node scripts/test_public_content_priority.cjs",
+        "exitCode": 0,
+        "seconds": 0.057
+      },
+      {
+        "command": "node scripts/test_journal_metrics.cjs",
+        "exitCode": 0,
+        "seconds": 0.088
+      }
+    ]
+  },
+  "pdfDiagnosticScenarios": 34,
+  "independentSecurityReview": {
+    "reviewer": "static_minimal_repairs",
+    "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+    "passed": true
+  },
+  "scope": "synthetic offline; no real PDF/API/model/config mutation; production cause still unknown",
+  "journalUi": {
+    "assertions": 131,
+    "widths": [
+      1440,
+      390,
+      320
+    ],
+    "passed": true
+  },
+  "publicBrowser": {
+    "passed": true,
+    "scenarios": 4,
+    "evidence": "browser/public-browser.json"
+  },
+  "build": {
+    "release": "v14.2.19",
+    "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+    "publicFiles": 6,
+    "zipPackages": 3,
+    "validated": true
+  },
+  "actualBuiltWorker": {
+    "passed": true,
+    "workerSha256": "4e9c8cf9e49d79d7eed45072f860dfb4e65cfbdb6cb849ab43ac5613e550789f",
+    "suites": [
+      {
+        "suite": "test_pdf_diagnostics.cjs",
+        "exitCode": 0
+      },
+      {
+        "suite": "test_github_lfs_reuse.cjs",
+        "exitCode": 0
+      },
+      {
+        "suite": "test_doi_source_check.cjs",
+        "exitCode": 0
+      }
+    ],
+    "diagnosticScenarios": 34,
+    "scope": "actual built/saved Worker function bodies; synthetic registry/policy and intercepted network; not live PDF/API/token verification"
+  }
+}

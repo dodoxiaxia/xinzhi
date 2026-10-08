@@ -1,0 +1,587 @@
+{
+  "release": "v14.2.19",
+  "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+  "candidateBranch": "codex/night-v14219-pdf-diagnostics-20261008",
+  "baselineSource": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+  "restoredState": "a03db83ac17843173288ae1187f1c81d271baafe",
+  "scope": [
+    "publisher_sidebar_metric_blocks_removed",
+    "protected_failure_stage_diagnostics",
+    "permanent_pause_for_embedded_lfs_denial",
+    "metadata_and_github_body_waits_bounded"
+  ],
+  "runId": 37727218068,
+  "jobId": 113148032507,
+  "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37727218068",
+  "pipeline": "completed_success",
+  "localTests": {
+    "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+    "python": {
+      "tests": 628,
+      "seconds": 265.017,
+      "passed": true
+    },
+    "node": {
+      "functionalSuites": 27,
+      "syntaxChecks": 2,
+      "passed": true,
+      "commands": [
+        {
+          "command": "node --check app.js",
+          "exitCode": 0,
+          "seconds": 0.072
+        },
+        {
+          "command": "node --check citation-export.js",
+          "exitCode": 0,
+          "seconds": 0.042
+        },
+        {
+          "command": "node scripts/test_citation_export.cjs",
+          "exitCode": 0,
+          "seconds": 0.054
+        },
+        {
+          "command": "node scripts/test_reading_logic.cjs",
+          "exitCode": 0,
+          "seconds": 0.069
+        },
+        {
+          "command": "node scripts/test_edge_worker.cjs",
+          "exitCode": 0,
+          "seconds": 0.128
+        },
+        {
+          "command": "node scripts/test_pdf_worker.cjs",
+          "exitCode": 0,
+          "seconds": 0.279
+        },
+        {
+          "command": "node scripts/test_doi_library_worker.cjs",
+          "exitCode": 0,
+          "seconds": 0.556
+        },
+        {
+          "command": "node scripts/test_doi_direct_download.cjs",
+          "exitCode": 0,
+          "seconds": 0.227
+        },
+        {
+          "command": "node scripts/test_doi_manual_needed.cjs",
+          "exitCode": 0,
+          "seconds": 0.144
+        },
+        {
+          "command": "node scripts/test_github_lfs_reuse.cjs",
+          "exitCode": 0,
+          "seconds": 0.5
+        },
+        {
+          "command": "node scripts/test_lfs_deadline.cjs",
+          "exitCode": 0,
+          "seconds": 0.095
+        },
+        {
+          "command": "node scripts/test_pdf_diagnostics.cjs",
+          "exitCode": 0,
+          "seconds": 0.436
+        },
+        {
+          "command": "node scripts/test_doi_source_check.cjs",
+          "exitCode": 0,
+          "seconds": 0.189
+        },
+        {
+          "command": "node scripts/test_fulltext_jobs.cjs",
+          "exitCode": 0,
+          "seconds": 0.464
+        },
+        {
+          "command": "node scripts/test_fulltext_activation.cjs",
+          "exitCode": 0,
+          "seconds": 0.2
+        },
+        {
+          "command": "node scripts/test_fulltext_dispatcher.cjs",
+          "exitCode": 0,
+          "seconds": 0.096
+        },
+        {
+          "command": "node scripts/test_doi_library_ui.cjs --helpers-only",
+          "exitCode": 0,
+          "seconds": 0.059
+        },
+        {
+          "command": "node scripts/test_study_services.cjs",
+          "exitCode": 0,
+          "seconds": 0.286
+        },
+        {
+          "command": "node scripts/test_study_evidence_regression.cjs",
+          "exitCode": 0,
+          "seconds": 0.096
+        },
+        {
+          "command": "node scripts/test_study_ui.cjs",
+          "exitCode": 0,
+          "seconds": 0.085
+        },
+        {
+          "command": "node scripts/test_brief_feedback.cjs",
+          "exitCode": 0,
+          "seconds": 0.123
+        },
+        {
+          "command": "node scripts/test_ai_deadline_lifecycle.cjs",
+          "exitCode": 0,
+          "seconds": 0.319
+        },
+        {
+          "command": "node scripts/test_ai_waiting_ui.cjs",
+          "exitCode": 0,
+          "seconds": 0.063
+        },
+        {
+          "command": "node scripts/test_source_health_ui.cjs",
+          "exitCode": 0,
+          "seconds": 0.074
+        },
+        {
+          "command": "node scripts/test_weekly_window.cjs",
+          "exitCode": 0,
+          "seconds": 0.113
+        },
+        {
+          "command": "node scripts/test_publication_dates_ui.cjs",
+          "exitCode": 0,
+          "seconds": 0.055
+        },
+        {
+          "command": "node scripts/test_publication_status_ui.cjs",
+          "exitCode": 0,
+          "seconds": 0.058
+        },
+        {
+          "command": "node scripts/test_public_content_priority.cjs",
+          "exitCode": 0,
+          "seconds": 0.057
+        },
+        {
+          "command": "node scripts/test_journal_metrics.cjs",
+          "exitCode": 0,
+          "seconds": 0.088
+        }
+      ]
+    },
+    "pdfDiagnosticScenarios": 34,
+    "independentSecurityReview": {
+      "reviewer": "static_minimal_repairs",
+      "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+      "passed": true
+    },
+    "scope": "synthetic offline; no real PDF/API/model/config mutation; production cause still unknown",
+    "journalUi": {
+      "assertions": 131,
+      "widths": [
+        1440,
+        390,
+        320
+      ],
+      "passed": true
+    },
+    "publicBrowser": {
+      "passed": true,
+      "scenarios": 4,
+      "evidence": "browser/public-browser.json"
+    },
+    "build": {
+      "release": "v14.2.19",
+      "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+      "publicFiles": 6,
+      "zipPackages": 3,
+      "validated": true
+    },
+    "actualBuiltWorker": {
+      "passed": true,
+      "workerSha256": "4e9c8cf9e49d79d7eed45072f860dfb4e65cfbdb6cb849ab43ac5613e550789f",
+      "suites": [
+        {
+          "suite": "test_pdf_diagnostics.cjs",
+          "exitCode": 0
+        },
+        {
+          "suite": "test_github_lfs_reuse.cjs",
+          "exitCode": 0
+        },
+        {
+          "suite": "test_doi_source_check.cjs",
+          "exitCode": 0
+        }
+      ],
+      "diagnosticScenarios": 34,
+      "scope": "actual built/saved Worker function bodies; synthetic registry/policy and intercepted network; not live PDF/API/token verification"
+    }
+  },
+  "localManifest": {
+    "release": "v14.2.19",
+    "createdAt": "2026-10-08T04:20:44.016652+00:00",
+    "files": [
+      {
+        "path": "_headers",
+        "bytes": 327,
+        "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+      },
+      {
+        "path": "_worker.js",
+        "bytes": 460154,
+        "sha256": "4e9c8cf9e49d79d7eed45072f860dfb4e65cfbdb6cb849ab43ac5613e550789f"
+      },
+      {
+        "path": "icon.svg",
+        "bytes": 743255,
+        "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+      },
+      {
+        "path": "index.html",
+        "bytes": 29385,
+        "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+      },
+      {
+        "path": "public.js",
+        "bytes": 9243640,
+        "sha256": "8527fa41994cc4896990ddc80fa327ff369c262ae3b6472355288d4231375fe2"
+      },
+      {
+        "path": "style.css",
+        "bytes": 91292,
+        "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+      }
+    ],
+    "contentStatus": {
+      "release": "v14.2.19",
+      "builtAt": "2026-10-08T04:20:44.016652+00:00",
+      "radarUpdatedAt": "2026-10-08T03:27:27.702810+00:00",
+      "healthCheckedAt": "2026-10-08T03:27:27.702810+00:00",
+      "guideLatestPublishedAt": "2026-09-30",
+      "quicklookLatestAt": "2026-10-07",
+      "guideCount": 12,
+      "quicklookCount": 12
+    },
+    "counts": {
+      "radar": 869,
+      "library": 1264,
+      "checked_guides": 12,
+      "ai_quicklooks_unchecked": 12,
+      "radar_archive_titles": 12671,
+      "titles_zh": 15142,
+      "weekly_board": 24,
+      "weekly_precomputed": {
+        "title": 24,
+        "translate": 24,
+        "study": 0,
+        "quicklook": 24
+      }
+    },
+    "excludes": [
+      "PDFs",
+      "local paths",
+      "private notes",
+      "database",
+      "credentials"
+    ],
+    "deployed": false,
+    "buildProvenance": {
+      "schema": 1,
+      "codeSha": "1e6d028024c005e813fbec29828c33201ce09b2e",
+      "inputs": {
+        "scripts/ci_daily.py": "0eabe1804b3af0edcf322a2a312c4fecc970a3d5f952c72b86ce24c2adc07878",
+        "scripts/public_precompute_pending.py": "20ebd135c81dab2aa5197703ecbdbdb9f8ac1743bb6411828fe35c0a7d7b3f0c",
+        "data/public-precompute-pending.json": "699eacc816e466c30c1592b9f76a7e92659a01c8553b291349b45bd207bd182a",
+        "editorial/sol-public-abstract-20261008-gap/sources.json": "e1c9d1994ad833ffe6c8e376a680aa65d0208e99a5a58d0c1b818a27935a2490",
+        "editorial/sol-public-abstract-20261008-gap/gap-cache.json": "7e13d0cf0840883d11c645139cc9d25e2b346280cf9ed2f9fc1a9c114ae93787",
+        "editorial/sol-public-abstract-20261008b-gap/sources.json": "04be242f3d0703610cf0f8c410382e22ada064010ed9b742d32100b1026a6e08",
+        "editorial/sol-public-abstract-20261008b-gap/gap-cache.json": "ae3d5d24bdbcf49c8978d4b61c373d8f4aa2e945ea6af46bdcdbbf596ed1e89c",
+        "editorial/sol-public-abstract-20261008c-gap/sources.json": "008f8d17b48eb355a1400d7b259e508127169ccd3462ecfd162d4b11abaaee0a",
+        "editorial/sol-public-abstract-20261008c-gap/gap-cache.json": "2db5893865959fbd43219a2be1f354f5d8bd1ea9a34c501636dedbf6912908b5",
+        ".github/workflows/fulltext.yml": "516ce790e5b875d8d9c0fde7fd9c7f7ba533a869b6238ac6490bef61718ee68d",
+        "scripts/fulltext_queue_runner.cjs": "560c2257548cb0a6d5aeaa1d1238217b5fa703a04053c0f676e04993c68f14cf",
+        "workers/cron-dispatch/index.js": "7494fbfa472973a8702bdad4112b97235edc5cffda15b23100d751d741c120ee",
+        "workers/cron-dispatch/wrangler.toml": "ffa75e90aa34c09fc9d0b5f1fda033113df65c68adc6218c4720f7ea2bc6cf30",
+        "scripts/check_fulltext_dispatcher.py": "629a09802c6c8c71c9304154ee8391601cb47f84e10fa69ebe5621d50b02ece0",
+        "scripts/publication_dates.py": "bcb60417183b6184730032bc1fec9c9cdc92a081bb95cac9712a449777ba9f78",
+        "scripts/public_library_quality.py": "95c206607bd9d56f03536eb1abbdb0a7057a672165589a8b740c9f8293ddf1be",
+        "scripts/apply_public_library.py": "69c5438be2ec6376e9d87bc31ae64cab99cd17a47e6f3b47452d96d74677a3b0",
+        "editorial/public_library_snapshot.json": "0524aa60bb72b452b021fef40a712e2a810e5caf3bc664a9e4b80447b8908ea2",
+        "editorial/public_library_snapshot_manifest.json": "6e9c740630a18808375d4557bcdf552069886f639227fac6e0fd2adc7c4d54eb",
+        "index.html": "969d7017df3c14c0faf2964743e1d090aa5cc075e059b6ae1e47a377fffd8f40",
+        "app.js": "241899efc1418cf042e6f724bdd19c7ac8405b6a2e199200a415b07c260cedf4",
+        "citation-export.js": "8e2a32d23027675b26549a7fd0873d6a2e8eb9c0b2cf66bf28cad73574f2cfb8",
+        "style.css": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528",
+        "icon.svg": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7",
+        "edge/_worker.js": "23f92f85f4c9d7b9537037195931153ab286ca5b2c5ccd87f1c705d3b5c44ac4",
+        "journal-metrics.js": "f54aa6992514715726538a7bb97cb642c00b2723e05aa5d683489b546fd2a866",
+        "config/journal-metrics.json": "143e1e4d481b87112048f11b60250e6b3ee6c091f399ee27277a561f7593210a",
+        "scripts/journal_metrics.py": "9162fb924a1c490dc9e02f103b780add962783407088b75f7aad4ee021b7894f",
+        "scripts/build_public.py": "c213d8f6c168cda028d03256fe48152cb3493324af28006938a972a55d674cd9",
+        "scripts/release_integrity.py": "89ca84846637eaa9928ff9697de7afda512a304269a4b01dfeaf47a39bb06aef",
+        "scripts/enrich_metadata.py": "e1486846a7f4a7fb5fa4d53da694afa254c78af82cd1eee5f1c2f69819d4ecbe",
+        "scripts/publication_status.py": "da4536872215efd24a02820c5728ef583b80dd99b0e45b3fd55c6afcd1160fe5",
+        "config/publication-status.json": "48a35dfe4b45e7763fbd9b11142550d163b36d3c42b5458a5eac345a0ea4f34f",
+        "scripts/editorial_review.py": "b8854061a158ed407b21ba634242d48973e1dbf60874d345f26e71b0359c8c84",
+        "scripts/refresh_feeds.py": "15f22c95ee14d1e73fa04088a38b66411e1688514acaf5506f3959d6bfb582fb",
+        "scripts/build_data.py": "aae4b867fd3020c2e1272569123a061bbb4138d0712be378b5a58538a7dd77cd",
+        "scripts/source_fallbacks.py": "71ec0a8c8e240c54b1ecb0e649e21c1e81d7f71f0440fd43465cbf87aaed7695",
+        "editorial/legacy_published_guides.json": "4f36baf94e88d0fce92a57fe13f3f35db0596b4bd94ba1fe3d47efee80a8e4f9",
+        "data/pubmed.json": "78fbd7863020f01bbb3d8266510fb863c68596f188e4c3761ba7abbc184db23c",
+        "scripts/sync_public_library.py": "22d1b5a9446a6b45c210175980b5d5218d5d2dd621d79e148effc40ce5ede680",
+        "config/public_library_adjudications.json": "7f40b9e19417ffbe26821f2331d2d8ad7832eb7677b927852ea0de072d21c0de",
+        "data/candidates.json": "fe3b2a337ec6d8dee2ba81fda6ecd24a05e1a464be4d2418533cd2bf5df750d3",
+        "data/library.json": "51efa4d973438eaa8b94a7e50046be3a8c3504e60e98b7a77a52c9810ee2aa3f",
+        "data/source-health.json": "e7d39fe27dd19d095b26fc57d1d57d00f15c7d7e798f045e06f2f029637e2ee5",
+        "data/curated-archive.json": "409d7bff2709d2ac68a20e5b23d34c5f676b43de4f162eb386bd5172cf9649d9",
+        "editorial/source_checked_drafts.json": "ba4d6a38b9596597c26a65823edbdf726aea6924c4a6787708d089c76dacfba7",
+        "data/translations.json": "6da3159eaf11815440fe6ab6ccb8d56d1d29d9496fa705fd5fa23adf2c27f6da",
+        "data/media.json": "217538cf96734d479efbf29f87a8fbeb89a2999313a920647f69464ee61b7af8",
+        "data/picks.json": "f15dbafa2a68f228480424a1451d59753163e4e125250ce034025df8cf728b15",
+        "data/radar-archive.json": "b45fef2146bb0ad64fd5baba72989ca48669824526b60a0a7888bd95daf642e5",
+        "data/archive-full.json": "87bd0a238131d242e0436273507ef5d8e8674b617859087245debc4fc98a1e06",
+        "data/quicklooks.json": "8909f5b63b6fb36913330369c66f98480f70d14145db9a4415c6b8e8d2b41efb",
+        "data/weekly-board.json": "1210bd219e09425ec04c32c01f0221f2ee4d5e5a03adc1bf58144451036b1feb",
+        "scripts/week_precompute.py": "64d53260c4f62b8970425711a3ec1ddded93f7bfdec21fa799537175d8f7773e",
+        "scripts/validate_week_precompute.cjs": "757320aee89e9d340948d291c04cf25b13a1d22f666ce9f43fe5570699510320",
+        "scripts/auto_picks.py": "97bc6e09662f7f7631f68a3605abe37aa393cfbf5945a62f1f85bad75ac34f4c",
+        "scripts/week_precompute_cache.py": "a8aa8bb8b2fd983100e2a52089ebe29bed5443ecab0948fe080903cce36745b6",
+        "scripts/week_precompute_budget.py": "2e741b2b57ff231541b0ebc439122fc25f52efa8d5c0f293ebad6a2e4f8bfcd8",
+        "scripts/week_precompute_checkpoint.py": "388c02498c66b1427f915d8c2be51549485aed9e25a03f49ee3951cd094c5c9e",
+        "scripts/week_precompute_ci.py": "3ee5400be90cac840c1a1e3b5f22367a1da2b937cdf6036619809eb56b97934b",
+        "scripts/week_precompute_usage.py": "5b4164e53c66c43f0e2e93fc50e8a2962d7e80bded2a740c62a949bb22fd39e7",
+        "editorial/public_title_translations.json": "ed458f978a28e78e1a9326f0cb80253476c40df49738fd744eead3fa1d2c6f45",
+        "editorial/public_content_corrections.json": "215d73d47a12cc8d14cf976f7eb4128001ac1623575f1b4778fb9869899f7da2",
+        "scripts/public_content_corrections.py": "b4c4be354ea1510e9b97f7f1a069179c28fad79e1b360694f1bec6a05b57eaec",
+        "scripts/public_editorial_overlay.py": "7104fa82d4d3d401edcb3355cf288b7d9cba63ab93b616a1fb553955502b44fb",
+        "scripts/preview_sol_public_overlay.py": "7c63a5be6e1456d8381fce7e52acc68ce9686b4407d37ed638437a08aadf937a",
+        "editorial/sol-public-abstract-20261007/sources.json": "8c20d1a3e4af2edf9bb617ffd1f8079dbaaf89113de71ce485b9104bff161754",
+        "editorial/sol-public-abstract-20261007/corrected-cache.json": "d74e3e63f43a9aa99f0a4e97ea8dac26df891c4c9d330d22b1160ab30296c8bd",
+        "scripts/abstract_quality.py": "f21e1d3b1ca1f4e1c3b5777b6272be5094fb78269a90ddc4833306d054adac7d",
+        "editorial/public_abstract_evidence.json": "0c9fd14a0f9072df7ebb3ef155c32db9983fb2df0addfd1cbf1c6bc89458b0c5"
+      }
+    }
+  },
+  "productionProtectedPdfReadback": "pending_user_protected_fulltext_source_receipt",
+  "priorActualPdfFailure": {
+    "release": "v14.2.18",
+    "doi": "10.1016/j.jacc.2024.02.026",
+    "approxUtc": "2026-10-08T03:56:23Z",
+    "observedError": "library_upstream",
+    "phase": "unknown_not_recorded",
+    "rootCause": "unknown"
+  },
+  "constraints": [
+    "diagnostic_metadata_only_after_existing_password_auth",
+    "no_real_PDF_or_model_call_from_integrator",
+    "no_configuration_or_permission_changes",
+    "B_authorized_handoff_held",
+    "KV_eventual_consistency_not_strong_lock",
+    "no_actual_custom_domain_or_real_phone_readback_claim"
+  ],
+  "finalProduction": {
+    "state": "0e9b75e078ba7208d645bdff16ef9dfacafc1e3d",
+    "pagesUrl": "https://60e11d29.dryz-xinzhi.pages.dev",
+    "deploymentCompleteUtc": "2026-10-08T04:29:12.2006273Z",
+    "runCompletedUpdatedUtc": "2026-10-08T04:29:25Z",
+    "deployment": {
+      "recordedAt": "2026-10-08T04:29:12.355324+00:00",
+      "recordKind": "deployment_snapshot",
+      "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37727218068",
+      "runAttempt": "1",
+      "codeSha": "1e6d028024c005e813fbec29828c33201ce09b2e",
+      "refreshOutcome": "success",
+      "deploymentRequested": true,
+      "deploymentOutcome": "success",
+      "stateOutcome": "pending",
+      "deployed": true,
+      "status": "deployed",
+      "refresh": {
+        "runId": "37727218068",
+        "runAttempt": "1",
+        "codeSha": "1e6d028024c005e813fbec29828c33201ce09b2e",
+        "startedAt": "2026-10-08T04:23:16.704367+00:00",
+        "finishedAt": "2026-10-08T04:24:49.764715+00:00",
+        "fast": true,
+        "changed": true,
+        "status": "success",
+        "afterContentHash": "64a9f4a1036ce4cb80b02b6eac57ccacb1fe7f80c33dfabea3ab35c7409ae7a7",
+        "problems": [],
+        "currentAttempt": true
+      },
+      "build": {
+        "release": "v14.2.19",
+        "createdAt": "2026-10-08T04:24:48.254936+00:00",
+        "counts": {
+          "radar": 874,
+          "library": 1264,
+          "checked_guides": 12,
+          "ai_quicklooks_unchecked": 12,
+          "radar_archive_titles": 12671,
+          "titles_zh": 15142,
+          "weekly_board": 24,
+          "weekly_precomputed": {
+            "title": 21,
+            "translate": 21,
+            "study": 0,
+            "quicklook": 21
+          }
+        },
+        "files": [
+          {
+            "path": "_headers",
+            "bytes": 327,
+            "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+          },
+          {
+            "path": "_worker.js",
+            "bytes": 466286,
+            "sha256": "179718fb1aee6bc02c9c1df2198cd272d43dfd042baec73800772ea974db3b85"
+          },
+          {
+            "path": "icon.svg",
+            "bytes": 743255,
+            "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+          },
+          {
+            "path": "index.html",
+            "bytes": 29385,
+            "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+          },
+          {
+            "path": "public.js",
+            "bytes": 9256794,
+            "sha256": "ab510fb16e601ec9cf98048156a227942b990fc6078470c531dd049872f9137b"
+          },
+          {
+            "path": "style.css",
+            "bytes": 91292,
+            "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+          }
+        ],
+        "currentAttempt": true
+      }
+    },
+    "resources": [
+      {
+        "path": "_headers",
+        "bytes": 327,
+        "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+      },
+      {
+        "path": "_worker.js",
+        "bytes": 466286,
+        "sha256": "179718fb1aee6bc02c9c1df2198cd272d43dfd042baec73800772ea974db3b85"
+      },
+      {
+        "path": "icon.svg",
+        "bytes": 743255,
+        "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+      },
+      {
+        "path": "index.html",
+        "bytes": 29385,
+        "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+      },
+      {
+        "path": "public.js",
+        "bytes": 9256794,
+        "sha256": "ab510fb16e601ec9cf98048156a227942b990fc6078470c531dd049872f9137b"
+      },
+      {
+        "path": "style.css",
+        "bytes": 91292,
+        "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+      }
+    ],
+    "workerVerification": {
+      "passed": true,
+      "workerSha256": "179718fb1aee6bc02c9c1df2198cd272d43dfd042baec73800772ea974db3b85",
+      "suites": [
+        {
+          "suite": "test_pdf_diagnostics.cjs",
+          "exitCode": 0
+        },
+        {
+          "suite": "test_github_lfs_reuse.cjs",
+          "exitCode": 0
+        },
+        {
+          "suite": "test_doi_source_check.cjs",
+          "exitCode": 0
+        }
+      ],
+      "diagnosticScenarios": 34,
+      "scope": "actual built/saved Worker function bodies; synthetic registry/policy and intercepted network; not live PDF/API/token verification"
+    },
+    "sourceCodeVerification": {
+      "passed": true,
+      "source": "1e6d028024c005e813fbec29828c33201ce09b2e",
+      "normalizedInjectedData": [
+        "PDF_LIBRARY",
+        "DOI_ADJUDICATIONS",
+        "PUBLIC_ABSTRACT_SOURCES"
+      ],
+      "workerCodeIdenticalAfterInjectedDataNormalization": true,
+      "sidebarMetricCallsAbsent": true
+    },
+    "publicSnapshotVerification": {
+      "passed": true,
+      "publishedIdentities": 39,
+      "strictIdentityLookups": 78,
+      "metadataRequests": 0,
+      "providerCalls": 0,
+      "scope": "actual injected Worker source executed offline with network forbidden"
+    },
+    "contentRefresh": {
+      "library": {
+        "old": 1264,
+        "new": 1264,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "topLevelChanged": [
+          "generatedAt"
+        ]
+      },
+      "counts": {
+        "feedOld": 869,
+        "feedNew": 874,
+        "weekly": 24
+      },
+      "weeklyCoverage": {
+        "title": 21,
+        "translate": 21,
+        "study": 0,
+        "quicklook": 21
+      },
+      "projectionsEqual": {
+        "LIBRARY": false,
+        "CURATED": true,
+        "QUICKLOOKS": true,
+        "JOURNAL_METRICS": true,
+        "WEEKLY_BOARD": false,
+        "PREGENERATED": false,
+        "RADAR": true
+      }
+    },
+    "contentPending": {
+      "coverage": {
+        "title": 21,
+        "translate": 21,
+        "quicklook": 21
+      },
+      "pendingPapers": 3,
+      "studyMissing": 24,
+      "externalModelApiRequests": 0,
+      "runtimeCacheWrites": 0,
+      "ledgerWrites": 0
+    },
+    "browserScope": "four scenarios and 131 sidebar assertions ran on final source local build before latest production feed refresh; not actual custom-domain/phone/API verification"
+  }
+}
