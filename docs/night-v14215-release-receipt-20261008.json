@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "release": "v14.2.15",
+  "productionSource": "afe3ca1447beb12fb2441a101f816a781aa1ae2a",
+  "runId": 37714830919,
+  "refreshJobId": 113108824562,
+  "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37714830919",
+  "runConclusion": "success",
+  "pagesDeploymentUrl": "https://6b51724d.dryz-xinzhi.pages.dev",
+  "deployedAtUtc": "2026-10-08T01:54:23.9831670Z",
+  "deployedAtBeijing": "2026-10-08 09:54:23",
+  "finalPipelineStateSaveOutcome": "success",
+  "finalPipelineStateSaveAtUtc": "2026-10-08T01:54:31.7387439Z",
+  "savedState": "efaaf69713fcc8b5468b9d0052daa672a666df0e",
+  "savedDeploymentDocumentStateOutcome": "pending (deployment snapshot is saved before state push; final successful state save is proven by completed job/run)",
+  "publicFileReadback": [
+    {
+      "path": "_headers",
+      "bytes": 327,
+      "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+    },
+    {
+      "path": "_worker.js",
+      "bytes": 332243,
+      "sha256": "152664148719caa8680f80975d3ea3a8d36e9a031f8e9a57a30edf4ae259a5fe"
+    },
+    {
+      "path": "icon.svg",
+      "bytes": 743255,
+      "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+    },
+    {
+      "path": "index.html",
+      "bytes": 29385,
+      "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+    },
+    {
+      "path": "public.js",
+      "bytes": 9222672,
+      "sha256": "77b6eaae436b891fa0382134558b31187075e3d59afc6d0db535398eaa9b10e7"
+    },
+    {
+      "path": "style.css",
+      "bytes": 91292,
+      "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+    }
+  ],
+  "sixFilesByteHashVerified": true,
+  "actualCounts": {
+    "radar": 870,
+    "library": 1264,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 12,
+    "radar_archive_titles": 12671,
+    "titles_zh": 15142,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 24,
+      "translate": 23,
+      "study": 0,
+      "quicklook": 23
+    }
+  },
+  "actualWeeklyContent": {
+    "status": "partial",
+    "selected": 24,
+    "coverage": {
+      "title": 24,
+      "translate": 23,
+      "study": 0,
+      "quicklook": 23
+    },
+    "fullyPreparedPapers": 0,
+    "titleTranslationQuicklookPreparedPapers": 23,
+    "partialPapers": 23,
+    "pendingPapers": 1,
+    "window": {
+      "start": "2026-10-02",
+      "end": "2026-10-08",
+      "days": 7,
+      "timezone": "Asia/Shanghai"
+    },
+    "publicationPolicy": {
+      "name": "publish_valid_content_with_explicit_pending",
+      "generationMode": "cache_only",
+      "nextGenerationTrigger": "existing_daily_full_schedule",
+      "automaticGenerationOnPageLoad": false
+    },
+    "generationStep": {
+      "outcome": "not_requested_fast",
+      "exitCode": null
+    }
+  },
+  "actualCoreQueue": {
+    "selected": 24,
+    "coverage": {
+      "title": 24,
+      "translate": 23,
+      "quicklook": 23
+    },
+    "pendingPapers": 1,
+    "contentComplete": false,
+    "studyMissing": 24
+  },
+  "newPending": [
+    {
+      "paperID": "doi:10.1161/jaha.126.050332",
+      "doi": "10.1161/jaha.126.050332",
+      "pmid": "42841502",
+      "title": "Low Parental Income During Childhood Is Associated With Coronary Atherosclerosis in Midlife.",
+      "date": "2026-10-07",
+      "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841502/",
+      "missingTasks": [
+        "translate",
+        "quicklook"
+      ],
+      "reason": "new_identity",
+      "queueKey": "350ae77df57e0f50c601480a521228c6e4614e704e821ffbf6cb93d926df4841"
+    }
+  ],
+  "previousFiveGapsStillSourceMatchedAndComplete": [
+    "doi:10.1001/jamacardio.2026.4445",
+    "doi:10.1161/circep.126.015055",
+    "doi:10.1001/jama.2026.17619",
+    "doi:10.1161/circep.125.014659",
+    "doi:10.1111/jce.70524"
+  ],
+  "reviewedDoiCases": {
+    "93b958551c8bf865": "10.1001/jama.2026.14789",
+    "4944fe87d59c5e7b": "10.1001/jamainternmed.2025.7627",
+    "b157bb0d131bf3d5": "10.1093/ehjdh/ztag011",
+    "a97bbb0a11844693": "",
+    "814b860e19382e2f": ""
+  },
+  "publicTitleCorrectionCount": 20,
+  "twoCorrectedQuicklooksVerified": true,
+  "preventTaha8Status": {
+    "state": "retracted",
+    "label": "已撤稿",
+    "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41224473/",
+    "related": [
+      {
+        "type": "ExpressionOfConcernIn",
+        "pmid": "41224475",
+        "label": "关注声明",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/41224475/"
+      },
+      {
+        "type": "ErratumIn",
+        "pmid": "41916658",
+        "label": "更正声明",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/41916658/"
+      },
+      {
+        "type": "RetractionIn",
+        "pmid": "41916660",
+        "label": "撤稿声明",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/41916660/"
+      }
+    ]
+  },
+  "sampleArticleRoles": {
+    "42104840": "研究方案",
+    "42836296": "RCT 二次分析"
+  },
+  "localTests": {
+    "source": "afe3ca1447beb12fb2441a101f816a781aa1ae2a",
+    "pythonTests": 611,
+    "pythonElapsedSeconds": 178.175,
+    "pythonExitCode": 0,
+    "pythonLogSha256": "4ab5f00593b28f9f429d0e20cc13b1a3afc2c2b3a9f70f7d80c8376518a50fca",
+    "nodeSuites": 21,
+    "syntaxChecks": 2,
+    "browserBuildScenarios": 4,
+    "archives": [
+      {
+        "archive": "xinzhi-public.zip",
+        "sixPublicFilesByteMatched": true
+      },
+      {
+        "archive": "心知-公开网站包.zip",
+        "sixPublicFilesByteMatched": true
+      },
+      {
+        "archive": "心知-本地学习站.zip",
+        "sixPublicFilesByteMatched": true
+      }
+    ]
+  },
+  "savedArtifactsBrowserStatus": "passed",
+  "modelApiCallsAddedByThisPublication": 0,
+  "glmDisabled": false,
+  "newSchedules": 0,
+  "sharedRuntimeCacheOrLedgerWritesFromQueueTool": 0,
+  "staticOrNumericCandidatesIncluded": false,
+  "liveCustomDomainOrProductionApiVerified": false,
+  "nextBibliographyCandidate": {
+    "source": "7c7b405c47101f39b5820df1bf315ccc49f42a41",
+    "deployed": false,
+    "scope": "Needs finite integration/review; expected offline public1264 to1263 not yet applied"
+  },
+  "heldStaticNumeric": {
+    "branch": "codex/next-night-integrated-20261008",
+    "source": "02de3e079f3139e49d9f97309bdc3e47d4324ed4",
+    "reservedVersion": "v14.2.16",
+    "deployed": false,
+    "needs": "Merge v14.2.15 source; extend exact static nested schemas for official publication-status projections; rebuild and satisfy remaining gates",
+    "handoffUrl": "https://github.com/dodoxiaxia/xinzhi/blob/02de3e079f3139e49d9f97309bdc3e47d4324ed4/docs/night-staticnumeric-v14216-hold-20261008.md"
+  },
+  "apiIncidentsRemainOpen": [
+    "H1 brief 225.7sec reported timeout",
+    "H2 shared409 reported generating",
+    "M6 backend did not retrieve UI-visible abstract"
+  ],
+  "apiReadonlyCodeProof": {
+    "source": "afe3ca1447beb12fb2441a101f816a781aa1ae2a",
+    "passed": true,
+    "productionRequests": 0,
+    "modelCalls": 0,
+    "sharedCacheWrites": 0,
+    "reproducedCodeFact": "tryFetch cancels its 8000ms timeout immediately after headers; later resolveMeta response.json/text has no active abort timer on the brief path.",
+    "limitation": "Synthetic stalled-body transport proves this code gap only. It does not establish the cause of the reported 225.7sec, 409 or missing abstract incidents."
+  },
+  "runtimeTitleCorrectionLimit": "No current static title conflicts found for 20 corrected title identities; future LIVE_QL titles can still outrank paper.titleZh unless separately guarded. No such live response captured; do not fix via shared-cache deletion.",
+  "savedArtifactBrowserEvidence": "night-v14215-saved-browser-20261008.json"
+}

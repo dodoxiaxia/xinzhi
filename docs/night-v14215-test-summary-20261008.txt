@@ -1,0 +1,9 @@
+Source: afe3ca1447beb12fb2441a101f816a781aa1ae2a
+Command: python3 -m unittest discover -s scripts -p 'test_*.py'
+Exit: 0
+Ran 611 tests in 178.175s
+OK
+Node workflow suites: 21, passed; syntax checks: 2, passed
+Browser: local intercepted actual build, 1440/390 cards/compact, 4 scenarios passed
+Package: final-source three ZIPs, six public files byte-for-byte matched
+Scope: no production API/model request proof; fixture failure output in full suite is deliberate regression input.

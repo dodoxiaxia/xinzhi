@@ -1,0 +1,72 @@
+{
+  "passed": true,
+  "scope": "Exact saved deployment artifacts, local intercepted Chromium only; no production domain/API requests",
+  "source": "afe3ca1447beb12fb2441a101f816a781aa1ae2a",
+  "savedState": "efaaf69713fcc8b5468b9d0052daa672a666df0e",
+  "scenarios": [
+    {
+      "width": 1440,
+      "view": "cards",
+      "retractedBanner": true,
+      "noticeAndConcernLinks": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "library": 1264,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "study": 0,
+        "quicklook": 23
+      },
+      "realModelCalls": 0
+    },
+    {
+      "width": 1440,
+      "view": "compact",
+      "retractedBanner": true,
+      "noticeAndConcernLinks": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "library": 1264,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "study": 0,
+        "quicklook": 23
+      },
+      "realModelCalls": 0
+    },
+    {
+      "width": 390,
+      "view": "cards",
+      "retractedBanner": true,
+      "noticeAndConcernLinks": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "library": 1264,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "study": 0,
+        "quicklook": 23
+      },
+      "realModelCalls": 0
+    },
+    {
+      "width": 390,
+      "view": "compact",
+      "retractedBanner": true,
+      "noticeAndConcernLinks": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "library": 1264,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "study": 0,
+        "quicklook": 23
+      },
+      "realModelCalls": 0
+    }
+  ]
+}
