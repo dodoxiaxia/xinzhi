@@ -5,8 +5,9 @@ import os
 import tempfile
 import zipfile
 from release_integrity import validate_release
+from public_assets import CORE, read_payloads
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT.parent
-PUBLIC={'index.html','style.css','public.js','icon.svg','_headers','_worker.js'}
+PUBLIC = CORE  # The six required core files remain an explicit invariant.
 ROOTS={'data','scripts','service','editor','public','editorial','docs'}
 FILES={'index.html','style.css','app.js','citation-export.js','icon.svg','README.md','start.command'}
 
@@ -14,16 +15,7 @@ def public_payloads(root=ROOT):
  public=root/'public'
  if public.is_symlink() or not public.is_dir() or public.resolve().parent!=root.resolve():
   raise ValueError('Public directory must be an ordinary project directory')
- if {p.name for p in public.iterdir()}!=PUBLIC:
-  raise ValueError('Public directory must contain exactly the six allowlisted files')
- for name in PUBLIC:
-  path=public/name
-  if path.is_symlink() or not path.is_file() or path.resolve().parent!=public.resolve():
-   raise ValueError('Public files must be ordinary files inside the public directory')
- payloads={}
- for name in sorted(PUBLIC):
-  fd=os.open(public/name,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0))
-  with os.fdopen(fd,'rb') as stream:payloads[name]=stream.read()
+ payloads=read_payloads(public)
  validate_release(root,payloads)
  return payloads
 
@@ -54,6 +46,6 @@ def main():
   for path,target in staged:os.replace(path,target)
  finally:
   for path,_ in staged:path.unlink(missing_ok=True)
- print(f'Public: {len(PUBLIC)} files. Local package: no credentials or live database.')
+ print(f'Public: {len(payloads)} explicitly allowlisted files. Local package: no credentials or live database.')
 
 if __name__=='__main__':main()

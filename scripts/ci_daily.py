@@ -6,9 +6,10 @@ Required steps must succeed; optional steps may fail without blocking the day's 
 """
 import datetime, hashlib, json, os, re, subprocess, sys, time
 from pathlib import Path
+from public_assets import CORE, MANIFEST, read_payloads, json_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
+PUBLIC = CORE  # The six required core files remain an explicit invariant.
 
 REQUIRED = [
     ['scripts/apply_public_library.py'],
@@ -28,7 +29,7 @@ BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
-BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR)\s*=\s*')
+BUNDLE_DATA = re.compile(r'\bwindow\.(?:PUBLIC_DATA_VERSION|LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RECENT_RADAR|RADAR)\s*=\s*')
 
 
 def stable_data(value):
@@ -69,12 +70,26 @@ def content_hash():
     if not (ROOT / 'public' / 'public.js').exists():
         return ''
     digest = hashlib.sha256()
-    for name in sorted(PUBLIC):
+    static=(ROOT / 'public' / MANIFEST).exists()
+    payloads=read_payloads(ROOT / 'public') if static else {}
+    for name in sorted(payloads if static else PUBLIC):
         path = ROOT / 'public' / name
         payload = path.read_bytes() if path.exists() else b'<missing>'
+        digest_name=name
         if name == 'public.js':
             payload = stable_bundle(payload.decode('utf-8')).encode('utf-8')
-        digest.update(name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
+        elif name == 'index.html' and path.exists():
+            from public_data_bundle import stable_index
+            payload = stable_index(payload.decode('utf-8')).encode('utf-8')
+        elif name == MANIFEST:
+            document=json.loads(payload)
+            document['files']=[{k:v for k,v in row.items() if k not in ('path','sha256','bytes')} for row in document['files']]
+            payload=json_bytes(document)
+        elif name.startswith('public-data/'):
+            document=json.loads(payload)
+            digest_name='public-data/'+document['name']
+            payload=json_bytes(stable_data(document))
+        digest.update(digest_name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
     return digest.hexdigest()
 
 
@@ -149,9 +164,8 @@ def main():
 
     # sanity gate
     problems = []
-    names = {p.name for p in (ROOT / 'public').iterdir()} if (ROOT / 'public').is_dir() else set()
-    if names != PUBLIC:
-        problems.append(f'public files differ: {sorted(names ^ PUBLIC)}')
+    try: read_payloads(ROOT / 'public')
+    except ValueError as exc: problems.append('public files differ: '+str(exc))
     try:
         counts = json.loads((ROOT / 'docs/public-manifest.json').read_text()).get('counts', {})
         for k, v in MIN_COUNTS.items():

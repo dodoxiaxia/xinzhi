@@ -19,7 +19,7 @@ from public_library_test_fixture import write_public_library_fixture
 def synthetic_root(root):
     for folder in ('scripts', 'data', 'editorial', 'edge', 'docs', 'config'):
         (root / folder).mkdir()
-    for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
+    for name in ('public_assets.py', 'public_data_bundle.py', 'build_public.py', 'release_integrity.py', 'enrich_metadata.py',
                  'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
                  'publication_dates.py', 'journal_metrics.py'):
         shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
@@ -35,6 +35,9 @@ def synthetic_root(root):
     shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
                     root / 'journal-metrics.js')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'citation-export.js', root / 'citation-export.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'public-data-loader.js', root / 'public-data-loader.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'edge/public-static-assets.js', root / 'edge/public-static-assets.js')
+    shutil.copyfile(Path(builder.__file__).parent / 'public_data_bundle.py', root / 'scripts/public_data_bundle.py')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
@@ -58,7 +61,8 @@ class ReleaseBuildTests(unittest.TestCase):
             synthetic_root(root)
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
-            self.assertEqual(set(public_payloads(root)), PUBLIC)
+            self.assertTrue(PUBLIC.issubset(public_payloads(root)))
+            self.assertIn('public-data-manifest.json', public_payloads(root))
             self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
             self.assertNotIn(b'citation-export.js', (root / 'public/index.html').read_bytes())
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())
