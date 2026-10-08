@@ -103,14 +103,15 @@ def public_quicklook(item):
     out['findings']=[{k:v for k,v in x.items() if k in {'text','quote'}} for x in out.get('findings',[]) if isinstance(x,dict)]
     return out
 
-def public_weekly_board(raw):
+def public_weekly_board(raw, *, maximum_rows=30):
     """Finite, validated public-abstract contract. Never emit private cache/ledger fields."""
     from week_precompute import validate, text_hash, TASKS, CATEGORIES, CAVEAT
     if not raw:return None
     if raw.get('schemaVersion')!=1 or raw.get('scope')!='public-abstract':
         raise ValueError('Invalid weekly board schema')
     rows=raw.get('items')
-    if not isinstance(rows,list) or len(rows)>30:raise ValueError('Invalid weekly board count')
+    if type(maximum_rows) is not int or maximum_rows < 0:raise ValueError('Invalid public content bound')
+    if not isinstance(rows,list) or len(rows)>maximum_rows:raise ValueError('Invalid weekly board count')
     safe=[];seen=set()
     for row in rows:
         allowed={'id','paperID','doi','pmid','rank','category','date','title','sourceHash','abstract','abstractSource','abstractSourceUrl','titleZh','precomputeStatus','missingTasks','allowAutomaticGeneration'}
@@ -326,7 +327,10 @@ def main():
     editorial_overlay=load_board(ROOT)
     weekly_raw=load('data/weekly-board.json') if (ROOT/'data/weekly-board.json').exists() else None
     weekly=public_weekly_board(apply_board(weekly_raw,editorial_overlay))
-    editorial_catalog=public_weekly_board(current_catalog(c['items'],editorial_overlay))
+    # The strict rolling board remains capped at 30. The off-week catalogue
+    # is bounded by the exact reviewed registry already loaded and source-matched.
+    editorial_catalog=public_weekly_board(current_catalog(c['items'],editorial_overlay),
+                                        maximum_rows=len(editorial_overlay['items']) if editorial_overlay else 0)
     prepared=pregenerated_map(editorial_catalog)
     prepared.update(pregenerated_map(weekly))
     if weekly:

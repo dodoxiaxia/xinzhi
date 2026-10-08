@@ -7,6 +7,7 @@ import week_precompute as w
 from preview_sol_public_overlay import preview
 from public_editorial_overlay import load_board,apply_board
 from public_precompute_pending import pending_manifest
+from build_public import public_weekly_board
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=ROOT/'editorial/sol-public-abstract-20261008b-gap'
@@ -49,6 +50,26 @@ class GapBOverlay(unittest.TestCase):
         self.assertTrue(after['contentComplete'])
         self.assertEqual(after['pendingPapers'],0)
         self.assertEqual(after['studyMissing'],24)
+
+    def test_catalogue_bound_does_not_expand_weekly_limit_or_skip_source_validation(self):
+        rows=[]
+        for n in range(35):
+            title='Reviewed public title '+str(n);abstract='Public abstract.'
+            rows.append({'paperID':'doi:10.1234/catalogue'+str(n),
+                         'title':title,'abstract':abstract,
+                         'sourceHash':w.text_hash(title,abstract),'category':'心血管'})
+        board={'schemaVersion':1,'scope':'public-abstract','items':rows}
+        with self.assertRaisesRegex(ValueError,'Invalid weekly board count'):
+            public_weekly_board({**board,'items':rows[:31]})
+        self.assertEqual(len(public_weekly_board(board,maximum_rows=35)['items']),35)
+        with self.assertRaisesRegex(ValueError,'Invalid weekly board count'):
+            public_weekly_board(board,maximum_rows=34)
+        corrupt=copy.deepcopy(board);corrupt['items'][-1]['sourceHash']='0'*64
+        with self.assertRaisesRegex(ValueError,'source hash mismatch'):
+            public_weekly_board(corrupt,maximum_rows=35)
+        duplicate=copy.deepcopy(board);duplicate['items'][-1]=duplicate['items'][0]
+        with self.assertRaisesRegex(ValueError,'identity/category'):
+            public_weekly_board(duplicate,maximum_rows=35)
 
 
 if __name__=='__main__':
