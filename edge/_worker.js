@@ -243,16 +243,21 @@ async function pdfLfsRead(url, init, limit, options) {
 async function pdfGithubBytes(metadata, raw, checksum, options = {}) {
   // LFS stores a Git blob for the pointer; the PDF is bound by the pointer's SHA256 and size.
   if (await pdfBlobDigest(raw) !== metadata.sha.toLowerCase()) pdfFail('pdf_integrity');
-  let bytes = raw;
+  let bytes = raw, targetSize = metadata.size;
   if (new TextDecoder().decode(raw.slice(0, 42)).startsWith('version https://git-lfs.github.com/spec/v1')) {
     const pointer = raw.length <= 1024 && /^version https:\/\/git-lfs\.github\.com\/spec\/v1\noid sha256:([a-f0-9]{64})\nsize ([1-9]\d*)\n?$/.exec(new TextDecoder().decode(raw));
-    if (!pointer || pointer[1] !== checksum || Number(pointer[2]) !== metadata.size || metadata.size > options.limit) pdfFail('pdf_integrity');
+    if (!pointer || pointer[1] !== checksum || !Number.isSafeInteger(Number(pointer[2]))) pdfFail('pdf_integrity');
+    targetSize = Number(pointer[2]);
+    // Contents may report either the stored pointer blob size or its expanded LFS object size.
+    if (metadata.size !== raw.length && metadata.size !== targetSize) pdfFail('pdf_integrity');
+    if (targetSize > options.limit) pdfFail('pdf_too_large',413);
+    if (options.expectedSize !== undefined && options.expectedSize !== targetSize) pdfFail('pdf_integrity');
     const batch = pdfJson(await pdfLfsRead('https://github.com/' + PDF_REPOSITORY + '.git/info/lfs/objects/batch', {
       method:'POST', headers:{ accept:'application/vnd.git-lfs+json','content-type':'application/vnd.git-lfs+json', authorization:'Basic ' + btoa('x-access-token:' + options.token) },
-      body:JSON.stringify({ operation:'download', transfers:['basic'], objects:[{ oid:checksum, size:metadata.size }] })
+      body:JSON.stringify({ operation:'download', transfers:['basic'], objects:[{ oid:checksum, size:targetSize }] })
     }, 65536, options));
     const object = batch && Array.isArray(batch.objects) && batch.objects.length === 1 && batch.objects[0];
-    if (!object || object.oid !== checksum || object.size !== metadata.size || object.error || batch.transfer && batch.transfer !== 'basic') pdfFail('pdf_upstream');
+    if (!object || object.oid !== checksum || object.size !== targetSize || object.error || batch.transfer && batch.transfer !== 'basic') pdfFail('pdf_upstream');
     const action = object.actions && object.actions.download;
     let target; try { target = new URL(action.href); } catch { pdfFail('pdf_upstream'); }
     if (target.protocol !== 'https:' || !PDF_LFS_HOSTS.has(target.hostname) || target.port || target.username || target.password || target.hash
@@ -261,7 +266,7 @@ async function pdfGithubBytes(metadata, raw, checksum, options = {}) {
     // The signed object URL comes only from GitHub's authenticated LFS download response. No credential is forwarded.
     bytes = await pdfLfsRead(target.href, { method:'GET', headers:{ accept:'application/octet-stream' } }, options.limit, options);
   }
-  if (bytes.length !== metadata.size || bytes.length < 8 || new TextDecoder().decode(bytes.slice(0,5)) !== '%PDF-' || await pdfDigest('SHA-256', bytes) !== checksum) pdfFail('pdf_integrity');
+  if (bytes.length !== targetSize || options.expectedSize !== undefined && bytes.length !== options.expectedSize || bytes.length < 8 || new TextDecoder().decode(bytes.slice(0,5)) !== '%PDF-' || await pdfDigest('SHA-256', bytes) !== checksum) pdfFail('pdf_integrity');
   return bytes;
 }
 async function handlePdf(request, env) {
@@ -581,9 +586,9 @@ async function libraryGithub(paper, env, context) {
   if (!/^[a-f0-9]{64}$/.test(checksum)) libraryFail('library_identity', 409);
   if (context.metadataOnly) return {...inspection,candidateFound:true,source:incremental ? 'github_delta' : 'github'};
   const endpoint = pdfContentsUrl(path, commit), metadata = pdfJson(await pdfRead(endpoint, 2 * 1024 * 1024, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github+json' }));
-  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 8 || metadata.size > LIBRARY_MAX_PDF_BYTES || incremental && metadata.size !== deltaBytes) libraryFail('library_identity', 409);
+  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || !/^[a-f0-9]{40}$/i.test(metadata.sha || '') || !Number.isInteger(metadata.size) || metadata.size < 8 || metadata.size > LIBRARY_MAX_PDF_BYTES) libraryFail('library_identity', 409);
   const raw = await pdfRead(endpoint, LIBRARY_MAX_PDF_BYTES, { token, signal:context.signal, pauseOnDenied:true, file:true, accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
-  const bytes = await pdfGithubBytes(metadata, raw, checksum, { token, signal:context.signal, pauseOnDenied:true, limit:LIBRARY_MAX_PDF_BYTES });
+  const bytes = await pdfGithubBytes(metadata, raw, checksum, { token, signal:context.signal, pauseOnDenied:true, limit:LIBRARY_MAX_PDF_BYTES, ...(incremental ? {expectedSize:deltaBytes} : {}) });
   libraryValidatePdf(bytes);
   return { bytes, source:incremental ? 'github_delta' : 'github', commit };
 }
