@@ -1,0 +1,369 @@
+{
+  "release": "v14.2.18",
+  "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+  "state": "a03db83ac17843173288ae1187f1c81d271baafe",
+  "run": 37722771464,
+  "job": 113134014101,
+  "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37722771464",
+  "pagesUrl": "https://07928219.dryz-xinzhi.pages.dev",
+  "runConclusion": "success",
+  "deployedAt": "2026-10-08T03:33:10.8457449Z",
+  "finalStateSaveAt": "2026-10-08T03:33:18.4794091Z",
+  "runCompletedAt": "2026-10-08T03:33:22Z",
+  "files": [
+    {
+      "path": "_headers",
+      "bytes": 327,
+      "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+    },
+    {
+      "path": "_worker.js",
+      "bytes": 446394,
+      "sha256": "00b5c7f578f3cd08224b6f9b9f46b50c45f8ea2246e5f9a593eb667595e28768"
+    },
+    {
+      "path": "icon.svg",
+      "bytes": 743255,
+      "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+    },
+    {
+      "path": "index.html",
+      "bytes": 29385,
+      "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+    },
+    {
+      "path": "public.js",
+      "bytes": 9243698,
+      "sha256": "6ef4831ea028f0dcefe7d58bde0d6a466ce76cfa621af8d6317964e99748c2df"
+    },
+    {
+      "path": "style.css",
+      "bytes": 91292,
+      "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+    }
+  ],
+  "actualContent": {
+    "passed": true,
+    "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+    "state": "a03db83ac17843173288ae1187f1c81d271baafe",
+    "weeklyWholeRowsUnchanged": 24,
+    "libraryWholeRowsUnchanged": 1264,
+    "coverage": {
+      "title": 24,
+      "translate": 24,
+      "study": 0,
+      "quicklook": 24
+    },
+    "queue": {
+      "pendingPapers": 0,
+      "contentComplete": true,
+      "studyMissing": 24
+    },
+    "unchangedProjections": [
+      "CURATED",
+      "QUICKLOOKS",
+      "JOURNAL_METRICS",
+      "PREGENERATED",
+      "RADAR"
+    ],
+    "actualCounts": {
+      "radar": 869,
+      "library": 1264,
+      "checked_guides": 12,
+      "ai_quicklooks_unchecked": 12,
+      "radar_archive_titles": 12671,
+      "titles_zh": 15142,
+      "weekly_board": 24,
+      "weekly_precomputed": {
+        "title": 24,
+        "translate": 24,
+        "study": 0,
+        "quicklook": 24
+      }
+    },
+    "feedRefresh": {
+      "before": 870,
+      "after": 869,
+      "removedIdentities": [
+        {
+          "title": "Game theory driven multi-agent framework mitigates language model hallucination",
+          "doi": "10.1038/s41467-026-78213-5",
+          "pmid": null,
+          "source": null,
+          "date": "2026-10-07T00:00:00+00:00",
+          "publicationDate": null,
+          "dateVerified": null
+        }
+      ],
+      "addedIdentities": []
+    },
+    "sourceHealthStatuses": {
+      "ok": 54,
+      "filtered_empty": 23,
+      "not_feed": 5
+    },
+    "scope": "actual saved deployment artifact, legitimate fast refresh advances timestamps/feed entries; no live API claim"
+  },
+  "actualWorker": {
+    "passed": true,
+    "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+    "actualWorkerEqualsValidatedLocalWorker": true,
+    "actualWorkerSha256": "00b5c7f578f3cd08224b6f9b9f46b50c45f8ea2246e5f9a593eb667595e28768",
+    "lfsAndSourceCheckTestsAgainstSavedWorker": true,
+    "network": "synthetic only, zero real requests",
+    "productionProtectedPdfReadback": "pending user existing website passphrase test",
+    "productionConfigPDF_GITHUB_COMMIT": "unknown",
+    "approvedBridgeCandidate": "0eb91c69d49d87434892b69817432d5e574bf535",
+    "bridgeDeployed": false,
+    "bridgeHold": "independent safety review requires explicit no-execution/hold for KV non-atomic cross-isolate claims",
+    "noNewTokensOrSettings": true
+  },
+  "publicAbstractSnapshot": {
+    "passed": true,
+    "publishedIdentities": 36,
+    "strictIdentityLookups": 72,
+    "metadataRequests": 0,
+    "providerCalls": 0,
+    "scope": "actual injected Worker source executed offline with network forbidden"
+  },
+  "tests": {
+    "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+    "python": {
+      "passed": true,
+      "tests": 628,
+      "seconds": 270.935
+    },
+    "node": {
+      "passed": true,
+      "checks": 28,
+      "commands": [
+        {
+          "command": "node --check app.js",
+          "returncode": 0,
+          "seconds": 0.046
+        },
+        {
+          "command": "node --check citation-export.js",
+          "returncode": 0,
+          "seconds": 0.034
+        },
+        {
+          "command": "node scripts/test_citation_export.cjs",
+          "returncode": 0,
+          "seconds": 0.054
+        },
+        {
+          "command": "node scripts/test_reading_logic.cjs",
+          "returncode": 0,
+          "seconds": 0.078
+        },
+        {
+          "command": "node scripts/test_edge_worker.cjs",
+          "returncode": 0,
+          "seconds": 0.11
+        },
+        {
+          "command": "node scripts/test_pdf_worker.cjs",
+          "returncode": 0,
+          "seconds": 0.337
+        },
+        {
+          "command": "node scripts/test_doi_library_worker.cjs",
+          "returncode": 0,
+          "seconds": 0.364
+        },
+        {
+          "command": "node scripts/test_doi_direct_download.cjs",
+          "returncode": 0,
+          "seconds": 0.203
+        },
+        {
+          "command": "node scripts/test_doi_manual_needed.cjs",
+          "returncode": 0,
+          "seconds": 0.154
+        },
+        {
+          "command": "node scripts/test_github_lfs_reuse.cjs",
+          "returncode": 0,
+          "seconds": 0.297
+        },
+        {
+          "command": "node scripts/test_lfs_deadline.cjs",
+          "returncode": 0,
+          "seconds": 0.105
+        },
+        {
+          "command": "node scripts/test_doi_source_check.cjs",
+          "returncode": 0,
+          "seconds": 0.145
+        },
+        {
+          "command": "node scripts/test_fulltext_jobs.cjs",
+          "returncode": 0,
+          "seconds": 0.434
+        },
+        {
+          "command": "node scripts/test_fulltext_activation.cjs",
+          "returncode": 0,
+          "seconds": 0.158
+        },
+        {
+          "command": "node scripts/test_fulltext_dispatcher.cjs",
+          "returncode": 0,
+          "seconds": 0.096
+        },
+        {
+          "command": "node scripts/test_doi_library_ui.cjs --helpers-only",
+          "returncode": 0,
+          "seconds": 0.059
+        },
+        {
+          "command": "node scripts/test_study_services.cjs",
+          "returncode": 0,
+          "seconds": 0.252
+        },
+        {
+          "command": "node scripts/test_study_evidence_regression.cjs",
+          "returncode": 0,
+          "seconds": 0.09
+        },
+        {
+          "command": "node scripts/test_study_ui.cjs",
+          "returncode": 0,
+          "seconds": 0.083
+        },
+        {
+          "command": "node scripts/test_brief_feedback.cjs",
+          "returncode": 0,
+          "seconds": 0.108
+        },
+        {
+          "command": "node scripts/test_ai_deadline_lifecycle.cjs",
+          "returncode": 0,
+          "seconds": 0.265
+        },
+        {
+          "command": "node scripts/test_ai_waiting_ui.cjs",
+          "returncode": 0,
+          "seconds": 0.051
+        },
+        {
+          "command": "node scripts/test_source_health_ui.cjs",
+          "returncode": 0,
+          "seconds": 0.073
+        },
+        {
+          "command": "node scripts/test_weekly_window.cjs",
+          "returncode": 0,
+          "seconds": 0.098
+        },
+        {
+          "command": "node scripts/test_publication_dates_ui.cjs",
+          "returncode": 0,
+          "seconds": 0.052
+        },
+        {
+          "command": "node scripts/test_publication_status_ui.cjs",
+          "returncode": 0,
+          "seconds": 0.045
+        },
+        {
+          "command": "node scripts/test_public_content_priority.cjs",
+          "returncode": 0,
+          "seconds": 0.046
+        },
+        {
+          "command": "node scripts/test_journal_metrics.cjs",
+          "returncode": 0,
+          "seconds": 0.066
+        }
+      ]
+    },
+    "browser": {
+      "passed": true,
+      "scenarios": 4,
+      "widths": [
+        1440,
+        390
+      ],
+      "views": [
+        "cards",
+        "compact"
+      ],
+      "externalRequestsAllowed": false,
+      "realModelCalls": 0,
+      "mockOnlyStudyPosts": 4
+    },
+    "independentSecurityReview": {
+      "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+      "blockers": 0,
+      "extraOfflineCases": 8,
+      "parentSizeReviewCleared": "9081761da91d2524b2d2ddb1b2994db712770647",
+      "ciClaim": false
+    },
+    "lfsDeadlineRegression": {
+      "commit": "bd613d1180d030c17fd36575e9c9c991fc09a125",
+      "scenarios": 6,
+      "ignoredAbortAndCancelBounded": true
+    },
+    "productionAuthenticatedPdfReadback": "not_performed_no_supported_saved_passphrase_context",
+    "productionConfigCurrentPdfCommit": "not_read",
+    "noRootPrivatePdfDownload": true,
+    "noRootPublisherDownload": true,
+    "noRootPrivateIndexWrite": true
+  },
+  "savedArtifactBrowser": {
+    "passed": true,
+    "scenarios": 4,
+    "widths": [
+      1440,
+      390
+    ],
+    "views": [
+      "cards",
+      "compact"
+    ],
+    "realModelCalls": 0,
+    "localInterceptedMockOnlyStudyPosts": 4,
+    "screenshots": [
+      {
+        "path": "status-1440-cards.png",
+        "sha256": "5fe9e98557ebdf8e0c3da9d52658ee95ca156c0033a3c19933281a7d9c7745cc",
+        "bytes": 212176
+      },
+      {
+        "path": "status-1440-compact.png",
+        "sha256": "d10de376e08f37da0e4969709a1b1fc7f27a027cd22554549adcfee7b563a681",
+        "bytes": 162683
+      },
+      {
+        "path": "status-390-cards.png",
+        "sha256": "7d15f9f75bb0b6fddd23f2ae20c4fe08976d5fb4791d0abd2521ae9f6571ffee",
+        "bytes": 74744
+      },
+      {
+        "path": "status-390-compact.png",
+        "sha256": "cff124aa19ca70f8607fb4eb76f08c3e05eb4c36feee1cacd6a9aefedb81f90d",
+        "bytes": 79472
+      }
+    ],
+    "scope": "Actual integrated six-file public build, local intercepted Chromium only; no production API test"
+  },
+  "liveCustomDomain": "not_measured_existing_network_or_browser_restrictions_not_bypassed",
+  "productionProtectedPdfReadback": "pending_existing_website_passphrase_test_no_saved_supported_session",
+  "pdfTestUrl": "https://learn.dryz.info/api/acquire/retry?doi=10.1016%2Fj.jacc.2024.02.026",
+  "pdfSourceCheckUrl": "https://learn.dryz.info/api/fulltext-source?doi=10.1016%2Fj.jacc.2024.02.026",
+  "productionPDF_GITHUB_COMMIT": "unknown_latest_live_value_not_read",
+  "bridgeCandidate": "0eb91c69d49d87434892b69817432d5e574bf535",
+  "bridgeEnabled": false,
+  "bridgeReviewBlockers": [
+    "KV cross-isolate stale claim must carry explicit hold and no execution permission",
+    "Restore OIDC authorization before body read and bounded stalled-body/cancel handling"
+  ],
+  "newTokens": 0,
+  "configurationMutations": 0,
+  "rootPrivatePdfDownloads": 0,
+  "rootPublisherDownloads": 0,
+  "rootPrivateIndexWrites": 0,
+  "formalArchiveWrites": 0
+}

@@ -1,0 +1,186 @@
+{
+  "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+  "python": {
+    "passed": true,
+    "tests": 628,
+    "seconds": 270.935
+  },
+  "node": {
+    "passed": true,
+    "checks": 28,
+    "commands": [
+      {
+        "command": "node --check app.js",
+        "returncode": 0,
+        "seconds": 0.046
+      },
+      {
+        "command": "node --check citation-export.js",
+        "returncode": 0,
+        "seconds": 0.034
+      },
+      {
+        "command": "node scripts/test_citation_export.cjs",
+        "returncode": 0,
+        "seconds": 0.054
+      },
+      {
+        "command": "node scripts/test_reading_logic.cjs",
+        "returncode": 0,
+        "seconds": 0.078
+      },
+      {
+        "command": "node scripts/test_edge_worker.cjs",
+        "returncode": 0,
+        "seconds": 0.11
+      },
+      {
+        "command": "node scripts/test_pdf_worker.cjs",
+        "returncode": 0,
+        "seconds": 0.337
+      },
+      {
+        "command": "node scripts/test_doi_library_worker.cjs",
+        "returncode": 0,
+        "seconds": 0.364
+      },
+      {
+        "command": "node scripts/test_doi_direct_download.cjs",
+        "returncode": 0,
+        "seconds": 0.203
+      },
+      {
+        "command": "node scripts/test_doi_manual_needed.cjs",
+        "returncode": 0,
+        "seconds": 0.154
+      },
+      {
+        "command": "node scripts/test_github_lfs_reuse.cjs",
+        "returncode": 0,
+        "seconds": 0.297
+      },
+      {
+        "command": "node scripts/test_lfs_deadline.cjs",
+        "returncode": 0,
+        "seconds": 0.105
+      },
+      {
+        "command": "node scripts/test_doi_source_check.cjs",
+        "returncode": 0,
+        "seconds": 0.145
+      },
+      {
+        "command": "node scripts/test_fulltext_jobs.cjs",
+        "returncode": 0,
+        "seconds": 0.434
+      },
+      {
+        "command": "node scripts/test_fulltext_activation.cjs",
+        "returncode": 0,
+        "seconds": 0.158
+      },
+      {
+        "command": "node scripts/test_fulltext_dispatcher.cjs",
+        "returncode": 0,
+        "seconds": 0.096
+      },
+      {
+        "command": "node scripts/test_doi_library_ui.cjs --helpers-only",
+        "returncode": 0,
+        "seconds": 0.059
+      },
+      {
+        "command": "node scripts/test_study_services.cjs",
+        "returncode": 0,
+        "seconds": 0.252
+      },
+      {
+        "command": "node scripts/test_study_evidence_regression.cjs",
+        "returncode": 0,
+        "seconds": 0.09
+      },
+      {
+        "command": "node scripts/test_study_ui.cjs",
+        "returncode": 0,
+        "seconds": 0.083
+      },
+      {
+        "command": "node scripts/test_brief_feedback.cjs",
+        "returncode": 0,
+        "seconds": 0.108
+      },
+      {
+        "command": "node scripts/test_ai_deadline_lifecycle.cjs",
+        "returncode": 0,
+        "seconds": 0.265
+      },
+      {
+        "command": "node scripts/test_ai_waiting_ui.cjs",
+        "returncode": 0,
+        "seconds": 0.051
+      },
+      {
+        "command": "node scripts/test_source_health_ui.cjs",
+        "returncode": 0,
+        "seconds": 0.073
+      },
+      {
+        "command": "node scripts/test_weekly_window.cjs",
+        "returncode": 0,
+        "seconds": 0.098
+      },
+      {
+        "command": "node scripts/test_publication_dates_ui.cjs",
+        "returncode": 0,
+        "seconds": 0.052
+      },
+      {
+        "command": "node scripts/test_publication_status_ui.cjs",
+        "returncode": 0,
+        "seconds": 0.045
+      },
+      {
+        "command": "node scripts/test_public_content_priority.cjs",
+        "returncode": 0,
+        "seconds": 0.046
+      },
+      {
+        "command": "node scripts/test_journal_metrics.cjs",
+        "returncode": 0,
+        "seconds": 0.066
+      }
+    ]
+  },
+  "browser": {
+    "passed": true,
+    "scenarios": 4,
+    "widths": [
+      1440,
+      390
+    ],
+    "views": [
+      "cards",
+      "compact"
+    ],
+    "externalRequestsAllowed": false,
+    "realModelCalls": 0,
+    "mockOnlyStudyPosts": 4
+  },
+  "independentSecurityReview": {
+    "source": "30b16e81a4a6a65cc9d0154f2ba42599187d1a54",
+    "blockers": 0,
+    "extraOfflineCases": 8,
+    "parentSizeReviewCleared": "9081761da91d2524b2d2ddb1b2994db712770647",
+    "ciClaim": false
+  },
+  "lfsDeadlineRegression": {
+    "commit": "bd613d1180d030c17fd36575e9c9c991fc09a125",
+    "scenarios": 6,
+    "ignoredAbortAndCancelBounded": true
+  },
+  "productionAuthenticatedPdfReadback": "not_performed_no_supported_saved_passphrase_context",
+  "productionConfigCurrentPdfCommit": "not_read",
+  "noRootPrivatePdfDownload": true,
+  "noRootPublisherDownload": true,
+  "noRootPrivateIndexWrite": true
+}
