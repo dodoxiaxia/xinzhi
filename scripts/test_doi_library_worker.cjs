@@ -12,7 +12,7 @@ function csv(rows){const cell=s=>/[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"'
 const row=[title,doi,'Heart','2026-10-07','publisher',file,hash(pdf)];
 function crossref(changes={}){return {message:{DOI:doi,title:[title],'container-title':['Heart'],author:[{given:'Jane',family:'Doe'}],'published-online':{'date-parts':[[2026,10,7]]},...changes}};}
 function harness(options={}){
- const values=new Map(),writes=[],calls=[],reads=[],lists=[];let recordReads=0;
+ const values=new Map(),writes=[],calls=[],reads=[],lists=[];let recordReads=0;const fixturePdf=options.pdfBytes||pdf;
  const kv={
   get:async(k,type)=>{reads.push({key:k,type});if(k===key&&options.onRecordRead){const result=await options.onRecordRead(++recordReads,values);if(result!==undefined)return result;}
    if(options.getError)throw Error('synthetic private storage failure');
@@ -25,8 +25,8 @@ function harness(options={}){
   list:async opts=>{lists.push(opts);if(options.listError)throw Error('synthetic list failure');const keys=[...values.keys()].filter(k=>k.startsWith(opts.prefix)).sort();const offset=Number(opts.cursor||0),slice=keys.slice(offset,offset+opts.limit);return {keys:slice.map(name=>({name})),list_complete:offset+slice.length>=keys.length,...(offset+slice.length<keys.length?{cursor:String(offset+slice.length)}:{})};}
  };
  const fetch=async(url,init)=>{const u=new URL(url);calls.push({url:u,init});
-  if(u.hostname==='github.com'){assert.equal(init.method,'POST');assert.equal(init.redirect,'error');assert.equal(u.pathname,'/dodoxiaxia/AI-.git/info/lfs/objects/batch');assert.equal(init.headers.authorization,'Basic '+btoa('x-access-token:'+baseEnv.GITHUB_LIBRARY_TOKEN));assert.equal(JSON.parse(init.body).operation,'download');return options.lfsBatch?options.lfsBatch(u,init):Response.json({objects:[{oid:hash(pdf),size:pdf.length,actions:{download:{href:options.lfsUrl||'https://github-cloud.s3.amazonaws.com/alambic/media/'+hash(pdf)}}}]});}
-  if(u.hostname==='github-cloud.s3.amazonaws.com'){assert.equal(init.method,'GET');assert.equal(init.redirect,'error');assert(!init.headers.authorization);return options.lfsObject?options.lfsObject(u,init):new Response(pdf);}
+  if(u.hostname==='github.com'){assert.equal(init.method,'POST');assert.equal(init.redirect,'error');assert.equal(u.pathname,'/dodoxiaxia/AI-.git/info/lfs/objects/batch');assert.equal(init.headers.authorization,'Basic '+btoa('x-access-token:'+baseEnv.GITHUB_LIBRARY_TOKEN));assert.equal(JSON.parse(init.body).operation,'download');return options.lfsBatch?options.lfsBatch(u,init):Response.json({objects:[{oid:hash(fixturePdf),size:fixturePdf.length,actions:{download:{href:options.lfsUrl||'https://github-cloud.s3.amazonaws.com/alambic/media/'+hash(fixturePdf)}}}]});}
+  if(u.hostname==='github-cloud.s3.amazonaws.com'){assert.equal(init.method,'GET');assert.equal(init.redirect,'error');assert(!init.headers.authorization);return options.lfsObject?options.lfsObject(u,init):new Response(fixturePdf);}
   assert.equal(init.method,'GET');assert(!u.href.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!JSON.stringify(init.headers).includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));assert(!init.body);
   if(u.hostname==='token.actions.githubusercontent.com'){assert.equal(init.redirect,'error');assert(!init.headers.authorization);return Response.json({keys:options.jwks||[]});}
   assert.equal(init.redirect,'manual');
@@ -38,8 +38,8 @@ function harness(options={}){
    assert.equal(u.searchParams.get('ref'),options.commit||commit);
    if(decoded.endsWith('/contents/文献索引/文献索引.csv'))return new Response(csv(options.rows||[row]));
    if(decoded.endsWith('/contents/文献索引/按需全文增量.json'))return options.delta?Response.json(options.delta):new Response('missing',{status:404});
-   assert(decoded.endsWith('/contents/'+file));if(init.headers.accept==='application/vnd.github+json')return Response.json(options.metadata||{type:'file',path:file,size:pdf.length,sha:blob(options.pointer||pdf)});
-   return options.githubPdfResponse?options.githubPdfResponse(u,init):new Response(options.pointer||pdf,{headers:{'content-type':'application/pdf'}});}
+   assert(decoded.endsWith('/contents/'+file));if(init.headers.accept==='application/vnd.github+json')return Response.json(options.metadata||{type:'file',path:file,size:(options.pointer||fixturePdf).length,sha:blob(options.pointer||fixturePdf)});
+   return options.githubPdfResponse?options.githubPdfResponse(u,init):new Response(options.pointer||fixturePdf,{headers:{'content-type':'application/pdf'}});}
   assert(u.hostname==='journals.plos.org'||u.hostname==='www.nature.com'||u.hostname==='raw.githubusercontent.com','unexpected external host '+u.hostname);assert(!init.headers.authorization);
   return options.pdfResponse?options.pdfResponse(u,init):new Response(pdf,{headers:{'content-type':'application/pdf'}});
  };
