@@ -1,0 +1,582 @@
+{
+  "release": "v14.2.17",
+  "sourceSha": "bf31203c97ce7f7972494a6b9629e452abcbb800",
+  "stateSha": "4472b381a3d6b2c98b2927a9c8aa68420d1adf4f",
+  "runId": 37718883798,
+  "jobId": 113121682619,
+  "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37718883798",
+  "pagesUrl": "https://bed0f0b2.dryz-xinzhi.pages.dev",
+  "deploymentCompletedAt": "2026-10-08T02:44:55.2289277Z",
+  "finalStateSuccessAt": "2026-10-08T02:45:02.5335434Z",
+  "runCompletedAt": "2026-10-08T02:45:08Z",
+  "outcome": "deployed_and_saved_successfully",
+  "savedSnapshotStateOutcome": "pending",
+  "snapshotExplanation": "Snapshot is saved before state push; final job proves success.",
+  "readback": {
+    "release": "v14.2.17",
+    "state": "4472b381a3d6b2c98b2927a9c8aa68420d1adf4f",
+    "source": "bf31203c97ce7f7972494a6b9629e452abcbb800",
+    "files": [
+      {
+        "path": "_headers",
+        "bytes": 327,
+        "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+      },
+      {
+        "path": "_worker.js",
+        "bytes": 437907,
+        "sha256": "474ebb1542e8b41070959e09f3761184e8453176b8bb7ee6c409282fdb96496c"
+      },
+      {
+        "path": "icon.svg",
+        "bytes": 743255,
+        "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+      },
+      {
+        "path": "index.html",
+        "bytes": 29385,
+        "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+      },
+      {
+        "path": "public.js",
+        "bytes": 9244610,
+        "sha256": "681284d9f4275ef282cee8b051297431f5d6546cc431bb37bc4e89147c4ce97b"
+      },
+      {
+        "path": "style.css",
+        "bytes": 91292,
+        "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+      }
+    ],
+    "scope": "GitHub saved deployment artifact byte readback; not a live custom-domain or real-iPhone test"
+  },
+  "actualContent": {
+    "passed": true,
+    "release": "v14.2.17",
+    "savedState": "4472b381a3d6b2c98b2927a9c8aa68420d1adf4f",
+    "source": "bf31203c97ce7f7972494a6b9629e452abcbb800",
+    "run": 37718883798,
+    "actualCounts": {
+      "radar": 870,
+      "library": 1264,
+      "checked_guides": 12,
+      "ai_quicklooks_unchecked": 12,
+      "radar_archive_titles": 12671,
+      "titles_zh": 15142,
+      "weekly_board": 24,
+      "weekly_precomputed": {
+        "title": 24,
+        "translate": 24,
+        "study": 0,
+        "quicklook": 24
+      }
+    },
+    "actualWeeklyContent": {
+      "status": "partial",
+      "selected": 24,
+      "coverage": {
+        "title": 24,
+        "translate": 24,
+        "study": 0,
+        "quicklook": 24
+      },
+      "fullyPreparedPapers": 0,
+      "titleTranslationQuicklookPreparedPapers": 24,
+      "partialPapers": 24,
+      "pendingPapers": 0,
+      "pending": [
+        {
+          "paperID": "doi:10.1001/jamacardio.2026.4445",
+          "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1093/ehjcvp/pvag089",
+          "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circep.126.015055",
+          "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+          "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circulationaha.126.080404",
+          "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.jacadv.2026.103298",
+          "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.jacadv.2026.103306",
+          "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1093/eurheartj/ehag699",
+          "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1111/jce.70518",
+          "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circep.126.014967",
+          "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jama.2026.17619",
+          "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jama.2026.17192",
+          "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41591-026-04675-1",
+          "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jamainternmed.2026.4894",
+          "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41591-026-04713-y",
+          "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41591-026-04704-z",
+          "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circep.125.014659",
+          "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41467-026-78143-2",
+          "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+          "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+          "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.jcin.2026.07.042",
+          "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/jaha.126.054084",
+          "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1111/jce.70524",
+          "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/jaha.126.050332",
+          "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+          "missingFields": [
+            "study"
+          ]
+        }
+      ],
+      "window": {
+        "start": "2026-10-02",
+        "end": "2026-10-08",
+        "days": 7,
+        "timezone": "Asia/Shanghai"
+      },
+      "publicationPolicy": {
+        "name": "publish_valid_content_with_explicit_pending",
+        "generationMode": "cache_only",
+        "nextGenerationTrigger": "existing_daily_full_schedule",
+        "automaticGenerationOnPageLoad": false
+      },
+      "generationStep": {
+        "outcome": "not_requested_fast",
+        "exitCode": null
+      }
+    },
+    "actualPrecompute": {
+      "selected": 24,
+      "coverage": {
+        "title": 24,
+        "translate": 24,
+        "quicklook": 24
+      },
+      "pendingPapers": 0,
+      "contentComplete": true,
+      "studyMissing": 24,
+      "status": "complete",
+      "reasonCounts": {},
+      "queuePath": "data/public-precompute-pending.json",
+      "externalModelApiRequests": 0,
+      "runtimeCacheWrites": 0,
+      "ledgerWrites": 0
+    },
+    "actualCoreQueue": {
+      "selected": 24,
+      "coverage": {
+        "title": 24,
+        "translate": 24,
+        "quicklook": 24
+      },
+      "pendingPapers": 0,
+      "contentComplete": true,
+      "studyMissing": 24
+    },
+    "newPending": [],
+    "fivePreviousGapsStillComplete": [
+      "doi:10.1001/jamacardio.2026.4445",
+      "doi:10.1161/circep.126.015055",
+      "doi:10.1001/jama.2026.17619",
+      "doi:10.1161/circep.125.014659",
+      "doi:10.1111/jce.70524"
+    ],
+    "verifiedDoiCases": {
+      "93b958551c8bf865": "10.1001/jama.2026.14789",
+      "4944fe87d59c5e7b": "10.1001/jamainternmed.2025.7627",
+      "b157bb0d131bf3d5": "10.1093/ehjdh/ztag011",
+      "a97bbb0a11844693": "",
+      "814b860e19382e2f": ""
+    },
+    "preventTaha8State": {
+      "state": "retracted",
+      "label": "已撤稿",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41224473/",
+      "related": [
+        {
+          "type": "ExpressionOfConcernIn",
+          "pmid": "41224475",
+          "label": "关注声明",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41224475/"
+        },
+        {
+          "type": "ErratumIn",
+          "pmid": "41916658",
+          "label": "更正声明",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41916658/"
+        },
+        {
+          "type": "RetractionIn",
+          "pmid": "41916660",
+          "label": "撤稿声明",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41916660/"
+        }
+      ]
+    },
+    "sampleRoles": {
+      "42104840": "研究方案",
+      "42836296": "RCT 二次分析"
+    },
+    "titleCorrections": [
+      {
+        "pmid": "42480259",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42811187",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42702066",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42805147",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42744322",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41885139",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42702498",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42525420",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42374831",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42579295",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41955048",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42134058",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42134057",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42107037",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42092569",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41504446",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41330420",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41205546",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41151394",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "40938778",
+        "projectionCount": 1,
+        "passed": true
+      }
+    ],
+    "twoCorrectedQuicklooksPresent": true,
+    "scope": "saved deployment artifacts, no live API/domain claim",
+    "existing23WholeRowsUnchanged": true,
+    "newPaperID": "doi:10.1161/jaha.126.050332",
+    "newPublicSourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+    "basicContentPending": 0,
+    "studyMissing": 24
+  },
+  "workerSnapshot": {
+    "passed": true,
+    "publishedIdentities": 36,
+    "strictIdentityLookups": 72,
+    "metadataRequests": 0,
+    "providerCalls": 0,
+    "scope": "actual injected Worker source executed offline with network forbidden"
+  },
+  "workerIdenticalToV14216": true,
+  "sourceTests": {
+    "newGap": {
+      "passed": 9,
+      "seconds": 93.808
+    },
+    "relatedOverlay": {
+      "passed": 33,
+      "seconds": 131.71
+    },
+    "releaseRegression": {
+      "passed": 73,
+      "seconds": 0.708
+    }
+  },
+  "zipChecks": [
+    {
+      "archive": "xinzhi-public.zip",
+      "sha256": "0fca2b8aea43f720252d0524579f68d083095cbba93b9c3e42c5edb3f256109c",
+      "sixFilesExact": true
+    },
+    {
+      "archive": "心知-公开网站包.zip",
+      "sha256": "0fca2b8aea43f720252d0524579f68d083095cbba93b9c3e42c5edb3f256109c",
+      "sixFilesExact": true
+    },
+    {
+      "archive": "心知-本地学习站.zip",
+      "sha256": "8710018266faeaee978830a9487ddfee173e1c8df9d6d63bbb7e01429e0825bc",
+      "sixFilesExact": true
+    }
+  ],
+  "savedBrowser": {
+    "passed": true,
+    "scope": "Actual integrated six-file public build, local intercepted Chromium only; no production API test",
+    "scenarios": [
+      {
+        "width": 1440,
+        "view": "cards",
+        "newPaper": {
+          "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+          "origin": "sol-session-public-abstract",
+          "translation": true,
+          "findings": 4
+        },
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true,
+        "mockPosts": 1,
+        "screenshotSHA256": "064bef2cdfdd0d3867b761a9ed98de23bec34a0e564d38ab61e9359b62618b1d"
+      },
+      {
+        "width": 1440,
+        "view": "compact",
+        "newPaper": {
+          "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+          "origin": "sol-session-public-abstract",
+          "translation": true,
+          "findings": 4
+        },
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true,
+        "mockPosts": 1,
+        "screenshotSHA256": "3eb973b30bc450d3331bc66a240637cc0b25f240e2286fa50a680cd900fd79c5"
+      },
+      {
+        "width": 390,
+        "view": "cards",
+        "newPaper": {
+          "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+          "origin": "sol-session-public-abstract",
+          "translation": true,
+          "findings": 4
+        },
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true,
+        "mockPosts": 1,
+        "screenshotSHA256": "7d15f9f75bb0b6fddd23f2ae20c4fe08976d5fb4791d0abd2521ae9f6571ffee"
+      },
+      {
+        "width": 390,
+        "view": "compact",
+        "newPaper": {
+          "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+          "origin": "sol-session-public-abstract",
+          "translation": true,
+          "findings": 4
+        },
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true,
+        "mockPosts": 1,
+        "screenshotSHA256": "cff124aa19ca70f8607fb4eb76f08c3e05eb4c36feee1cacd6a9aefedb81f90d"
+      }
+    ]
+  },
+  "remaining": {
+    "studyMissing": 24,
+    "fullyPreparedPapers": 0,
+    "realProductionModelTest": false,
+    "automatedSolConsumerVerified": false,
+    "accountBudgetVerified": false,
+    "subscriptionBridgeVerified": false,
+    "newOidcClaimReceiptAuthorization": "awaiting user approval in parent thread; do not enable capability/flags",
+    "jaccExistingLfsReuse": "independent repair in DOI specialist; private index binding independently verified, root did not download PDF",
+    "cloudflarePinCurrentRead": "No callable Cloudflare configuration tool; only earlier read confirmed unset"
+  },
+  "scope": "Published artifacts plus local intercepted browser; no live custom-domain/iPhone/fulltext/model claim"
+}

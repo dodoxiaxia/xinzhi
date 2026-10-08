@@ -1,0 +1,112 @@
+New Gap C: observed exec result, 9 tests in 93.808s, OK (original tool output; not a retained raw log).
+.................................
+----------------------------------------------------------------------
+Ran 33 tests in 131.710s
+
+OK
+
+.....................................................OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+WEEKLY CONTENT: {"status": "unavailable", "selected": 0, "publicationPolicy": {"name": "publish_valid_content_with_explicit_pending", "generationMode": "cache_only", "nextGenerationTrigger": "existing_daily_full_schedule", "automaticGenerationOnPageLoad": false}, "generationStep": {"outcome": "not_requested_fast", "exitCode": null}}
+fast unchanged
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+FAIL scripts/build_public.py
+build failed
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+WEEKLY CONTENT: {"status": "unavailable", "selected": 0, "publicationPolicy": {"name": "publish_valid_content_with_explicit_pending", "generationMode": "cache_only", "nextGenerationTrigger": "existing_daily_full_schedule", "automaticGenerationOnPageLoad": false}, "generationStep": {"outcome": "not_requested_fast", "exitCode": null}}
+fast unchanged
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/fetch_archive.py --incremental
+OK   scripts/week_precompute.py --run --provider configured --attempt-limit 8
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+WEEKLY CONTENT: {"status": "unavailable", "selected": 0, "publicationPolicy": {"name": "publish_valid_content_with_explicit_pending", "generationMode": "bounded_existing_full_step", "nextGenerationTrigger": "existing_daily_full_schedule", "automaticGenerationOnPageLoad": false}, "generationStep": {"outcome": "returned_without_generation_guarantee", "exitCode": 0}}
+full unchanged
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/fetch_archive.py --incremental
+OK   scripts/archive_details.py --fill
+OK   scripts/translate_titles.py --run --limit 60
+FAIL scripts/week_precompute.py --run --provider configured --attempt-limit 8
+model failed
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+WEEKLY CONTENT: {"status": "unavailable", "selected": 0, "publicationPolicy": {"name": "publish_valid_content_with_explicit_pending", "generationMode": "bounded_existing_full_step", "nextGenerationTrigger": "existing_daily_full_schedule", "automaticGenerationOnPageLoad": false}, "generationStep": {"outcome": "failed", "exitCode": 7}}
+full unchanged
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+SANITY FAILED: ["manifest unreadable: [Errno 2] No such file or directory: '/tmp/tmp_neyw53_/docs/public-manifest.json'"]
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+WEEKLY CONTENT: {"status": "unavailable", "selected": 0, "publicationPolicy": {"name": "publish_valid_content_with_explicit_pending", "generationMode": "cache_only", "nextGenerationTrigger": "existing_daily_full_schedule", "automaticGenerationOnPageLoad": false}, "generationStep": {"outcome": "not_requested_fast", "exitCode": null}}
+fast changed
+.FAIL scripts/apply_public_library.py
+pipeline time budget exhausted
+.FAIL scripts/apply_public_library.py
+source failed
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+SANITY FAILED: ["public files differ: ['private.json']"]
+.OK   scripts/apply_public_library.py
+OK   scripts/refresh_feeds.py --all
+OK   scripts/fetch_pubmed.py
+OK   scripts/merge_candidates.py
+OK   scripts/media_signals.py
+OK   scripts/auto_picks.py
+OK   scripts/week_precompute.py
+OK   scripts/build_public.py
+WEEKLY CONTENT: {"status": "unavailable", "selected": 0, "publicationPolicy": {"name": "publish_valid_content_with_explicit_pending", "generationMode": "cache_only", "nextGenerationTrigger": "existing_daily_full_schedule", "automaticGenerationOnPageLoad": false}, "generationStep": {"outcome": "not_requested_fast", "exitCode": null}}
+fast unchanged
+..........
+----------------------------------------------------------------------
+Ran 73 tests in 0.708s
+
+OK
+
+Saved artifact browser:
+PASS: actual assets in four desktop/mobile cards/compact scenarios; status/source links, DOI projections, weekly coverage and only local mocked study POST, no paid requests.
