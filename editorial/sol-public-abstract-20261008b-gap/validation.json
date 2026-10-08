@@ -1,0 +1,77 @@
+{
+ "tasksValidated": 10,
+ "checks": [
+  {
+   "rank": 1,
+   "paperID": "doi:10.1001/jamacardio.2026.4445",
+   "task": "translate",
+   "valid": true,
+   "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6"
+  },
+  {
+   "rank": 1,
+   "paperID": "doi:10.1001/jamacardio.2026.4445",
+   "task": "quicklook",
+   "valid": true,
+   "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6"
+  },
+  {
+   "rank": 3,
+   "paperID": "doi:10.1161/circep.126.015055",
+   "task": "translate",
+   "valid": true,
+   "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e"
+  },
+  {
+   "rank": 3,
+   "paperID": "doi:10.1161/circep.126.015055",
+   "task": "quicklook",
+   "valid": true,
+   "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e"
+  },
+  {
+   "rank": 11,
+   "paperID": "doi:10.1001/jama.2026.17619",
+   "task": "translate",
+   "valid": true,
+   "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a"
+  },
+  {
+   "rank": 11,
+   "paperID": "doi:10.1001/jama.2026.17619",
+   "task": "quicklook",
+   "valid": true,
+   "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a"
+  },
+  {
+   "rank": 17,
+   "paperID": "doi:10.1161/circep.125.014659",
+   "task": "translate",
+   "valid": true,
+   "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec"
+  },
+  {
+   "rank": 17,
+   "paperID": "doi:10.1161/circep.125.014659",
+   "task": "quicklook",
+   "valid": true,
+   "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec"
+  },
+  {
+   "rank": 24,
+   "paperID": "doi:10.1111/jce.70524",
+   "task": "translate",
+   "valid": true,
+   "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00"
+  },
+  {
+   "rank": 24,
+   "paperID": "doi:10.1111/jce.70524",
+   "task": "quicklook",
+   "valid": true,
+   "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00"
+  }
+ ],
+ "externalModelApiRequests": 0,
+ "originalValidatorsUnchanged": true
+}

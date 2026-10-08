@@ -1,0 +1,701 @@
+{
+  "scope": "existing_site_journals_only",
+  "mainSha": "bd69b63d2289a31012b58081e693387dd1d5ca36",
+  "stateSha": "28edb64292ad5bb5ea54612e7dc8180256658a2a",
+  "observations": [
+    {
+      "name": "Nature Communications",
+      "sourceId": "public-ncomms",
+      "url": "https://www.nature.com/ncomms/journal-impact",
+      "label": "Nature Communications: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 18.1,
+      "year": 2025,
+      "issns": [
+        "2041-1723"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Biotechnology",
+      "sourceId": "public-nbt",
+      "url": "https://www.nature.com/nbt/journal-impact",
+      "label": "Nature Biotechnology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 44.5,
+      "year": 2025,
+      "issns": [
+        "1546-1696",
+        "1087-0156"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Cardiovascular Research",
+      "sourceId": "public-natcardiovascres",
+      "url": "https://www.nature.com/natcardiovascres/journal-impact",
+      "label": "Nature Cardiovascular Research: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 12.6,
+      "year": 2025,
+      "issns": [
+        "2731-0590"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Biomedical Engineering",
+      "sourceId": "public-natbiomedeng",
+      "url": "https://www.nature.com/natbiomedeng/journal-impact",
+      "label": "Nature Biomedical Engineering: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 26.3,
+      "year": 2025,
+      "issns": [
+        "2157-846X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Electronics",
+      "sourceId": "public-natelectron",
+      "url": "https://www.nature.com/natelectron/journal-impact",
+      "label": "Nature Electronics: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 42.3,
+      "year": 2025,
+      "issns": [
+        "2520-1131"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature",
+      "sourceId": "public-nature",
+      "url": "https://www.nature.com/nature/journal-impact",
+      "label": "Nature: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 56.1,
+      "year": 2025,
+      "issns": [
+        "1476-4687",
+        "0028-0836"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Aging",
+      "sourceId": "public-nataging",
+      "url": "https://www.nature.com/nataging/journal-impact",
+      "label": "Nature Aging: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 25,
+      "year": 2025,
+      "issns": [
+        "2662-8465"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Methods",
+      "sourceId": "public-nmeth",
+      "url": "https://www.nature.com/nmeth/journal-impact",
+      "label": "Nature Methods: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 28.3,
+      "year": 2025,
+      "issns": [
+        "1548-7105",
+        "1548-7091"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Clinical Oncology",
+      "sourceId": "public-nrclinonc",
+      "url": "https://www.nature.com/nrclinonc/journal-impact",
+      "label": "Nature Reviews Clinical Oncology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 94.6,
+      "year": 2025,
+      "issns": [
+        "1759-4782",
+        "1759-4774"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Cancer",
+      "sourceId": "public-natcancer",
+      "url": "https://www.nature.com/natcancer/journal-impact",
+      "label": "Nature Cancer: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 28,
+      "year": 2025,
+      "issns": [
+        "2662-1347"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Metabolism",
+      "sourceId": "public-natmetab",
+      "url": "https://www.nature.com/natmetab/journal-impact",
+      "label": "Nature Metabolism: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 27.5,
+      "year": 2025,
+      "issns": [
+        "2522-5812"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Microbiology",
+      "sourceId": "public-nmicrobiol",
+      "url": "https://www.nature.com/nmicrobiol/journal-impact",
+      "label": "Nature Microbiology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 18.7,
+      "year": 2025,
+      "issns": [
+        "2058-5276"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Protocols",
+      "sourceId": "public-nprot",
+      "url": "https://www.nature.com/nprot/journal-impact",
+      "label": "Nature Protocols: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 18.4,
+      "year": 2025,
+      "issns": [
+        "1750-2799",
+        "1754-2189"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Materials",
+      "sourceId": "public-nmat",
+      "url": "https://www.nature.com/nmat/journal-impact",
+      "label": "Nature Materials: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 38,
+      "year": 2025,
+      "issns": [
+        "1476-4660",
+        "1476-1122"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Cancer",
+      "sourceId": "public-nrc",
+      "url": "https://www.nature.com/nrc/journal-impact",
+      "label": "Nature Reviews Cancer: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 60.7,
+      "year": 2025,
+      "issns": [
+        "1474-1768",
+        "1474-175X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Neurology",
+      "sourceId": "public-nrneurol",
+      "url": "https://www.nature.com/nrneurol/journal-impact",
+      "label": "Nature Reviews Neurology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 31.2,
+      "year": 2025,
+      "issns": [
+        "1759-4766",
+        "1759-4758"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Gastroenterology & Hepatology",
+      "sourceId": "public-nrgastro",
+      "url": "https://www.nature.com/nrgastro/journal-impact",
+      "label": "Nature Reviews Gastroenterology & Hepatology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 57.5,
+      "year": 2025,
+      "issns": [
+        "1759-5053",
+        "1759-5045"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Psychology",
+      "sourceId": "public-nrpsychol",
+      "url": "https://www.nature.com/nrpsychol/journal-impact",
+      "label": "Nature Reviews Psychology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 22,
+      "year": 2025,
+      "issns": [
+        "2731-0574"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Urology",
+      "sourceId": "public-nrurol",
+      "url": "https://www.nature.com/nrurol/journal-impact",
+      "label": "Nature Reviews Urology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 13.6,
+      "year": 2025,
+      "issns": [
+        "1759-4820",
+        "1759-4812"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Computational Science",
+      "sourceId": "public-natcomputsci",
+      "url": "https://www.nature.com/natcomputsci/journal-impact",
+      "label": "Nature Computational Science: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 20.3,
+      "year": 2025,
+      "issns": [
+        "2662-8457"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Mental Health",
+      "sourceId": "public-natmentalhealth",
+      "url": "https://www.nature.com/natmentalhealth/journal-impact",
+      "label": "Nature Mental Health: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 9.3,
+      "year": 2025,
+      "issns": [
+        "2731-6076"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Reviews Bioengineering",
+      "sourceId": "public-natrevbioeng",
+      "url": "https://www.nature.com/natrevbioeng/journal-impact",
+      "label": "Nature Reviews Bioengineering: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 42.7,
+      "year": 2025,
+      "issns": [
+        "2731-6092"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Nature Human Behaviour",
+      "sourceId": "public-nathumbehav",
+      "url": "https://www.nature.com/nathumbehav/journal-impact",
+      "label": "Nature Human Behaviour: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 17.5,
+      "year": 2025,
+      "issns": [
+        "2397-3374"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Communications Psychology",
+      "sourceId": "public-commspsychol",
+      "url": "https://www.nature.com/commspsychol/journal-impact",
+      "label": "Communications Psychology: publisher Journal Metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 6.4,
+      "year": 2025,
+      "issns": [
+        "2731-9121"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Scientific Reports",
+      "sourceId": "public-srep",
+      "url": "https://www.nature.com/srep/about",
+      "label": "Scientific Reports: publisher metrics and 2026 JCR edition",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 4.9,
+      "year": 2025,
+      "issns": [
+        "2045-2322"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "New England Journal of Medicine",
+      "sourceId": "public-ovid-nejm",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/new-england-journal-of-medicine-624",
+      "label": "New England Journal of Medicine: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 84.5,
+      "year": 2025,
+      "issns": [
+        "0028-4793"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA",
+      "sourceId": "public-ovid-jama",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-journal-of-the-american-medical-association-645",
+      "label": "JAMA: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 65.4,
+      "year": 2025,
+      "issns": [
+        "0098-7484"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Network Open",
+      "sourceId": "public-ovid-jno",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-network-open-14871",
+      "label": "JAMA Network Open: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 11.7,
+      "year": 2025,
+      "issns": [
+        "2574-3805"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Stroke",
+      "sourceId": "public-ovid-stroke",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/stroke-404",
+      "label": "Stroke: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 11.1,
+      "year": 2025,
+      "issns": [
+        "0039-2499"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation Research",
+      "sourceId": "public-ovid-circres",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-research-454",
+      "label": "Circulation Research: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 18,
+      "year": 2025,
+      "issns": [
+        "0009-7330"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation: Heart Failure",
+      "sourceId": "public-ovid-circhf",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-heart-failure-4565",
+      "label": "Circulation: Heart Failure: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 8.3,
+      "year": 2025,
+      "issns": [
+        "1941-3289"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation: Arrhythmia and Electrophysiology",
+      "sourceId": "public-ovid-circep",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-arrhythmia-and-electrophysiology-4564",
+      "label": "Circulation: Arrhythmia and Electrophysiology: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 9.3,
+      "year": 2025,
+      "issns": [
+        "1941-3149"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation: Cardiovascular Imaging",
+      "sourceId": "public-ovid-circimaging",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-cardiovascular-imaging-4609",
+      "label": "Circulation: Cardiovascular Imaging: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 9.1,
+      "year": 2025,
+      "issns": [
+        "1941-9651"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation: Cardiovascular Interventions",
+      "sourceId": "public-ovid-circinterv",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-cardiovascular-interventions-4566",
+      "label": "Circulation: Cardiovascular Interventions: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 7.2,
+      "year": 2025,
+      "issns": [
+        "1941-7640"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation: Genomic and Precision Medicine",
+      "sourceId": "public-ovid-circgenom",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-genomic-and-precision-medicine-5359",
+      "label": "Circulation: Genomic and Precision Medicine: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 6.1,
+      "year": 2025,
+      "issns": [
+        "2574-8300"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Hypertension",
+      "sourceId": "public-ovid-hypertension",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/hypertension-427",
+      "label": "Hypertension: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 9.8,
+      "year": 2025,
+      "issns": [
+        "0194-911X"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Circulation",
+      "sourceId": "public-ovid-circ",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/circulation-455",
+      "label": "Circulation: publisher Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 41.3,
+      "year": 2025,
+      "issns": [
+        "0009-7322"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 22.3,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Advances",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 5.5,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Asia",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 6.1,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Cardiovascular Imaging",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 19,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Heart Failure",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 11.9,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Cardiovascular Interventions",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 12.7,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Clinical Electrophysiology",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 7.2,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JACC: Basic to Translational Science",
+      "sourceId": "public-acc-2025",
+      "url": "https://www.acc.org/Latest-in-Cardiology/Articles/2026/06/17/17/26/just-announced",
+      "label": "American College of Cardiology: 2025 JIF announcement, 17 June 2026",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 8.4,
+      "year": 2025,
+      "issns": [],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "European Journal of Heart Failure",
+      "sourceId": "public-ejhf",
+      "url": "https://academic.oup.com/eurjhf/pages/about",
+      "label": "European Journal of Heart Failure: current OUP publisher metrics",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 10.3,
+      "year": 2025,
+      "issns": [
+        "1879-0844",
+        "1388-9842"
+      ],
+      "categories": [
+        {
+          "name": "Cardiac & Cardiovascular Systems",
+          "quartile": null,
+          "rank": 16,
+          "total": 237
+        }
+      ],
+      "categoryCoverage": "publisher_reported"
+    },
+    {
+      "name": "JMIR Medical Informatics",
+      "sourceId": "public-jmir-medinf",
+      "url": "https://medinform.jmir.org/about-journal/indexing-and-impact-factor",
+      "label": "JMIR Medical Informatics: publisher JIF and JCR categories (Scopus section excluded)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 5,
+      "year": 2025,
+      "issns": [
+        "2291-9694"
+      ],
+      "categories": [
+        {
+          "name": "Medical Informatics",
+          "quartile": "Q2",
+          "rank": 17,
+          "total": 54
+        }
+      ],
+      "categoryCoverage": "complete"
+    },
+    {
+      "name": "JMIR AI",
+      "sourceId": "public-jmir-ai",
+      "url": "https://ai.jmir.org/about-journal/indexing-and-impact-factor",
+      "label": "JMIR AI: publisher JIF and both JCR categories (Scopus section excluded)",
+      "verifiedAt": "2026-10-07T14:28:04Z",
+      "value": 6.1,
+      "year": 2025,
+      "issns": [
+        "2817-1705"
+      ],
+      "categories": [
+        {
+          "name": "Health Care Sciences & Services",
+          "quartile": "Q1",
+          "rank": 21,
+          "total": 194
+        },
+        {
+          "name": "Medical Informatics",
+          "quartile": "Q1",
+          "rank": 13,
+          "total": 54
+        }
+      ],
+      "categoryCoverage": "complete"
+    }
+  ]
+}

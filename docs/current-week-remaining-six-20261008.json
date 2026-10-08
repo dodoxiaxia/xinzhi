@@ -1,0 +1,117 @@
+{
+  "sourceMain": "007dc5fb48ae0d07656386a0d52081a337ea69f5",
+  "sourceState": "fcb77d58eab7c8e1de58c3e6c90eb59513d91cdb",
+  "window": {
+    "start": "2026-10-02",
+    "end": "2026-10-08",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 63,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 55,
+      "综合医学": 7,
+      "AI医疗": 0,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 328,
+      "no_complete_public_abstract": 48,
+      "low_relevance": 25,
+      "correction_comment_letter": 10,
+      "outside_window": 435
+    },
+    "shortfallReason": null
+  },
+  "currentWeeklyMissing": 6,
+  "items": [
+    {
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "doi": "10.1038/s41591-026-04704-z",
+      "pmid": "42839103",
+      "title": "Extended follow-up of in vivo BCMA CAR-T therapy in relapsed/refractory multiple myeloma.",
+      "titleZh": "体内BCMA CAR-T治疗复发/难治性多发性骨髓瘤的延长随访",
+      "date": "2026-10-06",
+      "abstract": "Data on long-term outcomes of in vivo chimeric antigen receptor T cell (CAR‑T) therapy remain scarce. We previously reported preliminary safety and efficacy data of in vivo B-cell maturation antigen (BCMA) CAR‑T (ESO-T01), in four patients with relapsed/refractory multiple myeloma, without leukapheresis and lymphodepletion, with up to 3 months of follow-up. The primary endpoints included safety and tolerability, while the secondary endpoints comprised efficacy, pharmacokinetics and pharmacodynamics. All patients developed dual-phase cytokine release syndrome (grades 1-3) and hematotoxicities (grade ≥3). One patient developed grade 1 immune effector cell-associated neurotoxicity syndrome. The objective response rate reached 100% (two stringent complete response and two partial response). Here we update the data on long‑term safety and response durability with a maximal follow‑up of 15 months. No immunogenicity‑ or integration‑related toxicities occurred, and no important adverse events related to ESO-T01 emerged beyond the initial report. Of the four patients, one maintained stringent complete response for 15 months. The median progression-free survival was 4.0 (range 3.0-15.0) months. After progression, diverse salvage therapies extended overall survival to 5.5-10.9 months after infusion. Three patients experienced relapse or progression, all with extramedullary involvement, and eventually died during follow-up. One patient achieved durable response with robust expansion from ex vivo CAR-T. Collectively, these updated results provide additional insights on the safety and efficacy of in vivo CAR-T therapies. The limited persistence observed necessitates the further optimization of the in vivo CAR-T platform. ClinicalTrials.gov identifier: NCT06691685 .",
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839103/",
+      "publicAbstractAvailable": true,
+      "scope": "public-abstract"
+    },
+    {
+      "paperID": "doi:10.1038/s41591-026-04673-3",
+      "doi": "10.1038/s41591-026-04673-3",
+      "pmid": "42827132",
+      "title": "Urine cell-free RNA for bladder cancer detection and treatment response prediction.",
+      "titleZh": "尿液细胞游离RNA用于膀胱癌检测与疗效预测",
+      "date": "2026-10-02",
+      "abstract": "Urine biomarkers promise to improve noninvasive detection and molecular characterization of genitourinary malignancies. Here we describe urine random priming and affinity capture of cell-free RNA (cfRNA) fragments for enrichment analysis by sequencing (uRARE-seq), a liquid biopsy method for urine cfRNA profiling, and apply it to 683 urine samples from patients with cancer and controls. Urine cfRNA contained transcripts from genitourinary tissues and, in patients with prostate, kidney or bladder cancer, tumor-derived transcripts. uRARE-seq demonstrated 95% sensitivity at 90% specificity for detecting localized bladder cancer. The method outperformed urine tumor DNA analysis and was unaffected by the presence of field-effect mutations. Urine cfRNA analysis also sensitively detected minimal residual disease and distinguished complete molecular responses after surgery from those after intravesical Bacillus Calmette-Guérin (BCG). Pretreatment urine from complete responders to BCG was enriched for T cell and other immune signatures, suggesting a preexisting antitumor immune response, whereas nonresponders showed higher expression of proliferation-related genes. In pretreatment urine from 114 patients, this biological difference enabled development of a biomarker predicting likelihood of response to BCG versus chemotherapy (area under the curve 0.93) that was strongly associated with risk of recurrence. Urine cfRNA analysis is therefore a promising biomarker approach for bladder cancer and potentially other urologic malignancies, although prospective studies are needed to assess its clinical utility.",
+      "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827132/",
+      "publicAbstractAvailable": true,
+      "scope": "public-abstract"
+    },
+    {
+      "paperID": "doi:10.1093/europace/euag272",
+      "doi": "10.1093/europace/euag272",
+      "pmid": "42834820",
+      "title": "Potassium-Increasing Regimens in Patients at High Risk of Ventricular Arrhythmias: A Prespecified Observational Analysis of the Randomized POTCAST Trial.",
+      "titleZh": "室性心律失常高危患者的补钾方案：随机POTCAST试验的预设观察性分析。",
+      "date": "2026-10-06",
+      "abstract": "BACKGROUND AND AIMS: The POTCAST trial (n=1,200) showed that targeting high-normal plasma potassium levels reduced ventricular arrhythmias in patients with Implantable Cardioverter-Defibrillators (ICDs). We compared changes in plasma potassium and described outcomes across the three regimens used to increase plasma potassium. METHODS: We studied 600 control participants and 572 intervention participants who completed potassium up-titration in POTCAST. Participants in the intervention arm were categorized according to treatment after plasma-potassium up-titration into: a) mineralocorticoid-receptor antagonists (MRAs) monotherapy, b) potassium-supplement monotherapy, or c) combination-therapy with both. The primary endpoint was a composite of sustained ventricular arrhythmia, appropriate ICD-therapy, hospitalization for arrhythmia or heart-failure or all-cause mortality. Safety outcomes included death and electrolyte/renal disturbances. RESULTS: After six months, plasma potassium increased from 4.12 to 4.27 mmol/L (p=0.004) with MRA, from 3.99 to 4.24 mmol/L (p<0.001) with potassium-supplements, and from 3.98 to 4.34 mmol/L (p<0.001) with combination-therapy. The primary endpoint occurred in 29% (n=175) of controls, 22% (n=16) in the MRA group, 21% (n=31) in the potassium-supplements group and in 22% (n=72) in the combination-therapy group (p=0.8 between regimens). Hypokalemia occurred in 13% of controls and in 3%, 9%, and 5% of participants receiving MRA, potassium-supplements and combination-therapy, respectively. Hyperkalemia occurred in 0.2% of controls and in 0%, 3%, and 4% of participants receiving MRA, potassium-supplements, and combination-therapy (p>0.1 between regimens). CONCLUSIONS: Treatment with MRA, potassium-supplements or both increased potassium levels. All regimens were associated with numerically lower endpoint rates than controls. We detected no statistically significant differences in endpoints or safety between regimens.",
+      "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834820/",
+      "publicAbstractAvailable": true,
+      "scope": "public-abstract"
+    },
+    {
+      "paperID": "doi:10.1111/jce.70522",
+      "doi": "10.1111/jce.70522",
+      "pmid": "42836744",
+      "title": "Enhancing Persistent Atrial Fibrillation Ablation: The Added Value of Vein of Marshall Ethanol Infusion in a Tailored Strategy.",
+      "titleZh": "优化持续性心房颤动消融：Marshall静脉乙醇灌注在个体化策略中的附加价值。",
+      "date": "2026-10-06",
+      "abstract": "BACKGROUND: Outcomes following catheter ablation for persistent atrial fibrillation (AF) remain suboptimal. Low-voltage areas (LVA), as a surrogate for atrial fibrosis, have been targeted due to their association with arrhythmia recurrence. Ethanol infusion in the vein of Marshall (VoM) has emerged as an adjunctive strategy that may enhance ablation efficacy. We evaluated the effectiveness of a tailored ablation strategy guided by the presence of LVA and incorporating VoM ethanol infusion in patients with persistent AF. METHODS: This prospective, single-center study included patients referred for catheter ablation for persistent AF ablation between August 2022 and August 2024. Patients underwent a tailored ablation strategy guided by the presence of LVA. Procedural endpoints and 1-year outcomes were assessed and compared with those of a propensity score-matched cohort undergoing pulmonary vein isolation (PVI) alone. RESULTS: A total of 118 patients (71% male, mean age of 62 ± 10years) were included in our study: 59 in the tailored approach group and 59 propensity score-matched controls. In the tailored group, VoM ethanol infusion was performed in 60% of patients, while ablation beyond pulmonary veins was not performed in 14% of patients due to LVA absence. Bidirectional block was achieved in all ablation lines except in two patients. At 1-year follow-up, 22% of patients had atrial arrhythmia recurrence. The risk of recurrence was significantly lower in the tailored approach group (13.5% vs. 30.5%, p = 0.02). A tailored approach was independently associated with freedom from atrial arrhythmia recurrence (HR 0.41 [0.17-0.94], p = 0.04). No significant differences in adverse events were observed between groups. CONCLUSIONS: In patients with persistent AF, a tailored ablation guided by LVAs was associated with significantly lower arrhythmia recurrence at 1-year compared with PVI alone.",
+      "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836744/",
+      "publicAbstractAvailable": true,
+      "scope": "public-abstract"
+    },
+    {
+      "paperID": "doi:10.1111/jce.70525",
+      "doi": "10.1111/jce.70525",
+      "pmid": "42836740",
+      "title": "Atrial Septal Defect Management Status and Long-Term Outcomes After Atrial Fibrillation Ablation: A Real-World Cohort Study.",
+      "titleZh": "房间隔缺损处理状态与心房颤动消融后的长期结局：一项真实世界队列研究。",
+      "date": "2026-10-06",
+      "abstract": "BACKGROUND: As more adults with atrial septal defect (ASD) survive into older age and undergo atrial fibrillation (AF) ablation, evidence to guide post-ablation risk stratification remains limited. OBJECTIVE: To evaluate long-term outcomes after the first AF ablation across ASD management states compared with an intact interatrial septum. METHODS: This real-world cohort study included 27 675 patients undergoing their first AF ablation, classified by interatrial septal status as intact septum (n = 27 134), unrepaired ASD (n = 232), percutaneous closure (n = 119), or surgical repair (n = 190). Three pairwise comparisons with an intact septum were constructed. Propensity score overlap weighting was used to balance baseline characteristics, and Cox proportional hazards models were used to assess outcomes. The primary outcome was atrial arrhythmia recurrence after the 3-month blanking period; the secondary outcome was a composite cardiovascular outcome. RESULTS: Compared with an intact septum, unrepaired ASD was associated with a higher recurrence risk (hazard ratio [HR], 1.27; 95% CI, 1.07-1.51; p = 0.006), with excess risk mainly observed between 3 months and 1 year after ablation. Surgical repair was also associated with higher recurrence risk (HR, 1.21; 95% CI, 1.01-1.46; p = 0.038), with differences emerging beyond 1 year. Percutaneous closure was not associated with increased recurrence risk (HR, 1.07; 95% CI, 0.83-1.38; p = 0.589). Composite cardiovascular outcomes did not differ significantly across groups. CONCLUSIONS: ASD management status identified distinct temporal patterns of atrial arrhythmia recurrence after AF ablation, suggesting that ASD should not be treated as a single binary condition in post-ablation risk assessment.",
+      "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836740/",
+      "publicAbstractAvailable": true,
+      "scope": "public-abstract"
+    },
+    {
+      "paperID": "doi:10.1111/jce.70526",
+      "doi": "10.1111/jce.70526",
+      "pmid": "42836742",
+      "title": "Temporal Association Between Intrathoracic Impedance and Tachyarrhythmia Occurrence.",
+      "titleZh": "胸内阻抗与快速性心律失常发生的时间相关性。",
+      "date": "2026-10-06",
+      "abstract": "BACKGROUND: This study examined whether daily intrathoracic impedance is temporally associated with the occurrence of atrial fibrillation (AF) and ventricular tachycardia (VT). METHODS: This retrospective cohort study included 117 patients with cardiac implantable devices, followed for a median of 668 days, corresponding to 89 637 person-days. Recurrent AF occurred in 28% of patients (mean AF burden 0.27), while 773 VT episodes occurred in 15% of patients. Daily intrathoracic impedance, expressed relative to a reference impedance, was analyzed to identify events of impedance decrease and increase. The temporal association between impedance events and tachyarrhythmia burden was quantified using a patient-specific relational strength measure (γ), which compares post-event and pre-event tachyarrhythmia burden. RESULTS: For impedance decreases, event-related γ for AF was higher than control γ computed for randomly placed events (median 0.68 vs. 0.48, p = 0.04). For VT, event-related γ did not differ significantly from control γ (six patients; median 0.52 vs. 0.21, p = 0.82). No significant differences were observed for impedance increases in either the AF or VT analysis. In the pooled episode-level analysis, an impedance decrease was associated with a shorter time to VT occurrence than an impedance increase (median 4 vs. 7 days, p < 0.001), with 48% of VT episodes occurring within 3 days after an impedance decrease. CONCLUSION: A decrease in intrathoracic impedance is temporally associated with subsequent AF occurrence and, at the episode level, with a shorter time to VT. These findings suggest that daily intrathoracic impedance may provide information on short-term changes preceding tachyarrhythmia occurrence.",
+      "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836742/",
+      "publicAbstractAvailable": true,
+      "scope": "public-abstract"
+    }
+  ],
+  "noPrivateContent": true,
+  "notice": "Current source snapshots only; regenerate/review against live current board before any future content integration."
+}

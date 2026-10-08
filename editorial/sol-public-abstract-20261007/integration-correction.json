@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "deliveryCommit": "ade44c5a3eb0f84be2bbbf2779a1d8828f02f042",
+  "originalCacheSha256": "d1649098cfbbd7877924f4ae048a9a9634789ff1fe0d266519dfd13923415028",
+  "correctedCacheSha256": "d74e3e63f43a9aa99f0a4e97ea8dac26df891c4c9d330d22b1160ab30296c8bd",
+  "officialSource": "https://academic.oup.com/eurheartj/advance-article/doi/10.1093/eurheartj/ehag699/8868257",
+  "paperID": "doi:10.1093/eurheartj/ehag699",
+  "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+  "changes": "LVEF between-group absolute improvement difference is 0.4 percentage points, CI -3.1 to 3.8 percentage points, noninferiority P=.002; similar hard outcomes do not establish equivalence.",
+  "validation": {
+    "originalProductionRulesUnchanged": true,
+    "translate": 24,
+    "quicklook": 24,
+    "study": 0
+  },
+  "reviewStatus": "machine-validated-unreviewed",
+  "reviewHistory": "Original pinned semantic reviews cover original drafts. This correction is separately verified against official public abstract and production validators; no new human clinical review claimed.",
+  "providerUsageKnown": false,
+  "newProviderRequests": 0
+}

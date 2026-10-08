@@ -1,0 +1,47 @@
+{
+  "scope": "existing_site_journals_only",
+  "observations": [
+    {
+      "name": "JAMA Internal Medicine",
+      "sourceId": "public-ovid-jamainternal",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-internal-medicine-505",
+      "label": "JAMA Internal Medicine: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:34:13Z",
+      "value": 26.3,
+      "year": 2025,
+      "issns": [
+        "2168-6106"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "JAMA Cardiology",
+      "sourceId": "public-ovid-jamacardio",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/jama-cardiology-13841",
+      "label": "JAMA Cardiology: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:34:13Z",
+      "value": 15.2,
+      "year": 2025,
+      "issns": [
+        "2380-6583"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Arteriosclerosis, Thrombosis, and Vascular Biology",
+      "sourceId": "public-ovid-atvb",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/arteriosclerosis-thrombosis-and-vascular-biology-504",
+      "label": "Arteriosclerosis, Thrombosis, and Vascular Biology: Wolters Kluwer Ovid public journal catalogue (explicit JIF year)",
+      "verifiedAt": "2026-10-07T14:34:13Z",
+      "value": 8.8,
+      "year": 2025,
+      "issns": [
+        "1079-5642"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "baseMain": "a3f31ec15b5dc9bca549765e97abb9b21725fcff",
+  "baseState": "caecb1b5ff0aec2ab2957ddc010ece1df229d902",
+  "candidateDoi": "58231665564166c2cd92ace22d260854fcb44013",
+  "candidateGap": "6b0d8a5a6c9ff23a4e334e1c6d278c011e56cf85",
+  "candidateArtifactHashesVerified": 16,
+  "current24IdentitiesDatesHashesAndOrderUnchanged": true,
+  "windowUnchanged": true,
+  "candidateSelectionCount": 24,
+  "newPaidRequests": 0,
+  "archiveBridgeClaimed": false,
+  "testsPassed": {
+    "gapOverlay": 6,
+    "existingOverlay": 5,
+    "preview": 9,
+    "weekPrecompute": 108,
+    "workflow": 9,
+    "publicLibraryQuality": 10,
+    "publicBuild": 23,
+    "package": 23,
+    "releaseBuild": 3,
+    "workerSuites": [
+      "DOI direct download",
+      "DOI library",
+      "fulltext jobs",
+      "activation",
+      "PDF",
+      "edge",
+      "DOI UI helpers",
+      "dispatcher"
+    ],
+    "syntheticChromiumFormDownload": true
+  },
+  "fixtureSetupIssues": [
+    "Initial copied fixture missed full abstract archive; restored exact public state archive-full and radar archive",
+    "First package preflight correctly rejected stale source-health fixture; restored real source-health/pubmed/feed public snapshots from caecb1b5, no invented timestamps"
+  ],
+  "productionAcceptancePending": true,
+  "publicPackageFreshnessPassed": true,
+  "fixtureCounts": {
+    "radar": 910,
+    "library": 1264,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 11,
+    "radar_archive_titles": 12635,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 24,
+      "translate": 24,
+      "study": 0,
+      "quicklook": 24
+    }
+  },
+  "runtimeCacheAndLedgerByteIdentical": true,
+  "drawerFixture": {
+    "fixedExpected": true,
+    "scope": "Offline Chromium using exact public files; external requests intercepted",
+    "records": [
+      {
+        "width": 320,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      },
+      {
+        "width": 390,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      },
+      {
+        "width": 768,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      },
+      {
+        "width": 1440,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      }
+    ],
+    "posts": [],
+    "pageErrors": []
+  },
+  "readerTestCorrection": "DOM paragraph boundaries do not insert newlines in textContent; compare each complete translated paragraph, not a multiline substring",
+  "sixGapReaderFixture": {
+    "scope": "Offline Chromium against exact public files, external requests intercepted",
+    "records": [
+      {
+        "width": 320,
+        "coverage": {
+          "title": 24,
+          "translate": 24,
+          "study": 0,
+          "quicklook": 24
+        },
+        "sixGapReadersPassed": true,
+        "noOverflow": true
+      },
+      {
+        "width": 390,
+        "coverage": {
+          "title": 24,
+          "translate": 24,
+          "study": 0,
+          "quicklook": 24
+        },
+        "sixGapReadersPassed": true,
+        "noOverflow": true
+      },
+      {
+        "width": 1280,
+        "coverage": {
+          "title": 24,
+          "translate": 24,
+          "study": 0,
+          "quicklook": 24
+        },
+        "sixGapReadersPassed": true,
+        "noOverflow": true
+      }
+    ],
+    "posts": [],
+    "pageErrors": []
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "branch": "codex/week-sol-gap-20261008",
+  "baseMainSha": "f0d460f035f9f62db1073f54971d40ad9af3098c",
+  "latestMainCompatibilityCheckedSha": "655975cf75ed1a08d5a8ce03a2847c4a31af5f9f",
+  "sourceStateSha": "fcb77d58eab7c8e1de58c3e6c90eb59513d91cdb",
+  "latestStateRecheckedSha": "1c9bdb528717b4cfd687b2557d8c3d16dde25d2d",
+  "window": {
+    "start": "2026-10-02",
+    "end": "2026-10-08",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 63,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 55,
+      "综合医学": 7,
+      "AI医疗": 0,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 329,
+      "no_complete_public_abstract": 48,
+      "low_relevance": 25,
+      "correction_comment_letter": 10,
+      "outside_window": 435
+    },
+    "shortfallReason": null
+  },
+  "currentSixIdentitySourceDateHashRecheckPassed": true,
+  "cacheEntries": 12,
+  "completeTranslatedAbstracts": 6,
+  "quicklooks": 6,
+  "productionValidatorTasksPassed": 12,
+  "independentSolPapersReviewed": 6,
+  "reviewFiles": [
+    "reviews/batch-a-review.json",
+    "reviews/batch-b-review.json"
+  ],
+  "allFinalDraftHashBindingsVerified": true,
+  "findingQuotesIndependentlyMatched": 23,
+  "currentBoardCoverageBefore": {
+    "title": 24,
+    "translate": 18,
+    "study": 0,
+    "quicklook": 18
+  },
+  "offlineCurrentBoardCoverageAfter": {
+    "title": 24,
+    "translate": 24,
+    "study": 0,
+    "quicklook": 24
+  },
+  "selectionAndWindowUnchanged": true,
+  "existingCorrectedCachePreserved": true,
+  "origin": "sol-session-public-abstract",
+  "requestedAgentModel": "gpt-6.1-sol",
+  "actualBackendModelVerified": false,
+  "modelVersion": "sol-session-model-unobserved",
+  "generationPromptVersion": "unobserved",
+  "generationVersionKnown": false,
+  "scope": "public-abstract",
+  "humanReview": false,
+  "medicalFinalReview": false,
+  "fullTextReview": false,
+  "externalModelApiRequests": 0,
+  "providerUsage": null,
+  "runtimeCacheWrites": 0,
+  "ledgerWrites": 0,
+  "sourceStateLedgerSha256": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "latestStateLedgerSha256": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "ledgerPausePreserved": true,
+  "reservedAttempts": 4,
+  "reservedOutputTokens": 3800,
+  "accountBudgetVerified": false,
+  "tests": {
+    "test_sol_gap_overlay.py": 6,
+    "test_public_editorial_overlay.py": 5,
+    "test_sol_public_overlay.py": 9,
+    "totalPassed": 20
+  },
+  "productionWrites": 0,
+  "deployed": false,
+  "remainingLimitations": [
+    "Offline source/cache validation does not verify live model service or provider/account usage.",
+    "Study remains missing; contents are abstract-level model preparation and review.",
+    "Any later dynamic source change must reject unmatched hashes; do not freeze/rewrite window."
+  ]
+}

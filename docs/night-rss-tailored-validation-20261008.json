@@ -1,0 +1,73 @@
+{
+  "baseMain": "da5852595d5bff1a1e4a1311f0536651fd811059",
+  "baseState": "ffcd8fa4356656458509484fe7e83bb4f46a54fb",
+  "candidateOnly": true,
+  "deploymentClaimed": false,
+  "rssAudit": "docs/rss-seven-audit-20261008.json",
+  "publisherSourcesChanged": false,
+  "parserChanged": false,
+  "sourceHealthProductionChanged": false,
+  "rssLatestSummary": {
+    "ok": 53,
+    "filtered_empty": 22,
+    "not_feed": 7
+  },
+  "tailoredSource": {
+    "officialURL": "https://www.nature.com/articles/s41591-025-03517-w.pdf",
+    "sourcePDFSha256": "d977b0dc0b6e1642cdf840e3980a7049b2705efea8c3673b1966228426b00747",
+    "sourcePages": [
+      4,
+      5
+    ],
+    "sourceRead": "Existing24-page PDF, public DOI/title and prior provenance hash matched; no new download",
+    "change": "Three reference tables separate Figure3 PP from bodypage4 mITT results; only source/population attribution, original efficacy numbers and historical example labels retained"
+  },
+  "passed": {
+    "combinedOfflinePythonTests": 76,
+    "tailoredSourceRegressionTests": 4,
+    "legacySourceHealthAssertions": 40,
+    "priorSpecialSourceSearchAssertions": 6,
+    "newSuccessProvenanceAssertions": 8,
+    "workflowTests": 9,
+    "publicPackageReleaseTests": 49,
+    "sixFilePackageIntegrity": true
+  },
+  "browser": {
+    "records": [
+      {
+        "width": 320,
+        "failedSourcesQualified": 7,
+        "historicalSearchMatches": 1,
+        "figurePPAndBodyMittSeparated": true,
+        "historicalLabelPreserved": true
+      },
+      {
+        "width": 390,
+        "failedSourcesQualified": 7,
+        "historicalSearchMatches": 1,
+        "figurePPAndBodyMittSeparated": true,
+        "historicalLabelPreserved": true
+      },
+      {
+        "width": 1440,
+        "failedSourcesQualified": 7,
+        "historicalSearchMatches": 1,
+        "figurePPAndBodyMittSeparated": true,
+        "historicalLabelPreserved": true
+      }
+    ],
+    "posts": [],
+    "errors": [],
+    "scope": "Built candidate six files offline Chromium; APIs/external requests intercepted; no production deployment claim"
+  },
+  "boundaries": {
+    "newPaidCalls": 0,
+    "newPdfDownloads": 0,
+    "newPrivateArchiveWrites": 0,
+    "secretValuesRead": false,
+    "newCronPermissions": false,
+    "rootProductionPublisher": "unique integrator",
+    "modelsAndBudgetsUnchanged": true
+  },
+  "integration": "Await fixed performance01a116ad-c436 candidate before big release. Apply precise sourceHealthDetails/app.js and index.html Figure3/table hunks onto current startup/split-data code, retain v14.2.11 query/mobile/brief functionality. Do not replace app.js or index.html whole file. This maintenance candidate does not bump release or claim production."
+}

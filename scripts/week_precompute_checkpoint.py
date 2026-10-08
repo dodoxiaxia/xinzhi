@@ -280,6 +280,9 @@ class GitHubStateCheckpoint:
             target = new[key][2]
             if any(target.get(field) != row[field] for field in ('reservedAttempts', 'reservedOutputTokens')):
                 _fail('checkpoint_reservation_cannot_change')
+            for field in ('providerUsage', 'providerUsageKnown', 'providerFinishReason'):
+                if field in row and target.get(field) != row[field]:
+                    _fail('checkpoint_usage_cannot_change')
             if target['status'] != row['status']:
                 if not (key in self._owned and row['status'] == 'started'
                         and target['status'] in ('validated', 'failed_or_uncertain')):
@@ -340,7 +343,8 @@ class GitHubStateCheckpoint:
                 or records[key][2]['reservedAttempts'] <= 0
                 or records[key][2]['reservedOutputTokens'] <= 0):
             _fail('checkpoint_new_reservation_required')
-        if ledger.get('paused') or any(d.get('paused') for d in ledger['days'].values()):
+        if (any(_pause_reasons(ledger))
+                or any(any(_pause_reasons(d)) for d in ledger['days'].values())):
             _fail('checkpoint_paid_work_paused')
         if any(k != key and r[2]['status'] in UNCERTAIN for k, r in records.items()):
             _fail('checkpoint_uncertain_prior_attempt')

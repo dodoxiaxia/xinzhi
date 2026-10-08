@@ -56,7 +56,7 @@ class CiIntegration(unittest.TestCase):
     return {'translate':tr(),'study':model_structure(),'quicklook':ql()}
    result=w.configured_batch([self.paper],c,root/'cache',l,root/'ledger',8,model,checkpoint)
    self.assertEqual(result['blocker'],'checkpoint_rate_limited');self.assertEqual(result['paidRequests'],1)
-   self.assertEqual(result['generatedTasks'],1);self.assertEqual(len(c['entries']),1)
+   self.assertEqual(result['generatedTasks'],0);self.assertEqual(len(c['entries']),0)
    self.assertEqual(next(iter(remote.contents(LEDGER_PATH)['days'].values()))['requests'][0]['status'],'started')
    remote.fail=None
    restored_l=ledger();restored_c=cache()

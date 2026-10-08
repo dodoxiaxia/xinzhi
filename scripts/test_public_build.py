@@ -9,6 +9,25 @@ def write_legacy(root,draft,date='2026-09-29'):
  (root/'editorial/legacy_published_guides.json').write_text(json.dumps({'schema_version':1,'guides':{key:{'content_sha256':content_sha256(draft,key),'published_on':date}}}))
 
 class PublicBuildTests(unittest.TestCase):
+ def test_doi_policy_projection_is_pinned_and_contains_only_reviewed_identities(self):
+  out=b.doi_adjudication_registry()
+  self.assertEqual(out['sourceCommit'],'fed03f8d789429fc84c94cefcb4b636d75ec9ee3')
+  self.assertEqual(out['decisions']['10.1016/j.landig'],{'action':'hold','acceptedTitles':[],'metadata':None})
+  for row in out['decisions'].values():
+   self.assertEqual(set(row),{'action','acceptedTitles','metadata'})
+  self.assertNotIn('reason',json.dumps(out))
+  self.assertNotIn('evidence',json.dumps(out))
+ def test_malformed_doi_policy_blocks_build_projection(self):
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);(root/'config').mkdir()
+   source=b.load('config/public_library_adjudications.json')
+   for change in ('source','schema','identity'):
+    policy=json.loads(json.dumps(source))
+    if change=='source':policy['sourceCommit']='invalid'
+    elif change=='schema':policy['decisions'][0]['unknown']='unreviewed'
+    else:policy['decisions'][1]['doi']='10.1000/private?token=bad'
+    (root/'config/public_library_adjudications.json').write_text(json.dumps(policy))
+    with patch.object(b,'ROOT',root),self.assertRaises(ValueError):b.doi_adjudication_registry()
  def test_pdf_allowlist_contains_only_public_identity(self):
   papers=[{'id':'public-one','title':'Published title','doi':'https://doi.org/10.1234/ONE','repo_path':'private/paper.pdf','pdf_sha256':'private'}, {'id':'title-only','title':'Exact published title'}, {'id':'missing','doi':''}, {'id':'__proto__','doi':'10.1234/unsafe'}]
   out=b.pdf_library_registry(papers)
@@ -34,8 +53,26 @@ class PublicBuildTests(unittest.TestCase):
    with patch.object(b,'ROOT',r),self.assertRaises(ValueError):b.make_archive([],[])
  def test_public_directory_extra_file_blocks_build(self):
   with tempfile.TemporaryDirectory() as d:
-   dest=Path(d);(dest/'secret.txt').write_text('secret')
-   with patch.object(b,'DEST',dest),self.assertRaises(ValueError):b.main()
+   from test_release_build import synthetic_root
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir();(dest/'secret.txt').write_text('secret')
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),self.assertRaisesRegex(ValueError,'Unexpected public files'):b.main()
+ def test_snapshot_guard_holds_before_replacing_previous_public_build(self):
+  from test_release_build import synthetic_root
+  for failure in ('missing_snapshot','changed_snapshot','missing_approved_id'):
+   with self.subTest(failure=failure),tempfile.TemporaryDirectory() as d:
+    root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir()
+    output=dest/'public.js';output.write_text('// previous published bytes')
+    receipt=root/'docs/public-manifest.json';receipt.write_text('previous receipt')
+    snapshot=root/'editorial/public_library_snapshot.json'
+    if failure=='missing_snapshot':snapshot.unlink()
+    elif failure=='changed_snapshot':snapshot.write_bytes(snapshot.read_bytes()+b' ')
+    else:
+     state=json.loads((root/'data/library.json').read_text());state['papers']=[]
+     (root/'data/library.json').write_text(json.dumps(state))
+    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),self.assertRaisesRegex(ValueError,'public_library_snapshot_hold'):
+     b.main()
+    self.assertEqual(output.read_text(),'// previous published bytes')
+    self.assertEqual(receipt.read_text(),'previous receipt')
  def test_private_paths_stop_publication(self):
   for text in ['/Users/someone/file.pdf','{"api_key":"test"}','.local/llm.json']:
    with self.assertRaises(ValueError):b.validate_public(text)

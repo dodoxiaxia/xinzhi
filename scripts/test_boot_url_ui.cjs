@@ -46,6 +46,7 @@ async function run() {
         assert.strictEqual(u.origin,origin,'No external requests');
         if (u.pathname.startsWith('/api/')) { assert.strictEqual(req.method(),'GET','No model mutations'); await route.fulfill({json:{ok:true,found:false,canGenerate:false}}); return; }
         if (u.pathname==='/style.css') { if(hold) await cssGate; await route.fulfill({body:fs.readFileSync(path.join(assets,'style.css')),contentType:'text/css'}); return; }
+        if (u.pathname==='/citation-export.js') { await route.fulfill({body:fs.readFileSync(path.join(root,'citation-export.js')),contentType:'application/javascript'}); return; }
         if (u.pathname==='/app.js') { if(hold) await appGate; await route.fulfill({body:fs.readFileSync(path.join(root,'app.js')),contentType:'application/javascript'}); return; }
         if (scripts[u.pathname]) { await route.fulfill({body:scripts[u.pathname],contentType:'application/javascript'}); return; }
         if (u.pathname==='/icon.svg') { await route.fulfill({body:'<svg xmlns="http://www.w3.org/2000/svg"/>',contentType:'image/svg+xml'}); return; }
@@ -105,7 +106,7 @@ async function run() {
     await scenario('invalid saved uses system','/',{'xz-style':'invalid','xinzhi_theme':'invalid','xinzhi_view_mode':'invalid'},{style:'a',theme:'dark',view:'cards'},{system:'dark'});
     await scenario('storage refused query','/?style=c&theme=dark&view=cards',{}, {style:'c',theme:'dark',view:'cards',viewParam:'cards'},{blocked:true,toggleAppearance:true});
     await scenario('storage refused system','/',{}, {style:'a',theme:'dark',view:'cards'},{blocked:true,system:'dark'});
-    await scenario('filter hash and drawer','/?mode=candidates&q=Offline&range=365&reading=abstract&drawer=first#paper',{'xinzhi_view_mode':'compact'}, {style:'a',theme:'light',view:'compact'},{params:{mode:'candidates',q:'Offline',range:'365',reading:'abstract',drawer:'first'},hash:'#paper',drawer:true});
+    await scenario('filter hash and drawer','/?mode=candidates&q=Offline&range=365&reading=abstract&drawer=first#paper',{'xinzhi_view_mode':'compact'}, {style:'a',theme:'light',view:'compact',viewParam:'compact'},{params:{mode:'candidates',q:'Offline',range:'365',reading:'abstract',drawer:'first'},hash:'#paper',drawer:true});
     await scenario('invalid mode preserves hash','/?mode=invalid#keep',{}, {style:'a',theme:'light',view:'cards'},{params:{mode:null},hash:'#keep'});
     await scenario('sources mode bare saved view','/?mode=sources#health',{'xinzhi_view_mode':'compact'}, {style:'a',theme:'light',view:'compact'},{params:{mode:'sources'},hash:'#health'});
     console.log(JSON.stringify({passed:true,scenarios:evidence.length,checks,evidence},null,2));

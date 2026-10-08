@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 1,
+  "paperID": "doi:10.1161/jaha.126.050332",
+  "doi": "10.1161/jaha.126.050332",
+  "pmid": "42841502",
+  "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+  "sourceStateSha": "efaaf69713fcc8b5468b9d0052daa672a666df0e",
+  "reviewedAt": "2026-10-08T02:07:31.813364+00:00",
+  "reviewStatus": "passed",
+  "verdict": "pass",
+  "approved": true,
+  "scope": "only-public-abstract",
+  "reviewer": {
+    "requestedModel": "Sol",
+    "actualBackend": "unknown",
+    "independentReview": true,
+    "externalModelApiCalled": false,
+    "validatorIsNotSemanticReview": true
+  },
+  "scopeBoundaries": {
+    "publicAbstractOnly": true,
+    "fullTextReviewed": false,
+    "medicalReview": false,
+    "privatePdfAccessed": false,
+    "codeModified": false,
+    "stateModified": false,
+    "runtimeCacheModified": false
+  },
+  "officialVerification": {
+    "method": "Independent read-only HTTPS retrieval of official NCBI PubMed efetch XML, parsed in memory; not a reuse of root validator output.",
+    "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=42841502&retmode=xml",
+    "httpStatus": 200,
+    "title": "Low Parental Income During Childhood Is Associated With Coronary Atherosclerosis in Midlife.",
+    "officialDoi": "10.1161/JAHA.126.050332",
+    "doiMatchesCaseInsensitively": true,
+    "pmid": "42841502",
+    "rawAbstractMatches": true,
+    "abstractSectionsMatch": true,
+    "canonicalAbstractMatches": true,
+    "normalization": "Whitespace normalization only; the official raw text and all four section labels/texts match official-source.json exactly.",
+    "sourceHashConsistency": "Independent SHA256(title + newline + canonicalAbstract) recomputation matches the supplied sourceHash in all three reviewed input files.",
+    "canonicalAbstractSha256": "a326d57344db7d540454fbd411ea8edcd54a1bab7b8c8e201815bcd3fe81f53f",
+    "sourceHashDefinition": "SHA256(UTF-8(title + \"\\n\" + canonicalAbstract))",
+    "computedSourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+    "sourceHashMatches": true
+  },
+  "checks": [
+    {
+      "item": "title-and-complete-translation",
+      "status": "pass",
+      "detail": "中文标题准确表达相关性；背景、方法、结果、结论均完整忠实于官方公共摘要，无新增研究结果。"
+    },
+    {
+      "item": "observational-association-not-causation",
+      "status": "pass",
+      "detail": "明确观察性队列；结论、one_line、why_read均使用关联语言，limits提醒不能等同因果结论。"
+    },
+    {
+      "item": "odds-ratio-terminology",
+      "status": "pass",
+      "detail": "OR译为比值比，未译为风险比或风险增幅，未把OR 1.43改述为风险增加43%。"
+    },
+    {
+      "item": "population-and-childhood-exposure",
+      "status": "pass",
+      "detail": "15 640名、50至64岁、参与者10至12岁时父母可支配收入、国家登记来源和冠状动脉CT血管造影均准确。"
+    },
+    {
+      "item": "outcomes-and-thresholds",
+      "status": "pass",
+      "detail": "节段受累评分≥4与冠状动脉钙化评分>100准确；未将节段OR数值误归给钙化结局。摘要只称后者类似关联，稿件保留该范围。"
+    },
+    {
+      "item": "all-reported-OR-CI-and-P-values",
+      "status": "pass",
+      "detail": "最低与最高父母收入五分位的OR及各调整结果全部匹配官方摘要；未擅称首个OR为未经调整。"
+    },
+    {
+      "item": "four-quotes-verbatim-and-local-number-support",
+      "status": "pass",
+      "detail": "四条quote分别是canonicalAbstract逐字子串；每条中文text中的所有数字、阈值、CI和P值均由该条自身quote支持。"
+    },
+    {
+      "item": "quicklook-one_line-why_read-limits",
+      "status": "pass",
+      "detail": "准确概括儿童期收入与中年冠脉表型的观察性关联、成人风险因素未完全解释关联，以及摘要层面的因果限制；无干预建议或全文/医学审查声称。"
+    }
+  ],
+  "reportedEstimates": [
+    {
+      "context": "lowest versus highest parental income quintile; segment involvement score ≥4",
+      "OR": "1.43",
+      "CI95": [
+        "1.20",
+        "1.71"
+      ],
+      "P": "<0.001"
+    },
+    {
+      "context": "adjustment for adult lifestyle habits",
+      "OR": "1.42",
+      "CI95": [
+        "1.17",
+        "1.73"
+      ],
+      "P": "<0.001"
+    },
+    {
+      "context": "adjustment for adult SES",
+      "OR": "1.31",
+      "CI95": [
+        "1.09",
+        "1.57"
+      ],
+      "P": "=0.004"
+    },
+    {
+      "context": "adjustment for traditional cardiovascular risk factors",
+      "OR": "1.28",
+      "CI95": [
+        "1.06",
+        "1.53"
+      ],
+      "P": "=0.008"
+    },
+    {
+      "context": "full adjustment",
+      "OR": "1.31",
+      "CI95": [
+        "1.07",
+        "1.61"
+      ],
+      "P": "=0.010"
+    }
+  ],
+  "quoteChecks": [
+    {
+      "findingIndex": 1,
+      "verbatimCanonicalSubstring": true,
+      "ownQuoteSupportsAllNumbers": true,
+      "supportedNumbers": [
+        "15 640",
+        "50",
+        "64"
+      ],
+      "quote": "This observational cohort study included 15 640 participants, aged 50 to 64 years, from the population-based SCAPIS (Swedish Cardiopulmonary Bioimage Study) who underwent coronary computed tomography angiography."
+    },
+    {
+      "findingIndex": 2,
+      "verbatimCanonicalSubstring": true,
+      "ownQuoteSupportsAllNumbers": true,
+      "supportedNumbers": [
+        "≥4",
+        "1.43",
+        "95%",
+        "1.20-1.71",
+        "P<0.001"
+      ],
+      "quote": "Participants in the lowest versus highest parental income quintile were more likely to have moderate-severe coronary atherosclerosis (segment involvement score ≥4; odds ratio [OR], 1.43 [95% CI, 1.20-1.71], P<0.001)."
+    },
+    {
+      "findingIndex": 3,
+      "verbatimCanonicalSubstring": true,
+      "ownQuoteSupportsAllNumbers": true,
+      "supportedNumbers": [
+        "1.31",
+        "95%",
+        "1.07-1.61",
+        "P=0.010"
+      ],
+      "quote": "and full adjustment (OR, 1.31 [95% CI, 1.07-1.61], P=0.010)."
+    },
+    {
+      "findingIndex": 4,
+      "verbatimCanonicalSubstring": true,
+      "ownQuoteSupportsAllNumbers": true,
+      "supportedNumbers": [
+        ">100"
+      ],
+      "quote": "Similar associations were observed for coronary artery calcification >100."
+    }
+  ],
+  "reviewedFileSha256": {
+    "official-source.json": "a15af13494a8fc16cad20e4e7776410e8d2bd38ecf30529ebbc583613c5e871e",
+    "target-source.json": "d2108f1d0e15bc9be8ffa57b745eaddaeaa17c7c2780b5f97151ecad47c083e2",
+    "draft.json": "8e76d905219c9ff4ae557f5c19a5fc35a6f2b93b494ed6cd41c58ef63b8597e8"
+  },
+  "issues": [],
+  "requiredCorrections": [],
+  "remainingBlockers": [],
+  "conclusion": "独立公共摘要语义审校通过，无需修正。本结论仅覆盖官方公开摘要与其中文翻译和速览，不构成医学审查或全文精读；requested Sol backend actual unknown。",
+  "codeReview": {
+    "scope": [
+      "scripts/verify_public_sol_gap.py",
+      "scripts/preview_sol_public_overlay.py",
+      "scripts/public_editorial_overlay.py"
+    ],
+    "method": "Read-only source/diff inspection plus bounded in-memory AST function checks using synthetic inputs and stubs; no full acceptance rerun, state/cache access, imports with side effects, or file output besides this review.",
+    "checks": [
+      {
+        "item": "supplement-count-and-explicit-scope",
+        "status": "pass",
+        "evidence": "In-memory execution of actual preview_supplement wrapper accepts explicit public-abstract-supplement with counts 1/30 and rejects 0/31 or missing scope."
+      },
+      {
+        "item": "legacy-preview-count",
+        "status": "pass",
+        "evidence": "Actual preview wrapper continues to pass expected_count=24 to _preview; no legacy validation relaxation."
+      },
+      {
+        "item": "completed-task-intake-rejection",
+        "status": "pass",
+        "evidence": "Actual verify function rejects a synthetic pending paper having completed translate plus missing quicklook if the supplement contains both, with gap_would_replace_completed_task."
+      },
+      {
+        "item": "unrelated-row-preservation",
+        "status": "pass-by-inspection",
+        "evidence": "verify checks every unaffected output row for whole-row equality, reports digest, and checks ordered identity/sourceHash/rank/date plus window invariance. Real state acceptance was not rerun in this review."
+      },
+      {
+        "item": "no-model-cache-ledger-write-path",
+        "status": "pass-by-inspection",
+        "evidence": "New verifier contains no provider call or output mutation. Supplement preview does not accept runtime cache. CLI preview output uses existing dedicated board artifact guard and w.atomic only if explicit output is requested."
+      },
+      {
+        "item": "public-overlay-change-scope",
+        "status": "pass",
+        "evidence": "Diff adds c supplement registration and routes explicit supplement scope to preview_supplement; existing apply_board implementation is unchanged."
+      }
+    ],
+    "existingBehaviorBoundary": {
+      "location": "scripts/public_editorial_overlay.py:apply_board",
+      "introducedByThisChange": false,
+      "description": "Runtime apply_board overwrites an existing completed translation/quicklook with same-source editorial content. The completed-task guard is in verify only, not in runtime apply_board/load_board.",
+      "reproduction": "Execute the actual apply_board function in memory with matching paperID/doi/pmid/title/abstract/sourceHash, current translation={value:existing-complete}, and saved translation={value:new-overlay}; output translation becomes new-overlay while current input stays unchanged. Executing verify with that same synthetic row and missingTasks=[study,quicklook] rejects gap_would_replace_completed_task.",
+      "impact": "The reviewed real c acceptance is not shown to violate completed-task intake protection. If the prohibition is intended to remain a runtime invariant after source-matched tasks later become complete, the existing runtime overlay behavior does not enforce it.",
+      "recommendation": "Treat this as an existing runtime boundary; apply a completed-task guard in supplement application only if the requirement extends beyond intake verification."
+    },
+    "newReproducibleBugsFound": [],
+    "filesModifiedOtherThanThisReview": []
+  }
+}

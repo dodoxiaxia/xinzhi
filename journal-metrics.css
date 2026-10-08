@@ -1,0 +1,8 @@
+/* Integrator: append these declarations to style.css; no extra public asset. */
+.journal-metrics-badge { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .4rem; max-width: 100%; min-width: 0; font-size: .72rem; line-height: 1.45; color: var(--text-muted, #566375); vertical-align: baseline; }
+.journal-metric-token { white-space: nowrap; }
+.journal-metrics-details { min-width: 0; max-width: 100%; font-size: .78rem; line-height: 1.5; }
+.journal-metrics-details summary { cursor: pointer; overflow-wrap: anywhere; }
+.journal-metrics-details p, .journal-metrics-details li { overflow-wrap: anywhere; }
+.journal-metrics-details small { display: block; }
+.journal-metrics-details summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }

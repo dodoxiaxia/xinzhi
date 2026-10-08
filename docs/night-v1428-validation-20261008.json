@@ -1,0 +1,42 @@
+{
+  "searchCandidateCommits": [
+    "32130c989514610236c12b732c05c40be568cc59",
+    "bd199b7ecd0ca376b50add5e296c54cff2beae85"
+  ],
+  "metricsCandidate": "88b43f18eae6341f9684ef8478439444018bf442",
+  "baseMain": "007dc5fb48ae0d07656386a0d52081a337ea69f5",
+  "baseState": "fcb77d58eab7c8e1de58c3e6c90eb59513d91cdb",
+  "searchBrowserAssertions": 1165,
+  "searchBrowserWidths": [
+    1440,
+    390,
+    320
+  ],
+  "journalBrowserAssertions": 122,
+  "journalPythonTests": 36,
+  "bootCases": 20,
+  "bootAssertions": 240,
+  "metrics": {
+    "before": {
+      "verifiedJif": 94,
+      "verifiedJcr": 2
+    },
+    "after": {
+      "verifiedJif": 100,
+      "verifiedJcr": 2
+    },
+    "newJif": [
+      "Journal of Arrhythmia",
+      "Journal of Thoracic Disease",
+      "Postgraduate Medical Journal",
+      "Science",
+      "Science Advances",
+      "The Clinical Teacher"
+    ],
+    "priorOfficialMetricsPreserved": true,
+    "historicalReferencesUnchanged": true,
+    "sourceCommit": "88b43f18eae6341f9684ef8478439444018bf442"
+  },
+  "newPaidRequests": 0,
+  "scope": "Exact deltas integrated on v14.2.7 source; fresh rebuilt data browser QA with external requests mocked, not live custom domain."
+}

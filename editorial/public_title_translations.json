@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "scope": "public-title-only",
+  "entries": {
+    "doi:10.1093/ehjcvp/pvag089": {
+      "paperID": "doi:10.1093/ehjcvp/pvag089",
+      "pmid": "42839766",
+      "sourceTitle": "Analysis and Interpretation of a Hierarchical Outcome in a Small Pilot Randomized Trial: An Example in the CORTAHF Trial.",
+      "sourceTitleHash": "661906b58a8d6b7fb8c1b6c57c047bacf8723d64d508a949637ef028ac9c97ae",
+      "titleZh": "小样本先导随机试验中分层结局的分析与解释：以 CORTAHF 试验为例。",
+      "origin": "codex-editorial-translation",
+      "recordedAt": "2026-10-07T14:19:13.072669+00:00"
+    },
+    "doi:10.1038/s41467-026-78143-2": {
+      "paperID": "doi:10.1038/s41467-026-78143-2",
+      "pmid": "42834055",
+      "sourceTitle": "ProFormer: generalizable classification of single-cell and plasma proteomes using deep learning.",
+      "sourceTitleHash": "d1ac6e7b4dd124a9628caab278b78b3e452562c8a261158aa19ced9627618802",
+      "titleZh": "ProFormer：利用深度学习对单细胞和血浆蛋白质组进行可泛化分类。",
+      "origin": "codex-editorial-translation",
+      "recordedAt": "2026-10-07T14:19:13.072682+00:00"
+    },
+    "doi:10.1001/jama.2026.21519": {
+      "paperID": "doi:10.1001/jama.2026.21519",
+      "pmid": "",
+      "sourceTitle": "Hypertension Control in Low- and Middle-Income Settings",
+      "sourceTitleHash": "d7fd3c14271a8dd8af92779155c3606a72fe9553fd8750e4793312a8cab26f15",
+      "titleZh": "低收入和中等收入地区的高血压控制",
+      "origin": "codex-editorial-translation",
+      "scope": "public-title-only",
+      "translationSource": "current Sol conversation editorial translation of saved public title",
+      "actualModelVersion": "unobserved",
+      "sourceUrl": "https://jamanetwork.com/journals/jama/fullarticle/2855205",
+      "sourceDate": "2026-10-07T00:00:00+00:00",
+      "sourceStateSha": "0e6a0fdfb361c5c2c31606be5c6f6dcc6b4cc52a",
+      "recordedAt": "2026-10-07T18:48:21.325063+00:00"
+    },
+    "doi:10.1001/jama.2026.19916": {
+      "paperID": "doi:10.1001/jama.2026.19916",
+      "pmid": "",
+      "sourceTitle": "Hypertension Management and Control in Cienfuegos, Cuba",
+      "sourceTitleHash": "ead8d6906d5e12a0f163133b9f1cc70bbf6e786d8a35776dedfc8690e3c1632a",
+      "titleZh": "古巴西恩富戈斯的高血压管理与控制",
+      "origin": "codex-editorial-translation",
+      "scope": "public-title-only",
+      "translationSource": "current Sol conversation editorial translation of saved public title",
+      "actualModelVersion": "unobserved",
+      "sourceUrl": "https://jamanetwork.com/journals/jama/fullarticle/2854963",
+      "sourceDate": "2026-10-07T00:00:00+00:00",
+      "sourceStateSha": "0e6a0fdfb361c5c2c31606be5c6f6dcc6b4cc52a",
+      "recordedAt": "2026-10-07T18:48:21.325086+00:00"
+    },
+    "doi:10.1001/jamacardio.2026.3970": {
+      "paperID": "doi:10.1001/jamacardio.2026.3970",
+      "pmid": "",
+      "sourceTitle": "Cement Embolism After Vertebroplasty",
+      "sourceTitleHash": "ad9f5192e7ed7772560a10c66049bbb4a2101978959fe099016084c1ef3c5abe",
+      "titleZh": "椎体成形术后骨水泥栓塞",
+      "origin": "codex-editorial-translation",
+      "scope": "public-title-only",
+      "translationSource": "current Sol conversation editorial translation of saved public title",
+      "actualModelVersion": "unobserved",
+      "sourceUrl": "https://jamanetwork.com/journals/jamacardiology/fullarticle/2854803",
+      "sourceDate": "2026-10-07T00:00:00+00:00",
+      "sourceStateSha": "0e6a0fdfb361c5c2c31606be5c6f6dcc6b4cc52a",
+      "recordedAt": "2026-10-07T18:48:21.325093+00:00"
+    },
+    "doi:10.1001/jamacardio.2026.4238": {
+      "paperID": "doi:10.1001/jamacardio.2026.4238",
+      "pmid": "",
+      "sourceTitle": "Long-Term Perspective on Recognized and Unrecognized Myocardial Infarction",
+      "sourceTitleHash": "25b5fa25dc17034ccb5da2007949f681d2bbb4ed84f7f7ce6d59b87aaf4ab769",
+      "titleZh": "已被识别与未被识别心肌梗死的长期视角",
+      "origin": "codex-editorial-translation",
+      "scope": "public-title-only",
+      "translationSource": "current Sol conversation editorial translation of saved public title",
+      "actualModelVersion": "unobserved",
+      "sourceUrl": "https://jamanetwork.com/journals/jamacardiology/fullarticle/2854802",
+      "sourceDate": "2026-10-07T00:00:00+00:00",
+      "sourceStateSha": "0e6a0fdfb361c5c2c31606be5c6f6dcc6b4cc52a",
+      "recordedAt": "2026-10-07T18:48:21.325097+00:00"
+    },
+    "doi:10.1001/jamacardio.2026.4233": {
+      "paperID": "doi:10.1001/jamacardio.2026.4233",
+      "pmid": "",
+      "sourceTitle": "Prevalence of Unrecognized and Recognized Myocardial Infarction",
+      "sourceTitleHash": "bb0f60a22942f8431e63bcf5c3870580ddbeea9bbd46d2f8f2b7b9fbc1fa415e",
+      "titleZh": "未被识别与已被识别心肌梗死的患病率",
+      "origin": "codex-editorial-translation",
+      "scope": "public-title-only",
+      "translationSource": "current Sol conversation editorial translation of saved public title",
+      "actualModelVersion": "unobserved",
+      "sourceUrl": "https://jamanetwork.com/journals/jamacardiology/fullarticle/2854801",
+      "sourceDate": "2026-10-07T00:00:00+00:00",
+      "sourceStateSha": "0e6a0fdfb361c5c2c31606be5c6f6dcc6b4cc52a",
+      "recordedAt": "2026-10-07T18:48:21.325101+00:00"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "release": "v14.2.15",
+  "baseProductionSource": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "inputState": "52f1be0ac1b7d34b1a5584a44195f1cbe3687a23",
+  "includedContentSource": "fe275efd9d43b3f6e3590daed25cdd4b5d4fa9f5",
+  "fiveCurrentSourceBindings": {
+    "inputState": "52f1be0ac1b7d34b1a5584a44195f1cbe3687a23",
+    "checks": [
+      {
+        "paperID": "doi:10.1001/jamacardio.2026.4445",
+        "selectedNow": true,
+        "sourceHashMatches": true,
+        "translationPresent": true,
+        "quicklookPresent": true
+      },
+      {
+        "paperID": "doi:10.1161/circep.126.015055",
+        "selectedNow": true,
+        "sourceHashMatches": true,
+        "translationPresent": true,
+        "quicklookPresent": true
+      },
+      {
+        "paperID": "doi:10.1001/jama.2026.17619",
+        "selectedNow": true,
+        "sourceHashMatches": true,
+        "translationPresent": true,
+        "quicklookPresent": true
+      },
+      {
+        "paperID": "doi:10.1161/circep.125.014659",
+        "selectedNow": true,
+        "sourceHashMatches": true,
+        "translationPresent": true,
+        "quicklookPresent": true
+      },
+      {
+        "paperID": "doi:10.1111/jce.70524",
+        "selectedNow": true,
+        "sourceHashMatches": true,
+        "translationPresent": true,
+        "quicklookPresent": true
+      }
+    ]
+  },
+  "coreCoverageBefore": {
+    "title": 24,
+    "translate": 19,
+    "quicklook": 19,
+    "study": 0
+  },
+  "coreCoverageAfter": {
+    "title": 24,
+    "translate": 24,
+    "quicklook": 24,
+    "study": 0
+  },
+  "pendingCorePapers": 0,
+  "studyMissing": 24,
+  "newPaidRequests": 0,
+  "runtimeCacheWrites": 0,
+  "ledgerWrites": 0,
+  "glmConfigurationChanged": false,
+  "newScheduleCreated": false,
+  "staticOrNumericCandidateIncluded": false,
+  "pendingAndBridgeTests": 9,
+  "gapOverlayTests": 4,
+  "weeklyCoverageTests": 16,
+  "existingCiTests": 30,
+  "passed": true,
+  "productionPublished": false,
+  "includedBibliographySource": "bc267debeb40e783d22e32be63ed788d57240440",
+  "includedPublicationStatusSource": "1babb084e15bc799342912b2bae15bd903324ed5",
+  "includedTerminologySource": "32783a1527e0b74d03915a7fcdf8964d009b42ac",
+  "readerPriorityAssertions": 8,
+  "weeklyCap": 30,
+  "catalogueBound": "exact reviewed registry item count",
+  "finalMergedGate": "source regressions passed; final build and production receipt pending",
+  "publicationStatusFollowupSource": "5d23f928dcc2ad49b6456a757aaa3dee2cbc48ad",
+  "mergedFullPythonTestsBeforeStatusFollowup": 608,
+  "statusFollowupTests": 15,
+  "statusUiAssertions": 34,
+  "actualPublicBrowserScenarios": 4,
+  "titleCorrectionCount": 20,
+  "quicklookCorrectionCount": 2,
+  "freeTextFieldsCorrected": 6,
+  "officialXmlIndependentlyVerified": true,
+  "apiNewReportResolved": false
+}

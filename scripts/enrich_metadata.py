@@ -37,7 +37,7 @@ _JOURNAL_GROUPS = {
     'European Heart Journal - Cardiovascular Pharmacotherapy': ['EHJ - Cardiovascular Pharmacotherapy', 'EHJ - Cardiovasc Pharmacotherapy'],
     'European Heart Journal - Cardiovascular Imaging': [],
     'European Heart Journal Supplements': [],
-    'European Journal of Heart Failure': ['EJHF'],
+    'European Journal of Heart Failure': ['EJHF', 'Euro J Heart Failure'],
     'Cardiovascular Research': [], 'Europace': [],
     'JACC': [], 'JACC: Advances': ['JACC Advances'],
     'JACC: Clinical Electrophysiology': ['JACC: CE'],
@@ -50,9 +50,9 @@ _JOURNAL_GROUPS = {
     'International Journal of Cardiology': ['IJC', 'Int. J. Cardiology (IJC)'],
     'Heart Rhythm': [], 'Heart Rhythm O2': [],
     'Heart': ['Heart Online First', 'Heart (British Cardiac Society)'],
-    'The BMJ': ['BMJ'],
+    'The BMJ': ['BMJ', 'BMJ (Clinical research ed.)'],
     'BMJ Digital Health & AI': ['BMJ Digital Health', 'BMJ Digital Health & AI current issue', 'BMJ Digital Health & AI recent issues'],
-    'The Lancet': [],
+    'The Lancet': ['Lancet (London, England)'],
     'The Lancet Digital Health': ['Lancet Digital Health'],
     'The Lancet Primary Care': ['Lancet Primary Care'],
     'The Lancet Rheumatology': ['Lancet Rheumatology'],
@@ -98,6 +98,7 @@ for _name in (
 _JOURNAL_ALIASES = {_journal_key(alias): canonical
                     for canonical, aliases in _JOURNAL_GROUPS.items()
                     for alias in [canonical, *aliases]}
+_JOURNAL_ALIASES[_journal_key('Progress in Cardio Dis')] = 'Progress in Cardiovascular Diseases'
 
 
 def clean_journal_name(journal):
@@ -198,6 +199,10 @@ def classify_study_design(title, summary='', publication_types=()):
     title_text = (title or '').lower()
     abstract = (summary or '').lower()
     types = {str(t).lower().strip() for t in (publication_types or ())}
+    from publication_status import article_role, secondary_analysis
+    role = article_role(title, types)
+    if role:
+        return role
 
     synthesis = r'\bmeta[- ]analys(?:is|es)\b|\bsystematic reviews?\b|\bnetwork meta\b'
     commentary = r'\b(?:editorial|viewpoint|perspective|commentary)\b|^\s*(?:\[)?(?:comment|correspondence|letter|response|reply)\b'
@@ -207,16 +212,34 @@ def classify_study_design(title, summary='', publication_types=()):
     validation = r'\bexternal validation\b|\bvalidation study\b|\b(?:development and |derivation and )?validation of\b'
     randomized_trial = r'\brandomi[sz]ed(?:[- ,]+[a-z]+){0,4}[- ,]+(?:trial|controlled study)\b|\brct\b'
 
-    # A protocol, review or observational paper can discuss many randomized trials.
-    if re.search(r'\bprotocol\b', title_text):
-        return '研究方案'
-    if re.search(commentary, title_text) or types & {'editorial', 'comment', 'letter'}:
+    # Prefer the METHODS/DESIGN section; exclude BACKGROUND and cited prior trials.
+    method_sections = re.findall(
+        r'\b(?:methods?|study design|design(?:\s*,\s*setting\s*,\s*(?:and\s+)?participants)?|materials and methods)\s*:\s*(.*?)(?=\b(?:results?|conclusions?(?:\s+and\s+relevance)?|background|importance|objectives?|findings|interpretation|discussion|exposures?|interventions?|main outcomes and measures|trial registration)\s*:|$)',
+        abstract, flags=re.S)
+    direct = ' '.join(method_sections)
+    if not direct:
+        direct = ' '.join(s for s in re.split(r'(?<=[.!?])\s+', abstract)
+                          if re.search(r'\b(?:we (?:conducted|performed|undertook)|this (?:study|trial|review|analysis) (?:is|was)|in this (?:study|trial|review|registry))\b', s))
+    # Some research letters report original results. Letter alone never proves RCT;
+    # both a methods section and results are needed before considering allocation.
+    research_letter = bool(method_sections and re.search(r'\bresults?\s*:', abstract))
+    if re.search(commentary, title_text) or types & {'editorial', 'comment'} or ('letter' in types and not research_letter):
         return '述评观点'
     if re.search(synthesis, title_text) or types & {'meta-analysis', 'systematic review'}:
         return 'Meta/综述'
     review_title = re.sub(r'\b(?:peer|chart|medical records?|records?) reviews?\b', '', title_text)
     if re.search(r'\breview\b', review_title) or 'review' in types:
         return '叙述综述'
+    direct_secondary = bool(re.search(
+        r'^(?:in this |this |we (?:conducted|performed|undertook) (?:a |an )?)?(?:post[-\s]hoc|secondary|subgroup|pooled|prespecified|pre[- ]specified) analys(?:is|es)\b|'
+        r'\b(?:this|current|present) (?:post[-\s]hoc|secondary|subgroup|pooled|prespecified|pre[- ]specified) analys(?:is|es)\b', direct))
+    if secondary_analysis(title_text) or direct_secondary:
+        parent_text = re.sub(r'\bnon[- ]?randomi[sz]ed\b|\bnot(?: a)? randomi[sz]ed\b', '', title_text+' '+direct)
+        randomized_parent = ('randomized controlled trial' in types or
+                             re.search(randomized_trial, parent_text) or
+                             (re.search(r'\brandomi[sz]ed\b[^.!?]{0,60}\bstudy\b', parent_text) and
+                              re.search(r'\bpatients?\b|\bparticipants?\b', direct)))
+        return 'RCT 二次分析' if randomized_parent else '二次分析'
     if re.search(cross_sectional, title_text):
         return '横断面研究'
     explicit_random = re.search(randomized_trial, title_text) and not re.search(r'\bnon[- ]?randomi[sz]ed\b|\bsingle[- ]arm\b', title_text)
@@ -241,14 +264,6 @@ def classify_study_design(title, summary='', publication_types=()):
     if re.search(validation, title_text):
         return '方法/模型验证'
 
-    # Prefer the METHODS/DESIGN section; exclude BACKGROUND and cited prior trials.
-    method_sections = re.findall(
-        r'\b(?:methods?|study design|design(?:\s*,\s*setting\s*,\s*(?:and\s+)?participants)?|materials and methods)\s*:\s*(.*?)(?=\b(?:results?|conclusions?(?:\s+and\s+relevance)?|background|importance|objectives?|findings|interpretation|discussion|exposures?|interventions?|main outcomes and measures|trial registration)\s*:|$)',
-        abstract, flags=re.S)
-    direct = ' '.join(method_sections)
-    if not direct:
-        direct = ' '.join(s for s in re.split(r'(?<=[.!?])\s+', abstract)
-                          if re.search(r'\b(?:we (?:conducted|performed|undertook)|this (?:study|trial|review|analysis) (?:is|was)|in this (?:study|trial|review|registry))\b', s))
     if re.search(synthesis, direct):
         return 'Meta/综述'
     if re.search(cross_sectional, direct):

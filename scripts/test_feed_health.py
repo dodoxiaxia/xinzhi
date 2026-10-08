@@ -109,6 +109,18 @@ class ParserTests(OfflineTests):
         self.assertEqual(value['rawItems'], 1)
         self.assertEqual(value['items'], [])
 
+    def test_malformed_article_link_does_not_discard_valid_sibling(self):
+        raw = (b'<rss><channel><item><title>Cardiac AI invalid link</title>'
+               b'<link>https://[invalid/article</link><description>Invalid article abstract</description></item>'
+               b'<item><title>Cardiac AI valid link</title><link>https://example.org/valid</link>'
+               b'<description>Valid article abstract</description></item></channel></rss>')
+        value = feeds.parse_feed(raw, SOURCE, checked_at=CHECKED)
+        self.assertEqual(value['rawItems'], 2)
+        self.assertEqual(value['itemsWithLinks'], 1)
+        self.assertEqual(len(value['items']), 1)
+        self.assertEqual(value['items'][0]['url'], 'https://example.org/valid')
+        self.assertEqual(value['items'][0]['summary'], 'Valid article abstract')
+
     def test_safe_simple_system_and_public_doctype_ignore_without_resolution(self):
         declarations = [('<!DOCTYPE rss>', 'simple'),
                         ('<!DOCTYPE rss SYSTEM "https://never-request.example/external.dtd">', 'external_system'),
@@ -363,6 +375,51 @@ class HealthTests(OfflineTests):
         self.assertEqual(current['responseContentType'], 'text/html')
         self.assertNotIn('private-secret', json.dumps(current))
         self.assertNotIn('private response text', json.dumps(current))
+
+    def test_publisher_verification_resource_stops_host_even_at_original_feed_url(self):
+        class Response:
+            headers = {'Content-Type': 'text/html; charset=utf-8'}
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def getcode(self): return 200
+            def geturl(self): return SOURCE['url']
+            def read(self, size):
+                return b'<!DOCTYPE html><html><img src="https://verify.nature.com/check?code=private-secret"/></html>'
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        with patch('refresh_feeds.urllib.request.urlopen', return_value=Response()) as opener:
+            current = feeds.fetch_group([SOURCE, same])
+        self.assertEqual(opener.call_count, 1)
+        self.assertEqual(current[0][0]['failureReason'], 'publisher_access_challenge')
+        self.assertEqual(current[0][0]['rootKind'], 'html')
+        self.assertEqual(current[1][0]['status'], 'not_checked_host_blocked')
+        self.assertNotIn('private-secret', json.dumps(current))
+        self.assertNotIn('verify.nature.com', json.dumps(current))
+
+    def test_cookie_failure_canonical_target_is_observed_without_following_it(self):
+        raw = b'<html><link rel="canonical" href="https://www.nature.com/npjhealthsyst/?error=cookies_not_supported&amp;code=private-secret"/></html>'
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=AssertionError('No follow-up request')):
+            self.assertEqual(feeds.non_feed_reason(raw, SOURCE['url']), 'publisher_cookie_requirement')
+
+    def test_verification_words_links_comments_and_lookalike_hosts_do_not_prove_challenge(self):
+        for raw in (b'<html><p>verify.nature.com</p></html>',
+                    b'<html><!-- <img src="https://verify.nature.com/check"> --></html>',
+                    b'<html><a href="https://verify.nature.com/check">Reference</a></html>',
+                    b'<html><img src="https://verify.nature.com.example.org/check"/></html>',
+                    b'<html><![malformed html]></html>'):
+            with self.subTest(raw=raw):
+                self.assertEqual(feeds.non_feed_reason(raw, SOURCE['url']), 'html_instead_of_feed')
+
+    def test_http_refusal_preserves_sanitized_final_endpoint_and_content_type_without_body_read(self):
+        same = {**SOURCE, 'id': 's2', 'url': 'https://example.org/second'}
+        failure = urllib.error.HTTPError('https://user:secret@example.org/refused?code=private-secret',
+                                         403, 'Forbidden', {'Content-Type': 'text/html; charset=utf-8'}, None)
+        with patch('refresh_feeds.urllib.request.urlopen', side_effect=failure) as opener:
+            current = feeds.fetch_group([SOURCE, same])
+        self.assertEqual(opener.call_count, 1)
+        self.assertEqual(current[0][0]['responseContentType'], 'text/html')
+        self.assertEqual(current[0][0]['responseUrl'], 'https://example.org/refused?code=<redacted>')
+        self.assertEqual(current[1][0]['status'], 'not_checked_host_blocked')
+        self.assertNotIn('secret', json.dumps(current))
 
     def test_filtered_zero_reports_actual_exclusion_reasons(self):
         items = parsed(date='2020-01-01') + parsed(link='https://example.org/two', date='')

@@ -1,0 +1,1453 @@
+{
+  "schemaVersion": 1,
+  "publicOnly": true,
+  "sourceMainSha": "f0d460f035f9f62db1073f54971d40ad9af3098c",
+  "sourceStateSha": "fcb77d58eab7c8e1de58c3e6c90eb59513d91cdb",
+  "window": {
+    "start": "2026-10-02",
+    "end": "2026-10-08",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 63,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 55,
+      "综合医学": 7,
+      "AI医疗": 0,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 328,
+      "no_complete_public_abstract": 48,
+      "low_relevance": 25,
+      "correction_comment_letter": 10,
+      "outside_window": 435
+    },
+    "shortfallReason": null
+  },
+  "ledgerSha256Before": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "missingRanks": [
+    15,
+    16,
+    21,
+    22,
+    23,
+    24
+  ],
+  "items": [
+    {
+      "id": "pmid-42839766",
+      "paperID": "doi:10.1093/ehjcvp/pvag089",
+      "doi": "10.1093/ehjcvp/pvag089",
+      "pmid": "42839766",
+      "rank": 1,
+      "category": "心血管",
+      "date": "2026-10-07",
+      "title": "Analysis and Interpretation of a Hierarchical Outcome in a Small Pilot Randomized Trial: An Example in the CORTAHF Trial.",
+      "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+      "abstract": "AIMS: Hierarchical composite endpoints (HCE) analyzed using generalized pairwise comparisons (GPC) have been increasingly adopted in cardiovascular trials. Stratified, but not covariate-adjusted, win statistics have been frequently presented. We apply methods to a post hoc HCE for the randomized 100-patient CORTAHF pilot trial of short-term corticosteroid therapy in acute heart failure (AHF). METHODS AND RESULTS: The HCE comprised 90-day death, 90-day HF readmission, 30-day worsening HF, and 30-day change in EQ-5D visual analogue scale (EQ-VAS) score from baseline. Win statistics and patient ranks from worst to best outcome were derived from GPC. These ranks were used to produce site-stratified and baseline EQ-VAS-adjusted win odds.Analysis of individual components suggested beneficial prednisone effects on 90-day HF readmission and 30-day WHF adverse events, with little effect on 30-day change in EQ-VAS. The win ratio and win odds were 1.82 and 1.71, respectively (both p<0.05), with 10% ties remaining after most comparisons were resolved at the last tier. HF readmission contributed most to the overall win difference of 26.1%. Stratification and baseline covariate adjustment using patients' ranks were feasible, but in this example did not substantially alter the estimated win odds. CONCLUSIONS: Patients' ranks can be derived from GPC and used to estimate stratified and covariate-adjusted win statistics as well as to visualize the treatment effect. Use of a well-constructed HCE in a small pilot trial should be considered; a positive signal may support further examination of the treatment. A full analysis can aid in interpretation.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839766/",
+      "titleZh": "小型随机先导试验中层级结局的分析与解释：以CORTAHF试验为例",
+      "translation": {
+        "title_zh": "小型随机先导试验中层级结局的分析与解释：以CORTAHF试验为例",
+        "abstract_zh": "目的：采用广义成对比较（GPC）分析的层级复合终点（HCE）在心血管试验中日益常见。既往经常报告分层的胜率统计量，但较少报告协变量校正结果。本文将相关方法应用于CORTAHF随机先导试验的事后HCE分析；该试验纳入100名急性心力衰竭（AHF）患者，研究短期糖皮质激素治疗。\n方法与结果：HCE依次包括90天死亡、90天心力衰竭再入院、30天心力衰竭恶化，以及30天EQ-5D视觉模拟量表（EQ-VAS）评分相对基线的变化。通过GPC得到胜率统计量，以及从最差到最佳结局的患者排序。利用这些排序计算按研究中心分层、并校正基线EQ-VAS后的胜算比。各组成部分的分析提示，泼尼松对90天心力衰竭再入院和30天心力衰竭恶化不良事件可能有益，但对30天EQ-VAS变化的影响很小。胜率比和胜算比分别为1.82和1.71，两者均为p<0.05；大多数比较在最后一级才分出胜负，仍有10%的平局。心力衰竭再入院对总体26.1%的胜负差贡献最大。利用患者排序进行分层和基线协变量校正是可行的，但在本例中未明显改变胜算比估计。\n结论：患者排序可由GPC获得，可用于估计分层及协变量校正的胜率统计量，也可用于可视化治疗效应。小型先导试验可考虑采用构建合理的HCE；阳性信号可支持进一步研究该治疗，完整分析有助于解释结果。"
+      },
+      "quicklook": {
+        "title_zh": "小型随机先导试验中层级结局的分析与解释：以CORTAHF试验为例",
+        "one_line": "事后层级终点分析展示了小型先导试验中胜率统计量的构建与解释。",
+        "design": "随机先导试验的事后层级复合终点分析",
+        "limits": "这是小型先导试验的事后分析；摘要将阳性信号定位为支持进一步研究，未声称确证疗效。",
+        "why_read": "帮助区分层级复合终点的总体信号与各组成结局的贡献。",
+        "findings": [
+          {
+            "text": "方法用于纳入100名患者的急性心力衰竭随机先导试验。",
+            "quote": "We apply methods to a post hoc HCE for the randomized 100-patient CORTAHF pilot trial of short-term corticosteroid therapy in acute heart failure (AHF)."
+          },
+          {
+            "text": "胜率比为1.82，胜算比为1.71，两者p<0.05；仍有10%的平局。",
+            "quote": "The win ratio and win odds were 1.82 and 1.71, respectively (both p<0.05), with 10% ties remaining after most comparisons were resolved at the last tier."
+          },
+          {
+            "text": "分层和基线协变量校正在本例中未明显改变胜算比估计。",
+            "quote": "Stratification and baseline covariate adjustment using patients' ranks were feasible, but in this example did not substantially alter the estimated win odds."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:24:15.588434+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:24:15.762438+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42838320",
+      "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+      "doi": "10.1016/j.hrthm.2026.09.051",
+      "pmid": "42838320",
+      "rank": 2,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Efficacy and Safety of Flecainide Versus Amiodarone for the Cardioversion of paroxysmal Atrial Fibrillation in Patients with Coronary Artery Disease without evidence of residual ischemia: The FLECA-ED Randomized Clinical Trial.",
+      "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+      "abstract": "BACKGROUND: Flecainide has been contraindicated in patients with coronary artery disease (CAD) since the Cardiac Arrhythmia Suppression Trial. OBJECTIVE: We compared intravenous flecainide with intravenous amiodarone for cardioversion of recent-onset paroxysmal atrial fibrillation (AF) in patients with documented CAD without residual or active ischemia presenting to the emergency department. METHODS: In this investigator-initiated, multicenter, open-label, randomized trial, adults with paroxysmal AF and CAD without residual or active ischemia were assigned 1:1 to intravenous flecainide or amiodarone. All patients underwent 24-hour ambulatory ECG monitoring. The primary efficacy end point was conversion to sinus rhythm within 6 hours. The primary safety end point was the composite of nonsustained ventricular tachycardia, ventricular tachycardia, premature ventricular complexes, significant hypotension, and bradycardia below 50 bpm within 6 hours. RESULTS: Eighty-seven patients underwent randomization (42 flecainide, 45 amiodarone). Conversion to sinus rhythm within 6 hours occurred in 85.7% of patients in the flecainide group and 40.0% in the amiodarone group (P<0.001). Median time to conversion was 20 minutes versus 244 minutes (P<0.001), and hospital admission occurred in 14.3% versus 60.0%, respectively (P<0.001). No ventricular proarrhythmic events occurred within 24 hours in either group and no deaths were recorded through 30 days. CONCLUSION: In patients with paroxysmal AF and CAD without evidence of residual and active ischemia, intravenous flecainide was superior to amiodarone for acute cardioversion, with faster conversion to sinus rhythm and fewer hospital admissions. No serious ventricular proarrhythmia through 24 hours was observed, a hypothesis-generating finding.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42838320/",
+      "titleZh": "无残余缺血证据的冠状动脉疾病患者中，氟卡尼与胺碘酮用于阵发性房颤复律的疗效与安全性：FLECA-ED随机临床试验",
+      "translation": {
+        "title_zh": "无残余缺血证据的冠状动脉疾病患者中，氟卡尼与胺碘酮用于阵发性房颤复律的疗效与安全性：FLECA-ED随机临床试验",
+        "abstract_zh": "背景：自心律失常抑制试验以来，氟卡尼一直被列为冠状动脉疾病（CAD）患者的禁忌用药。\n目的：比较静脉氟卡尼与静脉胺碘酮，用于在急诊就诊、近期发生阵发性房颤（AF）、有明确CAD且无残余或活动性缺血的患者复律。\n方法：这是一项研究者发起、多中心、开放标签随机试验。将存在阵发性AF及CAD、但无残余或活动性缺血的成年人按1:1分配接受静脉氟卡尼或胺碘酮。所有患者均接受24小时动态心电图监测。主要疗效终点为6小时内恢复窦性心律。主要安全性终点为6小时内非持续性室性心动过速、室性心动过速、室性期前收缩、显著低血压及心率低于50次/分的心动过缓组成的复合终点。\n结果：八十七名患者接受随机分组，其中42名接受氟卡尼、45名接受胺碘酮。氟卡尼组85.7%的患者在6小时内恢复窦性心律，胺碘酮组为40.0%（P<0.001）。复律时间中位数分别为20分钟和244分钟（P<0.001），住院比例分别为14.3%和60.0%（P<0.001）。两组均未在24小时内发生室性致心律失常事件，随访至30天未记录到死亡。\n结论：对于阵发性AF及CAD且无残余和活动性缺血证据的患者，静脉氟卡尼在急性复律方面优于胺碘酮，恢复窦性心律更快，住院更少。24小时内未观察到严重室性致心律失常，但这仅是生成假设的发现。"
+      },
+      "quicklook": {
+        "title_zh": "无残余缺血证据的冠状动脉疾病患者中，氟卡尼与胺碘酮用于阵发性房颤复律的疗效与安全性：FLECA-ED随机临床试验",
+        "one_line": "所选无残余或活动性缺血的冠心病房颤患者中，氟卡尼的急性复律比例较高。",
+        "design": "多中心、开放标签随机试验",
+        "limits": "作者将短期未见严重室性致心律失常的安全性发现定为生成假设；所纳人群无残余或活动性缺血。",
+        "why_read": "比较严格选择人群中的急性复律结果，并保留短期安全性证据边界。",
+        "findings": [
+          {
+            "text": "在6小时内恢复窦律的比例为氟卡尼85.7%、胺碘酮40.0%（P<0.001）。",
+            "quote": "Conversion to sinus rhythm within 6 hours occurred in 85.7% of patients in the flecainide group and 40.0% in the amiodarone group (P<0.001)."
+          },
+          {
+            "text": "复律时间中位数分别为20分钟与244分钟，住院比例为14.3%与60.0%。",
+            "quote": "Median time to conversion was 20 minutes versus 244 minutes (P<0.001), and hospital admission occurred in 14.3% versus 60.0%, respectively (P<0.001)."
+          },
+          {
+            "text": "两组24小时内未出现室性致心律失常事件，至30天未记录死亡。",
+            "quote": "No ventricular proarrhythmic events occurred within 24 hours in either group and no deaths were recorded through 30 days."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:24:15.958554+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:24:16.149168+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836281",
+      "paperID": "doi:10.1161/circulationaha.126.080404",
+      "doi": "10.1161/circulationaha.126.080404",
+      "pmid": "42836281",
+      "rank": 3,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Incidence, Process of Care, and Outcomes of In-Hospital Cardiac Arrest in China: A Multicenter Prospective Registry Study.",
+      "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+      "abstract": "BACKGROUND: In-hospital cardiac arrest (IHCA) is an acute event associated with high mortality. Although survival has improved in high-income countries, contemporary multicenter data from low- and middle-income countries remain scarce, limiting global benchmarking and the identification of system-level opportunities for improvement. METHODS: This cohort study used data from the BASIC-IHCA (Baseline Investigation of In-Hospital Cardiac Arrest) registry. Adult patients (≥18 years) who experienced IHCA and received cardiopulmonary resuscitation between July 1, 2019, and December 31, 2020, at 37 hospitals across 29 provinces in China were included. The primary outcome was survival to 30 days or hospital discharge. Secondary outcomes included return of spontaneous circulation, 6- and 12-month survival, and favorable neurological outcome (Cerebral Performance Category score 1-2). Process measures focused on the timeliness of resuscitation response and the implementation of postresuscitation interventions. RESULTS: Among 17 602 patients (median age, 66 years; 65.5% male), the annual incidence of adult IHCA was 4.1 per 1000 admissions. Cardiac etiology was identified in 6569 (37.3%) patients, and 2380 (13.5%) presented with initial shockable rhythm. Among all patients, 16 872 (95.9%) received cardiopulmonary resuscitation within 1 minute; timely defibrillation or epinephrine was achieved in 71.4% and 84.4% of patients with initial shockable and nonshockable rhythms, respectively. Sustained return of spontaneous circulation was achieved in 6200 (35.2%) patients, of whom 222 (3.6%) received temperature control therapy and 320 (5.2%) underwent coronary angiography. Overall, 1610 (9.1%) patients survived to 30 days or discharge, with 1241 (7.1%) having a favorable neurological outcome. At 12 months, 1075 (6.1%) patients remained alive, and 986 (5.6%) had a favorable neurological outcome. CONCLUSIONS: This multicenter registry highlights a substantial burden of IHCA in China, with markedly low survival rates. Despite prompt initial resuscitation, critical gaps persist in postresuscitation care. Systemic and cultural factors, including the infrequent use of do not attempt cardiopulmonary resuscitation orders, may further contribute to survival disparities. These findings suggest several system-level opportunities to improve IHCA outcomes, including structured response systems, optimized critical care resource allocation, and greater integration of advanced care planning.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836281/",
+      "titleZh": "中国院内心脏骤停的发生率、诊疗过程和结局：多中心前瞻性登记研究",
+      "translation": {
+        "title_zh": "中国院内心脏骤停的发生率、诊疗过程和结局：多中心前瞻性登记研究",
+        "abstract_zh": "背景：院内心脏骤停（IHCA）是与高死亡率相关的急性事件。尽管高收入国家的生存情况已有改善，但来自低收入和中等收入国家的当代多中心数据仍然稀缺，限制了全球基准比较以及识别系统层面改善机会的能力。\n方法：本队列研究使用BASIC-IHCA（院内心脏骤停基线调查）登记数据。纳入2019年7月1日至2020年12月31日期间，在中国29个省份的37家医院发生IHCA并接受心肺复苏的成年患者（≥18岁）。主要结局为存活至30天或出院。次要结局包括自主循环恢复、6个月和12个月生存，以及良好神经功能结局（脑功能分级评分1-2）。过程指标侧重于复苏响应的及时性和复苏后干预措施的实施。\n结果：在17 602名患者中（年龄中位数66岁；65.5%为男性），成人IHCA的年发生率为每1000例入院4.1例。6569名（37.3%）患者被判定为心源性病因，2380名（13.5%）患者的初始心律可电击。在所有患者中，16 872名（95.9%）在1分钟内接受心肺复苏；初始心律可电击和不可电击的患者中，分别有71.4%和84.4%及时接受除颤或肾上腺素。6200名（35.2%）患者实现持续自主循环恢复，其中222名（3.6%）接受温度控制治疗，320名（5.2%）接受冠状动脉造影。总体而言，1610名（9.1%）患者存活至30天或出院，其中1241名（7.1%）具有良好神经功能结局。12个月时，1075名（6.1%）患者仍存活，986名（5.6%）具有良好神经功能结局。\n结论：本多中心登记研究显示，中国IHCA负担较重，生存率明显偏低。尽管初始复苏及时，复苏后照护仍存在关键缺口。系统和文化因素，包括不尝试心肺复苏医嘱的使用较少，可能进一步导致生存差异。这些发现提示了若干在系统层面改善IHCA结局的机会，包括建立有组织的响应系统、优化重症监护资源分配，以及进一步整合预先照护规划。"
+      },
+      "quicklook": {
+        "title_zh": "中国院内心脏骤停的发生率、诊疗过程和结局：多中心前瞻性登记研究",
+        "one_line": "中国多中心登记显示院内心脏骤停生存率低，复苏后照护存在关键缺口。",
+        "design": "多中心前瞻性登记队列研究",
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解院内复苏的响应速度、生存结果及复苏后照护过程。",
+        "findings": [
+          {
+            "text": "纳入17 602名患者，成人院内心脏骤停年发生率为每1000例入院4.1例。",
+            "quote": "Among 17 602 patients (median age, 66 years; 65.5% male), the annual incidence of adult IHCA was 4.1 per 1000 admissions."
+          },
+          {
+            "text": "95.9%的患者在1分钟内接受心肺复苏。",
+            "quote": "Among all patients, 16 872 (95.9%) received cardiopulmonary resuscitation within 1 minute;"
+          },
+          {
+            "text": "存活至30天或出院的患者占9.1%，良好神经功能结局占7.1%。",
+            "quote": "Overall, 1610 (9.1%) patients survived to 30 days or discharge, with 1241 (7.1%) having a favorable neurological outcome."
+          },
+          {
+            "text": "12个月时6.1%的患者仍存活，5.6%具有良好神经功能结局。",
+            "quote": "At 12 months, 1075 (6.1%) patients remained alive, and 986 (5.6%) had a favorable neurological outcome."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:27.162257+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:27.348379+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42832923",
+      "paperID": "doi:10.1016/j.jacadv.2026.103298",
+      "doi": "10.1016/j.jacadv.2026.103298",
+      "pmid": "42832923",
+      "rank": 4,
+      "category": "心血管",
+      "date": "2026-10-05",
+      "title": "Ticagrelor Monotherapy or Aspirin Plus Prasugrel After Percutaneous Coronary Intervention: A Network Meta-Analysis.",
+      "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+      "abstract": "BACKGROUND: The 2025 American College of Cardiology/American Heart Association guidelines endorse de-escalation to ticagrelor monotherapy after percutaneous coronary intervention (PCI) for acute coronary syndromes (ACSs), whereas the 2023 European Society of Cardiology guidelines recommend 12-month dual antiplatelet therapy (DAPT) with aspirin plus prasugrel as the default strategy. OBJECTIVES: The objective of the study was to compare ischemic and bleeding outcomes between these strategies and to evaluate whether diabetes modifies their relative effects. METHODS: Randomized controlled trials enrolling patients after PCI and evaluating de-escalation to ticagrelor monotherapy or 12-month DAPT (ticagrelor or prasugrel-based) were included. The primary efficacy and safety outcomes were major adverse cardiovascular or cerebrovascular events (MACCE) and major bleeding. Incidence rate ratios (IRRs) with 95% CIs were pooled using a frequentist random-effects network meta-analysis. Subgroup analyses were performed according to diabetes status. RESULTS: Seven randomized controlled trials including 27,225 patients were included (mean age, 62 years; 23.2% women; 31.7% diabetes; 98.6% ACS). Ticagrelor monotherapy and aspirin plus prasugrel were compared indirectly through ticagrelor-based DAPT. Ticagrelor monotherapy showed similar MACCE compared with aspirin plus prasugrel (IRR: 1.09; 95% CI: 0.86-1.38), although a clinically meaningful increase in risk cannot be excluded (P for noninferiority = 0.33); major bleeding was lower with ticagrelor monotherapy (IRR: 0.54; 95% CI: 0.37-0.80). An interaction between P2Y12 inhibitor strategy and diabetes status was observed for MACCE (Pint = 0.04). CONCLUSIONS: In this network meta-analysis of predominantly ACS patients undergoing PCI, ticagrelor monotherapy reduced major bleeding compared with 12 months of aspirin plus prasugrel, whereas it did not meet noninferiority for MACCE. Direct randomized comparisons are warranted. (Ticagrelor Monotherapy or Aspirin Plus Prasugrel After Percutaneous Coronary Intervention: A Network Meta-Analysis; CRD420261322968).",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832923/",
+      "titleZh": "经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析",
+      "translation": {
+        "title_zh": "经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析",
+        "abstract_zh": "背景：2025年美国心脏病学会/美国心脏协会指南支持急性冠脉综合征（ACS）患者在经皮冠状动脉介入治疗（PCI）后降阶为替格瑞洛单药治疗，而2023年欧洲心脏病学会指南推荐将阿司匹林联合普拉格雷的12个月双联抗血小板治疗（DAPT）作为默认策略。\n目的：本研究旨在比较这些策略的缺血和出血结局，并评估糖尿病是否改变其相对效应。\n方法：纳入PCI后患者、评估降阶为替格瑞洛单药治疗或12个月DAPT（以替格瑞洛或普拉格雷为基础）的随机对照试验。主要疗效和安全性结局分别为主要不良心血管或脑血管事件（MACCE）和大出血。采用频率学派随机效应网状Meta分析合并发生率比（IRR）及95%置信区间（CI）。按糖尿病状态进行亚组分析。\n结果：纳入七项随机对照试验，共27,225名患者（平均年龄62岁；23.2%为女性；31.7%有糖尿病；98.6%为ACS）。通过以替格瑞洛为基础的DAPT，间接比较替格瑞洛单药治疗与阿司匹林联合普拉格雷。替格瑞洛单药治疗的MACCE与阿司匹林联合普拉格雷相近（IRR：1.09；95% CI：0.86-1.38），但不能排除具有临床意义的风险增加（非劣效性检验P = 0.33）；替格瑞洛单药治疗的大出血更少（IRR：0.54；95% CI：0.37-0.80）。对于MACCE，观察到P2Y12抑制剂策略与糖尿病状态之间存在交互作用（Pint = 0.04）。\n结论：本网状Meta分析纳入的主要是接受PCI的ACS患者。与阿司匹林联合普拉格雷治疗12个月相比，替格瑞洛单药治疗减少了大出血，但在MACCE方面未达到非劣效性。需要开展直接随机比较。（经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析；CRD420261322968）。"
+      },
+      "quicklook": {
+        "title_zh": "经皮冠状动脉介入治疗后替格瑞洛单药治疗或阿司匹林联合普拉格雷：网状Meta分析",
+        "one_line": "间接比较提示替格瑞洛单药大出血较少，但主要心脑血管事件未达到非劣效性。",
+        "design": "随机对照试验的频率学派随机效应网状Meta分析",
+        "limits": "两种策略为间接比较；不能排除具有临床意义的MACCE风险增加，且未达到非劣效性。摘要指出需要直接随机比较。",
+        "why_read": "关注减少出血与缺血结局非劣效性未获证实之间的证据差异。",
+        "findings": [
+          {
+            "text": "替格瑞洛单药与阿司匹林联合普拉格雷经由替格瑞洛双联治疗进行间接比较。",
+            "quote": "Ticagrelor monotherapy and aspirin plus prasugrel were compared indirectly through ticagrelor-based DAPT."
+          },
+          {
+            "text": "MACCE的IRR为1.09，95% CI为0.86-1.38，非劣效性检验P = 0.33。",
+            "quote": "Ticagrelor monotherapy showed similar MACCE compared with aspirin plus prasugrel (IRR: 1.09; 95% CI: 0.86-1.38), although a clinically meaningful increase in risk cannot be excluded (P for noninferiority = 0.33);"
+          },
+          {
+            "text": "替格瑞洛单药大出血较少：IRR 0.54，95% CI 0.37-0.80。",
+            "quote": "major bleeding was lower with ticagrelor monotherapy (IRR: 0.54; 95% CI: 0.37-0.80)."
+          },
+          {
+            "text": "MACCE存在P2Y12抑制剂策略与糖尿病状态的交互作用（Pint = 0.04）。",
+            "quote": "An interaction between P2Y12 inhibitor strategy and diabetes status was observed for MACCE (Pint = 0.04)."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:27.559428+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:27.768667+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42832922",
+      "paperID": "doi:10.1016/j.jacadv.2026.103306",
+      "doi": "10.1016/j.jacadv.2026.103306",
+      "pmid": "42832922",
+      "rank": 5,
+      "category": "心血管",
+      "date": "2026-10-05",
+      "title": "Comparative Efficacy of Treatments for Resistant or Uncontrolled Hypertension: A Network Meta-Analysis of Randomized Trials.",
+      "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+      "abstract": "BACKGROUND: Many patients with hypertension fail to achieve recommended blood pressure targets despite treatment with 2 or more antihypertensive drugs. OBJECTIVES: We aimed to compare the efficacy of add-on treatments for the management of resistant or uncontrolled hypertension. METHODS: We searched Embase and MEDLINE through November 2025. We included randomized trials comparing add-on treatments for resistant or uncontrolled hypertension. The certainty of evidence was assessed using the Confidence In Network Meta-Analysis (CINeMA) framework. The primary outcome was the change in office systolic blood pressure from baseline. Summary mean differences were estimated using random-effects network meta-analysis within a Bayesian framework in patients with resistant hypertension and in the broader population with uncontrolled hypertension. RESULTS: We included 35 trials (8,648 patients and 12 individual treatments) in the systematic review and 30 trials (8,187 patients and 10 individual treatments) in the network meta-analysis. In patients with resistant hypertension, spironolactone (mean difference: -12.43 mm Hg; 95% credible interval: -17.68 to -7.18; CINeMA moderate) and radiofrequency renal denervation (mean difference: -8.74 mm Hg; 95% credible interval: -12.96 to -4.52; CINeMA moderate) were more effective than baseline treatment in reducing office systolic blood pressure. Similar findings were observed in patients with uncontrolled hypertension. No intervention demonstrated clear superiority over another because most head-to-head comparisons included the possibility of no effect. CONCLUSIONS: In head-to-head comparisons, no significant differences were observed between add-on treatments in reducing blood pressure among patients with resistant or uncontrolled hypertension. Treatment selection should prioritize treatments with demonstrated superiority over baseline treatment, including spironolactone, baxdrostat, and radiofrequency renal denervation.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832922/",
+      "titleZh": "难治性或未控制高血压各治疗方案疗效的比较：随机试验网状Meta分析",
+      "translation": {
+        "title_zh": "难治性或未控制高血压各治疗方案疗效的比较：随机试验网状Meta分析",
+        "abstract_zh": "背景：许多高血压患者尽管接受2种或更多降压药治疗，仍未达到推荐的血压目标。\n目的：我们旨在比较用于难治性或未控制高血压管理的附加治疗的疗效。\n方法：检索Embase和MEDLINE至2025年11月。纳入比较难治性或未控制高血压附加治疗的随机试验。采用网状Meta分析可信度（CINeMA）框架评估证据确定性。主要结局为诊室收缩压相较基线的变化。在难治性高血压患者以及范围更广的未控制高血压人群中，采用贝叶斯框架下的随机效应网状Meta分析估计合并均数差。\n结果：系统综述纳入35项试验（8,648名患者、12种单独治疗），网状Meta分析纳入30项试验（8,187名患者、10种单独治疗）。在难治性高血压患者中，与基线治疗相比，螺内酯（均数差：-12.43 mm Hg；95%可信区间：-17.68至-7.18；CINeMA中等）和射频肾去神经术（均数差：-8.74 mm Hg；95%可信区间：-12.96至-4.52；CINeMA中等）降低诊室收缩压更为有效。在未控制高血压患者中观察到相似结果。由于大多数头对头比较仍包含无效的可能性，没有任何干预显示明确优于另一种干预。\n结论：在头对头比较中，各附加治疗降低难治性或未控制高血压患者血压的效果未见显著差异。治疗选择应优先考虑已显示优于基线治疗的方案，包括螺内酯、baxdrostat和射频肾去神经术。"
+      },
+      "quicklook": {
+        "title_zh": "难治性或未控制高血压各治疗方案疗效的比较：随机试验网状Meta分析",
+        "one_line": "部分附加治疗优于基线治疗，但各附加治疗之间未见明确优势。",
+        "design": "随机试验的系统综述与贝叶斯随机效应网状Meta分析",
+        "limits": "大多数头对头比较仍包含无效的可能性，未显示附加治疗之间存在明确优势。",
+        "why_read": "区分相对基线治疗的降压效果与附加治疗之间的比较结果。",
+        "findings": [
+          {
+            "text": "网状Meta分析纳入30项试验、8,187名患者及10种单独治疗。",
+            "quote": "We included 35 trials (8,648 patients and 12 individual treatments) in the systematic review and 30 trials (8,187 patients and 10 individual treatments) in the network meta-analysis."
+          },
+          {
+            "text": "难治性高血压患者中，螺内酯及射频肾去神经术降低诊室收缩压优于基线治疗。",
+            "quote": "In patients with resistant hypertension, spironolactone (mean difference: -12.43 mm Hg; 95% credible interval: -17.68 to -7.18; CINeMA moderate) and radiofrequency renal denervation (mean difference: -8.74 mm Hg; 95% credible interval: -12.96 to -4.52; CINeMA moderate) were more effective than baseline treatment in reducing office systolic blood pressure."
+          },
+          {
+            "text": "未控制高血压患者中也观察到相似结果。",
+            "quote": "Similar findings were observed in patients with uncontrolled hypertension."
+          },
+          {
+            "text": "没有干预明确优于另一种干预，大多数头对头比较仍包含无效的可能性。",
+            "quote": "No intervention demonstrated clear superiority over another because most head-to-head comparisons included the possibility of no effect."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:27.966179+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:28.161261+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42834810",
+      "paperID": "doi:10.1093/eurheartj/ehag699",
+      "doi": "10.1093/eurheartj/ehag699",
+      "pmid": "42834810",
+      "rank": 6,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Biventricular vs conduction system pacing after atrioventricular node ablation for heart failure with atrial fibrillation: the CONDUCT-AF trial.",
+      "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+      "abstract": "BACKGROUND AND AIMS: Randomized evidence comparing conduction system pacing (CSP) and biventricular pacing (BVP) following atrioventricular node ablation in patients with refractory atrial fibrillation (AF) and heart failure (HF) remains limited. This study evaluated whether CSP with left bundle branch area pacing is non-inferior to BVP in patients undergoing atrioventricular node ablation. METHODS: CONDUCT-AF was an investigator-initiated, multicentre, randomized trial conducted across 10 European centres. Patients with refractory AF, HF with left ventricular ejection fraction (LVEF) < 50%, narrow QRS duration (≤120 ms), and N-terminal pro-B-type natriuretic peptide > 600 ng/L were randomized 1:1 to CSP or BVP. The primary endpoint was the change in LVEF after 6 months, assessed by an independent core laboratory. Secondary endpoints included echocardiographic, clinical, and procedural outcomes. Analyses followed the intention-to-treat principle. RESULTS: Eighty-two patients were randomized (mean age 72 ± 7 years, 46% male). At 6 months, LVEF improved similarly in CSP {from 36% [95% confidence interval (CI) 33-39] to 46% [95% CI 44-49]; P < .001} and BVP group [from 34% (95% CI 31-36) to 46% (95% CI 43-49); P < .001]. The between-group difference was .4% (95% CI -3.1-3.8; P = .002 for non-inferiority). Changes in left ventricular volumes, clinical parameters, and composite endpoint of worsening HF or cardiovascular death were comparable between groups. Paced QRS [mean difference -14 ms (95% CI -19 to -9; P < .001)] and procedural and fluoroscopy times were significantly shorter with CSP compared with BVP. CONCLUSIONS: In HF patients with refractory AF undergoing atrioventricular node ablation, CSP with left bundle branch area pacing was non-inferior to BVP for LVEF improvement at 6 months, providing comparable clinical outcomes and a favourable procedural profile.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834810/",
+      "titleZh": "房颤合并心力衰竭患者房室结消融后的双心室起搏与传导系统起搏比较：CONDUCT-AF试验",
+      "translation": {
+        "title_zh": "房颤合并心力衰竭患者房室结消融后的双心室起搏与传导系统起搏比较：CONDUCT-AF试验",
+        "abstract_zh": "背景与目的：在难治性心房颤动（AF）和心力衰竭（HF）患者中，比较房室结消融后传导系统起搏（CSP）与双心室起搏（BVP）的随机证据仍然有限。本研究评估在接受房室结消融的患者中，采用左束支区域起搏的CSP是否非劣于BVP。\n方法：CONDUCT-AF是一项由研究者发起、在欧洲10个中心开展的多中心随机试验。将难治性AF、左心室射血分数（LVEF）<50%的HF、窄QRS时限（≤120 ms）及N末端B型利钠肽原>600 ng/L的患者按1:1随机分配至CSP或BVP组。主要终点为6个月后LVEF的变化，由独立核心实验室评估。次要终点包括超声心动图、临床和操作相关结局。分析遵循意向性治疗原则。\n结果：八十二名患者接受随机分组（平均年龄72±7岁，46%为男性）。6个月时，CSP组{从36%［95%置信区间（CI）33–39］升至46%［95% CI 44–49］；P<.001}与BVP组［从34%（95% CI 31–36）升至46%（95% CI 43–49）；P<.001］的LVEF改善相似。LVEF改善的组间绝对差为0.4个百分点（95% CI -3.1至3.8个百分点；非劣效性检验P=.002）。两组左心室容积、临床参数以及HF恶化或心血管死亡复合终点的变化相当。与BVP相比，CSP的起搏QRS时限［平均差-14 ms（95% CI -19至-9；P<.001）］、操作时间及透视时间均显著更短。\n结论：在接受房室结消融的难治性AF合并HF患者中，采用左束支区域起搏的CSP在6个月时的LVEF改善方面非劣于BVP，临床结局相当，且操作相关表现较有利。"
+      },
+      "quicklook": {
+        "title_zh": "房颤合并心力衰竭患者房室结消融后的双心室起搏与传导系统起搏比较：CONDUCT-AF试验",
+        "one_line": "房室结消融后，左束支区域起搏在射血分数改善方面非劣于双心室起搏。",
+        "design": "研究者发起的多中心随机非劣效性试验；意向性治疗分析",
+        "limits": "非劣效性结论针对LVEF改善；摘要报告临床结局相近，不能据此确证硬临床结局等效。摘要未提供明确局限。",
+        "why_read": "了解房室结消融后两种起搏方式的非劣效性与操作相关比较。",
+        "findings": [
+          {
+            "text": "LVEF改善的组间绝对差为0.4个百分点（95% CI -3.1至3.8个百分点），非劣效性检验P=.002。",
+            "quote": "The between-group difference was .4% (95% CI -3.1-3.8; P = .002 for non-inferiority)."
+          },
+          {
+            "text": "摘要报告左心室容积、临床参数及HF恶化或心血管死亡复合终点的变化两组相近；不能据此确证临床结局等效。",
+            "quote": "Changes in left ventricular volumes, clinical parameters, and composite endpoint of worsening HF or cardiovascular death were comparable between groups."
+          },
+          {
+            "text": "CSP较BVP的起搏QRS时限、操作时间及透视时间均显著更短。",
+            "quote": "Paced QRS [mean difference -14 ms (95% CI -19 to -9; P < .001)] and procedural and fluoroscopy times were significantly shorter with CSP compared with BVP."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:29.092103+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:29.282215+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836688",
+      "paperID": "doi:10.1111/jce.70518",
+      "doi": "10.1111/jce.70518",
+      "pmid": "42836688",
+      "rank": 7,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Predictors of Recurrence and Quality of Life After Cryoballoon Ablation in Atrial Fibrillation: Data From a Multicenter Taiwanese Registry With 24-Month Follow-Up.",
+      "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+      "abstract": "BACKGROUND: Contemporary Asian data on 24-month outcomes after cryoballoon ablation (CBA) in predominantly paroxysmal atrial fibrillation (AF) are limited. METHODS: We conducted a multicenter registry across four Taiwanese tertiary centers (2018-2023). Consecutive patients undergoing CBA were analyzed for documented atrial-arrhythmia recurrence (≥ 30-s episodes after a 90-day blanking period) and 12-month quality of life (QoL; EQ-5D-3L index and visual analogue scale [VAS]). Rhythm follow-up relied mainly on intermittent ECG, Holter, event-recorder, or clinically indicated rhythm assessment. Cox models identified recurrence predictors; QoL analyses used paired complete-case data. RESULTS: Among 298 patients (age 63.7 ± 11.8 years, 60% men), 282 (94.6%) had paroxysmal AF. Procedure-related adverse events were rare (2.0%), with no tamponade or atrioesophageal fistula. Fifty-eight patients (19%) had post-blanking documented recurrence (late 90-365 days: n = 37; very late > 365 days: n = 21). Kaplan-Meier recurrence-free survival under intermittent monitoring was approximately 90% at 12 months and 62% at 24 months, with wider confidence bands beyond 18 months. In multivariable analysis, longer time from AF diagnosis to ablation independently predicted recurrence (adjusted HR 1.050 per year, 95% CI 1.007-1.096; p = 0.023); left-ventricular ejection fraction showed a borderline inverse association (adjusted HR 0.970 per 1%, 95% CI 0.942-1.000; p = 0.052). QoL analyses in 205/298 patients with paired data showed no significant change in EQ-5D-3L index (p = 0.672), but VAS categories shifted toward lower symptom burden (moderate/high 21.5% to 10.2%). A clinically meaningful VAS improvement (≥ 10 points) occurred in 34% (70/205). Because paired QoL data were incomplete and the logistic model was unstable owing to sparse events and quasi-complete separation, no robust independent predictor of VAS improvement could be confirmed. CONCLUSION: In this multicenter Taiwanese registry of predominantly paroxysmal AF, CBA had a low complication rate and high 12-month freedom from documented arrhythmia under intermittent monitoring. Longer time from AF diagnosis to ablation was associated with recurrence. Among patients with paired QoL data, one-third achieved clinically meaningful VAS improvement despite an unchanged EQ-5D-3L index.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836688/",
+      "titleZh": "房颤患者冷冻球囊消融后复发及生活质量的预测因素：台湾多中心登记研究的24个月随访数据",
+      "translation": {
+        "title_zh": "房颤患者冷冻球囊消融后复发及生活质量的预测因素：台湾多中心登记研究的24个月随访数据",
+        "abstract_zh": "背景：以阵发性心房颤动（AF）为主的人群接受冷冻球囊消融（CBA）后24个月结局的当代亚洲数据有限。\n方法：我们在台湾四家三级医疗中心开展多中心登记研究（2018–2023年）。对连续接受CBA的患者分析有记录的房性心律失常复发（90天空白期后出现持续≥30秒的发作）及12个月生活质量（QoL；EQ-5D-3L指数和视觉模拟量表［VAS］）。心律随访主要依靠间歇性心电图、动态心电图、事件记录器或有临床指征时的心律评估。Cox模型用于识别复发预测因素；QoL分析使用成对的完整病例数据。\n结果：298名患者中（年龄63.7±11.8岁，60%为男性），282名（94.6%）为阵发性AF。操作相关不良事件少见（2.0%），无心脏压塞或心房食管瘘。五十八名患者（19%）在空白期后出现有记录的复发（晚期90–365天：n=37；极晚期>365天：n=21）。在间歇性监测下，Kaplan-Meier估计的无复发生存率在12个月时约为90%，24个月时为62%，18个月后的置信带更宽。在多变量分析中，从AF诊断至消融的时间越长，越能独立预测复发（每年校正后HR 1.050，95% CI 1.007–1.096；p=0.023）；左心室射血分数呈临界性的负向关联（每1%校正后HR 0.970，95% CI 0.942–1.000；p=0.052）。在具有成对数据的205/298名患者中，QoL分析显示EQ-5D-3L指数无显著变化（p=0.672），但VAS类别向较低症状负担转移（中度/高度从21.5%降至10.2%）。34%的患者（70/205）出现有临床意义的VAS改善（≥10分）。由于成对QoL数据不完整，且事件稀少和准完全分离使逻辑回归模型不稳定，无法确认VAS改善的稳健独立预测因素。\n结论：在这项以阵发性AF为主的台湾多中心登记研究中，CBA的并发症率较低，在间歇性监测下12个月时无记录心律失常的比例较高。从AF诊断至消融的时间较长与复发相关。在具有成对QoL数据的患者中，三分之一达到有临床意义的VAS改善，尽管EQ-5D-3L指数未改变。"
+      },
+      "quicklook": {
+        "title_zh": "房颤患者冷冻球囊消融后复发及生活质量的预测因素：台湾多中心登记研究的24个月随访数据",
+        "one_line": "诊断至消融时间较长与复发相关；生活质量指数未变，部分患者VAS改善。",
+        "design": "台湾多中心登记研究；间歇性心律监测及成对完整病例分析",
+        "limits": "成对生活质量数据不完整；事件稀少及准完全分离导致逻辑回归模型不稳定，无法确认VAS改善的稳健独立预测因素。心律随访主要依靠间歇性监测。",
+        "why_read": "同时查看复发关联、监测方式与不同生活质量指标之间的差异。",
+        "findings": [
+          {
+            "text": "间歇性监测下，估计无复发生存率在12个月约90%、24个月为62%；18个月后置信带更宽。",
+            "quote": "Kaplan-Meier recurrence-free survival under intermittent monitoring was approximately 90% at 12 months and 62% at 24 months, with wider confidence bands beyond 18 months."
+          },
+          {
+            "text": "诊断至消融时间较长独立预测复发：每年校正后HR 1.050（95% CI 1.007–1.096；p=0.023）。",
+            "quote": "In multivariable analysis, longer time from AF diagnosis to ablation independently predicted recurrence (adjusted HR 1.050 per year, 95% CI 1.007-1.096; p = 0.023);"
+          },
+          {
+            "text": "成对数据患者的EQ-5D-3L指数未显著改变；VAS中度/高度症状负担比例从21.5%降至10.2%。",
+            "quote": "QoL analyses in 205/298 patients with paired data showed no significant change in EQ-5D-3L index (p = 0.672), but VAS categories shifted toward lower symptom burden (moderate/high 21.5% to 10.2%)."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:29.490979+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:29.692273+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836296",
+      "paperID": "doi:10.1161/circulationaha.126.080384",
+      "doi": "10.1161/circulationaha.126.080384",
+      "pmid": "42836296",
+      "rank": 8,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Lipid Burden and Efficacy of Preventive PCI of Vulnerable Atherosclerotic Coronary Plaques: Post Hoc Analysis From the PREVENT Trial.",
+      "sourceHash": "4f653e7a94d994e3ea06885a131a447242fb212c9d8b205df9ad90cee3cc0eb9",
+      "abstract": "BACKGROUND: Preventive percutaneous coronary intervention (PCI) of non-flow-limiting lesions (fractional flow reserve >0.80) that are high-risk plaques has emerged as a potential strategy to reduce cardiac events. However, identifying which lesions derive the greatest benefit from preventive PCI compared with optimal medical therapy alone remains challenging. This post hoc analysis evaluates the role of the near-infrared spectroscopy-derived lipid core burden index in identifying high-risk plaques that may benefit from preventive PCI. METHODS: Among the 1606 patients enrolled in the PREVENT trial (Preventive Coronary Intervention on Stenosis with Functionally Insignificant Vulnerable Plaque) from September 2015 to September 2021, an investigator-initiated, multicenter, open-label, randomized controlled trial, this post hoc analysis included 598 patients (mean age, 64.1±8.8 years; 27.9% women) comprising 632 lesions with a plaque burden >70% and a minimal lumen area <4 mm2 by intravascular ultrasound in whom near-infrared spectroscopy evaluation was also performed. Lipid-rich plaque (LRP) was prespecified as having a maximum lipid core burden index over a 4-mm segment >315. The primary outcome was a composite of death from cardiac causes, target-vessel myocardial infarction, ischemia-driven target-vessel revascularization, or hospitalization for unstable or progressive angina. RESULTS: LRPs were present in 223 patients (37.3%) with 234 lesions. During median follow-up of 5.6 years, primary outcome events occurred more frequently in patients with LRPs than in those with non-LRPs (12.5% versus 4.7%; unadjusted hazard ratio, 2.08; 95% CI, 1.03-4.19; P=0.039) in the overall population. Within the LRP group, preventive PCI was associated with a lower risk of the primary outcome compared with optimal medical therapy alone (7.3% vs. 17.6%; adjusted hazard ratio, 0.23; 95% CI, 0.13-0.41; P<0.001). Conversely, no benefit of preventive PCI was observed in the non-LRP group (5.5% versus 4.2%; adjusted hazard ratio, 1.00; 95% CI, 0.54-1.86; P=0.97). A significant interaction was found between treatment strategy and the presence of LRP (Pinteraction<0.001). CONCLUSIONS: In this post hoc analysis of the PREVENT trial, preventive PCI was associated with a lower risk of the primary composite outcome in patients with near-infrared spectroscopy-defined LRPs, whereas no significant association was observed in those with non-LRPs despite their large plaque burden and small minimal lumen area. These findings suggest the importance of plaque composition, beyond morphological severity alone, in guiding preventive PCI. REGISTRATION: URL: https://www.clinicaltrials.gov; Unique identifier: NCT02316886.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836296/",
+      "titleZh": "脂质负荷与易损冠状动脉粥样硬化斑块预防性PCI的疗效：PREVENT试验的事后分析",
+      "translation": {
+        "title_zh": "脂质负荷与易损冠状动脉粥样硬化斑块预防性PCI的疗效：PREVENT试验的事后分析",
+        "abstract_zh": "背景：对不限制血流的高风险斑块病变（血流储备分数>0.80）实施预防性经皮冠状动脉介入治疗（PCI），已成为减少心脏事件的一种潜在策略。然而，与单纯最佳药物治疗相比，识别哪些病变可从预防性PCI中获得最大益处仍具挑战。本事后分析评估近红外光谱测得的脂质核心负荷指数在识别可能从预防性PCI中获益的高风险斑块方面的作用。\n方法：PREVENT试验（对功能上无显著意义的易损斑块所致狭窄实施预防性冠状动脉介入治疗）是一项由研究者发起的多中心、开放标签、随机对照试验，于2015年9月至2021年9月纳入1606名患者。本事后分析纳入其中同时接受近红外光谱评估的598名患者（平均年龄64.1±8.8岁；女性占27.9%），涉及632处血管内超声显示斑块负荷>70%、最小管腔面积<4 mm2的病变。预先将富脂质斑块（LRP）定义为4-mm节段内最大脂质核心负荷指数>315。主要结局是由心脏原因死亡、靶血管心肌梗死、缺血驱动的靶血管血运重建，或因不稳定性或进行性心绞痛住院构成的复合结局。\n结果：223名患者（37.3%）存在LRP，共234处病变。中位随访5.6年期间，在总体人群中，LRP患者的主要结局事件发生率高于非LRP患者（12.5%对4.7%；未调整风险比2.08；95% CI，1.03-4.19；P=0.039）。在LRP组内，与单纯最佳药物治疗相比，预防性PCI与较低的主要结局风险相关（7.3%对17.6%；调整后风险比0.23；95% CI，0.13-0.41；P<0.001）。相反，在非LRP组未观察到预防性PCI的益处（5.5%对4.2%；调整后风险比1.00；95% CI，0.54-1.86；P=0.97）。治疗策略与是否存在LRP之间有显著交互作用（Pinteraction<0.001）。\n结论：在PREVENT试验的本事后分析中，对近红外光谱定义的LRP患者，预防性PCI与较低的主要复合结局风险相关；而非LRP患者虽有较大斑块负荷和较小的最小管腔面积，却未观察到显著关联。这些发现提示，在指导预防性PCI时，除单纯形态学严重程度外，斑块成分也具有重要意义。\n注册：网址：https://www.clinicaltrials.gov；唯一标识符：NCT02316886。"
+      },
+      "quicklook": {
+        "title_zh": "脂质负荷与易损冠状动脉粥样硬化斑块预防性PCI的疗效：PREVENT试验的事后分析",
+        "one_line": "PREVENT事后分析中，预防性PCI与富脂质斑块患者较低的复合结局风险相关。",
+        "design": "PREVENT随机对照试验的事后分析；含598名近红外光谱评估患者。",
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解斑块脂质成分如何关联预防性PCI的结局差异。",
+        "findings": [
+          {
+            "text": "LRP患者的主要结局发生率高于非LRP患者：12.5%对4.7%，未调整风险比2.08。",
+            "quote": "primary outcome events occurred more frequently in patients with LRPs than in those with non-LRPs (12.5% versus 4.7%; unadjusted hazard ratio, 2.08; 95% CI, 1.03-4.19; P=0.039) in the overall population."
+          },
+          {
+            "text": "LRP组中，预防性PCI与较低的主要结局风险相关：7.3%对17.6%，调整后风险比0.23。",
+            "quote": "Within the LRP group, preventive PCI was associated with a lower risk of the primary outcome compared with optimal medical therapy alone (7.3% vs. 17.6%; adjusted hazard ratio, 0.23; 95% CI, 0.13-0.41; P<0.001)."
+          },
+          {
+            "text": "非LRP组未观察到预防性PCI获益：5.5%对4.2%，调整后风险比1.00。",
+            "quote": "Conversely, no benefit of preventive PCI was observed in the non-LRP group (5.5% versus 4.2%; adjusted hazard ratio, 1.00; 95% CI, 0.54-1.86; P=0.97)."
+          },
+          {
+            "text": "治疗策略与是否存在LRP之间有显著交互作用，Pinteraction<0.001。",
+            "quote": "A significant interaction was found between treatment strategy and the presence of LRP (Pinteraction<0.001)."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:32.986225+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:33.206862+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42825324",
+      "paperID": "doi:10.1161/circep.126.014967",
+      "doi": "10.1161/circep.126.014967",
+      "pmid": "42825324",
+      "rank": 9,
+      "category": "心血管",
+      "date": "2026-10-02",
+      "title": "Ventricular Arrhythmias in Marfan Syndrome: Prevalence and Clinical Correlates in a Multicenter Cohort.",
+      "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+      "abstract": "BACKGROUND: Ventricular arrhythmias are increasingly recognized in Marfan syndrome, but associated clinical and structural features remain incompletely defined. METHODS: We performed a retrospective multicenter cohort study of 783 adults with confirmed Marfan syndrome at 3 Mayo Clinic sites. Clinical, arrhythmic, echocardiographic, cardiac magnetic resonance, surgical, and implantable cardioverter defibrillator data were obtained by manual chart review. Associations with sustained ventricular tachycardia (VT) or ventricular fibrillation (VF) were evaluated using univariable logistic regression, a primary multivariable model in the full cohort, and a prespecified exploratory cardiac magnetic resonance sensitivity model. RESULTS: Sustained VT/VF occurred in 74 patients (9.5%) over 12.7±7.6 years. On univariable analysis, sustained VT/VF clustered with an adverse structural-electrical phenotype including atrial arrhythmias, ventricular remodeling, mitral valve disease, cardiac surgery history, and late gadolinium enhancement. In the primary multivariable model, nonsustained VT (odds ratio, 12.11 [95% CI, 6.43-22.79]; P<0.001), lower left ventricular ejection fraction (odds ratio, 0.95 per 1% increase [95% CI, 0.93-0.97]; P<0.001), history of at least 1 cardiac surgery (odds ratio, 3.59 [95% CI, 1.65-7.84]; P=0.001), and moderate-severe mitral regurgitation (odds ratio, 2.00 [95% CI, 1.07-3.75]; P=0.030) were independently associated with sustained VT/VF. In the cardiac magnetic resonance sensitivity model, nonsustained VT, lower left ventricular ejection fraction, and late gadolinium enhancement remained associated with sustained VT/VF. CONCLUSIONS: In adults with Marfan syndrome, sustained VT/VF occurs in nearly 1 in 10 patients and is associated with a broader structural-electrical phenotype. Late gadolinium enhancement provided additional risk signal among patients undergoing cardiac magnetic resonance.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42825324/",
+      "titleZh": "马凡综合征中的室性心律失常：多中心队列中的患病率及临床相关因素",
+      "translation": {
+        "title_zh": "马凡综合征中的室性心律失常：多中心队列中的患病率及临床相关因素",
+        "abstract_zh": "背景：马凡综合征中的室性心律失常日益受到重视，但相关临床和结构特征仍未得到充分界定。\n方法：我们在梅奥诊所的3个院区开展了一项回顾性多中心队列研究，纳入783名确诊马凡综合征的成人。通过人工病历审查获取临床、心律失常、超声心动图、心脏磁共振、手术及植入式心律转复除颤器数据。采用单变量逻辑回归、全队列的主要多变量模型，以及预先设定的探索性心脏磁共振敏感性模型，评估这些因素与持续性室性心动过速（VT）或心室颤动（VF）的关联。\n结果：在12.7±7.6年间，74名患者（9.5%）发生持续性VT/VF。单变量分析显示，持续性VT/VF与不良的结构-电生理表型共同出现，包括房性心律失常、心室重构、二尖瓣疾病、心脏手术史及钆延迟强化。在主要多变量模型中，非持续性VT（比值比12.11［95% CI，6.43-22.79］；P<0.001）、较低的左心室射血分数（每升高1%的比值比为0.95［95% CI，0.93-0.97］；P<0.001）、至少接受过1次心脏手术（比值比3.59［95% CI，1.65-7.84］；P=0.001）及中度至重度二尖瓣反流（比值比2.00［95% CI，1.07-3.75］；P=0.030）均与持续性VT/VF独立相关。在心脏磁共振敏感性模型中，非持续性VT、较低的左心室射血分数及钆延迟强化仍与持续性VT/VF相关。\n结论：在马凡综合征成人患者中，持续性VT/VF发生于近乎每10名患者中的1名，并与更广泛的结构-电生理表型相关。在接受心脏磁共振检查的患者中，钆延迟强化提供了额外的风险信号。"
+      },
+      "quicklook": {
+        "title_zh": "马凡综合征中的室性心律失常：多中心队列中的患病率及临床相关因素",
+        "one_line": "马凡综合征成人队列中，持续性室性心律失常与结构及电生理异常表型相关。",
+        "design": "回顾性多中心队列；梅奥诊所3个院区的783名确诊成人患者。",
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解马凡综合征中室性心律失常与结构异常的关联。",
+        "findings": [
+          {
+            "text": "12.7±7.6年间，74名患者发生持续性VT/VF，占9.5%。",
+            "quote": "Sustained VT/VF occurred in 74 patients (9.5%) over 12.7±7.6 years."
+          },
+          {
+            "text": "主要多变量模型中，非持续性VT的比值比为12.11，95% CI 6.43-22.79。",
+            "quote": "In the primary multivariable model, nonsustained VT (odds ratio, 12.11 [95% CI, 6.43-22.79]; P<0.001)"
+          },
+          {
+            "text": "心脏磁共振敏感性模型中，非持续性VT、较低射血分数及钆延迟强化仍与持续性VT/VF相关。",
+            "quote": "In the cardiac magnetic resonance sensitivity model, nonsustained VT, lower left ventricular ejection fraction, and late gadolinium enhancement remained associated with sustained VT/VF."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:33.486553+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:33.703111+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42754239",
+      "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+      "doi": "10.1016/j.hrthm.2026.08.046",
+      "pmid": "42754239",
+      "rank": 10,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Heart Rhythm Society and Heart Rhythm Advocates position statement: Prior authorization in cardiac electrophysiology: Evidence, policy, and reform.",
+      "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+      "abstract": "Prior authorization (PA) requirements imposed by Medicare Advantage (MA) and commercial insurers have evolved into a systematic barrier to guideline-indicated cardiac electrophysiology (EP) care, producing measurable patient harm, substantial administrative burden on physicians and allied professionals, and widening health care disparities. This paper examines the financial architecture of the MA capitation model and the structural incentives it creates for denial, characterizes the root causes of the denial system, including third-party denial organizations, artificial intelligence-based algorithms, and opaque coverage criteria; reviews federal oversight findings from the Office of Inspector General and the Senate Permanent Subcommittee on Investigations, and analyzes procedure-specific denial patterns for catheter ablation of atrial fibrillation, implantable cardioverter-defibrillator therapy, left atrial appendage occlusion, and cardiac resynchronization therapy with defibrillation. Federal audit data establish that a substantial proportion of denied PA requests meet Medicare's own coverage criteria and that the majority of appealed denials are overturned, yet most wrongful denials go uncontested. Clinical outcome data confirm that PA delays have direct clinical consequences across EP procedure categories. The regulatory and legislative landscape-spanning Centers for Medicare & Medicaid Services rulemaking from 2023 to 2026 and pending congressional action-is reviewed, and the paper concludes with a structured framework for appeals strategy, institutional advocacy, and physician-level engagement.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42754239/",
+      "titleZh": "心律学会与Heart Rhythm Advocates立场声明：心脏电生理领域的事先授权——证据、政策与改革",
+      "translation": {
+        "title_zh": "心律学会与Heart Rhythm Advocates立场声明：心脏电生理领域的事先授权——证据、政策与改革",
+        "abstract_zh": "Medicare Advantage（MA）及商业保险公司规定的事先授权（PA）要求，已演变为对指南指征明确的心脏电生理（EP）诊疗的系统性障碍，造成可量化的患者伤害、医生及相关专业人员的巨大行政负担，并扩大医疗服务差距。本文考察MA按人头付费模式的财务架构及其造成的拒绝批准的结构性激励，分析拒批制度的根本原因，包括第三方拒批机构、基于人工智能的算法，以及不透明的承保标准；回顾监察长办公室和参议院常设调查小组委员会的联邦监督发现，并分析房颤导管消融、植入式心律转复除颤器治疗、左心耳封堵及带除颤功能的心脏再同步化治疗等不同操作的特定拒批模式。联邦审计数据显示，相当一部分遭拒的PA申请符合Medicare自身的承保标准，而且大多数被申诉的拒批决定最终被推翻，但多数不当拒批未受到质疑。临床结局数据证实，PA造成的延迟在各类EP操作中都有直接的临床后果。本文回顾了监管和立法形势，涵盖Medicare与Medicaid服务中心从2023至2026年的规则制定及国会尚待采取的行动，最后提出一个涵盖申诉策略、机构倡议以及医生层面参与的结构化框架。"
+      },
+      "quicklook": {
+        "title_zh": "心律学会与Heart Rhythm Advocates立场声明：心脏电生理领域的事先授权——证据、政策与改革",
+        "one_line": "立场声明分析心脏电生理事先授权的拒批机制、患者影响及政策改革框架。",
+        "design": "学会立场声明；回顾监督、临床结局及政策证据。",
+        "limits": "摘要未提供明确局限",
+        "why_read": "理解美国电生理诊疗事先授权的制度问题及声明提出的改革路径。",
+        "findings": [
+          {
+            "text": "声明分析按人头付费的拒批激励、第三方拒批机构、人工智能算法及不透明承保标准。",
+            "quote": "This paper examines the financial architecture of the MA capitation model and the structural incentives it creates for denial, characterizes the root causes of the denial system, including third-party denial organizations, artificial intelligence-based algorithms, and opaque coverage criteria;"
+          },
+          {
+            "text": "联邦审计显示，相当一部分遭拒申请符合承保标准；多数申诉成功，但多数不当拒批未被质疑。",
+            "quote": "Federal audit data establish that a substantial proportion of denied PA requests meet Medicare's own coverage criteria and that the majority of appealed denials are overturned, yet most wrongful denials go uncontested."
+          },
+          {
+            "text": "本文回顾2023至2026年的规则制定及待议国会行动，并提出申诉、机构倡议和医生参与框架。",
+            "quote": "The regulatory and legislative landscape-spanning Centers for Medicare & Medicaid Services rulemaking from 2023 to 2026 and pending congressional action-is reviewed, and the paper concludes with a structured framework for appeals strategy, institutional advocacy, and physician-level engagement."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:33.908527+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:34.172225+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42832220",
+      "paperID": "doi:10.1001/jama.2026.17192",
+      "doi": "10.1001/jama.2026.17192",
+      "pmid": "42832220",
+      "rank": 11,
+      "category": "综合医学",
+      "date": "2026-10-05",
+      "title": "Smoking Cessation Among Underserved Patients Referred for Lung Cancer Screening: A Randomized Clinical Trial.",
+      "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+      "abstract": "IMPORTANCE: The Centers for Medicare & Medicaid Services requires that health systems offer smoking cessation services to patients undergoing lung cancer screening. However, the most effective methods to achieve smoking cessation among medically underserved patients undergoing lung cancer screening are unknown. OBJECTIVE: To compare the effectiveness of 4 strategies for promoting smoking cessation among medically underserved persons referred for lung cancer screening. DESIGN, SETTING, AND PARTICIPANTS: This randomized clinical trial included currently smoking individuals referred for lung cancer screening at 4 US health systems (5 centers) who identified as Black, Hispanic, living in a rural area, or being of low socioeconomic status. The first participant was enrolled on May 17, 2021, and the date of last follow-up was April 29, 2025. INTERVENTION: Patients were randomized to 1 of 4 groups. Participants received either an ask-advise-refer strategy to smoking cessation services (usual care); usual care plus free pharmacotherapy (ie, nicotine replacement and reimbursement for varenicline or bupropion); usual care, free pharmacotherapy, and financial incentives up to $600 contingent on biochemically confirmed smoking cessation; or usual care, free pharmacotherapy, and financial incentives plus a mobile health tool motivating patients to think about their future health. MAIN OUTCOMES AND MEASURES: The primary end point was biochemically confirmed, sustained tobacco abstinence through 6 months, measured with cotinine, anabasine, or carboxyhemoglobin. RESULTS: Of the 9963 patients assessed for eligibility, 3259 patients were randomized and 3220 were included in the primary analysis. The median (IQR) age was 61.1 (56.6-66.0) years, 1948 (60.3%) were female, 823 (25.5%) were Black, 287 (8.9%) were Hispanic, 1251 (38.8%) lived in rural areas, 1519 (74.9%) had low socioeconomic status, and 1792 (55.5%) reported smoking more than 10 cigarettes per day at enrollment. Sustained tobacco abstinence rates through 6 months were 4.3% with usual care, 5.1% with the addition of pharmacotherapy, 8.8% with the addition of financial incentives, and 7.2% with the addition of mobile health tool. Adding financial incentives increased the adjusted rate of sustained tobacco abstinence compared with usual care (difference, 4.6% [95% CI, 2.1%-7.0%]; P < .001) and usual care plus free pharmacotherapy (difference, 4.1% [95% CI, 1.7%-6.4%]; P < .001). Adding free pharmacotherapy to ask-advise-refer was not superior to ask-advise-refer alone (difference, 0.5% [95% CI, -1.7% to 2.6%]; P = .66). CONCLUSIONS AND RELEVANCE: Among medically underserved adults who currently smoked cigarettes and were referred for lung cancer screening, rates of sustained tobacco abstinence were higher through 6 months with addition of financial incentives compared with ask-advise-refer alone or with addition of free pharmacotherapy. TRIAL REGISTRATION: ClinicalTrials.gov Identifier: NCT04798664.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832220/",
+      "titleZh": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+      "translation": {
+        "title_zh": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+        "abstract_zh": "重要性：美国医疗保险和医疗补助服务中心要求医疗系统向接受肺癌筛查的患者提供戒烟服务。然而，使接受肺癌筛查且医疗服务不足的患者实现戒烟的最有效方法尚不明确。\n目的：比较4种策略在转介接受肺癌筛查的医疗服务不足者中促进戒烟的有效性。\n设计、场所及参与者：这项随机临床试验纳入被转介至美国4个医疗系统（5个中心）接受肺癌筛查、目前吸烟且自认为黑人、西班牙裔、居住在农村地区或社会经济地位较低的个体。首名参与者于2021年5月17日入组，末次随访日期为2025年4月29日。\n干预：患者随机分至4组中的1组。参与者接受以下策略之一：询问、劝戒并转介至戒烟服务的策略（常规照护）；常规照护加免费药物治疗（即尼古丁替代治疗及伐尼克兰或安非他酮的费用报销）；常规照护、免费药物治疗，以及以生化确认戒烟为条件、最高$600的经济激励；或常规照护、免费药物治疗、经济激励，再加上鼓励患者思考未来健康的移动健康工具。\n主要结局及测量：主要终点为经生化确认的、持续至6个月的烟草戒断，通过可替宁、新烟碱或碳氧血红蛋白测定。\n结果：接受资格评估的9963名患者中，3259名接受随机分组，3220名纳入主要分析。年龄中位数（四分位距）为61.1（56.6–66.0）岁，1948名（60.3%）为女性，823名（25.5%）为黑人，287名（8.9%）为西班牙裔，1251名（38.8%）居住在农村地区，1519名（74.9%）社会经济地位较低，1792名（55.5%）报告入组时每天吸烟超过10支。持续至6个月的烟草戒断率在常规照护组为4.3%，加用药物治疗组为5.1%，加用经济激励组为8.8%，加用移动健康工具组为7.2%。加用经济激励较常规照护（差值4.6%［95% CI 2.1%–7.0%］；P<.001）以及常规照护加免费药物治疗（差值4.1%［95% CI 1.7%–6.4%］；P<.001）提高了校正后的持续烟草戒断率。在询问、劝戒并转介策略中加用免费药物治疗并不优于该策略单独使用（差值0.5%［95% CI -1.7%至2.6%］；P=.66）。\n结论及意义：在目前吸烟且被转介接受肺癌筛查的医疗服务不足成年人中，与单独采用询问、劝戒并转介策略或加用免费药物治疗相比，加用经济激励后的持续至6个月烟草戒断率更高。\n试验注册：ClinicalTrials.gov标识符：NCT04798664。"
+      },
+      "quicklook": {
+        "title_zh": "转介接受肺癌筛查的医疗服务不足患者的戒烟：随机临床试验",
+        "one_line": "加用经济激励的持续戒断率较高；单加免费药物未优于常规策略。",
+        "design": "美国多医疗系统随机临床试验；比较四种戒烟策略",
+        "limits": "摘要未提供明确局限",
+        "why_read": "比较医疗服务不足的筛查人群中不同戒烟支持策略的随机证据。",
+        "findings": [
+          {
+            "text": "持续至6个月的戒断率：常规照护4.3%、加药物5.1%、加经济激励8.8%、再加移动工具7.2%。",
+            "quote": "Sustained tobacco abstinence rates through 6 months were 4.3% with usual care, 5.1% with the addition of pharmacotherapy, 8.8% with the addition of financial incentives, and 7.2% with the addition of mobile health tool."
+          },
+          {
+            "text": "加经济激励较常规照护的校正后戒断率差值为4.6%（95% CI 2.1%–7.0%；P<.001）。",
+            "quote": "Adding financial incentives increased the adjusted rate of sustained tobacco abstinence compared with usual care (difference, 4.6% [95% CI, 2.1%-7.0%]; P < .001) and usual care plus free pharmacotherapy (difference, 4.1% [95% CI, 1.7%-6.4%]; P < .001)."
+          },
+          {
+            "text": "单加免费药物并不优于询问、劝戒并转介策略（差值0.5%；95% CI -1.7%至2.6%；P=.66）。",
+            "quote": "Adding free pharmacotherapy to ask-advise-refer was not superior to ask-advise-refer alone (difference, 0.5% [95% CI, -1.7% to 2.6%]; P = .66)."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:30.305286+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:30.487616+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42827131",
+      "paperID": "doi:10.1038/s41591-026-04675-1",
+      "doi": "10.1038/s41591-026-04675-1",
+      "pmid": "42827131",
+      "rank": 12,
+      "category": "综合医学",
+      "date": "2026-10-02",
+      "title": "Small quantity lipid-based nutritional supplementation and measles vaccination coverage in children aged 6-23 months: a pragmatic cluster-randomized trial.",
+      "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+      "abstract": "Undernutrition and infectious diseases pose a double threat to child survival, especially in areas with a high malnutrition burden and low vaccination coverage. In this study, we evaluated whether distributing preventive small-quantity lipid-based nutrient supplements (SQ-LNS) alongside routine immunization services may increase vaccine uptake in a pediatric, pragmatic, cluster-randomized controlled trial in northern Nigeria. Twenty geographically defined clusters across two Local Government Areas were randomized 1:1 to the NutriVax strategy (intervention) or standard National Program of Immunization (NPI) services (control). NutriVax provided a monthly ration of SQ-LNS to children aged 6-23 months after routine NPI delivery at primary healthcare centers. The primary outcome was coverage of the first dose of measles-containing vaccine (MCV1) verified by vaccination card among children aged 12-23 months, assessed in an endline population-based household cross-sectional survey 12 months after conducting a similar baseline survey. The endline survey included 1,604 children (801 control, 803 NutriVax); 48% of children surveyed in intervention clusters had ever received SQ-LNS. The odds of receiving card-verified MCV1 were two times higher in the NutriVax arm than in the control arm (odds ratio = 2.08, 95% confidence interval (CI): 1.30-3.35, P = 0.004). The difference-in-differences, cluster conditional analysis indicated a 20.1 percentage-point (pp) increase in MCV1 coverage from baseline (95% CI: 13.7-26.5 pp, P < 0.0001) relative to the control arm. Co-delivering SQ-LNS with routine immunization substantially improved card-verified MCV1 uptake, supporting a scalable strategy to make progress toward targets set by the World Health Organization's Immunization Agenda 2030 in similar settings. ClinicalTrials.gov identifier: NCT06387511 .",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827131/",
+      "titleZh": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+      "translation": {
+        "title_zh": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+        "abstract_zh": "营养不足和传染病对儿童生存构成双重威胁，尤其是在营养不良负担高且疫苗接种覆盖率低的地区。本研究在尼日利亚北部的一项儿科实用性整群随机对照试验中，评估在常规免疫接种服务中同时分发预防性少量脂质营养补充剂（SQ-LNS）是否可能提高疫苗接种率。两个地方政府辖区内二十个按地理界定的整群按1:1随机分配至NutriVax策略（干预）或标准国家免疫规划（NPI）服务（对照）。NutriVax在初级卫生保健中心提供常规NPI服务后，向6–23月龄儿童提供每月配额的SQ-LNS。主要结局为12–23月龄儿童经接种卡核实的首剂含麻疹成分疫苗（MCV1）接种覆盖率，通过终期基于人群的家庭横断面调查评估，该调查在开展类似基线调查12个月后进行。终期调查纳入1,604名儿童（对照组801名，NutriVax组803名）；干预整群中受调查儿童的48%曾接受SQ-LNS。NutriVax组经接种卡核实接受MCV1的比值（odds）是对照组的两倍（比值比=2.08，95%置信区间（CI）：1.30–3.35，P=0.004）。双重差分的整群条件分析显示，与对照组相比，MCV1覆盖率从基线提高20.1个百分点（pp）（95% CI：13.7–26.5 pp，P<0.0001）。将SQ-LNS与常规免疫接种共同提供，显著提高了经接种卡核实的MCV1接种率，支持在类似环境中采用可推广策略，推动实现世界卫生组织《免疫议程2030》设定的目标。ClinicalTrials.gov标识符：NCT06387511。"
+      },
+      "quicklook": {
+        "title_zh": "少量脂质营养补充剂与6–23月龄儿童的麻疹疫苗接种覆盖率：实用性整群随机试验",
+        "one_line": "在尼日利亚北部，营养补充剂与常规免疫服务共同提供后，麻疹疫苗接种率提高。",
+        "design": "实用性整群随机对照试验；基线及终期家庭横断面调查",
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解营养补充与常规免疫服务共同提供的接种覆盖率试验结果。",
+        "findings": [
+          {
+            "text": "终期调查纳入1,604名儿童；干预整群受调查儿童中48%曾接受SQ-LNS。",
+            "quote": "The endline survey included 1,604 children (801 control, 803 NutriVax); 48% of children surveyed in intervention clusters had ever received SQ-LNS."
+          },
+          {
+            "text": "经接种卡核实的MCV1接种优势比为2.08（95% CI 1.30–3.35；P=0.004）。",
+            "quote": "The odds of receiving card-verified MCV1 were two times higher in the NutriVax arm than in the control arm (odds ratio = 2.08, 95% confidence interval (CI): 1.30-3.35, P = 0.004)."
+          },
+          {
+            "text": "双重差分分析显示，MCV1覆盖率相对对照组从基线提高20.1个百分点（95% CI 13.7–26.5；P<0.0001）。",
+            "quote": "The difference-in-differences, cluster conditional analysis indicated a 20.1 percentage-point (pp) increase in MCV1 coverage from baseline (95% CI: 13.7-26.5 pp, P < 0.0001) relative to the control arm."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:30.695440+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:30.885304+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42832241",
+      "paperID": "doi:10.1001/jamainternmed.2026.4894",
+      "doi": "10.1001/jamainternmed.2026.4894",
+      "pmid": "42832241",
+      "rank": 13,
+      "category": "综合医学",
+      "date": "2026-10-05",
+      "title": "Temporary Cessation of DMARD Therapy and COVID-19 Supplemental Dose Vaccine Immunogenicity in Patients With Inflammatory Arthritis: The COVER Randomized Clinical Trial.",
+      "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+      "abstract": "IMPORTANCE: The COVID-19 pandemic disproportionately affected patients with autoimmune and rheumatic diseases. Understanding whether certain medications affect the response to a SARS-CoV-2 supplemental dose vaccination is critical for counseling and treating patients receiving targeted immunomodulatory medications. The effect of holding these medications around the time of COVID-19 vaccination on immunogenicity and rheumatic disease outcomes has not been well studied. OBJECTIVE: To assess whether temporarily holding biologic or targeted synthetic disease-modifying antirheumatic drug therapy improves humoral immunogenicity following COVID-19 supplemental dose vaccination in patients with inflammatory arthritis as well as evaluate whether such interruption worsened disease activity. DESIGN, SETTING, AND PARTICIPANTS: The COVID-19 Vaccine Response (COVER) trial was a multicenter randomized clinical pragmatic trial conducted from November 2021 to May 2024 of patients with rheumatoid arthritis, psoriatic arthritis, and axial spondylarthritis who were receiving care in the Excellence Network in Rheumatology to Innovate Care and High-Impact Research (ENRICH) practice-based network. Data were analyzed from June 2024 to April 2026. INTERVENTIONS: Patients had received a primary messenger RNA COVID-19 vaccine series and were receiving stable immunomodulatory therapy with anti-tumor necrosis factor, anti-interleukin-17, abatacept, and a Janus kinase inhibitor (JAKi). Patients were randomized to continue or hold therapy for 2 weeks following their next COVID-19 supplemental dose administration. MAIN OUTCOMES AND MEASURES: The primary outcome was change in immunoglobulin G levels against the SARS-CoV-2 spike protein from baseline to 6-week follow-up, expressed as the geometric mean fold rise (GMFR). The primary analysis followed an intention-to-treat (ITT) principle, with missing outcomes addressed through multiple imputations. A per-protocol sensitivity analysis was also conducted. Secondary outcomes included disease flares and vaccine-related adverse events. RESULTS: Among 840 randomized participants (continue group: 319 female individuals [76%]; mean [SD] age, 60.0 [12.9] years; hold group: 336 female individuals [80%]; mean [SD] age, 59.1 [12.9] years), substantial increases in SARS-CoV-2 spike immunoglobulin G antibody levels were observed across all groups from baseline to the postdose visit. In the primary ITT analysis, the GMFR ratio (hold/continue) was 0.96 (95% CI, 0.36-2.56), indicating no significant difference in humoral immunogenicity between arms. Results were consistent across drug subgroups and drug half-life categories. Holding therapy significantly increased disease flare risk (odds ratio, 2.27; 95% CI, 1.41-3.65), which was most pronounced among those who used JAKi; the Outcome Measures in Rheumatology RA Flare Questionnaire corroborated this perivaccination signal (54 of 256 [21.1%] vs 23 of 253 [9.1%] with ≥10-point worsening; risk difference, 12.0%; 95% CI, 5.9%-18.1%), with full recovery in both arms by 6-week follow-up. Adverse events were comparable between medication arms and were more frequent in the hold group. CONCLUSIONS AND RELEVANCE: This randomized clinical trial found that, among patients with inflammatory arthritis, holding select biologic or JAKi therapies for 2 weeks at the time of supplemental COVID-19 vaccine dose did not significantly enhance humoral immunogenicity and was associated with transient but clinically meaningful disease flare. Routine interruption of these therapies at the time of COVID-19 dose administration is likely not warranted. TRIAL REGISTRATION: ClinicalTrials.gov Identifier: NCT05080218.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832241/",
+      "titleZh": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+      "translation": {
+        "title_zh": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+        "abstract_zh": "重要性：COVID-19大流行对自身免疫和风湿性疾病患者的影响尤为严重。了解某些药物是否影响SARS-CoV-2补充剂次疫苗接种的应答，对为接受靶向免疫调节药物的患者提供咨询和治疗至关重要。在COVID-19疫苗接种前后暂停这些药物对免疫原性和风湿性疾病结局的影响，尚未得到充分研究。\n目的：评估炎症性关节炎患者在COVID-19补充剂次疫苗接种后，暂时停用生物制剂或靶向合成改善病情抗风湿药是否提高体液免疫原性，并评估这种中断是否使疾病活动度恶化。\n设计、地点及参与者：COVID-19疫苗应答（COVER）试验是一项多中心随机实用性临床试验，于2021年11月至2024年5月开展。研究对象为在风湿病学卓越网络——创新诊疗与高影响力研究（ENRICH）诊疗实践网络中接受诊疗的类风湿关节炎、银屑病关节炎和中轴型脊柱关节炎患者。数据分析于2024年6月至2026年4月进行。\n干预：患者已完成初始信使RNA COVID-19疫苗系列接种，并正在接受稳定的免疫调节治疗，包括抗肿瘤坏死因子药物、抗白细胞介素-17药物、阿巴西普和Janus激酶抑制剂（JAKi）。患者随机分组，在下一次COVID-19补充剂次疫苗接种后继续治疗或停药2周。\n主要结局及测量：主要结局是从基线至6周随访时针对SARS-CoV-2刺突蛋白的免疫球蛋白G水平变化，以几何平均倍数升高（GMFR）表示。主要分析遵循意向性治疗（ITT）原则，采用多重插补处理缺失结局。此外还开展了符合方案的敏感性分析。次要结局包括疾病发作和疫苗相关不良事件。\n结果：在840名随机分组的参与者中，继续治疗组有319名女性（76%），平均年龄（标准差）为60.0（12.9）岁；停药组有336名女性（80%），平均年龄（标准差）为59.1（12.9）岁。从基线至接种后访视，各组的SARS-CoV-2刺突蛋白免疫球蛋白G抗体水平均大幅升高。在主要ITT分析中，GMFR比值（停药/继续治疗）为0.96（95% CI，0.36–2.56），表明两组体液免疫原性无显著差异。结果在不同药物亚组及药物半衰期类别中一致。停药显著增加疾病发作风险（比值比2.27；95% CI，1.41–3.65），在使用JAKi的患者中尤为明显；风湿病结局测量类风湿关节炎发作问卷证实了这一疫苗接种前后的信号（恶化≥10分者分别为256人中的54人［21.1%］与253人中的23人［9.1%］；风险差12.0%；95% CI，5.9%–18.1%），两组均在6周随访时完全恢复。各用药组间不良事件相近，且停药组的不良事件更为频繁。\n结论及意义：这项随机临床试验发现，炎症性关节炎患者在COVID-19补充剂次疫苗接种时停用所选生物制剂或JAKi治疗2周，未显著增强体液免疫原性，并与短暂但具有临床意义的疾病发作相关。作者认为，在COVID-19剂次接种时常规中断这些治疗可能并无必要。\n试验注册：ClinicalTrials.gov标识符：NCT05080218。"
+      },
+      "quicklook": {
+        "title_zh": "炎症性关节炎患者暂时停用DMARD治疗与COVID-19补充剂次疫苗免疫原性：COVER随机临床试验",
+        "one_line": "停药未显著增强疫苗体液免疫原性，并与短暂的疾病发作相关。",
+        "design": "炎症性关节炎患者的多中心随机实用性临床试验",
+        "limits": "摘要未提供明确局限",
+        "why_read": "评估疫苗体液免疫应答与暂停免疫调节治疗相关的疾病活动变化。",
+        "findings": [
+          {
+            "text": "主要ITT分析中，停药/继续治疗的GMFR比值为0.96，95% CI为0.36–2.56，差异不显著。",
+            "quote": "In the primary ITT analysis, the GMFR ratio (hold/continue) was 0.96 (95% CI, 0.36-2.56), indicating no significant difference in humoral immunogenicity between arms."
+          },
+          {
+            "text": "停药组疾病发作风险较高：比值比2.27，95% CI为1.41–3.65，在JAKi使用者中尤为明显。",
+            "quote": "Holding therapy significantly increased disease flare risk (odds ratio, 2.27; 95% CI, 1.41-3.65), which was most pronounced among those who used JAKi"
+          },
+          {
+            "text": "两组在6周随访时均完全恢复；停药组不良事件更频繁。",
+            "quote": "with full recovery in both arms by 6-week follow-up. Adverse events were comparable between medication arms and were more frequent in the hold group."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:31.500362+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:31.680339+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42834229",
+      "paperID": "doi:10.1038/s41591-026-04713-y",
+      "doi": "10.1038/s41591-026-04713-y",
+      "pmid": "42834229",
+      "rank": 14,
+      "category": "综合医学",
+      "date": "2026-10-05",
+      "title": "Oral small-molecule GLP-1RA safiglipron versus dapagliflozin in type 2 diabetes: a randomized, double-blind, active-comparator-controlled phase 3 trial.",
+      "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+      "abstract": "Safiglipron is an oral small-molecule glucagon-like peptide-1 (GLP-1) receptor agonist administered without fasting or dietary restrictions. We evaluated its efficacy and safety versus dapagliflozin in OUTSTAND-2, a phase 3, multicenter, randomized, double-blind, double-dummy, active-comparator-controlled trial conducted at 98 sites in China. We randomized 810 adults (mean hemoglobin A1C (HbA1c) 8.60%, median diabetes duration 5.0 years, 35.7% women) to safiglipron 30 mg (n = 202), safiglipron 60 mg (n = 203), safiglipron 90 mg (n = 203) or dapagliflozin 10 mg (n = 202) for 32 weeks, followed by a 20-week active-treatment extension. For the primary endpoint, treatment differences versus dapagliflozin in change from baseline in HbA1c at week 32 under the primary non-inferiority estimand were -0.30% (95% confidence interval (CI): -0.51 to -0.09), -0.22% (-0.44 to -0.01) and -0.40% (-0.62 to -0.19) for safiglipron 30 mg, 60 mg and 90 mg, respectively, establishing non-inferiority for all three doses (all P < 0.0001; non-inferiority margin 0.4%). Under the treatment policy estimand, 90 mg met the prespecified statistical criterion for superiority (difference -0.25%; 95% CI: -0.45 to -0.05; one-sided P = 0.0067), whereas 60 mg did not (P = 0.0789), after which fixed-sequence testing stopped. HbA1c target attainment rates with safiglipron versus dapagliflozin were 54.9-63.5% versus 36.5% for HbA1c <7.0% and 38.9-48.6% versus 16.1% for HbA1c ≤6.5%. Mean body weight changes were -2.35%, -3.55%, -4.17% and -3.60% for safiglipron 30 mg, safiglipron 60 mg, safiglipron 90 mg and dapagliflozin, respectively. Fasting plasma glucose, seven-point self-monitored blood glucose profiles, waist circumference, HOMA-β, HOMA-IR and changes in treatment satisfaction showed varying degrees of improvement from baseline with both safiglipron and dapagliflozin. Rescue therapy was used by 0.5-1.5% versus 0% of participants, respectively. Gastrointestinal adverse events were more frequent with safiglipron and mostly mild or moderate; adverse events led to treatment discontinuation in 4.0%, 4.0%, 3.9% and 1.5% of participants, respectively. Safiglipron provides an effective oral treatment option for adults with type 2 diabetes inadequately controlled with metformin. ClinicalTrials.gov identifier: NCT06589765 .",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834229/",
+      "titleZh": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+      "translation": {
+        "title_zh": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+        "abstract_zh": "Safiglipron是一种口服小分子胰高血糖素样肽-1（GLP-1）受体激动剂，服用时无需空腹或饮食限制。我们在OUTSTAND-2试验中评估其相对于达格列净的疗效和安全性；这是一项在中国98个中心开展的3期、多中心、随机、双盲、双模拟、阳性药物对照试验。我们将810名成人（平均糖化血红蛋白A1C［HbA1c］8.60%，糖尿病病程中位数5.0年，女性占35.7%）随机分配至safiglipron 30 mg组（n = 202）、safiglipron 60 mg组（n = 203）、safiglipron 90 mg组（n = 203）或达格列净10 mg组（n = 202），治疗32周，随后进行20周的活性药物治疗延长期。\n在主要终点方面，按主要非劣效性估计目标，safiglipron 30 mg、60 mg和90 mg组第32周HbA1c相对基线变化与达格列净的治疗差异分别为-0.30%（95%置信区间［CI］：-0.51至-0.09）、-0.22%（-0.44至-0.01）及-0.40%（-0.62至-0.19），确立了全部三种剂量的非劣效性（所有P < 0.0001；非劣效性界值0.4%）。按治疗策略估计目标，90 mg达到预先设定的优效性统计标准（差异-0.25%；95% CI：-0.45至-0.05；单侧P = 0.0067），而60 mg未达到（P = 0.0789），随后停止固定顺序检验。Safiglipron与达格列净的HbA1c达标率分别为：HbA1c <7.0%时，54.9–63.5%与36.5%；HbA1c ≤6.5%时，38.9–48.6%与16.1%。Safiglipron 30 mg、safiglipron 60 mg、safiglipron 90 mg及达格列净组的平均体重变化分别为-2.35%、-3.55%、-4.17%和-3.60%。Safiglipron和达格列净两种治疗下，空腹血糖、七点自测血糖谱、腰围、HOMA-β、HOMA-IR及治疗满意度变化均显示较基线有不同程度的改善。两者接受救援治疗的参与者比例分别为0.5–1.5%与0%。Safiglipron组胃肠道不良事件更频繁，且大多为轻度或中度；各组分别有4.0%、4.0%、3.9%和1.5%的参与者因不良事件停止治疗。Safiglipron为使用二甲双胍控制不佳的2型糖尿病成人提供了一种有效的口服治疗选择。ClinicalTrials.gov标识符：NCT06589765。"
+      },
+      "quicklook": {
+        "title_zh": "口服小分子GLP-1RA safiglipron与达格列净治疗2型糖尿病：随机、双盲、阳性药物对照3期试验",
+        "one_line": "各剂量达到降糖非劣效性标准，高剂量达到优效性标准，胃肠道不良事件较多。",
+        "design": "中国多中心随机、双盲、双模拟、阳性药物对照试验",
+        "limits": "摘要未提供明确局限",
+        "why_read": "比较口服小分子受体激动剂与达格列净的降糖结果及耐受性。",
+        "findings": [
+          {
+            "text": "safiglipron 30 mg、60 mg和90 mg均达到非劣效性；所有P < 0.0001，界值0.4%。",
+            "quote": "for safiglipron 30 mg, 60 mg and 90 mg, respectively, establishing non-inferiority for all three doses (all P < 0.0001; non-inferiority margin 0.4%)."
+          },
+          {
+            "text": "治疗策略估计目标下，90 mg达到优效性标准，60 mg未达到，随后停止固定顺序检验。",
+            "quote": "Under the treatment policy estimand, 90 mg met the prespecified statistical criterion for superiority (difference -0.25%; 95% CI: -0.45 to -0.05; one-sided P = 0.0067), whereas 60 mg did not (P = 0.0789), after which fixed-sequence testing stopped."
+          },
+          {
+            "text": "HbA1c <7.0%的达标率为safiglipron 54.9–63.5%、达格列净36.5%。",
+            "quote": "HbA1c target attainment rates with safiglipron versus dapagliflozin were 54.9-63.5% versus 36.5% for HbA1c <7.0%"
+          },
+          {
+            "text": "胃肠道不良事件在safiglipron组更频繁，多为轻中度；各组因不良事件停药比例依次为4.0%、4.0%、3.9%和1.5%。",
+            "quote": "Gastrointestinal adverse events were more frequent with safiglipron and mostly mild or moderate; adverse events led to treatment discontinuation in 4.0%, 4.0%, 3.9% and 1.5% of participants, respectively."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:31.865098+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:32.065686+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42839103",
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "doi": "10.1038/s41591-026-04704-z",
+      "pmid": "42839103",
+      "rank": 15,
+      "category": "综合医学",
+      "date": "2026-10-06",
+      "title": "Extended follow-up of in vivo BCMA CAR-T therapy in relapsed/refractory multiple myeloma.",
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "abstract": "Data on long-term outcomes of in vivo chimeric antigen receptor T cell (CAR‑T) therapy remain scarce. We previously reported preliminary safety and efficacy data of in vivo B-cell maturation antigen (BCMA) CAR‑T (ESO-T01), in four patients with relapsed/refractory multiple myeloma, without leukapheresis and lymphodepletion, with up to 3 months of follow-up. The primary endpoints included safety and tolerability, while the secondary endpoints comprised efficacy, pharmacokinetics and pharmacodynamics. All patients developed dual-phase cytokine release syndrome (grades 1-3) and hematotoxicities (grade ≥3). One patient developed grade 1 immune effector cell-associated neurotoxicity syndrome. The objective response rate reached 100% (two stringent complete response and two partial response). Here we update the data on long‑term safety and response durability with a maximal follow‑up of 15 months. No immunogenicity‑ or integration‑related toxicities occurred, and no important adverse events related to ESO-T01 emerged beyond the initial report. Of the four patients, one maintained stringent complete response for 15 months. The median progression-free survival was 4.0 (range 3.0-15.0) months. After progression, diverse salvage therapies extended overall survival to 5.5-10.9 months after infusion. Three patients experienced relapse or progression, all with extramedullary involvement, and eventually died during follow-up. One patient achieved durable response with robust expansion from ex vivo CAR-T. Collectively, these updated results provide additional insights on the safety and efficacy of in vivo CAR-T therapies. The limited persistence observed necessitates the further optimization of the in vivo CAR-T platform. ClinicalTrials.gov identifier: NCT06691685 .",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839103/",
+      "titleZh": "体内BCMA CAR-T治疗复发/难治性多发性骨髓瘤的延长随访",
+      "translation": null,
+      "quicklook": null,
+      "study": null,
+      "generationMeta": {},
+      "precomputeStatus": "pending",
+      "missingTasks": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42827132",
+      "paperID": "doi:10.1038/s41591-026-04673-3",
+      "doi": "10.1038/s41591-026-04673-3",
+      "pmid": "42827132",
+      "rank": 16,
+      "category": "综合医学",
+      "date": "2026-10-02",
+      "title": "Urine cell-free RNA for bladder cancer detection and treatment response prediction.",
+      "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "abstract": "Urine biomarkers promise to improve noninvasive detection and molecular characterization of genitourinary malignancies. Here we describe urine random priming and affinity capture of cell-free RNA (cfRNA) fragments for enrichment analysis by sequencing (uRARE-seq), a liquid biopsy method for urine cfRNA profiling, and apply it to 683 urine samples from patients with cancer and controls. Urine cfRNA contained transcripts from genitourinary tissues and, in patients with prostate, kidney or bladder cancer, tumor-derived transcripts. uRARE-seq demonstrated 95% sensitivity at 90% specificity for detecting localized bladder cancer. The method outperformed urine tumor DNA analysis and was unaffected by the presence of field-effect mutations. Urine cfRNA analysis also sensitively detected minimal residual disease and distinguished complete molecular responses after surgery from those after intravesical Bacillus Calmette-Guérin (BCG). Pretreatment urine from complete responders to BCG was enriched for T cell and other immune signatures, suggesting a preexisting antitumor immune response, whereas nonresponders showed higher expression of proliferation-related genes. In pretreatment urine from 114 patients, this biological difference enabled development of a biomarker predicting likelihood of response to BCG versus chemotherapy (area under the curve 0.93) that was strongly associated with risk of recurrence. Urine cfRNA analysis is therefore a promising biomarker approach for bladder cancer and potentially other urologic malignancies, although prospective studies are needed to assess its clinical utility.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827132/",
+      "titleZh": "尿液细胞游离RNA用于膀胱癌检测与疗效预测",
+      "translation": null,
+      "quicklook": null,
+      "study": null,
+      "generationMeta": {},
+      "precomputeStatus": "pending",
+      "missingTasks": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42834055",
+      "paperID": "doi:10.1038/s41467-026-78143-2",
+      "doi": "10.1038/s41467-026-78143-2",
+      "pmid": "42834055",
+      "rank": 17,
+      "category": "AI前沿",
+      "date": "2026-10-05",
+      "title": "ProFormer: generalizable classification of single-cell and plasma proteomes using deep learning.",
+      "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+      "abstract": "Proteins are the main drivers of cell function and disease, making proteomics a powerful technique for biomarker discovery and defining cell identity. While current technologies can profile thousands of proteins and reach single-cell sensitivity, limited throughput restricts applications such as robust classification of large biological or clinical cohorts. To close this gap, we present a deep-learning (DL) approach for the direct analysis of mass spectrometric (MS) data, assigning proteomic profiles to sample identity. Specifically, we introduce the ProFormer, a transformer pipeline that classifies samples by tabular MS1-level features derived from peptide ions, eliminating the need for time-consuming data interpretation. The ProFormer outperforms traditional machine-learning and image-based convolutional neural networks (CNNs), demonstrating enhanced classification and generalization over 14 evaluated architectures. We further provide detailed insights into how the ProFormer dynamically aggregates MS1 data, while preserving signal contribution and enabling explainable AI at single-peptide resolution. Applied to diverse LC-MS data sets, the ProFormer accurately classified single-cell proteomes by cell type, cycle stage or differentiation trajectory, as well as patient disease status from plasma proteomes. Thereby, the ProFormer provides a versatile and rapid framework for the classification of proteomic data, with important implications for patient stratification, early detection and single-cell analysis.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834055/",
+      "titleZh": "ProFormer：用深度学习对单细胞及血浆蛋白质组进行可泛化分类",
+      "translation": {
+        "title_zh": "ProFormer：用深度学习对单细胞及血浆蛋白质组进行可泛化分类",
+        "abstract_zh": "蛋白质是细胞功能和疾病的主要驱动因素，因此蛋白质组学是发现生物标志物和确定细胞身份的有力技术。当前技术虽能对数千种蛋白质进行分析并达到单细胞灵敏度，但有限的通量限制了其应用，例如对大型生物学或临床队列进行稳健分类。为弥补这一不足，我们提出一种直接分析质谱（MS）数据的深度学习（DL）方法，将蛋白质组谱归属至样本身份。具体而言，我们引入ProFormer，这是一个基于transformer的流程，利用肽离子衍生的表格形式MS1层级特征对样本分类，从而无需耗时的数据解读。ProFormer优于传统机器学习和基于图像的卷积神经网络（CNN），在评估的14种架构中展现出更好的分类与泛化表现。我们进一步详细解析了ProFormer如何动态聚合MS1数据，同时保留信号贡献，并在单肽分辨率上实现可解释AI。在多种LC-MS数据集上应用时，ProFormer能够根据细胞类型、细胞周期阶段或分化轨迹，准确分类单细胞蛋白质组，也能根据血浆蛋白质组分类患者的疾病状态。因此，ProFormer为蛋白质组数据分类提供了一个通用且快速的框架，对患者分层、早期检测和单细胞分析具有重要意义。"
+      },
+      "quicklook": {
+        "title_zh": "ProFormer：用深度学习对单细胞及血浆蛋白质组进行可泛化分类",
+        "one_line": "ProFormer直接分析质谱特征，在多类蛋白质组任务中展示分类与泛化能力。",
+        "design": "深度学习分类方法研究；比较架构并应用于多种LC-MS数据集",
+        "limits": "摘要未提供明确局限",
+        "why_read": "关注直接质谱分类、可解释AI与蛋白质组任务间泛化的研究思路。",
+        "findings": [
+          {
+            "text": "ProFormer使用肽离子衍生的表格形式MS1层级特征分类样本，省去耗时的数据解读。",
+            "quote": "Specifically, we introduce the ProFormer, a transformer pipeline that classifies samples by tabular MS1-level features derived from peptide ions, eliminating the need for time-consuming data interpretation."
+          },
+          {
+            "text": "与传统机器学习和基于图像的CNN相比，ProFormer在评估的14种架构中分类与泛化表现更好。",
+            "quote": "The ProFormer outperforms traditional machine-learning and image-based convolutional neural networks (CNNs), demonstrating enhanced classification and generalization over 14 evaluated architectures."
+          },
+          {
+            "text": "应用涵盖按细胞类型、周期阶段或分化轨迹分类单细胞蛋白质组，以及按疾病状态分类血浆蛋白质组。",
+            "quote": "Applied to diverse LC-MS data sets, the ProFormer accurately classified single-cell proteomes by cell type, cycle stage or differentiation trajectory, as well as patient disease status from plasma proteomes."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:32.617433+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:32.802067+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42832198",
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+      "doi": "10.1001/jamanetworkopen.2026.37533",
+      "pmid": "42832198",
+      "rank": 18,
+      "category": "心血管",
+      "date": "2026-10-05",
+      "title": "Anticoagulation Outcomes in Nursing Home Residents With Atrial Fibrillation and ADL Disability.",
+      "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+      "abstract": "IMPORTANCE: Long-term nursing home residents with atrial fibrillation (AF) and activities of daily living (ADL) disability are at high risk of bleeding and death, making the net benefit of anticoagulation uncertain. OBJECTIVE: To compare the association of oral anticoagulant (OAC) use vs nonuse with ischemic stroke and major bleeding in long-term nursing home residents with AF and ADL disability. DESIGN, SETTING, AND PARTICIPANTS: This cohort study used US Medicare claims linked with the Minimum Data Set (January 1, 2013, to December 31, 2022). Nursing home residents with nonvalvular AF and impairment in 3 or more ADLs were included. Three cohorts comparing use of apixaban, rivaroxaban, or warfarin with nonuse were constructed using incidence-density sampling. EXPOSURES: Initiation of apixaban, rivaroxaban, or warfarin use. MAIN OUTCOMES AND MEASURES: Primary outcomes were ischemic stroke, major bleeding, and their composite. Propensity score (PS) matching balanced 111 covariates. Adjusted rate ratios (ARRs) with 95% CIs were estimated. Tipping-point analyses assessed the relative weighting ischemic stroke vs major bleeding required to favor anticoagulation. Direct active-comparator analyses compared apixaban with rivaroxaban and warfarin. RESULTS: The study comprised 26 940 nursing home residents (median [IQR] age, 82 [74,88] years; 17 504 [65.0%] female), including PS-matched cohorts of 7600 residents receiving apixaban, 2654 receiving rivaroxaban, and 3216 receiving warfarin. Compared with nonuse, use of all OACs was associated with lower rates of ischemic stroke (apixaban: ARR, 0.53; 95% CI, 0.38-0.73; rivaroxaban: ARR, 0.48; 95% CI, 0.27-0.87; warfarin: ARR, 0.47; 95% CI, 0.25-0.88) and higher rates of major bleeding (apixaban: ARR, 1.62; 95% CI, 1.29-2.03; rivaroxaban: ARR, 2.68; 95% CI, 1.84-3.93; warfarin: ARR, 3.02; 95% CI, 2.15-4.25). Only apixaban was not associated with a higher composite outcome (ARR, 1.08; 95% CI, 0.90-1.30), whereas rivaroxaban (ARR, 1.62; 95% CI, 1.20-2.18) and warfarin (ARR, 1.99; 95% CI, 1.50-2.63) were associated with higher rates. Findings were consistent across frailty strata, although stroke reduction with apixaban was attenuated among frail individuals. Tipping-point analyses indicated a more favorable benefit-risk balance for apixaban than for rivaroxaban or warfarin. CONCLUSIONS AND RELEVANCE: Among nursing home residents with AF and ADL disability, OAC use was associated with lower ischemic stroke but higher major bleeding rates than nonuse. Apixaban demonstrated the most favorable benefit-risk profile among the OACs evaluated. These findings may inform individualized anticoagulation decisions.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832198/",
+      "titleZh": "伴房颤及日常生活活动能力障碍的养老院居民的抗凝结局",
+      "translation": {
+        "title_zh": "伴房颤及日常生活活动能力障碍的养老院居民的抗凝结局",
+        "abstract_zh": "重要性：伴房颤（AF）和日常生活活动（ADL）能力障碍的长期养老院居民出血及死亡风险较高，使抗凝治疗的净获益不确定。\n目的：在伴AF和ADL能力障碍的长期养老院居民中，比较使用与未使用口服抗凝药（OAC）与缺血性卒中及大出血的关联。\n设计、地点和参与者：本队列研究使用与最低数据集关联的美国Medicare理赔数据（2013年1月1日至2022年12月31日）。纳入伴非瓣膜性AF且3项或以上ADL受损的养老院居民。采用发病密度抽样，构建三个分别比较阿哌沙班、利伐沙班或华法林使用与未使用的队列。\n暴露：开始使用阿哌沙班、利伐沙班或华法林。\n主要结局及测量：主要结局为缺血性卒中、大出血及两者的复合结局。倾向评分（PS）匹配平衡了111项协变量。估计调整后发生率比（ARR）及95% CI。临界点分析评估了使抗凝治疗倾向于获益所需的缺血性卒中相对于大出血的权重。直接的活性对照分析比较阿哌沙班与利伐沙班、华法林。\n结果：研究包括26 940名养老院居民（年龄中位数［四分位距］为82［74,88］岁；17 504名［65.0%］为女性），其中PS匹配队列包括7600名使用阿哌沙班者、2654名使用利伐沙班者及3216名使用华法林者。与未使用相比，所有OAC的使用均与较低的缺血性卒中发生率相关（阿哌沙班：ARR，0.53；95% CI，0.38-0.73；利伐沙班：ARR，0.48；95% CI，0.27-0.87；华法林：ARR，0.47；95% CI，0.25-0.88），同时与较高的大出血发生率相关（阿哌沙班：ARR，1.62；95% CI，1.29-2.03；利伐沙班：ARR，2.68；95% CI，1.84-3.93；华法林：ARR，3.02；95% CI，2.15-4.25）。仅阿哌沙班未与较高的复合结局发生率相关（ARR，1.08；95% CI，0.90-1.30），而利伐沙班（ARR，1.62；95% CI，1.20-2.18）和华法林（ARR，1.99；95% CI，1.50-2.63）与较高发生率相关。结果在不同衰弱分层中一致，不过在衰弱者中阿哌沙班所关联的卒中减少有所减弱。临界点分析表明，阿哌沙班的获益-风险平衡比利伐沙班或华法林更有利。\n结论及意义：在伴AF和ADL能力障碍的养老院居民中，与未使用相比，OAC使用与较低的缺血性卒中发生率和较高的大出血发生率相关。在所评估的OAC中，阿哌沙班表现出最有利的获益-风险特征。这些发现可能为个体化抗凝决策提供信息。"
+      },
+      "quicklook": {
+        "title_zh": "伴房颤及日常生活活动能力障碍的养老院居民的抗凝结局",
+        "one_line": "养老院居民队列中，抗凝药使用与较少缺血性卒中及较多大出血相关。",
+        "design": "美国Medicare关联数据队列；采用倾向评分匹配及临界点分析。",
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解功能受损养老院居民中抗凝药使用所关联的卒中与出血权衡。",
+        "findings": [
+          {
+            "text": "研究包括26 940名养老院居民，年龄中位数82岁，女性占65.0%。",
+            "quote": "The study comprised 26 940 nursing home residents (median [IQR] age, 82 [74,88] years; 17 504 [65.0%] female)"
+          },
+          {
+            "text": "与未使用相比，所有OAC均与较低卒中率及较高大出血率相关；阿哌沙班对应ARR分别为0.53和1.62。",
+            "quote": "Compared with nonuse, use of all OACs was associated with lower rates of ischemic stroke (apixaban: ARR, 0.53; 95% CI, 0.38-0.73; rivaroxaban: ARR, 0.48; 95% CI, 0.27-0.87; warfarin: ARR, 0.47; 95% CI, 0.25-0.88) and higher rates of major bleeding (apixaban: ARR, 1.62; 95% CI, 1.29-2.03; rivaroxaban: ARR, 2.68; 95% CI, 1.84-3.93; warfarin: ARR, 3.02; 95% CI, 2.15-4.25)."
+          },
+          {
+            "text": "仅阿哌沙班未与较高复合结局发生率相关，ARR 1.08（95% CI 0.90-1.30）；另两种药与较高发生率相关。",
+            "quote": "Only apixaban was not associated with a higher composite outcome (ARR, 1.08; 95% CI, 0.90-1.30), whereas rivaroxaban (ARR, 1.62; 95% CI, 1.20-2.18) and warfarin (ARR, 1.99; 95% CI, 1.50-2.63) were associated with higher rates."
+          },
+          {
+            "text": "不同衰弱分层的结果一致，但衰弱者中阿哌沙班关联的卒中减少有所减弱。",
+            "quote": "Findings were consistent across frailty strata, although stroke reduction with apixaban was attenuated among frail individuals."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:34.517122+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:34.834616+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836810",
+      "paperID": "doi:10.1016/j.jcin.2026.07.042",
+      "doi": "10.1016/j.jcin.2026.07.042",
+      "pmid": "42836810",
+      "rank": 19,
+      "category": "心血管",
+      "date": "2026-10-05",
+      "title": "Mechanical Thrombectomy Versus Anticoagulation Alone in Intermediate-High Risk PE: Improved Functional 90-Day Outcomes in STORM-PE RCT.",
+      "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+      "abstract": "BACKGROUND: Up to 50% of pulmonary embolism (PE) survivors experience long-term functional limitations and reduced quality of life (QoL). Reperfusion strategies can rapidly relieve right-ventricular (RV) dysfunction and prevent clinical deterioration or hemodynamic collapse; however, these approaches have never been evaluated in a randomized trial against anticoagulation alone using patient-centered outcomes. OBJECTIVES: This study sought to evaluate whether mechanical thrombectomy with anticoagulation improves functional, QoL, and safety outcomes compared with anticoagulation alone in patients with acute intermediate-high risk PE over 90 days. METHODS: STORM-PE enrolled 100 PE patients randomized 1:1 to computer-assisted vacuum thrombectomy (CAVT) with anticoagulation or anticoagulation alone across 22 international sites, with RV-to-left-ventricular (RV/LV) ratio change at 48 hours as the primary endpoint. Secondary endpoints included major adverse events within 7 days, functional and QoL outcomes, mortality, and symptomatic PE recurrence through 90 days. RESULTS: For all patients, median time from randomization to last follow-up visit was 91.0 days [Q1-Q3: 80.5-100.0]. At 90 days, 66.0% (31/47) of CAVT and 64.2% (34/53) of anticoagulation patients completed the 6-min walk test. The CAVT arm exhibited a longer 6-min walk distance compared with anticoagulation alone (478.7 ± 159.5 m vs 368.0 ± 127.8 m, P = 0.003). More CAVT than anticoagulation patients were NYHA Functional Class I (97.4% [37/38] vs 75.6% [34/45], P = 0.005) at 90 days. Dyspnea and QoL scores were comparable between groups, with no differences between arms for all-cause mortality, PE-related mortality, and symptomatic PE recurrence within 90 days. CONCLUSIONS: In STORM-PE, CAVT with anticoagulation resulted in improved functional outcomes at 90 days compared with anticoagulation alone, with equivalent safety rates. This trial supports CAVT as an effective and safe reperfusion strategy for intermediate-high risk PE. CLINICAL TRIAL REGISTRATION: https://clinicaltrials.gov Unique Identifier: NCT05684796.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836810/",
+      "titleZh": "中高危肺栓塞的机械取栓与单纯抗凝比较：STORM-PE随机对照试验中改善的90天功能结局",
+      "translation": {
+        "title_zh": "中高危肺栓塞的机械取栓与单纯抗凝比较：STORM-PE随机对照试验中改善的90天功能结局",
+        "abstract_zh": "背景：多达50%的肺栓塞（PE）幸存者存在长期功能受限及生活质量（QoL）下降。再灌注策略可迅速缓解右心室（RV）功能障碍，并防止临床恶化或血流动力学崩溃；但此前从未在随机试验中，以患者为中心的结局将这些方法与单纯抗凝比较。\n目的：本研究旨在评估，在急性中高危PE患者中，机械取栓联合抗凝相较于单纯抗凝，是否改善90天内的功能、QoL和安全性结局。\n方法：STORM-PE在22个国际研究中心纳入100名PE患者，以1:1随机分配至计算机辅助真空取栓（CAVT）联合抗凝或单纯抗凝，主要终点为48小时右心室与左心室（RV/LV）比值的变化。次要终点包括7天内的重大不良事件，以及截至90天的功能和QoL结局、死亡及有症状PE复发。\n结果：所有患者从随机分组到最后一次随访的中位时间为91.0天［Q1-Q3：80.5-100.0］。90天时，CAVT患者中66.0%（31/47）及抗凝患者中64.2%（34/53）完成了6分钟步行试验。CAVT组的6分钟步行距离比单纯抗凝组更长（478.7 ± 159.5 m对368.0 ± 127.8 m，P = 0.003）。90天时，CAVT患者达到NYHA心功能I级的比例高于抗凝患者（97.4%［37/38］对75.6%［34/45］，P = 0.005）。两组的呼吸困难和QoL评分相当；90天内的全因死亡、PE相关死亡及有症状PE复发在两组间无差异。\n结论：在STORM-PE中，与单纯抗凝相比，CAVT联合抗凝改善了90天的功能结局，安全性事件发生率相当。本试验支持CAVT作为中高危PE的有效且安全的再灌注策略。\n临床试验注册：https://clinicaltrials.gov；唯一标识符：NCT05684796。"
+      },
+      "quicklook": {
+        "title_zh": "中高危肺栓塞的机械取栓与单纯抗凝比较：STORM-PE随机对照试验中改善的90天功能结局",
+        "one_line": "STORM-PE中，取栓联合抗凝改善90天功能结局，生活质量及死亡等结局无组间差异。",
+        "design": "多中心随机对照试验；100名中高危PE患者，主要终点为48小时RV/LV变化。",
+        "limits": "摘要未提供明确局限",
+        "why_read": "区分取栓试验的主要影像学终点、功能获益与未见差异的结局。",
+        "findings": [
+          {
+            "text": "90天时，CAVT与抗凝组分别有66.0%和64.2%完成6分钟步行试验。",
+            "quote": "At 90 days, 66.0% (31/47) of CAVT and 64.2% (34/53) of anticoagulation patients completed the 6-min walk test."
+          },
+          {
+            "text": "CAVT组6分钟步行距离更长：478.7 ± 159.5 m对368.0 ± 127.8 m，P = 0.003。",
+            "quote": "The CAVT arm exhibited a longer 6-min walk distance compared with anticoagulation alone (478.7 ± 159.5 m vs 368.0 ± 127.8 m, P = 0.003)."
+          },
+          {
+            "text": "90天时NYHA心功能I级比例，CAVT组为97.4%，抗凝组为75.6%，P = 0.005。",
+            "quote": "More CAVT than anticoagulation patients were NYHA Functional Class I (97.4% [37/38] vs 75.6% [34/45], P = 0.005) at 90 days."
+          },
+          {
+            "text": "呼吸困难和QoL评分相当；90天内全因死亡、PE相关死亡及有症状PE复发无组间差异。",
+            "quote": "Dyspnea and QoL scores were comparable between groups, with no differences between arms for all-cause mortality, PE-related mortality, and symptomatic PE recurrence within 90 days."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:35.236285+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:35.533358+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42831398",
+      "paperID": "doi:10.1161/jaha.126.054084",
+      "doi": "10.1161/jaha.126.054084",
+      "pmid": "42831398",
+      "rank": 20,
+      "category": "心血管",
+      "date": "2026-10-05",
+      "title": "Role of Telemedicine in Congenital Heart Disease Care Models in Low- and Middle-Income Countries: A Scientific Statement From the American Heart Association.",
+      "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+      "abstract": "Telemedicine is increasingly recognized as a transformative strategy to address critical challenges in low- and middle-income countries, which comprise 63% of all nations, 84% of the global population, and 90% of children <15 years of age. These regions experience multiple barriers, including geographic remoteness, economic constraints, limited healthcare infrastructure, and a shortage of trained healthcare professionals. Congenital heart disease, a highly specialized field often centralized in urban centers, is particularly affected, leaving many children without timely or equitable access to life-saving care. In this context, telecardiology has emerged as a valuable tool across the congenital heart disease care continuum, supporting prehospital assessment, inpatient management, postdischarge follow-up, and multidisciplinary collaboration. Beyond video consultations, telemedicine enables secure transmission of electrocardiograms, echocardiograms, advanced imaging, and digital auscultation data. Artificial intelligence-based tools further enhance education, diagnostic support, and quality assurance in image acquisition. Together, these capabilities reduce unnecessary travel, expedite specialist input, strengthen local decision-making, and contribute to improved outcomes. Telemedicine also facilitates collaboration among pediatric cardiologists, neonatologists, intensivists, imaging specialists, and nurses, fostering more integrated and resilient care networks that link peripheral facilities with tertiary centers. By optimizing limited resources and expanding specialist reach, telemedicine holds significant promise for improving access, equity, and outcomes in congenital heart disease care across low- and middle-income countries. Continued investment, strategic planning, and collaborative capacity-building will be essential to ensure its sustainable and effective implementation worldwide.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42831398/",
+      "titleZh": "远程医疗在中低收入国家先天性心脏病照护模式中的作用：美国心脏协会科学声明",
+      "translation": {
+        "title_zh": "远程医疗在中低收入国家先天性心脏病照护模式中的作用：美国心脏协会科学声明",
+        "abstract_zh": "远程医疗日益被视为应对中低收入国家重大挑战的一项变革性策略；这些国家占全部国家的63%、全球人口的84%，以及<15岁儿童的90%。这些地区面临多重障碍，包括地理位置偏远、经济限制、医疗基础设施有限，以及受过培训的医疗专业人员短缺。先天性心脏病是一个高度专业化、通常集中于城市中心的领域，受到的影响尤为显著，使许多儿童无法及时或公平地获得挽救生命的照护。在此背景下，远程心脏病医疗已成为覆盖先天性心脏病照护全流程的有用工具，支持院前评估、住院管理、出院后随访及多学科协作。除视频会诊外，远程医疗还可安全传输心电图、超声心动图、先进影像及数字听诊数据。基于人工智能的工具进一步加强了教育、诊断支持以及影像采集的质量保证。这些能力共同减少不必要的出行、加快专家意见的获取、加强当地决策，并有助于改善结局。远程医疗还促进儿科心脏病医生、新生儿科医生、重症医学医生、影像专家和护士之间的协作，建立将外围医疗机构与三级医疗中心连接起来的、更整合且更有韧性的照护网络。通过优化有限资源并扩大专家服务覆盖面，远程医疗对于改善中低收入国家先天性心脏病照护的可及性、公平性及结局具有显著潜力。持续投入、战略规划以及协作式能力建设，对确保其在全球范围内可持续且有效地实施至关重要。"
+      },
+      "quicklook": {
+        "title_zh": "远程医疗在中低收入国家先天性心脏病照护模式中的作用：美国心脏协会科学声明",
+        "one_line": "科学声明讨论远程医疗支持中低收入国家先天性心脏病全流程照护的潜力。",
+        "design": "美国心脏协会科学声明；讨论远程医疗照护模式。",
+        "limits": "摘要未提供明确局限",
+        "why_read": "了解资源受限地区先天性心脏病照护中远程医疗的应用范围和实施需求。",
+        "findings": [
+          {
+            "text": "声明所述中低收入国家占国家总数63%、全球人口84%，以及<15岁儿童的90%。",
+            "quote": "Telemedicine is increasingly recognized as a transformative strategy to address critical challenges in low- and middle-income countries, which comprise 63% of all nations, 84% of the global population, and 90% of children <15 years of age."
+          },
+          {
+            "text": "远程心脏病医疗支持院前评估、住院管理、出院后随访及多学科协作。",
+            "quote": "In this context, telecardiology has emerged as a valuable tool across the congenital heart disease care continuum, supporting prehospital assessment, inpatient management, postdischarge follow-up, and multidisciplinary collaboration."
+          },
+          {
+            "text": "除视频会诊外，还可安全传输心电、超声、先进影像及数字听诊数据；人工智能支持教育、诊断和影像采集质保。",
+            "quote": "Beyond video consultations, telemedicine enables secure transmission of electrocardiograms, echocardiograms, advanced imaging, and digital auscultation data. Artificial intelligence-based tools further enhance education, diagnostic support, and quality assurance in image acquisition."
+          },
+          {
+            "text": "声明强调持续投入、战略规划及协作式能力建设对可持续有效实施的必要性。",
+            "quote": "Continued investment, strategic planning, and collaborative capacity-building will be essential to ensure its sustainable and effective implementation worldwide."
+          }
+        ]
+      },
+      "study": null,
+      "generationMeta": {
+        "translate": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:35.734859+00:00",
+          "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "translation-number-occurrences-v2",
+          "validatedWith": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        },
+        "quicklook": {
+          "modelVersion": "sol-session-model-unobserved",
+          "generatedAt": "2026-10-07T15:40:35.929431+00:00",
+          "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "origin": "sol-session-public-abstract",
+          "validatorVersion": "literal-findings-same-quote-numbers-v1",
+          "validatedWith": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+          "generationPromptVersion": "unobserved",
+          "generationVersionKnown": false
+        }
+      },
+      "precomputeStatus": "partial",
+      "missingTasks": [
+        "study"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42834820",
+      "paperID": "doi:10.1093/europace/euag272",
+      "doi": "10.1093/europace/euag272",
+      "pmid": "42834820",
+      "rank": 21,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Potassium-Increasing Regimens in Patients at High Risk of Ventricular Arrhythmias: A Prespecified Observational Analysis of the Randomized POTCAST Trial.",
+      "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "abstract": "BACKGROUND AND AIMS: The POTCAST trial (n=1,200) showed that targeting high-normal plasma potassium levels reduced ventricular arrhythmias in patients with Implantable Cardioverter-Defibrillators (ICDs). We compared changes in plasma potassium and described outcomes across the three regimens used to increase plasma potassium. METHODS: We studied 600 control participants and 572 intervention participants who completed potassium up-titration in POTCAST. Participants in the intervention arm were categorized according to treatment after plasma-potassium up-titration into: a) mineralocorticoid-receptor antagonists (MRAs) monotherapy, b) potassium-supplement monotherapy, or c) combination-therapy with both. The primary endpoint was a composite of sustained ventricular arrhythmia, appropriate ICD-therapy, hospitalization for arrhythmia or heart-failure or all-cause mortality. Safety outcomes included death and electrolyte/renal disturbances. RESULTS: After six months, plasma potassium increased from 4.12 to 4.27 mmol/L (p=0.004) with MRA, from 3.99 to 4.24 mmol/L (p<0.001) with potassium-supplements, and from 3.98 to 4.34 mmol/L (p<0.001) with combination-therapy. The primary endpoint occurred in 29% (n=175) of controls, 22% (n=16) in the MRA group, 21% (n=31) in the potassium-supplements group and in 22% (n=72) in the combination-therapy group (p=0.8 between regimens). Hypokalemia occurred in 13% of controls and in 3%, 9%, and 5% of participants receiving MRA, potassium-supplements and combination-therapy, respectively. Hyperkalemia occurred in 0.2% of controls and in 0%, 3%, and 4% of participants receiving MRA, potassium-supplements, and combination-therapy (p>0.1 between regimens). CONCLUSIONS: Treatment with MRA, potassium-supplements or both increased potassium levels. All regimens were associated with numerically lower endpoint rates than controls. We detected no statistically significant differences in endpoints or safety between regimens.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834820/",
+      "titleZh": "室性心律失常高危患者的补钾方案：随机POTCAST试验的预设观察性分析。",
+      "translation": null,
+      "quicklook": null,
+      "study": null,
+      "generationMeta": {},
+      "precomputeStatus": "pending",
+      "missingTasks": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836744",
+      "paperID": "doi:10.1111/jce.70522",
+      "doi": "10.1111/jce.70522",
+      "pmid": "42836744",
+      "rank": 22,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Enhancing Persistent Atrial Fibrillation Ablation: The Added Value of Vein of Marshall Ethanol Infusion in a Tailored Strategy.",
+      "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+      "abstract": "BACKGROUND: Outcomes following catheter ablation for persistent atrial fibrillation (AF) remain suboptimal. Low-voltage areas (LVA), as a surrogate for atrial fibrosis, have been targeted due to their association with arrhythmia recurrence. Ethanol infusion in the vein of Marshall (VoM) has emerged as an adjunctive strategy that may enhance ablation efficacy. We evaluated the effectiveness of a tailored ablation strategy guided by the presence of LVA and incorporating VoM ethanol infusion in patients with persistent AF. METHODS: This prospective, single-center study included patients referred for catheter ablation for persistent AF ablation between August 2022 and August 2024. Patients underwent a tailored ablation strategy guided by the presence of LVA. Procedural endpoints and 1-year outcomes were assessed and compared with those of a propensity score-matched cohort undergoing pulmonary vein isolation (PVI) alone. RESULTS: A total of 118 patients (71% male, mean age of 62 ± 10years) were included in our study: 59 in the tailored approach group and 59 propensity score-matched controls. In the tailored group, VoM ethanol infusion was performed in 60% of patients, while ablation beyond pulmonary veins was not performed in 14% of patients due to LVA absence. Bidirectional block was achieved in all ablation lines except in two patients. At 1-year follow-up, 22% of patients had atrial arrhythmia recurrence. The risk of recurrence was significantly lower in the tailored approach group (13.5% vs. 30.5%, p = 0.02). A tailored approach was independently associated with freedom from atrial arrhythmia recurrence (HR 0.41 [0.17-0.94], p = 0.04). No significant differences in adverse events were observed between groups. CONCLUSIONS: In patients with persistent AF, a tailored ablation guided by LVAs was associated with significantly lower arrhythmia recurrence at 1-year compared with PVI alone.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836744/",
+      "titleZh": "优化持续性心房颤动消融：Marshall静脉乙醇灌注在个体化策略中的附加价值。",
+      "translation": null,
+      "quicklook": null,
+      "study": null,
+      "generationMeta": {},
+      "precomputeStatus": "pending",
+      "missingTasks": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836740",
+      "paperID": "doi:10.1111/jce.70525",
+      "doi": "10.1111/jce.70525",
+      "pmid": "42836740",
+      "rank": 23,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Atrial Septal Defect Management Status and Long-Term Outcomes After Atrial Fibrillation Ablation: A Real-World Cohort Study.",
+      "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+      "abstract": "BACKGROUND: As more adults with atrial septal defect (ASD) survive into older age and undergo atrial fibrillation (AF) ablation, evidence to guide post-ablation risk stratification remains limited. OBJECTIVE: To evaluate long-term outcomes after the first AF ablation across ASD management states compared with an intact interatrial septum. METHODS: This real-world cohort study included 27 675 patients undergoing their first AF ablation, classified by interatrial septal status as intact septum (n = 27 134), unrepaired ASD (n = 232), percutaneous closure (n = 119), or surgical repair (n = 190). Three pairwise comparisons with an intact septum were constructed. Propensity score overlap weighting was used to balance baseline characteristics, and Cox proportional hazards models were used to assess outcomes. The primary outcome was atrial arrhythmia recurrence after the 3-month blanking period; the secondary outcome was a composite cardiovascular outcome. RESULTS: Compared with an intact septum, unrepaired ASD was associated with a higher recurrence risk (hazard ratio [HR], 1.27; 95% CI, 1.07-1.51; p = 0.006), with excess risk mainly observed between 3 months and 1 year after ablation. Surgical repair was also associated with higher recurrence risk (HR, 1.21; 95% CI, 1.01-1.46; p = 0.038), with differences emerging beyond 1 year. Percutaneous closure was not associated with increased recurrence risk (HR, 1.07; 95% CI, 0.83-1.38; p = 0.589). Composite cardiovascular outcomes did not differ significantly across groups. CONCLUSIONS: ASD management status identified distinct temporal patterns of atrial arrhythmia recurrence after AF ablation, suggesting that ASD should not be treated as a single binary condition in post-ablation risk assessment.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836740/",
+      "titleZh": "房间隔缺损处理状态与心房颤动消融后的长期结局：一项真实世界队列研究。",
+      "translation": null,
+      "quicklook": null,
+      "study": null,
+      "generationMeta": {},
+      "precomputeStatus": "pending",
+      "missingTasks": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "allowAutomaticGeneration": false
+    },
+    {
+      "id": "pmid-42836742",
+      "paperID": "doi:10.1111/jce.70526",
+      "doi": "10.1111/jce.70526",
+      "pmid": "42836742",
+      "rank": 24,
+      "category": "心血管",
+      "date": "2026-10-06",
+      "title": "Temporal Association Between Intrathoracic Impedance and Tachyarrhythmia Occurrence.",
+      "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+      "abstract": "BACKGROUND: This study examined whether daily intrathoracic impedance is temporally associated with the occurrence of atrial fibrillation (AF) and ventricular tachycardia (VT). METHODS: This retrospective cohort study included 117 patients with cardiac implantable devices, followed for a median of 668 days, corresponding to 89 637 person-days. Recurrent AF occurred in 28% of patients (mean AF burden 0.27), while 773 VT episodes occurred in 15% of patients. Daily intrathoracic impedance, expressed relative to a reference impedance, was analyzed to identify events of impedance decrease and increase. The temporal association between impedance events and tachyarrhythmia burden was quantified using a patient-specific relational strength measure (γ), which compares post-event and pre-event tachyarrhythmia burden. RESULTS: For impedance decreases, event-related γ for AF was higher than control γ computed for randomly placed events (median 0.68 vs. 0.48, p = 0.04). For VT, event-related γ did not differ significantly from control γ (six patients; median 0.52 vs. 0.21, p = 0.82). No significant differences were observed for impedance increases in either the AF or VT analysis. In the pooled episode-level analysis, an impedance decrease was associated with a shorter time to VT occurrence than an impedance increase (median 4 vs. 7 days, p < 0.001), with 48% of VT episodes occurring within 3 days after an impedance decrease. CONCLUSION: A decrease in intrathoracic impedance is temporally associated with subsequent AF occurrence and, at the episode level, with a shorter time to VT. These findings suggest that daily intrathoracic impedance may provide information on short-term changes preceding tachyarrhythmia occurrence.",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836742/",
+      "titleZh": "胸内阻抗与快速性心律失常发生的时间相关性。",
+      "translation": null,
+      "quicklook": null,
+      "study": null,
+      "generationMeta": {},
+      "precomputeStatus": "pending",
+      "missingTasks": [
+        "translate",
+        "study",
+        "quicklook"
+      ],
+      "allowAutomaticGeneration": false
+    }
+  ]
+}

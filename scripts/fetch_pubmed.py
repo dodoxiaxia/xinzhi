@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Public PubMed metadata fallback for watched journals. Never downloads PDFs."""
-import argparse, datetime, hashlib, http.client, json, time, urllib.request, urllib.parse, xml.etree.ElementTree as ET
+import argparse, datetime, hashlib, http.client, json, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
 from pathlib import Path
 from build_data import clean, classify
 from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
@@ -38,6 +38,28 @@ def request(action, params):
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return r.read(10_000_000)
+        except urllib.error.HTTPError as exc:
+            # CI retains only the tail of stderr. Keep the failed public action
+            # identifiable there, without logging query/IDs/headers or changing
+            # the fail-closed behavior. Never retry an HTTP denial/error here.
+            detail = ''
+            try:
+                body = exc.read(4096).decode('utf-8', 'replace')
+                try:
+                    message = json.loads(body).get('error', '')
+                except (ValueError, AttributeError):
+                    xml = ET.fromstring(body)
+                    match = xml if xml.tag == 'ERROR' else xml.find('.//ERROR')
+                    message = ''.join(match.itertext()) if match is not None else ''
+                if isinstance(message, str):
+                    detail = ' '.join(message.split())[:200]
+            except (OSError, AttributeError, ET.ParseError):
+                pass
+            exc.add_note(json.dumps({'publicPubmedRequest': action,
+                                     'method': req.get_method(),
+                                     'httpStatus': exc.code,
+                                     'upstreamError': detail}, ensure_ascii=False))
+            raise
         except http.client.IncompleteRead:
             # Discard partial bytes and retry the same public metadata request.
             # HTTP access/rate-limit errors are not caught or retried here.
@@ -75,6 +97,7 @@ def parse(root):
 
         # Publication types
         pub_types = [clean(''.join(pt.itertext())) for pt in article.findall('./PublicationTypeList/PublicationType')]
+        from publication_status import pubmed_relations
 
         # MeSH terms
         mesh_terms = [clean(''.join(m.find('DescriptorName').itertext())) for m in row.findall('.//MeshHeadingList/MeshHeading') if m.find('DescriptorName') is not None]
@@ -126,6 +149,7 @@ def parse(root):
             'lastAuthor': authors[-1] if len(authors) > 1 else '',
             'affiliations': affiliations,
             'pubTypes': pub_types,
+            'pubmedRelations': pubmed_relations(row),
             'meshTerms': mesh_terms,
             'abstractSections': abstract_sections,
             'sourceId': 'pubmed-journal-fallback',

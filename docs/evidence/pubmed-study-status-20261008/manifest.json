@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "source": "Previously captured official NCBI PubMed efetch XML; original response bodies copied byte-for-byte.",
+  "noNewSourceRequests": true,
+  "codeCandidateCommit": "1babb084e15bc799342912b2bae15bd903324ed5",
+  "files": [
+    {
+      "path": "docs/evidence/pubmed-study-status-20261008/pubmed-verified.xml",
+      "bytes": 125313,
+      "sha256": "3accf16a849729e24f73e06ce62fccb8279c0d202dd8cc7dbcea5ee4374163bd",
+      "pmids": [
+        "41224473",
+        "41916660",
+        "41224475",
+        "41412600",
+        "42104840",
+        "41771068",
+        "40920457",
+        "42418170",
+        "42418194"
+      ],
+      "sourceUrl": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=41224473,41916660,41224475,41412600,42104840,41771068,40920457,42418170,42418194",
+      "capturedOn": "2026-10-08",
+      "reusedExistingCapture": true,
+      "bytesUnmodified": true
+    },
+    {
+      "path": "docs/evidence/pubmed-study-status-20261008/pubmed-additional.xml",
+      "bytes": 44106,
+      "sha256": "523155ddc14db10ed273dc257ee1558759b4c5f9a84676e36982379294136c10",
+      "pmids": [
+        "39043416",
+        "42836743",
+        "42836296"
+      ],
+      "sourceUrl": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id=39043416,42836743,42836296",
+      "capturedOn": "2026-10-08",
+      "reusedExistingCapture": true,
+      "bytesUnmodified": true
+    }
+  ],
+  "verifiedAssociations": [
+    {
+      "pmid": "41224473",
+      "relations": [
+        {
+          "type": "ErratumIn",
+          "pmid": "41916658"
+        },
+        {
+          "type": "ExpressionOfConcernIn",
+          "pmid": "41224475"
+        },
+        {
+          "type": "RetractionIn",
+          "pmid": "41916660"
+        }
+      ]
+    },
+    {
+      "pmid": "41916660",
+      "relations": [
+        {
+          "type": "RetractionOf",
+          "pmid": "41224473"
+        }
+      ]
+    },
+    {
+      "pmid": "41224475",
+      "relations": [
+        {
+          "type": "ExpressionOfConcernFor",
+          "pmid": "41224473"
+        }
+      ]
+    }
+  ]
+}

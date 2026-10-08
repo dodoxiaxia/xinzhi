@@ -1,0 +1,66 @@
+{
+  "screenshot": {
+    "repository": "dodoxiaxia/xinzhi",
+    "workflow": "daily-refresh",
+    "refreshDurationSeconds": 63,
+    "ignoredDispatch": "skipped",
+    "runIdKnown": false,
+    "timestampKnown": false
+  },
+  "mostConsistentInspectedHistoricalRun": {
+    "runId": 37620671862,
+    "url": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37620671862",
+    "source": "4451c8a6f1c28096b722bbc56e36fad10ebf72c4",
+    "startedAt": "2026-10-07T12:23:47Z",
+    "finishedAt": "2026-10-07T12:24:50Z",
+    "refreshDurationSeconds": 63,
+    "failedStep": "发布前验证公开摘要服务（离线，不调用模型）",
+    "error": "ModuleNotFoundError: No module named playwright; unittest discovery imported test_journal_ui at module scope.",
+    "pagesDeployment": "skipped",
+    "stateSave": "skipped",
+    "impact": "Failed pre-release validation; that candidate was not deployed and did not replace prior saved state.",
+    "certainty": "Duration, names and repository match; screenshot lacks run ID/time so attribution remains probable."
+  },
+  "otherRecentFailuresInspected": [
+    {
+      "runId": 37619915125,
+      "durationSeconds": 70,
+      "failedStep": "发布前验证公开摘要服务（离线，不调用模型）",
+      "cause": "Unit tests unintentionally inherited Actions paid-call durable-checkpoint guard; mocks stopped before intended provider/budget scenarios."
+    },
+    {
+      "runId": 37612765941,
+      "durationSeconds": 77,
+      "failedStep": "更新全文队列调度器并确认既有受保护配置",
+      "detail": "Different failure and duration; not assumed to be the screenshot."
+    }
+  ],
+  "currentProduction": {
+    "release": "v14.2.7",
+    "source": "007dc5fb48ae0d07656386a0d52081a337ea69f5",
+    "state": "fcb77d58eab7c8e1de58c3e6c90eb59513d91cdb",
+    "runId": 37661225984,
+    "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37661225984",
+    "conclusion": "success",
+    "deploymentOutcome": "success",
+    "stateOutcome": "success",
+    "sixPublicFilesFullByteReadback": true
+  },
+  "currentGuardEvidence": {
+    "journalUiPlaywrightImportInsideMain": true,
+    "currentJournalPythonTests": 36,
+    "currentV1427CiJournalTests": 31,
+    "currentV1427CiPrecomputeTests": 108,
+    "unitMockActionsEnvironmentIsolated": true
+  },
+  "actionsTaken": [
+    "Inspected latest failures and exact failed steps/logs",
+    "Compared probable screenshot duration with actual job timestamps",
+    "Verified later successful publication and full artifacts",
+    "Ran present journal/precompute/package gates; no need to reapply existing fixes"
+  ],
+  "historicalReruns": 0,
+  "schedulerChanges": false,
+  "permissionsChanged": false,
+  "newWorkflowChangesForOldFailure": false
+}

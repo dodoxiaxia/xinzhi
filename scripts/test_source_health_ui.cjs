@@ -1,5 +1,6 @@
 // Execute the actual source diagnostics and renderer with fixed data and time.
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
+const journalMetrics = require('../journal-metrics.js').create(require('../config/journal-metrics.json'));
 const src = fs.readFileSync(require('path').join(__dirname, '../app.js'), 'utf8');
 const fn = n => {
   const match = src.match(new RegExp('  function ' + n + '\\([^]*?\\n  }'));
@@ -8,10 +9,11 @@ const fn = n => {
 };
 class Clock extends Date { static now() { return Date.parse('2026-10-07T08:00:00Z'); } }
 const nodes = {sourcesHealthGrid: {}, sourcesHealthMeta: {classList:{toggle(){}}}, sourcesHealthSummary:{}};
-const c = vm.createContext({Date: Clock, URL, HEALTH: {checkedAt: '2026-10-07T07:22:33Z', sources: []},
+const c = vm.createContext({Date: Clock, URL, window: {JournalMetrics: journalMetrics}, HEALTH: {checkedAt: '2026-10-07T07:22:33Z', sources: []},
+  state: {search: ''}, queryMatches: (text, q) => text.includes(q),
   $: selector => nodes[selector.slice(1)],
   esc: text => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]))});
-vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'sourceHealthDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
+vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'sourceHealthDetails', 'specialSearchStatus', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
 const details = s => c.sourceHealthDetails(s);
 assert(details({status:'filtered_empty'}).includes('不代表期刊没有新文章'));
 const excluded = details({excludedItems: {undated:2, olderThan14Days:28, future:1, unclassifiedOrInvalid:3}});
@@ -53,4 +55,41 @@ assert(countCards[0].includes('<dt>原始条目</dt><dd>未统计</dd>'));
 assert(countCards[0].includes('<dt>含摘要</dt><dd>未统计</dd>'));
 assert(countCards[1].includes('<dt>原始条目</dt><dd>0</dd>'));
 assert(countCards[1].includes('<dt>含摘要</dt><dd>0</dd>'));
-console.log('29 source health UI assertions passed');
+// Exercise the actual shared metric component through the source renderer, not a stub.
+c.HEALTH.sources = [
+  {name:'Nature Medicine', status:'ok'},
+  {name:'NEJM AI', status:'ok'},
+  {name:'European Heart Journal', status:'ok'},
+  {name:'<img src=x onerror=alert(1)>', status:'ok', url:'javascript:alert(1)'}
+];
+c.renderSourcesHealth();
+const metricCards = nodes.sourcesHealthGrid.innerHTML.split('<article').slice(1);
+assert(metricCards[0].includes(journalMetrics.renderBadge('Nature Medicine')));
+assert(metricCards[0].includes(journalMetrics.renderDetails('Nature Medicine')));
+assert(metricCards[0].includes('href="https://www.nature.com/nm/journal-impact"'));
+assert(metricCards[1].includes('IF 未核实'));
+assert(metricCards[1].includes('JCR 未核实'));
+assert(!metricCards[1].includes('JCR Q1'));
+assert(metricCards[2].includes('用户提供参考表'));
+assert(metricCards[2].includes('待官方核对'));
+assert(!metricCards[3].includes('<img'));
+assert(metricCards[3].includes('&lt;img'));
+assert(!metricCards[3].includes('href="javascript:'));
+c.state.search = 'nejm'; c.renderSourcesHealth();
+assert.equal((nodes.sourcesHealthGrid.innerHTML.match(/<article/g) || []).length, 1);
+assert(nodes.sourcesHealthGrid.innerHTML.includes('匹配 1/4 个信源'));
+assert(nodes.sourcesHealthSummary.innerHTML.includes('<strong>4</strong>'), 'Health summary remains the entire source report');
+c.state.search = 'no-existing-source'; c.renderSourcesHealth();
+assert(!nodes.sourcesHealthGrid.innerHTML.includes('<article'));
+assert(nodes.sourcesHealthGrid.innerHTML.includes('没有匹配的信源'));
+assert(nodes.sourcesHealthGrid.innerHTML.includes('data-clear="search"'));
+console.log('40 source health UI assertions passed (real journal metrics loaded)');
+
+// Failed RSS observations retain independently qualified success provenance.
+assert(details({status:'not_feed',lastSuccessfulAt:'2026-10-07T07:00:00Z',lastSuccessfulAtBasis:'strict_feed_parse'}).includes('最近严格解析成功：10/7 15:00（北京时间）'));
+const historical=details({status:'not_feed',lastSuccessfulAt:'2026-09-29T09:29:56Z',lastSuccessfulAtBasis:'historical_health_report'});
+assert(historical.includes('历史成功记录：9/29 17:29'));assert(historical.includes('未核验为严格订阅解析'));
+for(const stamp of [undefined,'invalid','2026-10-08T07:00:00Z'])assert(details({status:'not_feed',lastSuccessfulAt:stamp}).includes('尚无可核实'));
+assert(!details({status:'empty_feed'}).includes('最近订阅成功记录'));
+assert(!details({status:'filtered_empty'}).includes('最近订阅成功记录'));
+console.log('8 RSS success-provenance assertions passed; valid empty/filtered feeds remain successful.');

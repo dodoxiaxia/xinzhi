@@ -1,0 +1,20 @@
+{
+  "failedRun": 37662344013,
+  "url": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37662344013",
+  "source": "f0d460f035f9f62db1073f54971d40ad9af3098c",
+  "failedStep": "抓取 / 补摘要 / 翻译 / 构建",
+  "requiredCommand": "scripts/fetch_pubmed.py",
+  "observedError": "HTTP400 Bad Request",
+  "underlyingUpstreamCauseKnown": false,
+  "productionRemains": "v14.2.7",
+  "stateUnchanged": "fcb77d58eab7c8e1de58c3e6c90eb59513d91cdb",
+  "codeComparison": "fetch_pubmed/source_fallbacks unchanged in the initial v14.2.8 delta; no causal attribution to the JIF/search changes.",
+  "localDiagnostic": "Ordinary Eutils request blocked by execution proxy Tunnel403; no retry, alternate endpoint or bypass attempted.",
+  "change": "Preserve public action/method/status and bounded upstream ERROR in exception note so existing stderr-tail capture can identify future failures. No query, IDs or headers logged. No HTTP-error retry or gate relaxation.",
+  "validation": {
+    "pubmedRequestUnitTests": 7,
+    "sameHttpExceptionPreserved": true,
+    "noHttpErrorRetry": true
+  },
+  "notice": "This diagnostic change does not claim the upstream HTTP400 cause is fixed; normal release must pass the required fetch."
+}

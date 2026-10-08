@@ -1,1 +1,0 @@
-DOI library offline tests passed: read-only GET, password, DOI identity, GitHub/OA links, safe URLs, body limits/timeouts, KV binaries/soft guards, durable records, downloads, public projection and persisted manual retry deadlines.

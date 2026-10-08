@@ -1,0 +1,15 @@
+{
+  "scope": "read-only state bytes audit; no state/runtime writes",
+  "stateSHA": "efaaf69713fcc8b5468b9d0052daa672a666df0e",
+  "hashes": {
+    "data/weekly-board.json": "29d29e862dfa8316181bf5c983e1ecf76e3219e0d89baff0ab2b1d2e18c10e87",
+    "data/public-precompute-pending.json": "6ecb0fb83e6c0d9bcc8ac523e0d664d7b729996f1c7b82b8dd3ca2fc3163423f",
+    "data/week-precompute-ledger.json": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+    "data/week-precompute-cache.json": "33a3a475536b74d6cc0816b3754339c792c39af1d7ed560420d3f607ae7f1ce5"
+  },
+  "externalModelApiRequests": 0,
+  "runtimeCacheWrites": 0,
+  "ledgerWrites": 0,
+  "privatePDFsRead": false,
+  "deployed": false
+}

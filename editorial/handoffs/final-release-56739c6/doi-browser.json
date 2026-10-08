@@ -1,9 +1,0 @@
-{
-  "command": [
-    "node",
-    "scripts/test_doi_library_ui.cjs"
-  ],
-  "exitCode": 0,
-  "log": "doi-browser.log",
-  "tail": "DOI library helpers and offline browser checks passed\n"
-}

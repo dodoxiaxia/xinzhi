@@ -1,0 +1,131 @@
+{
+  "scope": "existing_site_journals_only",
+  "baseCommit": "7f7b2b7431925932a60c2dac8f29373c1f546a0b",
+  "observations": [
+    {
+      "name": "Journal of Arrhythmia",
+      "sourceId": "batch6-ovid-journal-of-arrhythmia-14318",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/journal-of-arrhythmia-14318",
+      "label": "Journal of Arrhythmia: official Ovid public catalogue, explicit JIF data year",
+      "verifiedAt": "2026-10-07T15:05:03Z",
+      "value": 1.9,
+      "year": 2025,
+      "issns": [
+        "1880-4276"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Science Advances",
+      "sourceId": "batch6-ovid-science-advances-15526",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/science-advances-15526",
+      "label": "Science Advances: official Ovid public catalogue, explicit JIF data year",
+      "verifiedAt": "2026-10-07T15:05:03Z",
+      "value": 13.9,
+      "year": 2025,
+      "issns": [
+        "2375-2548"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "The Clinical Teacher",
+      "sourceId": "batch6-ovid-clinical-teacher-the-2626",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/clinical-teacher-the-2626",
+      "label": "The Clinical Teacher: official Ovid public catalogue, explicit JIF data year",
+      "verifiedAt": "2026-10-07T15:05:03Z",
+      "value": 1.7,
+      "year": 2025,
+      "issns": [
+        "1743-4971"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Science",
+      "sourceId": "batch6-ovid-science-1250",
+      "url": "https://www.wolterskluwer.com/en/solutions/ovid/science-1250",
+      "label": "Science: official Ovid public catalogue, explicit JIF data year",
+      "verifiedAt": "2026-10-07T15:05:03Z",
+      "value": 47.3,
+      "year": 2025,
+      "issns": [
+        "0036-8075"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    },
+    {
+      "name": "Postgraduate Medical Journal",
+      "sourceId": "batch6-pmj",
+      "url": "https://academic.oup.com/pmj/pages/about",
+      "label": "Postgraduate Medical Journal: current OUP public metrics",
+      "verifiedAt": "2026-10-07T15:05:03Z",
+      "value": 3.6,
+      "year": 2025,
+      "issns": [
+        "1469-0756",
+        "0032-5473"
+      ],
+      "categories": [
+        {
+          "name": "Medicine, General & Internal",
+          "quartile": null,
+          "rank": 64,
+          "total": 336
+        }
+      ],
+      "categoryCoverage": "publisher_reported"
+    },
+    {
+      "name": "Journal of Thoracic Disease",
+      "sourceId": "batch6-jtd-announcement",
+      "url": "https://jtd.amegroups.org/announcement/view/10124",
+      "label": "JTD publisher AME announcement, 23 June 2026: explicit 2025 citation year",
+      "verifiedAt": "2026-10-07T15:05:03Z",
+      "value": 2.3,
+      "year": 2025,
+      "issns": [
+        "2072-1439",
+        "2077-6624"
+      ],
+      "categories": [],
+      "categoryCoverage": "unverified"
+    }
+  ],
+  "identityObservations": [
+    {
+      "name": "Heart Rhythm",
+      "aliases": [
+        "HeartRhythm"
+      ],
+      "issns": [
+        "1547-5271"
+      ],
+      "sourceId": "batch6-identity-heartrhythm",
+      "url": "https://www.mea.elsevierhealth.com/heart-rhythm-15475271.html",
+      "label": "Heart Rhythm: official Elsevier Health catalogue title and ISSN",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    },
+    {
+      "name": "Circulation: Cardiovascular Quality and Outcomes",
+      "aliases": [
+        "Circulation: Population Health and Outcomes"
+      ],
+      "issns": [],
+      "sourceId": "batch6-identity-circoutcomes-title",
+      "url": "https://mediakits.wkadcenter.com/mediakit/circulation-population-health-and-outcomes",
+      "label": "Publisher 2026 media kit explicitly states former and current Circulation title",
+      "verifiedAt": "2026-10-07T15:05:03Z"
+    }
+  ],
+  "notes": [
+    "Overlay only: integrate onto the current registry without replacing config/journal-metrics.json.",
+    "JTD announcement's category table is an image. Reader reports unsupported application/octet-stream; direct ordinary download returns HTTP 403. No category quartile was copied or inferred.",
+    "JAHA and Heart Rhythm remain unresolved for current JIF: indexed snippets alone did not establish journal/value/year together.",
+    "Only first sheet lines 1–1003 of the authorized user 2025 reference were searched; zero title/ISSN matches for JAHA and Heart Rhythm do not establish absence in the full workbook."
+  ]
+}

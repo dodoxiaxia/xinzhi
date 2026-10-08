@@ -11,10 +11,28 @@ from pathlib import Path
 PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
-    'index.html', 'app.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'scripts/ci_daily.py',
+    'scripts/public_precompute_pending.py', 'data/public-precompute-pending.json',
+    'editorial/sol-public-abstract-20261008-gap/sources.json',
+    'editorial/sol-public-abstract-20261008-gap/gap-cache.json',
+    'editorial/sol-public-abstract-20261008b-gap/sources.json',
+    'editorial/sol-public-abstract-20261008b-gap/gap-cache.json',
+    'editorial/sol-public-abstract-20261008c-gap/sources.json',
+    'editorial/sol-public-abstract-20261008c-gap/gap-cache.json',
+    '.github/workflows/fulltext.yml', 'scripts/fulltext_queue_runner.cjs',
+    'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
+    'scripts/check_fulltext_dispatcher.py',
+    'scripts/publication_dates.py',
+    'scripts/public_library_quality.py',
+    'scripts/apply_public_library.py',
+    'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
+    'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
+    'scripts/publication_status.py', 'config/publication-status.json',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
     'scripts/source_fallbacks.py', 'editorial/legacy_published_guides.json', 'data/pubmed.json',
+    'scripts/sync_public_library.py', 'config/public_library_adjudications.json',
     'data/candidates.json', 'data/library.json', 'data/source-health.json',
     'data/curated-archive.json', 'editorial/source_checked_drafts.json',
     'data/translations.json', 'data/media.json', 'data/picks.json',
@@ -22,6 +40,13 @@ INPUTS = (
     'data/weekly-board.json', 'scripts/week_precompute.py', 'scripts/validate_week_precompute.cjs', 'scripts/auto_picks.py',
     'scripts/week_precompute_cache.py', 'scripts/week_precompute_budget.py',
     'scripts/week_precompute_checkpoint.py', 'scripts/week_precompute_ci.py',
+    'scripts/week_precompute_usage.py',
+    'editorial/public_title_translations.json',
+    'editorial/public_content_corrections.json', 'scripts/public_content_corrections.py',
+    'scripts/public_editorial_overlay.py', 'scripts/preview_sol_public_overlay.py',
+    'editorial/sol-public-abstract-20261007/sources.json',
+    'editorial/sol-public-abstract-20261007/corrected-cache.json',
+    'scripts/abstract_quality.py', 'editorial/public_abstract_evidence.json',
 )
 
 

@@ -10,31 +10,47 @@ from pathlib import Path
 from unittest.mock import patch
 
 import build_public as builder
+import apply_public_library as snapshot_apply
+import sync_public_library as library_sync
 from package_release import PUBLIC, public_payloads
+from public_library_test_fixture import write_public_library_fixture
 
 
 def synthetic_root(root):
-    for folder in ('scripts', 'data', 'editorial', 'edge', 'docs'):
+    for folder in ('scripts', 'data', 'editorial', 'edge', 'docs', 'config'):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
-                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py'):
-        shutil.copyfile(Path(__file__).parent / name, root / 'scripts' / name)
-    shutil.copyfile(Path(__file__).parents[1] / 'editorial/legacy_published_guides.json',
+                 'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
+                 'publication_dates.py', 'journal_metrics.py', 'publication_status.py'):
+        shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
+    for module in (snapshot_apply, library_sync):
+        source = Path(module.__file__)
+        shutil.copyfile(source, root / 'scripts' / source.name)
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'editorial/legacy_published_guides.json',
                     root / 'editorial/legacy_published_guides.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/public_library_adjudications.json',
+                    root / 'config/public_library_adjudications.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/journal-metrics.json',
+                    root / 'config/journal-metrics.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/publication-status.json',
+                    root / 'config/publication-status.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
+                    root / 'journal-metrics.js')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'citation-export.js', root / 'citation-export.js')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
-        'icon.svg': '<svg></svg>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; // synthetic worker',
+        'icon.svg': '<svg></svg>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; const DOI_ADJUDICATIONS = {}; const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null; // synthetic worker',
     }.items():
         (root / name).write_text(text)
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     for name, data in {
         'data/candidates.json': {'updatedAt': now, 'items': []},
-        'data/library.json': {'papers': []},
         'data/source-health.json': {'checkedAt': now, 'sources': []},
         'editorial/source_checked_drafts.json': {'articles': []},
     }.items():
         (root / name).write_text(json.dumps(data))
+    write_public_library_fixture(root)
 
 
 class ReleaseBuildTests(unittest.TestCase):
@@ -45,12 +61,18 @@ class ReleaseBuildTests(unittest.TestCase):
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
             self.assertEqual(set(public_payloads(root)), PUBLIC)
+            self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
+            self.assertNotIn(b'citation-export.js', (root / 'public/index.html').read_bytes())
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())
             self.assertEqual(manifest['release'], builder.RELEASE)
             self.assertIsNotNone(manifest['buildProvenance']['inputs']['data/curated-archive.json'])
             # Provenance stays private in docs, outside the six-file public bundle.
             self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
-            for name in ('app.js', 'data/candidates.json', 'editorial/source_checked_drafts.json'):
+            for name in ('app.js', 'citation-export.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
+                         'config/public_library_adjudications.json',
+                         'scripts/publication_status.py', 'config/publication-status.json',
+                         'editorial/public_library_snapshot.json',
+                         'editorial/public_library_snapshot_manifest.json'):
                 with self.subTest(input=name):
                     file = root / name
                     before = file.read_bytes()

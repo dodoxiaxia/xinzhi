@@ -17,6 +17,7 @@ from auto_picks import CARDIO, GOOD_DESIGN, TOP
 from week_precompute_budget import BudgetError, reserve_runtime, reserve_configured
 import week_precompute_cache as cache_contract
 from week_precompute_checkpoint import CheckpointError
+from week_precompute_usage import ModelReply, record_usage, safe_usage
 
 ROOT=Path(__file__).resolve().parents[1]
 ZONE=dt.timezone(dt.timedelta(hours=8))
@@ -65,7 +66,7 @@ def aliases(p):
 def publication_day(p,clock):
  if p.get('datePrecision') not in (None,'day') or p.get('dateConfidence')=='低': return ''
  # Existing RSS values may have come from <updated>; require independent confirmation.
- if p.get('dateBasis') not in ('ArticleDate','Europe PMC firstPublicationDate','Crossref published-online','RSS published') or (p.get('dateBasis')=='RSS published' and not p.get('publicationVerified')): return ''
+ if p.get('dateBasis') not in ('ArticleDate','Europe PMC firstPublicationDate','Crossref published-online','RSS published','期刊官网 published-online（已复核）') or (p.get('dateBasis')=='RSS published' and not p.get('publicationVerified')): return ''
  raw=p.get('date')
  try:
   if not isinstance(raw,str): return ''
@@ -76,6 +77,9 @@ def publication_day(p,clock):
  except ValueError:return ''
 
 def public_abstract(p):
+ from abstract_quality import normalize_paper, readable_abstract
+ p=normalize_paper(p)
+ if not readable_abstract(p):return None
  if p.get('publicAbstractVerified') is True and p.get('abstractSource') in ('Europe PMC','Crossref'):
   abstract=clean(p.get('summary'))
   if p.get('summary_truncated') is False and 200<=len(abstract)<=6000 and not abstract.endswith(('…','...')):
@@ -163,7 +167,20 @@ def find(cache,p,task):
 def store(cache,p,task,value,model,generated_at,origin):
  return cache_contract.store(cache,p,task,value,model,generated_at,origin,validate,namespace=PROMPT_VERSION,configured_prompt=COMBINED_PROMPT)
 
-class Halt(ValueError):pass
+class Halt(ValueError):
+ def __init__(self, code, usage=None, finish_reason=None):
+  super().__init__(code);self.provider_usage=safe_usage(usage);self.finish_reason=finish_reason
+
+def finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report):
+ code=str(exc) if re.fullmatch(r'[a-z_0-9:]{1,120}',str(exc)) else 'processing_failed'
+ daily['paused']=code;ledger['paused']=code
+ if item is not None and item.get('status')=='started':
+  record_usage(item,exc);item['status']='failed_or_uncertain';item['failureCode']=code
+ atomic(ledger_path,ledger);report.update(stopped=True,blocker=code)
+ # A checkpoint failure poisons its backend: do not retry that uncertain write.
+ if checkpoint and not isinstance(exc,CheckpointError):
+  try:checkpoint.save(ledger,cache)
+  except CheckpointError as save_error:report['failureCheckpointBlocker']=str(save_error)
 class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args):raise Halt('redirect_blocked')
 
@@ -219,7 +236,17 @@ def runtime_value(task,result,p):
   raw=value;model=value.get('model');generated=value.get('generatedAt')
  return raw,model,generated
 
-def board(selected,window,cache,report,title_cache=None):
+def editorial_title(p,registry):
+ entry=registry.get('entries',{}).get(identity(p))
+ if not isinstance(entry,dict) or entry.get('origin')!='codex-editorial-translation':return ''
+ title=p.get('title','')
+ if entry.get('paperID')!=identity(p) or entry.get('sourceTitle')!=title or entry.get('sourceTitleHash')!=hashlib.sha256(title.encode()).hexdigest():return ''
+ if entry.get('pmid') and str(p.get('pmid',''))!=entry['pmid']:return ''
+ try:return validate('title',{'title_zh':entry.get('titleZh')},{'title':title,'abstract':''})['title_zh']
+ except ValueError:return ''
+
+def board(selected,window,cache,report,title_cache=None,editorial_titles=None):
+ editorial_titles=editorial_titles if editorial_titles is not None else read(ROOT/'editorial/public_title_translations.json',{'entries':{}})
  items=[]
  for rank,p in enumerate(selected,1):
   content={};meta={}
@@ -232,6 +259,7 @@ def board(selected,window,cache,report,title_cache=None):
    if candidate_title:
     try:legacy_title=validate('title',{'title_zh':candidate_title},p)['title_zh']
     except ValueError:pass
+  if not legacy_title:legacy_title=editorial_title(p,editorial_titles)
   study=None
   if 'study' in content:
    row={k:p.get(k,'') for k in ('title','doi','pmid','journal')};row.update(n=1,key='pmid:'+p['pmid'] if p.get('pmid') else p['paperID'],status='available',sourceFingerprint=p['sourceHash'],abstract_source=p['abstractSource'],source_url=p['abstractSourceUrl'],generatedAt=meta['study']['generatedAt'],model=meta['study']['modelVersion'],**content['study'])
@@ -246,6 +274,7 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
   report.update(stopped=True,blocker='paid_ci_requires_durable_checkpoint');return report
  if run and (ledger.get('paused') or daily.get('paused') or any(r['status']=='started' for r in daily['requests'])):
   report.update(stopped=True,blocker=ledger.get('paused') or daily.get('paused') or 'uncertain_prior_attempt');return report
+ item=None
  try:
   # Complete the read-only reuse pass before attempting paid work.
   for p in selected:
@@ -270,6 +299,7 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
      report['paidRequests']+=1
      return transport(RUNTIME+('/api/ql' if task=='quicklook' else '/api/ai'),ids if task=='quicklook' else {'task':task,**ids})
     result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
+    record_usage(item,result)
     item['cachedResponse']=result.get('cached') is True
     if item['cachedResponse']:report['confirmedPostCacheHits']+=1
     atomic(ledger_path,ledger)
@@ -279,10 +309,7 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
     item['status']='validated';atomic(ledger_path,ledger)
     if checkpoint:checkpoint.save(ledger,cache)
  except (Halt,ValueError) as exc:
-  code=str(exc) if re.fullmatch(r'[a-z_0-9:]{1,120}',str(exc)) else 'processing_failed'
-  daily['paused']=code;ledger['paused']=code
-  if daily['requests'] and daily['requests'][-1]['status']=='started':daily['requests'][-1]['status']='failed_or_uncertain'
-  atomic(ledger_path,ledger);report.update(stopped=True,blocker=code)
+  finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report)
  finally:
   report['remainingBudget']=max(0,limit-daily['reservedAttempts'])
   report['remainingOutputTokens']=max(0,MAX_DAILY_OUTPUT_TOKENS-daily['reservedOutputTokens']) if 'reservedOutputTokens' in daily else None
@@ -330,15 +357,12 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   try:
    with urllib.request.build_opener(NoModelRedirect).open(req,timeout=90) as response:raw=response.read(1000001)
    if len(raw)>1000000:raise Halt('response_too_large')
-   result=json.loads(raw);choice=result['choices'][0]
-   if choice.get('finish_reason')=='length':raise Halt('model_output_truncated')
-   if choice.get('finish_reason') not in ('stop',):raise Halt('model_output_incomplete')
-   value=json.loads(choice['message']['content'])
-   if not isinstance(value,dict):raise Halt('model_output_invalid')
-   return value
+   return parse_configured_response(json.loads(raw))
   except urllib.error.HTTPError as exc:raise Halt('provider_http_'+str(exc.code)) from None
   except (urllib.error.URLError,TimeoutError,OSError):raise Halt('provider_transport_error') from None
+  except Halt:raise
   except (ValueError,KeyError,IndexError,TypeError):raise Halt('model_output_invalid') from None
+ item=None
  try:
   for p in selected:
    missing=[task for task in TASKS if not find(cache,p,task)[0]]
@@ -354,6 +378,8 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
     report['paidRequests']+=1
     return (model_call or call)(public)
    result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
+   record_usage(item,result);atomic(ledger_path,ledger)
+   if checkpoint:checkpoint.save(ledger,cache)
    invalid=False
    for task in missing:
     try:
@@ -366,12 +392,22 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
    item['status']='validated';atomic(ledger_path,ledger)
    if checkpoint:checkpoint.save(ledger,cache)
  except (Halt,ValueError) as exc:
-  code=str(exc) if re.fullmatch(r'[a-z_0-9:]{1,120}',str(exc)) else 'processing_failed'
-  daily['paused']=code;ledger['paused']=code
-  if daily['requests'] and daily['requests'][-1]['status']=='started':daily['requests'][-1]['status']='failed_or_uncertain'
-  atomic(ledger_path,ledger);report.update(stopped=True,blocker=code)
+  finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report)
  report['remainingBudget']=max(0,limit-daily['reservedAttempts'])
  return report
+
+def parse_configured_response(result):
+ usage=result.get('usage') if isinstance(result,dict) else None
+ reason=None
+ try:
+  choice=result['choices'][0];reason=choice.get('finish_reason')
+  if reason=='length':raise Halt('model_output_truncated',usage,reason)
+  if reason!='stop':raise Halt('model_output_incomplete',usage,reason)
+  value=json.loads(choice['message']['content'])
+  if not isinstance(value,dict):raise Halt('model_output_invalid',usage,reason)
+  return ModelReply(value,usage,reason)
+ except (KeyError,IndexError,TypeError,json.JSONDecodeError):
+  raise Halt('model_output_invalid',usage,reason) from None
 
 def main(argv=None):
  ap=argparse.ArgumentParser(description=__doc__)
@@ -404,7 +440,9 @@ def main(argv=None):
   if report.get('stopped'):pass
   elif args.read_runtime_cache or (args.run and args.provider=='runtime'):report=acquire_runtime(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,args.run,checkpoint=checkpoint)
   elif args.run:report=configured_batch(selected,cache,cache_path,ledger,ledger_path,args.attempt_limit,checkpoint=checkpoint)
-  result=board(selected,window,cache,report,read(ROOT/'data/translations.json',{}));atomic(args.output,result)
+  result=board(selected,window,cache,report,read(ROOT/'data/translations.json',{}))
+  from public_editorial_overlay import apply_board, load_board
+  result=apply_board(result,load_board(ROOT));atomic(args.output,result)
   print(json.dumps({'window':window,'coverage':result['coverage'],'run':report},ensure_ascii=False))
   return 1 if report.get('stopped') else 0
  finally:lock.unlink(missing_ok=True)

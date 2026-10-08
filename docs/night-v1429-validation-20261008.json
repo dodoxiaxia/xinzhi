@@ -1,0 +1,112 @@
+{
+  "baseSource": "655975cf75ed1a08d5a8ce03a2847c4a31af5f9f",
+  "baseState": "1c9bdb528717b4cfd687b2557d8c3d16dde25d2d",
+  "publicQualityCandidate": "50ac33f5ae6b6fd4184aca5dfbb542167948c75b",
+  "counts": {
+    "radar": 902,
+    "library": 1264,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 11,
+    "radar_archive_titles": 0,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 24,
+      "translate": 18,
+      "study": 0,
+      "quicklook": 18
+    }
+  },
+  "approvedSnapshotBytesUnchanged": true,
+  "publicOnly": true,
+  "baselineScroll": {
+    "fixedExpected": false,
+    "scope": "Offline Chromium using exact public files; external requests intercepted",
+    "records": [
+      {
+        "width": 320,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 900,
+        "listPositionRestored": true,
+        "openerFocusRestored": false,
+        "noOverflow": true
+      },
+      {
+        "width": 390,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 900,
+        "listPositionRestored": true,
+        "openerFocusRestored": false,
+        "noOverflow": true
+      },
+      {
+        "width": 768,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 900,
+        "listPositionRestored": true,
+        "openerFocusRestored": false,
+        "noOverflow": true
+      },
+      {
+        "width": 1440,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 900,
+        "listPositionRestored": true,
+        "openerFocusRestored": false,
+        "noOverflow": true
+      }
+    ],
+    "posts": [],
+    "pageErrors": []
+  },
+  "candidateScroll": {
+    "fixedExpected": true,
+    "scope": "Offline Chromium using exact public files; external requests intercepted",
+    "records": [
+      {
+        "width": 320,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      },
+      {
+        "width": 390,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      },
+      {
+        "width": 768,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      },
+      {
+        "width": 1440,
+        "previousArticleScroll": 900,
+        "sameArticleScroll": 900,
+        "newArticleScroll": 0,
+        "listPositionRestored": true,
+        "openerFocusRestored": true,
+        "noOverflow": true
+      }
+    ],
+    "posts": [],
+    "pageErrors": []
+  },
+  "newPaidRequests": 0,
+  "privatePdfChanges": false
+}

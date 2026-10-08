@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-07T18:02:05.794739+00:00",
+  "reviewType": "independent-sol-session-public-abstract-semantic-review",
+  "reviewer": {
+    "agentTask": "/root/gap_sol_review_a",
+    "requestedModel": "gpt-6.1-sol",
+    "actualModelVersion": "unobserved",
+    "backendModelVerified": false,
+    "humanReview": false,
+    "medicalFinalReview": false,
+    "fullTextReview": false
+  },
+  "scope": "Fixed local public English titles/abstracts versus complete Chinese translation and every quicklook field for ranks 15,16,21; no full text or external supplementation.",
+  "inputs": {
+    "sources": "editorial/sol-public-abstract-20261008-gap/sources.json",
+    "sourcesFileSha256": "e1c9d1994ad833ffe6c8e376a680aa65d0208e99a5a58d0c1b818a27935a2490",
+    "draft": "editorial/sol-public-abstract-20261008-gap/drafts/batch-a.json",
+    "draftFileSha256": "ada673085a5fffeee11b4108cbdf92a66f071907617e455753f455592150bf41"
+  },
+  "method": "Direct independent rereading of all three final complete translations and every quicklook field against the fixed public English titles/abstracts after revision; title/newline/abstract source hashes, identifiers, snapshot dates, numbers with denominators/units, null results, design/applicability and every literal continuous finding quote checked; unmodified production validator rerun for all six final tasks.",
+  "networkCalls": 0,
+  "providerApiCalls": 0,
+  "overallPass": true,
+  "gateStatus": "passed-for-final-batch-a",
+  "papers": [
+    {
+      "rank": 15,
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "doi": "10.1038/s41591-026-04704-z",
+      "pmid": "42839103",
+      "sourceDate": "2026-10-06",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839103/",
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "computedSourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "identitiesMatchSnapshot": true,
+      "sourceDateInWindow": true,
+      "sourceAbstractSha256": "f44eb76d7acb1834124b4ba2790c3da637ad7fb9eeaa6efe3d57d88db171867c",
+      "literalQuoteCount": 4,
+      "literalQuoteOffsets": [
+        505,
+        905,
+        1054,
+        1310
+      ],
+      "allQuotesLiteralContinuous": true,
+      "pass": true,
+      "issues": [],
+      "confirmed": [
+        "完整摘要逐句对应公开英文摘要；标题及QL标题忠实，四例初期数据与最长15个月延长随访分开。",
+        "无白细胞单采/淋巴清除、主要/次要终点、1-3级CRS、≥3级血液学毒性、1级ICANS、100%ORR及两例sCR/两例PR正确。",
+        "一例sCR15个月、中位PFS4.0个月（3.0-15.0）、进展后挽救治疗对应输注后OS5.5-10.9个月正确；三例伴髓外受累的复发/进展并最终死亡未删。",
+        "未发生免疫原性/整合相关毒性及初报后无重要ESO-T01相关不良事件的时间和因果范围保留。",
+        "ex vivo CAR-T后的扩增与持久缓解单独表述，未合并为体内治疗的持久疗效；未推断其与死亡三例/仍维持sCR一例的患者身份关系。",
+        "QL design、四条findings、limits、why_read保持小样本随访及持续性有限的定位；最终one_line明确一例严格完全缓解与其余患者复发/进展并死亡，已消除PR类别歧义。"
+      ],
+      "resolvedIssues": [
+        {
+          "severity": "moderate",
+          "gateBlocking": true,
+          "field": "quicklook.one_line",
+          "kind": "response_category_ambiguity",
+          "draftText": "四例患者的延长随访显示部分缓解持久，但复发、进展和死亡仍突出。",
+          "sourceQuote": "Of the four patients, one maintained stringent complete response for 15 months.",
+          "reason": "“部分缓解”也是partial response（PR）的固定临床术语；该句可能将持久缓解归于PR，而公开摘要明确归于一例严格完全缓解。",
+          "suggestedReplacement": "一例严格完全缓解持续较久，但其余患者复发、进展并死亡。",
+          "status": "resolved",
+          "resolution": "Independently reread the current full final translation and every quicklook field against the fixed English title and abstract; corrected comparison/category wording now matches the source."
+        }
+      ],
+      "translationValueSha256": "97d3119fb40944acc6bff748bacd6f2c1f6baa775c491bb71239451c5298691f",
+      "quicklookValueSha256": "e2f7cc7e0b66a0d3a87cd3f12ec8954cb37150a01405d851525728980a177231"
+    },
+    {
+      "rank": 16,
+      "paperID": "doi:10.1038/s41591-026-04673-3",
+      "doi": "10.1038/s41591-026-04673-3",
+      "pmid": "42827132",
+      "sourceDate": "2026-10-02",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827132/",
+      "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "computedSourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "identitiesMatchSnapshot": true,
+      "sourceDateInWindow": true,
+      "sourceAbstractSha256": "3e2c12c2fe6273cc660a7cc61a745269e9f97917bc7ed58809743b97baf6d4e6",
+      "literalQuoteCount": 4,
+      "literalQuoteOffsets": [
+        535,
+        744,
+        939,
+        1174
+      ],
+      "allQuotesLiteralContinuous": true,
+      "pass": true,
+      "issues": [],
+      "confirmed": [
+        "标题及完整摘要涵盖uRARE-seq方法、683份尿液样本（非683名患者）、泌尿生殖组织及三种癌症的肿瘤来源转录本。",
+        "局限性膀胱癌95%敏感度/90%特异度对应正确；优于尿液肿瘤DNA及不受场效应突变影响的结果保留。",
+        "MRD和手术后/膀胱内BCG治疗后完全分子学缓解的区别保留；BCG完全缓解者治疗前T细胞/免疫特征及不缓解者增殖基因对照保留。",
+        "114例为治疗前尿液来源的患者数，AUC0.93与标志物开发及复发风险相关性正确；最终完整译文及QLfinding[3]明确BCG相较于化疗的治疗反应可能性，保留比较指向。",
+        "QL title、one_line、design、全部findings、limits、why_read忠实；临床效用仍需前瞻性研究，未称前瞻性已验证工具。"
+      ],
+      "resolvedIssues": [
+        {
+          "severity": "moderate",
+          "gateBlocking": true,
+          "field": "translate.abstract_zh; quicklook.findings[3].text",
+          "kind": "comparison_qualifier_omission",
+          "draftText": "预测对BCG治疗与化疗发生反应的可能性；预测BCG与化疗反应可能性的标志物",
+          "sourceQuote": "a biomarker predicting likelihood of response to BCG versus chemotherapy (area under the curve 0.93)",
+          "reason": "“与”表达并列，未保留versus所指向的BCG相较于化疗的治疗反应比较。应恢复比较指向，同时保留开发性结果及前瞻性临床效用待评估的限定。",
+          "suggestedReplacement": "预测BCG相较于化疗的治疗反应可能性",
+          "status": "resolved",
+          "resolution": "Independently reread the current full final translation and every quicklook field against the fixed English title and abstract; corrected comparison/category wording now matches the source."
+        }
+      ],
+      "translationValueSha256": "30a40bfe5abaaf68723a12aaa1534f403d08efc9080e7640eaf315bffb3f4f22",
+      "quicklookValueSha256": "8403e73666ed45414d7b79109a5c4f33a66ee789239deb9e6dbb5d4da6ea8a80"
+    },
+    {
+      "rank": 21,
+      "paperID": "doi:10.1093/europace/euag272",
+      "doi": "10.1093/europace/euag272",
+      "pmid": "42834820",
+      "sourceDate": "2026-10-06",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834820/",
+      "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "computedSourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "identitiesMatchSnapshot": true,
+      "sourceDateInWindow": true,
+      "sourceAbstractSha256": "a898bae70abcc52e8561cb1886e59f539f6dbd18c6843d25ed0989b3cc0b04e0",
+      "literalQuoteCount": 4,
+      "literalQuoteOffsets": [
+        958,
+        1176,
+        1386,
+        1540
+      ],
+      "allQuotesLiteralContinuous": true,
+      "pass": true,
+      "issues": [],
+      "confirmed": [
+        "标题/QL设计明确随机POTCAST母试验中的预先指定观察性分析，按升钾后方案分组，没有声称三个方案随机分配。",
+        "母试验n=1,200；本分析600名对照及完成上调的572名干预者正确；未将各组事件数当成组内总分母。",
+        "复合终点各成分及死亡/电解质/肾脏安全性结局完整；六个月三组血钾基线/末值、mmol/L及0.004/<0.001/<0.001分别对应正确。",
+        "主要终点对照29%(n=175)、MRA22%(n=16)、补充剂21%(n=31)、联合22%(n=72)，方案间p=0.8，全部保留。",
+        "低钾13%/3%/9%/5%，高钾0.2%/0%/3%/4%及方案间p>0.1，对应正确。",
+        "数值更低为相关性表述；未检出显著结局或安全性差异得到保留，无等效或优效推断。",
+        "QL全部字段忠实；limits如实说明摘要未给明确局限，design仍保留观察性分析；why_read不构成治疗推荐。"
+      ],
+      "resolvedIssues": [],
+      "translationValueSha256": "8f06b4a300702597640dd940ea1588089e651b6903e2cba3282388ed7d891ce1",
+      "quicklookValueSha256": "936f9ade7b1fc7c47dc91104026b23bc906ba22e39c366bc7fd2d86c01b8b357"
+    }
+  ],
+  "mechanicalValidation": {
+    "validator": "scripts/validate_week_precompute.cjs",
+    "rulesRelaxed": false,
+    "tasksValidated": 6,
+    "results": [
+      {
+        "rank": 15,
+        "task": "translate",
+        "pass": true,
+        "returnedValueMatchesDraft": true
+      },
+      {
+        "rank": 15,
+        "task": "quicklook",
+        "pass": true,
+        "returnedValueMatchesDraft": true
+      },
+      {
+        "rank": 16,
+        "task": "translate",
+        "pass": true,
+        "returnedValueMatchesDraft": true
+      },
+      {
+        "rank": 16,
+        "task": "quicklook",
+        "pass": true,
+        "returnedValueMatchesDraft": true
+      },
+      {
+        "rank": 21,
+        "task": "translate",
+        "pass": true,
+        "returnedValueMatchesDraft": true
+      },
+      {
+        "rank": 21,
+        "task": "quicklook",
+        "pass": true,
+        "returnedValueMatchesDraft": true
+      }
+    ],
+    "sourceHashBindingsChecked": 3,
+    "literalFindingQuotesChecked": 12
+  },
+  "limitations": "Model review only; requested gpt-6.1-sol backend identity is unverified. Not human, medical final or full-text review. Source dates/identities are verified against the fixed supplied snapshot, not re-fetched remotely.",
+  "writeScope": "Only reviews/batch-a-review.json written; sources/drafts/cache/ledger unchanged by this reviewer.",
+  "priorReview": {
+    "draftFileSha256": "3cf6aded84ef6d5c1df2382a0e216578b639f10effc72be6c7c68a1826f5f33d",
+    "sourcesFileSha256": "e1c9d1994ad833ffe6c8e376a680aa65d0208e99a5a58d0c1b818a27935a2490",
+    "overallPass": false,
+    "blockingIssueCount": 2,
+    "mechanicalValidatorTasksPassed": 6,
+    "issuesRecordedIn": "papers[].resolvedIssues"
+  }
+}

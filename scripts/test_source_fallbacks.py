@@ -1,11 +1,12 @@
 """Offline source health: distinguish observed fallback from configured coverage."""
 import datetime
+import hashlib
 import unittest
 import xml.etree.ElementTree as ET
 
 import build_public
 import fetch_pubmed
-from source_fallbacks import ADDITIONAL_JOURNALS, coverage, journal_query
+from source_fallbacks import ADDITIONAL_JOURNALS, TOPIC_TERM, coverage, journal_query
 
 NOW = datetime.datetime(2026, 10, 7, 8, tzinfo=datetime.timezone.utc)
 
@@ -84,8 +85,48 @@ class SourceFallbackTests(unittest.TestCase):
         self.assertIn('"Nature Communications"[Journal] AND ', query)
         self.assertIn('"cardiovascular"[Title/Abstract]', query)
         self.assertIn('"large language model"[Title/Abstract]', query)
-        out = coverage(source('Nature Communications'), snapshot(journals=['Nature Communications']), NOW)
+        out = coverage(source('Nature Communications'), snapshot(journals=['Nature Communications'], query=query), NOW)
         self.assertEqual(out['queryScope'], 'cardiovascular_or_ai')
+
+    def test_health_systems_query_keeps_agentic_health_data_in_medical_scope(self):
+        # PMID 42791307: title/abstract say "agentic" without the old AI/cardio
+        # search phrases. The observed public record must remain retrievable.
+        self.assertEqual(journal_query('npj Health Systems'), '"npj Health Systems"[Journal]')
+        self.assertIn('[Title/Abstract]', journal_query('Nature Communications'))
+        out = coverage(source('npj Health Systems'), snapshot(journals=['npj Health Systems'],
+            query='("npj Health Systems"[Journal]) AND ("2026/09/24"[Date - Publication] : "2026/10/07"[Date - Publication])'), NOW)
+        self.assertEqual(out['queryScope'], 'journal')
+
+    def test_previous_topic_snapshot_is_not_relabelled_after_policy_change(self):
+        old_query='("npj Health Systems"[Journal] AND ' + TOPIC_TERM + ')'
+        out = coverage(source('npj Health Systems'), snapshot(journals=['npj Health Systems'], query=old_query), NOW)
+        self.assertEqual(out['queryScope'], 'cardiovascular_or_ai')
+        self.assertEqual(out['status'], 'no_records_observed')
+        self.assertEqual(out['queryHash'], hashlib.sha256(old_query.encode()).hexdigest())
+
+    def test_missing_or_unrecognized_snapshot_query_does_not_claim_full_scope(self):
+        for query in (None, '', 42, '"Nature Medicine"[Journal]',
+                      '"npj Health Systems"[Journal] AND ("diabetes"[Title/Abstract])'):
+            with self.subTest(query=query):
+                out = coverage(source('npj Health Systems'), snapshot(journals=['npj Health Systems'], query=query), NOW)
+                self.assertEqual(out['queryScope'], 'unknown')
+                self.assertEqual(out['status'], 'no_records_observed')
+        out = coverage(source('npj Health Systems'), snapshot(journals=['npj Health Systems']), NOW)
+        self.assertIsNone(out['queryHash'])
+
+    def test_publication_date_window_is_not_mistaken_for_topic_filter(self):
+        query = '"npj Health Systems"[Journal] AND ("2026/09/24"[Date - Publication] : "2026/10/07"[Date - Publication])'
+        out = coverage(source('npj Health Systems'), snapshot(journals=['npj Health Systems'], query=query), NOW)
+        self.assertEqual(out['queryScope'], 'journal')
+        self.assertEqual(out['queryHash'], hashlib.sha256(query.encode()).hexdigest())
+
+    def test_generated_multi_journal_snapshot_keeps_each_clause_scope(self):
+        journals = ['npj Health Systems', 'Nature Communications', 'Nature Reviews Cardiology']
+        query = '(' + ' OR '.join(journal_query(j) for j in journals) + ') AND ("2026/09/24"[Date - Publication] : "2026/10/07"[Date - Publication])'
+        for journal, scope in zip(journals, ('journal', 'cardiovascular_or_ai', 'journal')):
+            with self.subTest(journal=journal):
+                out = coverage(source(journal), snapshot(journals=journals, query=query), NOW)
+                self.assertEqual(out['queryScope'], scope)
 
     def test_pubmed_iso_abbreviation_retained_for_journal_matching(self):
         root = ET.fromstring('<PubmedArticleSet><PubmedArticle><MedlineCitation><PMID>1</PMID><Article><ArticleTitle>Cardiac care</ArticleTitle><Journal><Title>Unknown full name</Title><ISOAbbreviation>Heart Rhythm</ISOAbbreviation></Journal></Article></MedlineCitation></PubmedArticle></PubmedArticleSet>')

@@ -286,7 +286,7 @@ function clone(value) { return JSON.parse(JSON.stringify(value)); }
   const deadline = harness({ timers: (callback, delay) => setTimeout(callback, delay === 35000 ? 5 : delay) });
   deadline.ctx.resolveMeta = async () => new Promise(() => {});
   const expired = await deadline.post({ task: 'compare', items: [{ pmid: '111' }, { pmid: '222' }] });
-  assert.equal(expired.status, 422); assert(expired.body.papers.every(p => p.reason === 'metadata_timeout')); assert.equal(deadline.stats.model, 0);
+  assert.equal(expired.status, 504); assert.equal(expired.body.error, 'metadata_timeout'); assert(expired.body.papers.every(p => p.reason === 'metadata_timeout')); assert.equal(deadline.stats.model, 0);
   // The metadata deadline aborts the actual fetch signal even after headers arrive.
   const bodyStall = harness({ timers: (callback, delay) => setTimeout(callback, delay === 35000 ? 10 : delay) });
   const bodyFetch = bodyStall.ctx.fetch;

@@ -15,6 +15,7 @@ import argparse, datetime, json, sys, time, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from build_data import clean
+from publication_status import pubmed_relations
 
 ROOT = Path(__file__).resolve().parents[1]
 STORE = ROOT / 'data/archive-full.json'
@@ -60,6 +61,7 @@ def parse_efetch(xml_bytes):
                      'k': [txt(k) for k in art.findall('.//KeywordList/Keyword')][:12],
                      'd': ids.get('doi', ''), 'pmc': ids.get('pmc', ''),
                      'pt': [txt(p) for p in art.findall('.//PublicationTypeList/PublicationType')],
+                     'pubmedRelations': pubmed_relations(art),
                      'lg': txt(art.find('.//Language')), 'src': 'pubmed'}
     return out
 

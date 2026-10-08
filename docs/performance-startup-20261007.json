@@ -1,0 +1,674 @@
+{
+  "offline": true,
+  "cpuThrottle": 4,
+  "chromium": "151.0.7922.173",
+  "samples": [
+    {
+      "i": 0,
+      "kind": "baseline",
+      "mode": "curated",
+      "scriptMs": 797.8199999999999,
+      "taskMs": 1725.3970000000002,
+      "dclMs": 1911.399999999965,
+      "facetCount": 3,
+      "facetMs": 69.70000000001164
+    },
+    {
+      "i": 0,
+      "kind": "candidate",
+      "mode": "curated",
+      "scriptMs": 691.465,
+      "taskMs": 1292.4569999999999,
+      "dclMs": 1314.0999999999767,
+      "facetCount": 2,
+      "facetMs": 48.50000000005821
+    },
+    {
+      "i": 0,
+      "kind": "baseline",
+      "mode": "candidates",
+      "scriptMs": 1441.5739999999998,
+      "taskMs": 2057.5800000000004,
+      "dclMs": 2109.100000000035,
+      "facetCount": 3,
+      "facetMs": 673.8999999999651
+    },
+    {
+      "i": 0,
+      "kind": "candidate",
+      "mode": "candidates",
+      "scriptMs": 1298.603,
+      "taskMs": 1925.4,
+      "dclMs": 1937.7000000000116,
+      "facetCount": 2,
+      "facetMs": 420.30000000004657
+    },
+    {
+      "i": 0,
+      "kind": "baseline",
+      "mode": "library",
+      "scriptMs": 900.558,
+      "taskMs": 1515.2749999999999,
+      "dclMs": 1579.8000000000466,
+      "facetCount": 3,
+      "facetMs": 244.70000000001164
+    },
+    {
+      "i": 0,
+      "kind": "candidate",
+      "mode": "library",
+      "scriptMs": 753.779,
+      "taskMs": 1297.6000000000001,
+      "dclMs": 1392,
+      "facetCount": 2,
+      "facetMs": 150.5999999999185
+    },
+    {
+      "i": 0,
+      "kind": "baseline",
+      "mode": "weekly",
+      "scriptMs": 667.9150000000001,
+      "taskMs": 1240.68,
+      "dclMs": 1221.5,
+      "facetCount": 2,
+      "facetMs": 106.40000000008149
+    },
+    {
+      "i": 0,
+      "kind": "candidate",
+      "mode": "weekly",
+      "scriptMs": 612.244,
+      "taskMs": 1121.361,
+      "dclMs": 1221.5999999999767,
+      "facetCount": 1,
+      "facetMs": 51.70000000001164
+    },
+    {
+      "i": 0,
+      "kind": "baseline",
+      "mode": "sources",
+      "scriptMs": 853.155,
+      "taskMs": 1434.279,
+      "dclMs": 1520.2000000000116,
+      "facetCount": 2,
+      "facetMs": 144.20000000001164
+    },
+    {
+      "i": 0,
+      "kind": "candidate",
+      "mode": "sources",
+      "scriptMs": 757.029,
+      "taskMs": 1441.06,
+      "dclMs": 1518.5999999999767,
+      "facetCount": 1,
+      "facetMs": 63.399999999965075
+    },
+    {
+      "i": 1,
+      "kind": "candidate",
+      "mode": "curated",
+      "scriptMs": 680.836,
+      "taskMs": 1295.125,
+      "dclMs": 1342.7000000000116,
+      "facetCount": 2,
+      "facetMs": 47.90000000002328
+    },
+    {
+      "i": 1,
+      "kind": "baseline",
+      "mode": "curated",
+      "scriptMs": 806.471,
+      "taskMs": 1389.6109999999999,
+      "dclMs": 1474.600000000035,
+      "facetCount": 3,
+      "facetMs": 81.29999999998836
+    },
+    {
+      "i": 1,
+      "kind": "candidate",
+      "mode": "candidates",
+      "scriptMs": 1172.556,
+      "taskMs": 1696.606,
+      "dclMs": 1794.899999999965,
+      "facetCount": 2,
+      "facetMs": 389.0999999999767
+    },
+    {
+      "i": 1,
+      "kind": "baseline",
+      "mode": "candidates",
+      "scriptMs": 1472.641,
+      "taskMs": 2199.3830000000003,
+      "dclMs": 2163.5999999999767,
+      "facetCount": 3,
+      "facetMs": 663.3999999999069
+    },
+    {
+      "i": 1,
+      "kind": "candidate",
+      "mode": "library",
+      "scriptMs": 797.217,
+      "taskMs": 1354.071,
+      "dclMs": 1481.4000000000233,
+      "facetCount": 2,
+      "facetMs": 164
+    },
+    {
+      "i": 1,
+      "kind": "baseline",
+      "mode": "library",
+      "scriptMs": 835.063,
+      "taskMs": 1459.552,
+      "dclMs": 1473.7999999999884,
+      "facetCount": 3,
+      "facetMs": 220.30000000004657
+    },
+    {
+      "i": 1,
+      "kind": "candidate",
+      "mode": "weekly",
+      "scriptMs": 650.831,
+      "taskMs": 1207.423,
+      "dclMs": 1231.600000000035,
+      "facetCount": 1,
+      "facetMs": 64.60000000003492
+    },
+    {
+      "i": 1,
+      "kind": "baseline",
+      "mode": "weekly",
+      "scriptMs": 777.962,
+      "taskMs": 1398.42,
+      "dclMs": 1392.2999999999884,
+      "facetCount": 2,
+      "facetMs": 147.20000000001164
+    },
+    {
+      "i": 1,
+      "kind": "candidate",
+      "mode": "sources",
+      "scriptMs": 728.439,
+      "taskMs": 1432.693,
+      "dclMs": 1448.7000000000116,
+      "facetCount": 1,
+      "facetMs": 62.300000000046566
+    },
+    {
+      "i": 1,
+      "kind": "baseline",
+      "mode": "sources",
+      "scriptMs": 848.236,
+      "taskMs": 1472.977,
+      "dclMs": 1538.7999999999884,
+      "facetCount": 2,
+      "facetMs": 137.70000000006985
+    },
+    {
+      "i": 2,
+      "kind": "baseline",
+      "mode": "curated",
+      "scriptMs": 599.165,
+      "taskMs": 1156.437,
+      "dclMs": 1238.0999999999767,
+      "facetCount": 3,
+      "facetMs": 58.40000000002328
+    },
+    {
+      "i": 2,
+      "kind": "candidate",
+      "mode": "curated",
+      "scriptMs": 647.236,
+      "taskMs": 1307.839,
+      "dclMs": 1337.4000000000233,
+      "facetCount": 2,
+      "facetMs": 40.70000000001164
+    },
+    {
+      "i": 2,
+      "kind": "baseline",
+      "mode": "candidates",
+      "scriptMs": 1465.3799999999999,
+      "taskMs": 2070.4449999999997,
+      "dclMs": 2078.100000000035,
+      "facetCount": 3,
+      "facetMs": 617.6999999999534
+    },
+    {
+      "i": 2,
+      "kind": "candidate",
+      "mode": "candidates",
+      "scriptMs": 1114.107,
+      "taskMs": 1653.6409999999998,
+      "dclMs": 1725.600000000035,
+      "facetCount": 2,
+      "facetMs": 395.5
+    },
+    {
+      "i": 2,
+      "kind": "baseline",
+      "mode": "library",
+      "scriptMs": 863.488,
+      "taskMs": 1491.82,
+      "dclMs": 1568.6999999999534,
+      "facetCount": 3,
+      "facetMs": 239.70000000001164
+    },
+    {
+      "i": 2,
+      "kind": "candidate",
+      "mode": "library",
+      "scriptMs": 887.386,
+      "taskMs": 1454.698,
+      "dclMs": 1488.899999999965,
+      "facetCount": 2,
+      "facetMs": 184.09999999997672
+    },
+    {
+      "i": 2,
+      "kind": "baseline",
+      "mode": "weekly",
+      "scriptMs": 723.7379999999999,
+      "taskMs": 1292.901,
+      "dclMs": 1324.2999999999884,
+      "facetCount": 2,
+      "facetMs": 121.90000000002328
+    },
+    {
+      "i": 2,
+      "kind": "candidate",
+      "mode": "weekly",
+      "scriptMs": 598.151,
+      "taskMs": 1186.179,
+      "dclMs": 1228.2000000000116,
+      "facetCount": 1,
+      "facetMs": 60.699999999953434
+    },
+    {
+      "i": 2,
+      "kind": "baseline",
+      "mode": "sources",
+      "scriptMs": 855.1189999999999,
+      "taskMs": 1587.858,
+      "dclMs": 1600.4000000000233,
+      "facetCount": 2,
+      "facetMs": 151.5
+    },
+    {
+      "i": 2,
+      "kind": "candidate",
+      "mode": "sources",
+      "scriptMs": 802.0699999999999,
+      "taskMs": 1504.797,
+      "dclMs": 1558.7999999999884,
+      "facetCount": 1,
+      "facetMs": 61.79999999998836
+    },
+    {
+      "i": 3,
+      "kind": "candidate",
+      "mode": "curated",
+      "scriptMs": 672.2099999999999,
+      "taskMs": 1277.58,
+      "dclMs": 1333.5999999999767,
+      "facetCount": 2,
+      "facetMs": 53
+    },
+    {
+      "i": 3,
+      "kind": "baseline",
+      "mode": "curated",
+      "scriptMs": 688.52,
+      "taskMs": 1248.65,
+      "dclMs": 1327.2999999999884,
+      "facetCount": 3,
+      "facetMs": 55.50000000005821
+    },
+    {
+      "i": 3,
+      "kind": "candidate",
+      "mode": "candidates",
+      "scriptMs": 1143.8410000000001,
+      "taskMs": 1755.5929999999998,
+      "dclMs": 1803.0999999999767,
+      "facetCount": 2,
+      "facetMs": 386.5999999999767
+    },
+    {
+      "i": 3,
+      "kind": "baseline",
+      "mode": "candidates",
+      "scriptMs": 1460.949,
+      "taskMs": 2086.09,
+      "dclMs": 2122,
+      "facetCount": 3,
+      "facetMs": 663.0999999999767
+    },
+    {
+      "i": 3,
+      "kind": "candidate",
+      "mode": "library",
+      "scriptMs": 792.423,
+      "taskMs": 1430.314,
+      "dclMs": 1451.100000000035,
+      "facetCount": 2,
+      "facetMs": 143.19999999995343
+    },
+    {
+      "i": 3,
+      "kind": "baseline",
+      "mode": "library",
+      "scriptMs": 881.231,
+      "taskMs": 1579.519,
+      "dclMs": 1575.1999999999534,
+      "facetCount": 3,
+      "facetMs": 247
+    },
+    {
+      "i": 3,
+      "kind": "candidate",
+      "mode": "weekly",
+      "scriptMs": 635.837,
+      "taskMs": 1105.106,
+      "dclMs": 1181.5999999999767,
+      "facetCount": 1,
+      "facetMs": 62.5
+    },
+    {
+      "i": 3,
+      "kind": "baseline",
+      "mode": "weekly",
+      "scriptMs": 745.794,
+      "taskMs": 1277.811,
+      "dclMs": 1340.7999999999302,
+      "facetCount": 2,
+      "facetMs": 129
+    },
+    {
+      "i": 3,
+      "kind": "candidate",
+      "mode": "sources",
+      "scriptMs": 789.187,
+      "taskMs": 1384.142,
+      "dclMs": 1485.5,
+      "facetCount": 1,
+      "facetMs": 71.80000000004657
+    },
+    {
+      "i": 3,
+      "kind": "baseline",
+      "mode": "sources",
+      "scriptMs": 790.3520000000001,
+      "taskMs": 1382.778,
+      "dclMs": 1452.2000000000698,
+      "facetCount": 2,
+      "facetMs": 124.49999999988358
+    },
+    {
+      "i": 4,
+      "kind": "baseline",
+      "mode": "curated",
+      "scriptMs": 771.563,
+      "taskMs": 1508.0320000000002,
+      "dclMs": 1509.8000000000466,
+      "facetCount": 3,
+      "facetMs": 77.59999999997672
+    },
+    {
+      "i": 4,
+      "kind": "candidate",
+      "mode": "curated",
+      "scriptMs": 636.267,
+      "taskMs": 1235.45,
+      "dclMs": 1291.1999999999534,
+      "facetCount": 2,
+      "facetMs": 67.20000000006985
+    },
+    {
+      "i": 4,
+      "kind": "baseline",
+      "mode": "candidates",
+      "scriptMs": 1382.76,
+      "taskMs": 2139.3070000000002,
+      "dclMs": 2185.8000000000466,
+      "facetCount": 3,
+      "facetMs": 603.8000000000466
+    },
+    {
+      "i": 4,
+      "kind": "candidate",
+      "mode": "candidates",
+      "scriptMs": 1124.013,
+      "taskMs": 1770.676,
+      "dclMs": 1888.1999999999534,
+      "facetCount": 2,
+      "facetMs": 376.4000000000233
+    },
+    {
+      "i": 4,
+      "kind": "baseline",
+      "mode": "library",
+      "scriptMs": 904.466,
+      "taskMs": 1440.064,
+      "dclMs": 1541.4000000000233,
+      "facetCount": 3,
+      "facetMs": 219.90000000002328
+    },
+    {
+      "i": 4,
+      "kind": "candidate",
+      "mode": "library",
+      "scriptMs": 711.514,
+      "taskMs": 1294.7630000000001,
+      "dclMs": 1316.2999999999302,
+      "facetCount": 2,
+      "facetMs": 150
+    },
+    {
+      "i": 4,
+      "kind": "baseline",
+      "mode": "weekly",
+      "scriptMs": 704.697,
+      "taskMs": 1219.3670000000002,
+      "dclMs": 1268.7999999999302,
+      "facetCount": 2,
+      "facetMs": 134.89999999990687
+    },
+    {
+      "i": 4,
+      "kind": "candidate",
+      "mode": "weekly",
+      "scriptMs": 651.4680000000001,
+      "taskMs": 1143.562,
+      "dclMs": 1248.7999999999302,
+      "facetCount": 1,
+      "facetMs": 63.39999999990687
+    },
+    {
+      "i": 4,
+      "kind": "baseline",
+      "mode": "sources",
+      "scriptMs": 772.422,
+      "taskMs": 1522.4489999999998,
+      "dclMs": 1532,
+      "facetCount": 2,
+      "facetMs": 144.90000000002328
+    },
+    {
+      "i": 4,
+      "kind": "candidate",
+      "mode": "sources",
+      "scriptMs": 744.757,
+      "taskMs": 1376.398,
+      "dclMs": 1466.5999999999767,
+      "facetCount": 1,
+      "facetMs": 69.09999999997672
+    }
+  ],
+  "summary": [
+    {
+      "mode": "curated",
+      "baseline": {
+        "scriptMs": 771.563,
+        "taskMs": 1389.6109999999999,
+        "dclMs": 1474.600000000035,
+        "facetMs": 69.70000000001164,
+        "facetCount": 3
+      },
+      "candidate": {
+        "scriptMs": 672.2099999999999,
+        "taskMs": 1292.4569999999999,
+        "dclMs": 1333.5999999999767,
+        "facetMs": 48.50000000005821,
+        "facetCount": 2
+      }
+    },
+    {
+      "mode": "candidates",
+      "baseline": {
+        "scriptMs": 1460.949,
+        "taskMs": 2086.09,
+        "dclMs": 2122,
+        "facetMs": 663.0999999999767,
+        "facetCount": 3
+      },
+      "candidate": {
+        "scriptMs": 1143.8410000000001,
+        "taskMs": 1755.5929999999998,
+        "dclMs": 1803.0999999999767,
+        "facetMs": 389.0999999999767,
+        "facetCount": 2
+      }
+    },
+    {
+      "mode": "library",
+      "baseline": {
+        "scriptMs": 881.231,
+        "taskMs": 1491.82,
+        "dclMs": 1568.6999999999534,
+        "facetMs": 239.70000000001164,
+        "facetCount": 3
+      },
+      "candidate": {
+        "scriptMs": 792.423,
+        "taskMs": 1354.071,
+        "dclMs": 1451.100000000035,
+        "facetMs": 150.5999999999185,
+        "facetCount": 2
+      }
+    },
+    {
+      "mode": "weekly",
+      "baseline": {
+        "scriptMs": 723.7379999999999,
+        "taskMs": 1277.811,
+        "dclMs": 1324.2999999999884,
+        "facetMs": 129,
+        "facetCount": 2
+      },
+      "candidate": {
+        "scriptMs": 635.837,
+        "taskMs": 1143.562,
+        "dclMs": 1228.2000000000116,
+        "facetMs": 62.5,
+        "facetCount": 1
+      }
+    },
+    {
+      "mode": "sources",
+      "baseline": {
+        "scriptMs": 848.236,
+        "taskMs": 1472.977,
+        "dclMs": 1532,
+        "facetMs": 144.20000000001164,
+        "facetCount": 2
+      },
+      "candidate": {
+        "scriptMs": 757.029,
+        "taskMs": 1432.693,
+        "dclMs": 1485.5,
+        "facetMs": 63.399999999965075,
+        "facetCount": 1
+      }
+    }
+  ],
+  "visibleParity": true,
+  "baselineMain": "bd69b63d2289a31012b58081e693387dd1d5ca36",
+  "baselineState": "28edb64292ad5bb5ea54612e7dc8180256658a2a",
+  "method": "Five alternating cold browser contexts per variant per mode; intercepted assets and read-only mocked APIs; identical function timing wrapper and cache-defeating sample suffix. DCL means DOMContentLoaded, not first contentful paint.",
+  "requests": {
+    "count": 397,
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "external": 0,
+    "modelCalls": 0
+  },
+  "latestCompatibility": {
+    "main": "066f8a6c36902143546b7144d4ff24a3b51b21c8",
+    "state": "5faa071a4d28d90204424566fc1d13c5b6161ee3",
+    "offline": true,
+    "results": [
+      {
+        "width": 1440,
+        "initialMode": "curated",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 1440,
+        "initialMode": "candidates",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 1440,
+        "initialMode": "library",
+        "passed": true,
+        "requests": 10
+      },
+      {
+        "width": 1440,
+        "initialMode": "weekly",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 1440,
+        "initialMode": "sources",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 390,
+        "initialMode": "curated",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 390,
+        "initialMode": "candidates",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 390,
+        "initialMode": "library",
+        "passed": true,
+        "requests": 10
+      },
+      {
+        "width": 390,
+        "initialMode": "weekly",
+        "passed": true,
+        "requests": 11
+      },
+      {
+        "width": 390,
+        "initialMode": "sources",
+        "passed": true,
+        "requests": 11
+      }
+    ]
+  }
+}

@@ -11,6 +11,7 @@ import datetime as dt
 import re
 import week_precompute as w
 import week_precompute_cache as cache_contract
+import week_precompute_budget as budget_contract
 
 
 def _counter(value, name):
@@ -135,6 +136,87 @@ def merge_ledger(existing, imported):
     return result
 
 
+def reconcile_known_receipt(existing, receipt):
+    """Repair only the exact retained trial identities against its fixed receipt.
+
+    The old local summary counted two POSTs instead of four reserved provider
+    attempts. No usage or allowance is inferred. Unknown calls fail closed;
+    all pauses, metadata and uncertain statuses remain. Pure, no file writes.
+    """
+    result = copy.deepcopy(existing)
+    day = '2026-10-07'
+    daily = result.get('days', {}).get(day)
+    if daily is None:
+        return result
+    try:
+        _requests(daily)
+        accounted = True
+    except ValueError:
+        accounted = False
+    if accounted and daily.get('reservedAttempts') != 2:
+        return result
+    if not budget_contract._known_receipt(receipt):
+        raise ValueError('ledger_known_receipt_required')
+    known = receipt.get('ledgerSnapshot', {}).get('days', {}).get(day)
+    if not isinstance(known, dict):
+        raise ValueError('ledger_known_receipt_required')
+    confirmed = _requests(known)
+    if known.get('reservedAttempts') != 4 or known.get('reservedOutputTokens') != 3800 or len(confirmed) != 2:
+        raise ValueError('ledger_known_receipt_required')
+    for row, (task, status, at, tokens) in zip(known['requests'], budget_contract._LEGACY_REQUESTS):
+        expected = {'paperID': budget_contract._LEGACY_PAPER,
+                    'sourceHash': budget_contract._LEGACY_HASH, 'task': task,
+                    'status': status, 'at': at, 'reservedAttempts': 2,
+                    'reservedOutputTokens': tokens}
+        if any(type(row.get(k)) is not type(v) or row[k] != v for k, v in expected.items()):
+            raise ValueError('ledger_known_receipt_required')
+    rows = daily.get('requests')
+    if accounted and {request_identity(row)[0] for row in rows} != set(confirmed):
+        return result
+    if (not isinstance(rows, list) or len(rows) != 2
+            or type(daily.get('reservedAttempts')) is not int
+            or daily['reservedAttempts'] not in (2, 4)):
+        raise ValueError('ledger_receipt_does_not_cover_local_history')
+    seen = set()
+    for row in rows:
+        key, identity = request_identity(row)
+        expected = confirmed.get(key)
+        if expected is None or expected[1] != identity or key in seen:
+            raise ValueError('ledger_receipt_does_not_cover_local_history')
+        seen.add(key)
+        if row.get('status') not in (expected[0]['status'], 'started'):
+            raise ValueError('ledger_receipt_status_mismatch')
+        for field, allowed in (('reservedAttempts', (None, 1, 2)),
+                               ('reservedOutputTokens', (None, expected[3]))):
+            value = row.get(field)
+            if value is not None and (type(value) is not int or value not in allowed):
+                raise ValueError('ledger_receipt_reservation_mismatch')
+        row['reservedAttempts'] = expected[2]
+        row['reservedOutputTokens'] = expected[3]
+    if daily.get('reservedOutputTokens') not in (None, 3800):
+        raise ValueError('ledger_receipt_reservation_mismatch')
+    daily['receiptReconciliation'] = {
+        'receipt': 'week_precompute_receipt_20261007.json',
+        'receiptRecordedAt': receipt['recordedAt'],
+        'previousReservedAttempts': daily['reservedAttempts'],
+        'reservedProviderAttempts': 4, 'reservedOutputTokens': 3800,
+        'actualBillingUsageKnown': False, 'pausePreserved': True}
+    daily['reservedAttempts'] = 4
+    daily['reservedOutputTokens'] = 3800
+    _preserve_pauses(result, receipt['ledgerSnapshot'])
+    _preserve_pauses(daily, known)
+    _requests(daily)
+    return result
+
+
+def source_overlay(current, source):
+    fields = {k: source[k] for k in w.PUBLIC_FIELDS if k in source}
+    if current.get('dateBasis') == '期刊官网 published-online（已复核）':
+        for key in ('date', 'dateBasis', 'datePrecision'):
+            fields.pop(key, None)
+    return fields
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--apply', action='store_true')
@@ -150,8 +232,9 @@ def main():
         raise ValueError('receipt_requires_accounted_request_snapshot')
     if not imported_ledger.get('paused'):
         raise ValueError('receipt_must_preserve_failed_batch_pause')
-    ledger = merge_ledger(w.read(w.ROOT / 'data/week-precompute-ledger.json',
-                                 {'schemaVersion': 1, 'days': {}}), imported_ledger)
+    existing = w.read(w.ROOT / 'data/week-precompute-ledger.json',
+                      {'schemaVersion': 1, 'days': {}})
+    ledger = merge_ledger(reconcile_known_receipt(existing, receipt), imported_ledger)
     candidates = w.read(w.ROOT / 'data/candidates.json', {'items': []})
     byid = {p['id']: p for p in candidates['items']}
     matched = 0
@@ -162,7 +245,7 @@ def main():
             continue
         if not (w.aliases(old) & w.aliases(p)):
             raise ValueError('snapshot_identity_mismatch')
-        old.update({k: p[k] for k in w.PUBLIC_FIELDS if k in p})
+        old.update(source_overlay(old, p))
         matched += 1
         info = w.public_abstract(p)
         if info:

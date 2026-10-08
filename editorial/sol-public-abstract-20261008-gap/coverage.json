@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "papers": 6,
+  "tasks": 12,
+  "items": [
+    {
+      "rank": 15,
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "doi": "10.1038/s41591-026-04704-z",
+      "pmid": "42839103",
+      "title": "Extended follow-up of in vivo BCMA CAR-T therapy in relapsed/refractory multiple myeloma.",
+      "date": "2026-10-06",
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42839103/",
+      "translateCacheKey": "20aca89052ee5fac5458292a3d4e7672a1c1685f75aad7e8f69dd69c35e912e2",
+      "quicklookCacheKey": "4d0eada6ab7cdfde68e7bb761f89f596ef2612f3761584708239fed69ae33c70",
+      "reviewFile": "reviews/batch-a-review.json"
+    },
+    {
+      "rank": 16,
+      "paperID": "doi:10.1038/s41591-026-04673-3",
+      "doi": "10.1038/s41591-026-04673-3",
+      "pmid": "42827132",
+      "title": "Urine cell-free RNA for bladder cancer detection and treatment response prediction.",
+      "date": "2026-10-02",
+      "sourceHash": "fe8c14c03a899c36b223e5b7a0166387b2a183bd3c21821507197cd0002d5cc6",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42827132/",
+      "translateCacheKey": "21da94eb1521562bc18ca0999b6d99f645ae415ee4523d26e9bca93badc13356",
+      "quicklookCacheKey": "95790677bf60b3bff5f0b1cde04e285906ba01caea6b80524d5975a98b5b7037",
+      "reviewFile": "reviews/batch-a-review.json"
+    },
+    {
+      "rank": 21,
+      "paperID": "doi:10.1093/europace/euag272",
+      "doi": "10.1093/europace/euag272",
+      "pmid": "42834820",
+      "title": "Potassium-Increasing Regimens in Patients at High Risk of Ventricular Arrhythmias: A Prespecified Observational Analysis of the Randomized POTCAST Trial.",
+      "date": "2026-10-06",
+      "sourceHash": "be28677d621245719bc7f64bc0e7d2e82986e8cd2e311c3f50738a89718b6039",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42834820/",
+      "translateCacheKey": "61471711848c8b767a2993a2b12b3e17d0b7db1cdade4f88ae634d040dba9d42",
+      "quicklookCacheKey": "0e7186be9a93f97b2a575040a7110254bb3c87dfd1a6d6f49524d56c3d1bd2a2",
+      "reviewFile": "reviews/batch-a-review.json"
+    },
+    {
+      "rank": 22,
+      "paperID": "doi:10.1111/jce.70522",
+      "doi": "10.1111/jce.70522",
+      "pmid": "42836744",
+      "title": "Enhancing Persistent Atrial Fibrillation Ablation: The Added Value of Vein of Marshall Ethanol Infusion in a Tailored Strategy.",
+      "date": "2026-10-06",
+      "sourceHash": "f46025e9222190552c17b5037a69264b1608bf260ab561f879c25410065d01d2",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836744/",
+      "translateCacheKey": "154888b535e7df076febe062e872cb0b1b0fc7cf1a72fa561f7a2da12ec02108",
+      "quicklookCacheKey": "558b55c55e3f47c38ed9e9a7770ba9e857142cd8faaad5562b8d30a172e4c853",
+      "reviewFile": "reviews/batch-b-review.json"
+    },
+    {
+      "rank": 23,
+      "paperID": "doi:10.1111/jce.70525",
+      "doi": "10.1111/jce.70525",
+      "pmid": "42836740",
+      "title": "Atrial Septal Defect Management Status and Long-Term Outcomes After Atrial Fibrillation Ablation: A Real-World Cohort Study.",
+      "date": "2026-10-06",
+      "sourceHash": "7c78c6de0001520888be2abf08b84f1644fb8c0909a87a4c101c5dbb8ac48558",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836740/",
+      "translateCacheKey": "a7af14fba3384cf7ecbf9cb97df3a3773fe3270aef1e8ddd7d463839042e5062",
+      "quicklookCacheKey": "725b6f4f01450cd6b7b686e8cb02a7b2410aa1b82ee3314f18eec3bac2b9d8fd",
+      "reviewFile": "reviews/batch-b-review.json"
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1111/jce.70526",
+      "doi": "10.1111/jce.70526",
+      "pmid": "42836742",
+      "title": "Temporal Association Between Intrathoracic Impedance and Tachyarrhythmia Occurrence.",
+      "date": "2026-10-06",
+      "sourceHash": "8b4bc5e18d8adf7a347b9b89c2c1020159ec8df4c91bd3108eeff20a0f502a41",
+      "abstractSource": "PubMed",
+      "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42836742/",
+      "translateCacheKey": "1e180f210c093b252c9b1a2828adffa84231f6eabd497840dd0f929c5972ed5d",
+      "quicklookCacheKey": "2b4904da1e404ffeb10e1037fcd9735844372dbb306182b2b56e87ea414dfaac",
+      "reviewFile": "reviews/batch-b-review.json"
+    }
+  ]
+}

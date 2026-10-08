@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "scope": "public-metadata-field-verification-not-medical-review",
+  "entries": {
+    "10.1161/jaha.126.050490": {
+      "title": "Stable, Progressive, and Acute Valve Syndrome in Severe Aortic Stenosis: Insights From the CURRENT AS Registry‐2",
+      "source": "Crossref",
+      "sourceUrl": "https://api.crossref.org/works/10.1161/jaha.126.050490",
+      "checkedAt": "2026-10-07T14:36:54.073384+00:00",
+      "sourceResponseSha256": "5eb0fef4a6a3fb85c010f39cee8f32495ac53aed868d1a980d6888e01a48b72c",
+      "matchingSummaryHashes": [
+        "faea53805492b7faf9cc83ea91c829f750bc4006901dea8f6c9e5b58923d42ba",
+        "57ec97fe259b795747d5966689af9e89f072388e5b3dfab42400bf39f3364507"
+      ],
+      "status": "structured",
+      "abstractSections": [
+        {
+          "label": "Background",
+          "text": "A valve syndrome framework (stable valve syndrome [SVS], progressive valve syndrome, and acute valve syndrome) integrates clinical presentation with objective markers, but its prognostic implications remain incompletely characterized."
+        },
+        {
+          "label": "Methods",
+          "text": "Among 3369 consecutive patients with severe aortic stenosis in the CURRENT AS (Contemporary Outcomes After Surgery and Medical Treatment in Patients With Severe Aortic Stenosis) Registry‐2, we analyzed 2824 patients with natriuretic peptide and left ventricular ejection fraction data. Patients were classified as SVS (no symptoms with low natriuretic peptide), progressive valve syndrome (mild symptoms or mildly elevated natriuretic peptide), or acute valve syndrome (acute deterioration or markedly elevated natriuretic peptide or reduced left ventricular ejection fraction), and stratified by initial aortic valve replacement and conservative strategies. The primary outcome was a composite of death or heart failure hospitalization. Subgroup analyses further classified patients into 5 phenotypes: SVS, progressive valve signs without symptoms, progressive valve symptoms, acute valve signs without symptoms, and acute valve symptoms."
+        },
+        {
+          "label": "Results",
+          "text": "In the initial aortic valve replacement stratum, acute valve syndrome was associated with higher risk for the primary outcome compared with SVS (adjusted hazard ratio [HR], 2.34 [95% CI, 1.19–4.59]; P =0.01), whereas progressive valve syndrome was not. In the conservative stratum, SVS demonstrated a low early event rate (1.0% at 6 months), whereas acute valve syndrome and progressive valve syndrome had higher risk than SVS. In the 5‐phenotype analysis, patients with progressive valve signs without symptoms underwent aortic valve replacement at rates comparable to SVS yet had worse outcomes than SVS in the conservative stratum (adjusted HR, 1.89 [95% CI, 1.18–3.03]; P =0.008)."
+        },
+        {
+          "label": "Conclusions",
+          "text": "A valve syndrome framework highlights limitations of symptom‐based risk stratification and may refine surveillance and intervention strategies in severe aortic stenosis."
+        }
+      ],
+      "observedSummary": "Journal of the American Heart Association, Volume 15, Issue 19, October 6, 2026. BackgroundA valve syndrome framework (stable valve syndrome [SVS], progressive valve syndrome, and acute valve syndrome) integrates clinical presentation with objective markers, but its prognostic implications remain incompletely characterized.MethodsAmong 3369 consecutive patients with severe aortic stenosis in the CURRENT AS (Contemporary Outcomes After Surgery and Medical Treatment in Patients With Severe Aortic Stenosis) Registry‐2, we analyzed 2824 patients with natriuretic peptide and left ventricular ejection fraction data. Patients were classified as SVS (no symptoms with low natriuretic peptide), progressive valve syndrome (mild symptoms or mildly elevated natriuretic peptide), or acute valve syndrome (acute deterioration or markedly elevated natriuretic peptide or reduced left ventricular ejection fraction), and stratified by initial aortic valve replacement and conservative strategies. The primary outcome was a composite of death or heart failure hospitalization. Subgroup analyses further classified patients into 5 phenotypes: SVS, progressive valve signs without symptoms, progressive valve symptoms, acute valve signs without symptoms, and acute valve symptoms.ResultsIn the initial aortic valve replacement stratum, acute valve syndrome was associated with higher risk for the primary outcome compared with SVS (adjusted hazard ratio [HR], 2.34 [95% CI, 1.19–4.59];P=0.01), whereas progressive valve syndrome was not. In the conservative stratum, SVS demonstrated a low early event rate (1.0% at 6 months), whereas acute valve syndrome and progressive valve syndrome had higher risk than SVS. In the 5‐phenotype analysis, patients with progressive valve signs without symptoms underwent aortic valve replacement at rates comparable to SVS yet had worse outcomes than SVS in the conservative stratum (adjusted HR, 1.89 [95% CI, 1.18–3.03];P=0.008).ConclusionsA valve syndrome framework highlights limitations of symptom‐based risk stratification and may refine surveillance and intervention strategies in severe aortic stenosis.",
+      "observedSummaryVariants": [
+        {
+          "summaryHash": "57ec97fe259b795747d5966689af9e89f072388e5b3dfab42400bf39f3364507",
+          "difference": "Exact original bibliographic prefix separator changed from one space to two newlines; all title and abstract words and numbers unchanged",
+          "observedState": "dce9ce45fcd0ff3de901cb374cef08e33612c621",
+          "observedCode": "8a6dc63172b486e1b172ecfc7ece2d1132e8deb1"
+        }
+      ]
+    },
+    "10.1093/eurheartj/ehag713": {
+      "title": "Beating Bias: defining research priorities for women and cardiovascular disease",
+      "source": "Crossref",
+      "sourceUrl": "https://api.crossref.org/works/10.1093/eurheartj/ehag713",
+      "checkedAt": "2026-10-07T14:36:54.408077+00:00",
+      "sourceResponseSha256": "7851fc565612d720fced8b689ed1d4c5725d802c2f9f5d9f27b815752bad7b21",
+      "matchingSummaryHashes": [
+        "8230dc1fe04505f12d699fc8ac4f8e0c33789acbabb6ad364032c1c3be82f710"
+      ],
+      "status": "non_abstract_metadata",
+      "observedSummary": "Heart Research UK10.13039/501100000327100001NIHR304448NIHR10.13039/501100000272NHS10.13039/100030827Department of Health and Social Care10.13039/501100000276"
+    }
+  }
+}

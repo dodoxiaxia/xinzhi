@@ -18,7 +18,7 @@ const end = src.indexOf('  // ---- End public-abstract study services.');
 assert(start > 0 && end > start);
 const code = [
   src.slice(src.indexOf('  const esc ='), src.indexOf('  // Toast notification')),
-  fn('safeSourceUrl'), fn('contentDate'), cs('AI_ERR'), cs('AI_MODEL_ERR'), fn('aiErrorMessage'),
+  fn('aiRequest'), fn('aiTaskStatus'), fn('aiWaitingMessage'), fn('aiLookupRecord'), fn('aiPostRecord'), fn('safeSourceUrl'), fn('contentDate'), cs('AI_ERR'), cs('AI_MODEL_ERR'), fn('aiErrorMessage'),
   src.slice(start, end)
 ].join('\n');
 let assertions = 0;
@@ -31,7 +31,7 @@ const paper = (id, pmid, doi) => ({ id, pmid, doi, title: 'Study ' + id, journal
 const papers = [paper('a', '1001', '10.1000/A'), paper('b', '1002', '10.1000/B'), paper('c', '1003', ''), paper('d', '1004', ''), paper('e', '1005', ''), paper('alias', '', '10.1000/a'), paper('noid', '', '')];
 const state = { huddle: papers.map(p => p.id), huddleCompare: [], activeDrawerPaper: null };
 const c = vm.createContext({
-  state, allPapersMap: new Map(papers.map(p => [p.id, p])), URL, Date,
+  AbortController, setTimeout, clearTimeout, state, allPapersMap: new Map(papers.map(p => [p.id, p])), URL, Date,
   showToast: text => toasts.push(text),
   openReaderDrawer: p => renders.push(['drawer', p.id]),
   openHuddleModal: () => renders.push(['huddle']),

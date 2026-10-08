@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "entries": {
+    "a1f967407beb0bdd7f09c56f9ed479e1a3fa26847064106f07ba966b10d7b2eb": {
+      "paperID": "doi:10.1161/jaha.126.050332",
+      "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+      "promptVersion": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+      "validatorVersion": "translation-number-occurrences-v2",
+      "generationPromptVersion": "unobserved",
+      "generationVersionKnown": false,
+      "modelVersion": "sol-session-model-unobserved",
+      "task": "translate",
+      "value": {
+        "title_zh": "儿童期父母低收入与中年冠状动脉粥样硬化相关。",
+        "abstract_zh": "背景：社会经济地位（SES）是冠心病的重要风险因素，但生命历程机制和因果路径仍未充分阐明。因此，研究考察儿童期低SES是否与中年冠状动脉粥样硬化相关，以及成人阶段的已知风险因素能否解释这种关联。方法：这项观察性队列研究纳入基于人群的SCAPIS（瑞典心肺生物影像研究）中接受冠状动脉CT血管造影的15 640名50至64岁参与者。采用节段受累评分和冠状动脉钙化评分评估冠状动脉粥样硬化。儿童期SES以国家登记资料中参与者10至12岁时父母的可支配收入界定。采用多变量逻辑回归估计儿童期SES与中重度冠状动脉粥样硬化（节段受累评分≥4或冠状动脉钙化评分>100）的关联，并调整成人生活习惯、成人SES和传统心血管风险因素。结果：父母收入最低五分位组与最高五分位组相比，中重度冠状动脉粥样硬化更常见（节段受累评分≥4；比值比[OR]，1.43 [95% CI，1.20-1.71]，P<0.001）。调整成人生活习惯（OR，1.42 [95% CI，1.17-1.73]，P<0.001）、成人SES（OR，1.31 [95% CI，1.09-1.57]，P=0.004）、传统心血管风险因素（OR，1.28 [95% CI，1.06-1.53]，P=0.008）以及充分调整后（OR，1.31 [95% CI，1.07-1.61]，P=0.010），该关联仍然存在。冠状动脉钙化评分>100也呈现类似关联。结论：儿童期低SES与中年中重度冠状动脉粥样硬化相关，成人阶段的已知风险因素仅能部分解释这种关联。研究结果提示，儿童期SES是长期心血管健康的社会决定因素，成人阶段的已知风险因素不能完全解释其关联。"
+      },
+      "generatedAt": "2026-10-08",
+      "origin": "sol-session-public-abstract",
+      "scope": "public-abstract",
+      "reviewStatus": "machine-validated-unreviewed",
+      "doi": "10.1161/jaha.126.050332",
+      "pmid": "42841502",
+      "providerUsage": null
+    },
+    "26fcafa89494e6d62f8da0471b8b63a77cfb316165474e005964bacc5d923303": {
+      "paperID": "doi:10.1161/jaha.126.050332",
+      "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+      "promptVersion": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+      "validatorVersion": "literal-findings-same-quote-numbers-v1",
+      "generationPromptVersion": "unobserved",
+      "generationVersionKnown": false,
+      "modelVersion": "sol-session-model-unobserved",
+      "task": "quicklook",
+      "value": {
+        "title_zh": "儿童期父母低收入与中年冠状动脉粥样硬化相关。",
+        "one_line": "儿童期父母低收入与中年冠脉粥样硬化相关；成人风险因素调整未完全解释关联。",
+        "design": "基于SCAPIS的观察性队列，关联儿童期登记收入与中年冠脉CT评估。",
+        "limits": "摘要未报告因果识别或收入干预设计；关联结果不能等同因果结论。",
+        "why_read": "理解儿童期社会经济处境与中年冠脉表型的关联，并区分关联与因果。",
+        "findings": [
+          {
+            "text": "研究纳入15 640名50至64岁参与者，采用冠状动脉CT血管造影评估粥样硬化。",
+            "quote": "This observational cohort study included 15 640 participants, aged 50 to 64 years, from the population-based SCAPIS (Swedish Cardiopulmonary Bioimage Study) who underwent coronary computed tomography angiography."
+          },
+          {
+            "text": "父母收入最低与最高五分位组相比，节段受累评分≥4的比值比为1.43（95% CI，1.20-1.71），P<0.001。",
+            "quote": "Participants in the lowest versus highest parental income quintile were more likely to have moderate-severe coronary atherosclerosis (segment involvement score ≥4; odds ratio [OR], 1.43 [95% CI, 1.20-1.71], P<0.001)."
+          },
+          {
+            "text": "充分调整后关联仍存在：OR为1.31（95% CI，1.07-1.61），P=0.010。",
+            "quote": "and full adjustment (OR, 1.31 [95% CI, 1.07-1.61], P=0.010)."
+          },
+          {
+            "text": "类似关联也见于冠状动脉钙化评分>100。",
+            "quote": "Similar associations were observed for coronary artery calcification >100."
+          }
+        ]
+      },
+      "generatedAt": "2026-10-08",
+      "origin": "sol-session-public-abstract",
+      "scope": "public-abstract",
+      "reviewStatus": "machine-validated-unreviewed",
+      "doi": "10.1161/jaha.126.050332",
+      "pmid": "42841502",
+      "providerUsage": null
+    }
+  }
+}

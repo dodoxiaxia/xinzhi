@@ -1,0 +1,174 @@
+{
+  "checkedAt": "2026-10-08",
+  "baseMain": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "readOnlyState": "48ad7788e4065a1d3317feaeeed2f73d9e6774dd",
+  "branch": "fix/v2-study-status-design",
+  "officialXmlSha256": {
+    "pubmed-verified.xml": "3accf16a849729e24f73e06ce62fccb8279c0d202dd8cc7dbcea5ee4374163bd",
+    "pubmed-additional.xml": "523155ddc14db10ed273dc257ee1558759b4c5f9a84676e36982379294136c10"
+  },
+  "verifiedExamples": [
+    {
+      "pmid": "41224473",
+      "projectedDesign": "已撤稿",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/41224473/"
+    },
+    {
+      "pmid": "41916660",
+      "projectedDesign": "撤稿声明",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/41916660/"
+    },
+    {
+      "pmid": "41224475",
+      "projectedDesign": "关注声明",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/41224475/"
+    },
+    {
+      "pmid": "41412600",
+      "projectedDesign": "撤稿声明",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/41412600/"
+    },
+    {
+      "pmid": "42104840",
+      "projectedDesign": "研究方案",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/42104840/"
+    },
+    {
+      "pmid": "41771068",
+      "projectedDesign": "研究方案",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/41771068/"
+    },
+    {
+      "pmid": "40920457",
+      "projectedDesign": "研究方案",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/40920457/"
+    },
+    {
+      "pmid": "42418170",
+      "projectedDesign": "述评观点",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/42418170/"
+    },
+    {
+      "pmid": "42418194",
+      "projectedDesign": "述评观点",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/42418194/"
+    },
+    {
+      "pmid": "42836743",
+      "projectedDesign": "RCT 二次分析",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/42836743/"
+    },
+    {
+      "pmid": "42836296",
+      "projectedDesign": "RCT 二次分析",
+      "pubmedUrl": "https://pubmed.ncbi.nlm.nih.gov/42836296/"
+    }
+  ],
+  "publicCounts": {
+    "library": 1264,
+    "candidates": 870,
+    "archiveTitles": 12671
+  },
+  "archiveRuleLabels": {
+    "研究类型待核验": 6692,
+    "叙述综述": 943,
+    "队列研究": 2099,
+    "Meta/综述": 479,
+    "述评观点": 921,
+    "RCT 二次分析": 153,
+    "病例对照研究": 49,
+    "RCT": 688,
+    "方法/模型验证": 113,
+    "研究方案": 45,
+    "横断面研究": 187,
+    "二次分析": 93,
+    "指南共识": 71,
+    "病例报告": 99,
+    "撤稿声明": 8,
+    "更正声明": 6,
+    "关注声明": 22,
+    "已撤稿": 3
+  },
+  "browser": [
+    {
+      "width": 1440,
+      "view": "cards",
+      "visibleStatus": "已撤稿",
+      "retractionLink": true,
+      "concernLinkInDrawer": true,
+      "horizontalOverflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "view": "compact",
+      "visibleStatus": "已撤稿",
+      "retractionLink": true,
+      "concernLinkInDrawer": true,
+      "horizontalOverflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "view": "cards",
+      "visibleStatus": "已撤稿",
+      "retractionLink": true,
+      "concernLinkInDrawer": true,
+      "horizontalOverflow": false,
+      "pageErrors": []
+    },
+    {
+      "width": 390,
+      "view": "compact",
+      "visibleStatus": "已撤稿",
+      "retractionLink": true,
+      "concernLinkInDrawer": true,
+      "horizontalOverflow": false,
+      "pageErrors": []
+    }
+  ],
+  "limitations": [
+    "BMJ publisher pages returned 403; stopped that source. PubMed efetch succeeded.",
+    "Remaining all-site count allegations were not individually adjudicated. Aggregate design labels are metadata/rule labels.",
+    "Existing archived records not in the checked registry receive relationship links only when their PubMed relations were fetched.",
+    "Browser APIs were stubbed read-only; no production write, model call, PDF download, main/state change, or deployment."
+  ],
+  "validation": {
+    "pythonTests": 564,
+    "pythonPassed": 564,
+    "newPublicationPythonTests": 12,
+    "newPublicationUiAssertions": 34,
+    "weeklyUiAssertions": 71,
+    "readingLogicPassed": true,
+    "studyServicesPassed": true,
+    "studyUiAssertions": 83,
+    "publicationDateUiAssertions": 10,
+    "publicBuildFiles": 6,
+    "packagePassed": true
+  },
+  "officialXmlEvidence": {
+    "manifestPath": "docs/evidence/pubmed-study-status-20261008/manifest.json",
+    "rawPaths": [
+      "docs/evidence/pubmed-study-status-20261008/pubmed-verified.xml",
+      "docs/evidence/pubmed-study-status-20261008/pubmed-additional.xml"
+    ],
+    "copiedByteForByte": true,
+    "matchesOriginalSha256": true,
+    "newSourceRequests": 0
+  },
+  "supplement": {
+    "scope": "Original XML evidence plus own-publication status precedence for hypothetical future notice retractions",
+    "newSourceRequests": 0,
+    "currentVerifiedExamplesUnchanged": true,
+    "pythonTests": 567,
+    "pythonPassed": 567,
+    "publicationStatusPythonTests": 15,
+    "publicationStatusUiAssertions": 34,
+    "retractionOfIsTargetOnly": true,
+    "hypotheticalRegressions": [
+      "registered concern notice later retracted",
+      "correction notice later retracted",
+      "retraction notice target is not own status"
+    ]
+  }
+}

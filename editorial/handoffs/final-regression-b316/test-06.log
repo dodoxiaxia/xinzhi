@@ -1,1 +1,0 @@
-Fulltext dispatcher passed: empty/active queues skip runners, eligible queues dispatch once, fixed repository and scoped headers, protected readiness, bounded response and safe failures.

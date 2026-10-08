@@ -1,0 +1,328 @@
+{
+  "passed": true,
+  "records": [
+    {
+      "width": 320,
+      "style": "a",
+      "geometry": {
+        "header": 171,
+        "toolbar": 171,
+        "offset": 171,
+        "height": 171
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 604.59375,
+        "bottom": 644.59375,
+        "occlusion": 312.796875
+      },
+      "anchor": {
+        "top": 11527.921875,
+        "header": 171
+      }
+    },
+    {
+      "width": 320,
+      "style": "b",
+      "geometry": {
+        "header": 170,
+        "toolbar": 170,
+        "offset": 170,
+        "height": 170
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 567.65625,
+        "bottom": 601.65625,
+        "occlusion": 299.796875
+      },
+      "anchor": {
+        "top": 11111.171875,
+        "header": 170
+      }
+    },
+    {
+      "width": 320,
+      "style": "c",
+      "geometry": {
+        "header": 168,
+        "toolbar": 168,
+        "offset": 168,
+        "height": 168
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 582.734375,
+        "bottom": 622.734375,
+        "occlusion": 308.796875
+      },
+      "anchor": {
+        "top": 11949.046875,
+        "header": 168
+      }
+    },
+    {
+      "width": 320,
+      "style": "d",
+      "geometry": {
+        "header": 171,
+        "toolbar": 171,
+        "offset": 171,
+        "height": 171
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 604.9375,
+        "bottom": 644.9375,
+        "occlusion": 312.796875
+      },
+      "anchor": {
+        "top": 11515.109375,
+        "header": 171
+      }
+    },
+    {
+      "width": 390,
+      "style": "a",
+      "geometry": {
+        "header": 171,
+        "toolbar": 171,
+        "offset": 171,
+        "height": 171
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 545.90625,
+        "bottom": 585.90625,
+        "occlusion": 278
+      },
+      "anchor": {
+        "top": 9104.265625,
+        "header": 171
+      }
+    },
+    {
+      "width": 390,
+      "style": "b",
+      "geometry": {
+        "header": 170,
+        "toolbar": 170,
+        "offset": 170,
+        "height": 170
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 523.546875,
+        "bottom": 557.546875,
+        "occlusion": 170
+      },
+      "anchor": {
+        "top": 8871.890625,
+        "header": 170
+      }
+    },
+    {
+      "width": 390,
+      "style": "c",
+      "geometry": {
+        "header": 168,
+        "toolbar": 168,
+        "offset": 168,
+        "height": 168
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 538.9375,
+        "bottom": 578.9375,
+        "occlusion": 274
+      },
+      "anchor": {
+        "top": 9462.390625,
+        "header": 168
+      }
+    },
+    {
+      "width": 390,
+      "style": "d",
+      "geometry": {
+        "header": 171,
+        "toolbar": 171,
+        "offset": 171,
+        "height": 171
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 556.140625,
+        "bottom": 596.140625,
+        "occlusion": 278
+      },
+      "anchor": {
+        "top": 9307.578125,
+        "header": 171
+      }
+    },
+    {
+      "width": 768,
+      "style": "a",
+      "geometry": {
+        "header": 111,
+        "toolbar": 111,
+        "offset": 111,
+        "height": 111
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 346.109375,
+        "bottom": 380.109375,
+        "occlusion": 168
+      },
+      "anchor": {
+        "top": 5814.921875,
+        "header": 111
+      }
+    },
+    {
+      "width": 768,
+      "style": "b",
+      "geometry": {
+        "header": 110,
+        "toolbar": 110,
+        "offset": 110,
+        "height": 110
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 349.8125,
+        "bottom": 377.8125,
+        "occlusion": 167
+      },
+      "anchor": {
+        "top": 5104.984375,
+        "header": 110
+      }
+    },
+    {
+      "width": 768,
+      "style": "c",
+      "geometry": {
+        "header": 110,
+        "toolbar": 110,
+        "offset": 110,
+        "height": 110
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 341.8125,
+        "bottom": 375.8125,
+        "occlusion": 166
+      },
+      "anchor": {
+        "top": 5947.859375,
+        "header": 110
+      }
+    },
+    {
+      "width": 768,
+      "style": "d",
+      "geometry": {
+        "header": 111,
+        "toolbar": 111,
+        "offset": 111,
+        "height": 111
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 351.015625,
+        "bottom": 385.015625,
+        "occlusion": 168
+      },
+      "anchor": {
+        "top": 5590.921875,
+        "header": 111
+      }
+    },
+    {
+      "width": 1440,
+      "style": "a",
+      "geometry": {
+        "header": 61,
+        "toolbar": 61,
+        "offset": 61,
+        "height": 61
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 258.03125,
+        "bottom": 292.03125,
+        "occlusion": 118
+      },
+      "anchor": {
+        "top": 4173.203125,
+        "header": 61
+      }
+    },
+    {
+      "width": 1440,
+      "style": "b",
+      "geometry": {
+        "header": 60,
+        "toolbar": 60,
+        "offset": 60,
+        "height": 60
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 255.71875,
+        "bottom": 283.71875,
+        "occlusion": 117
+      },
+      "anchor": {
+        "top": 4210.328125,
+        "header": 60
+      }
+    },
+    {
+      "width": 1440,
+      "style": "c",
+      "geometry": {
+        "header": 60,
+        "toolbar": 60,
+        "offset": 60,
+        "height": 60
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 253.53125,
+        "bottom": 287.53125,
+        "occlusion": 116
+      },
+      "anchor": {
+        "top": 4335.640625,
+        "header": 60
+      }
+    },
+    {
+      "width": 1440,
+      "style": "d",
+      "geometry": {
+        "header": 61,
+        "toolbar": 61,
+        "offset": 61,
+        "height": 61
+      },
+      "focus": {
+        "tag": "BUTTON",
+        "top": 254.734375,
+        "bottom": 288.734375,
+        "occlusion": 118
+      },
+      "anchor": {
+        "top": 4181.265625,
+        "header": 61
+      }
+    }
+  ],
+  "errors": [],
+  "posts": [],
+  "scope": "Offline Chromium viewport emulation; no real-device or live-network claim"
+}

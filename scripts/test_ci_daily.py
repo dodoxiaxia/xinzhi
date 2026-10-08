@@ -106,12 +106,26 @@ class ContentHashTests(PipelineFixture):
         self.assertNotEqual(before, ci_daily.content_hash())
 
     def test_all_bundle_constants_are_normalized(self):
-        names = ('LIBRARY', 'FEEDS', 'SOURCE_HEALTH', 'CURATED', 'QUICKLOOKS', 'CONTENT_STATUS', 'RADAR')
+        names = ('LIBRARY', 'FEEDS', 'SOURCE_HEALTH', 'CURATED', 'QUICKLOOKS', 'CONTENT_STATUS',
+                 'JOURNAL_METRICS', 'WEEKLY_BOARD', 'PREGENERATED', 'RADAR')
         old = '\n;\n'.join('window.' + name + '={"generatedAt":"old","papers":[{"id":"a"}]};' for name in names)
         (self.root / 'public' / 'public.js').write_text(old + '\n;\nconst app = 1;')
         before = ci_daily.content_hash()
         (self.root / 'public' / 'public.js').write_text(old.replace('"old"', '"new"') + '\n;\nconst app = 1;')
         self.assertEqual(before, ci_daily.content_hash())
+
+    def test_metric_and_precomputed_content_changes_after_new_global_are_substantive(self):
+        def write(value, translation):
+            (self.root / 'public' / 'public.js').write_text(
+                'window.JOURNAL_METRICS=' + json.dumps({'journals': [{'jif': {'value': value}}]})
+                + ';\n;\nwindow.PREGENERATED=' + json.dumps({'pmid:1': {'translation': {'abstract_zh': translation}}})
+                + ';\n;\nconst app = 1;')
+        write(1, 'offline fixture A')
+        before = ci_daily.content_hash()
+        write(2, 'offline fixture A')
+        self.assertNotEqual(before, ci_daily.content_hash())
+        write(1, 'offline fixture B')
+        self.assertNotEqual(before, ci_daily.content_hash())
 
     def test_content_status_timestamps_and_coverage_have_distinct_meaning(self):
         status = {'release': 'v13.5', 'builtAt': 'old', 'radarUpdatedAt': 'old', 'healthCheckedAt': 'old', 'guideLatestPublishedAt': '2026-09-30', 'quicklookLatestAt': '2026-10-01', 'counts': {'guides': 12}}
@@ -184,6 +198,7 @@ class RefreshExecutionTests(PipelineFixture):
         result, report, outputs, calls = self.invoke(run=lambda argv, timeout: (3, '', 'source failed'))
         self.assertEqual(result, 1)
         self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0], ['scripts/apply_public_library.py'])
         self.assertEqual(report['status'], 'failed')
         self.assertTrue(report['fast'])
         self.assertIsNone(report['changed'])
@@ -212,7 +227,8 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(outputs, [False])
 
     def test_budget_skips_optional_steps_but_reserves_build(self):
-        result, report, outputs, calls = self.invoke(clock=[0, 0, 0, 0, 1250, 1250, 1250, 1250])
+        clock = [0] * (1 + len(ci_daily.REQUIRED)) + [1250] * (len(ci_daily.LIGHT_OPTIONAL) + 2)
+        result, report, outputs, calls = self.invoke(clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(calls[-1], ci_daily.BUILD)
         self.assertEqual(sum(step.get('outcome') == 'skipped' for step in report['steps']), 2)
@@ -232,7 +248,7 @@ class RefreshExecutionTests(PipelineFixture):
             return 0, '', ''
         # Archive work reaches its budget, leaving 600 seconds for the model and
         # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0, 0, 0, 0, 0, 0, 1000, 2100, 2100, 2100, 2700, 2700, 2700]
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2700, 2700, 2700]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)
