@@ -10,8 +10,16 @@ try:
   report["httpStatus"]=response.status
   data=json.load(response)
   if data.get("success"):
-   config=(data.get("result") or {}).get("deployment_configs") or {}
-   record=((config.get("production") or {}).get("env_vars") or {}).get("PDF_GITHUB_COMMIT")
+   result=data.get("result") or {}
+   config=result.get("deployment_configs") or {}
+   production=config.get("production") or {}
+   variables=production.get("env_vars")
+   report["productionConfigFieldPresent"]="production" in config
+   report["envVarsFieldPresent"]="env_vars" in production
+   report["envVarsIsObject"]=isinstance(variables,dict)
+   report["envVarCount"]=len(variables) if isinstance(variables,dict) else None
+   report["canonicalDeploymentId"]=(result.get("canonical_deployment") or {}).get("id")
+   record=(variables if isinstance(variables,dict) else {}).get("PDF_GITHUB_COMMIT")
    report["configured"]=record is not None
    value=record.get("value") if isinstance(record,dict) else None
    report["nonSecretVersionFormatValid"]=isinstance(value,str) and bool(re.fullmatch(r"[a-fA-F0-9]{40}",value))
