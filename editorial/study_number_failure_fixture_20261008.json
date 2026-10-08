@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "observed": {
+    "reportedBeijingTime": "2026-10-08 08:25",
+    "tasks": [
+      "compare",
+      "brief"
+    ],
+    "parentViewedScreenshot": true,
+    "rawModelOutputPreserved": false,
+    "requestSourceFingerprintsPreserved": false,
+    "secondPaperIdentity": null,
+    "originalPairReproduced": false,
+    "knownPaper": {
+      "title": "Artificial Intelligence in Cardiology: An Evidence Map Across Subspecialties, 2014–2026",
+      "doi": "10.1093/ehjdh/ztag152",
+      "journal": "EHJ Digital Health",
+      "date": "2026-09-23",
+      "identityEvidence": "Saved v14.2.12 public LIBRARY metadata",
+      "actualApiAbstractRecovered": false
+    }
+  },
+  "provenance": {
+    "productionSource": "0371c21e846f05fdb5ef8e41968a711ac01a5a19",
+    "kind": "Offline constructed outputs; not recovered failed production output",
+    "existingRealPublicAbstractFixture": "editorial/week_study_failure_fixture_20261007.json",
+    "existingFixtureIsNotClaimedAsSecondUserPaper": true,
+    "baselineGuardExcerptSha256": "b25c7b40aa31a96f90aa551742a97f7832c42f9b85a55491630b6553b9d58040"
+  },
+  "constructedSources": [
+    {
+      "n": 1,
+      "key": "pmid:711",
+      "pmid": "711",
+      "doi": "10.9999/numeric-fixture-first",
+      "title": "Synthetic evidence map, 2014–2026",
+      "journal": "Offline fixture",
+      "abstract": "This synthetic public-source regression fixture covers 2014–2026. It included 104 reports. Events occurred in 12.50% of 1,000 participants; the ratio was 0.039 (95% CI, 1.04–1.37). Records were assessed on 2026-09-23. These sentences are constructed test data, not facts about the user's papers. This extra fixture context ensures the saved abstract passes the existing minimum-length gate without changing any numeric evidence."
+    },
+    {
+      "n": 2,
+      "key": "pmid:722",
+      "pmid": "722",
+      "doi": "10.9999/numeric-fixture-second",
+      "title": "Second synthetic source; not the missing user identity",
+      "journal": "Offline fixture",
+      "abstract": "This second synthetic public-source regression fixture included 888 participants. No medical recommendation follows from the test numbers. All model-shaped responses in this fixture are constructed offline and must never be described as the user's second paper or a recovered production output. This extra fixture context ensures the saved abstract passes the existing minimum-length gate without changing any numeric evidence."
+    }
+  ],
+  "cases": {
+    "calendar": {
+      "source": "Records were assessed on 2026-09-23.",
+      "output": "记录日期为2026年09月23日。",
+      "baselineExpected": "rejects09",
+      "candidateExpected": "accepts lossless calendar format"
+    },
+    "ordinal": {
+      "quote": "It included 104 reports.",
+      "output": "1. 纳入104条记录",
+      "expected": "reject unsupported prose ordinal; retry feedback must target field and remove prose numbering"
+    },
+    "crossPaper": {
+      "output": "纳入888条记录",
+      "paperN": 1,
+      "expected": "reject borrowing second paper number"
+    },
+    "calculatedSpan": {
+      "source": "2014–2026",
+      "output": "研究跨度12年",
+      "expected": "reject derived duration; no calculation authorized"
+    }
+  }
+}

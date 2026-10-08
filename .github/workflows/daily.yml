@@ -114,6 +114,7 @@ jobs:
           node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_study_services.cjs
           node scripts/test_study_evidence_regression.cjs
+          node scripts/test_study_number_validation.cjs
           node scripts/test_study_ui.cjs
           node scripts/test_brief_feedback.cjs
           node scripts/test_source_health_ui.cjs
