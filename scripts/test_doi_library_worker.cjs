@@ -47,7 +47,7 @@ function harness(options={}){
  const ClockDate=options.clock?class extends Date {constructor(...args){super(...(args.length?args:[options.clock.now]));}static now(){return options.clock.now;}}:Date;
  const context=vm.createContext({URL,URLSearchParams,Response,Request,TextEncoder,TextDecoder,Uint8Array,AbortController,setTimeout:timers,clearTimeout,crypto:webcrypto,fetch,console,Date:ClockDate,atob,btoa});
  const policy=options.policy||{};
- vm.runInContext(source.replace('const DOI_ADJUDICATIONS = {};','const DOI_ADJUDICATIONS = '+JSON.stringify(policy)+';').replace('export default {','globalThis.worker = {'),context);
+ vm.runInContext(source.replace('const PDF_LIBRARY = {};','const PDF_LIBRARY = '+JSON.stringify(options.registry||{})+';').replace('const DOI_ADJUDICATIONS = {};','const DOI_ADJUDICATIONS = '+JSON.stringify(policy)+';').replace('export default {','globalThis.worker = {'),context);
  const env={...baseEnv,QL_KV:kv};
  const request=(route='/api/acquire',config={})=>{const query=config.query===undefined?'doi='+encodeURIComponent(config.doi||doi):config.query;const headers={'content-type':'application/x-www-form-urlencoded',...(config.headers||{})};const method=config.method||'POST';return context.worker.fetch(new Request('https://site.test'+route+(query?'?'+query:''),{method,headers,...(method==='POST'?{body:config.body===undefined?new URLSearchParams({passphrase:config.passphrase===undefined?baseEnv.PDF_DOWNLOAD_PASSPHRASE:config.passphrase}).toString():config.body}:{})}),{...env,...(config.env||{})});};
  return {context,values,writes,calls,reads,lists,env,request,kv};
@@ -67,7 +67,7 @@ if(require.main===module)(async()=>{
  let h=harness();
  for(const route of ['/api/acquire','/api/fulltext']){const res=await h.request(route,{method:'GET',env:{QL_KV:undefined,GITHUB_LIBRARY_TOKEN:undefined,PDF_DOWNLOAD_ENABLED:undefined}});assert.equal(res.status,200);assert.equal(res.headers.get('referrer-policy'),'same-origin');const html=await res.text();assert(html.includes('method="post"'));assert(html.includes('autocomplete="current-password"'));assert(!html.includes(baseEnv.PDF_DOWNLOAD_PASSPHRASE));}
  assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
- const missing=await h.request('/api/library',{method:'GET'});assert.deepEqual(await missing.json(),{ok:true,found:false});assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
+ const missing=await h.request('/api/library',{method:'GET'});assert.deepEqual(await missing.json(),{ok:true,found:false,paused:false});assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
  for(const phrase of ['','wrong',baseEnv.PDF_DOWNLOAD_PASSPHRASE+'x']){h=harness();await error(await h.request('/api/acquire',{passphrase:phrase}),403,'pdf_passphrase_invalid');assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);assert.equal(h.reads.length,0);}
  for(const body of ['passphrase=x&passphrase=y','passphrase=x&doi='+doi,'password=x']){h=harness();await error(await h.request('/api/acquire',{body}),400,'pdf_bad_form');assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);}
  h=harness();await error(await h.request('/api/acquire',{body:'passphrase='+('x'.repeat(2048))}),413,'pdf_body_too_large');
@@ -75,7 +75,7 @@ if(require.main===module)(async()=>{
  for(const query of ['doi='+doi+'&passphrase=wrong','doi='+doi+'&doi='+doi,'doi=10.1000/test%3Fsecret','doi=not-a-doi']){h=harness();await error(await h.request('/api/acquire',{query}),400,'library_bad_doi');assert.equal(h.calls.length,0);}
  h=harness();await error(await h.request('/api/acquire',{env:{QL_KV:undefined}}),503,'library_not_configured');
  h=harness();await error(await h.request('/api/acquire',{env:{PDF_DOWNLOAD_ENABLED:undefined}}),503,'library_disabled');
- h=harness();await error(await h.request('/api/acquire',{env:{GITHUB_LIBRARY_TOKEN:undefined}}),503,'library_not_configured');assert.equal(h.calls.length,0);assert.equal(h.writes.length,0);
+ h=harness();await error(await h.request('/api/acquire',{env:{GITHUB_LIBRARY_TOKEN:undefined}}),503,'library_not_configured');assert.equal(h.calls.length,0);assert(h.writes.every(w=>w.key.startsWith('library:diagnostic:')));
 
  h=harness();const acquired=await h.request('/api/acquire',{doi:'HTTPS://DX.DOI.ORG/10.1000/EXACT'});assert.equal(acquired.status,200);const success=await acquired.json();assert.equal(success.paper.id,'doi-'+hash(doi).slice(0,16));assert.equal(success.paper.fulltextStatus,'available');assert.equal(success.paper.metadataStatus,'external_bibliography_checked');assert.equal(success.paper.authors[0],'Jane Doe');assert(success.downloadUrl.startsWith('/api/fulltext?doi='));
  assert(h.calls[0].url.hostname==='api.crossref.org');assert.equal(h.calls.filter(c=>c.url.hostname==='api.github.com').length,3);
