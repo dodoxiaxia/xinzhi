@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "scope": "public-abstract",
+  "selected": 24,
+  "window": {
+    "start": "2026-10-02",
+    "end": "2026-10-08",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 78,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 68,
+      "综合医学": 8,
+      "AI医疗": 1,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 300,
+      "no_complete_public_abstract": 63,
+      "low_relevance": 31,
+      "correction_comment_letter": 11,
+      "outside_window": 387
+    },
+    "shortfallReason": null
+  },
+  "coverageBefore": {
+    "title": 24,
+    "translate": 23,
+    "study": 0,
+    "quicklook": 23
+  },
+  "coverageAfter": {
+    "title": 24,
+    "translate": 24,
+    "study": 0,
+    "quicklook": 24
+  },
+  "pendingBefore": 1,
+  "pendingAfter": 0,
+  "contentComplete": true,
+  "studyMissing": 24,
+  "newPapers": 1,
+  "newEntries": 2,
+  "existingPapersReused": 23,
+  "unchangedPapers": [
+    {
+      "paperID": "doi:10.1001/jamacardio.2026.4445",
+      "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+      "unchangedRowSHA256": "92810687c36c6a9cd667095a9a91f6df309c4bf17976920c886bac99e7a5465a"
+    },
+    {
+      "paperID": "doi:10.1093/ehjcvp/pvag089",
+      "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+      "unchangedRowSHA256": "0c465d021bfa0166283e26f4a37ba86d1610b5118ff3dfdd3996727b209c069d"
+    },
+    {
+      "paperID": "doi:10.1161/circep.126.015055",
+      "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+      "unchangedRowSHA256": "701efe6abf5e79a2528df82b14ada2bbf64597465539e48e5a65b8c5eb33f2e9"
+    },
+    {
+      "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+      "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+      "unchangedRowSHA256": "4a2502eb9c664872e16d94fe5426a248836f437347295d39bc57a45c7b3cb9d3"
+    },
+    {
+      "paperID": "doi:10.1161/circulationaha.126.080404",
+      "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+      "unchangedRowSHA256": "a1f8469c96e960bd926d944ee1dfc4fe65f8d59a99f543de94fff158108392b6"
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2026.103298",
+      "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+      "unchangedRowSHA256": "0c7384dd903f74cf17e323798c5ac542800c641dff43126de42bae4f5d37a442"
+    },
+    {
+      "paperID": "doi:10.1016/j.jacadv.2026.103306",
+      "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+      "unchangedRowSHA256": "e6d45f33ff53f8c6daea86b6368f557ae0f6a54e5fb25847bd92ae6b5d29246d"
+    },
+    {
+      "paperID": "doi:10.1093/eurheartj/ehag699",
+      "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+      "unchangedRowSHA256": "eaa3b71cfc25cb1928e29b4d518bfdc89c022144db49f49d70b30bef5f3b7943"
+    },
+    {
+      "paperID": "doi:10.1111/jce.70518",
+      "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+      "unchangedRowSHA256": "260239186a4b33aa47d83b688f2d2db34c45921f663b502273498c429f9498ce"
+    },
+    {
+      "paperID": "doi:10.1161/circep.126.014967",
+      "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+      "unchangedRowSHA256": "9029695640bc4e99d393c9da8a3a4165050668b83a52cf69f2a6cf86e3f84f04"
+    },
+    {
+      "paperID": "doi:10.1001/jama.2026.17619",
+      "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+      "unchangedRowSHA256": "b06a30f46903a3a3ef8ea5f9a1e88b5ae9be02210349b581599d7303203308f1"
+    },
+    {
+      "paperID": "doi:10.1001/jama.2026.17192",
+      "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+      "unchangedRowSHA256": "b3b030a0f45c85630cd4ef64d02eb3a3c2fa0bacf71e4593963f72707d796c72"
+    },
+    {
+      "paperID": "doi:10.1038/s41591-026-04675-1",
+      "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+      "unchangedRowSHA256": "17ba3e1e2b1ea3448026abac817d2bb20dc8ec6a8951e8791587b280e2d92f57"
+    },
+    {
+      "paperID": "doi:10.1001/jamainternmed.2026.4894",
+      "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+      "unchangedRowSHA256": "87a69d5836002a18d2017d0d8b0ffe5c1c8d7827cd63a0412cb988c2af27719f"
+    },
+    {
+      "paperID": "doi:10.1038/s41591-026-04713-y",
+      "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+      "unchangedRowSHA256": "c644e917e5e2f67b83c3f75275c82e54157d7270414e4eb2329bbf3183383310"
+    },
+    {
+      "paperID": "doi:10.1038/s41591-026-04704-z",
+      "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+      "unchangedRowSHA256": "c13c7a3c830cacfda4935866b9d9a2b174041522c586d44bb3b27f0c22c98a34"
+    },
+    {
+      "paperID": "doi:10.1161/circep.125.014659",
+      "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+      "unchangedRowSHA256": "4221e4671a69c7b08ea45c60def6469c9782017bf15afb3ec0dc868fec4c510b"
+    },
+    {
+      "paperID": "doi:10.1038/s41467-026-78143-2",
+      "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+      "unchangedRowSHA256": "e241f31fa0a94a1a0cd2a218a9d1ffb577fa1333f0b66f344538c4e685ebc3a7"
+    },
+    {
+      "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+      "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+      "unchangedRowSHA256": "5bcddf56c6388dd041d96cc9883014ac7d128414d8fd073c7f0d8aba264d2c2a"
+    },
+    {
+      "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+      "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+      "unchangedRowSHA256": "dce7f1a445d75a0b23e6cf9d73a03eaf88bd5ef9720abe51fe3ec3887d0d6d65"
+    },
+    {
+      "paperID": "doi:10.1016/j.jcin.2026.07.042",
+      "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+      "unchangedRowSHA256": "4a6ba08cd3702ffb2ab073667ac31c57f27fb19691d573fd438d7eec706c070d"
+    },
+    {
+      "paperID": "doi:10.1161/jaha.126.054084",
+      "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+      "unchangedRowSHA256": "f41a2f72f1036e1f466bd0dc63c524d80b0ab7885393e8dcd57550f979bb4aad"
+    },
+    {
+      "paperID": "doi:10.1111/jce.70524",
+      "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+      "unchangedRowSHA256": "66c86e5bf30732af7829d3b6fa32a89fdd9fe9371865880dd2a0cd9812d951f0"
+    }
+  ],
+  "selectionSourceWindowUnchanged": true,
+  "externalModelApiRequests": 0,
+  "runtimeCacheWrites": 0,
+  "ledgerWrites": 0,
+  "verification": "offline public projection only; not a live model/API check"
+}
