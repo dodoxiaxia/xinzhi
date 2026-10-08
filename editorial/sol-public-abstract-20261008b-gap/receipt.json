@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "branch": "codex/week-sol-gap-20261008b",
+  "sourceMainSha": "0edf01932612c9f2a68bde3e638be27a42f187bf",
+  "sourceStateSha": "350addefc78f57362278ab73123924e852b179bb",
+  "window": {
+    "start": "2026-10-02",
+    "end": "2026-10-08",
+    "timezone": "Asia/Shanghai",
+    "days": 7,
+    "target": 24,
+    "eligible": 78,
+    "selected": 24,
+    "eligibleByCategory": {
+      "心血管": 68,
+      "综合医学": 8,
+      "AI医疗": 1,
+      "AI前沿": 1
+    },
+    "excluded": {
+      "duplicates": 0,
+      "unverified_publication_date": 304,
+      "no_complete_public_abstract": 63,
+      "low_relevance": 31,
+      "correction_comment_letter": 11,
+      "outside_window": 387
+    },
+    "shortfallReason": null
+  },
+  "gapReasons": {
+    "newIdentity": 5,
+    "sourceHashChanged": 0,
+    "identityMappingOmission": 0
+  },
+  "cacheFilesExamined": [
+    "editorial/sol-public-abstract-20261007/corrected-cache.json",
+    "editorial/sol-public-abstract-20261007/full-cache.json",
+    "editorial/sol-public-abstract-20261007/batch-01-cache.json",
+    "editorial/sol-public-abstract-20261008-gap/gap-cache.json",
+    "state:data/week-precompute-cache.json"
+  ],
+  "existingPapersReused": 19,
+  "newPapersGenerated": 5,
+  "newCacheEntries": 10,
+  "productionValidatorTasksPassed": 10,
+  "independentSolPapersReviewed": 5,
+  "reviewFiles": [
+    "reviews/batch-a-review.json",
+    "reviews/batch-b-review.json"
+  ],
+  "allFinalSourceDraftBindingsVerified": true,
+  "literalFindingQuotes": 18,
+  "offlineCoverageBefore": {
+    "title": 19,
+    "translate": 19,
+    "quicklook": 19,
+    "study": 0
+  },
+  "offlineCoverageAfter": {
+    "title": 24,
+    "translate": 24,
+    "quicklook": 24,
+    "study": 0
+  },
+  "pendingBefore": 5,
+  "pendingAfter": 0,
+  "selectionSourceAndWindowUnchanged": true,
+  "scope": "public-abstract",
+  "origin": "sol-session-public-abstract",
+  "modelVersion": "sol-session-model-unobserved",
+  "actualBackendModelVerified": false,
+  "generationPromptVersion": "unobserved",
+  "generationVersionKnown": false,
+  "externalModelApiRequests": 0,
+  "providerUsage": null,
+  "humanMedicalFullTextReview": false,
+  "runtimeCacheWrites": 0,
+  "ledgerWrites": 0,
+  "ledgerSha256": "b123dc1c0c81fb171fe19d6ad9a4a14c780932c5873a958ce533a05ed269d051",
+  "ledgerStillPaused": true,
+  "historicReservationDay": "2026-10-07",
+  "historicReservedAttempts": 4,
+  "historicReservedOutputTokens": 3800,
+  "accountBudgetVerified": false,
+  "tests": {
+    "test_public_precompute_pending.py": 6,
+    "test_sol_gap_b_overlay.py": 3,
+    "test_sol_gap_overlay.py": 6,
+    "test_public_editorial_overlay.py": 5,
+    "test_sol_public_overlay.py": 9,
+    "totalPassed": 29
+  },
+  "pendingScannerIntegratedIntoCI": false,
+  "newCronOrCredentialOrOldTaskShutdown": false,
+  "productionWrites": 0,
+  "deployed": false,
+  "limitations": [
+    "This fixes the fixed current snapshot, not future unseen papers.",
+    "Read-only pending scanner and concrete wiring guidance are supplied; continuous generation is not activated.",
+    "Prior provider/connection/account-budget blockers are not reverified or bypassed.",
+    "Study remains missing for all 24."
+  ]
+}

@@ -1,0 +1,162 @@
+{
+ "schemaVersion": 1,
+ "scope": "public-abstract",
+ "window": {
+  "start": "2026-10-02",
+  "end": "2026-10-08",
+  "timezone": "Asia/Shanghai",
+  "days": 7,
+  "target": 24,
+  "eligible": 78,
+  "selected": 24,
+  "eligibleByCategory": {
+   "心血管": 68,
+   "综合医学": 8,
+   "AI医疗": 1,
+   "AI前沿": 1
+  },
+  "excluded": {
+   "duplicates": 0,
+   "unverified_publication_date": 304,
+   "no_complete_public_abstract": 63,
+   "low_relevance": 31,
+   "correction_comment_letter": 11,
+   "outside_window": 387
+  },
+  "shortfallReason": null
+ },
+ "selected": 24,
+ "coverage": {
+  "title": 19,
+  "translate": 19,
+  "quicklook": 19
+ },
+ "pendingPapers": 5,
+ "contentComplete": false,
+ "items": [
+  {
+   "paperID": "doi:10.1001/jamacardio.2026.4445",
+   "doi": "10.1001/jamacardio.2026.4445",
+   "pmid": "42842238",
+   "title": "Intensive vs Standard Blood Pressure Lowering in People With and Without Chronic Kidney Disease: A Systematic Review and Meta-Analysis.",
+   "abstract": "IMPORTANCE: There is uncertainty about the effects of intensive blood pressure (BP) lowering on risks of cardiovascular disease and kidney failure in patients with chronic kidney disease (CKD). OBJECTIVE: To assess the standardized effects of intensive BP lowering on cardiovascular and kidney outcomes overall, and then to assess for effect modification by CKD status. DATA SOURCES: MEDLINE and Embase databases were searched from inception to January 16, 2026. STUDY SELECTION: Randomized clinical trials comparing intensive vs standard BP lowering in adults with and without CKD, with at least 1 year of follow-up, were eligible for inclusion. DATA EXTRACTION AND SYNTHESIS: Meta-analyses were performed using inverse variance weighting after standardizing trial results according to the between-group difference in achieved systolic BP (SBP). Differences in relative effects between CKD and non-CKD populations were assessed using χ2 tests for heterogeneity. MAIN OUTCOMES AND MEASURES: The primary outcome was major cardiovascular events; secondary outcomes included kidney failure and estimated glomerular filtration rate (eGFR)-based surrogate outcomes for kidney failure. RESULTS: We identified 27 studies including 88 830 participants. Intensive BP lowering reduced the risk of cardiovascular events by 15% per 10-mm Hg lower SBP (relative risk [RR], 0.85; 95% CI, 0.81-0.89), without heterogeneity by CKD status. This corresponded to an estimated (SE) absolute reduction of 4.3 (1.2) cardiovascular events per 1000 person-years in individuals with CKD and 2.7 (0.4) events per 1000 person-years in those without CKD. Intensive BP lowering did not affect risk of kidney failure (RR per 10-mm Hg reduction, 0.97; 95% CI, 0.84-1.11) nor risk of 57% or 50% sustained eGFR declines (RR, 0.97; 95% CI, 0.83-1.14; and RR, 1.29; 95% CI, 0.94-1.76, respectively), without heterogeneity by CKD subgroup. Intensive BP lowering increased risk of 30% or greater and 40% or greater declines by 42% (RR, 1.42; 95% CI, 1.28-1.58) and 47% (RR, 1.47; 95% CI, 1.30-1.66). CONCLUSIONS AND RELEVANCE: Results of this systematic review and meta-analysis indicate that in adults with or without CKD, intensive BP lowering reduced the risk of cardiovascular events by 15% per 10-mm Hg lower SBP and increased the risk of sustained declines in eGFR, without an increase in risk of kidney failure. However, since baseline cardiovascular risk is higher in CKD, the absolute reduction in cardiovascular events was at least as large in this population; therefore, intensive BP lowering should be recommended in people with and without CKD.",
+   "date": "2026-10-07",
+   "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+   "abstractSource": "PubMed",
+   "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42842238/",
+   "missingTasks": [
+    "title",
+    "translate",
+    "quicklook"
+   ],
+   "reason": "new_identity",
+   "requiredTaskVersions": {
+    "translate": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+    "quicklook": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+    "title": "public-title-only-source-hash-v1"
+   },
+   "queueKey": "f5929300ecc66bc4a733627306d0adafa734cdbe76f86a05697553e9cc0096b6",
+   "allowAutomaticGeneration": false
+  },
+  {
+   "paperID": "doi:10.1161/circep.126.015055",
+   "doi": "10.1161/circep.126.015055",
+   "pmid": "42841215",
+   "title": "Role of Lifestyle and Risk Factor Modification Clinics in Patients With Atrial Fibrillation: A Systematic Review and Meta-Analysis of Randomized Controlled Trials.",
+   "abstract": "BACKGROUND: Incidence and recurrence of atrial fibrillation (AF) are associated with several lifestyle risk factors. Lifestyle and risk factor modification (LRFM) clinics could have a role in comprehensively addressing AF from a holistic, patient-centered approach to improve clinical outcomes. METHODS: We performed a systematic review and meta-analysis of randomized controlled trials evaluating the role of LRFM clinics compared with usual care in patients with AF. The primary end point was atrial arrhythmia recurrence. Secondary end points were AF and heart failure-related hospitalization, cardiovascular death, stroke or transient ischemic attack, and quality-of-life. RESULTS: Eleven randomized controlled trials with a total of 3364 patients were included (5 randomized controlled trials performed in the context of AF ablation). Mean age was 58 to 73 years, 30% were female, and 18% had persistent AF. Duration of follow-up ranged from 3 to 24 months. LRFM clinics significantly reduced the primary end point of arrhythmia recurrence compared with usual care after catheter ablation (odds ratio, 0.34 [95% CI, 0.23-0.51]; P<0.001, I2=0%). LRFM clinics also reduced AF-related hospitalization (odds ratio, 0.70 [95% CI, 0.51-0.98]; P=0.04, I2=21%) and improved quality-of-life (mean improvement on Short Form 36 Questionnaire, 8.90 [95% CI, 6.91-10.90]; P<0.001). There was no detected difference between LRFM clinics and usual care for heart failure-related hospitalization (P=0.16), cardiovascular deaths (P=0.79), or stroke/transient ischemic attack (P=0.83). CONCLUSIONS: In this meta-analysis of randomized controlled trials, LRFM clinics reduced AF recurrence after ablation, reduced AF-related hospitalization, and improved quality of life. This study supports a comprehensive multidisciplinary lifestyle risk modification model of care to improve clinical outcomes in patients with AF.",
+   "date": "2026-10-07",
+   "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+   "abstractSource": "PubMed",
+   "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841215/",
+   "missingTasks": [
+    "title",
+    "translate",
+    "quicklook"
+   ],
+   "reason": "new_identity",
+   "requiredTaskVersions": {
+    "translate": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+    "quicklook": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+    "title": "public-title-only-source-hash-v1"
+   },
+   "queueKey": "56dc8112e0d744dab9ba46f389c51e8cf7585db1a8b9acff51817d8355fc0a7e",
+   "allowAutomaticGeneration": false
+  },
+  {
+   "paperID": "doi:10.1001/jama.2026.17619",
+   "doi": "10.1001/jama.2026.17619",
+   "pmid": "42842242",
+   "title": "Advance Care Planning for Black and White Older Adults With Serious Illness: The EQUAL ACP Randomized Trial.",
+   "abstract": "IMPORTANCE: Advance care planning (ACP) helps individuals communicate preferences for future medical care. Many adults do not participate in ACP, and Black adults are less likely than White adults to participate. OBJECTIVE: To compare the effectiveness of facilitated vs self-guided ACP interventions. DESIGN, SETTING, AND PARTICIPANTS: EQUAL ACP was a multisite, cluster randomized trial conducted in 10 primary care (n = 9) and geriatrics (n = 1) clinics in the South of the United States. Participants were community-dwelling Black and White adults 65 years or older with serious illness. Within each clinic and study group, participants were randomized to a racially concordant or discordant ACP facilitator. INTERVENTIONS: Clinics were randomized to Respecting Choices First Steps, a facilitated ACP approach, or Five Wishes, a self-guided approach. Both were delivered by lay ACP facilitators. MAIN OUTCOMES AND MEASURES: ACP completion within 12 months after the baseline survey, defined as new formal (advance directive, clinician note, or orders for life-sustaining treatment form in the medical record) and/or new informal ACP (participant-reported discussion with family about end-of-life care preferences). The primary analysis compared the effectiveness of the self-guided approach with the facilitated approach within each racial group. Other analyses assessed interaction between race and treatment in the combined sample and the association of participant-facilitator racial concordance with ACP. RESULTS: Of 791 participants, 427 were Black and 364 were White; 409 were in clinics with the facilitated approach and 382 in clinics with the self-guided approach. Among Black participants, 152 of 213 (71%) in facilitated clinics and 131 of 213 (62%) in self-guided clinics completed ACP within 1 year (adjusted risk ratio [RR], 1.15 [95% CI, 0.83-1.59]). Among White participants, 133 of 196 (68%) in facilitated clinics and 131 of 167 (78%) in self-guided clinics completed ACP (adjusted RR, 0.88 [95% CI, 0.65-1.18]). Among 789 in the pooled sample, 547 (69%) completed ACP, including 130 of 789 with formal ACP and 523 of 668 with informal ACP. In the pooled sample, the interaction between race and intervention group was significant (adjusted RR, 1.32 [95% CI, 1.03-1.69]), indicating greater effectiveness of the facilitated vs self-guided approach among Black relative to White participants. Participant-facilitator racial concordance was not associated with ACP in either racial group. CONCLUSIONS AND RELEVANCE: ACP completion within 1 year did not differ significantly between facilitated vs self-guided ACP approaches within Black or White racial groups. TRIAL REGISTRATION: ClinicalTrials.gov Identifier: NCT03516994.",
+   "date": "2026-10-07",
+   "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+   "abstractSource": "PubMed",
+   "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42842242/",
+   "missingTasks": [
+    "title",
+    "translate",
+    "quicklook"
+   ],
+   "reason": "new_identity",
+   "requiredTaskVersions": {
+    "translate": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+    "quicklook": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+    "title": "public-title-only-source-hash-v1"
+   },
+   "queueKey": "ef88161f8691fca319ce0e69278da338101bcfe4e69aa075cb426ccaeba44aaf",
+   "allowAutomaticGeneration": false
+  },
+  {
+   "paperID": "doi:10.1161/circep.125.014659",
+   "doi": "10.1161/circep.125.014659",
+   "pmid": "42841203",
+   "title": "Reclassifying Single Lead Sinus Rhythm ECGs for Improved AF Recurrence Detection With Deep Learning.",
+   "abstract": "BACKGROUND: Atrial fibrillation (AF) remains a common outcome after catheter ablation, with recurrence observed in up to 50% of patients within 5 years. Despite extensive research, challenges remain in optimizing observation and prediction windows for AF recurrence assessment. Therefore, we developed and validated a novel deep learning model that reclassifies sinus rhythm based on past and future AF events using single-lead ECG strips from handheld devices. METHODS: Of the 558 participants, 308 with no documented recurrence during study follow-up contributed Benign Sinus strips, while 250 with documented recurrence contributed sinus rhythm strips recorded within ±3 days of an AF event, defined as Severe Sinus strips. Both clinical feature-based models and a deep learning model were used to classify these ECGs according to their proximity to AF recurrence events. Performance was evaluated using area under the receiver operating characteristic curve, accuracy, sensitivity, specificity, and F1-score. RESULTS: The strip-level pretrained deep learning model achieved an area under the receiver operating characteristic curve of 0.86, with sensitivity of 0.79, and specificity of 0.76. The complementary participant-level clinical feature-based Random Forest benchmark achieved an area under the receiver operating characteristic curve of 0.71, sensitivity of 0.58, and specificity of 0.69. Feature-based analyses identified associations involving heart-rate variability, mean R-R interval, female sex, left atrial volume, and mean P-wave duration. CONCLUSIONS: Our dynamic deep learning model reclassifies 30-second single-lead sinus rhythm ECGs based on AF events within ±3 days, transforming a brief ECG snapshot into a summarized indicator of short-term AF risk.",
+   "date": "2026-10-07",
+   "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+   "abstractSource": "PubMed",
+   "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841203/",
+   "missingTasks": [
+    "title",
+    "translate",
+    "quicklook"
+   ],
+   "reason": "new_identity",
+   "requiredTaskVersions": {
+    "translate": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+    "quicklook": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+    "title": "public-title-only-source-hash-v1"
+   },
+   "queueKey": "4adb419c0314a175bc3381d58d80c87ff1ce3ef9bfd16f87d1d7e53ccfa59f69",
+   "allowAutomaticGeneration": false
+  },
+  {
+   "paperID": "doi:10.1111/jce.70524",
+   "doi": "10.1111/jce.70524",
+   "pmid": "42841812",
+   "title": "Evolving Mechanisms on Mortality in Atrial Fibrillation: A 25-Year National Death-Certificate Analysis.",
+   "abstract": "BACKGROUND: Atrial fibrillation (AF) prevalence has risen alongside an aging US population and wider adoption of contemporary therapies, yet population-level changes in mechanisms of death among people with AF remain incompletely characterized. We used National Death Certificate Trends in AF Mortality data to assess 25-year trends in AF-related mortality and the contribution of heart failure (HF), stroke, myocardial infarction (MI), and dementia. METHODS: We conducted a retrospective analysis of CDC WONDER records for US decedents aged ≥ 35 years with AF listed as a contributing cause of death from 1999 to 2023, coinciding with the implementation of ICD-10 coding in the CDC database. We quantified all-cause and cause-specific mortality rates per 100 000 and stratified trends by age, sex, and race. The analytic cohort included decedents with AF and at least one of four cardiovascular conditions (stroke, dementia, HF, or MI) listed as a primary or contributing cause of death. Confidence intervals were obtained from CDC WONDER outputs or calculated per CDC guidance. RESULTS: Among 3 273 015 decedents with AF noted on the death certificate, 461 321 had HF, dementia, stroke, or MI listed as a contributing cause. HF emerged as the leading cause/contributor with a steep rise beginning in approximately 2008. Stroke rates were stable or declining, MI-related mortality remained low and stable, while dementia, particularly stroke-free dementia, increased significantly in adults ≥ 85 (outpacing stroke among the oldest White decedents since early 2000s). Non-White groups exhibited higher stroke and HF mortality trends; women ≥ 85 had higher stroke-related mortality than men. CONCLUSIONS: Over 25 years, AF-associated mortality patterns shifted toward HF and stroke-free dementia while ischemic stroke and MI declined or stabilized. Findings highlight the need to expand AF care beyond stroke prevention to prioritize HF prevention/management, cognitive health, equitable AF-care pathways to ensure broad access to therapies, and additional studies of targeted interventions to mitigate disease risks.",
+   "date": "2026-10-07",
+   "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+   "abstractSource": "PubMed",
+   "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841812/",
+   "missingTasks": [
+    "title",
+    "translate",
+    "quicklook"
+   ],
+   "reason": "new_identity",
+   "requiredTaskVersions": {
+    "translate": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+    "quicklook": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1",
+    "title": "public-title-only-source-hash-v1"
+   },
+   "queueKey": "59a2a4bf3638e78a6d0bca35e49d0bc08df2352e37aa73a829d39b9686ba025b",
+   "allowAutomaticGeneration": false
+  }
+ ],
+ "studyMissing": 24,
+ "externalModelApiRequests": 0,
+ "runtimeCacheWrites": 0,
+ "ledgerWrites": 0
+}

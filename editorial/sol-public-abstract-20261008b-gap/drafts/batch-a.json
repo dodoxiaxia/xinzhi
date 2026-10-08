@@ -1,0 +1,112 @@
+{
+  "papers": [
+    {
+      "rank": 1,
+      "paperID": "doi:10.1001/jamacardio.2026.4445",
+      "doi": "10.1001/jamacardio.2026.4445",
+      "pmid": "42842238",
+      "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+      "translate": {
+        "title_zh": "有无慢性肾脏病人群的强化降压与标准降压比较：系统综述与荟萃分析",
+        "abstract_zh": "重要性：强化降压对慢性肾脏病（CKD）患者心血管疾病和肾衰竭风险的影响尚不确定。\n目的：评估强化降压对总体心血管及肾脏结局的标准化效应，随后评估CKD状态是否修饰这些效应。\n数据来源：检索MEDLINE和Embase数据库，检索时间为建库至2026年1月16日。\n研究选择：纳入比较有无CKD的成年人接受强化降压与标准降压、随访至少1年的随机临床试验。\n数据提取与综合：依据两组实际达到的收缩压（SBP）差异对试验结果进行标准化，再以逆方差加权开展荟萃分析。采用χ2异质性检验评估CKD与非CKD人群相对效应的差异。\n主要结局与测量：主要结局为重大心血管事件；次要结局包括肾衰竭及基于估算肾小球滤过率（eGFR）的肾衰竭替代结局。\n结果：共确定27项研究，纳入88 830名参与者。每降低10 mmHg SBP，强化降压使心血管事件风险降低15%（相对风险［RR］，0.85；95% CI，0.81-0.89），未发现按CKD状态划分的异质性。这对应于CKD人群每1000人年心血管事件估计绝对减少4.3（标准误［SE］，1.2）例，无CKD人群每1000人年减少2.7（SE，0.4）例。强化降压未影响肾衰竭风险（每降低10 mmHg的RR，0.97；95% CI，0.84-1.11），也未影响eGFR持续下降57%或50%的风险（RR分别为0.97，95% CI，0.83-1.14；及1.29，95% CI，0.94-1.76），未发现按CKD亚组划分的异质性。强化降压使eGFR下降30%或更多及40%或更多的风险分别增加42%（RR，1.42；95% CI，1.28-1.58）和47%（RR，1.47；95% CI，1.30-1.66）。\n结论与相关性：本系统综述与荟萃分析的结果表明，在有无CKD的成年人中，每降低10 mmHg SBP，强化降压使心血管事件风险降低15%，并增加eGFR持续下降的风险，但未增加肾衰竭风险。然而，由于CKD人群的基线心血管风险更高，该人群心血管事件的绝对减少幅度至少同样大；因此，作者认为应向有无CKD的人群推荐强化降压。"
+      },
+      "quicklook": {
+        "title_zh": "有无慢性肾脏病人群的强化降压与标准降压比较：系统综述与荟萃分析",
+        "one_line": "强化降压降低心血管事件风险；eGFR下降风险增加，肾衰竭风险未增加。",
+        "design": "有无慢性肾脏病成人降压随机临床试验的系统综述与荟萃分析",
+        "findings": [
+          {
+            "text": "纳入27项研究、88 830名参与者；每降低10 mmHg收缩压，心血管事件风险降低15%（RR 0.85，95% CI 0.81-0.89），未见按CKD状态划分的异质性。",
+            "quote": "We identified 27 studies including 88 830 participants. Intensive BP lowering reduced the risk of cardiovascular events by 15% per 10-mm Hg lower SBP (relative risk [RR], 0.85; 95% CI, 0.81-0.89), without heterogeneity by CKD status."
+          },
+          {
+            "text": "CKD与无CKD人群每1000人年心血管事件估计绝对减少分别为4.3（SE 1.2）及2.7（SE 0.4）例。",
+            "quote": "This corresponded to an estimated (SE) absolute reduction of 4.3 (1.2) cardiovascular events per 1000 person-years in individuals with CKD and 2.7 (0.4) events per 1000 person-years in those without CKD."
+          },
+          {
+            "text": "肾衰竭风险未受影响（每降低10 mmHg的RR 0.97，95% CI 0.84-1.11）；eGFR持续下降57%或50%的风险也未受影响，未见按CKD亚组划分的异质性。",
+            "quote": "Intensive BP lowering did not affect risk of kidney failure (RR per 10-mm Hg reduction, 0.97; 95% CI, 0.84-1.11) nor risk of 57% or 50% sustained eGFR declines (RR, 0.97; 95% CI, 0.83-1.14; and RR, 1.29; 95% CI, 0.94-1.76, respectively), without heterogeneity by CKD subgroup."
+          },
+          {
+            "text": "eGFR下降30%或更多及40%或更多的风险分别增加42%（RR 1.42，95% CI 1.28-1.58）和47%（RR 1.47，95% CI 1.30-1.66）。",
+            "quote": "Intensive BP lowering increased risk of 30% or greater and 40% or greater declines by 42% (RR, 1.42; 95% CI, 1.28-1.58) and 47% (RR, 1.47; 95% CI, 1.30-1.66)."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "理解按收缩压差异标准化的心血管效应及不同肾脏结局。"
+      }
+    },
+    {
+      "rank": 3,
+      "paperID": "doi:10.1161/circep.126.015055",
+      "doi": "10.1161/circep.126.015055",
+      "pmid": "42841215",
+      "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+      "translate": {
+        "title_zh": "生活方式与危险因素干预门诊在房颤患者中的作用：随机对照试验的系统综述与荟萃分析",
+        "abstract_zh": "背景：房颤（AF）的发生及复发与多种生活方式危险因素相关。生活方式与危险因素干预（LRFM）门诊可能通过整体、以患者为中心的方式全面应对AF，从而改善临床结局。\n方法：开展随机对照试验的系统综述与荟萃分析，评估AF患者接受LRFM门诊相较于常规照护的作用。主要终点为房性心律失常复发。次要终点为AF及心力衰竭相关住院、心血管死亡、卒中或短暂性脑缺血发作，以及生活质量。\n结果：纳入十一项随机对照试验，共3364名患者（其中5项随机对照试验在AF消融情境下开展）。平均年龄为58至73岁，30%为女性，18%存在持续性AF。随访时长为3至24个月。在导管消融后，与常规照护相比，LRFM门诊显著降低了主要终点心律失常复发（比值比，0.34［95% CI，0.23-0.51］；P<0.001，I2=0%）。LRFM门诊还减少了AF相关住院（比值比，0.70［95% CI，0.51-0.98］；P=0.04，I2=21%），并改善生活质量（健康调查简表36问卷的平均改善为8.90［95% CI，6.91-10.90］；P<0.001）。对于心力衰竭相关住院（P=0.16）、心血管死亡（P=0.79）或卒中／短暂性脑缺血发作（P=0.83），未检出LRFM门诊与常规照护之间的差异。\n结论：在这项随机对照试验的荟萃分析中，LRFM门诊减少了消融后AF复发，减少了AF相关住院，并改善生活质量。本研究支持采用综合的多学科生活方式危险因素干预照护模式，以改善AF患者的临床结局。"
+      },
+      "quicklook": {
+        "title_zh": "生活方式与危险因素干预门诊在房颤患者中的作用：随机对照试验的系统综述与荟萃分析",
+        "one_line": "生活方式门诊减少消融后房颤复发和房颤住院，改善生活质量；其他结局未检出差异。",
+        "design": "房颤患者生活方式与危险因素干预门诊对比常规照护的随机试验荟萃分析",
+        "findings": [
+          {
+            "text": "导管消融后，LRFM门诊降低心律失常复发（比值比0.34，95% CI 0.23-0.51；P<0.001，I2=0%）。",
+            "quote": "LRFM clinics significantly reduced the primary end point of arrhythmia recurrence compared with usual care after catheter ablation (odds ratio, 0.34 [95% CI, 0.23-0.51]; P<0.001, I2=0%)."
+          },
+          {
+            "text": "LRFM门诊减少AF相关住院（比值比0.70，95% CI 0.51-0.98；P=0.04，I2=21%）。",
+            "quote": "LRFM clinics also reduced AF-related hospitalization (odds ratio, 0.70 [95% CI, 0.51-0.98]; P=0.04, I2=21%) and improved quality-of-life (mean improvement on Short Form 36 Questionnaire, 8.90 [95% CI, 6.91-10.90]; P<0.001)."
+          },
+          {
+            "text": "生活质量改善：健康调查简表36问卷平均改善8.90（95% CI 6.91-10.90；P<0.001）。",
+            "quote": "LRFM clinics also reduced AF-related hospitalization (odds ratio, 0.70 [95% CI, 0.51-0.98]; P=0.04, I2=21%) and improved quality-of-life (mean improvement on Short Form 36 Questionnaire, 8.90 [95% CI, 6.91-10.90]; P<0.001)."
+          },
+          {
+            "text": "心力衰竭相关住院（P=0.16）、心血管死亡（P=0.79）及卒中／短暂性脑缺血发作（P=0.83）均未检出组间差异。",
+            "quote": "There was no detected difference between LRFM clinics and usual care for heart failure-related hospitalization (P=0.16), cardiovascular deaths (P=0.79), or stroke/transient ischemic attack (P=0.83)."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "区分消融后复发这一情境与整体试验的住院、生活质量及阴性结局。"
+      }
+    },
+    {
+      "rank": 11,
+      "paperID": "doi:10.1001/jama.2026.17619",
+      "doi": "10.1001/jama.2026.17619",
+      "pmid": "42842242",
+      "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+      "translate": {
+        "title_zh": "严重疾病黑人和白人老年人的预先照护计划：EQUAL ACP随机试验",
+        "abstract_zh": "重要性：预先照护计划（ACP）帮助个人表达对未来医疗照护的偏好。许多成年人不参与ACP，黑人成年人参与的可能性低于白人成年人。\n目的：比较协助式与自助式ACP干预的有效性。\n设计、场所及参与者：EQUAL ACP是一项在美国南部10家初级保健（n = 9）及老年医学（n = 1）门诊开展的多中心、整群随机试验。参与者为年龄65岁或以上、患严重疾病、居住在社区的黑人和白人成年人。在每家门诊及每个研究组内，参与者被随机分配给种族相同或不同的ACP协助员。\n干预：门诊被随机分配至Respecting Choices First Steps这一协助式ACP方法，或Five Wishes这一自助式方法。两种方法均由非医务背景的ACP协助员提供。\n主要结局与测量：基线调查后12个月内完成ACP，定义为新增正式ACP（医疗记录中的预先指示、临床医生记录或维持生命治疗医嘱表）和／或新增非正式ACP（参与者报告与家人讨论临终照护偏好）。主要分析在每个种族组内比较自助式与协助式方法的有效性。其他分析评估合并样本中的种族与治疗交互作用，以及参与者与协助员种族一致性和ACP之间的关联。\n结果：791名参与者中，427名为黑人，364名为白人；409名来自采用协助式方法的门诊，382名来自采用自助式方法的门诊。黑人参与者中，协助式门诊的213名中有152名（71%）、自助式门诊的213名中有131名（62%）在1年内完成ACP（调整后风险比［RR］，1.15［95% CI，0.83-1.59］）。白人参与者中，协助式门诊的196名中有133名（68%）、自助式门诊的167名中有131名（78%）完成ACP（调整后RR，0.88［95% CI，0.65-1.18］）。合并样本的789名中有547名（69%）完成ACP，其中789名中有130名完成正式ACP，668名中有523名完成非正式ACP。在合并样本中，种族与干预组的交互作用显著（调整后RR，1.32［95% CI，1.03-1.69］），表明与白人参与者相比，协助式相对自助式方法在黑人参与者中的有效性更高。在两个种族组中，参与者与协助员种族一致性均与ACP无关联。\n结论与相关性：在黑人或白人种族组内，协助式与自助式ACP方法在1年内的ACP完成率均无显著差异。\n试验注册：ClinicalTrials.gov标识符：NCT03516994。"
+      },
+      "quicklook": {
+        "title_zh": "严重疾病黑人和白人老年人的预先照护计划：EQUAL ACP随机试验",
+        "one_line": "两个种族组内ACP完成率均无显著差异；合并样本中的种族与干预交互作用显著。",
+        "design": "社区严重疾病黑人及白人老年人的多中心整群随机试验",
+        "findings": [
+          {
+            "text": "黑人组协助式与自助式门诊的ACP完成率分别为152/213（71%）与131/213（62%）；调整后RR 1.15，95% CI 0.83-1.59。种族组内差异不显著。",
+            "quote": "Among Black participants, 152 of 213 (71%) in facilitated clinics and 131 of 213 (62%) in self-guided clinics completed ACP within 1 year (adjusted risk ratio [RR], 1.15 [95% CI, 0.83-1.59])."
+          },
+          {
+            "text": "白人组协助式与自助式门诊的ACP完成率分别为133/196（68%）与131/167（78%）；调整后RR 0.88，95% CI 0.65-1.18。种族组内差异不显著。",
+            "quote": "Among White participants, 133 of 196 (68%) in facilitated clinics and 131 of 167 (78%) in self-guided clinics completed ACP (adjusted RR, 0.88 [95% CI, 0.65-1.18])."
+          },
+          {
+            "text": "合并样本789名中547名（69%）完成ACP，正式ACP为130/789、非正式ACP为523/668。种族与干预交互作用显著（调整后RR 1.32，95% CI 1.03-1.69），协助式相对自助式方法在黑人中的有效性高于白人。",
+            "quote": "Among 789 in the pooled sample, 547 (69%) completed ACP, including 130 of 789 with formal ACP and 523 of 668 with informal ACP. In the pooled sample, the interaction between race and intervention group was significant (adjusted RR, 1.32 [95% CI, 1.03-1.69]), indicating greater effectiveness of the facilitated vs self-guided approach among Black relative to White participants."
+          },
+          {
+            "text": "参与者与协助员种族一致性在两个种族组中均与ACP无关联。",
+            "quote": "Participant-facilitator racial concordance was not associated with ACP in either racial group."
+          }
+        ],
+        "limits": "摘要未提供明确局限",
+        "why_read": "同时理解种族组内未见差异与种族对干预相对效应的显著修饰。"
+      }
+    }
+  ]
+}

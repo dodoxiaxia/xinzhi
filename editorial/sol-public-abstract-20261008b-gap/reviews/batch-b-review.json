@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "reviewType": "independent-public-abstract-semantic-review",
+  "reviewedAt": "2026-10-08T00:59:29.609646+00:00",
+  "reviewer": {
+    "requestedModel": "gpt-6.1-sol",
+    "actualBackend": "unverified",
+    "actualBackendVerified": false,
+    "humanMedicalFullTextReview": false
+  },
+  "scope": {
+    "ranks": [
+      17,
+      24
+    ],
+    "publicAbstractOnly": true,
+    "allowedInputs": [
+      "sources.json",
+      "drafts/batch-b.json"
+    ],
+    "networkUsed": false,
+    "apiUsed": false,
+    "pdfRead": false,
+    "internalDataRead": false,
+    "draftOrSourceModified": false
+  },
+  "inputSha256": {
+    "sources.json": "04be242f3d0703610cf0f8c410382e22ada064010ed9b742d32100b1026a6e08",
+    "drafts/batch-b.json": "7e0eee7b17958baeffb84a68451671d3696ee6946e0aafb0d88562f1097abd13"
+  },
+  "method": "逐项对照所给公开摘要与中文题名、完整译文、Quick Look全部字段；离线检查身份字段、数字出现次数、分母与分析单位、设计、阴性/稳定结果、连续原文引用。未使用医学全文或外部证据。",
+  "papers": [
+    {
+      "rank": 17,
+      "paperID": "doi:10.1161/circep.125.014659",
+      "doi": "10.1161/circep.125.014659",
+      "pmid": "42841203",
+      "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+      "pass": true,
+      "issues": [],
+      "checks": {
+        "identityFields": {
+          "rank": true,
+          "paperID": true,
+          "doi": true,
+          "pmid": true,
+          "sourceHash": true
+        },
+        "sourceHashMatchesSourceRecord": true,
+        "sourceHashProvenanceIndependentlyVerified": false,
+        "translationNumericOccurrenceMultisetMatches": true,
+        "continuousQuotes": [
+          {
+            "finding": 1,
+            "isContiguousExactSubstring": true
+          },
+          {
+            "finding": 2,
+            "isContiguousExactSubstring": true
+          },
+          {
+            "finding": 3,
+            "isContiguousExactSubstring": true
+          }
+        ],
+        "title": {
+          "pass": true,
+          "note": "中文题名忠实保留单导联、窦性心律、重新分类、房颤复发检测和深度学习；未将检测改成纯前瞻预测。"
+        },
+        "translation": {
+          "pass": true,
+          "note": "背景、方法、结果、结论完整；5年内最多50%复发；558=308无记录复发+250有记录复发；Benign Sinus/Severe Sinus为原文定义的短条类别。过去和未来事件、前后±3天以及30秒单导联均保留；分类依据为事件时间接近程度。"
+        },
+        "quicklook": {
+          "title_zh": {
+            "pass": true,
+            "note": "与译文题名一致且忠实原题。"
+          },
+          "one_line": {
+            "pass": true,
+            "note": "按事件前后±3天重标并评估短期风险信号，未称纯前瞻预测。"
+          },
+          "design": {
+            "pass": true,
+            "note": "558名参与者、前后±3天标注、单导联短条、建模分类均有来源；不擅加随机、前瞻或外部验证设计。"
+          },
+          "findings": {
+            "pass": true,
+            "note": "3条逐项支持：短条层面的预训练深度学习AUC 0.86/敏感度0.79/特异度0.76；参与者层面的临床特征随机森林补充基准AUC 0.71/敏感度0.58/特异度0.69；所有5项特征关联均保留。不同分析单位明确，未作同单位优越性比较。"
+          },
+          "limits": {
+            "pass": true,
+            "note": "“摘要未提供明确局限”符合源摘要未设明确局限陈述；不表示研究没有局限。"
+          },
+          "why_read": {
+            "pass": true,
+            "note": "明确过去与未来房颤事件重标窦性心律短条的分类方法，符合方法。"
+          }
+        },
+        "denominatorsAndDesign": {
+          "pass": true,
+          "note": "308和250是参与者数，不是短条数；0.86是strip-level模型，0.71是participant-level模型。±3天包含事件之前和之后，不能据此称纯前瞻复发预测。原文不提供训练/测试分割或外部验证细节，草稿未增补。"
+        },
+        "negativeResults": {
+          "pass": true,
+          "note": "原摘要未给阴性检验或无效应结果；特征分析译为关联，未升级为因果。"
+        }
+      },
+      "reviewBoundary": "仅核对公开摘要；短期风险汇总指标为摘要作者结论，无法由此确认前瞻预测或临床效用。"
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1111/jce.70524",
+      "doi": "10.1111/jce.70524",
+      "pmid": "42841812",
+      "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+      "pass": true,
+      "issues": [],
+      "checks": {
+        "identityFields": {
+          "rank": true,
+          "paperID": true,
+          "doi": true,
+          "pmid": true,
+          "sourceHash": true
+        },
+        "sourceHashMatchesSourceRecord": true,
+        "sourceHashProvenanceIndependentlyVerified": false,
+        "translationNumericOccurrenceMultisetMatches": true,
+        "continuousQuotes": [
+          {
+            "finding": 1,
+            "isContiguousExactSubstring": true
+          },
+          {
+            "finding": 2,
+            "isContiguousExactSubstring": true
+          },
+          {
+            "finding": 3,
+            "isContiguousExactSubstring": true
+          }
+        ],
+        "title": {
+          "pass": true,
+          "note": "“死亡机制的演变”忠实保留原题措辞，25年和全国死亡证明分析均准确；下文以死亡模式与记录趋势表述，未将题名升级为机制因果证据。"
+        },
+        "translation": {
+          "pass": true,
+          "note": "背景、方法、结果、结论完整。保留美国1999–2023年、≥35岁、AF列为促成死因、四项病症至少一项列为主要或促成死因的分析队列、每100 000人率、年龄/性别/种族分层、置信区间来源。保留死亡证明提及AF的3 273 015人中461 321人有四项病症列为促成死因。"
+        },
+        "quicklook": {
+          "title_zh": {
+            "pass": true,
+            "note": "与译文题名一致且忠实原题；死亡证明分析限定仍在题名中。"
+          },
+          "one_line": {
+            "pass": true,
+            "note": "以全国死亡证明所示的房颤相关死亡模式转向心衰与无卒中痴呆概括作者结论，未称因果机制或总体人群风险。"
+          },
+          "design": {
+            "pass": true,
+            "note": "CDC WONDER死亡证明回顾分析、1999至2023年、≥35岁和每100 000人率正确；与第一条finding共同明确AF死亡证明病例，不误设房颤存活者前瞻队列。"
+          },
+          "findings": {
+            "pass": true,
+            "note": "3条保留贡献死因分组及人数、HF自约2008年上升、卒中稳定/下降、MI低且稳定、≥85岁痴呆尤其无卒中痴呆上升、2000年代初最年长白人死者中痴呆超过卒中、非白人卒中/HF更高趋势及≥85岁女性卒中相关死亡率高于男性。"
+          },
+          "limits": {
+            "pass": true,
+            "note": "“摘要未提供明确局限”符合源摘要未设明确局限陈述；不表示死亡证明分析没有局限。"
+          },
+          "why_read": {
+            "pass": true,
+            "note": "限定为房颤相关死亡证明趋势及作者照护建议的依据，不称已验证干预获益。"
+          }
+        },
+        "denominatorsAndDesign": {
+          "pass": true,
+          "note": "3 273 015为死亡证明提及AF的死亡者，461 321为其中HF/痴呆/卒中/MI列为促成死因者；不是AF总体人群事件风险或治疗组分母。方法另规定AF为促成死因及至少一种四项病症为主要或促成死因。每100 000人的率忠实源文；摘要未进一步明确率的分母定义，复核不推断。≥85岁、非白人和无卒中痴呆限定均保留。"
+        },
+        "negativeResults": {
+          "pass": true,
+          "note": "卒中稳定或下降、MI低且稳定在译文及QL中均保留；结论的缺血性卒中与MI下降或稳定也保留。"
+        }
+      },
+      "reviewBoundary": "仅核对公开摘要；死亡证明登记趋势不能凭本摘要确定生物机制、因果、总体房颤人群死亡风险或照护策略疗效。"
+    }
+  ],
+  "overallPass": true,
+  "offlineValidator": {
+    "run": false,
+    "reason": "已直接执行身份一致性、译文数字出现次数和连续quote离线检查；未读取额外文件或调用API。"
+  },
+  "inputIntegrityAfterReview": {
+    "sources.json": true,
+    "drafts/batch-b.json": true
+  }
+}

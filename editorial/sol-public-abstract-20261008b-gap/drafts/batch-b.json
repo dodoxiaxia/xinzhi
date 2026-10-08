@@ -1,0 +1,68 @@
+{
+  "papers": [
+    {
+      "rank": 17,
+      "paperID": "doi:10.1161/circep.125.014659",
+      "doi": "10.1161/circep.125.014659",
+      "pmid": "42841203",
+      "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+      "translate": {
+        "title_zh": "使用深度学习重新分类单导联窦性心律心电图，以改进房颤复发检测。",
+        "abstract_zh": "背景：心房颤动（AF）仍是导管消融术后的常见结局，5年内多达50%的患者出现复发。尽管已有广泛研究，在优化AF复发评估的观察窗口和预测窗口方面仍存在挑战。因此，我们开发并验证了一种新的深度学习模型，利用手持设备采集的单导联心电图短条，依据过去和未来的AF事件重新分类窦性心律。\n\n方法：在558名参与者中，308名在研究随访期间无记录在案的复发，其心电短条归为良性窦性心律（Benign Sinus）；250名有记录在案的复发者提供了在AF事件前后±3天内记录的窦性心律短条，这些短条被定义为重度窦性心律（Severe Sinus）。研究同时采用基于临床特征的模型和深度学习模型，根据这些心电图与AF复发事件的时间接近程度进行分类。采用受试者工作特征曲线下面积、准确率、敏感度、特异度和F1-score评估性能。\n\n结果：在心电短条层面，预训练深度学习模型的受试者工作特征曲线下面积为0.86，敏感度为0.79，特异度为0.76。作为补充基准，在参与者层面，基于临床特征的随机森林模型的受试者工作特征曲线下面积为0.71，敏感度为0.58，特异度为0.69。基于特征的分析发现了涉及心率变异性、平均R-R间期、女性性别、左心房容积和平均P波时限的关联。\n\n结论：我们的动态深度学习模型依据前后±3天内的AF事件，对30秒单导联窦性心律心电图重新分类，将短暂的心电图快照转化为短期AF风险的汇总指标。"
+      },
+      "quicklook": {
+        "title_zh": "使用深度学习重新分类单导联窦性心律心电图，以改进房颤复发检测。",
+        "one_line": "依据房颤事件前后±3天重新标注窦性心律短条，评估短期风险信号。",
+        "design": "558名参与者；按房颤事件前后±3天标注单导联心电短条，并建模分类。",
+        "findings": [
+          {
+            "text": "心电短条层面的预训练深度学习模型，受试者工作特征曲线下面积为0.86，敏感度为0.79，特异度为0.76。",
+            "quote": "The strip-level pretrained deep learning model achieved an area under the receiver operating characteristic curve of 0.86, with sensitivity of 0.79, and specificity of 0.76."
+          },
+          {
+            "text": "参与者层面的临床特征随机森林补充基准，受试者工作特征曲线下面积为0.71，敏感度为0.58，特异度为0.69。",
+            "quote": "The complementary participant-level clinical feature-based Random Forest benchmark achieved an area under the receiver operating characteristic curve of 0.71, sensitivity of 0.58, and specificity of 0.69."
+          },
+          {
+            "text": "特征分析发现了涉及心率变异性、平均R-R间期、女性性别、左心房容积及平均P波时限的关联。",
+            "quote": "Feature-based analyses identified associations involving heart-rate variability, mean R-R interval, female sex, left atrial volume, and mean P-wave duration."
+          }
+        ],
+        "limits": "摘要未提供明确局限。",
+        "why_read": "了解依据过去与未来房颤事件重标窦性心律心电短条的分类方法。"
+      }
+    },
+    {
+      "rank": 24,
+      "paperID": "doi:10.1111/jce.70524",
+      "doi": "10.1111/jce.70524",
+      "pmid": "42841812",
+      "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+      "translate": {
+        "title_zh": "心房颤动死亡机制的演变：一项为期25年的全国死亡证明分析。",
+        "abstract_zh": "背景：随着美国人口老龄化及现代治疗方法的更广泛应用，心房颤动（AF）患病率上升，但AF人群死亡机制在人群层面的变化仍未得到完整描述。我们利用房颤死亡率全国死亡证明趋势数据，评估AF相关死亡率以及心力衰竭（HF）、卒中、心肌梗死（MI）和痴呆贡献的25年趋势。\n\n方法：我们对CDC WONDER中1999至2023年美国年龄≥ 35岁、死亡证明将AF列为促成死因的死亡者记录进行了回顾性分析；这一时期与CDC数据库实施ICD-10编码的时期相吻合。我们量化了每100 000人的全因及特定死因死亡率，并按年龄、性别和种族对趋势进行分层。分析队列纳入了有AF，且四种心血管疾病（卒中、痴呆、HF或MI）中至少一种被列为主要或促成死因的死亡者。置信区间来自CDC WONDER输出，或依据CDC指导计算。\n\n结果：在死亡证明提及AF的3 273 015名死亡者中，461 321名将HF、痴呆、卒中或MI列为促成死因。HF成为首要死因或促成死因，并自约2008年起急剧上升。卒中死亡率稳定或下降，MI相关死亡率保持低水平且稳定，而痴呆、尤其是无卒中痴呆，在≥ 85岁的成年人中显著增加（自2000年代初以来，在年龄最大的白人死亡者中超过卒中）。非白人群体呈现更高的卒中和HF死亡率趋势；≥ 85岁的女性卒中相关死亡率高于男性。\n\n结论：在25年间，AF相关死亡模式转向HF和无卒中痴呆，而缺血性卒中和MI下降或趋于稳定。这些发现提示，有必要将AF照护拓展至卒中预防之外，优先关注HF预防与管理、认知健康、公平的AF照护路径以确保广泛获得治疗，以及开展针对性干预的进一步研究以减轻疾病风险。"
+      },
+      "quicklook": {
+        "title_zh": "心房颤动死亡机制的演变：一项为期25年的全国死亡证明分析。",
+        "one_line": "全国死亡证明显示，房颤相关死亡模式转向心衰与无卒中痴呆。",
+        "design": "CDC WONDER死亡证明回顾分析；1999至2023年，≥ 35岁；每100 000人率。",
+        "findings": [
+          {
+            "text": "死亡证明提及AF的3 273 015名死亡者中，461 321名将HF、痴呆、卒中或MI列为促成死因；HF成为首要死因或促成死因，自约2008年起急剧上升。",
+            "quote": "Among 3 273 015 decedents with AF noted on the death certificate, 461 321 had HF, dementia, stroke, or MI listed as a contributing cause. HF emerged as the leading cause/contributor with a steep rise beginning in approximately 2008."
+          },
+          {
+            "text": "卒中死亡率稳定或下降，MI相关死亡率维持低水平且稳定；痴呆、尤其无卒中痴呆，在≥ 85岁成年人中显著增加，自2000年代初在年龄最大的白人死亡者中超过卒中。",
+            "quote": "Stroke rates were stable or declining, MI-related mortality remained low and stable, while dementia, particularly stroke-free dementia, increased significantly in adults ≥ 85 (outpacing stroke among the oldest White decedents since early 2000s)."
+          },
+          {
+            "text": "非白人群体呈现更高的卒中与HF死亡率趋势；≥ 85岁女性的卒中相关死亡率高于男性。",
+            "quote": "Non-White groups exhibited higher stroke and HF mortality trends; women ≥ 85 had higher stroke-related mortality than men."
+          }
+        ],
+        "limits": "摘要未提供明确局限。",
+        "why_read": "了解房颤相关死亡证明趋势，以及作者提出拓展心衰与认知健康照护的依据。"
+      }
+    }
+  ]
+}

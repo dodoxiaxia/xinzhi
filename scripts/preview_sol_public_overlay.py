@@ -15,7 +15,8 @@ import week_precompute as w
 ORIGIN = 'sol-session-public-abstract'
 MODEL = 'sol-session-model-unobserved'
 OUTPUT_DIRECTORIES = ('editorial/sol-public-abstract-20261007',
-                      'editorial/sol-public-abstract-20261008-gap')
+                      'editorial/sol-public-abstract-20261008-gap',
+                      'editorial/sol-public-abstract-20261008b-gap')
 
 
 def output_target(output, inputs):
