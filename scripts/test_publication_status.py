@@ -10,7 +10,7 @@ import archive_details
 import build_public
 import fetch_pubmed
 from enrich_metadata import classify_study_design
-from publication_status import ROOT, annotate_publication, checked_records
+from publication_status import ROOT, annotate_publication, checked_records, status_from_pubmed
 
 
 class OfficialPublicationRegression(unittest.TestCase):
@@ -68,6 +68,39 @@ class OfficialPublicationRegression(unittest.TestCase):
         result = annotate_publication(paper)
         self.assertEqual(result['studyDesign'], '已撤稿')
         self.assertEqual(result['publicationStatus']['related'][0]['pmid'], '99999997')
+
+    def test_registered_concern_notice_own_retraction_overrides_static_role(self):
+        # Hypothetical future metadata only: no claim that PMID 41224475 is
+        # currently retracted. Its present verified role remains a concern notice.
+        record = next(r for r in checked_records(str(ROOT)) if r['pmid'] == '41224475')
+        for update in ({'pubTypes': ['Retracted Publication']},
+                       {'pubmedRelations': [{'type': 'RetractionIn', 'pmid': '99999997'}]}):
+            with self.subTest(update=update):
+                paper = dict(record, **update)
+                result = annotate_publication(paper)
+                self.assertEqual(result['studyDesign'], '已撤稿')
+                self.assertEqual(result['publicationStatus']['state'], 'retracted')
+                self.assertIn('41224473', {r['pmid'] for r in result['publicationStatus']['related']})
+        self.assertEqual(annotate_publication(record)['publicationStatus']['state'], 'concern_notice')
+
+    def test_correction_notice_own_retraction_overrides_its_target_role(self):
+        paper = {'title': 'CORRECTION: A randomized trial', 'pmid': '99999996',
+                 'pubTypes': ['Published Erratum'],
+                 'pubmedRelations': [{'type': 'ErratumFor', 'pmid': '99999995'}]}
+        self.assertEqual(annotate_publication(paper)['studyDesign'], '更正声明')
+        for update in ({'pubTypes': ['Published Erratum', 'Retracted Publication']},
+                       {'pubmedRelations': paper['pubmedRelations'] + [{'type': 'RetractionIn', 'pmid': '99999997'}]}):
+            with self.subTest(update=update):
+                result = annotate_publication(dict(paper, **update))
+                self.assertEqual(result['studyDesign'], '已撤稿')
+                self.assertEqual(result['publicationStatus']['state'], 'retracted')
+
+    def test_retraction_notice_target_never_means_notice_itself_is_retracted(self):
+        self.assertEqual(status_from_pubmed(['Retraction Notice'],
+            [{'type': 'RetractionOf', 'pmid': '99999995'}]), 'retraction_notice')
+        self.assertEqual(status_from_pubmed([], [{'type': 'RetractionOf', 'pmid': '99999995'}]), 'retraction_notice')
+        self.assertEqual(status_from_pubmed(['Retraction Notice'],
+            [{'type': 'RetractionOf', 'pmid': '99999995'}, {'type': 'RetractionIn', 'pmid': '99999997'}]), 'retracted')
 
     def test_public_projection_does_not_copy_arbitrary_relation_fields(self):
         p = {'title': 'A randomized controlled trial', 'pmid': '99999999',
