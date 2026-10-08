@@ -964,7 +964,7 @@ async function fulltextRun(env, owner, input) {
         review = ['library_identity','pdf_integrity','pdf_index_invalid'].includes(error.code);
         sourceUnavailable = !review; sourceRetryAfter = error.retryAfter || 0;
       }
-      if (!fetched && !review && !sourceUnavailable) { const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { sourceDiagnostic = oa.diagnostic || sourceDiagnostic; review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; sourceRetryAfter = oa.retryAfter || 0; } }
+      if (!fetched && !review && !sourceUnavailable) { const oa = await libraryOa(paper, context); if (oa.bytes) fetched = oa; else { review = review || oa.review; sourceUnavailable = sourceUnavailable || oa.unavailable; sourceRetryAfter = oa.retryAfter || 0; } }
       if (controller.signal.aborted) libraryFail('library_timeout', 504);
       const current = fulltextJobRecord(await libraryGet(env.QL_KV, key), job.doi);
       if (!current || current.id !== job.id || current.owner !== owner || current.leaseId !== job.leaseId) libraryFail('job_stale', 409);
