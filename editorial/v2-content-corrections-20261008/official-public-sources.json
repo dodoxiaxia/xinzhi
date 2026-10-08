@@ -1,0 +1,346 @@
+{
+  "scope": "public-metadata-and-abstract-only",
+  "sources": [
+    {
+      "pmid": "42480259",
+      "doi": "10.1016/j.jacadv.2026.103042",
+      "title": "Heart Failure With Improved Ejection Fraction in ACHD With Biventricular Physiology and Systemic Left Ventricle.",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "In patients with heart failure (HF) with reduced ejection fraction (HFrEF) from acquired heart disease, guideline-directed medical therapy (GDMT) for HF is associated with improved left ventricular (LV) ejection fraction (LVEF) (ie, HF with improved EF (HFimpEF), and which in turn is associated with improved survival. Similar data are lacking in patients with congenital heart disease (CHD)."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "The objective of the study was to describe the prevalence, correlates, and prognostic implications of HFimpEF in adults with CHD, biventricular physiology, and systemic LV."
+        },
+        {
+          "label": "METHODS",
+          "text": "Retrospective study of adults with CHD, biventricular physiology, and systemic LV presenting with HFrEF (2003-2023). Echocardiogram was performed at baseline and 1-year follow-up encounters. GDMT use was assessed at baseline and 1-year follow-up encounters using GDMT score. GDMT uptitration (ΔGDMT) was calculated as the difference between GDMT scores. HFimpEF was defined as HF with baseline LVEF ≤40%, and a subsequent absolute LVEF increase ≥10%, leading to LVEF >40% at follow-up echocardiogram. HFrEF relapse was defined as decline in absolute LVEF >10% leading to LVEF ≤40% in patients with HFimpEF. Cox regression analysis was used to assess the relationship between HFimpEF, GDMT score, and outcomes (death and cardiovascular events)."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Of the 327 patients (age 46 ± 16 years; LVEF 31% ± 6%), 63 (19%) had HFimpEF. GDMT use (higher baseline and ΔGDMT) was associated with great odds of HFimpEF. HFimpEF was associated with a 26% decrease in all-cause mortality, and 28% decrease in cardiovascular events on multivariable analysis compared to patients without improvement in LVEF. Of the 63 patients with HFimpEF, 27% had HFrEF relapse, and HFrEF relapse was associated with higher risk of cardiovascular events."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "These data support the use and optimization of GDMT in this subgroup of CHD patients, and the need for ongoing clinical and imaging surveillance."
+        }
+      ],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42480259/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42811187",
+      "doi": "10.1038/s41591-026-04651-9",
+      "title": "Oral small-molecule GLP-1 receptor agonist safiglipron in early type 2 diabetes: a randomized, double-blind, placebo-controlled trial.",
+      "abstractSections": [
+        {
+          "label": "",
+          "text": "Safiglipron is an oral small-molecule glucagon-like peptide-1 (GLP-1) receptor agonist administered without fasting or dietary restrictions. We evaluated its efficacy and safety in OUTSTAND-1, a phase 3, multicenter, randomized, double-blind, placebo-controlled trial at 46 sites in China. We randomized 284 adults with type 2 diabetes managed with diet and exercise alone (mean baseline HbA1c 7.95%, median diabetes duration 1.6 years, 33.1% women) to once-daily safiglipron 30 mg (n = 70), 60 mg (n = 70), 90 mg (n = 72) or placebo (n = 72) for 32 weeks, followed by a 20-week active-treatment extension. For the primary endpoint, placebo-adjusted treatment differences in HbA1c change from baseline to week 32 were -1.22% (95% CI, -1.53 to -0.91), -1.20% (95% CI, -1.52 to -0.89) and -1.45% (95% CI, -1.75 to -1.14) for 30 mg, 60 mg and 90 mg, respectively (all P < 0.0001; treatment policy estimand). Secondary outcomes showed HbA1c < 7.0% in 71.4-77.8% versus 25.0%, HbA1c ≤ 6.5% in 58.6-68.1% versus 16.7% and placebo-adjusted fasting plasma glucose differences of -1.58, -1.68 and -2.08 mmol l-1, respectively (all P < 0.0001). Body weight differences were modest (-0.65%, -2.23% and -3.56% versus placebo). Other secondary outcomes generally favored safiglipron for HbA1c < 5.7% attainment, postprandial glycemia, homeostatic model assessment of β cell function (HOMA-β), homeostatic model assessment of insulin resistance (HOMA-IR), disposition index and waist circumference, with less rescue therapy use. Insulin and C-peptide responses varied by dose, and changes in treatment satisfaction were limited. Gastrointestinal adverse events were most common and mostly mild or moderate. Adverse events led to treatment discontinuation in 1.4%, 2.9%, 6.9% and 0% of participants receiving safiglipron 30 mg, 60 mg, 90 mg and placebo, respectively. These findings support once-daily oral safiglipron as an effective treatment option for type 2 diabetes. ClinicalTrials.gov identifier: NCT06672172 ."
+        }
+      ],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42811187/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42702066",
+      "doi": "10.1111/jce.70469",
+      "title": "Time-Dependent Diagnostic Yield and Therapeutic Impact of Implantable Loop Recorders, Brugada Syndrome as the Exception.",
+      "abstractSections": [
+        {
+          "label": "INTRODUCTION",
+          "text": "The optimal duration of implantable loop recorder (ILR) monitoring remains uncertain and may differ according to the indication for implantation. We evaluated whether the time-dependent diagnostic yield and clinical relevance of ILR-detected arrhythmias differ among patients implanted for syncope, palpitations, cryptogenic stroke, or Brugada syndrome."
+        },
+        {
+          "label": "OBJECTIVE",
+          "text": "This study sought to define the time-dependent diagnostic yield of ILRs across clinical indications and to assess whether early and late diagnoses differed in their impact on clinical management."
+        },
+        {
+          "label": "METHODS AND RESULTS",
+          "text": "We retrospectively analyzed 1734 consecutive patients undergoing ILR implantation at 5 Italian centers for unexplained syncope, palpitations, cryptogenic stroke, or Brugada syndrome. Diagnosis of interest was defined according to the implant indication: pauses for syncope, supraventricular tachycardia or atrial fibrillation for palpitations, atrial fibrillation for cryptogenic stroke, and ventricular tachycardia or pauses for Brugada syndrome. Median follow-up was 34 months. Maximally selected rank statistics identified 26 months as the global threshold separating early from late diagnoses, while indication-specific optimal diagnostic windows were 14 months for syncope, 13 months for palpitations, 16 months for cryptogenic stroke, and 55 months for Brugada syndrome. In syncope and palpitations, most actionable diagnoses occurred early, and diagnostic efficiency declined markedly after 26 months, with late findings often less clearly related to the index presentation. In cryptogenic stroke, atrial fibrillation detection was most frequent early but could still lead to changes in antithrombotic management later, supporting an individualized \"gray-zone\" approach to prolonged monitoring. By contrast, Brugada syndrome showed sustained diagnostic yield over extended follow-up, with late ventricular arrhythmias or pauses retaining major prognostic and therapeutic implications, including implantable cardioverter-defibrillator implantation and device-type selection."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "The value of ILR monitoring is strongly time- and indication-dependent. Prolonged routine monitoring or reimplantation appears to have limited incremental value in syncope and palpitations when early follow-up is unrevealing, whereas extended surveillance may remain justified in Brugada syndrome and should be individualized after cryptogenic stroke. These observations support indication-driven ILR follow-up strategies rather than a uniform approach based on device longevity alone."
+        }
+      ],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42702066/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42826207",
+      "doi": "10.1126/sciadv.aeg3270",
+      "title": "Targeting the ENO1 metabolic checkpoint via microenvironment-responsive nanotherapeutics promotes postinfarction cardiac repair.",
+      "abstractSections": [
+        {
+          "label": "",
+          "text": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair."
+        }
+      ],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42826207/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42832625",
+      "doi": "10.1161/circulationaha.125.079141",
+      "title": "Anticancer Drugs and Cancer-Associated Thrombosis.",
+      "abstractSections": [
+        {
+          "label": "",
+          "text": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity."
+        }
+      ],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42839776",
+      "doi": "10.1093/ehjcvp/pvag088",
+      "title": "Refining cardiovascular pharmacotherapy in cardio-oncology and cardiac amyloidosis: news from ESC Congress 2026.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42839776/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42805147",
+      "doi": "10.1016/j.jacadv.2026.103279",
+      "title": "Cardio-Oncological Sequelae of Autologous Stem Cell Transplantation: Role of Clonal Hematopoiesis in Cardiovascular Risk.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42805147/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42744322",
+      "doi": "10.1093/eurheartj/ehag727",
+      "title": "Focus on the many facets of cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42744322/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41885139",
+      "doi": "10.1093/eurheartj/ehag144",
+      "title": "Senescent obesity signature in breast cancer: a paradigm of reverse cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41885139/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42702498",
+      "doi": "10.1093/eurheartj/ehag609",
+      "title": "Quality standards for preclinical research in cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42702498/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42525420",
+      "doi": "10.1001/jamacardio.2026.2551",
+      "title": "The Next Phase of Cardio-Oncology-From Consensus to Science.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42525420/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42374831",
+      "doi": "10.1093/cvr/cvag146",
+      "title": "The gut-heart axis in cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42374831/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42579295",
+      "doi": "10.1093/eurheartj/ehag628",
+      "title": "Cardiovascular disease, cancer risk, and sex: expanding the prevention agenda in cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42579295/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42444266",
+      "doi": "10.1093/eurheartj/ehag542",
+      "title": "Thomas Marwick: new Editor-in-Chief of the European Heart Journal-Cardio-Oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42444266/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42025328",
+      "doi": "10.1093/ehjci/jeag103",
+      "title": "Multimodality imaging in the detection and management of coronary and peripheral arterial disease in patients with cancer receiving cardiotoxic antineoplastic treatments: A clinical consensus statement of the ESC Council of Cardio-Oncology and the European Association of Cardiovascular Imaging (EACVI) of the ESC.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42025328/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42261985",
+      "doi": "10.1161/jaha.125.047798",
+      "title": "Cardio-Oncologic Considerations in Heart Failure With Mildly Reduced Ejection Fraction: Prevalence and Prognostic Impact of Malignancies.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42261985/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41955048",
+      "doi": "10.1093/eurheartj/ehag077",
+      "title": "Cardio-oncology: the Polish National Oncology Network model.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41955048/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42134058",
+      "doi": "10.1016/j.jacadv.2026.102790",
+      "title": "SGLT2 Inhibitors in Cardio-Oncology: A Systematic Review and Meta-Analysis.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42134058/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42134057",
+      "doi": "10.1016/j.jacadv.2026.102781",
+      "title": "Managing Refractory Pericarditis in the Era of Biologic Therapy: A Cardio-Oncology-Based Risk Framework.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42134057/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42107037",
+      "doi": "10.1093/ejhf/xuag067",
+      "title": "Heart failure, infarction, and the seed of malignancy: stepping into the era of reverse cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42107037/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "42092569",
+      "doi": "10.1016/j.hrthm.2026.04.050",
+      "title": "Global research trends in cancer-associated atrial fibrillation: A bibliometric analysis of the cardio-oncology interface.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42092569/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41504446",
+      "doi": "10.1093/eurheartj/ehaf860",
+      "title": "Young investigator award in basic/translational cardio-oncology: José Enrique Ortega Sollero.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41504446/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41780902",
+      "doi": "10.1093/eurheartj/ehag137",
+      "title": "Trials and scores in cardio-oncology: a fast-changing field of cardiovascular medicine.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41780902/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41330420",
+      "doi": "10.1093/eurheartj/ehaf869",
+      "title": "Transient cardiomyopathy by tyrosine kinase inhibitor therapy: time to define a new syndrome in cardio-oncology?",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41330420/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41575298",
+      "doi": "10.1093/eurheartj/ehaf1095",
+      "title": "The year in cardiovascular medicine 2025: the top 10 papers in cardio-oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41575298/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41212086",
+      "doi": "10.1093/eurheartj/ehaf750",
+      "title": "Cardio-oncology across European Society of Cardiology member countries: a survey of the European Society of Cardiology Council of Cardio-Oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41212086/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41230864",
+      "doi": "10.1093/eurheartj/ehaf783",
+      "title": "Clinical Cardio-Oncology Young Investigator Award: Stephen Foulkes.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41230864/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41217879",
+      "doi": "10.1093/eurheartj/ehaf765",
+      "title": "The 2025 ESC Cardio-Oncology Conference: A day in the life of a Social Media Ambassador.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41217879/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41205546",
+      "doi": "10.1016/j.jacadv.2025.102290",
+      "title": "Clonal Hematopoiesis Risk Score (CHRS) Evaluation as a Prognostic Marker for Death in Cardio-Oncology Cohort.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41205546/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41001754",
+      "doi": "10.1093/eurheartj/ehaf588",
+      "title": "ESC cardio-oncology conference hits the ground running.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41001754/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "41151394",
+      "doi": "10.1016/j.jacadv.2025.102256",
+      "title": "Prevalence of Sleep Apnea and Echocardiographic Correlates in a Community-Based Cohort of Cardio-Oncology Patients.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41151394/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    },
+    {
+      "pmid": "40938778",
+      "doi": "10.1002/ejhf.70005",
+      "title": "Heart failure with preserved ejection fraction in cancer patients and survivors. A scientific statement of the Heart Failure Association of the ESC and the ESC Council of Cardio-Oncology.",
+      "abstractSections": [],
+      "url": "https://pubmed.ncbi.nlm.nih.gov/40938778/",
+      "verificationMethod": "NCBI efetch public PubMed XML",
+      "retrievedOn": "2026-10-08"
+    }
+  ]
+}

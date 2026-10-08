@@ -10,6 +10,9 @@ from sync_public_library import load_adjudications
 from publication_dates import DATE_CORRECTIONS, canonical_publication_date
 from journal_metrics import public_registry
 from public_library_quality import QUALITY_FIELDS, project_public_library
+from public_content_corrections import (load_corrections, corrected_title,
+                                        corrected_quicklook,
+                                        corrected_quicklook_map)
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
@@ -17,6 +20,7 @@ PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBa
 PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
+QL_FIELDS |= {'contentCorrection'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
 RELEASE = 'v14.2.14'
 
@@ -98,15 +102,20 @@ def public_paper(p,editorial_drafts=None):
 
 def public_quicklook(item):
     out={k:v for k,v in item.items() if k in QL_FIELDS}
+    correction=out.pop('contentCorrection',None)
+    if isinstance(correction,dict) and correction.get('origin')=='codex-editorial-correction':
+        allowed=('correctionVersion','correctedOn','origin','reviewScope','sourceHash','scope')
+        out['contentCorrection']={k:v for k,v in correction.items() if k in allowed and isinstance(v,str) and len(v)<=300}
     for field in ('source_url','abstractSourceUrl'):
         if field in out:out[field]=safe_url(out[field])
     out['findings']=[{k:v for k,v in x.items() if k in {'text','quote'}} for x in out.get('findings',[]) if isinstance(x,dict)]
     return out
 
-def public_weekly_board(raw):
+def public_weekly_board(raw, corrections=None):
     """Finite, validated public-abstract contract. Never emit private cache/ledger fields."""
     from week_precompute import validate, text_hash, TASKS, CATEGORIES, CAVEAT
     if not raw:return None
+    corrections=corrections if corrections is not None else load_corrections(ROOT)
     if raw.get('schemaVersion')!=1 or raw.get('scope')!='public-abstract':
         raise ValueError('Invalid weekly board schema')
     rows=raw.get('items')
@@ -121,9 +130,15 @@ def public_weekly_board(raw):
         out['abstractSourceUrl']=safe_url(out.get('abstractSourceUrl'))
         out['allowAutomaticGeneration']=False
         p={'title':out['title'],'abstract':out['abstract']}
-        if out.get('titleZh'):out['titleZh']=validate('title',{'title_zh':out['titleZh']},p)['title_zh']
-        out['translation']=validate('translate',row['translation'],p) if row.get('translation') else None
-        out['quicklook']=public_quicklook(validate('quicklook',row['quicklook'],p)) if row.get('quicklook') else None
+        if out.get('titleZh'):out['titleZh']=validate('title',{'title_zh':corrected_title(out,out['titleZh'],corrections)},p)['title_zh']
+        translation=dict(row['translation']) if row.get('translation') else None
+        if translation:translation['title_zh']=corrected_title(out,translation.get('title_zh'),corrections)
+        out['translation']=validate('translate',translation,p) if translation else None
+        quicklook=corrected_quicklook(out.get('doi',''),row.get('quicklook'),corrections,source=out)
+        if quicklook:quicklook['title_zh']=corrected_title(out,quicklook.get('title_zh'),corrections)
+        checked=validate('quicklook',quicklook,p) if quicklook else None
+        if checked and quicklook.get('contentCorrection'):checked['contentCorrection']=quicklook['contentCorrection']
+        out['quicklook']=public_quicklook(checked) if checked else None
         study=row.get('study')
         if study:
             if study.get('scope')!='public-abstract' or study.get('task')!='study' or len(study.get('papers',[]))!=1:raise ValueError('Invalid weekly study')
@@ -215,13 +230,14 @@ _RADAR_JOURNAL_FIX={'Lancet (London, England)':'The Lancet','BMJ (Clinical resea
 
 ABS_DAYS=30  # public bundle carries abstracts for the newest N days only; older ones load on demand
 
-def make_radar(candidates,tz=None):
+def make_radar(candidates,tz=None,corrections=None):
     tz=tz or {}
     """Compact 365-day PubMed title archive (radar 30/90/365-day views). Day-precision rows only."""
     path=ROOT/'data/radar-archive.json'
     if not path.exists():return None
     from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, extract_tags
     a=load('data/radar-archive.json')
+    corrections=corrections if corrections is not None else load_corrections(ROOT)
     # Do not publish a metadata-only rebuild over an existing abstract archive.
     full_path=ROOT/'data/archive-full.json'
     if not full_path.is_file():raise ValueError('Full abstract cache missing; restore state before building the public archive')
@@ -258,7 +274,7 @@ def make_radar(candidates,tz=None):
                      [idx('tag',t) for t in extract_tags(r['title'],atext)],r['title']])
     if not rows:return None
     lists={k:[v for v,_ in sorted(d.items(),key=lambda kv:kv[1])] for k,d in pools.items()}
-    return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):tz['pmid:%s'%r[0]] for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows,
+    return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):corrected_title({'pmid':r[0],'doi':r[1],'title':r[8]},tz['pmid:%s'%r[0]],corrections) for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows,
             **({'dateBases':date_bases} if date_bases else {})}
 
 def validate_public(text):
@@ -288,12 +304,14 @@ def main():
     now=datetime.datetime.now(datetime.timezone.utc)
     health={'checkedAt':h.get('checkedAt'),'sources':[public_health(s,pubmed,now) for s in h['sources']]}
     tz=json.loads((ROOT/'data/translations.json').read_text()) if (ROOT/'data/translations.json').exists() else {}
+    corrections=load_corrections(ROOT)
     from week_precompute import editorial_title
     editorial_titles=load('editorial/public_title_translations.json') if (ROOT/'editorial/public_title_translations.json').exists() else {'entries':{}}
     def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower())
     for q in candidates['items']+library['papers']:
         z=zhkey(q) or ('' if q.get('titleZh') else editorial_title(q,editorial_titles))
         if z:q['titleZh']=z
+        if q.get('titleZh'):q['titleZh']=corrected_title(q,q['titleZh'],corrections)
     mp=ROOT/'data/media.json'
     if mp.exists():
         mm=json.loads(mp.read_text()).get('matches',{});nm=0
@@ -325,8 +343,8 @@ def main():
     from public_editorial_overlay import apply_board, current_catalog, load_board
     editorial_overlay=load_board(ROOT)
     weekly_raw=load('data/weekly-board.json') if (ROOT/'data/weekly-board.json').exists() else None
-    weekly=public_weekly_board(apply_board(weekly_raw,editorial_overlay))
-    editorial_catalog=public_weekly_board(current_catalog(c['items'],editorial_overlay))
+    weekly=public_weekly_board(apply_board(weekly_raw,editorial_overlay),corrections)
+    editorial_catalog=public_weekly_board(current_catalog(c['items'],editorial_overlay),corrections)
     prepared=pregenerated_map(editorial_catalog)
     prepared.update(pregenerated_map(weekly))
     if weekly:
@@ -339,9 +357,14 @@ def main():
             q.update(title=row['title'],doi=row.get('doi',''),pmid=row.get('pmid',''),weeklyPick=row['rank'],weeklyAt=weekly['generatedAt'],weeklyCategory={'心血管':'cardio','综合医学':'general','AI医疗':'aimed','AI前沿':'aitech'}[row['category']],date=row['date'],datePrecision='day',dateBasis='Europe PMC firstPublicationDate' if row['abstractSource']=='Europe PMC' else q.get('dateBasis'),summary=row['abstract'],abstractSections=[])
             if row['titleZh']:q['titleZh']=row['titleZh']
             else:q.pop('titleZh',None)  # Do not revive a legacy title rejected by the board's source checks.
-    radar=make_radar(c['items'],tz)
+    radar=make_radar(c['items'],tz,corrections)
     ql=load('data/quicklooks.json').get('items',{}) if (ROOT/'data/quicklooks.json').exists() else {}
     ql={k:public_quicklook(val) for k,val in ql.items()}
+    from week_precompute import public_abstract as public_source_abstract
+    correction_dois={e['doi'] for e in corrections['entries'] if e.get('quicklookCorrections')}
+    correction_sources={str(p.get('doi') or '').lower():{**p,**(public_source_abstract(p) or {'abstract':''})}
+                        for p in c['items'] if str(p.get('doi') or '').lower() in correction_dois}
+    ql=corrected_quicklook_map(ql,correction_sources,corrections)
     if weekly:
         from week_precompute import validate as validate_week_task
         for row in weekly['items']:

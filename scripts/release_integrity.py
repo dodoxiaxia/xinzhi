@@ -34,6 +34,7 @@ INPUTS = (
     'scripts/week_precompute_checkpoint.py', 'scripts/week_precompute_ci.py',
     'scripts/week_precompute_usage.py',
     'editorial/public_title_translations.json',
+    'editorial/public_content_corrections.json', 'scripts/public_content_corrections.py',
     'scripts/public_editorial_overlay.py', 'scripts/preview_sol_public_overlay.py',
     'editorial/sol-public-abstract-20261007/sources.json',
     'editorial/sol-public-abstract-20261007/corrected-cache.json',

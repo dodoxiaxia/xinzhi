@@ -1,0 +1,360 @@
+{
+  "scope": "public-metadata-and-abstract-only",
+  "stateSHA": "48ad7788e4065a1d3317feaeeed2f73d9e6774dd",
+  "items": [
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Heart Failure With Improved Ejection Fraction in ACHD With Biventricular Physiology and Systemic Left Ventricle",
+        "doi": "10.1016/j.jacadv.2026.103042",
+        "pmid": "42480259"
+      },
+      "before": "双心室解剖伴系统性左心室的成人先天性心脏病患者中心功能改善型射血分数降低的心力衰竭",
+      "after": "具有双心室生理和体循环左心室的成人先天性心脏病患者中的射血分数改善型心力衰竭"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Oral small-molecule GLP-1 receptor agonist safiglipron in early type 2 diabetes: a randomized, double-blind, placebo-controlled trial.",
+        "doi": "10.1038/s41591-026-04651-9",
+        "pmid": "42811187"
+      },
+      "before": "口服小分子GLP-1受体激动剂safigliptron治疗早期2型糖尿病：一项随机、双盲、安慰剂对照试验",
+      "after": "口服小分子GLP-1受体激动剂safiglipron治疗早期2型糖尿病：一项随机、双盲、安慰剂对照试验"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Time-Dependent Diagnostic Yield and Therapeutic Impact of Implantable Loop Recorders, Brugada Syndrome as the Exception",
+        "doi": "10.1111/jce.70469",
+        "pmid": "42702066"
+      },
+      "before": "植入式心环记录仪的时程依赖性诊断 yield 与治疗影响：Brugada综合征是例外",
+      "after": "植入式循环记录器随时间变化的诊断检出率与治疗影响：Brugada综合征是例外"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Cardio-Oncological Sequelae of Autologous Stem Cell Transplantation: Role of Clonal Hematopoiesis in Cardiovascular Risk.",
+        "doi": "10.1016/j.jacadv.2026.103279",
+        "pmid": "42805147"
+      },
+      "before": "自体干细胞移植的心脏肿瘤学后遗症：克隆性造血在心血管风险中的作用",
+      "after": "自体干细胞移植的肿瘤心脏病学后遗症：克隆性造血在心血管风险中的作用"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Cardio-Oncological Sequelae of Autologous Stem Cell Transplantation: Role of Clonal Hematopoiesis in Cardiovascular Risk",
+        "doi": "10.1016/j.jacadv.2026.103279",
+        "pmid": "42805147"
+      },
+      "before": "自体干细胞移植的心脏肿瘤学后遗症：克隆性造血在心血管风险中的作用",
+      "after": "自体干细胞移植的肿瘤心脏病学后遗症：克隆性造血在心血管风险中的作用"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Focus on the many facets of cardio-oncology",
+        "doi": "10.1093/eurheartj/ehag727",
+        "pmid": "42744322"
+      },
+      "before": "聚焦心脏肿瘤学的多重面向",
+      "after": "聚焦肿瘤心脏病学的多重面向"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Senescent obesity signature in breast cancer: a paradigm of reverse cardio-oncology",
+        "doi": "10.1093/eurheartj/ehag144",
+        "pmid": "41885139"
+      },
+      "before": "乳腺癌中的衰老性肥胖特征：反向心脏肿瘤学的范式",
+      "after": "乳腺癌中的衰老性肥胖特征：反向肿瘤心脏病学的范式"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Quality standards for preclinical research in cardio-oncology",
+        "doi": "10.1093/eurheartj/ehag609",
+        "pmid": "42702498"
+      },
+      "before": "心脏肿瘤学临床前研究的质量标准",
+      "after": "肿瘤心脏病学临床前研究的质量标准"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "The Next Phase of Cardio-Oncology-From Consensus to Science",
+        "doi": "10.1001/jamacardio.2026.2551",
+        "pmid": "42525420"
+      },
+      "before": "心脏肿瘤学的下一阶段——从共识走向科学",
+      "after": "肿瘤心脏病学的下一阶段——从共识走向科学"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "The gut-heart axis in cardio-oncology",
+        "doi": "10.1093/cvr/cvag146",
+        "pmid": "42374831"
+      },
+      "before": "心脏肿瘤学中的肠-心轴",
+      "after": "肿瘤心脏病学中的肠-心轴"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Cardiovascular disease, cancer risk, and sex: expanding the prevention agenda in cardio-oncology",
+        "doi": "10.1093/eurheartj/ehag628",
+        "pmid": "42579295"
+      },
+      "before": "心血管疾病、癌症风险与性别：拓展心脏肿瘤学的预防议程",
+      "after": "心血管疾病、癌症风险与性别：拓展肿瘤心脏病学的预防议程"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Cardio-oncology: the Polish National Oncology Network model",
+        "doi": "10.1093/eurheartj/ehag077",
+        "pmid": "41955048"
+      },
+      "before": "心脏肿瘤学：波兰国家肿瘤网络模式",
+      "after": "肿瘤心脏病学：波兰国家肿瘤网络模式"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "SGLT2 Inhibitors in Cardio-Oncology: A Systematic Review and Meta-Analysis",
+        "doi": "10.1016/j.jacadv.2026.102790",
+        "pmid": "42134058"
+      },
+      "before": "SGLT2抑制剂在心脏肿瘤学中的应用：系统综述与荟萃分析",
+      "after": "SGLT2抑制剂在肿瘤心脏病学中的应用：系统综述与荟萃分析"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Managing Refractory Pericarditis in the Era of Biologic Therapy: A Cardio-Oncology-Based Risk Framework",
+        "doi": "10.1016/j.jacadv.2026.102781",
+        "pmid": "42134057"
+      },
+      "before": "生物制剂时代的难治性心包炎管理：基于心脏肿瘤学的风险框架",
+      "after": "生物制剂时代的难治性心包炎管理：基于肿瘤心脏病学的风险框架"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Heart failure, infarction, and the seed of malignancy: stepping into the era of reverse cardio-oncology",
+        "doi": "10.1093/ejhf/xuag067",
+        "pmid": "42107037"
+      },
+      "before": "心力衰竭、梗死与恶性肿瘤的种子：迈向逆向心血管肿瘤学时代",
+      "after": "心力衰竭、梗死与恶性肿瘤的种子：迈向逆向肿瘤心脏病学时代"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Global research trends in cancer-associated atrial fibrillation: A bibliometric analysis of the cardio-oncology interface",
+        "doi": "10.1016/j.hrthm.2026.04.050",
+        "pmid": "42092569"
+      },
+      "before": "癌症相关心房颤动的全球研究趋势：心血管肿瘤学交叉领域的文献计量学分析",
+      "after": "癌症相关心房颤动的全球研究趋势：肿瘤心脏病学交叉领域的文献计量学分析"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Young investigator award in basic/translational cardio-oncology: José Enrique Ortega Sollero",
+        "doi": "10.1093/eurheartj/ehaf860",
+        "pmid": "41504446"
+      },
+      "before": "基础/转化心脏肿瘤学青年研究者奖：José Enrique Ortega Sollero",
+      "after": "基础/转化肿瘤心脏病学青年研究者奖：José Enrique Ortega Sollero"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Transient cardiomyopathy by tyrosine kinase inhibitor therapy: time to define a new syndrome in cardio-oncology?",
+        "doi": "10.1093/eurheartj/ehaf869",
+        "pmid": "41330420"
+      },
+      "before": "酪氨酸激酶抑制剂治疗所致短暂性心肌病：是时候在心脏肿瘤学中定义一个新综合征了吗？",
+      "after": "酪氨酸激酶抑制剂治疗所致短暂性心肌病：是时候在肿瘤心脏病学中定义一个新综合征了吗？"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Clonal Hematopoiesis Risk Score (CHRS) Evaluation as a Prognostic Marker for Death in Cardio-Oncology Cohort",
+        "doi": "10.1016/j.jacadv.2025.102290",
+        "pmid": "41205546"
+      },
+      "before": "克隆性造血风险评分（CHRS）作为心脏肿瘤学队列死亡预后标志物的评估",
+      "after": "克隆性造血风险评分（CHRS）作为肿瘤心脏病学队列死亡预后标志物的评估"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Prevalence of Sleep Apnea and Echocardiographic Correlates in a Community-Based Cohort of Cardio-Oncology Patients",
+        "doi": "10.1016/j.jacadv.2025.102256",
+        "pmid": "41151394"
+      },
+      "before": "社区心脏病肿瘤学队列中睡眠呼吸暂停的患病率及超声心动图相关因素",
+      "after": "社区肿瘤心脏病学队列中睡眠呼吸暂停的患病率及超声心动图相关因素"
+    },
+    {
+      "kind": "title",
+      "paper": {
+        "title": "Heart failure with preserved ejection fraction in cancer patients and survivors. A scientific statement of the Heart Failure Association of the ESC and the ESC Council of Cardio-Oncology",
+        "doi": "10.1002/ejhf.70005",
+        "pmid": "40938778"
+      },
+      "before": "癌症患者及癌症幸存者中的射血分数保留型心力衰竭：ESC心力衰竭协会与ESC心血管肿瘤学委员会的科学声明",
+      "after": "癌症患者及癌症幸存者中的射血分数保留型心力衰竭：ESC心力衰竭协会与ESC肿瘤心脏病学委员会的科学声明"
+    },
+    {
+      "kind": "quicklook",
+      "source": {
+        "paperID": "doi:10.1126/sciadv.aeg3270",
+        "doi": "10.1126/sciadv.aeg3270",
+        "pmid": "42826207",
+        "title": "Targeting the ENO1 metabolic checkpoint via microenvironment-responsive nanotherapeutics promotes postinfarction cardiac repair.",
+        "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+        "sourceHash": "98c6ef7aba1bdfbf3fff620cba8c0219f84e9ae8c99439a76beb6f85f04a7357"
+      },
+      "before": {
+        "title_zh": "通过微环境响应型纳米药物靶向ENO1代谢检查点促进梗死后心脏修复",
+        "one_line": "靶向巨噬细胞糖酵解酶ENO1的酸响应纳米siRNA疗法可减轻小鼠心梗损伤并改善心功能。",
+        "design": "临床前机制研究结合酸响应纳米载体（PECS）递送siENO1的动物实验。",
+        "limits": "摘要未提供动物模型种类、样本量、安全性数据及向临床转化的证据",
+        "why_read": "提示代谢-免疫调控与微环境响应递送结合，为心梗后免疫干预提供新策略。",
+        "findings": [
+          {
+            "text": "发现糖酵解酶ENO1在梗死后巨噬细胞中上调，是调控巨噬细胞代谢命运与炎症功能的关键因子。",
+            "quote": "we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function"
+          },
+          {
+            "text": "酸响应纳米载体PECS在酸性梗死微环境中外化磷脂酰丝氨酸，促进巨噬细胞选择性摄取。",
+            "quote": "externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake"
+          },
+          {
+            "text": "胞内递送siENO1抑制糖酵解通量、减少乳酸积累，解除其对KLF4的代谢抑制，启动抗炎重编程。",
+            "quote": "curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming"
+          },
+          {
+            "text": "体内siENO1@PECS治疗减轻梗死面积、纤维化和心肌细胞凋亡，改善心室功能。",
+            "quote": "siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function"
+          }
+        ],
+        "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+        "pmid": "42826207",
+        "abstractSource": "Europe PMC",
+        "abstractSourceUrl": "https://europepmc.org/article/MED/42826207",
+        "generatedAt": "2026-10-05",
+        "model": "glm-5.3-flash",
+        "label": "AI 速览，模型生成，未经人工核对"
+      },
+      "after": {
+        "title_zh": "通过微环境响应型纳米药物靶向ENO1代谢检查点促进梗死后心脏修复",
+        "one_line": "靶向巨噬细胞ENO1的酸响应纳米siRNA疗法在体内实验中减轻梗死损伤并改善心室功能。",
+        "design": "机制研究，采用酸响应纳米载体（PECS）递送siENO1，并报告体内实验。",
+        "limits": "仅核对公开摘要；摘要未交代体内模型种类、样本量、安全性及临床转化证据。",
+        "why_read": "了解ENO1代谢调控与响应型纳米递送对心梗后修复的研究思路。",
+        "findings": [
+          {
+            "text": "发现糖酵解酶ENO1在梗死后巨噬细胞中上调，是调控巨噬细胞代谢命运与炎症功能的关键因子。",
+            "quote": "we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function"
+          },
+          {
+            "text": "酸响应纳米载体PECS在酸性梗死微环境中外化磷脂酰丝氨酸，促进巨噬细胞选择性摄取。",
+            "quote": "externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake"
+          },
+          {
+            "text": "胞内递送siENO1抑制糖酵解通量、减少乳酸积累，解除其对KLF4的代谢抑制，启动抗炎重编程。",
+            "quote": "Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming."
+          },
+          {
+            "text": "体内siENO1@PECS治疗减轻梗死面积、纤维化和心肌细胞凋亡，改善心室功能。",
+            "quote": "siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function"
+          }
+        ],
+        "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+        "pmid": "42826207",
+        "abstractSource": "Europe PMC",
+        "abstractSourceUrl": "https://europepmc.org/article/MED/42826207",
+        "generatedAt": "2026-10-05",
+        "model": "glm-5.3-flash",
+        "label": "AI 速览，模型生成，未经人工核对"
+      },
+      "sourceLocation": "current-public-QUICKLOOKS-only; official title+cached public abstract"
+    },
+    {
+      "kind": "quicklook",
+      "source": {
+        "paperID": "doi:10.1161/circulationaha.125.079141",
+        "doi": "10.1161/circulationaha.125.079141",
+        "pmid": "42832625",
+        "title": "Anticancer Drugs and Cancer-Associated Thrombosis.",
+        "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+        "sourceHash": "ca963fac39c8193c5b96c5b8ebccd6a2a6a7147962444e0732f29a128a4982b1"
+      },
+      "before": {
+        "title_zh": "抗肿瘤药物与肿瘤相关血栓形成",
+        "one_line": "综述抗肿瘤药物相关的静脉血栓栓塞风险、机制及防治指南推荐。",
+        "design": "叙述性综述，聚焦系统抗肿瘤治疗患者的血栓事件。",
+        "limits": "摘要未提供具体研究数据或疗效证据，属综述性质。",
+        "why_read": "为肿瘤心脏病学临床提供药物相关血管毒性的识别、风险分层与防治框架。",
+        "findings": [
+          {
+            "text": "多种抗肿瘤药物与静脉血栓栓塞风险增加相关，包括化疗药、激素治疗、多发性骨髓瘤用药、门冬酰胺酶及多种靶向抑制剂。",
+            "quote": "Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies"
+          },
+          {
+            "text": "抗肿瘤药物相关血管不良事件常被低估，风险分层、预防和管理仍存在显著缺口。",
+            "quote": "Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification"
+          },
+          {
+            "text": "综述还总结了血栓形成的病理生物学机制及防治指南推荐，并讨论了动脉血栓事件。",
+            "quote": "summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis"
+          }
+        ],
+        "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+        "pmid": "42832625",
+        "abstractSource": "PubMed",
+        "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+        "generatedAt": "2026-10-07",
+        "model": "glm-5.3-flash",
+        "label": "AI 速览，模型生成，未经人工核对"
+      },
+      "after": {
+        "title_zh": "抗肿瘤药物与肿瘤相关血栓形成",
+        "one_line": "综述抗肿瘤药物相关的静脉血栓栓塞风险、机制及防治指南推荐。",
+        "design": "叙述性综述，聚焦系统抗肿瘤治疗患者的血栓事件。",
+        "limits": "仅核对公开摘要；摘要未报告定量研究结果或具体推荐强度。",
+        "why_read": "了解抗肿瘤药物相关血栓风险、机制及现有防治指南推荐。",
+        "findings": [
+          {
+            "text": "多种抗肿瘤药物与静脉血栓栓塞风险增加相关，包括化疗药、激素治疗、多发性骨髓瘤用药、门冬酰胺酶及多种靶向抑制剂。",
+            "quote": "Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies"
+          },
+          {
+            "text": "抗肿瘤药物相关血管不良事件常被低估，风险分层、预防和管理仍存在显著缺口。",
+            "quote": "Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification"
+          },
+          {
+            "text": "综述还总结了血栓形成的病理生物学机制及防治指南推荐，并讨论了动脉血栓事件。",
+            "quote": "summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis"
+          }
+        ],
+        "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+        "pmid": "42832625",
+        "abstractSource": "PubMed",
+        "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+        "generatedAt": "2026-10-07",
+        "model": "glm-5.3-flash",
+        "label": "AI 速览，模型生成，未经人工核对"
+      },
+      "sourceLocation": "current-public-candidate"
+    }
+  ]
+}

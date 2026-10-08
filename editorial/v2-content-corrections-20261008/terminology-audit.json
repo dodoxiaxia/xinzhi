@@ -1,0 +1,222 @@
+{
+  "mainSHA": "7ed3157a88ed00ea1079aaecd00403aa04148b3d",
+  "stateSHA": "48ad7788e4065a1d3317feaeeed2f73d9e6774dd",
+  "items": [
+    {
+      "pmid": "42839776",
+      "doi": "10.1093/ehjcvp/pvag088",
+      "title": "Refining cardiovascular pharmacotherapy in cardio-oncology and cardiac amyloidosis: news from ESC Congress 2026",
+      "before": "完善肿瘤心脏病学与心脏淀粉样变的心血管药物治疗：来自ESC 2026大会的新闻。",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42805147",
+      "doi": "10.1016/j.jacadv.2026.103279",
+      "title": "Cardio-Oncological Sequelae of Autologous Stem Cell Transplantation: Role of Clonal Hematopoiesis in Cardiovascular Risk",
+      "before": "自体干细胞移植的心脏肿瘤学后遗症：克隆性造血在心血管风险中的作用",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42744322",
+      "doi": "10.1093/eurheartj/ehag727",
+      "title": "Focus on the many facets of cardio-oncology",
+      "before": "聚焦心脏肿瘤学的多重面向",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41885139",
+      "doi": "10.1093/eurheartj/ehag144",
+      "title": "Senescent obesity signature in breast cancer: a paradigm of reverse cardio-oncology",
+      "before": "乳腺癌中的衰老性肥胖特征：反向心脏肿瘤学的范式",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42702498",
+      "doi": "10.1093/eurheartj/ehag609",
+      "title": "Quality standards for preclinical research in cardio-oncology",
+      "before": "心脏肿瘤学临床前研究的质量标准",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42525420",
+      "doi": "10.1001/jamacardio.2026.2551",
+      "title": "The Next Phase of Cardio-Oncology-From Consensus to Science",
+      "before": "心脏肿瘤学的下一阶段——从共识走向科学",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42374831",
+      "doi": "10.1093/cvr/cvag146",
+      "title": "The gut-heart axis in cardio-oncology",
+      "before": "心脏肿瘤学中的肠-心轴",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42579295",
+      "doi": "10.1093/eurheartj/ehag628",
+      "title": "Cardiovascular disease, cancer risk, and sex: expanding the prevention agenda in cardio-oncology",
+      "before": "心血管疾病、癌症风险与性别：拓展心脏肿瘤学的预防议程",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42444266",
+      "doi": "10.1093/eurheartj/ehag542",
+      "title": "Thomas Marwick: new Editor-in-Chief of the European Heart Journal-Cardio-Oncology",
+      "before": "Thomas Marwick出任European Heart Journal-Cardio-Oncology新任主编",
+      "status": "retain_original_journal_name",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42025328",
+      "doi": "10.1093/ehjci/jeag103",
+      "title": "Multimodality imaging in the detection and management of coronary and peripheral arterial disease in patients with cancer receiving cardiotoxic antineoplastic treatments: A clinical consensus statement of the ESC Council of Cardio-Oncology and the European Association of Cardiovascular Imaging (EACVI) of the ESC",
+      "before": "多模态影像在接受心脏毒性抗肿瘤治疗的癌症患者冠状动脉及外周动脉疾病的检出与管理中的应用：ESC肿瘤心脏病学委员会与欧洲心血管影像协会（EACVI）临床共识声明",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42261985",
+      "doi": "10.1161/jaha.125.047798",
+      "title": "Cardio-Oncologic Considerations in Heart Failure With Mildly Reduced Ejection Fraction: Prevalence and Prognostic Impact of Malignancies",
+      "before": "轻度射血分数降低型心力衰竭中的肿瘤心脏病学考量：恶性肿瘤的患病率与预后影响",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41955048",
+      "doi": "10.1093/eurheartj/ehag077",
+      "title": "Cardio-oncology: the Polish National Oncology Network model",
+      "before": "心脏肿瘤学：波兰国家肿瘤网络模式",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42134058",
+      "doi": "10.1016/j.jacadv.2026.102790",
+      "title": "SGLT2 Inhibitors in Cardio-Oncology: A Systematic Review and Meta-Analysis",
+      "before": "SGLT2抑制剂在心脏肿瘤学中的应用：系统综述与荟萃分析",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42134057",
+      "doi": "10.1016/j.jacadv.2026.102781",
+      "title": "Managing Refractory Pericarditis in the Era of Biologic Therapy: A Cardio-Oncology-Based Risk Framework",
+      "before": "生物制剂时代的难治性心包炎管理：基于心脏肿瘤学的风险框架",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42107037",
+      "doi": "10.1093/ejhf/xuag067",
+      "title": "Heart failure, infarction, and the seed of malignancy: stepping into the era of reverse cardio-oncology",
+      "before": "心力衰竭、梗死与恶性肿瘤的种子：迈向逆向心血管肿瘤学时代",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "42092569",
+      "doi": "10.1016/j.hrthm.2026.04.050",
+      "title": "Global research trends in cancer-associated atrial fibrillation: A bibliometric analysis of the cardio-oncology interface",
+      "before": "癌症相关心房颤动的全球研究趋势：心血管肿瘤学交叉领域的文献计量学分析",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41504446",
+      "doi": "10.1093/eurheartj/ehaf860",
+      "title": "Young investigator award in basic/translational cardio-oncology: José Enrique Ortega Sollero",
+      "before": "基础/转化心脏肿瘤学青年研究者奖：José Enrique Ortega Sollero",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41780902",
+      "doi": "10.1093/eurheartj/ehag137",
+      "title": "Trials and scores in cardio-oncology: a fast-changing field of cardiovascular medicine",
+      "before": "肿瘤心脏病学中的试验与评分：心血管医学中快速变化的领域",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41330420",
+      "doi": "10.1093/eurheartj/ehaf869",
+      "title": "Transient cardiomyopathy by tyrosine kinase inhibitor therapy: time to define a new syndrome in cardio-oncology?",
+      "before": "酪氨酸激酶抑制剂治疗所致短暂性心肌病：是时候在心脏肿瘤学中定义一个新综合征了吗？",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41575298",
+      "doi": "10.1093/eurheartj/ehaf1095",
+      "title": "The year in cardiovascular medicine 2025: the top 10 papers in cardio-oncology",
+      "before": "2025年心血管医学年度回顾：肿瘤心脏病学领域十大论文",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41212086",
+      "doi": "10.1093/eurheartj/ehaf750",
+      "title": "Cardio-oncology across European Society of Cardiology member countries: a survey of the European Society of Cardiology Council of Cardio-Oncology",
+      "before": "欧洲心脏病学会（ESC）成员国的肿瘤心脏病学现状：ESC肿瘤心脏病学委员会的调查",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41230864",
+      "doi": "10.1093/eurheartj/ehaf783",
+      "title": "Clinical Cardio-Oncology Young Investigator Award: Stephen Foulkes",
+      "before": "临床肿瘤心脏病学青年研究者奖：Stephen Foulkes",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41217879",
+      "doi": "10.1093/eurheartj/ehaf765",
+      "title": "The 2025 ESC Cardio-Oncology Conference: A day in the life of a Social Media Ambassador",
+      "before": "2025年ESC肿瘤心脏病学会议：社交媒体大使的一天",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41205546",
+      "doi": "10.1016/j.jacadv.2025.102290",
+      "title": "Clonal Hematopoiesis Risk Score (CHRS) Evaluation as a Prognostic Marker for Death in Cardio-Oncology Cohort",
+      "before": "克隆性造血风险评分（CHRS）作为心脏肿瘤学队列死亡预后标志物的评估",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41001754",
+      "doi": "10.1093/eurheartj/ehaf588",
+      "title": "ESC cardio-oncology conference hits the ground running",
+      "before": "ESC肿瘤心脏病学会议强势开局",
+      "status": "already_consistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "41151394",
+      "doi": "10.1016/j.jacadv.2025.102256",
+      "title": "Prevalence of Sleep Apnea and Echocardiographic Correlates in a Community-Based Cohort of Cardio-Oncology Patients",
+      "before": "社区心脏病肿瘤学队列中睡眠呼吸暂停的患病率及超声心动图相关因素",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    },
+    {
+      "pmid": "40938778",
+      "doi": "10.1002/ejhf.70005",
+      "title": "Heart failure with preserved ejection fraction in cancer patients and survivors. A scientific statement of the Heart Failure Association of the ESC and the ESC Council of Cardio-Oncology",
+      "before": "癌症患者及癌症幸存者中的射血分数保留型心力衰竭：ESC心力衰竭协会与ESC心血管肿瘤学委员会的科学声明",
+      "status": "terminology_inconsistent",
+      "officialTitleMatches": true
+    }
+  ]
+}
