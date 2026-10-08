@@ -21,11 +21,12 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
     (['scripts/fetch_archive.py', '--incremental'], 1500),
     (['scripts/archive_details.py', '--fill'], 1800),
     (['scripts/translate_titles.py', '--run', '--limit', '60'], 900),
-    (['scripts/week_precompute.py', '--run', '--provider', 'configured', '--attempt-limit', '8'], 600),
     (['scripts/auto_picks.py'], 120),
 ]
 BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
+WEEK_CONSUMER = ['scripts/week_precompute.py', '--run', '--provider', 'configured',
+                 '--attempt-limit', '8', '--pending-only', '--paper-limit', '3']
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
 BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR)\s*=\s*')
@@ -83,8 +84,8 @@ def weekly_content_status(text, counts, fast):
             values[name] = value
         cursor = end
     policy = {'name': 'publish_valid_content_with_explicit_pending',
-              'generationMode': 'cache_only' if fast else 'bounded_existing_full_step',
-              'nextGenerationTrigger': 'existing_daily_full_schedule',
+              'generationMode': 'bounded_existing_configured_consumer',
+              'nextGenerationTrigger': 'existing_refresh_workflow',
               'automaticGenerationOnPageLoad': False}
     board = values.get('WEEKLY_BOARD')
     if board is None:
@@ -254,6 +255,24 @@ def main():
         report['precompute'] = record_precompute_pending(ROOT)
     except (ValueError, TypeError, KeyError, OSError, AttributeError) as exc:
         return finish('failed', ['public precompute queue failed: ' + type(exc).__name__])
+    # One finite consumer in both existing refresh modes. Reuse current cache and
+    # reviewed overlays before reserving; never run the former full-only pass too.
+    execute(WEEK_CONSUMER, 600, optional=True, reserve=480)
+    try:
+        path = ROOT / 'data/weekly-board.json'
+        generation_run = json.loads(path.read_text()).get('run', {}) if path.exists() else {}
+        report['precomputeGeneration'] = generation_run if 'consumer' in generation_run else {'blocker': 'generation_report_unavailable'}
+    except (ValueError, OSError):
+        report['precomputeGeneration'] = {'blocker': 'generation_report_unreadable'}
+    # Include successful siblings after a provider/validator failure, then persist
+    # remaining gaps. A timed-out process/uncertain lock stays fail-closed.
+    code = execute(WEEK_BOARD, 180, build=True)
+    if code:
+        return finish('failed', ['weekly post-consumer board failed'])
+    try:
+        report['precompute'] = record_precompute_pending(ROOT)
+    except (ValueError, TypeError, KeyError, OSError, AttributeError) as exc:
+        return finish('failed', ['post-consumer queue failed: ' + type(exc).__name__])
     code = execute(BUILD, 300, build=True)
     if code:
         return finish('failed', ['public build failed'])
@@ -280,8 +299,7 @@ def main():
     if report['weeklyContent']['status'] != 'complete':
         report['warnings'] = ['weekly_precompute_' + report['weeklyContent']['status']]
     generation = next((step for step in report['steps'] if step['script'].startswith('scripts/week_precompute.py --run ')), None)
-    report['weeklyContent']['generationStep'] = ({'outcome': 'not_requested_fast', 'exitCode': None} if fast else
-        {'outcome': 'not_reached', 'exitCode': None} if generation is None else
+    report['weeklyContent']['generationStep'] = ({'outcome': 'not_reached', 'exitCode': None} if generation is None else
         {'outcome': generation.get('outcome') or ('returned_without_generation_guarantee' if generation['exitCode'] == 0 else 'failed'),
          'exitCode': generation['exitCode']})
     print('WEEKLY CONTENT:', json.dumps({key: value for key, value in report['weeklyContent'].items() if key != 'pending'}, ensure_ascii=False), flush=True)

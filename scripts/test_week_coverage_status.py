@@ -33,7 +33,7 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(s["titleTranslationQuicklookPreparedPapers"],19);self.assertEqual(s["fullyPreparedPapers"],0)
         self.assertEqual(s["partialPapers"],19);self.assertEqual(s["pendingPapers"],5)
         self.assertEqual(len(s["pending"]),24);self.assertEqual(s["pending"][-1]["missingFields"],["title","translate","study","quicklook"])
-        self.assertEqual(s["publicationPolicy"]["generationMode"],"cache_only")
+        self.assertEqual(s["publicationPolicy"]["generationMode"],"bounded_existing_configured_consumer")
         self.assertEqual(s["window"]["days"],7)
     def test_complete_requires_all_fields(self):
         b,m,c=fixture(2,2,True);s=ci_daily.weekly_content_status(bundle(b,m),c,False)
@@ -84,10 +84,14 @@ class PipelineCoverageTests(PipelineFixture):
         self.assertEqual(report["weeklyContent"]["fullyPreparedPapers"],0)
         paid=[args for args in calls if "--run" in args and args[0]=="scripts/week_precompute.py"]
         self.assertEqual(len(paid),1);self.assertIn("8",paid[0])
-    def test_fast_is_read_only_cache_without_extra_generation(self):
+    def test_fast_consumes_once_before_public_build(self):
         self.install();code,r,out,calls=self.invoke()
-        self.assertEqual(code,0);self.assertEqual(r["weeklyContent"]["publicationPolicy"]["generationMode"],"cache_only")
-        self.assertFalse(any(args[0]=="scripts/week_precompute.py" and "--run" in args for args in calls))
+        self.assertEqual(code,0);self.assertEqual(r["weeklyContent"]["publicationPolicy"]["generationMode"],"bounded_existing_configured_consumer")
+        self.assertEqual(calls.count(ci_daily.WEEK_CONSUMER),1)
+        i=calls.index(ci_daily.WEEK_CONSUMER)
+        self.assertEqual(calls[i-1],ci_daily.WEEK_BOARD)
+        self.assertEqual(calls[i+1],ci_daily.WEEK_BOARD)
+        self.assertLess(i,calls.index(ci_daily.BUILD))
         self.assertEqual(out,[False])
     def test_false_ready_blocks_only_corrupt_publication_and_leaves_failure_receipt(self):
         self.install(lambda b,m,c:b["items"][0].update(precomputeStatus="ready"))

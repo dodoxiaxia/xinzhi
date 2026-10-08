@@ -227,11 +227,11 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(outputs, [False])
 
     def test_budget_skips_optional_steps_but_reserves_build(self):
-        clock = [0] * (1 + len(ci_daily.REQUIRED)) + [1250] * (len(ci_daily.LIGHT_OPTIONAL) + 2)
+        clock = [0] * (1 + len(ci_daily.REQUIRED)) + [1250] * (len(ci_daily.LIGHT_OPTIONAL) + 4)
         result, report, outputs, calls = self.invoke(clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(calls[-1], ci_daily.BUILD)
-        self.assertEqual(sum(step.get('outcome') == 'skipped' for step in report['steps']), 2)
+        self.assertEqual(sum(step.get('outcome') == 'skipped' for step in report['steps']), 3)
         self.assertEqual(outputs, [False])
 
     def test_required_budget_exhaustion_is_reported(self):
@@ -246,15 +246,15 @@ class RefreshExecutionTests(PipelineFixture):
         def run(argv, timeout):
             timeouts[argv[0] + (':paid' if '--run' in argv else '')] = timeout
             return 0, '', ''
-        # Archive work reaches its budget, leaving 600 seconds for the model and
-        # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2700, 2700, 2700]
+        # Archive work leaves 900 seconds: reserve 480 for board+build, so the
+        # finite consumer gets 420. Later archive/translation work is skipped.
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2100, 2100, 2700, 2700]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)
         self.assertNotIn('scripts/archive_details.py', timeouts)
         self.assertNotIn('scripts/translate_titles.py', timeouts)
-        self.assertEqual(timeouts['scripts/week_precompute.py:paid'], 600)
+        self.assertEqual(timeouts['scripts/week_precompute.py:paid'], 420)
         self.assertEqual(timeouts['scripts/build_public.py'], 300)
         self.assertEqual(outputs, [True])
 
