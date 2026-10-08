@@ -1,0 +1,74 @@
+Local Python: Ran 619 tests in 176.653s; final OK.
+RUN node scripts/test_citation_export.cjs
+33 citation-export assertions passed
+RUN node scripts/test_reading_logic.cjs
+20 reading regression assertions passed
+6 API error message regression assertions passed
+4 private PDF link scope assertions passed
+RUN node scripts/test_edge_worker.cjs
+Edge offline boundaries passed: identity, evidence, provider retry, redirect, missing config, static assets.
+RUN node scripts/test_pdf_worker.cjs
+PDF offline boundaries passed: GET password form, bounded POST password verification, no unauthorized GitHub access, commit pinning, exact DOI/title, CSV, paths, PDF/SHA/size/blob, safe redirects, downloads and HTML errors.
+RUN node scripts/test_doi_library_worker.cjs
+DOI library offline tests passed: read-only GET, password, DOI identity, GitHub/OA links, safe URLs, body limits/timeouts, KV binaries/soft guards, durable records, downloads, public projection and persisted manual retry deadlines.
+RUN node scripts/test_doi_direct_download.cjs
+DOI direct download passed: one authenticated POST, persist-before-attachment, existing/OA/cache reuse, unchanged JSON API, no credential storage, origin/body/query boundaries, cache integrity and 401/403/429/login pause.
+RUN node scripts/test_doi_manual_needed.cjs
+Manual-needed passed: open metadata/no PDF, stable read-only legacy projection, protected archive reuse, persistent pause and actual upstream retry deadlines.
+RUN node scripts/test_fulltext_jobs.cjs
+Fulltext jobs passed: durable enqueue/dedup, OIDC scope/signature, runner execution, verified PDF return, bounded automatic retries, KV propagation and manual recovery.
+RUN node scripts/test_fulltext_activation.cjs
+Fulltext activation: six disabled configurations preserve jobs/passwords and use immediate verified acquisition; explicit activation retains queue behavior.
+RUN node scripts/test_fulltext_dispatcher.cjs
+Fulltext dispatcher passed: empty/active queues skip runners, eligible queues dispatch once, fixed repository and scoped headers, protected readiness, bounded response and safe failures.
+RUN node scripts/test_doi_library_ui.cjs --helpers-only
+DOI library helper checks passed (browser checks run separately)
+RUN node scripts/test_study_services.cjs
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.866Z","requestId":"58e64b75-b4ea-429e-b97e-511b65f59990","phase":"provider_http","code":"provider_auth","httpStatus":401,"elapsedMs":1,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.870Z","requestId":"65889763-3ff5-4947-baf0-4d1037293cc4","phase":"provider_http","code":"provider_auth","httpStatus":403,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.872Z","requestId":"1a8d3eda-f9db-4861-a44a-6a551f4b5727","phase":"provider_http","code":"provider_rate_limit","httpStatus":429,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.875Z","requestId":"2f9ba23f-1640-4377-a13f-1dbdca693d49","phase":"provider_http","code":"provider_unavailable","httpStatus":500,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.877Z","requestId":"5b576927-1cfa-4d10-bda8-0a2b4cfad967","phase":"provider_http","code":"provider_auth","httpStatus":401,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.879Z","requestId":"8beb884a-6847-4635-bfe9-11a8007b045f","phase":"budget","code":"provider_budget","httpStatus":null,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.881Z","requestId":"b750b2bd-522e-4300-b409-492e5e866e70","phase":"provider_response","code":"output_truncated","httpStatus":200,"elapsedMs":0,"timedOut":false}
+XINZHI_AI_DIAGNOSTIC {"version":1,"at":"2026-10-08T02:13:32.882Z","requestId":"02b8b5ef-fe3f-4faa-9463-16df6bd82f74","phase":"provider_response","code":"output_truncated","httpStatus":200,"elapsedMs":0,"timedOut":false}
+Study/compare offline services passed: scoped evidence, unique paper IDs, partial abstracts, shared caches, ID-only input, bounded metadata and provider retries.
+RUN node scripts/test_study_evidence_regression.cjs
+Study evidence regression: 20 cases passed; real public source, honest historical-failure provenance, exact spans, strict citation IDs and same-quote numbers; zero network calls.
+RUN node scripts/test_study_ui.cjs
+83 public-abstract study UI assertions passed
+RUN node scripts/test_brief_feedback.cjs
+Brief feedback regression passed: unique8 cap, truthful partial count, invalid result, duplicate click, slow/deadline/network states, read-only cache recovery and no provider/KV writes on GET.
+RUN node scripts/test_ai_deadline_lifecycle.cjs
+AI deadline lifecycle offline regressions passed: body/batch/task deadlines, lease ownership, read-only failure status, quotas/attempts, legacy locks, strict published snapshots.
+RUN node scripts/test_ai_waiting_ui.cjs
+PASS GET stalled body is bounded at 15 seconds
+PASS POST stalled body reaches waiting; duplicate clicks stay unpaid
+PASS 409 waiting yields GET-only recovery and explicit failed receipt
+PASS unknown old GET response cannot release a waiting task
+PASS GET idle allows only a new explicit paid click
+PASS late response cannot replace a newer source-bound record
+PASS compare deadline and selection change retain correct group state
+PASS compare failure receipt reopens explicit retry without paid GET
+PASS quicklook interruption waits; read-only idle recovery
+PASS translation timeout blocks duplicate billing and shows cache check
+PASS title interruption is recovered with title GET only
+PASS GET timeout cannot discard waiting receipt; raw secrets never shown
+12 actual-app AI waiting/deadline scenarios passed; zero live models or network.
+RUN node scripts/test_source_health_ui.cjs
+40 source health UI assertions passed (real journal metrics loaded)
+8 RSS success-provenance assertions passed; valid empty/filtered feeds remain successful.
+RUN node scripts/test_weekly_window.cjs
+{"passed":true,"checks":71,"networkCalls":0,"scope":"weekly helpers and renderer only"}
+RUN node scripts/test_publication_dates_ui.cjs
+publication date UI: 10 assertions passed
+RUN node scripts/test_publication_status_ui.cjs
+publication status UI: 34 assertions passed
+RUN node scripts/test_public_content_priority.cjs
+Public content reader priority: 8 assertions passed; no API requests or cache writes.
+RUN node scripts/test_journal_metrics.cjs
+journal metrics: identity, evidence, year, history, rendering and multi-category checks passed
+PASS suites=23 syntax=2
+
+Actual saved browser:
+PASS: actual assets in four desktop/mobile cards/compact scenarios; status/source links, DOI projections, weekly coverage and only local mocked study POST, no paid requests.

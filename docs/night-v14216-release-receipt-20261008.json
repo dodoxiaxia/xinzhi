@@ -1,0 +1,1376 @@
+{
+  "release": "v14.2.16",
+  "sourceSha": "9b5e65ae042a8c0d583acc8fd1edbaee816de36c",
+  "stateSha": "86aa095d746257f3f7bc04acd5f11bcab52107b4",
+  "runId": 37717433385,
+  "jobId": 113117040083,
+  "runUrl": "https://github.com/dodoxiaxia/xinzhi/actions/runs/37717433385",
+  "pagesUrl": "https://aae16e69.dryz-xinzhi.pages.dev",
+  "deploymentCompletedAt": "2026-10-08T02:25:28.1465842Z",
+  "finalStateSuccessAt": "2026-10-08T02:25:35.1826308Z",
+  "outcome": "deployed_and_saved_successfully",
+  "savedDeploymentSnapshotStateOutcome": "pending",
+  "snapshotExplanation": "Snapshot precedes state push; final workflow log confirms state success.",
+  "readback": {
+    "release": "v14.2.16",
+    "state": "86aa095d746257f3f7bc04acd5f11bcab52107b4",
+    "source": "9b5e65ae042a8c0d583acc8fd1edbaee816de36c",
+    "files": [
+      {
+        "path": "_headers",
+        "bytes": 327,
+        "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+      },
+      {
+        "path": "_worker.js",
+        "bytes": 437907,
+        "sha256": "474ebb1542e8b41070959e09f3761184e8453176b8bb7ee6c409282fdb96496c"
+      },
+      {
+        "path": "icon.svg",
+        "bytes": 743255,
+        "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+      },
+      {
+        "path": "index.html",
+        "bytes": 29385,
+        "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+      },
+      {
+        "path": "public.js",
+        "bytes": 9231135,
+        "sha256": "347456a5be8d5c5d6a9f91749371e7c45788a7f0a3d1622371ff3bc884457948"
+      },
+      {
+        "path": "style.css",
+        "bytes": 91292,
+        "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+      }
+    ],
+    "scope": "GitHub saved deployment artifact byte readback; not a live custom-domain or real-iPhone test"
+  },
+  "actualContent": {
+    "passed": true,
+    "release": "v14.2.16",
+    "savedState": "86aa095d746257f3f7bc04acd5f11bcab52107b4",
+    "source": "9b5e65ae042a8c0d583acc8fd1edbaee816de36c",
+    "run": 37717433385,
+    "actualCounts": {
+      "radar": 870,
+      "library": 1264,
+      "checked_guides": 12,
+      "ai_quicklooks_unchecked": 12,
+      "radar_archive_titles": 12671,
+      "titles_zh": 15142,
+      "weekly_board": 24,
+      "weekly_precomputed": {
+        "title": 24,
+        "translate": 23,
+        "study": 0,
+        "quicklook": 23
+      }
+    },
+    "actualWeeklyContent": {
+      "status": "partial",
+      "selected": 24,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "study": 0,
+        "quicklook": 23
+      },
+      "fullyPreparedPapers": 0,
+      "titleTranslationQuicklookPreparedPapers": 23,
+      "partialPapers": 23,
+      "pendingPapers": 1,
+      "pending": [
+        {
+          "paperID": "doi:10.1001/jamacardio.2026.4445",
+          "sourceHash": "d9373d423a28d49dfc3c47fdf0b84ff94e27b86b439a49faed9e3fdf621bb8a6",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1093/ehjcvp/pvag089",
+          "sourceHash": "3aed2c0a9939171a5bf2ae01edeb476ccbf97542d7564610fff94fe3997263aa",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circep.126.015055",
+          "sourceHash": "ab51bb2692f7192ad63c8003892d39904fc682f852c6f44b1f22317319ce0a7e",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.hrthm.2026.09.051",
+          "sourceHash": "1bbdf58cebd21cf9141d30817cc6af57eb1a61b6b92c3159331ae7fa2c181829",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circulationaha.126.080404",
+          "sourceHash": "c0b3f9ed8273f80d8c41124c4ea928a3dcb5fc717194f0b6d9d9ae0c67f63f36",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.jacadv.2026.103298",
+          "sourceHash": "c98f0074451c2077496a8485f645ca3a88de60692ac398096d975395e41b87ca",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.jacadv.2026.103306",
+          "sourceHash": "6e1e7bd707d1652f52c76c784d88ccf42b797e39f7bddec0f96cb1c8307dded9",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1093/eurheartj/ehag699",
+          "sourceHash": "689be16bc5e87df35dc45f1a3f09ca8443ca322970b80b2e2169d2444a8e95f0",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1111/jce.70518",
+          "sourceHash": "3e412ed8e5ea2997d6bb8bf8f3d52d76377591a966d58105915294d971b80ea6",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circep.126.014967",
+          "sourceHash": "cd02146e77ca5b9b26350f0de47d06d29f434568e65489cdef2ae6ebb4a113d9",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jama.2026.17619",
+          "sourceHash": "df79ab85ca993ab8e530cc5f1c2a9c65351d67f56f25caac593b1ffbe5f01b9a",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jama.2026.17192",
+          "sourceHash": "80507669cdfa39ac93cc0297b982f63df41df987174cffd5c2550e3857ae6248",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41591-026-04675-1",
+          "sourceHash": "2338c746d742bd5089816ea33ffad4d16708b63d3233ba4f645e97feb1c40748",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jamainternmed.2026.4894",
+          "sourceHash": "a45e1bd0392547dc9b776df4b3abdd4d2fdea5e21dcf3f1a28ea7d869d0e4ba4",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41591-026-04713-y",
+          "sourceHash": "f00959ffdce777656bb9a73317488ea041ce6a0cbb4a0d850fe2458c15dd94af",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41591-026-04704-z",
+          "sourceHash": "0c13875f2ac8d234b63371024d2ac967073894a3d7d9e53945890daeac2391bf",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/circep.125.014659",
+          "sourceHash": "7cb75ef2fcad9fc5bc3b1c2773ccaaf53e70fe3984fbb97d18a245ab2a26e2ec",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1038/s41467-026-78143-2",
+          "sourceHash": "717dc74cdd656dc1ca37e222bc654704962553400d7632f2cdd07cde23446c8e",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.hrthm.2026.08.046",
+          "sourceHash": "5c1f855f0bb723448cff76b9d5f1c1c3503d4374a2a5a0e59e0aeb5321464af5",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1001/jamanetworkopen.2026.37533",
+          "sourceHash": "109563af0ce65be2732a9e80aac4672202f6ac501d39569a8cabce200cb1be79",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1016/j.jcin.2026.07.042",
+          "sourceHash": "f2e3209fc436d981c933818e5705b37237ba560c59f56cb4c3318f0d27fc008d",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/jaha.126.054084",
+          "sourceHash": "51419825474f050d742e35bd8a86150e76043da95021684873ab36edc42156a7",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1111/jce.70524",
+          "sourceHash": "632541bb25f37e9130e43f2505f27fc700e87d03369c907c3375515abbfb8d00",
+          "missingFields": [
+            "study"
+          ]
+        },
+        {
+          "paperID": "doi:10.1161/jaha.126.050332",
+          "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+          "missingFields": [
+            "translate",
+            "study",
+            "quicklook"
+          ]
+        }
+      ],
+      "window": {
+        "start": "2026-10-02",
+        "end": "2026-10-08",
+        "days": 7,
+        "timezone": "Asia/Shanghai"
+      },
+      "publicationPolicy": {
+        "name": "publish_valid_content_with_explicit_pending",
+        "generationMode": "cache_only",
+        "nextGenerationTrigger": "existing_daily_full_schedule",
+        "automaticGenerationOnPageLoad": false
+      },
+      "generationStep": {
+        "outcome": "not_requested_fast",
+        "exitCode": null
+      }
+    },
+    "actualPrecompute": {
+      "selected": 24,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "quicklook": 23
+      },
+      "pendingPapers": 1,
+      "contentComplete": false,
+      "studyMissing": 24,
+      "status": "pending",
+      "reasonCounts": {
+        "new_identity": 1
+      },
+      "queuePath": "data/public-precompute-pending.json",
+      "externalModelApiRequests": 0,
+      "runtimeCacheWrites": 0,
+      "ledgerWrites": 0
+    },
+    "actualCoreQueue": {
+      "selected": 24,
+      "coverage": {
+        "title": 24,
+        "translate": 23,
+        "quicklook": 23
+      },
+      "pendingPapers": 1,
+      "contentComplete": false,
+      "studyMissing": 24
+    },
+    "newPending": [
+      {
+        "paperID": "doi:10.1161/jaha.126.050332",
+        "doi": "10.1161/jaha.126.050332",
+        "pmid": "42841502",
+        "title": "Low Parental Income During Childhood Is Associated With Coronary Atherosclerosis in Midlife.",
+        "abstract": "BACKGROUND: Socioeconomic status (SES) is a major risk factor for coronary heart disease, but the life-course mechanisms and causal pathways remain poorly understood. Therefore, we investigated whether low childhood SES was associated with midlife coronary atherosclerosis and if any association could be explained by established risk factors in adulthood. METHODS: This observational cohort study included 15 640 participants, aged 50 to 64 years, from the population-based SCAPIS (Swedish Cardiopulmonary Bioimage Study) who underwent coronary computed tomography angiography. Coronary atherosclerosis was assessed by segment involvement score and coronary artery calcification score. Childhood SES was defined by parental disposable income at participant age 10 to 12 years retrieved from national registers. Associations between moderate-severe coronary atherosclerosis (segment involvement score ≥4 or coronary artery calcification >100) and childhood SES were estimated using multivariable logistic regression adjusting for adult lifestyle habits, adult SES, and traditional cardiovascular risk factors. RESULTS: Participants in the lowest versus highest parental income quintile were more likely to have moderate-severe coronary atherosclerosis (segment involvement score ≥4; odds ratio [OR], 1.43 [95% CI, 1.20-1.71], P<0.001). The association persisted after adjustment for adult lifestyle habits (OR, 1.42 [95% CI, 1.17-1.73], P<0.001), adult SES (OR, 1.31 [95% CI, 1.09-1.57], P=0.004), traditional cardiovascular risk factors (OR, 1.28 [95% CI, 1.06-1.53], P=0.008), and full adjustment (OR, 1.31 [95% CI, 1.07-1.61], P=0.010). Similar associations were observed for coronary artery calcification >100. CONCLUSIONS: Low childhood SES was associated with moderate-severe coronary atherosclerosis in midlife only partially explained by established risk factors in adulthood. Our findings suggest that childhood SES is a social determinant of long-term cardiovascular health that cannot be fully explained by established adult risk factors.",
+        "date": "2026-10-07",
+        "sourceHash": "8353e8f5fdc72d999835aa2e789e725c3be34cbd357c569e0a76872ff78393aa",
+        "abstractSource": "PubMed",
+        "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42841502/",
+        "missingTasks": [
+          "translate",
+          "quicklook"
+        ],
+        "reason": "new_identity",
+        "requiredTaskVersions": {
+          "translate": "week-public-abstract-v1:translate:public-translation-v1:unobserved:translation-number-occurrences-v2",
+          "quicklook": "week-public-abstract-v1:quicklook:public-quicklook-v1:unobserved:literal-findings-same-quote-numbers-v1"
+        },
+        "queueKey": "350ae77df57e0f50c601480a521228c6e4614e704e821ffbf6cb93d926df4841",
+        "allowAutomaticGeneration": false
+      }
+    ],
+    "fivePreviousGapsStillComplete": [
+      "doi:10.1001/jamacardio.2026.4445",
+      "doi:10.1161/circep.126.015055",
+      "doi:10.1001/jama.2026.17619",
+      "doi:10.1161/circep.125.014659",
+      "doi:10.1111/jce.70524"
+    ],
+    "verifiedDoiCases": {
+      "93b958551c8bf865": "10.1001/jama.2026.14789",
+      "4944fe87d59c5e7b": "10.1001/jamainternmed.2025.7627",
+      "b157bb0d131bf3d5": "10.1093/ehjdh/ztag011",
+      "a97bbb0a11844693": "",
+      "814b860e19382e2f": ""
+    },
+    "preventTaha8State": {
+      "state": "retracted",
+      "label": "已撤稿",
+      "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41224473/",
+      "related": [
+        {
+          "type": "ExpressionOfConcernIn",
+          "pmid": "41224475",
+          "label": "关注声明",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41224475/"
+        },
+        {
+          "type": "ErratumIn",
+          "pmid": "41916658",
+          "label": "更正声明",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41916658/"
+        },
+        {
+          "type": "RetractionIn",
+          "pmid": "41916660",
+          "label": "撤稿声明",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/41916660/"
+        }
+      ]
+    },
+    "sampleRoles": {
+      "42104840": "研究方案",
+      "42836296": "RCT 二次分析"
+    },
+    "titleCorrections": [
+      {
+        "pmid": "42480259",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42811187",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42702066",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42805147",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42744322",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41885139",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42702498",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42525420",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42374831",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42579295",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41955048",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42134058",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42134057",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42107037",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "42092569",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41504446",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41330420",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41205546",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "41151394",
+        "projectionCount": 1,
+        "passed": true
+      },
+      {
+        "pmid": "40938778",
+        "projectionCount": 1,
+        "passed": true
+      }
+    ],
+    "twoCorrectedQuicklooksPresent": true,
+    "scope": "saved deployment artifacts, no live API/domain claim"
+  },
+  "workerSnapshot": {
+    "passed": true,
+    "publishedIdentities": 36,
+    "strictIdentityLookups": 72,
+    "metadataRequests": 0,
+    "providerCalls": 0,
+    "scope": "actual injected Worker source executed offline with network forbidden"
+  },
+  "localGates": {
+    "scope": "fixed source offline gates; actual production state restored; no live API/PDF/provider calls",
+    "sourceSha": "9b5e65ae042a8c0d583acc8fd1edbaee816de36c",
+    "restoredStateSha": "efaaf69713fcc8b5468b9d0052daa672a666df0e",
+    "release": "v14.2.16",
+    "tests": {
+      "python": {
+        "sha256": "f95871cbaea30f1d0bd269b5bf45aa989eac216a5a32c2d292e997e5a3b88bc7",
+        "summary": [
+          "Ran 619 tests in 176.653s"
+        ]
+      },
+      "node": {
+        "sha256": "71a74fc25fd0df64ed3d65a2d3ada43f72372054ff8240fa51f72764a452abf2",
+        "summary": [
+          "PASS suites=23 syntax=2"
+        ]
+      }
+    },
+    "snapshotIdentities": 36,
+    "localCoverage": {
+      "title": 24,
+      "translate": 23,
+      "study": 0,
+      "quicklook": 23
+    },
+    "artifacts": [
+      {
+        "archive": "xinzhi-public.zip",
+        "sha256": "30102036db3f4c7ce109d8b011842149227411f7b37806353ab25d39b7810d7b",
+        "bytes": 3268133,
+        "sixPublicFilesExact": true
+      },
+      {
+        "archive": "心知-公开网站包.zip",
+        "sha256": "30102036db3f4c7ce109d8b011842149227411f7b37806353ab25d39b7810d7b",
+        "bytes": 3268133,
+        "sixPublicFilesExact": true
+      },
+      {
+        "archive": "心知-本地学习站.zip",
+        "sha256": "38be35daa2ad8e54495a3dc5586214a08c7f10ca05d46c908cabb168fbad92e1",
+        "bytes": 21083165,
+        "sixPublicFilesExact": true
+      }
+    ],
+    "manifestFiles": [
+      {
+        "path": "_headers",
+        "bytes": 327,
+        "sha256": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab"
+      },
+      {
+        "path": "_worker.js",
+        "bytes": 437907,
+        "sha256": "474ebb1542e8b41070959e09f3761184e8453176b8bb7ee6c409282fdb96496c"
+      },
+      {
+        "path": "icon.svg",
+        "bytes": 743255,
+        "sha256": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7"
+      },
+      {
+        "path": "index.html",
+        "bytes": 29385,
+        "sha256": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d"
+      },
+      {
+        "path": "public.js",
+        "bytes": 9231596,
+        "sha256": "43ce003cf6a09f8d7ea67a96d72b457953c67d2fcb6a45eab50b714929d9f54e"
+      },
+      {
+        "path": "style.css",
+        "bytes": 91292,
+        "sha256": "903875bfffb793efcb73b573d98648b9aa11f418350edcda8aad08cc610a6528"
+      }
+    ],
+    "remaining": [
+      "KV is advisory/eventually consistent, not CAS",
+      "36 published abstracts, not all historical records",
+      "Original incident requests/logs unavailable",
+      "No production live model test; prior Cloudflare denial not bypassed"
+    ]
+  },
+  "savedBrowser": {
+    "scope": "Actual integrated six-file public build, local intercepted Chromium only; no production API test",
+    "passed": true,
+    "results": [
+      {
+        "width": 1440,
+        "view": "cards",
+        "projected": {
+          "library": 1264,
+          "core": {
+            "title": 24,
+            "translate": 23,
+            "study": 0,
+            "quicklook": 23
+          },
+          "fixed": [
+            {
+              "id": "93b958551c8bf865",
+              "doi": "10.1001/jama.2026.14789",
+              "title": "The Need to Avoid a Regulatory Gray Zone in Digital Wellness"
+            },
+            {
+              "id": "a97bbb0a11844693",
+              "doi": "",
+              "title": "Invited Commentary LESS IS MORE"
+            },
+            {
+              "id": "4944fe87d59c5e7b",
+              "doi": "10.1001/jamainternmed.2025.7627",
+              "title": "Measuring the Return on Investment for Clinician-Facing Artificial Intelligence Technologies"
+            },
+            {
+              "id": "b157bb0d131bf3d5",
+              "doi": "10.1093/ehjdh/ztag011",
+              "title": "The digital divide in cardiovascular care: who gets left behind?"
+            },
+            {
+              "id": "814b860e19382e2f",
+              "doi": "",
+              "title": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels"
+            }
+          ],
+          "secondary": "RCT 二次分析"
+        },
+        "correctedContent": {
+          "titles": [
+            {
+              "pmid": "42811187",
+              "titleZh": "口服小分子GLP-1受体激动剂safiglipron治疗早期2型糖尿病：一项随机、双盲、安慰剂对照试验"
+            },
+            {
+              "pmid": "42702066",
+              "titleZh": "植入式循环记录器随时间变化的诊断检出率与治疗影响：Brugada综合征是例外"
+            },
+            {
+              "pmid": "42480259",
+              "titleZh": "具有双心室生理和体循环左心室的成人先天性心脏病患者中的射血分数改善型心力衰竭"
+            }
+          ],
+          "quicklooks": {
+            "10.1126/sciadv.aeg3270": {
+              "title_zh": "通过微环境响应型纳米药物靶向ENO1代谢检查点促进梗死后心脏修复",
+              "one_line": "靶向巨噬细胞ENO1的酸响应纳米siRNA疗法在体内实验中减轻梗死损伤并改善心室功能。",
+              "design": "机制研究，采用酸响应纳米载体（PECS）递送siENO1，并报告体内实验。",
+              "limits": "仅核对公开摘要；摘要未交代体内模型种类、样本量、安全性及临床转化证据。",
+              "why_read": "了解ENO1代谢调控与响应型纳米递送对心梗后修复的研究思路。",
+              "findings": [
+                {
+                  "text": "发现糖酵解酶ENO1在梗死后巨噬细胞中上调，是调控巨噬细胞代谢命运与炎症功能的关键因子。",
+                  "quote": "we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function"
+                },
+                {
+                  "text": "酸响应纳米载体PECS在酸性梗死微环境中外化磷脂酰丝氨酸，促进巨噬细胞选择性摄取。",
+                  "quote": "externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake"
+                },
+                {
+                  "text": "胞内递送siENO1抑制糖酵解通量、减少乳酸积累，解除其对KLF4的代谢抑制，启动抗炎重编程。",
+                  "quote": "Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming."
+                },
+                {
+                  "text": "体内siENO1@PECS治疗减轻梗死面积、纤维化和心肌细胞凋亡，改善心室功能。",
+                  "quote": "siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function"
+                }
+              ],
+              "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+              "pmid": "42826207",
+              "abstractSource": "Europe PMC",
+              "abstractSourceUrl": "https://europepmc.org/article/MED/42826207",
+              "generatedAt": "2026-10-05",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "98c6ef7aba1bdfbf3fff620cba8c0219f84e9ae8c99439a76beb6f85f04a7357",
+                "scope": "public-abstract"
+              }
+            },
+            "10.1161/circulationaha.125.079141": {
+              "title_zh": "抗肿瘤药物与肿瘤相关血栓形成",
+              "one_line": "综述抗肿瘤药物相关的静脉血栓栓塞风险、机制及防治指南推荐。",
+              "design": "叙述性综述，聚焦系统抗肿瘤治疗患者的血栓事件。",
+              "limits": "仅核对公开摘要；摘要未报告定量研究结果或具体推荐强度。",
+              "why_read": "了解抗肿瘤药物相关血栓风险、机制及现有防治指南推荐。",
+              "findings": [
+                {
+                  "text": "多种抗肿瘤药物与静脉血栓栓塞风险增加相关，包括化疗药、激素治疗、多发性骨髓瘤用药、门冬酰胺酶及多种靶向抑制剂。",
+                  "quote": "Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies"
+                },
+                {
+                  "text": "抗肿瘤药物相关血管不良事件常被低估，风险分层、预防和管理仍存在显著缺口。",
+                  "quote": "Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification"
+                },
+                {
+                  "text": "综述还总结了血栓形成的病理生物学机制及防治指南推荐，并讨论了动脉血栓事件。",
+                  "quote": "summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis"
+                }
+              ],
+              "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+              "pmid": "42832625",
+              "abstractSource": "PubMed",
+              "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+              "generatedAt": "2026-10-07",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "ca963fac39c8193c5b96c5b8ebccd6a2a6a7147962444e0732f29a128a4982b1",
+                "scope": "public-abstract"
+              }
+            }
+          }
+        },
+        "retractedBanner": true,
+        "noticeAndConcernLinks": true,
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "requests": [
+          {
+            "path": "/",
+            "method": "GET"
+          },
+          {
+            "path": "/style.css",
+            "method": "GET"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/public.js",
+            "method": "GET"
+          },
+          {
+            "path": "/api/library",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/",
+            "method": "HEAD"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/europepmc/webservices/rest/search",
+            "method": "GET",
+            "blockedExternal": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "POST",
+            "mockOnly": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          }
+        ],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true
+      },
+      {
+        "width": 1440,
+        "view": "compact",
+        "projected": {
+          "library": 1264,
+          "core": {
+            "title": 24,
+            "translate": 23,
+            "study": 0,
+            "quicklook": 23
+          },
+          "fixed": [
+            {
+              "id": "93b958551c8bf865",
+              "doi": "10.1001/jama.2026.14789",
+              "title": "The Need to Avoid a Regulatory Gray Zone in Digital Wellness"
+            },
+            {
+              "id": "a97bbb0a11844693",
+              "doi": "",
+              "title": "Invited Commentary LESS IS MORE"
+            },
+            {
+              "id": "4944fe87d59c5e7b",
+              "doi": "10.1001/jamainternmed.2025.7627",
+              "title": "Measuring the Return on Investment for Clinician-Facing Artificial Intelligence Technologies"
+            },
+            {
+              "id": "b157bb0d131bf3d5",
+              "doi": "10.1093/ehjdh/ztag011",
+              "title": "The digital divide in cardiovascular care: who gets left behind?"
+            },
+            {
+              "id": "814b860e19382e2f",
+              "doi": "",
+              "title": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels"
+            }
+          ],
+          "secondary": "RCT 二次分析"
+        },
+        "correctedContent": {
+          "titles": [
+            {
+              "pmid": "42811187",
+              "titleZh": "口服小分子GLP-1受体激动剂safiglipron治疗早期2型糖尿病：一项随机、双盲、安慰剂对照试验"
+            },
+            {
+              "pmid": "42702066",
+              "titleZh": "植入式循环记录器随时间变化的诊断检出率与治疗影响：Brugada综合征是例外"
+            },
+            {
+              "pmid": "42480259",
+              "titleZh": "具有双心室生理和体循环左心室的成人先天性心脏病患者中的射血分数改善型心力衰竭"
+            }
+          ],
+          "quicklooks": {
+            "10.1126/sciadv.aeg3270": {
+              "title_zh": "通过微环境响应型纳米药物靶向ENO1代谢检查点促进梗死后心脏修复",
+              "one_line": "靶向巨噬细胞ENO1的酸响应纳米siRNA疗法在体内实验中减轻梗死损伤并改善心室功能。",
+              "design": "机制研究，采用酸响应纳米载体（PECS）递送siENO1，并报告体内实验。",
+              "limits": "仅核对公开摘要；摘要未交代体内模型种类、样本量、安全性及临床转化证据。",
+              "why_read": "了解ENO1代谢调控与响应型纳米递送对心梗后修复的研究思路。",
+              "findings": [
+                {
+                  "text": "发现糖酵解酶ENO1在梗死后巨噬细胞中上调，是调控巨噬细胞代谢命运与炎症功能的关键因子。",
+                  "quote": "we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function"
+                },
+                {
+                  "text": "酸响应纳米载体PECS在酸性梗死微环境中外化磷脂酰丝氨酸，促进巨噬细胞选择性摄取。",
+                  "quote": "externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake"
+                },
+                {
+                  "text": "胞内递送siENO1抑制糖酵解通量、减少乳酸积累，解除其对KLF4的代谢抑制，启动抗炎重编程。",
+                  "quote": "Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming."
+                },
+                {
+                  "text": "体内siENO1@PECS治疗减轻梗死面积、纤维化和心肌细胞凋亡，改善心室功能。",
+                  "quote": "siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function"
+                }
+              ],
+              "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+              "pmid": "42826207",
+              "abstractSource": "Europe PMC",
+              "abstractSourceUrl": "https://europepmc.org/article/MED/42826207",
+              "generatedAt": "2026-10-05",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "98c6ef7aba1bdfbf3fff620cba8c0219f84e9ae8c99439a76beb6f85f04a7357",
+                "scope": "public-abstract"
+              }
+            },
+            "10.1161/circulationaha.125.079141": {
+              "title_zh": "抗肿瘤药物与肿瘤相关血栓形成",
+              "one_line": "综述抗肿瘤药物相关的静脉血栓栓塞风险、机制及防治指南推荐。",
+              "design": "叙述性综述，聚焦系统抗肿瘤治疗患者的血栓事件。",
+              "limits": "仅核对公开摘要；摘要未报告定量研究结果或具体推荐强度。",
+              "why_read": "了解抗肿瘤药物相关血栓风险、机制及现有防治指南推荐。",
+              "findings": [
+                {
+                  "text": "多种抗肿瘤药物与静脉血栓栓塞风险增加相关，包括化疗药、激素治疗、多发性骨髓瘤用药、门冬酰胺酶及多种靶向抑制剂。",
+                  "quote": "Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies"
+                },
+                {
+                  "text": "抗肿瘤药物相关血管不良事件常被低估，风险分层、预防和管理仍存在显著缺口。",
+                  "quote": "Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification"
+                },
+                {
+                  "text": "综述还总结了血栓形成的病理生物学机制及防治指南推荐，并讨论了动脉血栓事件。",
+                  "quote": "summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis"
+                }
+              ],
+              "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+              "pmid": "42832625",
+              "abstractSource": "PubMed",
+              "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+              "generatedAt": "2026-10-07",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "ca963fac39c8193c5b96c5b8ebccd6a2a6a7147962444e0732f29a128a4982b1",
+                "scope": "public-abstract"
+              }
+            }
+          }
+        },
+        "retractedBanner": true,
+        "noticeAndConcernLinks": true,
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "requests": [
+          {
+            "path": "/",
+            "method": "GET"
+          },
+          {
+            "path": "/style.css",
+            "method": "GET"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/public.js",
+            "method": "GET"
+          },
+          {
+            "path": "/api/library",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/",
+            "method": "HEAD"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/europepmc/webservices/rest/search",
+            "method": "GET",
+            "blockedExternal": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "POST",
+            "mockOnly": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          }
+        ],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true
+      },
+      {
+        "width": 390,
+        "view": "cards",
+        "projected": {
+          "library": 1264,
+          "core": {
+            "title": 24,
+            "translate": 23,
+            "study": 0,
+            "quicklook": 23
+          },
+          "fixed": [
+            {
+              "id": "93b958551c8bf865",
+              "doi": "10.1001/jama.2026.14789",
+              "title": "The Need to Avoid a Regulatory Gray Zone in Digital Wellness"
+            },
+            {
+              "id": "a97bbb0a11844693",
+              "doi": "",
+              "title": "Invited Commentary LESS IS MORE"
+            },
+            {
+              "id": "4944fe87d59c5e7b",
+              "doi": "10.1001/jamainternmed.2025.7627",
+              "title": "Measuring the Return on Investment for Clinician-Facing Artificial Intelligence Technologies"
+            },
+            {
+              "id": "b157bb0d131bf3d5",
+              "doi": "10.1093/ehjdh/ztag011",
+              "title": "The digital divide in cardiovascular care: who gets left behind?"
+            },
+            {
+              "id": "814b860e19382e2f",
+              "doi": "",
+              "title": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels"
+            }
+          ],
+          "secondary": "RCT 二次分析"
+        },
+        "correctedContent": {
+          "titles": [
+            {
+              "pmid": "42811187",
+              "titleZh": "口服小分子GLP-1受体激动剂safiglipron治疗早期2型糖尿病：一项随机、双盲、安慰剂对照试验"
+            },
+            {
+              "pmid": "42702066",
+              "titleZh": "植入式循环记录器随时间变化的诊断检出率与治疗影响：Brugada综合征是例外"
+            },
+            {
+              "pmid": "42480259",
+              "titleZh": "具有双心室生理和体循环左心室的成人先天性心脏病患者中的射血分数改善型心力衰竭"
+            }
+          ],
+          "quicklooks": {
+            "10.1126/sciadv.aeg3270": {
+              "title_zh": "通过微环境响应型纳米药物靶向ENO1代谢检查点促进梗死后心脏修复",
+              "one_line": "靶向巨噬细胞ENO1的酸响应纳米siRNA疗法在体内实验中减轻梗死损伤并改善心室功能。",
+              "design": "机制研究，采用酸响应纳米载体（PECS）递送siENO1，并报告体内实验。",
+              "limits": "仅核对公开摘要；摘要未交代体内模型种类、样本量、安全性及临床转化证据。",
+              "why_read": "了解ENO1代谢调控与响应型纳米递送对心梗后修复的研究思路。",
+              "findings": [
+                {
+                  "text": "发现糖酵解酶ENO1在梗死后巨噬细胞中上调，是调控巨噬细胞代谢命运与炎症功能的关键因子。",
+                  "quote": "we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function"
+                },
+                {
+                  "text": "酸响应纳米载体PECS在酸性梗死微环境中外化磷脂酰丝氨酸，促进巨噬细胞选择性摄取。",
+                  "quote": "externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake"
+                },
+                {
+                  "text": "胞内递送siENO1抑制糖酵解通量、减少乳酸积累，解除其对KLF4的代谢抑制，启动抗炎重编程。",
+                  "quote": "Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming."
+                },
+                {
+                  "text": "体内siENO1@PECS治疗减轻梗死面积、纤维化和心肌细胞凋亡，改善心室功能。",
+                  "quote": "siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function"
+                }
+              ],
+              "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+              "pmid": "42826207",
+              "abstractSource": "Europe PMC",
+              "abstractSourceUrl": "https://europepmc.org/article/MED/42826207",
+              "generatedAt": "2026-10-05",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "98c6ef7aba1bdfbf3fff620cba8c0219f84e9ae8c99439a76beb6f85f04a7357",
+                "scope": "public-abstract"
+              }
+            },
+            "10.1161/circulationaha.125.079141": {
+              "title_zh": "抗肿瘤药物与肿瘤相关血栓形成",
+              "one_line": "综述抗肿瘤药物相关的静脉血栓栓塞风险、机制及防治指南推荐。",
+              "design": "叙述性综述，聚焦系统抗肿瘤治疗患者的血栓事件。",
+              "limits": "仅核对公开摘要；摘要未报告定量研究结果或具体推荐强度。",
+              "why_read": "了解抗肿瘤药物相关血栓风险、机制及现有防治指南推荐。",
+              "findings": [
+                {
+                  "text": "多种抗肿瘤药物与静脉血栓栓塞风险增加相关，包括化疗药、激素治疗、多发性骨髓瘤用药、门冬酰胺酶及多种靶向抑制剂。",
+                  "quote": "Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies"
+                },
+                {
+                  "text": "抗肿瘤药物相关血管不良事件常被低估，风险分层、预防和管理仍存在显著缺口。",
+                  "quote": "Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification"
+                },
+                {
+                  "text": "综述还总结了血栓形成的病理生物学机制及防治指南推荐，并讨论了动脉血栓事件。",
+                  "quote": "summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis"
+                }
+              ],
+              "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+              "pmid": "42832625",
+              "abstractSource": "PubMed",
+              "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+              "generatedAt": "2026-10-07",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "ca963fac39c8193c5b96c5b8ebccd6a2a6a7147962444e0732f29a128a4982b1",
+                "scope": "public-abstract"
+              }
+            }
+          }
+        },
+        "retractedBanner": true,
+        "noticeAndConcernLinks": true,
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "requests": [
+          {
+            "path": "/",
+            "method": "GET"
+          },
+          {
+            "path": "/style.css",
+            "method": "GET"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/public.js",
+            "method": "GET"
+          },
+          {
+            "path": "/api/library",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/",
+            "method": "HEAD"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/europepmc/webservices/rest/search",
+            "method": "GET",
+            "blockedExternal": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "POST",
+            "mockOnly": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          }
+        ],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true
+      },
+      {
+        "width": 390,
+        "view": "compact",
+        "projected": {
+          "library": 1264,
+          "core": {
+            "title": 24,
+            "translate": 23,
+            "study": 0,
+            "quicklook": 23
+          },
+          "fixed": [
+            {
+              "id": "93b958551c8bf865",
+              "doi": "10.1001/jama.2026.14789",
+              "title": "The Need to Avoid a Regulatory Gray Zone in Digital Wellness"
+            },
+            {
+              "id": "a97bbb0a11844693",
+              "doi": "",
+              "title": "Invited Commentary LESS IS MORE"
+            },
+            {
+              "id": "4944fe87d59c5e7b",
+              "doi": "10.1001/jamainternmed.2025.7627",
+              "title": "Measuring the Return on Investment for Clinician-Facing Artificial Intelligence Technologies"
+            },
+            {
+              "id": "b157bb0d131bf3d5",
+              "doi": "10.1093/ehjdh/ztag011",
+              "title": "The digital divide in cardiovascular care: who gets left behind?"
+            },
+            {
+              "id": "814b860e19382e2f",
+              "doi": "",
+              "title": "ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs across Difficulty Levels"
+            }
+          ],
+          "secondary": "RCT 二次分析"
+        },
+        "correctedContent": {
+          "titles": [
+            {
+              "pmid": "42811187",
+              "titleZh": "口服小分子GLP-1受体激动剂safiglipron治疗早期2型糖尿病：一项随机、双盲、安慰剂对照试验"
+            },
+            {
+              "pmid": "42702066",
+              "titleZh": "植入式循环记录器随时间变化的诊断检出率与治疗影响：Brugada综合征是例外"
+            },
+            {
+              "pmid": "42480259",
+              "titleZh": "具有双心室生理和体循环左心室的成人先天性心脏病患者中的射血分数改善型心力衰竭"
+            }
+          ],
+          "quicklooks": {
+            "10.1126/sciadv.aeg3270": {
+              "title_zh": "通过微环境响应型纳米药物靶向ENO1代谢检查点促进梗死后心脏修复",
+              "one_line": "靶向巨噬细胞ENO1的酸响应纳米siRNA疗法在体内实验中减轻梗死损伤并改善心室功能。",
+              "design": "机制研究，采用酸响应纳米载体（PECS）递送siENO1，并报告体内实验。",
+              "limits": "仅核对公开摘要；摘要未交代体内模型种类、样本量、安全性及临床转化证据。",
+              "why_read": "了解ENO1代谢调控与响应型纳米递送对心梗后修复的研究思路。",
+              "findings": [
+                {
+                  "text": "发现糖酵解酶ENO1在梗死后巨噬细胞中上调，是调控巨噬细胞代谢命运与炎症功能的关键因子。",
+                  "quote": "we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function"
+                },
+                {
+                  "text": "酸响应纳米载体PECS在酸性梗死微环境中外化磷脂酰丝氨酸，促进巨噬细胞选择性摄取。",
+                  "quote": "externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake"
+                },
+                {
+                  "text": "胞内递送siENO1抑制糖酵解通量、减少乳酸积累，解除其对KLF4的代谢抑制，启动抗炎重编程。",
+                  "quote": "Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming."
+                },
+                {
+                  "text": "体内siENO1@PECS治疗减轻梗死面积、纤维化和心肌细胞凋亡，改善心室功能。",
+                  "quote": "siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function"
+                }
+              ],
+              "abstract": "Myocardial infarction (MI) triggers persistent inflammatory dysregulation, wherein macrophages undergo glycolytic reprogramming and adopt an inflammatory phenotype that impairs cardiac repair. However, the specific metabolic drivers underlying post-MI macrophage dysfunction remain unclear. Here, we identify enolase 1 (ENO1)-a glycolytic enzyme up-regulated in post-MI macrophages-as a critical regulator of macrophage metabolic fate and inflammatory function. To intervene, we engineered an acid-responsive nanocarrier (PECS) that externalizes phosphatidylserine within the acidic infarct microenvironment, facilitating selective macrophage uptake. Intracellular delivery of siENO1 suppressed glycolytic flux, thereby curbing lactate accumulation and relieving its metabolic inhibition of KLF4, which initiated anti-inflammatory reprogramming. In vivo, PECS-loaded siENO1 (siENO1@PECS) treatment attenuated infarct size, fibrosis, and cardiomyocyte apoptosis while improving ventricular function. Collectively, these findings identify ENO1 as a critical metabolic checkpoint in post-MI macrophage regulation and demonstrate a bioresponsive nanocarrier strategy for precise gene modulation to enhance cardiac repair.",
+              "pmid": "42826207",
+              "abstractSource": "Europe PMC",
+              "abstractSourceUrl": "https://europepmc.org/article/MED/42826207",
+              "generatedAt": "2026-10-05",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "98c6ef7aba1bdfbf3fff620cba8c0219f84e9ae8c99439a76beb6f85f04a7357",
+                "scope": "public-abstract"
+              }
+            },
+            "10.1161/circulationaha.125.079141": {
+              "title_zh": "抗肿瘤药物与肿瘤相关血栓形成",
+              "one_line": "综述抗肿瘤药物相关的静脉血栓栓塞风险、机制及防治指南推荐。",
+              "design": "叙述性综述，聚焦系统抗肿瘤治疗患者的血栓事件。",
+              "limits": "仅核对公开摘要；摘要未报告定量研究结果或具体推荐强度。",
+              "why_read": "了解抗肿瘤药物相关血栓风险、机制及现有防治指南推荐。",
+              "findings": [
+                {
+                  "text": "多种抗肿瘤药物与静脉血栓栓塞风险增加相关，包括化疗药、激素治疗、多发性骨髓瘤用药、门冬酰胺酶及多种靶向抑制剂。",
+                  "quote": "Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies"
+                },
+                {
+                  "text": "抗肿瘤药物相关血管不良事件常被低估，风险分层、预防和管理仍存在显著缺口。",
+                  "quote": "Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification"
+                },
+                {
+                  "text": "综述还总结了血栓形成的病理生物学机制及防治指南推荐，并讨论了动脉血栓事件。",
+                  "quote": "summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis"
+                }
+              ],
+              "abstract": "The rapid development of novel cancer therapies has considerably improved the care of cancer patients and cancer-related survival; however, these therapies are associated with a broad range of adverse events that have become a major burden in this population. Alongside other cancer-related factors, vascular toxicity from anticancer therapies contributes to an increased risk of venous thromboembolism. Among anticancer drugs, chemotherapeutic agents (eg, anthracyclines, platinum-based drugs, antimetabolites), hormonal therapies (eg, selective estrogen receptor modulators), agents used for multiple myeloma (including immunomodulatory drugs and proteasome inhibitors), asparaginase, as well as targeted inhibitors to immune checkpoints, vascular endothelial growth factor, epidermal growth factor receptor, tyrosine kinases, cyclin-dependent kinases, and poly(ADP-ribose) polymerase are primarily associated with increased risk of venous thromboembolism. Vascular adverse events associated with anticancer drugs are frequently underestimated, and significant gaps remain in the risk stratification, prevention, and management of thromboembolic events in patients receiving systemic anticancer therapies. This review examines the evidence linking anticancer drug exposure to the incidence of venous thromboembolism, summarizes the key underlying pathobiological mechanisms, and highlights current guideline recommendations for the prevention and treatment of cancer-associated thrombosis. Arterial thrombotic events are also discussed where clinically or mechanistically relevant. This review also offers advanced cardio-oncology perspectives on the identification, risk stratification, and therapeutic targeting of drug-induced vascular toxicity.",
+              "pmid": "42832625",
+              "abstractSource": "PubMed",
+              "abstractSourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42832625/",
+              "generatedAt": "2026-10-07",
+              "contentCorrection": {
+                "correctionVersion": "public-semantic-corrections-v1",
+                "correctedOn": "2026-10-08",
+                "origin": "codex-editorial-correction",
+                "reviewScope": "public titles and abstracts only; no full-text or medical review",
+                "sourceHash": "ca963fac39c8193c5b96c5b8ebccd6a2a6a7147962444e0732f29a128a4982b1",
+                "scope": "public-abstract"
+              }
+            }
+          }
+        },
+        "retractedBanner": true,
+        "noticeAndConcernLinks": true,
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "requests": [
+          {
+            "path": "/",
+            "method": "GET"
+          },
+          {
+            "path": "/style.css",
+            "method": "GET"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/public.js",
+            "method": "GET"
+          },
+          {
+            "path": "/api/library",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/",
+            "method": "HEAD"
+          },
+          {
+            "path": "/icon.svg",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ql",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          },
+          {
+            "path": "/europepmc/webservices/rest/search",
+            "method": "GET",
+            "blockedExternal": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "POST",
+            "mockOnly": true
+          },
+          {
+            "path": "/api/ai",
+            "method": "GET"
+          }
+        ],
+        "realModelCalls": 0,
+        "waitingRecovery": true,
+        "explicitFailedReceipt": true
+      }
+    ]
+  },
+  "limitations": [
+    "Offline/mocked API, no real model invocation",
+    "Cloudflare safety denial not bypassed; no live custom-domain/iPhone/CPU claim",
+    "36-source snapshot does not cover all historical records",
+    "KV observed owner check is advisory, not atomic CAS",
+    "No raw original incident request/production trace",
+    "Study missing 24; next one-paper content supplement being integrated"
+  ]
+}
