@@ -1,0 +1,33 @@
+{
+  "baseMainSha": "1e6d028024c005e813fbec29828c33201ce09b2e",
+  "structuralSourceCommits": [
+    "4c105af3ab2499e9e0e81787e6e986f04834d543",
+    "d75439f29187aa38c091a841b6692d347696765c"
+  ],
+  "auditedState": "0e9b75e078ba7208d645bdff16ef9dfacafc1e3d",
+  "tests": 192,
+  "testSeconds": 55.515,
+  "isolationPolicyTests": 8,
+  "finalPolicyRetestPassed": true,
+  "productionPolicyActivated": false,
+  "userApprovalReceived": false,
+  "actualProviderRequests": 0,
+  "productionLedgerWrites": 0,
+  "productionVariableWrites": 0,
+  "productionDeployments": 0,
+  "budgetCeilingsUnchanged": {
+    "weeklyAttemptsPerUtcDay": 8,
+    "weeklyReservedOutputTokensPerUtcDay": 9600
+  },
+  "weeklyBudgetDoesNotCoverFullTitleTranslation": true,
+  "remainingIntegration": [
+    "runner_response_and_task_dispositions",
+    "planner_quarantine_filter",
+    "budget_and_checkpoint_effective_blockers",
+    "append_only_resolution_merge_guards",
+    "existing_ci_checkpoint_capability_and_opt_in_verification",
+    "explicit_scoped_user_approval"
+  ],
+  "originalHistoricalRequestStatus": "failed_or_uncertain",
+  "historicalDiagnosticRequestBound": false
+}
