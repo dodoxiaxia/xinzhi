@@ -1,0 +1,28 @@
+{
+  "finalTargetedResult": "passed",
+  "finalTargetedTests": 25,
+  "mainBase": "0edf01932612c9f2a68bde3e638be27a42f187bf",
+  "publicFileCount": 6,
+  "publicLibraryCount": 1264,
+  "publicPayloadHashes": {
+    "_headers": "c889f6cccce0dad240d54b25cbc42b5ff78dc231c52d6d281abfdf6cfc64b8ab",
+    "_worker.js": "152664148719caa8680f80975d3ea3a8d36e9a031f8e9a57a30edf4ae259a5fe",
+    "icon.svg": "f008599fdb0c69a29cd555e767c70514f7b66176a8647da3070d135b5698b0d7",
+    "index.html": "58ff8dbd6fc4ba027f1c2bc6c38225fdab4f0221fa0a676a0d0e175944d1d38d",
+    "public.js": "e29478ed7c1b730b3379912f3798ce7c8bfe02e0d29b2e1fb975955879910392",
+    "style.css": "579385bf22b3868542d8feff3e13db4ecfa15a21ccc4d32baf46b2e7895d37d1"
+  },
+  "publicationBuild": "passed",
+  "rawSourceHashes": {
+    "data/library.json": "53d7b431a6d1f82c6eee8ec8f85dbc9b4623db07caae6a0905ffe626699e87cd",
+    "editorial/public_library_snapshot.json": "0524aa60bb72b452b021fef40a712e2a810e5caf3bc664a9e4b80447b8908ea2",
+    "editorial/public_library_snapshot_manifest.json": "6e9c740630a18808375d4557bcdf552069886f639227fac6e0fd2adc7c4d54eb"
+  },
+  "rawSourceHashesUnchanged": true,
+  "releasePreflight": "passed",
+  "reviewedPdfIdsExcluded": 5,
+  "stateBase": "350addefc78f57362278ab73123924e852b179bb",
+  "suiteResult": "passed",
+  "suiteTests": 551,
+  "withoutDoiOrUrl": 244
+}

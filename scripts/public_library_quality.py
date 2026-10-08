@@ -30,6 +30,44 @@ ONLINE_CORRECTIONS = {
     '47e6d48cc22b6000': ('10.3760/cma.j.cn112139-20260603-00245', '42765408', '2026-09-21'),
     'a762c60c31fbd3e2': ('10.1038/s41746-026-03312-y', '', '2026-09-26'),
 }
+DOI_REVIEW = {
+    '93b958551c8bf865': {
+        'original': ('AI IN MEDICINE The Need to Avoid a Regulatory Gray Zone in Digital Wellness',
+                     '10.1002/dta.1857', 'JAMA'),
+        'status': 'verified', 'action': 'correct',
+        'title': 'The Need to Avoid a Regulatory Gray Zone in Digital Wellness',
+        'doi': '10.1001/jama.2026.14789', 'issueDate': '2026-09',
+        'reason': 'old_doi_identifies_unrelated_2015_drug_testing_article',
+    },
+    '4944fe87d59c5e7b': {
+        'original': ('AI AND CLINICAL CARE Measuring the Return on Investment for Clinician-Facing',
+                     '10.1016/s2589-7500(20)30185-0', 'JAMA Internal Medicine'),
+        'status': 'verified', 'action': 'correct',
+        'title': 'Measuring the Return on Investment for Clinician-Facing Artificial Intelligence Technologies',
+        'doi': '10.1001/jamainternmed.2025.7627', 'issueDate': '2026-05',
+        'reason': 'old_doi_identifies_unrelated_2020_mammography_article',
+    },
+    'b157bb0d131bf3d5': {
+        'original': ('1 Title: The Digital Divide in Cardiovascular Care: Who Gets Left Behind? '
+                     '3 Authors: Joshua J Hon1, Gerald Carr-White2',
+                     '10.1093/ehjdh/ztag011/8431732', 'European Heart Journal - Digital Health'),
+        'status': 'verified', 'action': 'correct',
+        'title': 'The digital divide in cardiovascular care: who gets left behind?',
+        'doi': '10.1093/ehjdh/ztag011', 'onlineDate': '2026-01-21',
+        'reason': 'official_title_journal_and_both_authors_match_resource_id_is_not_doi',
+    },
+    'a97bbb0a11844693': {
+        'original': ('Invited Commentary LESS IS MORE', '10.1016/j.jacc.2024', 'JAMA Internal Medicine'),
+        'status': 'unresolved', 'action': 'hold_link',
+        'reason': 'truncated_doi_404_column_header_does_not_identify_article',
+    },
+    '814b860e19382e2f': {
+        'original': ('ClinConsensus: A Consensus-Based Benchmark for Evaluating Chinese Medical LLMs '
+                     'across Difficulty Levels', '10.1145/nnnnnnn.nnnnnnn', 'arXiv'),
+        'status': 'unresolved', 'action': 'hold_link',
+        'reason': 'placeholder_doi_404_no_exact_official_title_match_preprint_retained',
+    },
+}
 
 
 def _hold(code):
@@ -46,6 +84,65 @@ def _official(paper, date, url, basis):
                  metadataStatus='official_bibliography_checked', bibliographicEvidenceUrl=url,
                  basis='公共书目信息已复核 · 私有 PDF 身份未核验 · 未读全文',
                  fulltextStatus='not_verified', localAvailable=False)
+
+
+def _clear_unbound_content(paper):
+    """An old DOI's enrichment cannot become evidence for a corrected identity."""
+    for key in ('titleZh', 'authors', 'affiliations', 'pubTypes', 'summary', 'abstractSections',
+                'quantitativeMetrics', 'draftData', 'abstractStatus', 'abstractSource',
+                'abstractSourceUrl', 'nonAbstractMetadata'):
+        paper.pop(key, None)
+    paper['hasDraft'] = False
+
+
+def reviewed_doi_projection(papers):
+    """Finite v2 review; no prefix rule, title-only rebinding or remote calls."""
+    result, entries, holds = [], [], []
+    for original in papers:
+        paper = copy.deepcopy(original)
+        decision = DOI_REVIEW.get(paper['id'])
+        if decision is None:
+            result.append(paper)
+            continue
+        title, old_doi, journal = decision['original']
+        identity = (paper.get('title'), normalize_doi(paper.get('doi', '')), paper.get('journal'))
+        approved = ((decision['title'], decision['doi'], journal) if decision['action'] == 'correct'
+                    else (title, '', journal))
+        if identity not in {(title, old_doi, journal), approved}:
+            _hold('reviewed_doi_identity_changed')
+        if paper.get('pmid'):
+            _hold('reviewed_doi_unreviewed_pmid')  # No PMID was independently confirmed in this batch.
+        before = _audit(paper)
+        _clear_unbound_content(paper)
+        paper.update(localAvailable=False, fulltextStatus='not_verified')
+        if decision['action'] == 'correct':
+            if any(p['id'] != paper['id'] and normalize_doi(p.get('doi', '')) == decision['doi']
+                   for p in papers):
+                _hold('reviewed_doi_already_present')
+            url = 'https://api.crossref.org/works/' + decision['doi'].replace('/', '%2F')
+            paper.update(title=decision['title'], doi=decision['doi'],
+                         url='https://doi.org/' + decision['doi'],
+                         metadataStatus='official_bibliography_checked', bibliographicEvidenceUrl=url)
+            if 'onlineDate' in decision:
+                _official(paper, decision['onlineDate'], url, 'Crossref published-online（已复核）')
+            else:
+                # Crossref provided only a print issue date. Keep the existing
+                # unreviewed online/source date and its label; do not replace it.
+                paper.update(issueDate=decision['issueDate'], issueDatePrecision='month',
+                             issueDateBasis='Crossref published-print（刊期月，已复核）',
+                             basis='公共题名与 DOI 已复核 · 原发表日期未复核 · PDF 身份未知 · 未读全文')
+        else:
+            paper.update(doi='', url='', metadataStatus='hold_bibliography_review',
+                         basis='截断或占位 DOI 待核验 · 原题名保留 · PDF 身份未知 · 未读全文')
+        entries.append({'status': decision['status'], 'action': decision['action'],
+                        'reason': decision['reason'], 'before': before, 'after': _audit(paper),
+                        'evidenceUrl': ('https://api.crossref.org/works/' +
+                                        decision.get('doi', old_doi).replace('/', '%2F'))})
+        holds.append(paper['id'])
+        result.append(paper)
+    return result, {'checkedOn': '2026-10-08', 'entries': entries,
+                    'counts': {status: sum(row['status'] == status for row in entries)
+                               for status in ('verified', 'falsepositive', 'unresolved')}}, holds
 
 
 def project_public_library(papers):
@@ -132,6 +229,9 @@ def project_public_library(papers):
         _official(paper, date, url, basis)
         audit['corrections'].append({'before': before, 'after': _audit(paper), 'evidenceUrl': url})
     result = sorted(by_id.values(), key=lambda p: (p.get('date') or '', p['id']), reverse=True)
+    result, audit['doiReview'], holds = reviewed_doi_projection(result)
+    audit['pdfBindingHoldIds'].extend(holds)
+    result.sort(key=lambda p: (p.get('date') or '', p['id']), reverse=True)
     audit['outputCount'] = len(result)
     audit['withoutDoiOrUrlBefore'] = sum(not p.get('doi') and not p.get('url') for p in papers)
     audit['withoutDoiOrUrlAfter'] = sum(not p.get('doi') and not p.get('url') for p in result)
