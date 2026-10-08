@@ -47,7 +47,7 @@ async function visible(page){return page.evaluate(()=>({
      if(controls.failure==='status')return route.fulfill({status:503,json:{error:'data_unavailable'}});
      if(controls.failure==='version')return route.fulfill({status:409,json:{error:'data_version_changed'}});
      if(controls.failure==='malformed')return route.fulfill({contentType:'application/json',body:'{"broken":'});
-     if(controls.failure==='shape')return route.fulfill({json:{items:'wrong',rows:'wrong'}});
+     if(controls.failure==='hash-rejection')return route.fulfill({json:{items:'wrong',rows:'wrong'}});
      if(controls.failure==='missing')return route.fulfill({status:404,json:{error:'data_not_found'}});
      if(controls.failure==='spa')return route.fulfill({contentType:'text/html',body:'SPA fallback'});
      if(controls.failure==='offline')return route.abort('internetdisconnected');
@@ -85,7 +85,7 @@ async function visible(page){return page.evaluate(()=>({
   await home.page.locator('[data-range="365"]').click();await ready(home);eq(await home.page.evaluate(()=>window.RADAR.rows.length),parsed.RADAR.rows.length,'annual range includes all archived rows');
   const fetchCount=home.requests.filter(r=>r.path.startsWith('/public-data/')).length;
   home.controls.offline=true;await home.page.locator('[data-mode="weekly"]').click();await home.page.locator('[data-mode="candidates"]').click();await ready(home);eq(home.requests.filter(r=>r.path.startsWith('/public-data/')).length,fetchCount,'loaded columns work offline from memory');await home.close();
-  for(const failure of ['status','malformed','shape','timeout','version','missing','spa','offline']){
+  for(const failure of ['status','malformed','hash-rejection','timeout','version','missing','spa','offline']){
    console.log('Failure regression:',failure);
    const s=await open('candidate','/?mode=candidates&range=365',{controls:{failure},fastTimeout:failure==='timeout'});
    await s.page.waitForFunction(()=>Object.values(window.PublicData.debug()).some(x=>x==='error'));

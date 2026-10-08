@@ -5,7 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from public_assets import CORE, MANIFEST, data_manifest, expected_paths, read_payloads, json_bytes
+from public_assets import CORE, MANIFEST, data_manifest, expected_paths, read_payloads, json_bytes, semantic_hash
 from public_data_bundle import prepare, inline_boot, stable_index
 from test_public_data_bundle import fixture
 
@@ -48,6 +48,34 @@ class StaticPublicAssetsTests(unittest.TestCase):
         e=json.loads(p.pop(row['path']));e['version']='b'*64;body=json_bytes(e);digest=hashlib.sha256(body).hexdigest()
         row.update(path='public-data/feeds.'+digest+'.json',sha256=digest,bytes=len(body));p[row['path']]=body;p[MANIFEST]=json_bytes(m)
         with self.assertRaisesRegex(ValueError,'Mixed'):expected_paths(p)
+
+    def test_hash_valid_nested_schema_corruption_is_rejected(self):
+        # Both manifest and bootstrap bind the corrupt bytes; rejection must be
+        # the nested schema check, never an unrelated bytes/hash mismatch.
+        changes = [('RADAR', 'null_row'), ('RADAR', 'dictionary'), ('RADAR', 'index'),
+                   ('RADAR', 'tags'), ('RADAR', 'abs'), ('RADAR', 'zh'), ('RADAR', 'dateBases'),
+                   ('FEEDS', 'null_paper'), ('FEEDS', 'title'), ('FEEDS', 'sections'), ('FEEDS', 'metrics')]
+        for name, change in changes:
+            with self.subTest(change=change):
+                p, boot = self.payloads(); m = json.loads(p[MANIFEST])
+                row = next(r for r in m['files'] if r['name'] == name)
+                e = json.loads(p.pop(row['path'])); data = e['data']
+                if change == 'null_row': data['rows'] = [None]
+                elif change == 'dictionary': data['jn'] = [None]
+                elif change == 'index': data['rows'][0][3] = len(data['jn'])
+                elif change == 'tags': data['rows'][0][7] = [True]
+                elif change == 'abs': data['abs'] = {'3': [None]}
+                elif change in {'zh', 'dateBases'}: data[change] = {'3': []}
+                elif change == 'null_paper': data['items'] = [None]
+                elif change == 'title': data['items'][0]['title'] = []
+                elif change == 'sections': data['items'][0]['abstractSections'] = [None]
+                elif change == 'metrics': data['items'][0]['quantitativeMetrics'] = []
+                body = json_bytes(e); digest = hashlib.sha256(body).hexdigest()
+                row.update(path='public-data/' + name.lower() + '.' + digest + '.json',
+                           sha256=digest, bytes=len(body), contentHash=semantic_hash(data))
+                p[row['path']] = body; p[MANIFEST] = json_bytes(m); boot['assets'] = m['files']
+                p['index.html'] = inline_boot('<script src="public.js"></script>', boot, '// loader', '// app').encode()
+                with self.assertRaisesRegex(ValueError, 'Invalid (archive|current) data'): expected_paths(p)
 
     def test_nested_symlink_private_or_unknown_directory_fails(self):
         p, boot=self.payloads()

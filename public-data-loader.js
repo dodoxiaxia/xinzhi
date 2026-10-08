@@ -15,8 +15,26 @@
     return names.filter(name => records.has(name));
   };
   function validate(name, value) {
-    if (name === 'FEEDS' && (!value || !Array.isArray(value.items) || value.items.some(p => !p || typeof p.id !== 'string'))) throw new Error('Invalid current data');
-    if (['RADAR','RECENT_RADAR'].includes(name) && (!value || value.v !== 1 || !Array.isArray(value.rows) || !['jn','pub','tier','design','tag'].every(k => Array.isArray(value[k])))) throw new Error('Invalid archive data');
+    const object = x => x !== null && typeof x === 'object' && !Array.isArray(x);
+    const strings = x => Array.isArray(x) && x.every(v => typeof v === 'string');
+    const sections = x => Array.isArray(x) && x.every(v => object(v) && typeof v.label === 'string' && typeof v.text === 'string');
+    if (name === 'FEEDS') {
+      if (!object(value) || !Array.isArray(value.items) || value.items.some(p =>
+        !object(p) || typeof p.id !== 'string' || typeof p.title !== 'string' ||
+        ['summary', 'doi', 'journal', 'date', 'url', 'pmid'].some(k => p[k] != null && typeof p[k] !== 'string') ||
+        (p.tags != null && !strings(p.tags)) || (p.abstractSections != null && !sections(p.abstractSections)) ||
+        (p.quantitativeMetrics != null && !object(p.quantitativeMetrics)))) throw new Error('Invalid current data');
+    } else if (['RADAR', 'RECENT_RADAR'].includes(name)) {
+      const dictionaries = ['jn', 'pub', 'tier', 'design', 'tag'];
+      if (!object(value) || value.v !== 1 || !Array.isArray(value.rows) || !dictionaries.every(k => strings(value[k])) ||
+        value.rows.some(row => !Array.isArray(row) || row.length !== 9 ||
+          ![0, 1, 2, 8].every(i => typeof row[i] === 'string') ||
+          ![3, 4, 5, 6].every((i, j) => Number.isInteger(row[i]) && row[i] >= 0 && row[i] < value[dictionaries[j]].length) ||
+          !Array.isArray(row[7]) || !row[7].every(i => Number.isInteger(i) && i >= 0 && i < value.tag.length)) ||
+        (value.abs != null && (!object(value.abs) || Object.values(value.abs).some(ab =>
+          !Array.isArray(ab) || ab.some(section => !Array.isArray(section) || section.length !== 2 || !strings(section))))) ||
+        ['zh', 'dateBases'].some(k => value[k] != null && (!object(value[k]) || Object.values(value[k]).some(v => typeof v !== 'string')))) throw new Error('Invalid archive data');
+    }
     return value;
   }
   async function fetchData(name) {
@@ -43,11 +61,10 @@
     if (rec.state === 'error') return null; // Explicit retry; no automatic request loop.
     rec.state = 'loading';
     rec.promise = fetchData(name).then(value => {
-      rec.value = value;
       // Applying current feeds after archive load must not discard expanded rows.
-      const ready = Object.fromEntries([...records].filter(([, r]) => r.value).map(([n, r]) => [n, r.value]));
-      apply(ready); rec.state = 'ready';
-    }).catch(error => { rec.state = 'error'; rec.error = error.message; })
+      const ready = Object.fromEntries([...records].filter(([, r]) => r.state === 'ready').map(([n, r]) => [n, r.value]));
+      apply({ ...ready, [name]: value }); rec.value = value; rec.state = 'ready';
+    }).catch(error => { rec.value = null; rec.state = 'error'; rec.error = error.message; })
       .finally(() => { if (refresh) refresh(); });
     return rec.promise;
   }

@@ -61,3 +61,23 @@ CI 内容比较覆盖全部资产。精确字节 hash 用于命名、打包和�
 整体撤销候选，包括构建器、加载器、app 就绪门和清单协议，不能只删除 Worker 分支或只发布旧六个文件。回滚准备时先在候选 checkout 用 `public_assets.read_payloads(Path('public'))` 完整校验，然后仅删除其返回集合中不属于 `CORE` 的已声明文件，并移除空的 public-data 目录；不触碰 data 或完整缓存。再由统一任务撤销代码、用当前完整 state 重建经典六文件并通过原发布指纹/包守卫后发布。保存的发布前六文件 state 可用于恢复生成输出，但不能以旧摘要缓存覆盖当前完整 data，也不能把旧 receipt 冒充新构建。旧 v2 缓存页面遇到已撤下的哈希片会保留内嵌内容并要求刷新。
 
 两个 workflow 的 push/job 仍限定 main；普通隔离分支推送不触发生产部署。没有新增授权。
+
+## 最小修复复核（2026-10-08，本地未发布）
+
+加载器已迁移动态候选 `53bee` 的嵌套校验与缓存修复，保留静态 v2 的哈希命名、长度/SHA/envelope 核对及无 classic 自动回退规则。FEEDS 校验题录字段、标签、摘要 sections 和 quantitativeMetrics 容器；RADAR/RECENT_RADAR 校验九列行、字典字符串、索引范围、标签索引、摘要二元组以及 zh/dateBases 字符串。后台 `public_assets.data_manifest` 使用同样的嵌套约束，完整哈希正确也不能将坏结构纳入发布集合。只有 state=ready 的值参与随后应用；adopt 抛错时清除 value，并保留显式重试门。
+
+构建先在 public 同级的独立 `.public-stage-*` 目录写完全部资产，再逐文件读回、校验显式清单/bootstrap/schema/哈希并核对原输入与 archive 并发守卫。提交时再次比较原 public 字节集合，最后通过 Linux `renameat2(RENAME_EXCHANGE)` 一次交换完整目录。不会先删除旧 shards；交换前中断保留完整旧版本，交换后中断保留完整新版本。receipt 尚未更新时打包仍会拒绝，重新 build 后可恢复一致 receipt。
+
+这是 Linux 本地/CI 构建方案，需要同一文件系统支持原子目录交换；缺少 libc 接口或文件系统不支持时明确报错，旧 public 保持完整，不退回逐文件替换。此保证针对进程中断，未宣称断电持久性或任意外部 writer 的原子 compare-and-swap。并发输入/输出检查继续为既有的乐观守卫。
+
+异常、强制退出或并发改动可能留下 `.public-stage-*`。新构建使用新 staging 目录，不自动清理任何遗留树。正常退出只清理当前构建持有且经 `read_payloads` 完整验证（或原有 partial classic 守卫验证）的 staging 文件；无法验证的树保留供检查。遗留树不属于 public 发布路径，不可当作绕过原 public 守卫的恢复来源，也不应使用通配符自动删除。
+
+新增离线回归：
+
+- `python3 -m unittest discover -s scripts -p 'test_public_assets.py'`：10 项，11 类坏 nested 数据同步更新 envelope、bytes、SHA、semantic hash、manifest 和 bootstrap，要求精确的 nested schema 拒绝。
+- `python3 -m unittest discover -s scripts -p 'test_release_build.py'`：5 项，包含真实 fork 子进程 `os._exit` 中断 static A→B 的 shard 写入与交换后两个阶段；校验 surviving tree 后 retry，再通过 release receipt/packaging 守卫。另覆盖交换不可用、archive 并发写入与 public 并发替换拒绝。
+- `node scripts/test_public_data_loader.cjs`：真实 Chromium，492 checks、14 类正确 bytes/hash 的 nested schema 用例；请求完全拦截为离线 fixtures，无模型/私有文件。明确核对 `Invalid archive data`/`Invalid current data`、人工重试而不自动循环、后续栏目不重放坏值，以及修正 manifest/bootstrap 后 reload 恢复。坏结构的内容寻址字节本身无法在同一 SHA 下改成有效结构，因此恢复验证使用修正后的 HTML bootstrap；另以有效字节的 adopt 错误验证同页人工 retry 恢复缓存。运行需要既有 Playwright 与 Chromium（可设置 `CHROMIUM_PATH`）。
+
+原全资产浏览器脚本中的未同步 hash 的 `shape` fixture 已改称 `hash-rejection`，不再将其算作 schema 验证。此次最小修复没有重复冷启动性能测量，未声称 Cloudflare CPU 为 0 或 1010 已解决；生产集成、fresh state 和线上验收由统一任务决定。
+
+本次完整 Python 单次运行共 553 项：549 通过，4 项因隔离 source 尚无 runtime `data/library.json` / `public` 而报错（`test_feed_health` 两项、`test_pipeline` 两项）；未记作全套通过。日志 `/tmp/static-minimal-python-20261008.log`。ASSETS 透传回归仍为 63 checks，通过，日志 `/tmp/static-minimal-worker-20261008.log`；loader 上述 492 checks 日志 `/tmp/static-minimal-loader-20261008.log`。统一任务需恢复 fresh saved state、合入当前 v14.2.13 与必要身份守卫后完整重建并通过全套；本修复不修改 release 常量或生成 receipt，不推送、不部署。
