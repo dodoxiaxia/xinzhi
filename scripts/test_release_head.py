@@ -34,6 +34,7 @@ class ReleaseHeadTests(unittest.TestCase):
         self.assertEqual(check_release_head.check(self.repo, self.original), self.original)
 
     def test_old_rerun_cannot_pass_after_remote_main_advances(self):
+        self.assertEqual(check_release_head.check(self.repo, self.original), self.original)
         (self.repo / 'app.js').write_text('version two')
         self.git(self.repo, 'commit', '-am', 'newer')
         self.git(self.repo, 'push', 'origin', 'main')
