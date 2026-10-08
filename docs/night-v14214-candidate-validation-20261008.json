@@ -1,0 +1,52 @@
+{
+  "releaseCandidate": "v14.2.14",
+  "status": "held_candidate_not_deployed",
+  "productionRelease": "v14.2.13",
+  "productionSource": "0edf01932612c9f2a68bde3e638be27a42f187bf",
+  "savedProductionState": "350addefc78f57362278ab73123924e852b179bb",
+  "testedIntegrationSource": "26fecebbbe16651281289652c9ebca68bab2f159",
+  "includedNumericCandidate": "258394e",
+  "includedStaticCandidate": "78800d21ae00b937aee3da5825928a311d6a3ca3",
+  "staticRepairSources": [
+    "5078b48807f15c6e91a56318df465c2ae4385676",
+    "eefcc47bbb62a739c80f94e8826c98ea7fe233b6"
+  ],
+  "pythonTests": 553,
+  "pythonPassed": true,
+  "nodeReleaseChecks": 24,
+  "nodePassed": true,
+  "actualAssetsBrowserChecks": 1004,
+  "actualAssetsBrowserPassed": true,
+  "actualAssetsBrowserScenarios": 24,
+  "hashCorrectNestedBrowserChecks": 492,
+  "hashCorrectNestedCases": 14,
+  "publicFileCount": 10,
+  "publicBytesAtTestedBuild": 19908954,
+  "counts": {
+    "radar": 874,
+    "library": 1264,
+    "checked_guides": 12,
+    "ai_quicklooks_unchecked": 11,
+    "radar_archive_titles": 12678,
+    "titles_zh": 14994,
+    "weekly_board": 24,
+    "weekly_precomputed": {
+      "title": 19,
+      "translate": 19,
+      "quicklook": 19,
+      "study": 0
+    }
+  },
+  "externalModelCallsByTests": 0,
+  "privatePdfReadsByTests": 0,
+  "productionConfigWrites": 0,
+  "productionDeploymentsByThisCandidate": 0,
+  "cloudflare1010Solved": false,
+  "originalUserAiPairReproduced": false,
+  "gates": [
+    "Original AI second identity and source/output evidence incomplete",
+    "Further independent static integration review and permitted live acceptance pending"
+  ],
+  "followupTestChange": "Explicitly hold FEEDS until bad RADAR rejects; same 492 checks passed independently",
+  "platformConstraint": "Atomic public tree exchange requires Linux renameat2 and a supporting filesystem; fail closed elsewhere"
+}
