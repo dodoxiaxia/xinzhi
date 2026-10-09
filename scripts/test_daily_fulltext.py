@@ -62,6 +62,12 @@ class SourceTests(unittest.TestCase):
         with self.assertRaises(d.ReadingError):
             d.parse_fulltext(xml(p).replace(b'research-article',b'correction'), p)
 
+    def test_numeric_spellings_preserve_value_and_reject_new_values(self):
+        self.assertTrue(d.numbers('四周4周，3月至7月，p<0.001') <= d.numbers('Four weeks, March to July, p < .001'))
+        self.assertEqual(d.numbers('7,639 and 1.60'),d.numbers('7639 and 1.6'))
+        self.assertFalse(d.numbers('999 patients') <= d.numbers('nine patients'))
+        self.assertNotIn('5',d.numbers('The intervention may improve outcomes.'))
+
     def test_evidence_and_numbers_are_checked_per_section(self):
         paragraphs, digest = d.parse_fulltext(xml(paper()), paper())
         self.assertIn('findings', d.validate_output(output(), paragraphs, paper()['title'])['sections'])
@@ -180,6 +186,38 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(len(calls), 8)
         self.assertEqual(status['completed'], 0)
         self.assertEqual(status['attempts'], 8)
+
+class DraftRecoveryTests(unittest.TestCase):
+    def test_recovery_revalidates_cached_source_and_does_not_call_model(self):
+        p=paper()
+        paras,sha=d.parse_fulltext(xml(p),p)
+        units=d.evidence_units(paras)
+        raw=output(units[0]['id'])
+        data=d.empty_data()
+        data['drafts']={d.identity(p):{'paper':p,'output':raw,'sourceParagraphs':units,'sourceHash':sha,'createdAt':WHEN.isoformat()}}
+        ledger=d.empty_ledger()
+        ledger['days']['2026-10-09']=[{'identity':d.identity(p),'sourceHash':sha,'state':'invalid'}]
+        writes=[]
+        self.assertEqual(d.recover_drafts(data,ledger,WHEN,lambda *_:writes.append(True)),1)
+        self.assertEqual(len(data['items']),1)
+        self.assertTrue(ledger['days']['2026-10-09'][0]['recoveredWithoutModel'])
+        self.assertFalse(data['drafts'])
+        self.assertEqual(d.recover_drafts(data,ledger,WHEN,lambda *_:None),0)
+
+    def test_recovery_rejects_changed_source_hash_or_unsupported_number(self):
+        p=paper()
+        paras,sha=d.parse_fulltext(xml(p),p)
+        units=d.evidence_units(paras)
+        raw=output(units[0]['id'])
+        raw['sections']['findings']['text']+='999名患者。'
+        data=d.empty_data()
+        data['drafts']={d.identity(p):{'paper':p,'output':raw,'sourceParagraphs':units,'sourceHash':sha,'createdAt':WHEN.isoformat()}}
+        ledger=d.empty_ledger()
+        ledger['days']['2026-10-09']=[{'identity':d.identity(p),'sourceHash':sha,'state':'invalid'}]
+        self.assertEqual(d.recover_drafts(data,ledger,WHEN,lambda *_:None),0)
+        data['drafts'][d.identity(p)]['output']=output(units[0]['id'])
+        ledger['days']['2026-10-09'][0]['sourceHash']='0'*64
+        self.assertEqual(d.recover_drafts(data,ledger,WHEN,lambda *_:None),0)
 
 class CheckpointTests(unittest.TestCase):
     def test_concurrent_state_update_blocks_write(self):

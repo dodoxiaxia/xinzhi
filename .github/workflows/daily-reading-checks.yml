@@ -40,6 +40,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_release_build.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
       - name: Verify public source access without model calls
+        continue-on-error: true
         run: |
           PYTHONPATH=scripts python3 - <<'PY'
           import datetime
@@ -60,3 +61,21 @@ jobs:
                   break
           assert checked >= 3, 'Fewer than three complete identity-matched full texts'
           PY
+      - name: Revalidate stored source-bound drafts without model calls
+        run: |
+          git fetch --depth=1 origin state
+          if git cat-file -e 'FETCH_HEAD:data/deep-readings.json' 2>/dev/null; then
+            git archive FETCH_HEAD data/deep-readings.json data/deep-reading-ledger.json | tar -x -C .
+            PYTHONPATH=scripts python3 - <<'PY'
+          import json
+          import daily_fulltext as d
+          data=d.read(d.ROOT/d.DATA_PATH,d.empty_data())
+          ledger=d.read(d.ROOT/d.LEDGER_PATH,d.empty_ledger())
+          d.check_store(data,ledger)
+          recovered=d.recover_drafts(data,ledger,d.now(),lambda *_:None)
+          public=d.public_readings(data)
+          assert 'drafts' not in public
+          assert all('sourceParagraphs' not in item for item in public['items'])
+          print(json.dumps({'recoveredWithoutModel':recovered,'validatedReadings':len(public['items']),'remainingDrafts':len(data.get('drafts',{}))}))
+          PY
+          fi

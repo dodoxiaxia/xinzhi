@@ -19,7 +19,7 @@ class PipelineFixture(unittest.TestCase):
         (self.root / 'public').mkdir()
         (self.root / 'docs').mkdir()
         (self.root / 'data').mkdir()
-        (self.root / 'data/deep-readings.json').write_text(json.dumps({'schemaVersion': 1, 'generatorVersion': 2, 'items': [], 'status': {'state': 'pending', 'target': 4}}))
+        (self.root / 'data/deep-readings.json').write_text(json.dumps({'schemaVersion': 1, 'generatorVersion': 3, 'items': [], 'status': {'state': 'pending', 'target': 4}}))
         self.data = {'updatedAt': 'old', 'items': [{'id': 'a', 'title': 'Cardiac AI', 'date': '2026-09-29', 'publication_date': '2026-09-29', 'publishedAt': '2026-09-29', 'draftData': {'published': '2026-09-30', 'source_date': '2026-09-28'}, 'weeklyAt': 'old'}]}
         for name in ci_daily.PUBLIC:
             (self.root / 'public' / name).write_text('asset: ' + name)
