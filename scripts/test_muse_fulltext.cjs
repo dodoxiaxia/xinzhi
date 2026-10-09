@@ -51,7 +51,20 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   const uploaded = await upload(h,task); assert.equal(uploaded.status,200); const intake = await uploaded.json(); assert.equal(intake.verified,false); assert.equal(intake.job.state,'pending'); assert.equal(intake.job.stage,'verifying'); assert(intake.job.nextVerificationAt); assert.equal(intake.job.nextCheckSeconds,60);
   const verifyingLookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(verifyingLookup.status,'pending'); assert.equal(verifyingLookup.job.stage,'verifying'); assert(!verifyingLookup.error); assert(!Object.hasOwn(verifyingLookup,'retryAfter'));
   const catalog = await (await h.request('/api/library',{method:'GET',query:'limit=20'})).json(); assert.equal(catalog.papers[0].fulltextStatus,'pending'); assert.equal(catalog.jobs[0].stage,'verifying');
-  const waitingHtml = await (await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}})).text(); assert(waitingHtml.includes('下一次计划核验')); assert(waitingHtml.includes('GitHub 队列可能延迟')); assert(waitingHtml.includes('aria-current="step"')); assert(!waitingHtml.includes('syntheticDriveFileId')); assert(!waitingHtml.includes(task.leaseId)); assert.equal(intake.archive.complete,false);
+  const waitingHtml = await (await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}})).text(); assert(waitingHtml.includes('本批原件计划核验')); assert(waitingHtml.includes('GitHub 队列可能延迟')); assert(waitingHtml.includes('aria-current="step"')); assert(!waitingHtml.includes('syntheticDriveFileId')); assert(!waitingHtml.includes(task.leaseId)); assert.equal(intake.archive.complete,false);
+  const deliveryTime = JSON.parse(h.values.get('library:muse-job:' + doi)).receivedAt;
+  const initialNow = h.context.Date.now;
+  try {
+    h.context.Date.now = () => Date.parse(intake.job.nextVerificationAt) + 60000;
+    const delayed = await (await h.request('/api/library',{method:'GET'})).json();
+    assert.equal(delayed.job.nextVerificationAt,intake.job.nextVerificationAt,'the planned time is anchored to delivery, not every refresh');
+    assert.equal(delayed.job.verificationDelayed,true); assert(delayed.job.message.includes('计划核验时间已到'));
+    const duplicatePut = await api(h,'upload',{}, {method:'PUT',raw:original,headers:{'content-type':'application/pdf','x-muse-doi':task.doi,'x-muse-task-id':task.taskId,'x-muse-lease-id':task.leaseId}});
+    assert.equal(duplicatePut.status,200); assert.equal((await duplicatePut.json()).job.nextVerificationAt,intake.job.nextVerificationAt);
+    assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).receivedAt,deliveryTime,'duplicate upload preserves first delivery');
+    const legacy = JSON.parse(h.values.get('library:muse-job:' + doi)); delete legacy.receivedAt; legacy.updatedAt = deliveryTime;
+    assert.equal(h.context.musePublicJob(legacy).nextVerificationAt,intake.job.nextVerificationAt,'existing candidates use their original updatedAt');
+  } finally { h.context.Date.now = initialNow; }
   const current = JSON.parse(h.values.get('library:paper:' + doi)); assert.notEqual(current.paper.fulltextStatus,'available');
   assert(!h.values.has('library:pdf:' + hash(original)),'unverified bytes cannot be served as full text');
   const duplicate = await api(h,'receipt',{...identity(task),state:'uploaded',sha256:hash(original),bytes:original.length,driveFileId:'syntheticDriveFileId12345'}); assert.equal(duplicate.status,200); assert.equal((await duplicate.json()).needsUpload,false);
