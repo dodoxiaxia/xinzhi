@@ -10,7 +10,8 @@ class MuseWorkflowBoundaries(unittest.TestCase):
     def test_import_has_no_schedule_or_private_credentials(self):
         text = (ROOT / '.github/workflows/fulltext-import.yml').read_text()
         self.assertNotIn('schedule:', text)
-        self.assertIn("paths: ['editorial/fulltext-imports.json']", text)
+        self.assertIn("- 'editorial/fulltext-imports.json'", text)
+        self.assertIn("- 'scripts/fulltext_import_runner.cjs'", text)
         self.check_worker(text)
 
     def test_verifier_schedules_uploaded_originals_only(self):

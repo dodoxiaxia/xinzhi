@@ -4,7 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['editorial/fulltext-imports.json']
+    paths:
+      - 'editorial/fulltext-imports.json'
+      - 'scripts/fulltext_import_runner.cjs'
+      - '.github/workflows/fulltext-import.yml'
 
 concurrency:
   group: xinzhi-fulltext-import
