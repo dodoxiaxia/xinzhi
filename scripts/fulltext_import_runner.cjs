@@ -12,7 +12,7 @@ function serviceError(message, response, body, token, audience, workflow) {
     try {
       const claims = JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')),now = Math.floor(Date.now() / 1000);
       error.oidcChecks = {audience:claims.aud === audience,repository:claims.repository === 'dodoxiaxia/xinzhi',repositoryId:String(claims.repository_id) === '1397425558',
-        subject:claims.sub === 'repo:dodoxiaxia/xinzhi:ref:refs/heads/main',ref:claims.ref === 'refs/heads/main',
+        subject:['repo:dodoxiaxia/xinzhi:ref:refs/heads/main','repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main'].includes(claims.sub),ref:claims.ref === 'refs/heads/main',
         workflow:claims.workflow_ref === 'dodoxiaxia/xinzhi/.github/workflows/' + workflow + '@refs/heads/main',runner:claims.runner_environment === 'github-hosted',
         issuer:claims.iss === 'https://token.actions.githubusercontent.com',event:['push','workflow_dispatch','schedule'].includes(claims.event_name),
         expiresIn:Number.isInteger(claims.exp) ? claims.exp - now : null,mintedAgo:Number.isInteger(claims.iat) ? now - claims.iat : null,notBefore:Number.isInteger(claims.nbf) ? claims.nbf - now : null};
@@ -46,7 +46,7 @@ async function ready(endpoint, expected, http, wait) {
       const response = await http(endpoint,{method:'GET',redirect:'error',signal:AbortSignal.timeout(5000),headers:{'user-agent':'XinZhiFulltextImport/1.0'}});
       if ([401,403,429].includes(response.status)) { if (response.body) await response.body.cancel(); throw new Error('website_denied'); }
       const value = await readJson(response);
-      if (response.status === 405 && value.error === expected) return;
+      if (response.status === 405 && value.error === expected && value.protocolVersion === 2) return;
     } catch (error) { if (error.message === 'website_denied') throw error; }
     if (n < 47) await wait(15000);
   }
@@ -54,7 +54,7 @@ async function ready(endpoint, expected, http, wait) {
 }
 async function runImport(value, env = process.env, http = fetch, log = console.log, wait = ms => new Promise(r => setTimeout(r,ms))) {
   const inputs = manifest(value);
-  if (env.GITHUB_EVENT_NAME === 'push') await ready(ENDPOINT,'import_bad_request',http,wait);
+  await ready(ENDPOINT,'import_bad_request',http,wait);
   for (const input of inputs) {
     let result;
     for (let n = 0; n < 3; n++) {

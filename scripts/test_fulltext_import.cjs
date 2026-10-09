@@ -2,7 +2,7 @@
 const assert = require('assert');
 const {setup,token} = require('./test_fulltext_auth_helpers.cjs');
 const {doi,pdf,hash,record,seed,error} = require('./test_doi_library_worker.cjs');
-const {runImport,manifest,serviceError,failureLog} = require('./fulltext_import_runner.cjs');
+const {runImport,manifest,serviceError,failureLog,ready} = require('./fulltext_import_runner.cjs');
 const endpoint = 'https://learn.dryz.info/api/fulltext-import',commit = 'a'.repeat(40);
 const input = {doi,githubCommit:commit,sha256:hash(pdf)};
 async function service(h,body = input,opts = {}) {
@@ -14,11 +14,14 @@ async function service(h,body = input,opts = {}) {
   let h = await setup();
   await error(await service(h,input,{method:'GET'}),405,'import_bad_request');
   for (const claims of [{aud:'other'},{event_name:'schedule'},{event_name:'pull_request'},{repository_id:'1'},{ref:'refs/heads/other'},
-    {workflow_ref:'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main'},{runner_environment:'self-hosted'},{exp:1}]) {
+    {workflow_ref:'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main'},{runner_environment:'self-hosted'},{exp:1},
+    {sub:'repo:dodoxiaxia@1/xinzhi@1397425558:ref:refs/heads/main'},{sub:'repo:dodoxiaxia@214921265/xinzhi@1397425559:ref:refs/heads/main'},
+    {sub:'repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/other'},{sub:'repo:dodoxiaxia@214921265/xinzhi@1397425558:environment:production'}]) {
     h = await setup(); await error(await service(h,input,{claims}),401,'job_auth'); assert.equal(h.reads.length,0); assert.equal(h.writes.length,0); assert.equal(h.calls.length,0);
   }
   h = await setup(); const signed = await token(h,endpoint,'fulltext-import.yml');
   await error(await service(h,input,{token:signed.split('.').slice(0,2).join('.') + '.d3Jvbmc'}),401,'job_auth'); assert.equal(h.reads.length,0);
+  h = await setup(); assert.equal((await service(h,input,{claims:{sub:'repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main'}})).status,200,'GitHub immutable main subject accepted with all other claims pinned');
   for (const body of [{...input,url:'https://evil.test/x'},{...input,githubCommit:'main'},{...input,sha256:'b'},{...input,doi:'https://doi.org/' + doi},null]) {
     h = await setup(); await error(await service(h,body),400,'import_bad_request'); assert.equal(h.reads.length,0); assert.equal(h.writes.length,0);
   }
@@ -66,5 +69,8 @@ async function service(h,body = input,opts = {}) {
   assert.equal(diagnostic.reason,'job_auth'); assert.equal(diagnostic.oidcChecks.workflow,true); assert.equal(diagnostic.oidcChecks.audience,true);
   const safeLog = failureLog(diagnostic,'import_unavailable'); assert(!safeLog.includes('Bearer')); assert(!safeLog.includes('workflow_ref')); assert(!safeLog.includes('eyJ'));
   assert.equal(serviceError('import_unavailable',{status:502},{error:'https://private.test/?token=secret'},'',endpoint,'fulltext-import.yml').reason,'unclassified_response');
+  let probes = 0;
+  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',...(probes > 1 ? {protocolVersion:2} : {})},{status:405});},async () => {});
+  assert.equal(probes,2,'existing old route is not proof that the new identity policy deployed');
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});

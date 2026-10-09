@@ -19,6 +19,8 @@ Cloudflare Pages 项目 `dryz-xinzhi` 的 Production 环境设置：
 
 开关未设置时，Muse 领取与读者派发保持关闭。GitHub 的核验任务使用短时 OIDC，只能核验已上传原件，不持有 Muse 密钥。既有全文导入使用另一独立 OIDC 范围。
 
+生产 GitHub 已启用 immutable subject。网站接受精确的既有默认主分支身份，以及 `repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main`；同时固定签名、issuer、audience、仓库及 ID、主分支、GitHub 托管 runner 和专用工作流。没有改变 GitHub 认证模板或放宽到其他账户、仓库、环境、分支。导入/核验任务先检查 `protocolVersion:2` 部署就绪，再申请短时令牌。
+
 ## 直接交给 Muse 的任务说明
 
 以下是 Muse 要的五项信息和完整执行约定，可以转发本节。密钥在上一步私密配置中交接。
