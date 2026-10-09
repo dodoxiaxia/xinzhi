@@ -1,0 +1,173 @@
+"""Offline full-text identity, evidence, restart, public projection and payment reservation contracts."""
+import copy
+import datetime as dt
+import json
+import tempfile
+import unittest
+from pathlib import Path
+import daily_fulltext as d
+
+WHEN = dt.datetime(2026, 10, 9, 2, tzinfo=dt.timezone.utc)
+QUOTE = 'The study included 120 patients with cardiovascular disease and assessed clinical outcomes prospectively.'
+
+def paper(n=1, topic='心血管'):
+    return {'title': 'Heart outcomes study', 'journal': 'Fixture journal', 'date': '2026-10-07',
+            'doi': '10.1234/fixture' + str(n), 'pmid': str(n), 'pmcid': 'PMC' + str(n), 'topic': topic}
+
+def xml(p):
+    body = ''.join('<sec><title>Methods and results</title><p>' + (QUOTE + ' Additional public research context. ') * 4 + '</p></sec>' for _ in range(6))
+    return ('<article article-type="research-article"><front><article-meta><article-id pub-id-type="pmc">' +
+            p['pmcid'] + '</article-id><article-id pub-id-type="pmid">' + p['pmid'] +
+            '</article-id><article-id pub-id-type="doi">' + p['doi'] +
+            '</article-id><title-group><article-title>' + p['title'] +
+            '</article-title></title-group></article-meta></front><body>' + body + '</body></article>').encode()
+
+def output():
+    return {'titleZh': '心血管临床结局研究', 'sections': {k: {
+        'text': '这段离线测试文字仅用于核对字段与证据链接，不是临床结论。研究纳入120名患者，真实含义仍需回查原文。',
+        'evidence': [{'paragraph': 'p1', 'quote': QUOTE}]} for k in d.SECTION_KEYS}}
+
+def item(n=1):
+    p = paper(n)
+    paragraphs, sha = d.parse_fulltext(xml(p), p)
+    p.update(d.validate_output(output(), paragraphs, p['title']), publishedOn='2026-10-09',
+             generatedAt=WHEN.isoformat(), retrievedAt=WHEN.isoformat(), sourceParagraphs=paragraphs,
+             sourceHash=sha, sourceUrl='https://europepmc.org/articles/'+p['pmcid'],
+             scope='public-fulltext-body', humanReviewed=False, whySelected='近30天 · 心血管 · 开放全文')
+    return p
+
+class SourceTests(unittest.TestCase):
+    def test_beijing_day_and_future_dates(self):
+        self.assertEqual(d.day_of(dt.datetime(2026, 10, 8, 17, tzinfo=dt.timezone.utc)), '2026-10-09')
+        self.assertFalse(d.date_valid('2026-10-10', WHEN.date()))
+        self.assertFalse(d.date_valid('2026-06-01', WHEN.date()))
+
+    def test_only_recent_open_medical_articles_are_candidates(self):
+        row = {'isOpenAccess':'Y','pmcid':'PMC1','title':'Artificial intelligence for heart disease','source':'MED','id':'1','firstPublicationDate':'2026-10-08','doi':'10.1234/test'}
+        self.assertEqual(d.candidate(row, WHEN.date())['topic'], '心血管 × AI')
+        for changes in ({'isOpenAccess':'N'}, {'firstPublicationDate':'2026-10-10'}, {'title':'Correction: Heart disease'}, {'title':'Heart disease study protocol'}, {'title':'Deep learning for astronomy'}):
+            self.assertIsNone(d.candidate(dict(row, **changes), WHEN.date()))
+
+    def test_xml_requires_matching_identity_and_actual_body(self):
+        p = paper()
+        paragraphs, digest = d.parse_fulltext(xml(p), p)
+        self.assertEqual(len(digest), 64)
+        self.assertGreaterEqual(len(paragraphs), 5)
+        for field in ('pmcid','pmid','doi','title'):
+            bad = dict(p, **{field:'unmatched'})
+            with self.assertRaises(d.ReadingError):
+                d.parse_fulltext(xml(p), bad)
+        with self.assertRaises(d.ReadingError):
+            d.parse_fulltext(xml(p).replace(b'<body>',b'<abstract>').replace(b'</body>',b'</abstract>'), p)
+        with self.assertRaises(d.ReadingError):
+            d.parse_fulltext(xml(p).replace(b'research-article',b'correction'), p)
+
+    def test_evidence_and_numbers_are_checked_per_section(self):
+        paragraphs, digest = d.parse_fulltext(xml(paper()), paper())
+        self.assertIn('findings', d.validate_output(output(), paragraphs, paper()['title'])['sections'])
+        for change in ('quote','number','paragraph'):
+            bad = output()
+            if change == 'quote': bad['sections']['findings']['evidence'][0]['quote'] = 'Invented text that never occurred in the original article.'
+            if change == 'number': bad['sections']['findings']['text'] += '另外有999名患者。'
+            if change == 'paragraph': bad['sections']['findings']['evidence'][0]['paragraph'] = 'abstract1'
+            with self.assertRaises(d.ReadingError):
+                d.validate_output(bad, paragraphs, paper()['title'])
+
+    def test_public_projection_never_exposes_private_source_or_ledger(self):
+        raw = d.empty_data()
+        p = item()
+        p['private_path'] = '.local/secret.pdf'
+        p['api_key'] = 'fixture-only-not-a-key'
+        raw['items'].append(p)
+        result = d.public_readings(raw)
+        serialized = json.dumps(result)
+        for field in ('sourceParagraphs','private_path','api_key','secret.pdf'):
+            self.assertNotIn(field, serialized)
+        self.assertFalse(result['items'][0]['humanReviewed'])
+        self.assertEqual(result['items'][0]['scope'], 'public-fulltext-body')
+
+class GenerationTests(unittest.TestCase):
+    def generate(self, data=None, ledger=None, model=None, save=None):
+        data, ledger = data or d.empty_data(), ledger or d.empty_ledger()
+        papers = [paper(i, 'AI 医疗' if i % 2 == 0 else '心血管') for i in range(1,9)]
+        bypmc = {p['pmcid']:p for p in papers}
+        fetch = lambda url: xml(bypmc[url.split('/')[-2]])
+        result = d.generate(data, ledger, papers, WHEN, save or (lambda *_:None), {}, fetch=fetch, model=model or (lambda *_: output()))
+        return data, ledger, result
+
+    def test_new_day_publishes_four_distinct_articles_and_same_day_is_cached(self):
+        calls = []
+        model = lambda *_: (calls.append(True) or output())
+        data, ledger, status = self.generate(model=model)
+        self.assertEqual(status['completed'], 4)
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(len({d.identity(p) for p in data['items']}), 4)
+        self.generate(data=data, ledger=ledger, model=model)
+        self.assertEqual(len(calls), 4)
+        self.assertEqual(len(data['items']), 4)
+
+    def test_reservation_is_saved_before_each_model_request(self):
+        observed = []
+        def save(data, ledger): observed.append(copy.deepcopy(ledger))
+        def model(*_):
+            self.assertEqual(observed[-1]['days']['2026-10-09'][-1]['state'], 'started')
+            return output()
+        data, ledger, status = self.generate(model=model, save=save)
+        self.assertEqual(status['completed'], 4)
+        self.assertTrue(all(r['state']=='validated' for r in ledger['days']['2026-10-09']))
+
+    def test_failed_checkpoint_never_dispatches_model(self):
+        calls = []
+        def failed(*_): raise d.ReadingError('checkpoint_write_failed')
+        with self.assertRaises(d.ReadingError):
+            self.generate(model=lambda *_:calls.append(True), save=failed)
+        self.assertEqual(calls, [])
+
+    def test_provider_error_stops_and_keeps_previous_readings(self):
+        raw = d.empty_data()
+        old = item(99)
+        old['publishedOn'] = '2026-10-08'
+        raw['items'].append(old)
+        calls = []
+        def failed(*_):
+            calls.append(True)
+            raise d.ReadingError('model_unavailable')
+        data, ledger, status = self.generate(data=raw, model=failed)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(data['items']), 1)
+        self.assertEqual(status['state'], 'waiting')
+        self.generate(data=data, ledger=ledger, model=failed)
+        self.assertEqual(len(calls), 1)
+
+    def test_restart_with_started_attempt_never_pays_again(self):
+        ledger = d.empty_ledger()
+        ledger['days']['2026-10-09'] = [{'identity':'10.1234/fixture1','state':'started'}]
+        calls = []
+        data, ledger, status = self.generate(ledger=ledger, model=lambda *_:calls.append(True))
+        self.assertEqual(calls, [])
+        self.assertEqual(status['reason'], 'prior_attempt_uncertain')
+
+    def test_invalid_outputs_are_skipped_with_five_attempt_cap(self):
+        calls = []
+        def bad(*_):
+            calls.append(True)
+            result=output()
+            result['sections']['findings']['text'] += '不支持的9999人结果。'
+            return result
+        data, ledger, status = self.generate(model=bad)
+        self.assertEqual(len(calls), 5)
+        self.assertEqual(status['completed'], 0)
+        self.assertEqual(status['attempts'], 5)
+
+class CheckpointTests(unittest.TestCase):
+    def test_concurrent_state_update_blocks_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            transport = lambda *_: (200, {'ref':'refs/heads/state','object':{'type':'commit','sha':'b'*40}})
+            writer=d.StateCheckpoint(Path(tmp),transport,'owner/repo','a'*40)
+            with self.assertRaises(d.ReadingError):
+                writer.save(d.empty_data(),d.empty_ledger())
+            self.assertTrue(writer.blocked)
+            self.assertFalse((Path(tmp)/d.DATA_PATH).exists())
+
+if __name__ == '__main__':
+    unittest.main()

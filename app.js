@@ -2258,6 +2258,44 @@
     }
   }
 
+
+  let deepReadingHistoryLimit = 12;
+  const DEEP_READING_LABELS = { question: '研究问题', design: '设计与人群', findings: '主要结果', limitations: '局限与不确定性', practice: '临床讨论' };
+  function dailyReadingGroups(data, today = beijingToday()) {
+    const rows = (Array.isArray(data?.items) ? data.items : []).filter(p => p.scope === 'public-fulltext-body' && p.humanReviewed === false && /^\d{4}-\d{2}-\d{2}$/.test(p.publishedOn || '') && p.publishedOn <= today);
+    rows.sort((a, b) => b.publishedOn.localeCompare(a.publishedOn) || (b.generatedAt || '').localeCompare(a.generatedAt || ''));
+    const latestDay = rows[0]?.publishedOn || '';
+    return { todayCount: rows.filter(p => p.publishedOn === today).length, latestDay, latest: rows.filter(p => p.publishedOn === latestDay), history: rows.filter(p => p.publishedOn !== latestDay) };
+  }
+  function dailyReadingCard(p, opened = false) {
+    const source = /^PMC\d+$/.test(p.pmcid || '') ? 'https://europepmc.org/articles/' + p.pmcid : '';
+    const sections = Object.entries(DEEP_READING_LABELS).map(([key, label]) => {
+      const block = p.sections?.[key]; if (!block || typeof block.text !== 'string') return '';
+      const evidence = (Array.isArray(block.evidence) ? block.evidence : []).map(e => '<blockquote><p>' + esc(e.quote || '') + '</p><cite>正文 · ' + esc(e.section || e.paragraph || '') + '</cite></blockquote>').join('');
+      return '<section class="deep-reading-section"><h5>' + esc(label) + '</h5><p>' + esc(block.text) + '</p><details class="deep-reading-evidence"><summary>查看原文证据</summary>' + evidence + '</details></section>';
+    }).join('');
+    return '<details class="deep-reading-card" data-deep-reading="' + esc(p.pmcid) + '"' + (opened ? ' open' : '') + '><summary><span class="content-label">AI 全文精读 · 未经人工审核</span><strong>' + esc(p.titleZh || p.title) + '</strong><small>' + esc(p.journal) + ' · 论文 ' + esc(p.date) + ' · 更新 ' + esc(p.publishedOn) + '</small><span class="deep-reading-topic">' + esc(p.whySelected || p.topic) + '</span><span class="deep-reading-open">展开精读 ↓</span></summary><div class="deep-reading-body"><p class="deep-reading-original">' + esc(p.title) + '</p><p class="deep-reading-scope">基于开放全文正文，未核对补充材料；模型生成，未经医生终审。</p>' + sections + '<div class="deep-reading-sources">' + (source ? '<a class="btn-sm" href="' + esc(source) + '" target="_blank" rel="noopener noreferrer">阅读开放全文 ↗</a>' : '') + (p.doi ? '<a class="btn-sm" href="' + esc('https://doi.org/' + p.doi) + '" target="_blank" rel="noopener noreferrer">出版商原文 ↗</a>' : '') + '</div><button class="btn-sm" type="button" data-action="close-daily-reading">收起精读 ↑</button></div></details>';
+  }
+  function renderDailyDeepRead() {
+    const el = $('#dailyDeepRead'); if (!el) return;
+    const data = window.DEEP_READINGS || {}, status = data.status || {}, groups = dailyReadingGroups(data);
+    const opened = new Set(Array.from(el.querySelectorAll('.deep-reading-card[open]')).map(p => p.dataset.deepReading));
+    const historyOpen = !!el.querySelector('.deep-reading-history[open]');
+    const reason = {
+      model_not_configured: '精读生成服务尚未就绪', model_unavailable: '精读生成服务暂时不可用',
+      model_output_incomplete: '生成未完整完成', discovery_unavailable: '全文来源暂时不可用',
+      validation_or_fulltext_shortfall: '可读全文或证据核对不足', time_budget: '本次更新未完整完成',
+      prior_attempt_uncertain: '上次生成结果待核对', provider_failed_today: '精读生成服务暂时不可用',
+      durable_checkpoint_required: '自动更新尚未就绪', checkpoint_not_configured: '自动更新尚未就绪',
+      checkpoint_write_failed: '更新保存未完成'
+    }[status.reason] || '本次更新未完成';
+    const showReason = status.day === beijingToday() && status.reason && groups.todayCount < 3;
+    el.innerHTML = '<p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 3–5 篇</p><p class="deep-reading-timing">每日北京时间 05:17 启动更新' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
+      (showReason ? '<p class="deep-reading-shortfall">' + esc(reason) + '，当前完成 ' + groups.todayCount + ' 篇。</p>' : '') +
+      (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4>' + groups.latest.map(p => dailyReadingCard(p, opened.has(p.pmcid))).join('') : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
+      (groups.history.length ? '<details class="deep-reading-history"' + (historyOpen ? ' open' : '') + '><summary>历史精读 · ' + groups.history.length + ' 篇</summary>' + groups.history.slice(0, deepReadingHistoryLimit).map(p => dailyReadingCard(p, opened.has(p.pmcid))).join('') + (groups.history.length > deepReadingHistoryLimit ? '<button class="btn-sm" type="button" data-action="more-daily-readings">查看更多历史精读</button>' : '') + '</details>' : '');
+  }
+
   const ISSUES = [
     { no: 1, demo: true, published: '2026-09-29', title: 'AI 指导的持续性房颤消融：获益与临床边界', meta: 'TAILORED-AF · Nature Medicine 2025 · 全文精读' }
   ];
@@ -2278,6 +2316,7 @@
     renderStaticJournalMetrics();
     const list = $('#issueList');
     renderWeeklyAuto();
+    renderDailyDeepRead();
     if (list) {
       const published = ISSUES.filter(i => !i.demo);
       list.hidden = !published.length;
@@ -2474,6 +2513,17 @@
   });
 
   document.addEventListener('click', e => {
+    const dailyClose = e.target.closest('[data-action="close-daily-reading"]');
+    if (dailyClose) {
+      const reading = dailyClose.closest('.deep-reading-card');
+      if (reading) { reading.open = false; reading.querySelector('summary')?.focus({ preventScroll: true }); }
+      return;
+    }
+    if (e.target.closest('[data-action="more-daily-readings"]')) {
+      deepReadingHistoryLimit += 12;
+      renderDailyDeepRead();
+      return;
+    }
     const weeklyClose = e.target.closest('[data-action="close-weekly"]');
     if (weeklyClose) {
       const details = weeklyClose.closest('.weekly-demo');

@@ -18,6 +18,8 @@ class PipelineFixture(unittest.TestCase):
         self.root = Path(self.tmp.name)
         (self.root / 'public').mkdir()
         (self.root / 'docs').mkdir()
+        (self.root / 'data').mkdir()
+        (self.root / 'data/deep-readings.json').write_text(json.dumps({'schemaVersion': 1, 'items': [], 'status': {'state': 'pending', 'target': 4}}))
         self.data = {'updatedAt': 'old', 'items': [{'id': 'a', 'title': 'Cardiac AI', 'date': '2026-09-29', 'publication_date': '2026-09-29', 'publishedAt': '2026-09-29', 'draftData': {'published': '2026-09-30', 'source_date': '2026-09-28'}, 'weeklyAt': 'old'}]}
         for name in ci_daily.PUBLIC:
             (self.root / 'public' / name).write_text('asset: ' + name)
@@ -107,7 +109,7 @@ class ContentHashTests(PipelineFixture):
 
     def test_all_bundle_constants_are_normalized(self):
         names = ('LIBRARY', 'FEEDS', 'SOURCE_HEALTH', 'CURATED', 'QUICKLOOKS', 'CONTENT_STATUS',
-                 'JOURNAL_METRICS', 'WEEKLY_BOARD', 'PREGENERATED', 'RADAR')
+                 'JOURNAL_METRICS', 'WEEKLY_BOARD', 'PREGENERATED', 'RADAR', 'DEEP_READINGS')
         old = '\n;\n'.join('window.' + name + '={"generatedAt":"old","papers":[{"id":"a"}]};' for name in names)
         (self.root / 'public' / 'public.js').write_text(old + '\n;\nconst app = 1;')
         before = ci_daily.content_hash()
@@ -158,6 +160,21 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(report['status'], 'success')
         self.assertIn('finishedAt', report)
         self.assertEqual(outputs, [False])
+
+    def test_fast_uses_existing_reading_cache_without_paid_work(self):
+        result, report, outputs, calls = self.invoke()
+        self.assertNotIn(ci_daily.DEEP_READING, calls)
+        self.assertEqual(report['deepReadings']['state'], 'pending')
+
+    def test_new_column_bootstraps_once_before_build(self):
+        (self.root / 'data/deep-readings.json').unlink()
+        result, report, outputs, calls = self.invoke()
+        self.assertIn(ci_daily.DEEP_READING, calls)
+        self.assertLess(calls.index(ci_daily.DEEP_READING), calls.index(ci_daily.BUILD))
+
+    def test_daily_readings_precede_optional_archive_enrichment(self):
+        result, report, outputs, calls = self.invoke(fast=False)
+        self.assertLess(calls.index(ci_daily.DEEP_READING), calls.index(ci_daily.FULL_OPTIONAL[0][0]))
 
     def test_timestamp_only_rebuild_does_not_request_fast_deploy(self):
         def run(argv, timeout):
@@ -248,7 +265,7 @@ class RefreshExecutionTests(PipelineFixture):
             return 0, '', ''
         # Archive work reaches its budget, leaving 600 seconds for the model and
         # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [1000, 2100, 2100, 2100, 2700, 2700, 2700]
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [0, 1000, 2100, 2100, 2100, 2700, 2700, 2700]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)

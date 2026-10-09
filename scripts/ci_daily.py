@@ -26,9 +26,10 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
 ]
 BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
+DEEP_READING = ['scripts/daily_fulltext.py', '--run']
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
-BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR)\s*=\s*')
+BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR|DEEP_READINGS)\s*=\s*')
 
 
 def stable_data(value):
@@ -242,6 +243,10 @@ def main():
             return finish('failed', ['required step failed: ' + ' '.join(argv)])
     for argv, t in LIGHT_OPTIONAL:
         execute(argv, t, optional=True, reserve=300 if fast else 900)
+    # Daily readings run before archive enrichment. Bootstrap the new column once;
+    # later fast refreshes read its persisted cache without paid model calls.
+    if not fast or not (ROOT / 'data/deep-readings.json').exists():
+        execute(DEEP_READING, 900, optional=True, reserve=600)
     if not fast:
         for argv, t in FULL_OPTIONAL:
             reserve = 300 if argv[0] in ('scripts/week_precompute.py', 'scripts/auto_picks.py') else 900
@@ -284,6 +289,9 @@ def main():
         {'outcome': 'not_reached', 'exitCode': None} if generation is None else
         {'outcome': generation.get('outcome') or ('returned_without_generation_guarantee' if generation['exitCode'] == 0 else 'failed'),
          'exitCode': generation['exitCode']})
+    from daily_fulltext import public_readings
+    reading_path = ROOT / 'data/deep-readings.json'
+    report['deepReadings'] = public_readings(json.loads(reading_path.read_text()) if reading_path.exists() else None)['status']
     print('WEEKLY CONTENT:', json.dumps({key: value for key, value in report['weeklyContent'].items() if key != 'pending'}, ensure_ascii=False), flush=True)
     changed = content_hash() != before
     report['changed'] = changed

@@ -91,6 +91,7 @@ jobs:
           # Opt-in only after integrator review; reuses the existing token/permissions.
           XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          XINZHI_RESTORED_STATE_SHA: ${{ steps.restore_state.outputs.sha }}
         run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
 
       - uses: actions/setup-node@v4
@@ -126,6 +127,8 @@ jobs:
           node scripts/test_ai_deadline_lifecycle.cjs
           node scripts/test_ai_waiting_ui.cjs
           node scripts/test_source_health_ui.cjs
+          node scripts/test_daily_reading_ui.cjs
+          python3 -m unittest discover -s scripts -p 'test_daily_fulltext.py'
           node scripts/test_weekly_window.cjs
           node scripts/test_publication_dates_ui.cjs
           node scripts/test_publication_status_ui.cjs
@@ -227,4 +230,5 @@ jobs:
             docs/public-manifest.json
             data/week-precompute-ledger.json
             data/week-precompute-cache.json
+            data/deep-reading-ledger.json
           if-no-files-found: error
