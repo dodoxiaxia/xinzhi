@@ -428,6 +428,7 @@ const FULLTEXT_JOB_PREFIX = 'library:job:';
 const FULLTEXT_QUEUE_PREFIX = 'library:queue:';
 const FULLTEXT_OIDC_AUDIENCE = 'https://learn.dryz.info/api/fulltext-worker';
 const FULLTEXT_WORKFLOW_REF = 'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main';
+const FULLTEXT_OIDC_SUBJECTS = ['repo:dodoxiaxia/xinzhi:ref:refs/heads/main','repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main'];
 const FULLTEXT_IMPORT_POLICY = { audience:'https://learn.dryz.info/api/fulltext-import', workflow:'dodoxiaxia/xinzhi/.github/workflows/fulltext-import.yml@refs/heads/main', events:['push','workflow_dispatch'] };
 const MUSE_REVIEW_POLICY = { audience:'https://learn.dryz.info/api/muse/review', workflow:'dodoxiaxia/xinzhi/.github/workflows/muse-review.yml@refs/heads/main', events:['push','workflow_dispatch','schedule'] };
 const FULLTEXT_JOB_LEASE_MS = 180000;
@@ -921,7 +922,7 @@ async function fulltextJobAuthorize(request, policy = {audience:FULLTEXT_OIDC_AU
   if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(header.kid)
       || claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== policy.audience
       || claims.repository !== 'dodoxiaxia/xinzhi' || String(claims.repository_id) !== '1397425558'
-      || claims.sub !== 'repo:dodoxiaxia/xinzhi:ref:refs/heads/main' || claims.ref !== 'refs/heads/main'
+      || !FULLTEXT_OIDC_SUBJECTS.includes(claims.sub) || claims.ref !== 'refs/heads/main'
       || claims.workflow_ref !== policy.workflow || claims.runner_environment !== 'github-hosted'
       || !policy.events.includes(claims.event_name) || !/^\d{1,20}$/.test(claims.run_id || '')
       || !Number.isInteger(claims.exp) || !Number.isInteger(claims.iat) || !Number.isInteger(claims.nbf)
@@ -1291,7 +1292,7 @@ async function fulltextImportGuard(env, input) {
 }
 async function handleFulltextImport(request, env) {
   try {
-    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('import_bad_request',405);
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:2},405);
     await fulltextJobAuthorize(request,FULLTEXT_IMPORT_POLICY);
     const input = fulltextFixedSource(await fulltextReadJson(request,1024,'import_bad_request'));
     libraryConfig(env);
@@ -1543,7 +1544,7 @@ async function handleMuseUpload(request, env) {
 }
 async function handleMuseReview(request, env) {
   try {
-    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'muse_bad_request',protocolVersion:2},405);
     const owner = await fulltextJobAuthorize(request,MUSE_REVIEW_POLICY);
     libraryConfig(env); // A configured verifier may finish candidates while Muse polling is disabled.
     const input = await fulltextReadJson(request,1024,'muse_bad_request');

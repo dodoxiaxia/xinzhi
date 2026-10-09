@@ -15,7 +15,7 @@ async function verifyOriginal(bytes, task) {
   } finally { await fs.rm(directory,{recursive:true,force:true}); }
 }
 async function runReview(env = process.env, http = fetch, verify = verifyOriginal, log = console.log, wait = ms => new Promise(r => setTimeout(r,ms))) {
-  if (env.GITHUB_EVENT_NAME === 'push') await ready(ENDPOINT,'muse_bad_request',http,wait);
+  await ready(ENDPOINT,'muse_bad_request',http,wait);
   const call = async (input, binary = false) => {
     const token = await identityToken(env,http,ENDPOINT);
     const response = await http(ENDPOINT,{method:'POST',redirect:'error',signal:AbortSignal.timeout(90000),
