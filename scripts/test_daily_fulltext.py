@@ -66,6 +66,7 @@ class SourceTests(unittest.TestCase):
         self.assertTrue(d.numbers('四周4周，3月至7月，p<0.001') <= d.numbers('Four weeks, March to July, p < .001'))
         self.assertEqual(d.numbers('7,639 and 1.60'),d.numbers('7639 and 1.6'))
         self.assertFalse(d.numbers('999 patients') <= d.numbers('nine patients'))
+        self.assertNotIn('5',d.numbers('The intervention may improve outcomes.'))
 
     def test_evidence_and_numbers_are_checked_per_section(self):
         paragraphs, digest = d.parse_fulltext(xml(paper()), paper())

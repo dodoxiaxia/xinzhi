@@ -423,6 +423,8 @@ def recover_drafts(data, ledger, when, save):
     rows = ledger['days'].get(day_of(when), [])
     seen = {identity(p) for p in data['items']}
     for key, draft in list(data.get('drafts', {}).items()):
+        if sum(p['publishedOn'] == day_of(when) for p in data['items']) >= TARGET:
+            break
         if key in seen:
             continue
         request = next((r for r in rows if r['identity'] == key and r['state'] == 'invalid'), None)
