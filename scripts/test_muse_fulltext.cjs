@@ -76,6 +76,22 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   h = await create({clock:{now:Date.now()}}); await enqueue(h); const expired = await claim(h); h.context.Date.now = () => Date.now() + 1300000;
   await error(await api(h,'receipt',{...identity(expired),state:'running'}),409,'muse_stale'); assert.equal((await (await api(h,'claim')).json()).task,null,'expired acquisitions are not redownloaded');
   const expiredLookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(expiredLookup.job.reason,'lease_expired'); assert(expiredLookup.job.message.includes('领取凭据已过期')); assert(!expiredLookup.job.nextCheckSeconds);
+  const restoreWrites = h.writes.length, restoreCalls = h.calls.length;
+  const restoreForm = await h.request('/api/muse/retry',{method:'GET',headers:{accept:'text/html'}});
+  assert.equal(restoreForm.status,200); assert((await restoreForm.text()).includes('确认重新入队')); assert.equal(h.writes.length,restoreWrites); assert.equal(h.calls.length,restoreCalls);
+  assert.equal((await h.request('/api/muse/retry',{passphrase:'wrong'})).status,403); assert.equal(h.writes.length,restoreWrites);
+  const restored = await h.request('/api/muse/retry'); assert.equal(restored.status,202); const restoredJob = (await restored.json()).job;
+  assert.notEqual(restoredJob.id,expired.taskId); assert.equal(restoredJob.state,'queued'); assert.equal(h.calls.length,restoreCalls,'recover reuses saved official bibliography');
+  const restoreDedup = h.writes.length; assert.equal((await h.request('/api/muse/retry')).status,202); assert.equal(h.writes.length,restoreDedup,'double confirmation does not replace active job');
+  await error(await api(h,'receipt',{...identity(expired),state:'running'}),409,'muse_stale');
+  const resumed = await claim(h); assert.equal(resumed.taskId,restoredJob.id);
+  const protectedWrites = h.writes.length; await h.request('/api/muse/retry'); assert.equal(h.writes.length,protectedWrites,'an active lease is never replaced');
+  assert.equal((await upload(h,resumed)).status,200); const candidateWrites = h.writes.length; await h.request('/api/muse/retry'); assert.equal(h.writes.length,candidateWrites,'a verification candidate is never replaced');
+  h = await create(); await enqueue(h); const pausedTask = await claim(h); await api(h,'receipt',{...identity(pausedTask),state:'failed'});
+  h.values.set('library:attempt:' + doi,JSON.stringify({paused:true,error:'library_paused'}));
+  await error(await h.request('/api/muse/retry'),423,'library_paused'); assert.equal((await (await api(h,'claim')).json()).task,null);
+  h = await create(); await enqueue(h); const agentFailed = await claim(h); await api(h,'receipt',{...identity(agentFailed),state:'failed'});
+  assert.equal((await (await h.request('/api/library',{method:'GET'})).json()).job.reason,'agent_failed');
   h = await create(); await enqueue(h); const runnerTask = await claim(h); await upload(h,runnerTask);
   const env = {GITHUB_EVENT_NAME:'workflow_dispatch',ACTIONS_ID_TOKEN_REQUEST_URL:'https://unit.actions.githubusercontent.com/token',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'synthetic-runtime-token'},logs = [];
   const http = async (url,init) => {

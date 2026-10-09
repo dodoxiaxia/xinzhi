@@ -1460,23 +1460,59 @@ async function musePut(env, job) {
   await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),{expirationTtl:604800});
   libraryCatalogCache.clear();
 }
+function museRecoverable(job) {
+  return job && (job.state === 'failed' || ['queued','running','uploading'].includes(job.state)
+    && (Date.now() - job.createdAt >= 86400000 || job.state !== 'queued' && job.leaseUntil <= Date.now()));
+}
 function museResponse(request, job, paper) {
   const publicJob = musePublicJob(job), statusUrl = '/api/muse/request?doi=' + encodeURIComponent(job.doi);
   const archive = {...libraryArchiveStatus(),executionClaimed:job.state !== 'queued',sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}};
-  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:publicJob.state,job:publicJob,...(paper ? {paper} : {}),archive,statusUrl,
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:publicJob.state,job:publicJob,...(paper ? {paper:libraryObservedPaper(paper,null,publicJob)} : {}),archive,statusUrl,
     ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},job.state === 'available' ? 200 : 202);
   const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60"><p>本页每 60 秒只更新状态，不会重新下载。</p>' : '';
   const stages = [['queued','待领取'],['running','已领取，获取全文'],['uploading','Drive 已报告上传'],['verifying','PDF 已收到，等待核验'],['available','核验通过，可下载']];
   const index = stages.findIndex(([stage]) => stage === publicJob.stage);
   const progress = '<ol>' + stages.map(([,label],i) => '<li' + (i === index ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i === index ? '（当前）' : index > i ? '（已完成）' : '') + '</li>').join('') + '</ol>';
   const planned = publicJob.nextVerificationAt ? '<p>下一次计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
-  return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + progress + planned + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
+  return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + progress + '<p>最近更新：北京时间 ' + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '</p>' + planned
+    + (museRecoverable(job) ? '<p><a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">维护者确认后重新入队</a>；优先复用 Muse 已下载文件。</p>' : '') + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
     + '<p>网站缓存与正式三端归档分别确认。</p>' + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务');
 }
 async function museOwnerGuard(env, doi) {
   const previous = fulltextJobRecord(await libraryGet(env.QL_KV,FULLTEXT_JOB_PREFIX + doi),doi);
   const bot = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi);
   if ((previous && ['queued','running'].includes(previous.state)) || (bot && !['available','failed','review'].includes(bot.state))) libraryFail('muse_owner_conflict',409);
+}
+async function handleMuseRetry(request, env) {
+  let doi = '', release;
+  try {
+    const parsed = libraryQuery(request); doi = parsed.doi;
+    museConfig(env);
+    if (!['GET','POST'].includes(request.method)) libraryFail('muse_bad_request',405);
+    if (request.method === 'POST') await libraryAuthorize(request,env,parsed.url);
+    const existing = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
+    const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
+    if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
+    if (!existing || !paper) libraryFail('library_not_found',404);
+    if (!museRecoverable(existing)) return museResponse(request,existing,paper);
+    if (request.method === 'GET') return pdfHtml('<p>原任务已停止。确认 Muse 没有仍在运行的下载，再重新入队；请优先复用已下载 PDF，不会自动发起新的下载。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">确认重新入队</button></form>' + pdfOfficialLink(doi),200,'恢复 Muse 全文任务');
+    if (paper.fulltextStatus === 'review') libraryFail('library_identity',409);
+    const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
+    if (attempt?.paused) libraryFail('library_paused',423);
+    await museOwnerGuard(env,doi);
+    release = await librarySoftGate(env.QL_KV,request,doi,true);
+    const current = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
+    if (!current) libraryFail('library_not_found',404);
+    if (!museRecoverable(current)) return museResponse(request,current,paper);
+    const now = Date.now(), id = crypto.randomUUID();
+    const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id};
+    // An orphan pointer is discarded by claim; it never resurrects the old lease.
+    await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
+    await musePut(env,job);
+    await museDelete(env,current.queueKey);
+    return museResponse(request,job,paper);
+  } catch (error) { return libraryError(request,error,doi,'/api/muse/retry'); }
+  finally { if (release) await release(); }
 }
 async function handleMuseRequest(request, env) {
   let doi = '';
@@ -2834,6 +2870,7 @@ export default {
     if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
     if (url.pathname === '/api/muse/protocol') return handleMuseProtocol(request, env);
     if (url.pathname === '/api/muse/request') return handleMuseRequest(request, env);
+    if (url.pathname === '/api/muse/retry') return handleMuseRetry(request, env);
     if (url.pathname === '/api/muse/claim') return handleMuseClaim(request, env);
     if (url.pathname === '/api/muse/receipt') return handleMuseReceipt(request, env);
     if (url.pathname === '/api/muse/upload') return handleMuseUpload(request, env);
