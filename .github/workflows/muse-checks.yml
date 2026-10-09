@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'edge/**'
+      - 'app.js'
+      - 'scripts/test_doi_library_ui.cjs'
       - 'scripts/*fulltext*'
       - 'scripts/*muse*'
       - 'scripts/github_oidc_keys.py'
@@ -33,6 +35,8 @@ jobs:
         run: |
           node scripts/test_fulltext_import.cjs
           node scripts/test_muse_fulltext.cjs
+          node scripts/test_doi_manual_needed.cjs
+          node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_fulltext_jobs.cjs
           node scripts/test_grok_fulltext.cjs
           node scripts/test_doi_library_worker.cjs
@@ -41,3 +45,8 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_muse*.py'
           python3 -m unittest discover -s scripts -p 'test_github_oidc_keys.py'
           python3 -m unittest discover -s scripts -p 'test_release_decoupling.py'
+      - name: Verify task progress in an offline browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          CHROMIUM_PATH="$(node -p "require('playwright').chromium.executablePath()")" node scripts/test_doi_library_ui.cjs

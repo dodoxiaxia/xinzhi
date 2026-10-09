@@ -554,6 +554,10 @@ function libraryUpstreamRetry(response) {
   return Number.isSafeInteger(deadline) && deadline > Date.now() && deadline <= Date.now() + 86400000 ? deadline : 0;
 }
 function libraryObservedPaper(paper, attempt, active = false) {
+  // Project current task progress without rewriting the saved bibliography.
+  const job = active && typeof active === 'object' ? active : null;
+  active = job ? ['queued','running'].includes(job.state) || job.stage === 'verifying' : active;
+  if (paper && paper.fulltextStatus === 'manual_needed' && active) return {...paper,fulltextStatus:'pending'};
   // Legacy no-PDF results used a generic five-minute cooldown; this projection never writes KV.
   if (paper && paper.fulltextStatus === 'pending' && !active && !(attempt && attempt.paused)
       && ((!attempt && paper.fulltextReason !== 'temporary') || attempt && attempt.error === 'library_metadata_unavailable')) return { ...paper, fulltextStatus:'manual_needed' };
@@ -877,7 +881,7 @@ async function handleLibrary(request, env) {
         : env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true'
         ? grokPublicJob(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi)
         : env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
-      if (paper) { const observed = libraryObservedPaper(paper, attempt, job && ['queued','running'].includes(job.state)); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...libraryAttemptPublic(attempt), ...(job ? { job } : {}) }); }
+      if (paper) { const observed = libraryObservedPaper(paper, attempt, job); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...libraryAttemptPublic(attempt), ...(job ? { job } : {}) }); }
       return json({ ok:true, found:false, ...libraryAttemptPublic(attempt), ...(attempt && attempt.status === 'pending' && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status } : {}) });
     }
     if ([...url.searchParams.keys()].some(key => !['cursor','limit'].includes(key)) || url.searchParams.getAll('cursor').length > 1 || url.searchParams.getAll('limit').length > 1) libraryFail('library_bad_doi', 400);
@@ -887,8 +891,11 @@ async function handleLibrary(request, env) {
     if (cachedPage && cachedPage.kv === env.QL_KV && cachedPage.until > Date.now()) return json(cachedPage.payload);
     let listing; try { listing = await env.QL_KV.list({ prefix:LIBRARY_PREFIX, limit:Number(rawLimit), ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
     if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
-    const papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGet(env.QL_KV, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
-    const payload = { ok:true, papers, ...(!listing.list_complete && typeof listing.cursor === 'string' ? { cursor:listing.cursor } : {}) };
+    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGet(env.QL_KV, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
+    const jobs = env.MUSE_FULLTEXT_ENABLED === 'true' ? (await Promise.all(papers.map(paper => musePublicJobValue(env,paper.doi)))).filter(Boolean) : [];
+    const byDoi = new Map(jobs.map(job => [job.doi,job]));
+    papers = papers.map(paper => byDoi.has(paper.doi) ? libraryObservedPaper(paper,null,byDoi.get(paper.doi)) : paper);
+    const payload = { ok:true, papers, ...(jobs.length ? {jobs} : {}), ...(!listing.list_complete && typeof listing.cursor === 'string' ? { cursor:listing.cursor } : {}) };
     if (libraryCatalogCache.size >= 50) libraryCatalogCache.clear();
     libraryCatalogCache.set(cacheKey, { payload, kv:env.QL_KV, until:Date.now() + 30000 });
     return json(payload);
@@ -1424,18 +1431,34 @@ function museRecord(value, doi = '') {
       || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
   return value;
 }
+function museNextVerificationAt(now = Date.now()) {
+  // GitHub's hourly :23 schedule is a planned time, not an execution deadline.
+  const hour = 3600000, scheduled = Math.floor(now / hour) * hour + 23 * 60000;
+  return new Date(scheduled > now ? scheduled : scheduled + hour).toISOString();
+}
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
-  const expired = ['queued','running','uploading'].includes(job.state) && (Date.now() - job.createdAt >= 86400000 || (job.state !== 'queued' && job.leaseUntil < Date.now()));
+  const expired = ['queued','running','uploading'].includes(job.state) && (Date.now() - job.createdAt >= 86400000 || (job.state !== 'queued' && job.leaseUntil <= Date.now()));
+  const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
+    : job.state === 'login_required' ? 'login_required' : job.state === 'review' ? 'verification_rejected'
+    : job.state === 'failed' ? ['lease_expired','queue_expired','agent_failed'].includes(job.reason) ? job.reason : job.leaseUntil <= Date.now() ? 'lease_expired' : 'agent_failed' : '';
   const state = expired || job.state === 'login_required' ? 'manual_needed' : job.state === 'uploading' ? 'running' : job.state === 'verifying' ? 'pending' : job.state;
-  const messages = {queued:'已加入 Muse 待办，等待下一次轮询。',running:'Muse 正在处理全文。',uploading:'正在接收 PDF 原件。',verifying:'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
-    login_required:'汉堡会话需要重新登录，请维护者在 Muse 的授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'Muse 未能完成任务，需维护者核查。'};
-  return {id:job.id,doi:job.doi,state,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
-    message:expired ? '任务超时，需核查 Muse 原任务；不会自动重复下载。' : messages[job.state],
+  const stage = expired ? 'failed' : job.state;
+  const messages = {queued:'已加入 Muse 待办，等待下一次轮询。',running:'Muse 已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
+    login_required:'汉堡会话需要重新登录，请维护者在 Muse 的授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'Muse 报告任务失败，需维护者核查。'};
+  const reasons = {lease_expired:'Muse 领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
+    queue_expired:'任务排队超过 24 小时，已停止；需维护者核查。'};
+  return {id:job.id,doi:job.doi,state,stage,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
+    message:reasons[reason] || messages[job.state], ...(reason ? {reason} : {}),
+    ...(job.state === 'verifying' ? {nextVerificationAt:museNextVerificationAt(),verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。'} : {}),
     ...(['queued','running','pending'].includes(state) ? {nextCheckSeconds:60} : {})};
+}
+async function musePublicJobValue(env, doi) {
+  return musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
 }
 async function musePut(env, job) {
   await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),{expirationTtl:604800});
+  libraryCatalogCache.clear();
 }
 function museResponse(request, job, paper) {
   const publicJob = musePublicJob(job), statusUrl = '/api/muse/request?doi=' + encodeURIComponent(job.doi);
@@ -1443,7 +1466,11 @@ function museResponse(request, job, paper) {
   if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:publicJob.state,job:publicJob,...(paper ? {paper} : {}),archive,statusUrl,
     ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},job.state === 'available' ? 200 : 202);
   const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60"><p>本页每 60 秒只更新状态，不会重新下载。</p>' : '';
-  return pdfHtml(check + '<p>' + pdfEscape(publicJob.message) + '</p>' + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
+  const stages = [['queued','待领取'],['running','已领取，获取全文'],['uploading','Drive 已报告上传'],['verifying','PDF 已收到，等待核验'],['available','核验通过，可下载']];
+  const index = stages.findIndex(([stage]) => stage === publicJob.stage);
+  const progress = '<ol>' + stages.map(([,label],i) => '<li' + (i === index ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i === index ? '（当前）' : index > i ? '（已完成）' : '') + '</li>').join('') + '</ol>';
+  const planned = publicJob.nextVerificationAt ? '<p>下一次计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
+  return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + progress + planned + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
     + '<p>网站缓存与正式三端归档分别确认。</p>' + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务');
 }
 async function museOwnerGuard(env, doi) {
@@ -1502,9 +1529,9 @@ async function handleMuseClaim(request, env) {
       const job = pointer?.doi && museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + pointer.doi),pointer.doi);
       if (!job || job.id !== pointer.id || job.queueKey !== entry.name) continue;
       if (['available','review','failed','login_required','verifying'].includes(job.state)) { await museDelete(env,entry.name); continue; }
-      if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) { await musePut(env,{...job,state:'failed',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
+      if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) { await musePut(env,{...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
       if (job.state !== 'queued') continue; // Never reclaim an expired acquisition automatically.
-      if (Date.now() - job.createdAt >= 86400000) { await musePut(env,{...job,state:'failed',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
+      if (Date.now() - job.createdAt >= 86400000) { await musePut(env,{...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
       await museOwnerGuard(env,job.doi);
       const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
       if (paper?.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV,record); await musePut(env,{...job,state:'available',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
@@ -1555,7 +1582,7 @@ async function handleMuseReceipt(request, env) {
     if (leaseUntil <= Date.now()) libraryFail('muse_stale',409);
     if (job.state === 'uploading' && (input.state !== 'uploaded' || job.sha256 !== input.sha256 || job.bytes !== input.bytes || job.driveFileId !== input.driveFileId)) libraryFail('muse_stale',409);
     const next = {...job,state:input.state === 'uploaded' ? 'uploading' : input.state,leaseUntil,updatedAt:Date.now(),
-      ...(input.state === 'uploaded' ? {sha256:input.sha256,bytes:input.bytes,driveFileId:input.driveFileId} : {})};
+      ...(input.state === 'uploaded' ? {sha256:input.sha256,bytes:input.bytes,driveFileId:input.driveFileId} : input.state === 'failed' ? {reason:'agent_failed'} : {})};
     await musePut(env,next);
     if (['failed','login_required'].includes(next.state)) await museDelete(env,job.queueKey);
     return json({ok:true,job:musePublicJob(next),needsUpload:next.state === 'uploading'});
