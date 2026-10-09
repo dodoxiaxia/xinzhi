@@ -62,7 +62,7 @@ async function ready(endpoint, expected, http, wait, version = 3) {
 }
 async function runImport(value, env = process.env, http = fetch, log = console.log, wait = ms => new Promise(r => setTimeout(r,ms))) {
   const inputs = manifest(value);
-  await ready(ENDPOINT,'import_bad_request',http,wait,4);
+  await ready(ENDPOINT,'import_bad_request',http,wait,5);
   for (const input of inputs) {
     let result;
     for (let n = 0; n < 3; n++) {

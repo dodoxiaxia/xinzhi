@@ -205,7 +205,8 @@ async function pdfBoundedRead(url, init, maxBytes, options = {}) {
     for (let hop = 0; hop < (init ? 1 : 2); hop++) {
       const headers = init ? init.headers : {accept:options.accept || 'application/json','user-agent':'XinZhiPdfDownload/1.0','x-github-api-version':'2022-11-28'};
       if (!init && options.token && current.hostname === 'api.github.com') headers.authorization = 'Bearer ' + options.token;
-      response = await awaitAbort(fetch(current.href, init ? {...init,redirect:'error',signal:controller.signal} : {method:'GET',headers,redirect:'manual',signal:controller.signal}),controller.signal,'pdf_timeout');
+      // Workers accepts manual/follow only; manual lets us reject before forwarding credentials.
+      response = await awaitAbort(fetch(current.href, init ? {...init,redirect:'manual',signal:controller.signal} : {method:'GET',headers,redirect:'manual',signal:controller.signal}),controller.signal,'pdf_timeout');
       if (context) { context.httpStatus = response.status; context.reason = 'http_error'; }
       if (![301,302,303,307,308].includes(response.status)) break;
       if (context) context.reason = 'redirect';
@@ -937,7 +938,7 @@ async function fulltextJobAuthorize(request, policy = {audience:FULLTEXT_OIDC_AU
     } else {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const response = await fetch('https://token.actions.githubusercontent.com/.well-known/jwks', { method:'GET', redirect:'error', signal:controller.signal, headers:{ accept:'application/json','user-agent':'XinZhiFulltextOIDC/1.0' } });
+      const response = await fetch('https://token.actions.githubusercontent.com/.well-known/jwks', { method:'GET', redirect:'manual', signal:controller.signal, headers:{ accept:'application/json','user-agent':'XinZhiFulltextOIDC/1.0' } });
       if (!response.ok) libraryFail('job_auth_unavailable', 503);
       const text = await response.text();
       if (text.length > 65536) libraryFail('job_auth_unavailable', 503);
@@ -1159,7 +1160,7 @@ async function grokEnqueue(request, env, doi, paper) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
   let state = 'uncertain';
   try {
-    const response = await awaitAbort(fetch(config.url, {method:'POST',redirect:'error',signal:controller.signal,
+    const response = await awaitAbort(fetch(config.url, {method:'POST',redirect:'manual',signal:controller.signal,
       headers:{authorization:'Bearer ' + config.key,'content-type':'application/json'},
       body:JSON.stringify({schemaVersion:1,taskId:job.id,doi,idempotencyKey:'doi:' + doi,
         institutionLoginUrl:HAN_LOGIN_URL,institutionUrl:hanDoiUrl(doi),receiptUrl:'https://learn.dryz.info/api/grok-fulltext-receipt'})}),
@@ -1301,7 +1302,7 @@ async function fulltextImportGuard(env, input) {
 async function handleFulltextImport(request, env) {
   let diagnostic;
   try {
-    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:4},405);
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:5},405);
     await fulltextJobAuthorize(request,FULLTEXT_IMPORT_POLICY);
     const input = fulltextFixedSource(await fulltextReadJson(request,1024,'import_bad_request'));
     diagnostic = pdfDiagnosticStart(request);
@@ -1357,7 +1358,7 @@ function handleMuseProtocol(request, env) {
       'Drive 上传仅记为报告；网站缓存可用与正式三端归档分别确认，archive.complete 始终为 false。']};
   if (!(request.headers.get('accept') || '').includes('text/html')) return json(protocol);
   return pdfHtml('<p>Muse 可以按下方协议建立一个定时任务，每 10 分钟领取一次，最多三篇、串行处理。当前接入：' + (protocol.enabled ? '已启用' : '尚未启用') + '。</p>'
-    + '<p>维护者需在 Cloudflare Pages 的 Production 私密配置中设置 MUSE_FULLTEXT_ENABLED=true 和独立随机 Secret MUSE_FULLTEXT_KEY，并在 Muse 私密配置保存同一个密钥。GROK_FULLTEXT_ENABLED 与 FULLTEXT_ASYNC_ENABLED 保持关闭。密钥不要发到聊天中。</p>'
+    + '<p>维护者需在 Cloudflare Pages 的 Production 私密配置中设置 MUSE_FULLTEXT_ENABLED=true 和独立随机 Secret MUSE_FULLTEXT_KEY，并在 Muse 私密配置保存同一个密钥。GROK_FULLTEXT_ENABLED 与 FULLTEXT_ASYNC_ENABLED 保持关闭。保存后重新部署 Production，确认本页显示“已启用”。密钥不要发到聊天中。</p>'
     + '<p>把本页链接交给 Muse：先读取协议，使用已有下载流程，上传 Drive 后回传原件，等待网站核验。</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' + pdfEscape(JSON.stringify(protocol,null,2)) + '</pre>',200,'Muse 网站接入说明');
 }
 function museConfig(env) {

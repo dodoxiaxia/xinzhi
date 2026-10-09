@@ -7,6 +7,7 @@ on:
       - 'scripts/*muse*'
       - 'scripts/github_oidc_keys.py'
       - 'scripts/test_github_oidc_keys.py'
+      - 'scripts/test_worker_fetch_compat.cjs'
       - 'scripts/release_integrity.py'
       - 'editorial/fulltext-imports.json'
       - '.github/workflows/*muse*'
@@ -36,6 +37,7 @@ jobs:
           node scripts/test_grok_fulltext.cjs
           node scripts/test_doi_library_worker.cjs
           node scripts/test_github_lfs_reuse.cjs
+          npm exec --yes --package=workerd@1.20261009.1 -- node scripts/test_worker_fetch_compat.cjs
           python3 -m unittest discover -s scripts -p 'test_muse*.py'
           python3 -m unittest discover -s scripts -p 'test_github_oidc_keys.py'
           python3 -m unittest discover -s scripts -p 'test_release_decoupling.py'
