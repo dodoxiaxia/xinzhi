@@ -11,7 +11,8 @@ from pathlib import Path
 PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
-    'scripts/ci_daily.py',
+    'scripts/ci_daily.py', 'scripts/daily_fulltext.py',
+    'data/deep-readings.json', 'data/deep-reading-ledger.json',
     'scripts/public_precompute_pending.py', 'data/public-precompute-pending.json',
     'editorial/sol-public-abstract-20261008-gap/sources.json',
     'editorial/sol-public-abstract-20261008-gap/gap-cache.json',

@@ -1,0 +1,62 @@
+name: daily-fulltext-reading-checks
+on:
+  push:
+    branches: ['codex/daily-fulltext-reading']
+  pull_request:
+    paths:
+      - 'scripts/daily_fulltext.py'
+      - 'scripts/test_daily_fulltext.py'
+      - 'scripts/test_daily_reading_ui.cjs'
+      - 'scripts/ci_daily.py'
+      - 'scripts/build_public.py'
+      - 'app.js'
+      - 'index.html'
+      - 'style.css'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Offline identity, evidence, cache and UI checks
+        run: |
+          python3 -m py_compile scripts/daily_fulltext.py scripts/build_public.py scripts/ci_daily.py
+          node --check app.js
+          node scripts/test_daily_reading_ui.cjs
+          node scripts/test_reading_logic.cjs
+          node scripts/test_weekly_window.cjs
+          python3 -m unittest discover -s scripts -p 'test_daily_fulltext.py'
+          python3 -m unittest discover -s scripts -p 'test_ci_daily.py'
+          python3 -m unittest discover -s scripts -p 'test_workflow.py'
+          python3 -m unittest discover -s scripts -p 'test_public_build.py'
+          python3 -m unittest discover -s scripts -p 'test_release_build.py'
+          python3 -m unittest discover -s scripts -p 'test_package_release.py'
+      - name: Verify public source access without model calls
+        run: |
+          PYTHONPATH=scripts python3 - <<'PY'
+          import datetime
+          import json
+          import daily_fulltext as d
+          papers, errors = d.discover(datetime.datetime.now(d.SHANGHAI).date())
+          print(json.dumps({'eligible_public_articles':len(papers),'sourceErrors':errors}))
+          assert papers, 'No accessible public full-text candidates'
+          checked = 0
+          for paper in papers[:8]:
+              try:
+                  paras, sha = d.parse_fulltext(d.fetch_bytes('https://www.ebi.ac.uk/europepmc/webservices/rest/'+paper['pmcid']+'/fullTextXML'),paper)
+                  checked += 1
+                  print(json.dumps({'pmcid':paper['pmcid'],'paragraphs':len(paras),'fullTextHash':sha}))
+              except d.ReadingError as error:
+                  print(json.dumps({'pmcid':paper['pmcid'],'reason':error.code}))
+              if checked >= 3:
+                  break
+          assert checked >= 3, 'Fewer than three complete identity-matched full texts'
+          PY
