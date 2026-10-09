@@ -633,10 +633,18 @@ function libraryPublication(message) {
   return { date:'', datePrecision:'', dateBasis:'发表日期未知' };
 }
 async function libraryMetadata(doi, context) {
+  delete context.crossrefPdfSource; // Source links are request-local and cannot survive a new DOI lookup.
   const payload = await libraryRead('https://api.crossref.org/works/' + encodeURIComponent(doi), context);
   const message = payload && payload.message;
   if (context.diagnostic) context.diagnostic.reason = 'identity';
   if (!message || libraryDoi(message.DOI) !== doi || !Array.isArray(message.title) || !libraryText(message.title[0])) libraryFail('library_identity', 409);
+  const urls = new Set();
+  for (const link of Array.isArray(message.link) ? message.link : []) {
+    if (!link || typeof link['content-type'] !== 'string' || link['content-type'].trim().toLowerCase() !== 'application/pdf') continue;
+    try { urls.add(librarySafeUrl(link.URL, true).href); } catch { continue; }
+    if (urls.size === 3) break;
+  }
+  if (urls.size) context.crossrefPdfSource = { doi, urls:[...urls] };
   return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]), journal:libraryText((message['container-title'] || [])[0] || '', 300),
     authors:(Array.isArray(message.author) ? message.author : []).slice(0, 30).map(author => libraryText([author && author.given, author && author.family].filter(Boolean).join(' '), 200)).filter(Boolean),
     url:'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/'), ...libraryPublication(message), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
@@ -701,8 +709,31 @@ async function libraryGithub(paper, env, context) {
 }
 async function libraryOa(paper, context) {
   let review = false, unavailable = false, retryAfter = 0, diagnostic = null;
+  if (context.metadataOnly) return { review, unavailable, retryAfter, diagnostic };
   const candidates = [], seen = new Set();
-  const add = value => { if (typeof value === 'string' && !seen.has(value) && seen.size < 3) { seen.add(value); candidates.push(value); } };
+  let oaCandidates = 0;
+  const add = value => { if (typeof value === 'string' && !seen.has(value) && oaCandidates < 3) { seen.add(value); candidates.push(value); oaCandidates++; } };
+  const authoritative = context.crossrefPdfSource;
+  if (authoritative && authoritative.doi === paper.doi && Array.isArray(authoritative.urls)) {
+    // A publisher PDF explicitly registered under the verified Crossref DOI remains
+    // usable when a secondary OA catalogue still carries an earlier article title.
+    for (const candidate of authoritative.urls.slice(0, 3)) {
+      if (typeof candidate !== 'string' || seen.has(candidate)) continue;
+      seen.add(candidate);
+      try {
+        const bytes = await libraryRead(candidate, context, true);
+        if (bytes.length < 50 * 1024) libraryFail('library_identity', 409);
+        libraryValidatePdf(bytes);
+        return { bytes, source:'crossref' };
+      } catch (error) {
+        diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic;
+        if (context.signal.aborted || error.code === 'library_paused') throw error;
+        review = review || error.code === 'library_identity';
+        unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code);
+        retryAfter = Math.max(retryAfter, error.retryAfter || 0);
+      }
+    }
+  }
   try {
     const data = await libraryRead('https://api.unpaywall.org/v2/' + encodeURIComponent(paper.doi) + '?email=shijunxia1988%40gmail.com', context);
     if (libraryDoi(data.doi) !== paper.doi || pdfTitle(data.title) !== pdfTitle(paper.title)) review = true;
