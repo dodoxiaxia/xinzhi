@@ -36,6 +36,9 @@ const PDF_MAX_BYTES = 20 * 1024 * 1024;
 const PDF_MAX_INDEX_BYTES = 4 * 1024 * 1024;
 const PDF_NETWORK_TIMEOUT_MS = 12000;
 const PDF_MAX_FORM_BYTES = 2048;
+// Public institution entries supplied by the owner; login stays in the browser.
+const HAN_LOGIN_URL = 'https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles';
+const HAN_DOI_BASE = 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/';
 // Only the default digest is stored in source; never expose submitted or configured plaintext.
 const PDF_DEFAULT_PASSPHRASE_SHA256 = '09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab';
 
@@ -52,7 +55,13 @@ const PDF_CASE_FOLD = {"µ":"μ","ß":"ss","ŉ":"ʼn","ſ":"s","ǰ":"ǰ","ͅ":"
 const pdfTitle = value => Array.from(String(value || '').trim().replace(/\s+/gu, ' ').toLowerCase(), char => PDF_CASE_FOLD[char] || char).join('');
 const pdfEscape = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 function pdfOfficialLink(doi) {
-  return doi ? '<p><a href="' + pdfEscape('https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/')) + '" target="_blank" rel="noopener noreferrer">前往官网原文</a></p>' : '';
+  const institutional = hanDoiUrl(doi);
+  return doi ? '<p><a href="' + pdfEscape('https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/')) + '" target="_blank" rel="noopener noreferrer">前往官网原文</a></p>'
+    + (institutional ? '<p><a href="' + pdfEscape(HAN_LOGIN_URL) + '" target="_blank" rel="noopener noreferrer">汉堡登录入口</a> · <a href="' + pdfEscape(institutional) + '" target="_blank" rel="noopener noreferrer">通过汉堡访问全文</a></p><p>已登录可直接访问全文。如需登录，先打开登录入口；登录页未出现时，可再点击一次打开新标签，完成登录后继续访问全文。</p>' : '') : '';
+}
+function hanDoiUrl(value) {
+  const doi = libraryDoi(value);
+  return doi ? HAN_DOI_BASE + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
 }
 function pdfHtml(body, status = 200, heading = 'PDF 下载') {
   return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + '<p><a href="/?mode=library">返回文献库</a></p></main></body></html>', {
@@ -515,8 +524,12 @@ function libraryRetryResponse(response, retryAfter) {
 function libraryRetryLink(doi, route = '/api/acquire') {
   return doi ? '<p><a href="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + '">' + (route === '/api/fulltext' ? '再次下载 PDF' : '再次获取全文') + '</a></p>' : '';
 }
-function libraryForm(doi, route, invalid = false, retryAfter = 0, manual = false) {
-  return libraryRetryResponse(pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : manual ? '题录已保存，全文尚不可下载，需要人工处理。请先由维护者核对已上传全文是否登记及网站读取版本。完成登记后可输入口令检查已有全文；只查询私有索引，不再次尝试出版社下载。确需新的订阅获取时，机构授权执行桥尚未接通。等待不会自动获取。' : route === '/api/acquire' ? '输入一次全文口令，优先复用已有全文，再查询合法开放全文。取得 PDF 后保存题录并直接下载；需要订阅权限时显示待授权状态。' : '输入全文口令即可下载已获取的 PDF。') + '</p>' + (libraryRetryInfo(retryAfter).retryAfterSeconds ? libraryRetryHint(retryAfter) : '') + '<form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + (route === '/api/acquire' ? '&amp;download=1' : '') + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (manual ? '检查已归档全文' : route === '/api/acquire' ? '获取、保存并下载 PDF' : '下载 PDF') + '</button></form><p>网站缓存可用与正式三端归档分别确认。</p>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载'), retryAfter);
+function libraryForm(doi, route, invalid = false, retryAfter = 0, manual = false, institution = false) {
+  const notice = institution && route === '/api/acquire'
+    ? '输入全文口令，先检查已有文件；缺全文时交给后台机构流程。需要重新登录时，任务会保留并显示处理状态。'
+    : manual ? '题录已保存，全文尚不可下载，需要人工处理。请先由维护者核对已上传全文是否登记及网站读取版本。完成登记后可输入口令检查已有全文；只查询私有索引，不再次尝试出版社下载。确需新的订阅获取时，机构授权执行桥尚未接通。等待不会自动获取。'
+    : route === '/api/acquire' ? '输入一次全文口令，优先复用已有全文，再查询合法开放全文。取得 PDF 后保存题录并直接下载；需要订阅权限时显示待授权状态。' : '输入全文口令即可下载已获取的 PDF。';
+  return libraryRetryResponse(pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : notice) + '</p>' + (libraryRetryInfo(retryAfter).retryAfterSeconds ? libraryRetryHint(retryAfter) : '') + '<form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + (route === '/api/acquire' ? '&amp;download=1' : '') + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (institution && route === '/api/acquire' ? '获取全文并查看进度' : manual ? '检查已归档全文' : route === '/api/acquire' ? '获取、保存并下载 PDF' : '下载 PDF') + '</button></form><p>网站缓存可用与正式三端归档分别确认。</p>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载'), retryAfter);
 }
 function libraryArchiveStatus() {
   return { scope:'website_cache', state:'not_confirmed', complete:false, executionClaimed:false, ledgerChecked:false, sides:{github:'pending',drive:'pending',mac:'pending'} };
@@ -554,6 +567,8 @@ function libraryError(request, error, doi = '', route = '') {
   const retryAfter = error.retryAfter || (code === 'library_sync_pending' ? Date.now() + 60000 : 0);
   if (!(request.headers.get('accept') || '').includes('text/html')) return libraryRetryResponse(json({ ok:false, error:code, ...libraryRetryInfo(retryAfter), ...(PDF_REQUEST_DIAGNOSTICS.has(request) ? {diagnostic:sanitizePdfDiagnostic(error.diagnostic),diagnosticStatus:sanitizePdfDiagnostic(error.diagnostic) ? 'available' : 'unavailable'} : {}) }, status), retryAfter);
   const messages = { library_bad_doi:'请输入有效 DOI。', library_not_configured:'文献补录服务尚未完成配置。', library_disabled:'全文获取暂未启用。', library_storage:'文献存储暂时不可用，未确认入库成功。',
+    grok_disabled:'后台机构获取尚未启用。', grok_not_configured:'后台机构获取尚未完成配置，请联系维护者。',
+    grok_owner_conflict:'后台执行流程需要维护者确认，任务未重复派发。',
     library_not_found:'尚无可下载的全文，请先获取并加入文献库。', library_busy:'这篇文献的获取请求正在处理。', library_retry_later:'当前获取频率受限，请等待下方时间后再试。', library_limit:'本日按需获取次数已达到限制，额度重置后可再试。',
     library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
     library_paused:'来源要求授权、验证或已限制请求，获取已暂停。请维护者确认后恢复，或由已授权机构浏览器处理。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
@@ -815,7 +830,9 @@ async function handleLibrary(request, env) {
       const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus,paused:false });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
-      const job = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
+      const job = env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true'
+        ? grokPublicJob(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi)
+        : env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
       if (paper) { const observed = libraryObservedPaper(paper, attempt, job && ['queued','running'].includes(job.state)); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...libraryAttemptPublic(attempt), ...(job ? { job } : {}) }); }
       return json({ ok:true, found:false, ...libraryAttemptPublic(attempt), ...(attempt && attempt.status === 'pending' && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status } : {}) });
     }
@@ -1054,6 +1071,186 @@ async function handleFulltextPending(request, env) {
     return json({ ok:true, pending:!listing.list_complete });
   } catch (error) { return json({ ok:false, error:error instanceof LibraryFailure ? error.code : 'job_server' }, error instanceof LibraryFailure ? error.status : 500); }
 }
+// The existing Bot remains the only acquisition owner. No cookies or credentials
+// travel in task bodies. KV dedup is soft; the Bot must also claim the original ledger.
+const GROK_JOB_PREFIX = 'library:grok-job:';
+const GROK_JOB_STATES = ['dispatching','accepted','uncertain','running','login_required','available','review','failed'];
+function grokConfig(env) {
+  if (env.GROK_FULLTEXT_ENABLED !== 'true') libraryFail('grok_disabled', 503);
+  if (env.FULLTEXT_ASYNC_ENABLED === 'true') libraryFail('grok_owner_conflict', 409);
+  let url;
+  try { url = new URL(env.GROK_FULLTEXT_WEBHOOK_URL); } catch { libraryFail('grok_not_configured', 503); }
+  if (url.protocol !== 'https:' || url.username || url.password || url.hash || (url.port && url.port !== '443')
+      || !/^(?:[a-z0-9-]+\.)*(?:cursor\.sh|cursor\.com|x\.ai)$/.test(url.hostname)
+      || url.href.length > 2048
+      || typeof env.GROK_FULLTEXT_WEBHOOK_KEY !== 'string' || !/^[\x21-\x7e]{16,512}$/.test(env.GROK_FULLTEXT_WEBHOOK_KEY)
+      || typeof env.GROK_FULLTEXT_RECEIPT_KEY !== 'string' || !/^[\x21-\x7e]{32,512}$/.test(env.GROK_FULLTEXT_RECEIPT_KEY)
+      || env.GROK_FULLTEXT_WEBHOOK_KEY === env.GROK_FULLTEXT_RECEIPT_KEY) libraryFail('grok_not_configured', 503);
+  return {url:url.href,key:env.GROK_FULLTEXT_WEBHOOK_KEY};
+}
+function grokRecord(value, doi = '') {
+  if (!value || value.version !== 1 || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi || (doi && value.doi !== doi)
+      || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.id || '')
+      || !GROK_JOB_STATES.includes(value.state)
+      || ![value.createdAt,value.updatedAt].every(n => Number.isSafeInteger(n) && n >= 0 && n < 8640000000000000 - 28800000)) return null;
+  return value;
+}
+function grokPublicJob(value, doi = '') {
+  const job = grokRecord(value, doi);
+  if (!job) return null;
+  const expired = ['dispatching','accepted','running'].includes(job.state) && Date.now() - job.createdAt >= 86400000;
+  const internal = expired ? 'uncertain' : job.state;
+  const state = {dispatching:'queued',accepted:'queued',uncertain:'manual_needed',login_required:'manual_needed'}[internal] || internal;
+  const messages = {
+    dispatching:'正在提交后台全文任务。', accepted:'后台已接受任务，正在等待处理结果。',
+    running:'后台正在获取并归档全文。', login_required:'后台机构会话需要重新登录，请维护者在原浏览器中处理后继续。',
+    uncertain:'暂时无法确认后台任务进度，请维护者核查原任务；系统不会重复触发。',
+    available:'全文已核验，可下载。三端归档状态另行确认。',
+    review:'上传结果未通过来源或文件核验，请维护者处理。', failed:'后台未能完成任务，请维护者核查原因。'
+  };
+  return {id:job.id,doi:job.doi,state,attempts:0,createdAt:new Date(job.createdAt).toISOString(),
+    updatedAt:new Date(job.updatedAt).toISOString(),message:messages[internal],
+    ...(['queued','running'].includes(state) ? {nextCheckSeconds:15} : {})};
+}
+async function grokPutJob(env, job) {
+  await libraryPut(env.QL_KV, GROK_JOB_PREFIX + job.doi, JSON.stringify(job), {expirationTtl:604800});
+}
+function grokJobResponse(request, record, paper = null) {
+  const job = grokPublicJob(record), active = ['queued','running'].includes(job.state);
+  const url = '/api/acquire?doi=' + encodeURIComponent(job.doi);
+  const archive = {...libraryArchiveStatus(),executionClaimed:['running','available'].includes(record.state),
+    sides:{github:record.state === 'available' ? 'verified' : 'pending',
+      mac:record.reportedSides?.mac === true ? 'reported' : 'pending',drive:record.reportedSides?.drive === true ? 'reported' : 'pending'}};
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:job.state,job,
+    ...(paper ? {paper} : {}),archive,statusUrl:url,
+    ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},
+    active ? 202 : 200, active ? {'retry-after':'15'} : {});
+  const poll = active ? '<p>任务会在后台继续执行，无需保持页面打开。</p><meta http-equiv="refresh" content="15;url=' + pdfEscape(url) + '">' : '';
+  const download = job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '';
+  const sideLabels = {verified:'已核验',reported:'已报告，待确认',pending:'待处理'};
+  const archiveText = '归档进度：GitHub ' + sideLabels[archive.sides.github] + '；Drive ' + sideLabels[archive.sides.drive] + '；Mac ' + sideLabels[archive.sides.mac] + '。三端完成尚未确认。';
+  return pdfHtml('<p role="status">' + pdfEscape(job.message) + '</p><p>' + pdfEscape(paper?.title || job.doi) + '</p>' + poll
+    + '<p><a href="' + pdfEscape(url) + '">刷新任务状态</a></p>' + download
+    + '<p>' + pdfEscape(archiveText) + '</p>' + pdfOfficialLink(job.doi),
+    active ? 202 : 200, '全文下载任务');
+}
+async function grokEnqueue(request, env, doi, paper) {
+  const config = grokConfig(env);
+  const existing = grokRecord(await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi), doi);
+  if (existing) return grokJobResponse(request, existing, paper);
+  const previousOwner = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
+  if (previousOwner && ['queued','running'].includes(previousOwner.state)) libraryFail('grok_owner_conflict', 409);
+  const now = Date.now();
+  let job = {version:1,id:crypto.randomUUID(),doi,state:'dispatching',createdAt:now,updatedAt:now};
+  // Persist before sending. Ambiguous dispatches are never automatically resent.
+  await grokPutJob(env, job);
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
+  let state = 'uncertain';
+  try {
+    const response = await awaitAbort(fetch(config.url, {method:'POST',redirect:'error',signal:controller.signal,
+      headers:{authorization:'Bearer ' + config.key,'content-type':'application/json'},
+      body:JSON.stringify({schemaVersion:1,taskId:job.id,doi,idempotencyKey:'doi:' + doi,
+        institutionLoginUrl:HAN_LOGIN_URL,institutionUrl:hanDoiUrl(doi),receiptUrl:'https://learn.dryz.info/api/grok-fulltext-receipt'})}),
+      controller.signal,'grok_dispatch_timeout');
+    state = response.status === 200 ? 'accepted' : 'failed';
+    pdfCancel(response.body);
+  } catch { /* Keep uncertainty; a lost response may have started the Bot. */ }
+  finally { clearTimeout(timer); }
+  const current = grokRecord(await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi), doi);
+  if (!current || current.id !== job.id) libraryFail('job_stale', 409);
+  // A fast callback can arrive before the webhook response. Preserve its progress.
+  if (current.state === 'dispatching') {
+    job = {...current,state,updatedAt:Date.now()};
+    await grokPutJob(env, job);
+  } else job = current;
+  if (job.state === 'available') {
+    paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi),doi);
+    if (!paper || paper.fulltextStatus !== 'available') libraryFail('library_sync_pending',503);
+  }
+  return grokJobResponse(request, job, paper);
+}
+async function grokReceiptInput(request) {
+  if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) libraryFail('grok_bad_receipt', 415);
+  const declared = request.headers.get('content-length');
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > 2048)) libraryFail('grok_bad_receipt', 413);
+  const reader = request.body?.getReader();
+  if (!reader) libraryFail('grok_bad_receipt', 400);
+  const chunks = []; let length = 0;
+  while (true) {
+    const result = await reader.read();
+    if (result.done) break;
+    length += result.value.length;
+    if (length > 2048) { pdfCancel(reader); libraryFail('grok_bad_receipt', 413); }
+    chunks.push(result.value);
+  }
+  const bytes = new Uint8Array(length); let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+  let value;
+  try { value = JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)); } catch { libraryFail('grok_bad_receipt', 400); }
+  if (!value || Array.isArray(value) || Object.keys(value).some(k => !['taskId','doi','state','githubCommit','sha256','reportedSides'].includes(k))
+      || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value.taskId || '')
+      || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi || !['running','login_required','uploaded','failed'].includes(value.state)) libraryFail('grok_bad_receipt', 400);
+  if (value.state === 'uploaded') {
+    if (!/^[a-f0-9]{40}$/.test(value.githubCommit || '') || !/^[a-f0-9]{64}$/.test(value.sha256 || '')
+        || (value.reportedSides !== undefined && (!value.reportedSides || Array.isArray(value.reportedSides)
+          || typeof value.reportedSides !== 'object' || Object.entries(value.reportedSides).some(([k,v]) => !['mac','drive'].includes(k) || typeof v !== 'boolean')))) libraryFail('grok_bad_receipt', 400);
+  } else if (['githubCommit','sha256','reportedSides'].some(k => Object.hasOwn(value,k))) libraryFail('grok_bad_receipt', 400);
+  return value;
+}
+async function handleGrokReceipt(request, env) {
+  let job;
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('grok_bad_receipt', 405);
+    grokConfig(env);
+    const expected = await pdfDigest('SHA-256',new TextEncoder().encode('Bearer ' + env.GROK_FULLTEXT_RECEIPT_KEY));
+    const actual = await pdfDigest('SHA-256',new TextEncoder().encode(request.headers.get('authorization') || ''));
+    let difference = 0;
+    for (let i = 0; i < 64; i++) difference |= expected.charCodeAt(i) ^ actual.charCodeAt(i);
+    if (difference) libraryFail('grok_unauthorized', 401);
+    libraryConfig(env);
+    const input = await grokReceiptInput(request);
+    job = grokRecord(await libraryGet(env.QL_KV, GROK_JOB_PREFIX + input.doi), input.doi);
+    if (!job || job.id !== input.taskId) libraryFail('job_stale', 409);
+    // Finished work cannot be downgraded by delayed or duplicated progress messages.
+    if (job.state === 'available') return json({ok:true,job:grokPublicJob(job)});
+    if (['review','failed'].includes(job.state)) libraryFail('grok_receipt_review_required', 409);
+    if (input.state !== 'uploaded') {
+      job = {...job,state:input.state,updatedAt:Date.now()};
+      await grokPutJob(env, job);
+      return json({ok:true,job:grokPublicJob(job)});
+    }
+    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + input.doi), paper = libraryPaper(record,input.doi);
+    if (!paper || paper.fulltextStatus === 'review' || (record.pdf && record.pdf.sha256 !== input.sha256)) libraryFail('library_identity', 409);
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), LIBRARY_TASK_MS);
+    try {
+      // Read only the original repository's exact commit and mother index; no Bot-supplied paths/URLs.
+      const fetched = await libraryGithub(paper, {...env,PDF_GITHUB_COMMIT:input.githubCommit,
+        DOI_LOOKUP_LATEST_MAIN:'false',DOI_GITHUB_DELTA_ENABLED:'false'}, {signal:controller.signal});
+      if (!fetched || await pdfDigest('SHA-256',fetched.bytes) !== input.sha256) libraryFail('library_identity', 409);
+      const current = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + job.doi),job.doi);
+      if (!current || current.id !== job.id || ['review','failed'].includes(current.state)) libraryFail('job_stale',409);
+      if (current.state === 'available') return json({ok:true,job:grokPublicJob(current)});
+      if (controller.signal.aborted) libraryFail('library_timeout',504);
+      await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},fetched,'');
+      const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + input.doi);
+      if (saved?.pdf?.sha256 !== input.sha256) libraryFail('library_identity',409);
+      await libraryStoredPdf(env.QL_KV,saved);
+      job = {...current,state:'available',updatedAt:Date.now(),reportedSides:input.reportedSides || {}};
+      await grokPutJob(env,job);
+      return grokJobResponse(request,job,libraryPaper(saved,input.doi));
+    } finally { clearTimeout(timer); }
+  } catch (error) {
+    if (job && !['available','review','failed'].includes(job.state)
+        && ['library_identity','library_integrity','library_timeout','library_upstream','library_paused','pdf_integrity','pdf_index_invalid','pdf_timeout','pdf_upstream','pdf_not_found','pdf_too_large'].includes(error.code)) {
+      try {
+        const current = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + job.doi),job.doi);
+        if (current && current.id === job.id && current.state !== 'available') await grokPutJob(env,{...current,state:'review',updatedAt:Date.now()});
+      } catch { /* Storage failure must still return a bounded, fixed error. */ }
+    }
+    return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'grok_receipt_server'},
+      error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
+  }
+}
 async function handleAcquire(request, env) {
   let doi = '', release;
   const controller = new AbortController(); let timer;
@@ -1063,22 +1260,37 @@ async function handleAcquire(request, env) {
       const stored = env.QL_KV ? libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi) : null;
       const attempt = env.QL_KV && (!stored || stored.fulltextStatus !== 'available') ? await libraryGet(env.QL_KV, 'library:attempt:' + doi) : null;
       if (attempt && attempt.paused) libraryFail('library_paused', 423, attempt.retryAfter || 0);
+      if (env.QL_KV && env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true') {
+        const job = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi);
+        if (job) {
+          if (job.state === 'available' && (!stored || stored.fulltextStatus !== 'available')) libraryFail('library_sync_pending',503);
+          if (stored && stored.fulltextStatus === 'available' && job.state !== 'available') return libraryResult(request,stored,'',true);
+          return grokJobResponse(request,job,stored);
+        }
+      }
       if (env.QL_KV && env.FULLTEXT_ASYNC_ENABLED === 'true' && parsed.url.pathname !== '/api/acquire/retry') {
         const job = fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi);
         if (job) return fulltextJobResponse(request, job, stored);
         if (stored && stored.fulltextStatus === 'available') return libraryResult(request, stored, '', true);
       }
       const observed = libraryObservedPaper(stored, attempt), manual = observed && observed.fulltextStatus === 'manual_needed';
-      if (manual && parsed.url.pathname !== '/api/acquire/retry') return libraryResult(request, observed, 'library_manual_needed');
-      return libraryForm(doi, '/api/acquire', false, manual || stored && stored.fulltextStatus === 'review' ? 0 : attempt && attempt.retryAfter, manual);
+      const institution = env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true';
+      if (manual && !institution && parsed.url.pathname !== '/api/acquire/retry') return libraryResult(request, observed, 'library_manual_needed');
+      return libraryForm(doi, '/api/acquire', false, manual || stored && stored.fulltextStatus === 'review' ? 0 : attempt && attempt.retryAfter, manual,institution);
     }
     if (request.method !== 'POST') libraryFail('library_method', 405);
     await libraryAuthorize(request, env, parsed.url); const diagnostic = pdfDiagnosticStart(request); libraryConfig(env);
     const cachedRecord = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), cached = libraryPaper(cachedRecord, doi);
     if (cached && cached.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, cachedRecord); return await libraryAcquireResult(request, env, cached, parsed.download, '', true); }
+    const institution = env.GROK_FULLTEXT_ENABLED === 'true';
+    if (institution) grokConfig(env);
     if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT !== undefined && (typeof env.PDF_GITHUB_COMMIT !== 'string' || !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT)))) libraryFail('library_not_configured', 503);
     const previousAttempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (previousAttempt?.paused === true) { diagnostic.historical = true; const error = new LibraryFailure('library_paused',423,previousAttempt.retryAfter || 0); error.diagnostic = await pdfLastDiagnostic(env,doi); throw error; }
+    if (institution) {
+      const prior = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi);
+      if (prior) return grokJobResponse(request,prior,cached);
+    }
     const priorJob = env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextJobRecord(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
     const observed = libraryObservedPaper(cached, previousAttempt, fulltextJobActive(priorJob)), manual = observed && observed.fulltextStatus === 'manual_needed';
     if (env.FULLTEXT_ASYNC_ENABLED === 'true' && !manual) return fulltextEnqueue(request, env, doi, cached);
@@ -1099,13 +1311,14 @@ async function handleAcquire(request, env) {
     const saved = await librarySave(env.QL_KV, paper, fetched, review ? 'library_identity' : sourceUnavailable ? 'library_upstream' : 'library_manual_needed', sourceRetryAfter);
     if (saved.paper.fulltextStatus !== 'available' && sourceUnavailable) { const error = new LibraryFailure('library_upstream',502,saved.retryAfter); error.diagnostic = sourceDiagnostic; throw error; }
     if (saved.paper.fulltextStatus !== 'available' && sourceDiagnostic) { await pdfSaveDiagnostic(env,doi,sourceDiagnostic); const response = await libraryAcquireResult(request,env,saved.paper,parsed.download,'library_identity',false,saved.retryAfter); return pdfDiagnosticResponse(response,sourceDiagnostic); }
+    if (institution && saved.paper.fulltextStatus === 'manual_needed') return await grokEnqueue(request,env,doi,saved.paper);
     return await libraryAcquireResult(request, env, saved.paper, parsed.download, saved.paper.fulltextStatus === 'available' ? '' : review ? 'library_identity' : 'library_manual_needed', false, saved.retryAfter);
   } catch (error) {
     const diagnostic = PDF_REQUEST_DIAGNOSTICS.get(request);
     if (diagnostic && !release && ['library_paused','library_retry_later','library_busy','library_limit'].includes(error.code)) { diagnostic.historical = true; error.diagnostic = await pdfLastDiagnostic(env,doi); }
     pdfAttachDiagnostic(error,diagnostic);
     if (diagnostic && !diagnostic.historical) await pdfSaveDiagnostic(env,doi,error.diagnostic);
-    if (release && doi && env.QL_KV) {
+    if (release && doi && env.QL_KV && !String(error.code || '').startsWith('grok_')) {
       try {
         const observed = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
         if (!observed || observed.fulltextStatus !== 'available') {
@@ -2198,6 +2411,7 @@ export default {
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
+    if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);
     if (url.pathname === '/api/acquire') return handleAcquire(request, env);
     if (url.pathname === '/api/acquire/retry') return handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
