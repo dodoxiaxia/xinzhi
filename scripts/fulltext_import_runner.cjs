@@ -4,10 +4,18 @@ const {identityToken} = require('./fulltext_queue_runner.cjs');
 const ENDPOINT = 'https://learn.dryz.info/api/fulltext-import';
 const SAFE_ERRORS = new Set(['job_auth','job_auth_unavailable','library_not_configured','library_disabled','library_storage','library_sync_pending','library_integrity','library_identity','library_timeout','library_upstream','library_paused',
   'pdf_integrity','pdf_index_invalid','pdf_timeout','pdf_upstream','pdf_not_found','pdf_too_large','import_bad_request','import_owner_conflict','import_server','muse_bad_request','muse_stale','muse_sync_pending','muse_server']);
+const SAFE_STAGES = new Set(['configuration','metadata','index','contents_metadata','contents_raw','lfs_batch','lfs_object','body_timeout']);
+const SAFE_REASONS = new Set(['configuration','identity','integrity','size_limit','http_error','object_error','no_object','no_download','action_header','unsafe_host','expired_action','redirect','network','parse','no_body','header_timeout','body_timeout','total_timeout','unavailable']);
 function serviceError(message, response, body, token, audience, workflow) {
   const error = new Error(message);
   error.status = response.status;
   error.reason = SAFE_ERRORS.has(body?.error) ? body.error : 'unclassified_response';
+  const diagnostic = body?.diagnostic;
+  if (diagnostic?.schemaVersion === 1 && SAFE_STAGES.has(diagnostic.stage) && SAFE_REASONS.has(diagnostic.reason)
+      && [diagnostic.httpStatus,diagnostic.objectCode].every(code => code === null || Number.isInteger(code) && code >= 100 && code <= 599)) {
+    error.sourceChecks = {stage:diagnostic.stage,reason:diagnostic.reason,httpStatus:diagnostic.httpStatus,objectCode:diagnostic.objectCode,
+      ...(SAFE_STAGES.has(diagnostic.sourceStage) ? {sourceStage:diagnostic.sourceStage} : {})};
+  }
   if (error.reason === 'job_auth') {
     try {
       const claims = JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')),now = Math.floor(Date.now() / 1000);
@@ -21,7 +29,7 @@ function serviceError(message, response, body, token, audience, workflow) {
   return error;
 }
 function failureLog(error, fallback) {
-  return JSON.stringify({error:fallback,...(Number.isInteger(error.status) ? {status:error.status} : {}),...(error.reason ? {reason:error.reason} : {}),...(error.oidcChecks ? {oidcChecks:error.oidcChecks} : {})});
+  return JSON.stringify({error:fallback,...(Number.isInteger(error.status) ? {status:error.status} : {}),...(error.reason ? {reason:error.reason} : {}),...(error.oidcChecks ? {oidcChecks:error.oidcChecks} : {}),...(error.sourceChecks ? {sourceChecks:error.sourceChecks} : {})});
 }
 async function readJson(response) {
   const text = await response.text();
@@ -40,13 +48,13 @@ function manifest(value) {
   }
   return value.requests;
 }
-async function ready(endpoint, expected, http, wait) {
+async function ready(endpoint, expected, http, wait, version = 3) {
   for (let n = 0; n < 48; n++) {
     try {
       const response = await http(endpoint,{method:'GET',redirect:'error',signal:AbortSignal.timeout(5000),headers:{'user-agent':'XinZhiFulltextImport/1.0'}});
       if ([401,403,429].includes(response.status)) { if (response.body) await response.body.cancel(); throw new Error('website_denied'); }
       const value = await readJson(response);
-      if (response.status === 405 && value.error === expected && value.protocolVersion === 3) return;
+      if (response.status === 405 && value.error === expected && value.protocolVersion === version) return;
     } catch (error) { if (error.message === 'website_denied') throw error; }
     if (n < 47) await wait(15000);
   }
@@ -54,7 +62,7 @@ async function ready(endpoint, expected, http, wait) {
 }
 async function runImport(value, env = process.env, http = fetch, log = console.log, wait = ms => new Promise(r => setTimeout(r,ms))) {
   const inputs = manifest(value);
-  await ready(ENDPOINT,'import_bad_request',http,wait);
+  await ready(ENDPOINT,'import_bad_request',http,wait,4);
   for (const input of inputs) {
     let result;
     for (let n = 0; n < 3; n++) {

@@ -9,6 +9,7 @@ on:
     paths:
       - '.github/workflows/muse-review.yml'
       - 'scripts/muse_review_runner.cjs'
+      - 'scripts/fulltext_import_runner.cjs'
       - 'scripts/muse_pdf_verifier.py'
 
 concurrency:

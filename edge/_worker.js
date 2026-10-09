@@ -88,7 +88,7 @@ function pdfError(request, code, status, doi = '', diagnostic = null) {
   };
   return pdfHtml('<p>' + pdfEscape(messages[code] || messages.pdf_server) + '</p>' + pdfDiagnosticHtml(safe) + pdfOfficialLink(doi), status);
 }
-// Diagnostics exist only after successful password authorization. Never retain raw transport data.
+// Diagnostics exist only after successful authorization. Never retain raw transport data.
 const PDF_REQUEST_DIAGNOSTICS = new WeakMap();
 const PDF_DIAGNOSTIC_STAGES = ['configuration','metadata','index','contents_metadata','contents_raw','lfs_batch','lfs_object','body_timeout'];
 const PDF_DIAGNOSTIC_REASONS = ['configuration','identity','integrity','size_limit','http_error','object_error','no_object','no_download','action_header','unsafe_host','expired_action','redirect','network','parse','no_body','header_timeout','body_timeout','total_timeout','unavailable'];
@@ -1299,15 +1299,17 @@ async function fulltextImportGuard(env, input) {
   return paper;
 }
 async function handleFulltextImport(request, env) {
+  let diagnostic;
   try {
-    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:3},405);
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:4},405);
     await fulltextJobAuthorize(request,FULLTEXT_IMPORT_POLICY);
     const input = fulltextFixedSource(await fulltextReadJson(request,1024,'import_bad_request'));
+    diagnostic = pdfDiagnosticStart(request);
     libraryConfig(env);
     await fulltextImportGuard(env,input);
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(),LIBRARY_TASK_MS);
     try {
-      const context = {signal:controller.signal};
+      const context = {signal:controller.signal,diagnostic};
       const paper = await libraryMetadata(input.doi,context);
       const fetched = await libraryGithub(paper,{...env,PDF_GITHUB_COMMIT:input.githubCommit,DOI_LOOKUP_LATEST_MAIN:'false',DOI_GITHUB_DELTA_ENABLED:'false'},context);
       if (!fetched || fetched.commit !== input.githubCommit || await pdfDigest('SHA-256',fetched.bytes) !== input.sha256) libraryFail('library_identity',409);
@@ -1323,7 +1325,8 @@ async function handleFulltextImport(request, env) {
         archive:{...libraryArchiveStatus(),sides:{github:'verified',drive:'pending',mac:'pending'}}});
     } finally { clearTimeout(timer); }
   } catch (error) {
-    return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'import_server'},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
+    const safe = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,diagnostic).diagnostic);
+    return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'import_server',...(safe ? {diagnostic:safe} : {})},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
   }
 }
 // Muse polls its own inbox; raw originals remain private until an independent
