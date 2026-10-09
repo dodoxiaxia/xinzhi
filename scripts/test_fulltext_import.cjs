@@ -90,8 +90,11 @@ async function service(h,body = input,opts = {}) {
   assert.equal(serviceError('import_unavailable',{status:502},{error:'https://private.test/?token=secret'},'',endpoint,'fulltext-import.yml').reason,'unclassified_response');
   const sourceLog = failureLog(serviceError('import_unavailable',{status:502},{error:'pdf_upstream',diagnostic:{...sourceBody.diagnostic,url:'https://private.test/?token=secret',body:'secret'}},'',endpoint,'fulltext-import.yml'),'import_unavailable');
   assert.equal(JSON.parse(sourceLog).sourceChecks.stage,'lfs_batch'); assert(!sourceLog.includes('private.test')); assert(!sourceLog.includes('secret'));
+  h = await setup({pointer,lfsUrl:'https://github.com/wrong/repo.git/info/lfs/objects/' + hash(pdf) + '?private=secret'});
+  const targetBody = await (await service(h)).json();assert.equal(targetBody.sourceTarget.host,'github.com');assert(!JSON.stringify(targetBody).includes('wrong/repo'));assert(!JSON.stringify(targetBody).includes('secret'));
+  const targetLog = failureLog(serviceError('import_unavailable',{status:502},targetBody,'',endpoint,'fulltext-import.yml'),'import_unavailable');assert.equal(JSON.parse(targetLog).sourceChecks.target.host,'github.com');assert(!targetLog.includes('secret'));
   let probes = 0;
-  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 5 : 4},{status:405});},async () => {},5);
+  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 6 : 5},{status:405});},async () => {},6);
   assert.equal(probes,2,'existing old route is not proof that the new identity policy deployed');
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});

@@ -16,6 +16,12 @@ function serviceError(message, response, body, token, audience, workflow) {
     error.sourceChecks = {stage:diagnostic.stage,reason:diagnostic.reason,httpStatus:diagnostic.httpStatus,objectCode:diagnostic.objectCode,
       ...(SAFE_STAGES.has(diagnostic.sourceStage) ? {sourceStage:diagnostic.sourceStage} : {})};
   }
+  const target = body?.sourceTarget;
+  if (error.sourceChecks && target && typeof target.host === 'string' && target.host.length <= 253
+      && /^(?:other|github\.com|[a-z0-9.-]+\.(?:githubusercontent|amazonaws)\.com)$/.test(target.host)
+      && ['https','hasPort','hasCredentials','hasFragment'].every(key=>typeof target[key] === 'boolean')) {
+    error.sourceChecks.target = {host:target.host,https:target.https,hasPort:target.hasPort,hasCredentials:target.hasCredentials,hasFragment:target.hasFragment};
+  }
   if (error.reason === 'job_auth') {
     try {
       const claims = JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')),now = Math.floor(Date.now() / 1000);
@@ -62,7 +68,7 @@ async function ready(endpoint, expected, http, wait, version = 3) {
 }
 async function runImport(value, env = process.env, http = fetch, log = console.log, wait = ms => new Promise(r => setTimeout(r,ms))) {
   const inputs = manifest(value);
-  await ready(ENDPOINT,'import_bad_request',http,wait,5);
+  await ready(ENDPOINT,'import_bad_request',http,wait,6);
   for (const input of inputs) {
     let result;
     for (let n = 0; n < 3; n++) {
