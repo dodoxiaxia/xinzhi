@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/muse-review.yml'
+      - 'edge/_worker.js'
       - 'scripts/muse_review_runner.cjs'
       - 'scripts/fulltext_import_runner.cjs'
       - 'scripts/muse_pdf_verifier.py'

@@ -27,7 +27,7 @@ async function helpers() {
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
   const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
-    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'pdfDownloadUrl', 'pdfDownloadLink',
+    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'doiJobNotice', 'pdfDownloadUrl', 'pdfDownloadLink',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
   vm.runInContext([constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
@@ -71,6 +71,13 @@ async function helpers() {
   c.mergeDoiJob(pending.doi, { ...job, state: 'running' }); assert(c.pdfDownloadLink(pending).includes('全文获取中'));
   assert.throws(() => c.mergeDoiJob(pending.doi, { ...job, doi: '10.1234/wrong' }));
   c.mergeDoiJob(pending.doi, { ...job, state: 'pending' }); assert(c.pdfDownloadLink(pending).includes('/api/acquire/retry?doi='));
+  c.mergeDoiJob(pending.doi,{...job,state:'pending',stage:'verifying',message:'PDF 已收到，等待网站核验。',nextCheckSeconds:60});
+  assert(c.doiJobActive(c.DOI_JOBS.get(pending.doi))); assert(c.pdfDownloadLink(pending).includes('已回传，等待核验'));
+  assert(!c.pdfDownloadLink(pending).includes('/api/acquire/retry')); assert(c.doiJobNotice(pending.doi).includes('PDF 已收到'));
+  c.mergeDoiJob(pending.doi,{...job,state:'running',stage:'uploading',message:'<script>unsafe</script>'});
+  assert(c.pdfDownloadLink(pending).includes('Drive 已上传，正在回传')); assert(!c.doiJobNotice(pending.doi).includes('<script>'));
+  c.mergeDoiJob(pending.doi,{...job,state:'failed',stage:'failed',message:'领取凭据已过期'});
+  assert(c.pdfDownloadLink(pending).includes('领取凭据已过期')); assert(c.pdfDownloadLink(pending).includes('查看处理状态')); assert(!c.doiJobActive(c.DOI_JOBS.get(pending.doi)));
   c.mergeDoiJob(pending.doi); assert.equal(c.DOI_JOBS.size, 0);
   const collision = { id: id('10.1234/collision'), doi: '10.1234/collision', title: 'Held collision title', metadataStatus: 'hold_bibliography_review' };
   c.LIBRARY.papers.push(collision); c.collision = collision;
@@ -195,9 +202,14 @@ async function browserChecks() {
     jobs.get('10.1234/job').state = 'running';
     await page.clock.runFor(16000);
     await page.getByText('后台正在获取全文，完成后会显示下载入口。', { exact:false }).waitFor();
+    records.set('10.1234/job', apiPaper('10.1234/job', 'Background cardiovascular fulltext result','pending'));
+    jobs.set('10.1234/job',{...jobs.get('10.1234/job'),state:'pending',stage:'verifying',message:'PDF 已收到，等待网站核验。',nextCheckSeconds:60});
+    await page.clock.runFor(16000);
+    await page.getByText('已回传，等待核验', {exact:true}).waitFor();
+    assert.equal(await page.locator('a[href="/api/fulltext?doi=10.1234%2Fjob"]').count(),0,'Unverified PDF has no download entry');
     records.set('10.1234/job', apiPaper('10.1234/job', 'Background cardiovascular fulltext result'));
     jobs.delete('10.1234/job');
-    await page.clock.runFor(16000);
+    await page.clock.runFor(61000);
     await page.locator('a[href="/api/fulltext?doi=10.1234%2Fjob"]').waitFor();
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(),1);
     assert.equal(await page.locator('.doi-job-notice').count(),0,'Completion stops pending status and adds verified record without reload');
