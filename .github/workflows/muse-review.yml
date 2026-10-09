@@ -1,0 +1,40 @@
+name: muse-original-verification
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/muse-review.yml'
+      - 'scripts/muse_review_runner.cjs'
+      - 'scripts/muse_pdf_verifier.py'
+
+concurrency:
+  group: xinzhi-muse-verification
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装独立 PDF 解析器
+        run: python3 -m pip install 'pypdf==6.10.0' 'PyMuPDF==1.26.6'
+      - name: 核验已上传原件（不访问出版社、不发布网站、不写三端）
+        run: node scripts/muse_review_runner.cjs

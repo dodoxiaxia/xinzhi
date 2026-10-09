@@ -1,0 +1,30 @@
+name: fulltext-import
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['editorial/fulltext-imports.json']
+
+concurrency:
+  group: xinzhi-fulltext-import
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  import:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 导入已核验原件（不访问出版社、不运行下载 Bot）
+        run: node scripts/fulltext_import_runner.cjs

@@ -19,6 +19,8 @@ on:
       - 'config/publication-status.json'
       - '.github/workflows/daily.yml'
       - '.github/workflows/fulltext.yml'
+      - '.github/workflows/fulltext-import.yml'
+      - '.github/workflows/muse-review.yml'
   schedule:
     - cron: '17 21 * * *'   # 每天北京时间 05:17:完整刷新(归档、补摘要、翻译)
     - cron: '7 */2 * * *'   # 每 2 小时:轻量刷新,内容有变化才发布
@@ -112,6 +114,8 @@ jobs:
           node scripts/test_doi_direct_download.cjs
           node scripts/test_crossref_pdf_source.cjs
           node scripts/test_grok_fulltext.cjs
+          node scripts/test_fulltext_import.cjs
+          node scripts/test_muse_fulltext.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_github_lfs_reuse.cjs
           node scripts/test_lfs_deadline.cjs

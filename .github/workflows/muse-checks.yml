@@ -1,0 +1,38 @@
+name: muse-integration-checks
+on:
+  pull_request:
+    paths:
+      - 'edge/**'
+      - 'scripts/*fulltext*'
+      - 'scripts/*muse*'
+      - 'scripts/release_integrity.py'
+      - 'editorial/fulltext-imports.json'
+      - '.github/workflows/*muse*'
+      - '.github/workflows/fulltext-import.yml'
+permissions:
+  contents: read
+jobs:
+  verify-muse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 -m pip install 'pypdf==6.10.0' 'PyMuPDF==1.26.6'
+      - name: Offline authentication, original integrity, ownership and PDF checks
+        run: |
+          node scripts/test_fulltext_import.cjs
+          node scripts/test_muse_fulltext.cjs
+          node scripts/test_fulltext_jobs.cjs
+          node scripts/test_grok_fulltext.cjs
+          node scripts/test_doi_library_worker.cjs
+          node scripts/test_github_lfs_reuse.cjs
+          python3 -m unittest discover -s scripts -p 'test_muse*.py'
+          python3 -m unittest discover -s scripts -p 'test_release_decoupling.py'

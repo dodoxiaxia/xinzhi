@@ -428,6 +428,8 @@ const FULLTEXT_JOB_PREFIX = 'library:job:';
 const FULLTEXT_QUEUE_PREFIX = 'library:queue:';
 const FULLTEXT_OIDC_AUDIENCE = 'https://learn.dryz.info/api/fulltext-worker';
 const FULLTEXT_WORKFLOW_REF = 'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main';
+const FULLTEXT_IMPORT_POLICY = { audience:'https://learn.dryz.info/api/fulltext-import', workflow:'dodoxiaxia/xinzhi/.github/workflows/fulltext-import.yml@refs/heads/main', events:['push','workflow_dispatch'] };
+const MUSE_REVIEW_POLICY = { audience:'https://learn.dryz.info/api/muse/review', workflow:'dodoxiaxia/xinzhi/.github/workflows/muse-review.yml@refs/heads/main', events:['push','workflow_dispatch','schedule'] };
 const FULLTEXT_JOB_LEASE_MS = 180000;
 const FULLTEXT_JOB_LIFETIME_MS = 86400000;
 let fulltextOidcKeys;
@@ -830,7 +832,8 @@ async function handleLibrary(request, env) {
       const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus,paused:false });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
-      const job = env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true'
+      const job = env.MUSE_FULLTEXT_ENABLED === 'true' ? musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi)
+        : env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true'
         ? grokPublicJob(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi)
         : env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
       if (paper) { const observed = libraryObservedPaper(paper, attempt, job && ['queued','running'].includes(job.state)); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...libraryAttemptPublic(attempt), ...(job ? { job } : {}) }); }
@@ -906,7 +909,7 @@ function fulltextJwtPart(value) {
   try { return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)); }
   catch { libraryFail('job_auth', 401); }
 }
-async function fulltextJobAuthorize(request) {
+async function fulltextJobAuthorize(request, policy = {audience:FULLTEXT_OIDC_AUDIENCE,workflow:FULLTEXT_WORKFLOW_REF,events:['schedule','workflow_dispatch','push']}) {
   const auth = request.headers.get('authorization') || '';
   if (auth.length > 16000 || !auth.startsWith('Bearer ')) libraryFail('job_auth', 401);
   const parts = auth.slice(7).split('.');
@@ -916,11 +919,11 @@ async function fulltextJobAuthorize(request) {
   catch { libraryFail('job_auth', 401); }
   const now = Math.floor(Date.now() / 1000);
   if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(header.kid)
-      || claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== FULLTEXT_OIDC_AUDIENCE
+      || claims.iss !== 'https://token.actions.githubusercontent.com' || claims.aud !== policy.audience
       || claims.repository !== 'dodoxiaxia/xinzhi' || String(claims.repository_id) !== '1397425558'
       || claims.sub !== 'repo:dodoxiaxia/xinzhi:ref:refs/heads/main' || claims.ref !== 'refs/heads/main'
-      || claims.workflow_ref !== FULLTEXT_WORKFLOW_REF || claims.runner_environment !== 'github-hosted'
-      || !['schedule','workflow_dispatch','push'].includes(claims.event_name) || !/^\d{1,20}$/.test(claims.run_id || '')
+      || claims.workflow_ref !== policy.workflow || claims.runner_environment !== 'github-hosted'
+      || !policy.events.includes(claims.event_name) || !/^\d{1,20}$/.test(claims.run_id || '')
       || !Number.isInteger(claims.exp) || !Number.isInteger(claims.iat) || !Number.isInteger(claims.nbf)
       || claims.exp <= now || claims.exp > now + 600 || claims.iat > now + 30 || claims.iat < now - 600 || claims.nbf > now + 30) libraryFail('job_auth', 401);
   if (!fulltextOidcKeys || fulltextOidcKeys.until < Date.now() || !fulltextOidcKeys.keys.some(k => k.kid === header.kid)) {
@@ -1077,7 +1080,7 @@ const GROK_JOB_PREFIX = 'library:grok-job:';
 const GROK_JOB_STATES = ['dispatching','accepted','uncertain','running','login_required','available','review','failed'];
 function grokConfig(env) {
   if (env.GROK_FULLTEXT_ENABLED !== 'true') libraryFail('grok_disabled', 503);
-  if (env.FULLTEXT_ASYNC_ENABLED === 'true') libraryFail('grok_owner_conflict', 409);
+  if (env.FULLTEXT_ASYNC_ENABLED === 'true' || env.MUSE_FULLTEXT_ENABLED === 'true') libraryFail('grok_owner_conflict', 409);
   let url;
   try { url = new URL(env.GROK_FULLTEXT_WEBHOOK_URL); } catch { libraryFail('grok_not_configured', 503); }
   if (url.protocol !== 'https:' || url.username || url.password || url.hash || (url.port && url.port !== '443')
@@ -1250,6 +1253,346 @@ async function handleGrokReceipt(request, env) {
     return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'grok_receipt_server'},
       error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
   }
+}
+// Owner import reads only an already archived original at an exact commit.
+async function fulltextReadJson(request, limit, code) {
+  if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) libraryFail(code,415);
+  const declared = request.headers.get('content-length');
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > limit)) libraryFail(code,413);
+  const reader = request.body?.getReader();
+  if (!reader) libraryFail(code,400);
+  const chunks = []; let size = 0;
+  while (true) {
+    const next = await reader.read(); if (next.done) break;
+    size += next.value.byteLength;
+    if (size > limit) { pdfCancel(reader); libraryFail(code,413); }
+    chunks.push(next.value);
+  }
+  const bytes = new Uint8Array(size); let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.byteLength; }
+  let value; try { value = JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes)); } catch { libraryFail(code,400); }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) libraryFail(code,400);
+  return value;
+}
+function fulltextFixedSource(input, code = 'import_bad_request') {
+  if (Object.keys(input).some(k => !['doi','githubCommit','sha256'].includes(k)) || !libraryDoi(input.doi) || libraryDoi(input.doi) !== input.doi
+      || !/^[a-f0-9]{40}$/.test(input.githubCommit || '') || !/^[a-f0-9]{64}$/.test(input.sha256 || '')) libraryFail(code,400);
+  return input;
+}
+async function fulltextImportGuard(env, input) {
+  const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + input.doi), paper = libraryPaper(record,input.doi);
+  if (paper?.fulltextStatus === 'review' || (record?.pdf && record.pdf.sha256 !== input.sha256)) libraryFail('library_identity',409);
+  const queued = fulltextJobRecord(await libraryGet(env.QL_KV,FULLTEXT_JOB_PREFIX + input.doi),input.doi);
+  const bot = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + input.doi),input.doi);
+  const muse = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
+  if ((queued && ['queued','running'].includes(queued.state)) || (bot && !['available','failed','review'].includes(bot.state))
+      || (muse && !['available','failed','review'].includes(muse.state))) libraryFail('import_owner_conflict',409);
+  return paper;
+}
+async function handleFulltextImport(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('import_bad_request',405);
+    await fulltextJobAuthorize(request,FULLTEXT_IMPORT_POLICY);
+    const input = fulltextFixedSource(await fulltextReadJson(request,1024,'import_bad_request'));
+    libraryConfig(env);
+    await fulltextImportGuard(env,input);
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(),LIBRARY_TASK_MS);
+    try {
+      const context = {signal:controller.signal};
+      const paper = await libraryMetadata(input.doi,context);
+      const fetched = await libraryGithub(paper,{...env,PDF_GITHUB_COMMIT:input.githubCommit,DOI_LOOKUP_LATEST_MAIN:'false',DOI_GITHUB_DELTA_ENABLED:'false'},context);
+      if (!fetched || fetched.commit !== input.githubCommit || await pdfDigest('SHA-256',fetched.bytes) !== input.sha256) libraryFail('library_identity',409);
+      await fulltextImportGuard(env,input);
+      if (controller.signal.aborted) libraryFail('library_timeout',504);
+      await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},fetched,'');
+      const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + input.doi), current = libraryPaper(saved,input.doi);
+      if (!current || current.fulltextStatus !== 'available') libraryFail('library_sync_pending',503);
+      if (saved.pdf.sha256 !== input.sha256) libraryFail('library_identity',409);
+      await libraryStoredPdf(env.QL_KV,saved);
+      return json({ok:true,status:'available',paper:current,downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(input.doi),
+        source:{githubCommit:input.githubCommit,sha256:input.sha256,bytes:fetched.bytes.length},
+        archive:{...libraryArchiveStatus(),sides:{github:'verified',drive:'pending',mac:'pending'}}});
+    } finally { clearTimeout(timer); }
+  } catch (error) {
+    return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'import_server'},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
+  }
+}
+// Muse polls its own inbox; raw originals remain private until an independent
+// GitHub-hosted verifier parses/renders every page and confirms DOI/title.
+const MUSE_JOB_PREFIX = 'library:muse-job:';
+const MUSE_QUEUE_PREFIX = 'library:muse-queue:';
+const MUSE_REVIEW_PREFIX = 'library:muse-review:';
+const MUSE_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+const MUSE_STATES = ['queued','running','uploading','verifying','login_required','available','review','failed'];
+const MUSE_LEASE_MS = 1200000;
+function handleMuseProtocol(request, env) {
+  if (request.method !== 'GET' || new URL(request.url).search) return json({ok:false,error:'muse_bad_request'},405);
+  const protocol = {schemaVersion:1,website:'https://learn.dryz.info',
+    enabled:env.MUSE_FULLTEXT_ENABLED === 'true' && /^[A-Za-z0-9_-]{32,128}$/.test(env.MUSE_FULLTEXT_KEY || '') && env.GROK_FULLTEXT_ENABLED !== 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true' && env.PDF_DOWNLOAD_ENABLED === 'true' && !!env.QL_KV,
+    auth:{header:'Authorization',scheme:'Bearer',privateSetting:'MUSE_FULLTEXT_KEY'},
+    poll:{intervalMinutes:10,maxPerRun:3,parallelism:1,emptyResponse:{ok:true,task:null}},
+    sources:['open_access','authorized_hamburg'],
+    claim:{url:'https://learn.dryz.info/api/muse/claim',method:'POST',contentType:'application/json',body:{}},
+    receipt:{url:'https://learn.dryz.info/api/muse/receipt',method:'POST',contentType:'application/json',identityFields:['taskId','doi','leaseId'],states:['running','login_required','failed','uploaded'],uploadedFields:['sha256','bytes','driveFileId']},
+    upload:{url:'https://learn.dryz.info/api/muse/upload',method:'PUT',contentType:'application/pdf',body:'original_pdf_bytes',headers:{'X-Muse-Doi':'task.doi','X-Muse-Task-Id':'task.taskId','X-Muse-Lease-Id':'task.leaseId'}},
+    limits:{minBytes:51200,maxBytes:LIBRARY_MAX_PDF_BYTES,maxPages:200,leaseMinutes:20,renewEveryMinutes:5,maxAcquisitionMinutes:120},
+    instructions:['使用现有 Muse 下载流程与领取账本，已有原件直接复用；只使用 sources 列出的来源。',
+      '上传私有 Drive 文献收件箱后，回传同一 PDF 的 SHA256、字节数及 Drive 文件 ID，再上传原二进制；不改动 PDF。',
+      'uploaded 回执不是网站核验成功；网站独立双解析器核验任务每小时第 23 分钟处理，实际排队可能延迟。',
+      '需要汉堡登录时回传 login_required，维护者在原授权浏览器处理后，用原任务回传 running 恢复。',
+      '重复回传复用原任务；超时或进度不明不另建任务、不再次下载。401/403/409/413/415 停止并通知维护者，不绕过拒绝。',
+      '无变化的轮询保持静默。密钥、密码、Cookie 和临时 URL 不写入回执、文件或日志。',
+      'Drive 上传仅记为报告；网站缓存可用与正式三端归档分别确认，archive.complete 始终为 false。']};
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json(protocol);
+  return pdfHtml('<p>Muse 可以按下方协议建立一个定时任务，每 10 分钟领取一次，最多三篇、串行处理。当前接入：' + (protocol.enabled ? '已启用' : '尚未启用') + '。</p>'
+    + '<p>维护者需在 Cloudflare Pages 的 Production 私密配置中设置 MUSE_FULLTEXT_ENABLED=true 和独立随机 Secret MUSE_FULLTEXT_KEY，并在 Muse 私密配置保存同一个密钥。GROK_FULLTEXT_ENABLED 与 FULLTEXT_ASYNC_ENABLED 保持关闭。密钥不要发到聊天中。</p>'
+    + '<p>把本页链接交给 Muse：先读取协议，使用已有下载流程，上传 Drive 后回传原件，等待网站核验。</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' + pdfEscape(JSON.stringify(protocol,null,2)) + '</pre>',200,'Muse 网站接入说明');
+}
+function museConfig(env) {
+  if (env.MUSE_FULLTEXT_ENABLED !== 'true') libraryFail('muse_disabled',503);
+  if (env.GROK_FULLTEXT_ENABLED === 'true' || env.FULLTEXT_ASYNC_ENABLED === 'true') libraryFail('muse_owner_conflict',409);
+  if (typeof env.MUSE_FULLTEXT_KEY !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(env.MUSE_FULLTEXT_KEY)) libraryFail('muse_not_configured',503);
+  libraryConfig(env);
+}
+async function museAuthorize(request, env) {
+  museConfig(env);
+  const header = request.headers.get('authorization') || '';
+  if (header.length > 140) libraryFail('muse_unauthorized',401);
+  const expected = await pdfDigest('SHA-256',new TextEncoder().encode('Bearer ' + env.MUSE_FULLTEXT_KEY));
+  const actual = await pdfDigest('SHA-256',new TextEncoder().encode(header));
+  let difference = 0; for (let n = 0; n < 64; n++) difference |= expected.charCodeAt(n) ^ actual.charCodeAt(n);
+  if (difference) libraryFail('muse_unauthorized',401);
+}
+function museRecord(value, doi = '') {
+  if (!value || value.version !== 1 || !MUSE_UUID.test(value.id || '') || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
+      || (doi && value.doi !== doi) || !MUSE_STATES.includes(value.state)
+      || ![value.createdAt,value.updatedAt].every(n => Number.isSafeInteger(n) && n > 0 && n < 8640000000000000 - 28800000)
+      || value.queueKey !== MUSE_QUEUE_PREFIX + String(value.createdAt).padStart(13,'0') + ':' + value.id
+      || (['running','uploading','verifying'].includes(value.state) && (!MUSE_UUID.test(value.leaseId || '') || !Number.isSafeInteger(value.leaseUntil) || value.leaseUntil < 1))
+      || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || '')))
+      || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
+  return value;
+}
+function musePublicJob(value, doi = '') {
+  const job = museRecord(value,doi); if (!job) return null;
+  const expired = ['queued','running','uploading'].includes(job.state) && (Date.now() - job.createdAt >= 86400000 || (job.state !== 'queued' && job.leaseUntil < Date.now()));
+  const state = expired || job.state === 'login_required' ? 'manual_needed' : job.state === 'uploading' ? 'running' : job.state === 'verifying' ? 'pending' : job.state;
+  const messages = {queued:'已加入 Muse 待办，等待下一次轮询。',running:'Muse 正在处理全文。',uploading:'正在接收 PDF 原件。',verifying:'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
+    login_required:'汉堡会话需要重新登录，请维护者在 Muse 的授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'Muse 未能完成任务，需维护者核查。'};
+  return {id:job.id,doi:job.doi,state,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
+    message:expired ? '任务超时，需核查 Muse 原任务；不会自动重复下载。' : messages[job.state],
+    ...(['queued','running','pending'].includes(state) ? {nextCheckSeconds:60} : {})};
+}
+async function musePut(env, job) {
+  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),{expirationTtl:604800});
+}
+function museResponse(request, job, paper) {
+  const publicJob = musePublicJob(job), statusUrl = '/api/muse/request?doi=' + encodeURIComponent(job.doi);
+  const archive = {...libraryArchiveStatus(),executionClaimed:job.state !== 'queued',sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}};
+  if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:publicJob.state,job:publicJob,...(paper ? {paper} : {}),archive,statusUrl,
+    ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},job.state === 'available' ? 200 : 202);
+  const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60"><p>本页每 60 秒只更新状态，不会重新下载。</p>' : '';
+  return pdfHtml(check + '<p>' + pdfEscape(publicJob.message) + '</p>' + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
+    + '<p>网站缓存与正式三端归档分别确认。</p>' + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务');
+}
+async function museOwnerGuard(env, doi) {
+  const previous = fulltextJobRecord(await libraryGet(env.QL_KV,FULLTEXT_JOB_PREFIX + doi),doi);
+  const bot = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi);
+  if ((previous && ['queued','running'].includes(previous.state)) || (bot && !['available','failed','review'].includes(bot.state))) libraryFail('muse_owner_conflict',409);
+}
+async function handleMuseRequest(request, env) {
+  let doi = '';
+  try {
+    const parsed = libraryQuery(request); doi = parsed.doi;
+    museConfig(env);
+    if (!['GET','POST'].includes(request.method)) libraryFail('muse_bad_request',405);
+    if (request.method === 'POST') await libraryAuthorize(request,env,parsed.url);
+    const existing = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
+    const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
+    if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
+    if (existing) return museResponse(request,existing,paper);
+    if (request.method === 'GET') return pdfHtml('<p>输入全文口令，把这篇加入现有 Muse 的待办。Muse 在下一次轮询领取任务，上传原件后由网站核验。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">交给 Muse 获取全文</button></form>' + pdfOfficialLink(doi),200,'交给 Muse');
+    if (paper?.fulltextStatus === 'review') libraryFail('library_identity',409);
+    const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
+    if (attempt?.paused) libraryFail('library_paused',423);
+    await museOwnerGuard(env,doi);
+    const release = await librarySoftGate(env.QL_KV,request,doi,true);
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(),15000);
+    try {
+      const metadata = await libraryMetadata(doi,{signal:controller.signal});
+      const current = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
+      if (current) return museResponse(request,current,metadata);
+      await museOwnerGuard(env,doi);
+      const now = Date.now(), id = crypto.randomUUID();
+      const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id};
+      await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
+      await musePut(env,job);
+      await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
+      return museResponse(request,job,metadata);
+    } finally { clearTimeout(timer); await release(); }
+  } catch (error) { return libraryError(request,error,doi); }
+}
+async function museList(env, prefix) {
+  let listing; try { listing = await env.QL_KV.list({prefix,limit:10}); } catch { libraryFail('library_storage',503); }
+  if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 10) libraryFail('library_storage',503);
+  return listing.keys.filter(k => typeof k.name === 'string' && k.name.startsWith(prefix));
+}
+async function museDelete(env, key) {
+  try { await env.QL_KV.delete(key); } catch { libraryFail('library_storage',503); }
+}
+async function handleMuseClaim(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
+    await museAuthorize(request,env);
+    const input = await fulltextReadJson(request,128,'muse_bad_request');
+    if (Object.keys(input).length) libraryFail('muse_bad_request',400);
+    for (const entry of await museList(env,MUSE_QUEUE_PREFIX)) {
+      const pointer = await libraryGet(env.QL_KV,entry.name);
+      const job = pointer?.doi && museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + pointer.doi),pointer.doi);
+      if (!job || job.id !== pointer.id || job.queueKey !== entry.name) continue;
+      if (['available','review','failed','login_required','verifying'].includes(job.state)) { await museDelete(env,entry.name); continue; }
+      if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) { await musePut(env,{...job,state:'failed',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
+      if (job.state !== 'queued') continue; // Never reclaim an expired acquisition automatically.
+      if (Date.now() - job.createdAt >= 86400000) { await musePut(env,{...job,state:'failed',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
+      await museOwnerGuard(env,job.doi);
+      const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
+      if (paper?.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV,record); await musePut(env,{...job,state:'available',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
+      if (!paper || paper.fulltextStatus === 'review') libraryFail('library_identity',409);
+      const claimed = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseId:crypto.randomUUID(),leaseUntil:Date.now() + MUSE_LEASE_MS,updatedAt:Date.now()};
+      await musePut(env,claimed);
+      const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
+      if (observed?.leaseId !== claimed.leaseId) libraryFail('muse_sync_pending',503);
+      return json({ok:true,task:{schemaVersion:1,taskId:job.id,doi:job.doi,title:paper.title,leaseId:claimed.leaseId,leaseUntil:new Date(claimed.leaseUntil).toISOString(),idempotencyKey:'doi:' + job.doi,
+        sources:['open_access','authorized_hamburg'],institutionLoginUrl:HAN_LOGIN_URL,institutionUrl:hanDoiUrl(job.doi),
+        receiptUrl:'https://learn.dryz.info/api/muse/receipt',uploadUrl:'https://learn.dryz.info/api/muse/upload'}});
+    }
+    return json({ok:true,task:null});
+  } catch (error) { return museError(error); }
+}
+function museTaskInput(value, allowed) {
+  if (Object.keys(value).some(k => !allowed.includes(k)) || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
+      || !MUSE_UUID.test(value.taskId || '') || !MUSE_UUID.test(value.leaseId || '')) libraryFail('muse_bad_request',400);
+}
+async function museOwned(env, input) {
+  const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
+  if (!job || job.id !== input.taskId || job.leaseId !== input.leaseId) libraryFail('muse_stale',409);
+  return job;
+}
+function museError(error) {
+  return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'muse_server'},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
+}
+async function handleMuseReceipt(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
+    await museAuthorize(request,env);
+    const input = await fulltextReadJson(request,1024,'muse_bad_request');
+    museTaskInput(input,['taskId','doi','leaseId','state','sha256','bytes','driveFileId']);
+    if (!['running','login_required','failed','uploaded'].includes(input.state)) libraryFail('muse_bad_request',400);
+    if (input.state === 'uploaded') {
+      if (!/^[a-f0-9]{64}$/.test(input.sha256 || '') || !Number.isInteger(input.bytes) || input.bytes < 51200 || input.bytes > LIBRARY_MAX_PDF_BYTES
+          || typeof input.driveFileId !== 'string' || !/^[A-Za-z0-9_-]{10,200}$/.test(input.driveFileId)) libraryFail('muse_bad_request',400);
+    } else if (['sha256','bytes','driveFileId'].some(k => Object.hasOwn(input,k))) libraryFail('muse_bad_request',400);
+    let job = await museOwned(env,input);
+    if (['available','verifying'].includes(job.state)) {
+      if (input.state === 'uploaded' && job.sha256 === input.sha256 && job.bytes === input.bytes && job.driveFileId === input.driveFileId) return json({ok:true,job:musePublicJob(job),needsUpload:false});
+      libraryFail('muse_stale',409);
+    }
+    if (job.state === 'login_required' && input.state === 'running' && Date.now() - job.createdAt < 86400000) job = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseUntil:Date.now() + MUSE_LEASE_MS};
+    if (!['running','uploading'].includes(job.state) || job.leaseUntil < Date.now()) libraryFail('muse_stale',409);
+    // Progress renews only this lease, up to two hours after first creation.
+    const leaseUntil = Math.min(Date.now() + MUSE_LEASE_MS,(job.acquisitionStartedAt || job.createdAt) + 7200000);
+    if (leaseUntil <= Date.now()) libraryFail('muse_stale',409);
+    if (job.state === 'uploading' && (input.state !== 'uploaded' || job.sha256 !== input.sha256 || job.bytes !== input.bytes || job.driveFileId !== input.driveFileId)) libraryFail('muse_stale',409);
+    const next = {...job,state:input.state === 'uploaded' ? 'uploading' : input.state,leaseUntil,updatedAt:Date.now(),
+      ...(input.state === 'uploaded' ? {sha256:input.sha256,bytes:input.bytes,driveFileId:input.driveFileId} : {})};
+    await musePut(env,next);
+    if (['failed','login_required'].includes(next.state)) await museDelete(env,job.queueKey);
+    return json({ok:true,job:musePublicJob(next),needsUpload:next.state === 'uploading'});
+  } catch (error) { return museError(error); }
+}
+async function handleMuseUpload(request, env) {
+  try {
+    if (request.method !== 'PUT' || new URL(request.url).search) libraryFail('muse_bad_request',405);
+    await museAuthorize(request,env);
+    if (request.headers.get('content-type') !== 'application/pdf') libraryFail('muse_bad_request',415);
+    const input = {doi:request.headers.get('x-muse-doi'),taskId:request.headers.get('x-muse-task-id'),leaseId:request.headers.get('x-muse-lease-id')};
+    museTaskInput(input,['doi','taskId','leaseId']);
+    let job = await museOwned(env,input);
+    if (!['uploading','verifying'].includes(job.state) || (job.state === 'uploading' && job.leaseUntil < Date.now())) libraryFail('muse_stale',409);
+    const length = request.headers.get('content-length');
+    if (length && (!/^\d+$/.test(length) || Number(length) !== job.bytes)) libraryFail('muse_bad_pdf',413);
+    const reader = request.body?.getReader(); if (!reader) libraryFail('muse_bad_pdf',400);
+    const chunks = []; let size = 0;
+    while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > job.bytes || size > LIBRARY_MAX_PDF_BYTES) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); } chunks.push(item.value); }
+    const bytes = new Uint8Array(size); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.byteLength; }
+    if (size !== job.bytes || await pdfDigest('SHA-256',bytes) !== job.sha256) libraryFail('muse_bad_pdf',409);
+    libraryValidatePdf(bytes);
+    job = await museOwned(env,input);
+    if (!['uploading','verifying'].includes(job.state)) libraryFail('muse_stale',409);
+    const candidateKey = 'library:muse-candidate:' + job.sha256;
+    await libraryPut(env.QL_KV,candidateKey,bytes.buffer,{expirationTtl:604800});
+    let stored; try { stored = await env.QL_KV.get(candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
+    if (!stored) libraryFail('muse_sync_pending',503);
+    if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== job.sha256) libraryFail('muse_bad_pdf',409);
+    await musePut(env,{...job,state:'verifying',updatedAt:Date.now(),candidateKey});
+    await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
+    await museDelete(env,job.queueKey);
+    return json({ok:true,job:musePublicJob({...job,state:'verifying',candidateKey}),verified:false,archive:libraryArchiveStatus()});
+  } catch (error) { return museError(error); }
+}
+async function handleMuseReview(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
+    const owner = await fulltextJobAuthorize(request,MUSE_REVIEW_POLICY);
+    libraryConfig(env); // A configured verifier may finish candidates while Muse polling is disabled.
+    const input = await fulltextReadJson(request,1024,'muse_bad_request');
+    if (input.action === 'claim') {
+      if (Object.keys(input).length !== 1) libraryFail('muse_bad_request',400);
+      for (const entry of await museList(env,MUSE_REVIEW_PREFIX)) {
+        const pointer = await libraryGet(env.QL_KV,entry.name), job = pointer?.doi && museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + pointer.doi),pointer.doi);
+        if (!job || job.id !== pointer.id || entry.name !== MUSE_REVIEW_PREFIX + job.id) continue;
+        if (job.state !== 'verifying') { await museDelete(env,entry.name); continue; }
+        if (job.reviewLeaseUntil > Date.now()) continue;
+        const paper = libraryPaper(await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi),job.doi);
+        if (!paper || paper.fulltextStatus === 'review') libraryFail('library_identity',409);
+        const claimed = {...job,reviewOwner:owner,reviewLeaseId:crypto.randomUUID(),reviewLeaseUntil:Date.now() + MUSE_LEASE_MS};
+        await musePut(env,claimed);
+        const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
+        if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
+        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
+      }
+      return json({ok:true,task:null});
+    }
+    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method']);
+    if (!['bytes','complete'].includes(input.action) || (input.action === 'bytes' && Object.keys(input).some(k => !['action','taskId','doi','leaseId'].includes(k)))) libraryFail('muse_bad_request',400);
+    const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
+    if (!job || job.id !== input.taskId || job.reviewOwner !== owner || job.reviewLeaseId !== input.leaseId || job.reviewLeaseUntil < Date.now()) libraryFail('muse_stale',409);
+    if (input.action === 'complete' && (!['verified','rejected'].includes(input.result) || input.sha256 !== job.sha256 || input.bytes !== job.bytes
+        || input.method !== 'dual_parser_all_pages_title_doi' || !Number.isInteger(input.pages) || input.pages < 0 || input.pages > 200 || (input.result === 'verified' && input.pages < 1))) libraryFail('muse_bad_request',400);
+    if (input.action === 'complete' && ['available','review'].includes(job.state)) return json({ok:true,job:musePublicJob(job),archive:libraryArchiveStatus()});
+    if (job.state !== 'verifying') libraryFail('muse_stale',409);
+    if (input.action === 'complete' && input.result === 'rejected') {
+      await musePut(env,{...job,state:'review',updatedAt:Date.now()}); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
+      return json({ok:true,job:musePublicJob({...job,state:'review'}),archive:libraryArchiveStatus()});
+    }
+    let stored; try { stored = await env.QL_KV.get(job.candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
+    if (!stored) libraryFail('muse_sync_pending',503);
+    const bytes = new Uint8Array(stored);
+    if (bytes.length !== job.bytes || await pdfDigest('SHA-256',bytes) !== job.sha256) libraryFail('library_integrity',502);
+    libraryValidatePdf(bytes);
+    if (input.action === 'bytes') return new Response(bytes,{headers:{'content-type':'application/pdf','content-length':String(bytes.length),'cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+    await museOwnerGuard(env,job.doi);
+    const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
+    if (!paper || paper.fulltextStatus === 'review' || (record.pdf && record.pdf.sha256 !== job.sha256)) libraryFail('library_identity',409);
+    await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},{bytes,source:'muse_verified'},'');
+    const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi);
+    if (!libraryPaper(saved,job.doi) || saved.pdf?.sha256 !== job.sha256) libraryFail('muse_sync_pending',503);
+    await libraryStoredPdf(env.QL_KV,saved);
+    const done = {...job,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes}};
+    await musePut(env,done); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
+    return json({ok:true,job:musePublicJob(done),downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi),archive:{...libraryArchiveStatus(),sides:{github:'pending',drive:'reported',mac:'pending'}}});
+  } catch (error) { return museError(error); }
 }
 async function handleAcquire(request, env) {
   let doi = '', release;
@@ -2410,10 +2753,17 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
+    if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
+    if (url.pathname === '/api/muse/protocol') return handleMuseProtocol(request, env);
+    if (url.pathname === '/api/muse/request') return handleMuseRequest(request, env);
+    if (url.pathname === '/api/muse/claim') return handleMuseClaim(request, env);
+    if (url.pathname === '/api/muse/receipt') return handleMuseReceipt(request, env);
+    if (url.pathname === '/api/muse/upload') return handleMuseUpload(request, env);
+    if (url.pathname === '/api/muse/review') return handleMuseReview(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);
-    if (url.pathname === '/api/acquire') return handleAcquire(request, env);
-    if (url.pathname === '/api/acquire/retry') return handleAcquire(request, env);
+    if (url.pathname === '/api/acquire') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);
+    if (url.pathname === '/api/acquire/retry') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
     if (url.pathname === '/api/fulltext-source') return handleFulltextSource(request, env);
     if (url.pathname === '/api/pdf') return handlePdf(request, env);
