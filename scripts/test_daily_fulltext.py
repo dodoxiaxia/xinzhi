@@ -22,10 +22,10 @@ def xml(p):
             '</article-id><title-group><article-title>' + p['title'] +
             '</article-title></title-group></article-meta></front><body>' + body + '</body></article>').encode()
 
-def output():
+def output(paragraph_id='p1'):
     return {'titleZh': '心血管临床结局研究', 'sections': {k: {
         'text': '这段离线测试文字仅用于核对字段与证据链接，不是临床结论。研究纳入120名患者，真实含义仍需回查原文。',
-        'evidence': [{'paragraph': 'p1', 'quote': QUOTE}]} for k in d.SECTION_KEYS}}
+        'evidence': [{'paragraph': paragraph_id, 'quote': QUOTE}]} for k in d.SECTION_KEYS}}
 
 def item(n=1):
     p = paper(n)
@@ -73,15 +73,37 @@ class SourceTests(unittest.TestCase):
             with self.assertRaises(d.ReadingError):
                 d.validate_output(bad, paragraphs, paper()['title'])
 
+    def test_fixed_evidence_ids_bind_exact_text_and_reject_unknown_ids(self):
+        paragraphs, digest = d.parse_fulltext(xml(paper()), paper())
+        units = d.evidence_units(paragraphs)
+        self.assertTrue(all(len(p['text']) <= 650 for p in units))
+        raw = output()
+        for block in raw['sections'].values():
+            block['evidence'] = [{'paragraph':units[0]['id']}]
+        result = d.validate_output(raw, units, paper()['title'])
+        self.assertEqual(result['sections']['findings']['evidence'][0]['quote'],units[0]['text'])
+        raw['sections']['findings']['evidence']=[{'paragraph':'fabricated'}]
+        with self.assertRaises(d.ReadingError):
+            d.validate_output(raw,units,paper()['title'])
+
+    def test_abstract_scope_cannot_be_promoted_to_fulltext(self):
+        raw=d.empty_data()
+        row=item()
+        row['scope']='public-abstract'
+        raw['items'].append(row)
+        with self.assertRaises(d.ReadingError):
+            d.public_readings(raw)
+
     def test_public_projection_never_exposes_private_source_or_ledger(self):
         raw = d.empty_data()
         p = item()
         p['private_path'] = '.local/secret.pdf'
         p['api_key'] = 'fixture-only-not-a-key'
         raw['items'].append(p)
+        raw['drafts']={'private_unreviewed':{'api_key':'fixture-only-not-a-key'}}
         result = d.public_readings(raw)
         serialized = json.dumps(result)
-        for field in ('sourceParagraphs','private_path','api_key','secret.pdf'):
+        for field in ('sourceParagraphs','private_path','api_key','secret.pdf','drafts'):
             self.assertNotIn(field, serialized)
         self.assertFalse(result['items'][0]['humanReviewed'])
         self.assertEqual(result['items'][0]['scope'], 'public-fulltext-body')
@@ -92,12 +114,12 @@ class GenerationTests(unittest.TestCase):
         papers = [paper(i, 'AI 医疗' if i % 2 == 0 else '心血管') for i in range(1,9)]
         bypmc = {p['pmcid']:p for p in papers}
         fetch = lambda url: xml(bypmc[url.split('/')[-2]])
-        result = d.generate(data, ledger, papers, WHEN, save or (lambda *_:None), {}, fetch=fetch, model=model or (lambda *_: output()))
+        result = d.generate(data, ledger, papers, WHEN, save or (lambda *_:None), {}, fetch=fetch, model=model or (lambda *args: output(args[-1][0]['id'])))
         return data, ledger, result
 
     def test_new_day_publishes_four_distinct_articles_and_same_day_is_cached(self):
         calls = []
-        model = lambda *_: (calls.append(True) or output())
+        model = lambda *args: (calls.append(True) or output(args[-1][0]['id']))
         data, ledger, status = self.generate(model=model)
         self.assertEqual(status['completed'], 4)
         self.assertEqual(len(calls), 4)
@@ -111,7 +133,7 @@ class GenerationTests(unittest.TestCase):
         def save(data, ledger): observed.append(copy.deepcopy(ledger))
         def model(*_):
             self.assertEqual(observed[-1]['days']['2026-10-09'][-1]['state'], 'started')
-            return output()
+            return output(_[-1][0]['id'])
         data, ledger, status = self.generate(model=model, save=save)
         self.assertEqual(status['completed'], 4)
         self.assertTrue(all(r['state']=='validated' for r in ledger['days']['2026-10-09']))
@@ -147,17 +169,17 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertEqual(status['reason'], 'prior_attempt_uncertain')
 
-    def test_invalid_outputs_are_skipped_with_five_attempt_cap(self):
+    def test_invalid_outputs_are_skipped_with_eight_attempt_cap(self):
         calls = []
         def bad(*_):
             calls.append(True)
-            result=output()
+            result=output(_[-1][0]['id'])
             result['sections']['findings']['text'] += '不支持的9999人结果。'
             return result
         data, ledger, status = self.generate(model=bad)
-        self.assertEqual(len(calls), 5)
+        self.assertEqual(len(calls), 8)
         self.assertEqual(status['completed'], 0)
-        self.assertEqual(status['attempts'], 5)
+        self.assertEqual(status['attempts'], 8)
 
 class CheckpointTests(unittest.TestCase):
     def test_concurrent_state_update_blocks_write(self):

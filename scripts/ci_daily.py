@@ -27,6 +27,13 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
 BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
 DEEP_READING = ['scripts/daily_fulltext.py', '--run']
+
+def deep_reading_needs_bootstrap(root):
+    path = root / 'data/deep-readings.json'
+    if not path.exists():
+        return True
+    from daily_fulltext import GENERATOR_VERSION
+    return json.loads(path.read_text()).get('generatorVersion', 0) < GENERATOR_VERSION
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
 BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR|DEEP_READINGS)\s*=\s*')
@@ -245,7 +252,7 @@ def main():
         execute(argv, t, optional=True, reserve=300 if fast else 900)
     # Daily readings run before archive enrichment. Bootstrap the new column once;
     # later fast refreshes read its persisted cache without paid model calls.
-    if not fast or not (ROOT / 'data/deep-readings.json').exists():
+    if not fast or deep_reading_needs_bootstrap(ROOT):
         execute(DEEP_READING, 900, optional=True, reserve=600)
     if not fast:
         for argv, t in FULL_OPTIONAL:
