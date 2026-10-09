@@ -9,6 +9,28 @@ const pointer=Buffer.from('version https://git-lfs.github.com/spec/v1\noid sha25
   assert.equal(response.status,200);assert.deepEqual(Buffer.from(await response.arrayBuffer()),pdf);
   assert.equal(h.calls.filter(c=>c.url.hostname==='github.com').length,1);assert.equal(h.calls.filter(c=>c.url.hostname==='github-cloud.s3.amazonaws.com').length,1);
   const before=h.calls.length;assert.equal((await (await h.request()).json()).cached,true);assert.equal(h.calls.length,before);
+  const githubHref='https://github.com/dodoxiaxia/AI-.git/info/lfs/objects/'+hash(pdf);
+  const download=(href=githubHref,header={Authorization:'RemoteAuth synthetic-download-token'})=>Response.json({objects:[{oid:hash(pdf),size:pdf.length,actions:{download:{href,header}}}]});
+  h=harness({pointer,lfsBatch:()=>download()});const delegated=await h.request('/api/acquire',{query:'doi='+encodeURIComponent(doi)+'&download=1'});
+  assert.equal(delegated.status,200);assert.deepEqual(Buffer.from(await delegated.arrayBuffer()),pdf);
+  assert.equal(h.calls.filter(c=>c.url.hostname==='github.com'&&c.init.method==='GET').length,1);
+  const storage=h.calls.find(c=>c.url.hostname==='github-cloud.s3.amazonaws.com');assert(!storage.init.headers.authorization,'RemoteAuth stripped on the storage hop');
+  for(const href of [githubHref.replace('/dodoxiaxia/AI-.git/','/other/AI-.git/'),githubHref.replace(hash(pdf),'b'.repeat(64)),githubHref+'#fragment',githubHref.replace('https:','http:')]){
+    h=harness({pointer,lfsBatch:()=>download(href)});assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='github.com'&&c.init.method==='GET'));assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));
+  }
+  for(const header of [{Authorization:'Bearer synthetic-private-token'},{Authorization:'RemoteAuth synthetic-download-token',Cookie:'private'},{Authorization:'RemoteAuth bad\r\nvalue'}]){
+    h=harness({pointer,lfsBatch:()=>download(githubHref,header)});assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='github.com'&&c.init.method==='GET'));
+  }
+  h=harness({pointer,lfsBatch:()=>download(),githubObject:()=>new Response(null,{status:302,headers:{location:'https://attacker.invalid/private'}})});
+  assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='attacker.invalid'));
+  h=harness({pointer,lfsBatch:()=>download(),lfsObject:()=>new Response(null,{status:302,headers:{location:'https://127.0.0.1/private'}})});
+  assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='127.0.0.1'));assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));
+  for(const href of ['https://github-cloud.s3.dualstack.us-west-2.amazonaws.com/object','https://s3.us-west-2.amazonaws.com/github-cloud/object']){
+    h=harness({pointer,lfsUrl:href});assert.equal((await h.request()).status,200);
+  }
+  for(const href of ['https://github-cloud.s3.dualstack.attacker.amazonaws.com/object','https://s3.us-west-2.amazonaws.com/other-bucket/object']){
+    h=harness({pointer,lfsUrl:href});assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.href===href));
+  }
   // Real JACC dimensions, synthetic bytes only: 131-byte Git pointer and 598,792-byte PDF object.
   const original=Buffer.alloc(598792,32);original.write('%PDF-1.7\nSynthetic sized LFS fixture\n');original.write('%%EOF\n',original.length-6);
   const sizedPointer=Buffer.from('version https://git-lfs.github.com/spec/v1\noid sha256:'+hash(original)+'\nsize '+original.length+'\n');assert.equal(sizedPointer.length,131);

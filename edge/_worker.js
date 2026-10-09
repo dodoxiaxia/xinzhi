@@ -202,16 +202,22 @@ async function pdfBoundedRead(url, init, maxBytes, options = {}) {
   const timer = setTimeout(abort, PDF_NETWORK_TIMEOUT_MS);
   try {
     let current = new URL(url), response;
-    for (let hop = 0; hop < (init ? 1 : 2); hop++) {
-      const headers = init ? init.headers : {accept:options.accept || 'application/json','user-agent':'XinZhiPdfDownload/1.0','x-github-api-version':'2022-11-28'};
+    const githubObject = init?.method === 'GET' && pdfLfsGithubObject(current,options.lfsObjectChecksum);
+    for (let hop = 0; hop < (!init || githubObject ? 2 : 1); hop++) {
+      const headers = init ? hop ? {accept:'application/octet-stream','user-agent':'XinZhiPdfDownload/1.0'} : init.headers : {accept:options.accept || 'application/json','user-agent':'XinZhiPdfDownload/1.0','x-github-api-version':'2022-11-28'};
       if (!init && options.token && current.hostname === 'api.github.com') headers.authorization = 'Bearer ' + options.token;
       // Workers accepts manual/follow only; manual lets us reject before forwarding credentials.
-      response = await awaitAbort(fetch(current.href, init ? {...init,redirect:'manual',signal:controller.signal} : {method:'GET',headers,redirect:'manual',signal:controller.signal}),controller.signal,'pdf_timeout');
+      response = await awaitAbort(fetch(current.href, init ? {...init,headers,redirect:'manual',signal:controller.signal} : {method:'GET',headers,redirect:'manual',signal:controller.signal}),controller.signal,'pdf_timeout');
       if (context) { context.httpStatus = response.status; context.reason = 'http_error'; }
       if (![301,302,303,307,308].includes(response.status)) break;
       if (context) context.reason = 'redirect';
       const location = response.headers.get('location');
-      if (init || hop || !options.rawPath || !location || current.hostname !== 'api.github.com') pdfFail('pdf_upstream');
+      if (init) {
+        let next; try {next = location && new URL(location,current);} catch {}
+        if (hop || !githubObject || !next || !pdfLfsStorage(next)) pdfLfsRefuse(context,next,'redirect');
+        pdfCancel(response.body);current = next;continue;
+      }
+      if (hop || !options.rawPath || !location || current.hostname !== 'api.github.com') pdfFail('pdf_upstream');
       const next = new URL(location, current);
       let path; try { path = decodeURIComponent(next.pathname); } catch { pdfFail('pdf_upstream'); }
       if (next.protocol !== 'https:' || next.hostname !== 'raw.githubusercontent.com' || next.port || next.username || next.password || next.hash || path !== options.rawPath) pdfFail('pdf_upstream');
@@ -301,6 +307,31 @@ async function pdfBlobDigest(bytes) {
   return pdfDigest('SHA-1', blob);
 }
 const PDF_LFS_HOSTS = new Set(['github-cloud.s3.amazonaws.com','github-cloud.s3.us-east-1.amazonaws.com','objects.githubusercontent.com','media.githubusercontent.com']);
+const PDF_LFS_REGIONS = new Set(['us-east-1','us-east-2','us-west-1','us-west-2','af-south-1','ap-east-1','ap-south-1','ap-south-2','ap-northeast-1','ap-northeast-2','ap-northeast-3','ap-southeast-1','ap-southeast-2','ap-southeast-3','ap-southeast-4','ca-central-1','ca-west-1','eu-central-1','eu-central-2','eu-west-1','eu-west-2','eu-west-3','eu-north-1','eu-south-1','eu-south-2','il-central-1','me-south-1','me-central-1','sa-east-1']);
+function pdfLfsSafeUrl(target) {
+  return target?.protocol === 'https:' && !target.port && !target.username && !target.password && !target.hash;
+}
+function pdfLfsGithubObject(target, checksum) {
+  return /^[a-f0-9]{64}$/.test(checksum || '') && pdfLfsSafeUrl(target) && target.hostname === 'github.com'
+    && ['/' + PDF_REPOSITORY + '.git/info/lfs/objects/' + checksum,'/' + PDF_REPOSITORY + '/info/lfs/objects/' + checksum].includes(target.pathname);
+}
+function pdfLfsStorage(target) {
+  if (!pdfLfsSafeUrl(target)) return false;
+  if (PDF_LFS_HOSTS.has(target.hostname)) return true;
+  const regional = /^github-cloud\.s3(?:\.dualstack)?\.([a-z0-9-]+)\.amazonaws\.com$/.exec(target.hostname);
+  if (regional && PDF_LFS_REGIONS.has(regional[1])) return true;
+  if (['github-cloud.s3-accelerate.amazonaws.com','github-cloud.s3-accelerate.dualstack.amazonaws.com'].includes(target.hostname)) return true;
+  const pathStyle = /^s3[.-]([a-z0-9-]+)\.amazonaws\.com$/.exec(target.hostname);
+  return target.pathname.startsWith('/github-cloud/') && (target.hostname === 's3.amazonaws.com' || pathStyle && PDF_LFS_REGIONS.has(pathStyle[1]));
+}
+function pdfLfsRefuse(context, target, reason) {
+  if (context) context.reason = reason;
+  const error = new PdfFailure('pdf_upstream',502);
+  // Import-only diagnostic: public provider host and booleans, never path/query/header values.
+  if (target) error.lfsTarget = {host:target.hostname === 'github.com' || /\.(?:githubusercontent|amazonaws)\.com$/.test(target.hostname) ? target.hostname : 'other',
+    https:target.protocol === 'https:',hasPort:!!target.port,hasCredentials:!!(target.username || target.password),hasFragment:!!target.hash};
+  throw error;
+}
 async function pdfLfsRead(url, init, limit, options = {}) {
   return pdfBoundedRead(url, init, limit, options);
 }
@@ -336,11 +367,18 @@ async function pdfGithubBytes(metadata, raw, checksum, options = {}) {
     const action = object.actions && object.actions.download;
     if (!action || typeof action.href !== 'string') { if (context) context.reason = 'no_download'; pdfFail('pdf_upstream'); }
     let target; try { target = new URL(action.href); } catch { if (context) context.reason = 'unsafe_host'; pdfFail('pdf_upstream'); }
-    if (target.protocol !== 'https:' || !PDF_LFS_HOSTS.has(target.hostname) || target.port || target.username || target.password || target.hash) { if (context) context.reason = 'unsafe_host'; pdfFail('pdf_upstream'); }
-    if (action.header && Object.keys(action.header).length) { if (context) context.reason = 'action_header'; pdfFail('pdf_upstream'); }
+    const githubObject = pdfLfsGithubObject(target,checksum);
+    if (!githubObject && !pdfLfsStorage(target)) pdfLfsRefuse(context,target,'unsafe_host');
+    const headers = {accept:'application/octet-stream','user-agent':'XinZhiPdfDownload/1.0'};
+    if (action.header && Object.keys(action.header).length) {
+      const entries = Object.entries(action.header);
+      if (!githubObject || Array.isArray(action.header) || entries.length !== 1 || entries[0][0].toLowerCase() !== 'authorization'
+          || typeof entries[0][1] !== 'string' || !/^RemoteAuth [A-Za-z0-9._~:+/=-]{8,8192}$/.test(entries[0][1])) pdfLfsRefuse(context,target,'action_header');
+      headers.authorization = entries[0][1];
+    }
     if (action.expires_at && Date.parse(action.expires_at) <= Date.now() || Number.isInteger(action.expires_in) && action.expires_in <= 0) { if (context) context.reason = 'expired_action'; pdfFail('pdf_upstream'); }
-    // The signed object URL comes only from GitHub's authenticated LFS download response. No credential is forwarded.
-    bytes = await pdfLfsRead(target.href, { method:'GET', headers:{ accept:'application/octet-stream' } }, options.limit, {...options,stage:'lfs_object'});
+    // RemoteAuth is accepted only for this repository and exact OID; a storage hop strips it.
+    bytes = await pdfLfsRead(target.href, { method:'GET', headers }, options.limit, {...options,stage:'lfs_object',lfsObjectChecksum:checksum});
   }
   if (context) context.reason = 'integrity';
   if (bytes.length !== targetSize || options.expectedSize !== undefined && bytes.length !== options.expectedSize || bytes.length < 8 || new TextDecoder().decode(bytes.slice(0,5)) !== '%PDF-' || await pdfDigest('SHA-256', bytes) !== checksum) pdfFail('pdf_integrity');
@@ -1302,7 +1340,7 @@ async function fulltextImportGuard(env, input) {
 async function handleFulltextImport(request, env) {
   let diagnostic;
   try {
-    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:5},405);
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:6},405);
     await fulltextJobAuthorize(request,FULLTEXT_IMPORT_POLICY);
     const input = fulltextFixedSource(await fulltextReadJson(request,1024,'import_bad_request'));
     diagnostic = pdfDiagnosticStart(request);
@@ -1327,7 +1365,7 @@ async function handleFulltextImport(request, env) {
     } finally { clearTimeout(timer); }
   } catch (error) {
     const safe = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,diagnostic).diagnostic);
-    return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'import_server',...(safe ? {diagnostic:safe} : {})},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
+    return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'import_server',...(safe ? {diagnostic:safe} : {}),...(diagnostic && error.lfsTarget ? {sourceTarget:error.lfsTarget} : {})},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
   }
 }
 // Muse polls its own inbox; raw originals remain private until an independent
