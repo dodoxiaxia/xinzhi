@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '23 * * * *'
   workflow_dispatch:
+    inputs:
+      recheck_doi:
+        description: '可选：仅重新核验此 DOI 的既有隔离原件，不重新下载'
+        required: false
+        type: string
+        default: ''
   push:
     branches: [main]
     paths:
@@ -39,4 +45,6 @@ jobs:
       - name: 安装独立 PDF 解析器
         run: python3 -m pip install 'pypdf==6.10.0' 'PyMuPDF==1.26.6'
       - name: 核验已上传原件（不访问出版社、不发布网站、不写三端）
+        env:
+          MUSE_RECHECK_DOI: ${{ inputs.recheck_doi || '' }}
         run: node scripts/muse_review_runner.cjs
