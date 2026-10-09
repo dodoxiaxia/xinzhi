@@ -15,13 +15,15 @@ Cloudflare Pages 项目 `dryz-xinzhi` 的 Production 环境设置：
 | `GROK_FULLTEXT_ENABLED` | 关闭或字符串 `false` |
 | `FULLTEXT_ASYNC_ENABLED` | 关闭或字符串 `false` |
 
-把同一个 `MUSE_FULLTEXT_KEY` 保存在 Muse 的私密配置。不要发给 Codex、粘贴到聊天、写入代码或 URL；不要使用汉堡密码、Cookie、GitHub token 或网站全文口令代替它。继续保留已有 `QL_KV` 与 `PDF_DOWNLOAD_ENABLED=true`。本协议不读取或修改汉堡会话，也不新增 GitHub/Drive 写凭据。环境配置是否需要重新部署，以 Pages 当前平台要求为准。
+把同一个 `MUSE_FULLTEXT_KEY` 保存在 Muse 的私密配置。不要发给 Codex、粘贴到聊天、写入代码或 URL；不要使用汉堡密码、Cookie、GitHub token 或网站全文口令代替它。继续保留已有 `QL_KV` 与 `PDF_DOWNLOAD_ENABLED=true`。保存后重新部署 Production，并确认在线协议显示“已启用”。本协议不读取或修改汉堡会话，也不新增 GitHub/Drive 写凭据。
 
 开关未设置时，Muse 领取与读者派发保持关闭。GitHub 的核验任务使用短时 OIDC，只能核验已上传原件，不持有 Muse 密钥。既有全文导入使用另一独立 OIDC 范围。
 
-生产 GitHub 已启用 immutable subject。网站接受精确的既有默认主分支身份，以及 `repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main`；同时固定签名、issuer、audience、仓库及 ID、主分支、GitHub 托管 runner 和专用工作流。没有改变 GitHub 认证模板或放宽到其他账户、仓库、环境、分支。导入/核验任务先检查 `protocolVersion:3` 部署就绪，再申请短时令牌。
+生产 GitHub 已启用 immutable subject。网站接受精确的既有默认主分支身份，以及 `repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main`；同时固定签名、issuer、audience、仓库及 ID、主分支、GitHub 托管 runner 和专用工作流。没有改变 GitHub 认证模板或放宽到其他账户、仓库、环境、分支。导入先检查 `protocolVersion:5`、Muse 核验先检查版本 3 部署就绪，再申请短时令牌。
 
 Cloudflare 运行时取 GitHub 公钥失败时，优先使用随 Worker 发布的官方公钥缓存。既有发布任务从唯一官方 HTTPS 地址刷新公钥，验证 RSA/算法/用途/标识及强度，缓存有效期 24 小时；仅放当前发布器的 `.local`，不从 state 恢复信任材料。过期或未知公钥仍需成功取钥并验签，否则拒绝认证。复用原发布周期，增加正常客户端 User-Agent，未关闭 TLS、签名或网络防护；公钥不是凭据。
+
+Cloudflare Workers 只接受 `redirect:"manual"` 或 `"follow"`。公钥、LFS 和既有 Bot 派发均使用 `manual`，收到重定向立即拒绝；仅既有 GitHub Contents 的固定路径跳转按原白名单处理。真实 workerd 回归使用合成原件和本地模拟来源，不访问外网，检查身份签名、LFS 原件回读、3xx 拒绝及 401/403/429 停止。
 
 ## 直接交给 Muse 的任务说明
 

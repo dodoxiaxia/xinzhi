@@ -120,6 +120,7 @@ jobs:
           node scripts/test_grok_fulltext.cjs
           node scripts/test_fulltext_import.cjs
           node scripts/test_muse_fulltext.cjs
+          npm exec --yes --package=workerd@1.20261009.1 -- node scripts/test_worker_fetch_compat.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_github_lfs_reuse.cjs
           node scripts/test_lfs_deadline.cjs

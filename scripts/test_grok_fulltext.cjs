@@ -15,7 +15,7 @@ function setup(options = {}, respond = () => new Response(null,{status:200})) {
   h.context.fetch = async (url,init) => {
     if (new URL(url).hostname !== 'api.cursor.sh') return original(url,init);
     h.webhooks.push({url:String(url),init});
-    assert.equal(init.method,'POST'); assert.equal(init.redirect,'error');
+    assert.equal(init.method,'POST'); assert.equal(init.redirect,'manual');
     assert.equal(init.headers.authorization,'Bearer ' + webhookKey);
     assert.equal(init.headers.cookie,undefined);
     assert(!JSON.stringify(init).includes('synthetic-private-token'));

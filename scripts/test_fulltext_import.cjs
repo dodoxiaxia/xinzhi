@@ -91,7 +91,7 @@ async function service(h,body = input,opts = {}) {
   const sourceLog = failureLog(serviceError('import_unavailable',{status:502},{error:'pdf_upstream',diagnostic:{...sourceBody.diagnostic,url:'https://private.test/?token=secret',body:'secret'}},'',endpoint,'fulltext-import.yml'),'import_unavailable');
   assert.equal(JSON.parse(sourceLog).sourceChecks.stage,'lfs_batch'); assert(!sourceLog.includes('private.test')); assert(!sourceLog.includes('secret'));
   let probes = 0;
-  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 4 : 3},{status:405});},async () => {},4);
+  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 5 : 4},{status:405});},async () => {},5);
   assert.equal(probes,2,'existing old route is not proof that the new identity policy deployed');
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});
