@@ -1428,6 +1428,7 @@ function museRecord(value, doi = '') {
   if (!value || value.version !== 1 || !MUSE_UUID.test(value.id || '') || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
       || (doi && value.doi !== doi) || !MUSE_STATES.includes(value.state)
       || ![value.createdAt,value.updatedAt].every(n => Number.isSafeInteger(n) && n > 0 && n < 8640000000000000 - 28800000)
+      || (Object.hasOwn(value,'receivedAt') && (!Number.isSafeInteger(value.receivedAt) || value.receivedAt < 1 || value.receivedAt >= 8640000000000000 - 28800000))
       || value.queueKey !== MUSE_QUEUE_PREFIX + String(value.createdAt).padStart(13,'0') + ':' + value.id
       || (['running','uploading','verifying'].includes(value.state) && (!MUSE_UUID.test(value.leaseId || '') || !Number.isSafeInteger(value.leaseUntil) || value.leaseUntil < 1))
       || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || '')))
@@ -1447,13 +1448,15 @@ function musePublicJob(value, doi = '') {
     : job.state === 'failed' ? ['lease_expired','queue_expired','agent_failed'].includes(job.reason) ? job.reason : job.leaseUntil <= Date.now() ? 'lease_expired' : 'agent_failed' : '';
   const state = expired || job.state === 'login_required' ? 'manual_needed' : job.state === 'uploading' ? 'running' : job.state === 'verifying' ? 'pending' : job.state;
   const stage = expired ? 'failed' : job.state;
+  const planned = job.state === 'verifying' ? museNextVerificationAt(job.receivedAt || job.updatedAt) : '';
+  const verificationDelayed = !!planned && Date.parse(planned) <= Date.now();
   const messages = {queued:'已加入 Muse 待办，等待下一次轮询。',running:'Muse 已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
     login_required:'汉堡会话需要重新登录，请维护者在 Muse 的授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'Muse 报告任务失败，需维护者核查。'};
   const reasons = {lease_expired:'Muse 领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
     queue_expired:'任务排队超过 24 小时，已停止；需维护者核查。'};
   return {id:job.id,doi:job.doi,state,stage,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
-    message:reasons[reason] || messages[job.state], ...(reason ? {reason} : {}),
-    ...(job.state === 'verifying' ? {nextVerificationAt:museNextVerificationAt(),verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。'} : {}),
+    message:reasons[reason] || (verificationDelayed ? 'PDF 已收到，计划核验时间已到，核验尚未完成；实际执行以 GitHub 队列为准。' : messages[job.state]), ...(reason ? {reason} : {}),
+    ...(job.state === 'verifying' ? {nextVerificationAt:planned,verificationDelayed,verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。'} : {}),
     ...(['queued','running','pending'].includes(state) ? {nextCheckSeconds:60} : {})};
 }
 async function musePublicJobValue(env, doi) {
@@ -1476,7 +1479,7 @@ function museResponse(request, job, paper) {
   const stages = [['queued','待领取'],['running','已领取，获取全文'],['uploading','Drive 已报告上传'],['verifying','PDF 已收到，等待核验'],['available','核验通过，可下载']];
   const index = stages.findIndex(([stage]) => stage === publicJob.stage);
   const progress = '<ol>' + stages.map(([,label],i) => '<li' + (i === index ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i === index ? '（当前）' : index > i ? '（已完成）' : '') + '</li>').join('') + '</ol>';
-  const planned = publicJob.nextVerificationAt ? '<p>下一次计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
+  const planned = publicJob.nextVerificationAt ? '<p>本批原件计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
   return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + progress + '<p>最近更新：北京时间 ' + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '</p>' + planned
     + (museRecoverable(job) ? '<p><a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">维护者确认后重新入队</a>；优先复用 Muse 已下载文件。</p>' : '') + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
     + '<p>网站缓存与正式三端归档分别确认。</p>' + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务');
@@ -1652,10 +1655,12 @@ async function handleMuseUpload(request, env) {
     let stored; try { stored = await env.QL_KV.get(candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
     if (!stored) libraryFail('muse_sync_pending',503);
     if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== job.sha256) libraryFail('muse_bad_pdf',409);
-    await musePut(env,{...job,state:'verifying',updatedAt:Date.now(),candidateKey});
+    // Preserve the first successful delivery time across duplicate PUTs and verifier leases.
+    const verifying = {...job,state:'verifying',receivedAt:job.receivedAt || (job.state === 'verifying' ? job.updatedAt : Date.now()),updatedAt:Date.now(),candidateKey};
+    await musePut(env,verifying);
     await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
     await museDelete(env,job.queueKey);
-    return json({ok:true,job:musePublicJob({...job,state:'verifying',candidateKey}),verified:false,archive:libraryArchiveStatus()});
+    return json({ok:true,job:musePublicJob(verifying),verified:false,archive:libraryArchiveStatus()});
   } catch (error) { return museError(error); }
 }
 async function handleMuseReview(request, env) {
