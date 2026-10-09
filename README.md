@@ -18,6 +18,8 @@ v14.1 新增按 DOI 获取全文与补录：准确 DOI 先跨栏目精确查重�
 
 v14.2 的持久全文队列由独立任务开发，原发布在调度器权限处失败，尚未上线。v14.2.1 候选将网站 UI 发布与调度器部署解耦：不更新 Cloudflare 调度器，队列默认关闭，沿用输入全文口令后的即时获取和已存文件下载。后台代码与记录保留，须完成独立验收后才启用；不承诺关页后继续下载或三端归档。周榜24篇仍显示真实待生成状态，题录入库不代表中文解读已齐；详见 [解耦候选说明](docs/ui-release-decoupling-20261007.md)。
 
+2026-10-09 本地候选新增汉堡 DOI 全文入口，以及默认关闭的原 Grok Bot Webhook 派发/结果回传。缺全文时才触发原归档流程；上传回传经指定 GitHub 提交的母索引与文件回读核验后开放下载。Mac/Drive 报告单独记录，正式三端完成仍需原归档证据。尚未配置真实 Routine 或部署；配置与会话策略见 [汉堡与 Grok 全文接入](docs/汉堡与Grok全文接入.md)。
+
 ## 本地核验与公开构建
 
 v14.1.1 将审核后的公开题录快照接入发布：恢复 `state` 后先运行 `scripts/apply_public_library.py`，再刷新与构建；构建守卫阻止旧状态覆盖已批准条目。快照保留原 1219 个 ID，新增 49 条至 1268 条。后续索引更新必须一并交付审核后的快照与 manifest，不能只提交同步脚本。发表日期精度与全文可用性分别记录，题录入库不代表全文已核验。
@@ -29,6 +31,7 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 node scripts/test_reading_logic.cjs
 node scripts/test_edge_worker.cjs
 node scripts/test_doi_library_worker.cjs
+node scripts/test_grok_fulltext.cjs
 node scripts/test_fulltext_jobs.cjs
 node scripts/test_doi_library_ui.cjs
 node scripts/test_study_services.cjs

@@ -111,6 +111,7 @@ jobs:
           node scripts/test_doi_library_worker.cjs
           node scripts/test_doi_direct_download.cjs
           node scripts/test_crossref_pdf_source.cjs
+          node scripts/test_grok_fulltext.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_github_lfs_reuse.cjs
           node scripts/test_lfs_deadline.cjs

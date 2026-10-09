@@ -26,12 +26,14 @@ async function helpers() {
     matchesFilters: () => false, getCurrentDataset: () => [],
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
-  const names = ['exactDoi', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
+  const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
     'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'pdfDownloadUrl', 'pdfDownloadLink',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
   vm.runInContext([constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
   for (const value of ['Kept clinical title', 'article 10.1234/keep', '10.1234', 'https://example.org/10.1234/keep', 'https://doi.org/10.1234/keep?token=x', '10.1234/x script']) assert.equal(c.exactDoi(value), '');
+  assert.equal(c.hamburgFulltextUrl('https://doi.org/10.1056/AIe2600236'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1056/aie2600236');
+  assert.equal(c.hamburgFulltextUrl('https://attacker.invalid/10.1056/AIe2600236'), '');
   c.state.search = 'DOI:10.1234/radar';
   assert.equal(c.getFilteredArticles()[0], radar, 'DOI ignores every active filter and includes archive');
   c.state.search = '10.1234/rada'; assert.equal(c.getFilteredArticles().length, 0, 'Exact DOI is never a substring match');
@@ -112,8 +114,11 @@ async function browserChecks() {
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', async route => {
     const req = route.request(), u = new URL(req.url()); requests.push({ pathname: u.pathname, method: req.method(), query: u.search });
-    assert.equal(u.origin, origin, 'All traffic is intercepted at the fixture origin');
     assert(['GET', 'HEAD'].includes(req.method()), 'Typing/searching/loading never sends POST');
+    // Opening the drawer also performs its existing public-abstract lookup.
+    // Fulfill that request locally; never contact a real abstract provider.
+    if (u.origin === 'https://www.ebi.ac.uk' && u.pathname === '/europepmc/webservices/rest/search') return route.fulfill({ json: { hitCount:0,resultList:{result:[]} } });
+    assert.equal(u.origin, origin, 'Only fixture requests or the mocked abstract lookup are allowed');
     if (u.pathname === '/api/library') {
       if (unsupported) return route.fulfill({ status: 404, json: { error: 'not_found' } });
       if (u.searchParams.has('doi')) { const key = u.searchParams.get('doi'), p = records.get(key), job = jobs.get(key); return route.fulfill({ json: { ok: true, found: !!p, ...(p ? { paper: p, status: p.fulltextStatus } : {}), ...(job ? { job } : {}) } }); }
@@ -142,6 +147,16 @@ async function browserChecks() {
     const after = new URL(page.url()); for (const key of ['mode', 'lane', 'range', 'journal', 'reading']) assert.equal(after.searchParams.get(key), before.searchParams.get(key));
     assert.equal(await page.locator('a[href="/api/fulltext?doi=10.1234%2Fnew"]').getAttribute('target'), '_blank');
     assert((await page.locator('a[href="/api/fulltext?doi=10.1234%2Fnew"]').getAttribute('rel')).includes('noopener'));
+    await page.locator('#articlesStream [data-action="open-drawer"]').first().click();
+    const hanLink = page.locator('#drawerInstitutionLink');
+    const hanLogin = page.locator('#drawerInstitutionLoginLink');
+    assert.equal(await hanLogin.getAttribute('href'), 'https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles');
+    assert.equal(await hanLogin.getAttribute('target'), '_blank');
+    assert.equal(await hanLink.isVisible(), true);
+    assert.equal(await hanLink.getAttribute('href'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1234/new');
+    assert.equal(await hanLink.getAttribute('target'), '_blank');
+    assert((await hanLink.getAttribute('rel')).includes('noreferrer'));
+    await page.locator('#drawerCloseBtn').click();
     await page.locator('#globalSearch').fill('10.1234/pending'); await page.getByText('待补全文', { exact: true }).waitFor();
     assert.equal(await page.locator('a[href="/api/fulltext?doi=10.1234%2Fpending"]').count(), 0);
     records.set('10.1234/pending', apiPaper('10.1234/pending', 'Pending clinical title'));
@@ -186,6 +201,10 @@ async function browserChecks() {
     await page.locator('a[href="/api/fulltext?doi=10.1234%2Fjob"]').waitFor();
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(),1);
     assert.equal(await page.locator('.doi-job-notice').count(),0,'Completion stops pending status and adds verified record without reload');
+    await page.locator('#articlesStream [data-action="open-drawer"]').first().click();
+    assert.equal(await hanLink.getAttribute('href'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1234/job', 'The drawer uses the current paper, not the previous DOI');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Institution and download buttons fit the mobile drawer');
+    await page.locator('#drawerCloseBtn').click();
     assert(requests.every(request => ['GET','HEAD'].includes(request.method)), 'Polling never submits or acquires again');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Background status fits mobile screen');
     unsupported = true; await page.goto(origin + '/?mode=library&lane=all&q=Static%20official');

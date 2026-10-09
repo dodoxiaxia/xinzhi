@@ -125,6 +125,10 @@
     } else doi = doi.replace(/^doi:\s*/i, '');
     return /^10\.\d{4,9}\/[^\s<>"?#@\x00-\x1f\x7f]+$/.test(doi) && /^[\x20-\x7e]+$/.test(doi) ? doi.toLowerCase() : '';
   }
+  function hamburgFulltextUrl(value) {
+    const doi = exactDoi(value);
+    return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
+  }
   function doiTitleKey(value) {
     return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim();
   }
@@ -1970,6 +1974,11 @@
     const extLink = $('#drawerExternalLink');
     if (extLink) {
       extLink.href = doiUrl; extLink.hidden=doiUrl==='#';
+    }
+    const institutionLink = $('#drawerInstitutionLink');
+    if (institutionLink) {
+      const institutionUrl = hamburgFulltextUrl(paper.doi);
+      institutionLink.href = institutionUrl || '#'; institutionLink.hidden = !institutionUrl;
     }
     const pdfLink = $('#drawerPdfLink');
     if (pdfLink) {
