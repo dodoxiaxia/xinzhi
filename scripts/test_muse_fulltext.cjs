@@ -86,6 +86,38 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).id,loginTask.taskId);
   h = await create(); await enqueue(h); const rejectedTask = await claim(h); assert.equal((await upload(h,rejectedTask)).status,200); const rejectedCandidate = (await (await review(h,{action:'claim'})).json()).task;
   assert.equal((await review(h,{...proof(rejectedCandidate),result:'rejected',pages:0})).status,200); assert(!h.values.has('library:pdf:' + hash(original))); assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).state,'review');
+  const recheckInput = {action:'recheck',doi}, manualReview = {claims:{event_name:'workflow_dispatch'}};
+  const recheckReads = h.reads.length, recheckWrites = h.writes.length;
+  await error(await review(h,recheckInput,{token:secret}),401,'job_auth');
+  for (const event_name of ['push','schedule']) await error(await review(h,recheckInput,{claims:{event_name}}),401,'job_auth');
+  assert.equal(h.reads.length,recheckReads,'only explicit maintainer dispatch can reopen quarantine');
+  assert.equal(h.writes.length,recheckWrites);
+  await error(await review(h,{...recheckInput,cookie:'synthetic'},manualReview),400,'muse_bad_request');
+  await error(await review(h,{action:'recheck',doi:doi.toUpperCase()},manualReview),400,'muse_bad_request');
+  const candidateKey = 'library:muse-candidate:' + hash(original);
+  h.values.set(candidateKey,Buffer.from('corrupt'));
+  await error(await review(h,recheckInput,manualReview),502,'library_integrity');
+  assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).state,'review');
+  h.values.set(candidateKey,original);
+  const savedAttempt = h.values.get('library:attempt:' + doi);
+  h.values.set('library:attempt:' + doi,JSON.stringify({paused:true}));
+  await error(await review(h,recheckInput,manualReview),423,'library_paused');
+  assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).state,'review');
+  h.values.set('library:attempt:' + doi,savedAttempt);
+  const rechecked = await review(h,recheckInput,manualReview); assert.equal(rechecked.status,200);
+  const recheckedTask = (await rechecked.json()).task;
+  assert.equal(recheckedTask.taskId,rejectedCandidate.taskId); assert.equal(recheckedTask.sha256,hash(original));
+  assert.notEqual(recheckedTask.leaseId,rejectedCandidate.leaseId,'old verification receipt cannot decide the new review');
+  assert.deepEqual(h.values.get(candidateKey),original,'maintenance does not replace the uploaded original');
+  assert(!h.values.has('library:pdf:' + hash(original)),'recheck does not publish before proof');
+  await error(await review(h,proof(rejectedCandidate),manualReview),409,'muse_stale');
+  const repeatRecheck = (await (await review(h,recheckInput,manualReview)).json()).task;
+  assert.equal(repeatRecheck.leaseId,recheckedTask.leaseId,'same-run request retry resumes the same review');
+  const completedRecheck = await review(h,proof(recheckedTask),manualReview); assert.equal(completedRecheck.status,200);
+  assert.equal((await completedRecheck.json()).job.state,'available');
+  const alreadyReviewedWrites = h.writes.length;
+  assert.equal((await (await review(h,recheckInput,manualReview)).json()).task,null);
+  assert.equal(h.writes.length,alreadyReviewedWrites,'available originals are not reopened');
   h = await create(); await enqueue(h); const corruptedTask = await claim(h); await upload(h,corruptedTask); const corruptedCandidate = (await (await review(h,{action:'claim'})).json()).task;
   h.values.set('library:muse-candidate:' + hash(original),Buffer.from('corrupt')); await error(await review(h,proof(corruptedCandidate)),502,'library_integrity'); assert(!h.values.has('library:pdf:' + hash(original)));
   h = await create(); await enqueue(h); const conflictTask = await claim(h); await upload(h,conflictTask); const conflictCandidate = (await (await review(h,{action:'claim'})).json()).task;
@@ -117,6 +149,24 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   };
   assert.equal(await runReview(env,http,async (bytes,t) => {assert.deepEqual(bytes,original);return {verified:true,pages:13,method:'dual_parser_all_pages_title_doi',sha256:t.sha256,bytes:t.bytes};},x => logs.push(x),async () => {}),1);
   assert(!logs.join('').includes(secret)); assert(!logs.join('').includes('synthetic-runtime-token')); assert(!logs.join('').includes('Bearer'));
+  for (const event of ['push','schedule']) {
+    await assert.rejects(runReview({...env,GITHUB_EVENT_NAME:event,MUSE_RECHECK_DOI:doi},async () => {throw new Error('unexpected network');}),/invalid_recheck/);
+  }
+  await assert.rejects(runReview({...env,MUSE_RECHECK_DOI:'https://invalid.test/doi'},async () => {throw new Error('unexpected network');}),/invalid_recheck/);
+  h = await create(); await enqueue(h); const selectedAcquisition = await claim(h); await upload(h,selectedAcquisition);
+  const selectedReview = (await (await review(h,{action:'claim'})).json()).task;
+  await review(h,{...proof(selectedReview),result:'rejected',pages:13});
+  const selectedHttp = async (url,init) => {
+    if (new URL(url).hostname === 'unit.actions.githubusercontent.com') return Response.json({value:await token(h,reviewUrl,'muse-review.yml',{event_name:'workflow_dispatch'})});
+    const payload = init.body && JSON.parse(init.body);
+    assert(payload?.action !== 'claim','selected maintenance never claims an unrelated original');
+    return h.context.worker.fetch(new Request(url,init),h.env);
+  };
+  assert.equal(await runReview({...env,MUSE_RECHECK_DOI:doi},selectedHttp,async (bytes,t) => {
+    assert.equal(t.doi,doi); assert.deepEqual(bytes,original);
+    return {verified:true,pages:13,method:'dual_parser_all_pages_title_doi',sha256:t.sha256,bytes:t.bytes};
+  },x => logs.push(x),async () => {}),1);
+  assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).state,'available');
   for (const changes of [{aud:'https://learn.dryz.info/api/fulltext-import'},{event_name:'pull_request'},{repository_id:'2'},{workflow_ref:'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@refs/heads/main'}]) {
     h = await create(); await error(await review(h,{action:'claim'},{claims:changes}),401,'job_auth'); assert.equal(h.reads.length,0);
   }

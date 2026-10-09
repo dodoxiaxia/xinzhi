@@ -1669,6 +1669,35 @@ async function handleMuseReview(request, env) {
     const owner = await fulltextJobAuthorize(request,MUSE_REVIEW_POLICY);
     libraryConfig(env); // A configured verifier may finish candidates while Muse polling is disabled.
     const input = await fulltextReadJson(request,1024,'muse_bad_request');
+    if (input.action === 'recheck') {
+      // Only an explicit maintainer dispatch may reopen one quarantined original.
+      await fulltextJobAuthorize(request,{...MUSE_REVIEW_POLICY,events:['workflow_dispatch']});
+      if (Object.keys(input).length !== 2 || !libraryDoi(input.doi) || libraryDoi(input.doi) !== input.doi) libraryFail('muse_bad_request',400);
+      const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
+      if (!job) libraryFail('muse_stale',409);
+      if (job.state === 'available') return json({ok:true,task:null});
+      const resume = job.state === 'verifying' && job.reviewOwner === owner && job.reviewLeaseUntil > Date.now();
+      if (job.state !== 'review' && !resume) libraryFail('muse_stale',409);
+      const valid = museRecord({...job,state:'verifying'},input.doi);
+      if (!valid) libraryFail('library_integrity',502);
+      const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
+      if (!paper || paper.fulltextStatus === 'review' || record.pdf) libraryFail('library_identity',409);
+      const attempt = await libraryGet(env.QL_KV,'library:attempt:' + job.doi);
+      if (attempt?.paused) libraryFail('library_paused',423);
+      await museOwnerGuard(env,job.doi);
+      let stored; try { stored = await env.QL_KV.get(job.candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
+      if (!stored) libraryFail('muse_sync_pending',503);
+      const bytes = new Uint8Array(stored);
+      if (bytes.length !== job.bytes || await pdfDigest('SHA-256',bytes) !== job.sha256) libraryFail('library_integrity',502);
+      libraryValidatePdf(bytes);
+      const claimed = resume ? job : {...job,state:'verifying',updatedAt:Date.now(),reviewRejectedAt:job.updatedAt,
+        reviewRecheckedAt:Date.now(),reviewOwner:owner,reviewLeaseId:crypto.randomUUID(),reviewLeaseUntil:Date.now() + MUSE_LEASE_MS};
+      if (!resume) await musePut(env,claimed);
+      await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
+      const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
+      if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
+      return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
+    }
     if (input.action === 'claim') {
       if (Object.keys(input).length !== 1) libraryFail('muse_bad_request',400);
       for (const entry of await museList(env,MUSE_REVIEW_PREFIX)) {

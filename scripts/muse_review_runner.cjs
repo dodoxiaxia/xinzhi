@@ -15,6 +15,9 @@ async function verifyOriginal(bytes, task) {
   } finally { await fs.rm(directory,{recursive:true,force:true}); }
 }
 async function runReview(env = process.env, http = fetch, verify = verifyOriginal, log = console.log, wait = ms => new Promise(r => setTimeout(r,ms))) {
+  const recheckDoi = typeof env.MUSE_RECHECK_DOI === 'string' ? env.MUSE_RECHECK_DOI.trim().toLowerCase() : '';
+  if (env.MUSE_RECHECK_DOI && (typeof env.MUSE_RECHECK_DOI !== 'string' || env.GITHUB_EVENT_NAME !== 'workflow_dispatch'
+      || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(recheckDoi) || /[<>?#@\\]/.test(recheckDoi))) throw new Error('invalid_recheck');
   await ready(ENDPOINT,'muse_bad_request',http,wait);
   const call = async (input, binary = false) => {
     const token = await identityToken(env,http,ENDPOINT);
@@ -34,11 +37,11 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     return body;
   };
   let processed = 0;
-  for (let n = 0; n < 5; n++) {
-    const claimed = await call({action:'claim'}), task = claimed.task;
+  for (let n = 0; n < (recheckDoi ? 1 : 5); n++) {
+    const claimed = await call(recheckDoi ? {action:'recheck',doi:recheckDoi} : {action:'claim'}), task = claimed.task;
     if (task === null) break;
     if (!task || typeof task.doi !== 'string' || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(task.doi) || /[<>?#@\\]/.test(task.doi)
-        || task.doi !== task.doi.toLowerCase() || typeof task.title !== 'string' || !task.title || task.title.length > 800
+        || task.doi !== task.doi.toLowerCase() || (recheckDoi && task.doi !== recheckDoi) || typeof task.title !== 'string' || !task.title || task.title.length > 800
         || !uuid.test(task.taskId || '') || !uuid.test(task.leaseId || '') || !/^[a-f0-9]{64}$/.test(task.sha256 || '')
         || !Number.isInteger(task.bytes) || task.bytes < 51200 || task.bytes > 10 * 1024 * 1024) throw new Error('invalid_candidate');
     const identity = {taskId:task.taskId,doi:task.doi,leaseId:task.leaseId};
@@ -57,10 +60,11 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     }
     if (done.job?.doi !== task.doi || done.job.id !== task.taskId || done.job.state !== (proof.verified ? 'available' : 'review') || done.archive?.complete !== false) throw new Error('invalid_verification');
     processed++;
-    log(JSON.stringify({doi:task.doi,status:done.job.state,pages:proof.pages,archiveComplete:false}));
+    const reason = !proof.verified && ['invalid_pdf','invalid_identity','identity_mismatch'].includes(proof.reason) ? proof.reason : '';
+    log(JSON.stringify({doi:task.doi,status:done.job.state,pages:proof.pages,archiveComplete:false,...(reason ? {reason} : {})}));
   }
   log(JSON.stringify({processed,scope:'uploaded_originals_only'}));
   return processed;
 }
 module.exports = {runReview,verifyOriginal};
-if (require.main === module) runReview().catch(error => { console.error(failureLog(error,['invalid_candidate','invalid_verification','review_sync_pending','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'review_unavailable')); process.exitCode = 1; });
+if (require.main === module) runReview().catch(error => { console.error(failureLog(error,['invalid_recheck','invalid_candidate','invalid_verification','review_sync_pending','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'review_unavailable')); process.exitCode = 1; });

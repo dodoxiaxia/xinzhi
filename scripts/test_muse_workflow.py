@@ -21,6 +21,12 @@ class MuseWorkflowBoundaries(unittest.TestCase):
         runner = (ROOT / 'scripts/muse_review_runner.cjs').read_text()
         self.assertNotRegex(runner, r'https://(?:api\.github\.com|[^/]*emedien|[^/]*sciencedirect|[^/]*unpaywall)')
         self.assertNotIn('MUSE_FULLTEXT_KEY', runner)
+        self.assertIn('recheck_doi:', text)
+        self.assertIn('MUSE_RECHECK_DOI:', text)
+        self.assertIn("env.GITHUB_EVENT_NAME !== 'workflow_dispatch'", runner)
+        self.assertIn("recheckDoi ? 1 : 5", runner)
+        worker = (ROOT / 'edge/_worker.js').read_text()
+        self.assertIn("events:['workflow_dispatch']", worker)
 
     def check_worker(self, text):
         self.assertIn("github.ref == 'refs/heads/main'", text)
