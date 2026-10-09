@@ -67,11 +67,11 @@ export default {async fetch(request) {
     if (request.method !== 'POST' || request.headers.get('authorization') !== 'Basic ' + btoa('x-access-token:synthetic-private-token')) throw Error('wrong LFS auth');
     if (mode === 'batch_redirect') return redirected();
     if (/^batch_(401|403|429)$/.test(mode)) return new Response('synthetic denied',{status:Number(mode.slice(6))});
-    const download = mode.startsWith('github_') ? {href:'https://github.com/dodoxiaxia/AI-.git/info/lfs/objects/' + fixture.sha256,header:{Authorization:'RemoteAuth synthetic-download-token'}}
-      : {href:mode === 'regional' ? 'https://github-cloud.s3.dualstack.us-west-2.amazonaws.com/synthetic' : 'https://github-cloud.s3.amazonaws.com/synthetic'};
+    const download = ['github_object','github_redirect'].includes(mode) ? {href:'https://github.com/dodoxiaxia/AI-.git/info/lfs/objects/' + fixture.sha256,header:{Authorization:'RemoteAuth synthetic-download-token'}}
+      : {href:mode === 'github_cloud_cdn' ? 'https://github-cloud.githubusercontent.com/synthetic' : mode === 'regional' ? 'https://github-cloud.s3.dualstack.us-west-2.amazonaws.com/synthetic' : 'https://github-cloud.s3.amazonaws.com/synthetic'};
     return Response.json({objects:[{oid:fixture.sha256,size:atob(fixture.pdf).length,actions:{download}}]});
   }
-  if (['github-cloud.s3.amazonaws.com','github-cloud.s3.dualstack.us-west-2.amazonaws.com'].includes(url.hostname)) {
+  if (['github-cloud.githubusercontent.com','github-cloud.s3.amazonaws.com','github-cloud.s3.dualstack.us-west-2.amazonaws.com'].includes(url.hostname)) {
     if (request.headers.has('authorization')) throw Error('object credential leak');
     if (mode === 'object_redirect') return redirected();
     return new Response(Uint8Array.from(atob(fixture.pdf),c=>c.charCodeAt(0)));
@@ -113,7 +113,7 @@ const config :Workerd.Config = (
       event_name:'push',run_id:'1234',iat:now,nbf:now-1,exp:now+300};
     const unsigned = base64url({alg:'RS256',kid:jwk.kid})+'.'+base64url(claims);
     const token = unsigned+'.'+Buffer.from(await webcrypto.subtle.sign('RSASSA-PKCS1-v1_5',pair.privateKey,Buffer.from(unsigned))).toString('base64url');
-    const modes = [['jwks_redirect',503],['normal',200],['github_object',200],['regional',200],['github_redirect',502],['batch_redirect',502],['object_redirect',502],['batch_401',423],['batch_403',423],['batch_429',423]];
+    const modes = [['jwks_redirect',503],['normal',200],['github_object',200],['regional',200],['github_cloud_cdn',200],['github_redirect',502],['batch_redirect',502],['object_redirect',502],['batch_401',423],['batch_403',423],['batch_429',423]];
     for (const [mode,expected] of modes) {
       assert((await fetch(origin+'/__test/reset?mode='+mode)).ok);
       const response = await fetch(origin+'/api/fulltext-import',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({doi,githubCommit:commit,sha256}),signal:AbortSignal.timeout(10000)});

@@ -25,7 +25,7 @@ const pointer=Buffer.from('version https://git-lfs.github.com/spec/v1\noid sha25
   assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='attacker.invalid'));
   h=harness({pointer,lfsBatch:()=>download(),lfsObject:()=>new Response(null,{status:302,headers:{location:'https://127.0.0.1/private'}})});
   assert.notEqual((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='127.0.0.1'));assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));
-  for(const href of ['https://github-cloud.s3.dualstack.us-west-2.amazonaws.com/object','https://s3.us-west-2.amazonaws.com/github-cloud/object']){
+  for(const href of ['https://github-cloud.githubusercontent.com/object','https://github-cloud.s3.dualstack.us-west-2.amazonaws.com/object','https://s3.us-west-2.amazonaws.com/github-cloud/object']){
     h=harness({pointer,lfsUrl:href});assert.equal((await h.request()).status,200);
   }
   for(const href of ['https://github-cloud.s3.dualstack.attacker.amazonaws.com/object','https://s3.us-west-2.amazonaws.com/other-bucket/object']){
