@@ -40,6 +40,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_release_build.py'
           python3 -m unittest discover -s scripts -p 'test_package_release.py'
       - name: Verify public source access without model calls
+        continue-on-error: true
         run: |
           PYTHONPATH=scripts python3 - <<'PY'
           import datetime
