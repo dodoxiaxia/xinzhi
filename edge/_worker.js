@@ -881,8 +881,11 @@ async function handleLibrary(request, env) {
         : env.GROK_FULLTEXT_ENABLED === 'true' && env.FULLTEXT_ASYNC_ENABLED !== 'true'
         ? grokPublicJob(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi)
         : env.FULLTEXT_ASYNC_ENABLED === 'true' ? fulltextPublicJob(await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi), doi) : null;
-      if (paper) { const observed = libraryObservedPaper(paper, attempt, job); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...libraryAttemptPublic(attempt), ...(job ? { job } : {}) }); }
-      return json({ ok:true, found:false, ...libraryAttemptPublic(attempt), ...(attempt && attempt.status === 'pending' && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}), ...(attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status } : {}) });
+      const inProgress = job && (['queued','running'].includes(job.state) || job.stage === 'verifying');
+      // A previous no-source attempt is not an error in the current acquisition.
+      const publicAttempt = inProgress && !attempt?.paused ? {paused:false} : libraryAttemptPublic(attempt);
+      if (paper) { const observed = libraryObservedPaper(paper, attempt, job); return json({ ok:true, found:true, paper:observed, status:observed.fulltextStatus, ...(!inProgress && observed.fulltextStatus === 'pending' && attempt && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...publicAttempt, ...(job ? { job } : {}) }); }
+      return json({ ok:true, found:false, ...publicAttempt, ...(!inProgress && attempt && attempt.status === 'pending' && !attempt.paused ? libraryRetryInfo(attempt.retryAfter) : {}), ...(job ? { job } : {}), ...(!inProgress && attempt && ['pending','review'].includes(attempt.status) ? { status:attempt.status } : {}) });
     }
     if ([...url.searchParams.keys()].some(key => !['cursor','limit'].includes(key)) || url.searchParams.getAll('cursor').length > 1 || url.searchParams.getAll('limit').length > 1) libraryFail('library_bad_doi', 400);
     const cursor = url.searchParams.get('cursor') || '', rawLimit = url.searchParams.get('limit') || '20';

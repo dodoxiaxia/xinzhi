@@ -35,9 +35,13 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   h = await create(); const queued = await enqueue(h),writes = h.writes.length;
   const again = await enqueue(h); assert.equal(again.id,queued.id); assert.equal(h.writes.length,writes);
   assert(h.calls.every(c => /crossref/.test(c.url))); assert(!JSON.stringify(again).includes(secret));
-  const lookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(lookup.job.state,'queued'); assert.equal(lookup.job.stage,'queued'); assert.equal(lookup.status,'pending'); assert.equal(lookup.paper.fulltextStatus,'pending'); assert.equal(JSON.parse(h.values.get('library:paper:' + doi)).paper.fulltextStatus,'manual_needed','projection does not mutate bibliography');
+  const lookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(lookup.job.state,'queued'); assert.equal(lookup.job.stage,'queued'); assert.equal(lookup.status,'pending'); assert.equal(lookup.paper.fulltextStatus,'pending'); assert(!lookup.error); assert(!Object.hasOwn(lookup,'retryAfter')); assert.equal(JSON.parse(h.values.get('library:paper:' + doi)).paper.fulltextStatus,'manual_needed','projection does not mutate bibliography');
   assert.equal(h.context.museNextVerificationAt(Date.parse('2026-10-09T11:22:00Z')),'2026-10-09T11:23:00.000Z');
   assert.equal(h.context.museNextVerificationAt(Date.parse('2026-10-09T11:23:00Z')),'2026-10-09T12:23:00.000Z');
+  const priorAttempt = h.values.get('library:attempt:' + doi);
+  h.values.set('library:attempt:' + doi,JSON.stringify({paused:true,error:'library_paused',status:'pending'}));
+  const stillPaused = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(stillPaused.paused,true); assert.equal(stillPaused.error,'library_paused','active progress does not hide an actual pause');
+  h.values.set('library:attempt:' + doi,priorAttempt);
   const page = await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}}); assert.equal(page.status,202); assert((await page.text()).includes('60 秒只更新状态'));
   const task = await claim(h); assert.equal(task.taskId,queued.id); assert.equal(task.title,title); assert.deepEqual(task.sources,['open_access','authorized_hamburg']);
   assert.equal((await (await api(h,'claim')).json()).task,null,'one acquisition owner, no repeated lease');
@@ -45,7 +49,7 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   await error(await api(h,'receipt',{...identity(task),state:'uploaded',sha256:hash(original),bytes:original.length,driveFileId:'https://evil.test/pdf'}),400,'muse_bad_request');
   await error(await api(h,'receipt',{...identity(task),state:'running',cookie:'secret'}),400,'muse_bad_request');
   const uploaded = await upload(h,task); assert.equal(uploaded.status,200); const intake = await uploaded.json(); assert.equal(intake.verified,false); assert.equal(intake.job.state,'pending'); assert.equal(intake.job.stage,'verifying'); assert(intake.job.nextVerificationAt); assert.equal(intake.job.nextCheckSeconds,60);
-  const verifyingLookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(verifyingLookup.status,'pending'); assert.equal(verifyingLookup.job.stage,'verifying');
+  const verifyingLookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(verifyingLookup.status,'pending'); assert.equal(verifyingLookup.job.stage,'verifying'); assert(!verifyingLookup.error); assert(!Object.hasOwn(verifyingLookup,'retryAfter'));
   const catalog = await (await h.request('/api/library',{method:'GET',query:'limit=20'})).json(); assert.equal(catalog.papers[0].fulltextStatus,'pending'); assert.equal(catalog.jobs[0].stage,'verifying');
   const waitingHtml = await (await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}})).text(); assert(waitingHtml.includes('下一次计划核验')); assert(waitingHtml.includes('GitHub 队列可能延迟')); assert(waitingHtml.includes('aria-current="step"')); assert(!waitingHtml.includes('syntheticDriveFileId')); assert(!waitingHtml.includes(task.leaseId)); assert.equal(intake.archive.complete,false);
   const current = JSON.parse(h.values.get('library:paper:' + doi)); assert.notEqual(current.paper.fulltextStatus,'available');
