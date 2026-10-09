@@ -1104,6 +1104,63 @@
     return FEEDS.items;
   }
 
+  // A journal and its publisher share one source facet. Expanding the tree
+  // is presentation state and must never change the selected papers.
+  const expandedPublishers = new Set();
+  function publisherForJournal(journal) {
+    if (!journal) return '';
+    const paper = getCurrentDataset().find(p => p.cleanJournal === journal || p.journal === journal);
+    return paper ? paper.publisher || '其他学术刊物' : '';
+  }
+  if (state.journal) state.publisher = publisherForJournal(state.journal);
+  if (state.publisher) expandedPublishers.add(state.publisher);
+
+  function sidebarSelections() {
+    return [
+      { group: 'tier', value: state.clinicalTier, label: '信源分组' },
+      state.journal ? { group: 'journal', value: state.journal, label: '期刊' }
+        : { group: 'pub', value: state.publisher, label: '出版方' },
+      { group: 'design', value: state.studyDesign, label: '研究设计' },
+      { group: 'tag', value: state.tag, label: '主题' }
+    ].filter(selection => selection.value);
+  }
+  function clearSidebarFilters() {
+    state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
+    state.page = 1;
+  }
+  function selectSidebarFilter(group, value, only = false) {
+    if (!['tier', 'pub', 'journal', 'design', 'tag'].includes(group) || typeof value !== 'string') return false;
+    if (only) clearSidebarFilters();
+    if (group === 'tier') state.clinicalTier = value;
+    if (group === 'pub') { state.publisher = value; state.journal = ''; }
+    if (group === 'journal') { state.journal = value; state.publisher = publisherForJournal(value); }
+    if (group === 'design') state.studyDesign = value;
+    if (group === 'tag') state.tag = value;
+    if (state.publisher) expandedPublishers.add(state.publisher);
+    state.page = 1;
+    return true;
+  }
+  function browseOnlyButton(group, value, label) {
+    const facet = group === 'journal' ? 'pub' : group;
+    const other = sidebarSelections().some(selection => (selection.group === 'journal' ? 'pub' : selection.group) !== facet);
+    if (!value || !other) return '';
+    return `<button type="button" class="browse-only-btn" data-browse-only="${group}" data-browse-value="${esc(value)}" aria-label="只看${esc(label)}" title="清除其他左侧筛选；保留领域、时间、搜索和可读内容条件">只看</button>`;
+  }
+  function refreshFilterResults(control, group, value) {
+    const focused = control && document.activeElement === control;
+    const inSidebar = control && control.closest('#appSidebar');
+    renderSidebarFilters();
+    renderStream();
+    if (!focused || control.isConnected) return;
+    const attribute = { tier: 'tier', pub: 'publisher', journal: 'journal', design: 'design', tag: 'tag' }[group];
+    const replacement = inSidebar && attribute && Array.from(document.querySelectorAll(`#appSidebar [data-filter-${attribute}]`))
+      .find(button => button.getAttribute(`data-filter-${attribute}`) === value);
+    (replacement || $('#activeFiltersBar'))?.focus({ preventScroll: true });
+  }
+  function changeSidebarFilter(group, value, only, control) {
+    if (selectSidebarFilter(group, value, only)) refreshFilterResults(control, group, value);
+  }
+
   // Filter & Sort
   function matchesQuery(p) {
     const q = state.search.trim().toLowerCase();
@@ -1129,8 +1186,12 @@
     if (usesLane() && state.reading==='abstract' && !hasAbstract(p)) return false;
     if (usesLane() && state.reading==='guide' && !p.hasDraft) return false;
     if (usesLane() && state.reading==='quicklook' && (!quicklookOf(p) || p.hasDraft)) return false;
-    if (skip !== 'tier' && state.clinicalTier && p.clinicalTier !== state.clinicalTier) return false;
-    if (skip !== 'pub' && state.publisher && p.publisher !== state.publisher) return false;
+    return matchesSidebarFilters(p, skip);
+  }
+  function matchesSidebarFilters(p, skip) {
+    if (skip === 'sidebar') return true;
+    if (skip !== 'tier' && state.clinicalTier && (p.clinicalTier || '综合医学与其他') !== state.clinicalTier) return false;
+    if (skip !== 'pub' && state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) return false;
     if (skip !== 'pub' && state.journal && (p.cleanJournal !== state.journal && p.journal !== state.journal)) return false;
     if (skip !== 'design' && state.studyDesign && p.studyDesign !== state.studyDesign) return false;
     if (skip !== 'tag' && state.tag && (!p.tags || !p.tags.includes(state.tag))) return false;
@@ -1197,7 +1258,8 @@
   // Render Sidebar Filters with dynamic counts
   function renderSidebarFilters() {
     const all = getCurrentDataset();
-    const facet = skip => all.filter(p => matchesFilters(p, false, skip));
+    const base = all.filter(p => matchesFilters(p, false, 'sidebar'));
+    const facet = skip => base.filter(p => matchesSidebarFilters(p, skip));
     const dataset = facet('tier');
 
     // 1. Clinical Tier Counts
@@ -1213,7 +1275,8 @@
       { id: 'AI医疗与数字医学', name: 'AI医疗与数字医学', dotClass: 'dot-aimed' },
       { id: '顶级综合与科学', name: '顶级综合与科学', dotClass: 'dot-general' },
       { id: '前沿大模型与科技', name: '前沿大模型与科技', dotClass: 'dot-tech' },
-      { id: '定向专病与团队', name: '定向专病与团队', dotClass: 'dot-team' }
+      { id: '定向专病与团队', name: '定向专病与团队', dotClass: 'dot-team' },
+      { id: '综合医学与其他', name: '综合医学与其他', dotClass: 'dot-general' }
     ];
 
     dataset.forEach(p => {
@@ -1223,16 +1286,18 @@
 
     const tierListEl = $('#tierFilterList');
     if (tierListEl) {
-      tierListEl.innerHTML = tiers.filter(t => t.id === '' || tierCounts[t.id] || state.clinicalTier === t.id).map(t => {
+      const availableTiers = new Set(base.map(p => p.clinicalTier || '综合医学与其他'));
+      tierListEl.innerHTML = tiers.filter(t => t.id === '' || availableTiers.has(t.id) || state.clinicalTier === t.id).map(t => {
         const isAll = t.id === '';
         const count = isAll ? dataset.length : (tierCounts[t.id] || 0);
         const isActive = isAll ? !state.clinicalTier : state.clinicalTier === t.id;
 
-        return `<li>
-          <button class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-tier="${esc(t.id)}">
+        return `<li class="facet-option-row">
+          <button type="button" class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-tier="${esc(t.id)}" aria-pressed="${isActive}">
             <span style="display:flex; align-items:center;"><span class="tier-dot ${t.dotClass}"></span>${esc(t.name)}</span>
             <span class="filter-count">${count}</span>
           </button>
+          ${browseOnlyButton('tier', t.id, t.name)}
         </li>`;
       }).join('');
     }
@@ -1256,11 +1321,22 @@
     ];
 
     const pubMap = new Map();
-    facet('pub').forEach(p => {
+    // Keep zero-count options available so "只看" can leave a combination.
+    base.forEach(p => {
       const pub = p.publisher || '其他学术刊物';
       const j = p.cleanJournal || p.journal || '其他';
       if (!pubMap.has(pub)) pubMap.set(pub, new Map());
-      const jMap = pubMap.get(pub);
+      pubMap.get(pub).set(j, 0);
+    });
+    if (state.publisher && !pubMap.has(state.publisher)) pubMap.set(state.publisher, new Map());
+    if (state.journal) {
+      const pub = state.publisher || '其他学术刊物';
+      if (!pubMap.has(pub)) pubMap.set(pub, new Map());
+      if (!pubMap.get(pub).has(state.journal)) pubMap.get(pub).set(state.journal, 0);
+    }
+    facet('pub').forEach(p => {
+      const jMap = pubMap.get(p.publisher || '其他学术刊物');
+      const j = p.cleanJournal || p.journal || '其他';
       jMap.set(j, (jMap.get(j) || 0) + 1);
     });
 
@@ -1272,14 +1348,15 @@
         let idxB = PUBLISHER_ORDER.indexOf(b[0]);
         if (idxA === -1) idxA = 999;
         if (idxB === -1) idxB = 999;
-        return idxA - idxB;
+        return idxA - idxB || a[0].localeCompare(b[0]);
       });
 
-      let accHtml = '';
+      let accHtml = '', pubIndex = 0;
       for (const [pubName, journals] of sortedPubEntries) {
+        const contentId = 'publisher-journals-' + pubIndex++;
         const pubTotal = Array.from(journals.values()).reduce((a, b) => a + b, 0);
         const isPubActive = state.publisher === pubName;
-        const isOpen = isPubActive;
+        const isOpen = expandedPublishers.has(pubName);
 
         // Sort journals inside publisher by volume descending, then name
         const sortedJournals = Array.from(journals.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
@@ -1287,19 +1364,22 @@
         let jHtml = '';
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
-          jHtml += `<div class="journal-filter-item"><button class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" data-filter-pub="${esc(pubName)}">
+          jHtml += `<div class="journal-filter-item facet-option-row"><button type="button" class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">
             <span class="journal-filter-label"><span>${esc(jName)}</span></span>
             <span class="filter-count">${jCount}</span>
-          </button></div>`;
+          </button>${browseOnlyButton('journal', jName, jName)}</div>`;
         }
 
         accHtml += `
           <div class="accordion-group ${isOpen ? 'open' : ''}">
-            <button class="accordion-header" data-pub-toggle="${esc(pubName)}">
-              <span>${esc(pubName)} (${pubTotal})</span>
-              <span class="accordion-arrow">▶</span>
-            </button>
-            <div class="accordion-content">
+            <div class="accordion-heading">
+              <button type="button" class="accordion-header ${isPubActive && !state.journal ? 'active' : ''}" data-filter-publisher="${esc(pubName)}" aria-pressed="${isPubActive && !state.journal}">
+                <span>${esc(pubName)} <span class="filter-count">(${pubTotal})</span></span>
+              </button>
+              ${browseOnlyButton('pub', pubName, pubName)}
+              <button type="button" class="accordion-expand-btn" data-pub-expand="${esc(pubName)}" aria-expanded="${isOpen}" aria-controls="${contentId}" aria-label="展开或收起${esc(pubName)}旗下期刊"><span class="accordion-arrow" aria-hidden="true">▶</span></button>
+            </div>
+            <div class="accordion-content" id="${contentId}">
               ${jHtml}
             </div>
           </div>
@@ -1343,17 +1423,20 @@
         const count = isAll ? facet('design').length : (designCounts[d.key] || 0);
         const isActive = isAll ? !state.studyDesign : state.studyDesign === d.key;
 
-        return `<li>
-          <button class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-design="${esc(d.key)}">
+        return `<li class="facet-option-row">
+          <button type="button" class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-design="${esc(d.key)}" aria-pressed="${isActive}">
             <span>${d.name}</span>
             <span class="filter-count">${count}</span>
           </button>
+          ${browseOnlyButton('design', d.key, d.name)}
         </li>`;
       }).join('');
     }
 
     // 4. Tags Cloud
     const tagCounts = {};
+    base.forEach(p => (p.tags || []).forEach(t => { tagCounts[t] = 0; }));
+    if (state.tag) tagCounts[state.tag] = 0;
     facet('tag').forEach(p => {
       (p.tags || []).forEach(t => {
         tagCounts[t] = (tagCounts[t] || 0) + 1;
@@ -1365,9 +1448,9 @@
       const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
         const isActive = state.tag === tag;
-        return `<button class="tag-chip ${isActive ? 'active' : ''}" data-filter-tag="${esc(tag)}">
+        return `<span class="facet-option-row tag-option"><button type="button" class="tag-chip ${isActive ? 'active' : ''}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">
           ${esc(tag)} (${count})
-        </button>`;
+        </button>${browseOnlyButton('tag', tag, tag)}</span>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
   }
@@ -1377,35 +1460,45 @@
     const container = $('#activeFiltersBar');
     if (!container) return;
 
-    let chips = `<span class="results-meta">共找到 <b>${totalCount}</b> 篇文献${usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
+    const selections = sidebarSelections();
+    let chips = selections.length ? '<div class="sidebar-active-filters"><span class="active-filters-label">当前筛选 · 同时满足</span>'
+      + selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('')
+      + '<button type="button" class="sidebar-clear-btn" data-clear="sidebar">清空左侧筛选</button></div>' : '';
+    chips += `<span class="results-meta" role="status">共找到 <b>${totalCount}</b> 篇文献${usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
 
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
-      chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button class="filter-badge-remove" data-clear="search">&times;</button></span>`;
-    }
-    if (state.clinicalTier) {
-      chips += `<span class="filter-badge-active">专科: ${esc(state.clinicalTier)} <button class="filter-badge-remove" data-clear="tier">&times;</button></span>`;
-    }
-    if (state.publisher) {
-      chips += `<span class="filter-badge-active">出版方: ${esc(state.publisher)} <button class="filter-badge-remove" data-clear="publisher">&times;</button></span>`;
+      chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button type="button" class="filter-badge-remove" data-clear="search" aria-label="清除检索关键词">&times;</button></span>`;
     }
     if (state.range !== defaultRange(state.mode) && usesLane()) {
-      chips += `<span class="filter-badge-active">发表时间: ${state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天'} <button class="filter-badge-remove" data-clear="range">&times;</button></span>`;
+      chips += `<span class="filter-badge-active">发表时间: ${state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天'} <button type="button" class="filter-badge-remove" data-clear="range" aria-label="恢复默认时间范围">&times;</button></span>`;
     }
-    if (state.journal) {
-      chips += `<span class="filter-badge-active">期刊: ${esc(state.journal)} ${journalMetricBadge(state.journal)} <button class="filter-badge-remove" data-clear="journal">&times;</button></span>`;
-    }
-    if (state.studyDesign) {
-      chips += `<span class="filter-badge-active">设计: ${esc(state.studyDesign)} <button class="filter-badge-remove" data-clear="design">&times;</button></span>`;
-    }
-    if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}</span>`;
-    if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）</span>';
-    if (state.tag) {
-      chips += `<span class="filter-badge-active">标签: ${esc(state.tag)} <button class="filter-badge-remove" data-clear="tag">&times;</button></span>`;
-    }
+    if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
+    if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
 
     container.innerHTML = chips;
+  }
+
+  function renderEmptyFilters() {
+    const selections = sidebarSelections();
+    const base = getCurrentDataset().filter(p => matchesFilters(p, false, 'sidebar'));
+    const suggestions = selections.length > 1 ? selections.map(selection => {
+      const count = base.filter(p => {
+        if (selection.group === 'tier') return (p.clinicalTier || '综合医学与其他') === selection.value;
+        if (selection.group === 'pub') return (p.publisher || '其他学术刊物') === selection.value;
+        if (selection.group === 'journal') return p.cleanJournal === selection.value || p.journal === selection.value;
+        if (selection.group === 'design') return p.studyDesign === selection.value;
+        return (p.tags || []).includes(selection.value);
+      }).length;
+      return count ? `<button type="button" class="btn-sm" data-browse-only="${selection.group}" data-browse-value="${esc(selection.value)}">只看${esc(selection.value)} · ${count} 篇</button>` : '';
+    }).join('') : '';
+    const message = selections.length > 1 ? '这些条件需要同时满足，目前没有交集。可保留其中一项切换浏览。'
+      : state.mode === 'curated' ? '当前条件下没有精选，可清除筛选或查看文献雷达。' : '当前领域、时间、关键词与筛选条件下暂无匹配。';
+    return `<div class="empty-state"><h3>没有找到匹配的文献</h3><p>${message}</p><div class="empty-filter-actions">${suggestions}
+      ${selections.length ? '<button type="button" class="btn-sm" data-clear="sidebar">清空左侧筛选</button>' : ''}
+      ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
+      <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
 
   // Render Article Card
@@ -1573,13 +1666,7 @@
     syncUrl();
 
     if (filtered.length === 0) {
-      streamEl.innerHTML = `
-        <div class="empty-state">
-          <h3>没有找到匹配的文献</h3>
-          <p>${state.mode === 'curated' ? '当前条件下没有精选，可清除筛选或查看文献雷达。' : '尝试清除过滤条件或更换关键词'}</p>
-          <button class="btn-sm btn-primary" id="clearAllFiltersBtn" style="margin-top:12px;">重置所有筛选</button>
-        </div>
-      `;
+      streamEl.innerHTML = renderEmptyFilters();
       if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
       if (loadMoreBtn) loadMoreBtn.hidden = true;
       return;
@@ -2404,6 +2491,7 @@
     const bar=$('#browseBar'); if(!bar)return;
     bar.hidden=!usesLane(); if(bar.hidden)return;
     const journals=[...new Set(getCurrentDataset().map(p=>p.cleanJournal||p.journal).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    if (state.journal && !journals.includes(state.journal)) journals.push(state.journal);
     const sel=$('#journalSelect');
     sel.innerHTML='<option value="">所有期刊 / 信源</option>'+journals.map(j=>`<option value="${esc(j)}" ${state.journal===j?'selected':''}>${state.favoriteJournals.includes(j)?'★ ':''}${esc(j)} · ${esc(journalMetricText(j))}</option>`).join('');
     $('#readingSelect').value=state.reading;
@@ -2411,7 +2499,7 @@
     const fav=$('#favoritesOnlyBtn');fav.textContent='我的期刊 '+state.favoriteJournals.length;fav.classList.toggle('active',state.favoritesOnly);fav.setAttribute('aria-pressed',String(state.favoritesOnly));
     const period=$('#rangeExplanation');period.textContent=state.range==='all'?'日期与研究类型均以来源信息为准；未知项明确保留。':`北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
   }
-  $('#journalSelect')?.addEventListener('change',e=>{state.journal=e.target.value;state.publisher='';state.page=1;renderSidebarFilters();renderStream();});
+  $('#journalSelect')?.addEventListener('change',e=>changeSidebarFilter('journal', e.target.value, false, e.target));
   $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
   $('#favoritesOnlyBtn')?.addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;renderSidebarFilters();renderStream();});
@@ -2419,13 +2507,9 @@
   // Reset Filters
   function resetAllFilters() {
     state.search = '';
-    state.clinicalTier = '';
-    state.publisher = '';
-    state.journal = '';
-    state.studyDesign = '';
-    state.tag = '';
+    clearSidebarFilters();
     state.range = defaultRange(state.mode);
-    state.lane = 'core'; state.reading=''; state.favoritesOnly=false;
+    state.lane = 'core'; state.reading=''; state.favoritesOnly=false; state.minor=false;
     state.page = 1;
     const sInput = $('#globalSearch');
     if (sInput) sInput.value = '';
@@ -2591,31 +2675,10 @@
   }
 
   // Sidebar Filter Reset buttons
-  $('#resetTierBtn')?.addEventListener('click', () => {
-    state.clinicalTier = '';
-    state.page = 1;
-    renderSidebarFilters();
-    renderStream();
-  });
-  $('#resetPubBtn')?.addEventListener('click', () => {
-    state.publisher = '';
-    state.journal = '';
-    state.page = 1;
-    renderSidebarFilters();
-    renderStream();
-  });
-  $('#resetDesignBtn')?.addEventListener('click', () => {
-    state.studyDesign = '';
-    state.page = 1;
-    renderSidebarFilters();
-    renderStream();
-  });
-  $('#resetTagBtn')?.addEventListener('click', () => {
-    state.tag = '';
-    state.page = 1;
-    renderSidebarFilters();
-    renderStream();
-  });
+  $('#resetTierBtn')?.addEventListener('click', e => changeSidebarFilter('tier', '', false, e.target));
+  $('#resetPubBtn')?.addEventListener('click', e => changeSidebarFilter('pub', '', false, e.target));
+  $('#resetDesignBtn')?.addEventListener('click', e => changeSidebarFilter('design', '', false, e.target));
+  $('#resetTagBtn')?.addEventListener('click', e => changeSidebarFilter('tag', '', false, e.target));
 
   // Global Document Clicks Delegation
   document.addEventListener('click', e => {
@@ -2623,13 +2686,15 @@
     if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
     if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
+    const browseBtn = e.target.closest('[data-browse-only]');
+    if (browseBtn) {
+      changeSidebarFilter(browseBtn.dataset.browseOnly, browseBtn.dataset.browseValue, true, browseBtn);
+      return;
+    }
     // 1. Clinical Tier click
     const tierBtn = e.target.closest('[data-filter-tier]');
     if (tierBtn) {
-      state.clinicalTier = (state.clinicalTier === tierBtn.dataset.filterTier) ? '' : tierBtn.dataset.filterTier;
-      state.page = 1;
-      renderSidebarFilters();
-      renderStream();
+      changeSidebarFilter('tier', tierBtn.dataset.filterTier, false, tierBtn);
       return;
     }
 
@@ -2643,50 +2708,39 @@
       return;
     }
 
-    // 2. Publisher Accordion toggle
-    const pubToggle = e.target.closest('[data-pub-toggle]');
-    if (pubToggle) {
-      const group = pubToggle.closest('.accordion-group');
-      if (group) group.classList.toggle('open');
-      const pubName = pubToggle.dataset.pubToggle;
-      state.publisher = state.publisher === pubName ? '' : pubName;
-      state.journal = '';
-      state.page = 1;
-      renderSidebarFilters();
-      renderStream();
+    // Expand without selecting; select the publisher through its name.
+    const pubExpand = e.target.closest('[data-pub-expand]');
+    if (pubExpand) {
+      const open = pubExpand.closest('.accordion-group').classList.toggle('open');
+      if (open) expandedPublishers.add(pubExpand.dataset.pubExpand);
+      else expandedPublishers.delete(pubExpand.dataset.pubExpand);
+      pubExpand.setAttribute('aria-expanded', String(open));
+      return;
+    }
+    const pubBtn = e.target.closest('[data-filter-publisher]');
+    if (pubBtn) {
+      changeSidebarFilter('pub', pubBtn.dataset.filterPublisher, false, pubBtn);
       return;
     }
 
     // 3. Journal filter click
     const jBtn = e.target.closest('[data-filter-journal]');
     if (jBtn) {
-      const jName = jBtn.dataset.filterJournal;
-      state.journal = state.journal === jName ? '' : jName;
-      state.publisher = jBtn.dataset.filterPub || state.publisher;
-      state.page = 1;
-      renderSidebarFilters();
-      renderStream();
+      changeSidebarFilter('journal', jBtn.dataset.filterJournal, false, jBtn);
       return;
     }
 
     // 4. Study Design filter click
     const designBtn = e.target.closest('[data-filter-design]');
     if (designBtn) {
-      state.studyDesign = (state.studyDesign === designBtn.dataset.filterDesign) ? '' : designBtn.dataset.filterDesign;
-      state.page = 1;
-      renderSidebarFilters();
-      renderStream();
+      changeSidebarFilter('design', designBtn.dataset.filterDesign, false, designBtn);
       return;
     }
 
     // 5. Tag chip click
     const tagBtn = e.target.closest('[data-filter-tag]');
     if (tagBtn) {
-      const t = tagBtn.dataset.filterTag;
-      state.tag = state.tag === t ? '' : t;
-      state.page = 1;
-      renderSidebarFilters();
-      renderStream();
+      changeSidebarFilter('tag', tagBtn.dataset.filterTag, false, tagBtn);
       return;
     }
 
@@ -2695,15 +2749,16 @@
     if (clearBtn) {
       const type = clearBtn.dataset.clear;
       if (type === 'search') { state.search = ''; if (searchInput) searchInput.value = ''; }
+      if (type === 'sidebar') clearSidebarFilters();
       if (type === 'tier') state.clinicalTier = '';
-      if (type === 'publisher') { state.publisher = ''; state.journal = ''; }
-      if (type === 'journal') state.journal = '';
+      if (['pub', 'publisher', 'journal'].includes(type)) { state.publisher = ''; state.journal = ''; }
       if (type === 'range') state.range = defaultRange(state.mode);
       if (type === 'design') state.studyDesign = '';
       if (type === 'tag') state.tag = '';
+      if (type === 'reading') state.reading = '';
+      if (type === 'favorites') state.favoritesOnly = false;
       state.page = 1;
-      renderSidebarFilters();
-      renderStream();
+      refreshFilterResults(clearBtn);
       return;
     }
 

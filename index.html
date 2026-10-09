@@ -85,6 +85,7 @@
     <!-- Left Faceted Filter Sidebar -->
     <aside class="sidebar" id="appSidebar" aria-label="筛选条件">
       <div class="sheet-head"><b>筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
+      <p class="sidebar-filter-help" role="note">同组点选替换，不同组同时满足。<br>“只看”清除其他左侧条件，切换浏览。<br><span>数量按其余条件计算；箭头只展开期刊。</span></p>
       <!-- Clinical Tier Matrix -->
       <div class="sidebar-card">
         <div class="sidebar-title">
@@ -99,8 +100,8 @@
       <!-- Publishers & Journals Tree -->
       <div class="sidebar-card">
         <div class="sidebar-title">
-          <span>按出版方浏览</span>
-          <button class="sidebar-reset-btn" id="resetPubBtn">全部</button>
+          <span>出版方 / 期刊</span>
+          <button class="sidebar-reset-btn" id="resetPubBtn">重置</button>
         </div>
         <div id="publisherAccordion">
           <!-- Dynamically populated with Accordion groups -->
@@ -150,7 +151,7 @@
         <div class="ai-digest" id="aiDigest" hidden></div>
         <div class="stream-toolbar">
           <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">筛选</button>
-          <div class="active-filters-bar" id="activeFiltersBar">
+          <div class="active-filters-bar" id="activeFiltersBar" tabindex="-1" aria-label="当前筛选与结果数量">
             <span class="results-meta">共找到 <b id="resultsTotalCount">0</b> 篇文献</span>
           </div>
 

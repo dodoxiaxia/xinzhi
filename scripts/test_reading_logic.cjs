@@ -36,3 +36,6 @@ assert.equal(downloads.pdfDownloadUrl({id:'radar-id',doi:'10.1234/known'}),'');
 assert.equal(downloads.pdfDownloadUrl({id:'known-id',doi:'',title:'Exact title'}),'/api/pdf?id=known-id');
 assert.equal(downloads.pdfDownloadUrl(null),'');
 console.log('4 private PDF link scope assertions passed');
+
+// Existing deployment gate also verifies browsing/filter transitions offline.
+require('./test_faceted_filters.cjs');
