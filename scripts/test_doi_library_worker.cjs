@@ -40,7 +40,7 @@ function harness(options={}){
    if(decoded.endsWith('/contents/文献索引/按需全文增量.json'))return options.delta?Response.json(options.delta):new Response('missing',{status:404});
    assert(decoded.endsWith('/contents/'+file));if(init.headers.accept==='application/vnd.github+json')return Response.json(options.metadata||{type:'file',path:file,size:(options.pointer||fixturePdf).length,sha:blob(options.pointer||fixturePdf)});
    return options.githubPdfResponse?options.githubPdfResponse(u,init):new Response(options.pointer||fixturePdf,{headers:{'content-type':'application/pdf'}});}
-  assert(u.hostname==='journals.plos.org'||u.hostname==='www.nature.com'||u.hostname==='raw.githubusercontent.com','unexpected external host '+u.hostname);assert(!init.headers.authorization);
+  assert(u.hostname==='journals.plos.org'||u.hostname==='www.nature.com'||u.hostname==='raw.githubusercontent.com'||(options.pdfHosts||[]).includes(u.hostname),'unexpected external host '+u.hostname);assert(!init.headers.authorization);
   return options.pdfResponse?options.pdfResponse(u,init):new Response(pdf,{headers:{'content-type':'application/pdf'}});
  };
  const timers=options.fastTimers?(callback,ms)=>setTimeout(callback,Math.min(ms,15)):setTimeout;
