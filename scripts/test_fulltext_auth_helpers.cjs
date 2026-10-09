@@ -8,7 +8,8 @@ async function setup(options = {}) {
     pair = await webcrypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
     jwk = {...await webcrypto.subtle.exportKey('jwk',pair.publicKey),kid:'import-test-key',alg:'RS256',use:'sig'};
   }
-  return harness({...options,jwks:[jwk]});
+  const fetchedAt = Date.now() - 1000;
+  return harness({...options,jwks:[jwk],...(options.cachedKeys ? {buildKeys:{keys:[jwk],fetchedAt,expiresAt:fetchedAt+86400000}} : {})});
 }
 async function token(h, audience, workflow, changes = {}) {
   const now = Math.floor(vm.runInContext('Date.now()',h.context) / 1000);

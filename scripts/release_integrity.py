@@ -24,6 +24,7 @@ INPUTS = (
     '.github/workflows/fulltext-import.yml', 'scripts/fulltext_import_runner.cjs',
     'editorial/fulltext-imports.json', '.github/workflows/muse-review.yml',
     'scripts/muse_review_runner.cjs', 'scripts/muse_pdf_verifier.py',
+    'scripts/github_oidc_keys.py', '.local/github-actions-jwks.json',
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',
     'scripts/publication_dates.py',

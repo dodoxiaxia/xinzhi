@@ -24,7 +24,7 @@ DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_ty
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 QL_FIELDS |= {'contentCorrection'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.3.4'
+RELEASE = 'v14.3.5'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -433,6 +433,10 @@ def main():
     bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics),js('DEEP_READINGS',readings)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
     worker=(ROOT/'edge/_worker.js').read_text()
+    from github_oidc_keys import build_keys
+    key_placeholder='const FULLTEXT_OIDC_BUILD_KEYS = {};'
+    if worker.count(key_placeholder)!=1:raise ValueError('Public signing key placeholder missing')
+    worker=worker.replace(key_placeholder,'const FULLTEXT_OIDC_BUILD_KEYS = '+json.dumps(build_keys(ROOT),separators=(',',':'))+';')
     placeholder='const PDF_LIBRARY = {};'
     if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
     # A public DOI correction is not evidence for rebinding a private PDF.

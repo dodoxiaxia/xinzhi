@@ -87,6 +87,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: 刷新 GitHub 公共签名密钥（不读取凭据）
+        continue-on-error: true
+        run: python3 scripts/github_oidc_keys.py
+
       - name: 抓取 / 补摘要 / 翻译 / 构建
         id: refresh
         env:
