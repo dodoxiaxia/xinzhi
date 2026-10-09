@@ -23,9 +23,9 @@ async function ready(endpoint, expected, http, wait) {
   for (let n = 0; n < 48; n++) {
     try {
       const response = await http(endpoint,{method:'GET',redirect:'error',signal:AbortSignal.timeout(5000),headers:{'user-agent':'XinZhiFulltextImport/1.0'}});
+      if ([401,403,429].includes(response.status)) { if (response.body) await response.body.cancel(); throw new Error('website_denied'); }
       const value = await readJson(response);
       if (response.status === 405 && value.error === expected) return;
-      if ([401,403].includes(response.status)) throw new Error('website_denied');
     } catch (error) { if (error.message === 'website_denied') throw error; }
     if (n < 47) await wait(15000);
   }

@@ -58,5 +58,9 @@ async function service(h,body = input,opts = {}) {
   assert.equal(await runImport({schemaVersion:1,requests:[input]},env,http,x => logs.push(x),async () => {}),1);
   assert(!logs.join('').includes('synthetic-runtime-token')); assert(!logs.join('').includes('Bearer'));
   await assert.rejects(runImport({schemaVersion:1,requests:[input]},env,async () => new Response('{}',{status:403}),() => {},async () => {}),/website_denied/);
+  let deniedCalls = 0;
+  await assert.rejects(runImport({schemaVersion:1,requests:[input]},env,async () => {deniedCalls++;return new Response('<html>denied</html>',{status:403});},() => {},async () => {}),/website_denied/);
+  assert.equal(deniedCalls,1,'HTML denial stops before JSON parsing or another probe');
+  await assert.rejects(runImport({schemaVersion:1,requests:[input]},env,async () => new Response('limited',{status:429}),() => {},async () => {}),/website_denied/);
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});
