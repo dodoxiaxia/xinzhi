@@ -40,7 +40,7 @@ def synthetic_root(root):
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
-        'icon.svg': '<svg></svg>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; const DOI_ADJUDICATIONS = {}; const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null; // synthetic worker',
+        'icon.svg': '<svg></svg>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; const DOI_ADJUDICATIONS = {}; const FULLTEXT_OIDC_BUILD_KEYS = {}; const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null; // synthetic worker',
     }.items():
         (root / name).write_text(text)
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
