@@ -2,6 +2,27 @@
 const fs = require('fs');
 const {identityToken} = require('./fulltext_queue_runner.cjs');
 const ENDPOINT = 'https://learn.dryz.info/api/fulltext-import';
+const SAFE_ERRORS = new Set(['job_auth','job_auth_unavailable','library_not_configured','library_disabled','library_storage','library_sync_pending','library_integrity','library_identity','library_timeout','library_upstream','library_paused',
+  'pdf_integrity','pdf_index_invalid','pdf_timeout','pdf_upstream','pdf_not_found','pdf_too_large','import_bad_request','import_owner_conflict','import_server','muse_bad_request','muse_stale','muse_sync_pending','muse_server']);
+function serviceError(message, response, body, token, audience, workflow) {
+  const error = new Error(message);
+  error.status = response.status;
+  error.reason = SAFE_ERRORS.has(body?.error) ? body.error : 'unclassified_response';
+  if (error.reason === 'job_auth') {
+    try {
+      const claims = JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString('utf8')),now = Math.floor(Date.now() / 1000);
+      error.oidcChecks = {audience:claims.aud === audience,repository:claims.repository === 'dodoxiaxia/xinzhi',repositoryId:String(claims.repository_id) === '1397425558',
+        subject:claims.sub === 'repo:dodoxiaxia/xinzhi:ref:refs/heads/main',ref:claims.ref === 'refs/heads/main',
+        workflow:claims.workflow_ref === 'dodoxiaxia/xinzhi/.github/workflows/' + workflow + '@refs/heads/main',runner:claims.runner_environment === 'github-hosted',
+        issuer:claims.iss === 'https://token.actions.githubusercontent.com',event:['push','workflow_dispatch','schedule'].includes(claims.event_name),
+        expiresIn:Number.isInteger(claims.exp) ? claims.exp - now : null,mintedAgo:Number.isInteger(claims.iat) ? now - claims.iat : null,notBefore:Number.isInteger(claims.nbf) ? claims.nbf - now : null};
+    } catch { /* Never print the token or a decoding exception. */ }
+  }
+  return error;
+}
+function failureLog(error, fallback) {
+  return JSON.stringify({error:fallback,...(Number.isInteger(error.status) ? {status:error.status} : {}),...(error.reason ? {reason:error.reason} : {}),...(error.oidcChecks ? {oidcChecks:error.oidcChecks} : {})});
+}
 async function readJson(response) {
   const text = await response.text();
   if (text.length > 65536) throw new Error('response_too_large');
@@ -41,7 +62,7 @@ async function runImport(value, env = process.env, http = fetch, log = console.l
       const response = await http(ENDPOINT,{method:'POST',redirect:'error',signal:AbortSignal.timeout(90000),headers:{authorization:'Bearer ' + token,'content-type':'application/json','user-agent':'XinZhiFulltextImport/1.0'},body:JSON.stringify(input)});
       result = await readJson(response);
       if (response.status === 503 && result.error === 'library_sync_pending' && n < 2) { await wait(30000); continue; }
-      if (!response.ok || result.ok !== true) throw new Error('import_unavailable');
+      if (!response.ok || result.ok !== true) throw serviceError('import_unavailable',response,result,token,ENDPOINT,'fulltext-import.yml');
       break;
     }
     if (result.status !== 'available' || result.paper?.doi !== input.doi || result.paper.fulltextStatus !== 'available'
@@ -51,8 +72,8 @@ async function runImport(value, env = process.env, http = fetch, log = console.l
   }
   return inputs.length;
 }
-module.exports = {runImport,manifest,readJson,ready};
+module.exports = {runImport,manifest,readJson,ready,serviceError,failureLog};
 if (require.main === module) {
   let input; try { input = JSON.parse(fs.readFileSync(require('path').join(__dirname,'../editorial/fulltext-imports.json'),'utf8')); } catch { console.error('invalid_manifest'); process.exit(1); }
-  runImport(input).catch(error => { console.error(['invalid_manifest','invalid_import_result','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'import_unavailable'); process.exitCode = 1; });
+  runImport(input).catch(error => { console.error(failureLog(error,['invalid_manifest','invalid_import_result','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'import_unavailable')); process.exitCode = 1; });
 }

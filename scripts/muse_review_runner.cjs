@@ -1,6 +1,6 @@
 'use strict';
 const {identityToken} = require('./fulltext_queue_runner.cjs');
-const {readJson,ready} = require('./fulltext_import_runner.cjs');
+const {readJson,ready,serviceError,failureLog} = require('./fulltext_import_runner.cjs');
 const fs = require('fs/promises'),path = require('path'),os = require('os'),crypto = require('crypto');
 const {promisify} = require('util'),execFile = promisify(require('child_process').execFile);
 const ENDPOINT = 'https://learn.dryz.info/api/muse/review';
@@ -27,7 +27,7 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     }
     const body = await readJson(response);
     if (!response.ok || body.ok !== true) {
-      const error = new Error(response.status === 503 && ['muse_sync_pending','library_sync_pending'].includes(body.error) ? 'review_sync_pending' : 'review_unavailable');
+      const error = serviceError(response.status === 503 && ['muse_sync_pending','library_sync_pending'].includes(body.error) ? 'review_sync_pending' : 'review_unavailable',response,body,token,ENDPOINT,'muse-review.yml');
       throw error;
     }
     if (binary) throw new Error('invalid_candidate');
@@ -63,4 +63,4 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
   return processed;
 }
 module.exports = {runReview,verifyOriginal};
-if (require.main === module) runReview().catch(error => { console.error(['invalid_candidate','invalid_verification','review_sync_pending','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'review_unavailable'); process.exitCode = 1; });
+if (require.main === module) runReview().catch(error => { console.error(failureLog(error,['invalid_candidate','invalid_verification','review_sync_pending','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'review_unavailable')); process.exitCode = 1; });

@@ -2,7 +2,7 @@
 const assert = require('assert');
 const {setup,token} = require('./test_fulltext_auth_helpers.cjs');
 const {doi,pdf,hash,record,seed,error} = require('./test_doi_library_worker.cjs');
-const {runImport,manifest} = require('./fulltext_import_runner.cjs');
+const {runImport,manifest,serviceError,failureLog} = require('./fulltext_import_runner.cjs');
 const endpoint = 'https://learn.dryz.info/api/fulltext-import',commit = 'a'.repeat(40);
 const input = {doi,githubCommit:commit,sha256:hash(pdf)};
 async function service(h,body = input,opts = {}) {
@@ -62,5 +62,9 @@ async function service(h,body = input,opts = {}) {
   await assert.rejects(runImport({schemaVersion:1,requests:[input]},env,async () => {deniedCalls++;return new Response('<html>denied</html>',{status:403});},() => {},async () => {}),/website_denied/);
   assert.equal(deniedCalls,1,'HTML denial stops before JSON parsing or another probe');
   await assert.rejects(runImport({schemaVersion:1,requests:[input]},env,async () => new Response('limited',{status:429}),() => {},async () => {}),/website_denied/);
+  const diagnostic = serviceError('import_unavailable',{status:401},{error:'job_auth'},await token(h,endpoint,'fulltext-import.yml'),endpoint,'fulltext-import.yml');
+  assert.equal(diagnostic.reason,'job_auth'); assert.equal(diagnostic.oidcChecks.workflow,true); assert.equal(diagnostic.oidcChecks.audience,true);
+  const safeLog = failureLog(diagnostic,'import_unavailable'); assert(!safeLog.includes('Bearer')); assert(!safeLog.includes('workflow_ref')); assert(!safeLog.includes('eyJ'));
+  assert.equal(serviceError('import_unavailable',{status:502},{error:'https://private.test/?token=secret'},'',endpoint,'fulltext-import.yml').reason,'unclassified_response');
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});
