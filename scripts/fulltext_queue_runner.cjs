@@ -9,12 +9,12 @@ async function readJson(response) {
   if (text.length > 65536) throw new Error('response_too_large');
   try { return JSON.parse(text); } catch { throw new Error('invalid_json_response'); }
 }
-async function identityToken(env, http) {
+async function identityToken(env, http, audience = AUDIENCE) {
   let url;
   try { url = new URL(env.ACTIONS_ID_TOKEN_REQUEST_URL); } catch { throw new Error('oidc_unavailable'); }
   if (url.protocol !== 'https:' || !/^(?:[a-z0-9-]+\.)*actions\.githubusercontent\.com$/.test(url.hostname)
       || url.port || url.username || url.password || !env.ACTIONS_ID_TOKEN_REQUEST_TOKEN) throw new Error('oidc_unavailable');
-  url.searchParams.set('audience', AUDIENCE);
+  url.searchParams.set('audience', audience);
   const response = await http(url.href, { method:'GET', redirect:'error', signal:AbortSignal.timeout(15000),
     headers:{ authorization:'Bearer ' + env.ACTIONS_ID_TOKEN_REQUEST_TOKEN } });
   if (!response.ok) throw new Error('oidc_unavailable');

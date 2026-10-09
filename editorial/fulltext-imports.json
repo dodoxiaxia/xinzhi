@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "requests": [
+    {
+      "doi": "10.1016/j.jacc.2024.02.026",
+      "githubCommit": "053bbdc3ed4d2d6b4d905bccdd4ade7dc32e1e88",
+      "sha256": "e09bac70ec8e828f7927c36a724c59dd29114f6f6a397a4d136af4fe498024b1"
+    }
+  ]
+}
