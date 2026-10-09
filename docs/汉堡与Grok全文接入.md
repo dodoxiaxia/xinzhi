@@ -1,6 +1,6 @@
 # 汉堡全文入口与既有 Grok Bot 接入
 
-2026-10-09 本地候选。网站已加入用户提供的汉堡 DOI 入口，并实现默认关闭的 Grok Routine Webhook 派发与回传接口。尚未配置真实 Webhook、接收密钥或改动 Production；本轮没有运行 Grok 任务、机构登录、出版社下载或三端写入。既有即时获取和归档流程见 [DOI 按需全文与补录](DOI按需全文与补录.md) 与 [前轮交接](doi-direct-download-handoff-20261008.md)。
+2026-10-09 v14.3.2。网站加入用户提供的汉堡登录与 DOI 入口，并实现默认关闭的 Grok Routine Webhook 派发与回传接口。用户已要求在现有网站试用，沿原 daily-refresh 发布入口交付；实际上线以最新 Actions/state 证据为准。真实 Webhook 和回传密钥仍待配置，本轮没有运行 Grok 任务、机构登录、出版社下载或三端写入。既有即时获取和归档流程见 [DOI 按需全文与补录](DOI按需全文与补录.md) 与 [前轮交接](doi-direct-download-handoff-20261008.md)。
 
 ## 用户操作与后台执行
 
