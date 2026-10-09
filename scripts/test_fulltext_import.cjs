@@ -94,7 +94,7 @@ async function service(h,body = input,opts = {}) {
   const targetBody = await (await service(h)).json();assert.equal(targetBody.sourceTarget.host,'github.com');assert(!JSON.stringify(targetBody).includes('wrong/repo'));assert(!JSON.stringify(targetBody).includes('secret'));
   const targetLog = failureLog(serviceError('import_unavailable',{status:502},targetBody,'',endpoint,'fulltext-import.yml'),'import_unavailable');assert.equal(JSON.parse(targetLog).sourceChecks.target.host,'github.com');assert(!targetLog.includes('secret'));
   let probes = 0;
-  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 6 : 5},{status:405});},async () => {},6);
+  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 7 : 6},{status:405});},async () => {},7);
   assert.equal(probes,2,'existing old route is not proof that the new identity policy deployed');
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});

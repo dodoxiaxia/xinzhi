@@ -306,7 +306,7 @@ async function pdfBlobDigest(bytes) {
   blob.set(prefix); blob.set(bytes, prefix.length);
   return pdfDigest('SHA-1', blob);
 }
-const PDF_LFS_HOSTS = new Set(['github-cloud.s3.amazonaws.com','github-cloud.s3.us-east-1.amazonaws.com','objects.githubusercontent.com','media.githubusercontent.com']);
+const PDF_LFS_HOSTS = new Set(['github-cloud.githubusercontent.com','github-cloud.s3.amazonaws.com','github-cloud.s3.us-east-1.amazonaws.com','objects.githubusercontent.com','media.githubusercontent.com']);
 const PDF_LFS_REGIONS = new Set(['us-east-1','us-east-2','us-west-1','us-west-2','af-south-1','ap-east-1','ap-south-1','ap-south-2','ap-northeast-1','ap-northeast-2','ap-northeast-3','ap-southeast-1','ap-southeast-2','ap-southeast-3','ap-southeast-4','ca-central-1','ca-west-1','eu-central-1','eu-central-2','eu-west-1','eu-west-2','eu-west-3','eu-north-1','eu-south-1','eu-south-2','il-central-1','me-south-1','me-central-1','sa-east-1']);
 function pdfLfsSafeUrl(target) {
   return target?.protocol === 'https:' && !target.port && !target.username && !target.password && !target.hash;
@@ -1340,7 +1340,7 @@ async function fulltextImportGuard(env, input) {
 async function handleFulltextImport(request, env) {
   let diagnostic;
   try {
-    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:6},405);
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'import_bad_request',protocolVersion:7},405);
     await fulltextJobAuthorize(request,FULLTEXT_IMPORT_POLICY);
     const input = fulltextFixedSource(await fulltextReadJson(request,1024,'import_bad_request'));
     diagnostic = pdfDiagnosticStart(request);
