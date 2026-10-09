@@ -22,6 +22,13 @@ async function service(h,body = input,opts = {}) {
   h = await setup(); const signed = await token(h,endpoint,'fulltext-import.yml');
   await error(await service(h,input,{token:signed.split('.').slice(0,2).join('.') + '.d3Jvbmc'}),401,'job_auth'); assert.equal(h.reads.length,0);
   h = await setup(); assert.equal((await service(h,input,{claims:{sub:'repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main'}})).status,200,'GitHub immutable main subject accepted with all other claims pinned');
+  h = await setup({cachedKeys:true,jwksResponse:() => new Response('unavailable',{status:503})});
+  assert.equal((await service(h)).status,200); assert(!h.calls.some(c => c.url.hostname === 'token.actions.githubusercontent.com'),'fresh published public keys verify without runtime issuer fetch');
+  h = await setup({cachedKeys:true,jwksResponse:() => new Response('unavailable',{status:503})});
+  const badSignature = await token(h,endpoint,'fulltext-import.yml');
+  await error(await service(h,input,{token:badSignature.split('.').slice(0,2).join('.') + '.d3Jvbmc'}),401,'job_auth'); assert.equal(h.reads.length,0);
+  h = await setup({buildKeys:{fetchedAt:Date.now()-86400001,expiresAt:Date.now()-1,keys:[]},jwksResponse:() => new Response('unavailable',{status:503})});
+  await error(await service(h),503,'job_auth_unavailable'); assert.equal(h.reads.length,0);
   for (const body of [{...input,url:'https://evil.test/x'},{...input,githubCommit:'main'},{...input,sha256:'b'},{...input,doi:'https://doi.org/' + doi},null]) {
     h = await setup(); await error(await service(h,body),400,'import_bad_request'); assert.equal(h.reads.length,0); assert.equal(h.writes.length,0);
   }
@@ -70,7 +77,7 @@ async function service(h,body = input,opts = {}) {
   const safeLog = failureLog(diagnostic,'import_unavailable'); assert(!safeLog.includes('Bearer')); assert(!safeLog.includes('workflow_ref')); assert(!safeLog.includes('eyJ'));
   assert.equal(serviceError('import_unavailable',{status:502},{error:'https://private.test/?token=secret'},'',endpoint,'fulltext-import.yml').reason,'unclassified_response');
   let probes = 0;
-  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',...(probes > 1 ? {protocolVersion:2} : {})},{status:405});},async () => {});
+  await ready(endpoint,'import_bad_request',async () => {probes++;return Response.json({error:'import_bad_request',protocolVersion:probes > 1 ? 3 : 2},{status:405});},async () => {});
   assert.equal(probes,2,'existing old route is not proof that the new identity policy deployed');
   console.log('fulltext import: exact OIDC scope, immutable source, protected cache, failures and runner passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});
