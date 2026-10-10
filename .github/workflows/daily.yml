@@ -97,6 +97,8 @@ jobs:
           XINZHI_RESTORED_STATE_SHA: ${{ steps.restore_state.outputs.sha }}
           # Scheduled and manually dispatched fast runs add one bounded title/quicklook batch; pushes stay model-free.
           XINZHI_FAST_TITLE_BATCH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+          # Timed runs (cron or the external fast dispatch) run the paid full refresh once per Beijing day.
+          XINZHI_DAILY_FULL_ONCE: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '1' || '' }}
         run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '47 20 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
 
       - uses: actions/setup-node@v4
