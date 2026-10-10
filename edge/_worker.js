@@ -57,20 +57,24 @@ const pdfEscape = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&am
 function pdfOfficialLink(doi) {
   const institutional = hanDoiUrl(doi);
   return doi ? '<p><a href="' + pdfEscape('https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/')) + '" target="_blank" rel="noopener noreferrer">前往官网原文</a></p>'
-    + (institutional ? '<p><a href="' + pdfEscape(HAN_LOGIN_URL) + '" target="_blank" rel="noopener noreferrer">汉堡登录入口</a> · <a href="' + pdfEscape(institutional) + '" target="_blank" rel="noopener noreferrer">通过汉堡访问全文</a></p><p>已登录可直接访问全文。如需登录，先打开登录入口；登录页未出现时，可再点击一次打开新标签，完成登录后继续访问全文。</p>' : '') : '';
+    + (institutional ? '<p><a href="' + pdfEscape(HAN_LOGIN_URL) + '" target="_blank" rel="noopener noreferrer">汉堡登录入口</a> · <a href="' + pdfEscape(institutional) + '" target="_blank" rel="noopener noreferrer">通过汉堡访问全文</a></p><p>仅限有汉堡大学授权的用户：已登录可直接访问；未登录先打开登录入口，完成后再点“通过汉堡访问全文”。</p>' : '') : '';
 }
 function hanDoiUrl(value) {
   const doi = libraryDoi(value);
   return doi ? HAN_DOI_BASE + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
 }
-function pdfHtml(body, status = 200, heading = 'PDF 下载') {
-  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + '<p><a href="/?mode=library">返回文献库</a></p></main></body></html>', {
+function pdfBackLinks(doi) {
+  const exact = libraryDoi(doi);
+  return exact ? '<p><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a> · <a href="/?mode=library">返回文献库</a></p>' : '<p><a href="/?mode=library">返回文献库</a></p>';
+}
+function pdfHtml(body, status = 200, heading = 'PDF 下载', doi = '') {
+  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}</style><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
     status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
   });
 }
 function pdfPassphraseForm(id, doi, invalid = false) {
   const notice = invalid ? '<p role="alert">下载口令不正确，请重新输入。</p>' : '<p>输入下载口令即可获取这篇文献的 PDF。</p>';
-  return pdfHtml(notice + '<form method="post" action="/api/pdf?id=' + pdfEscape(encodeURIComponent(id)) + '"><p><label for="passphrase">下载口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">下载 PDF</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200);
+  return pdfHtml(notice + '<form method="post" action="/api/pdf?id=' + pdfEscape(encodeURIComponent(id)) + '"><p><label for="passphrase">下载口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">下载 PDF</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200, 'PDF 下载', doi);
 }
 function pdfError(request, code, status, doi = '', diagnostic = null) {
   const safe = sanitizePdfDiagnostic(diagnostic);
@@ -574,9 +578,9 @@ function libraryRetryLink(doi, route = '/api/acquire') {
 function libraryForm(doi, route, invalid = false, retryAfter = 0, manual = false, institution = false) {
   const notice = institution && route === '/api/acquire'
     ? '输入全文口令，先检查已有文件；缺全文时交给后台机构流程。需要重新登录时，任务会保留并显示处理状态。'
-    : manual ? '题录已保存，全文尚不可下载，需要人工处理。请先由维护者核对已上传全文是否登记及网站读取版本。完成登记后可输入口令检查已有全文；只查询私有索引，不再次尝试出版社下载。确需新的订阅获取时，机构授权执行桥尚未接通。等待不会自动获取。'
+    : manual ? '题录已保存，全文暂不可下载，需要维护者处理。维护者登记全文后，可输入口令检查已有全文；只查询私有索引，不会再次向出版社下载（机构授权执行桥尚未接通）。等待不会自动获取。'
     : route === '/api/acquire' ? '输入一次全文口令，优先复用已有全文，再查询合法开放全文。取得 PDF 后保存题录并直接下载；需要订阅权限时显示待授权状态。' : '输入全文口令即可下载已获取的 PDF。';
-  return libraryRetryResponse(pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : notice) + '</p>' + (libraryRetryInfo(retryAfter).retryAfterSeconds ? libraryRetryHint(retryAfter) : '') + '<form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + (route === '/api/acquire' ? '&amp;download=1' : '') + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (institution && route === '/api/acquire' ? '获取全文并查看进度' : manual ? '检查已归档全文' : route === '/api/acquire' ? '获取、保存并下载 PDF' : '下载 PDF') + '</button></form><p>网站缓存可用与正式三端归档分别确认。</p>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载'), retryAfter);
+  return libraryRetryResponse(pdfHtml('<p' + (invalid ? ' role="alert"' : '') + '>' + (invalid ? '全文口令不正确，请重新输入。' : notice) + '</p>' + (libraryRetryInfo(retryAfter).retryAfterSeconds ? libraryRetryHint(retryAfter) : '') + '<form method="post" action="' + route + '?doi=' + pdfEscape(encodeURIComponent(doi)) + (route === '/api/acquire' ? '&amp;download=1' : '') + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">' + (institution && route === '/api/acquire' ? '获取全文并查看进度' : manual ? '检查已归档全文' : route === '/api/acquire' ? '获取、保存并下载 PDF' : '下载 PDF') + '</button></form>' + pdfOfficialLink(doi), invalid ? 403 : 200, route === '/api/acquire' ? '按 DOI 获取并入库' : 'PDF 下载', doi), retryAfter);
 }
 function libraryArchiveStatus() {
   return { scope:'website_cache', state:'not_confirmed', complete:false, executionClaimed:false, ledgerChecked:false, sides:{github:'pending',drive:'pending',mac:'pending'} };
@@ -596,14 +600,18 @@ async function libraryAcquireResult(request, env, paper, download, error = '', c
   }
   return libraryResult(request, paper, error, cached, retryAfter);
 }
+function libraryDownloadForm(doi) {
+  // Same protected POST as /api/fulltext; the passphrase never appears in a URL.
+  return '<form method="post" action="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit">下载 PDF</button></form>';
+}
 function libraryResult(request, paper, error = '', cached = false, retryAfter = 0) {
   const status = paper.fulltextStatus;
   if (['manual_needed','review'].includes(status)) retryAfter = 0;
   const downloadUrl = status === 'available' ? '/api/fulltext?doi=' + encodeURIComponent(paper.doi) : '';
   if (!(request.headers.get('accept') || '').includes('text/html')) return libraryRetryResponse(json({ ok:true, paper, status, cached, archive:libraryArchiveStatus(), ...(error ? { error } : {}), ...(downloadUrl ? { downloadUrl } : libraryRetryInfo(retryAfter)) }, status === 'available' ? 200 : 202), retryAfter);
-  const message = status === 'available' ? '全文已保存至网站缓存，可下载 PDF。如存储仍在同步，请约 1 分钟后再试。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。等待不代表核验会自动完成。' : '题录已保存，尚未取得可下载 PDF。题录保存不代表全文入库。';
-  const action = status === 'manual_needed' ? '<p>需要人工处理（manual_needed）。当前未找到可用 PDF 来源，请先由维护者核对已有文件是否登记及网站读取版本。确需新的订阅获取时，机构授权执行桥尚未接通。等待或反复提交不会自动取得全文。</p><p><a href="/api/acquire/retry?doi=' + pdfEscape(encodeURIComponent(paper.doi)) + '">归档完成后检查已有全文</a></p>' : status === 'review' ? '<p>需人工核验来源对应后再处理。</p>' : libraryRetryHint(retryAfter) + libraryRetryLink(paper.doi);
-  return libraryRetryResponse(pdfHtml('<p>' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? '<p><a href="' + pdfEscape(downloadUrl) + '">下载 PDF</a></p>' : action) + '<p>网站缓存可用不代表 Mac、GitHub、Drive 三端归档完成。文件来源与完整性核验不代表医学全文审阅。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202, '全文获取结果'), retryAfter);
+  const message = status === 'available' ? '全文已通过网站核验，可以下载。' : status === 'review' ? '题录已保留，全文来源关联需要核验，暂不提供下载。等待不代表核验会自动完成。' : '题录已保存，尚未取得可下载 PDF。题录保存不代表全文入库。';
+  const action = status === 'manual_needed' ? '<p class="next">需要人工处理：当前没有可用的 PDF 来源，需维护者核对已有文件是否登记。订阅全文的机构授权执行桥尚未接通，等待或反复提交不会自动取得全文。维护者登记后，可用下方入口检查（只查已登记文件，不再向出版社下载）。</p><p><a href="/api/acquire/retry?doi=' + pdfEscape(encodeURIComponent(paper.doi)) + '">检查已登记的全文</a></p>' : status === 'review' ? '<p class="next">需维护者核验来源对应后再处理，无需重复提交。</p>' : libraryRetryHint(retryAfter) + libraryRetryLink(paper.doi);
+  return libraryRetryResponse(pdfHtml('<p role="status">' + message + '</p><p>' + pdfEscape(paper.title) + '</p>' + (downloadUrl ? libraryDownloadForm(paper.doi) : action) + '<p>文件核验只确认 DOI、题名与页面完整，不代表医学审阅。</p>' + pdfOfficialLink(paper.doi), status === 'available' ? 200 : 202, '全文获取结果', paper.doi), retryAfter);
 }
 function libraryError(request, error, doi = '', route = '') {
   if (error instanceof PdfFailure) {
@@ -621,7 +629,7 @@ function libraryError(request, error, doi = '', route = '') {
     library_paused:'来源要求授权、验证或已限制请求，获取已暂停。请维护者确认后恢复，或由已授权机构浏览器处理。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
   const retryable = ['library_not_found','library_busy','library_retry_later','library_limit','library_timeout','library_upstream','library_sync_pending'].includes(code);
   const retryHint = code === 'library_paused' && retryAfter ? '<p>上游返回 Retry-After，限制期限为北京时间 ' + new Date(retryAfter + 28800000).toISOString().slice(0,19).replace('T',' ') + '。到期不会自动恢复，仍需维护者确认。</p>' : retryAfter ? libraryRetryHint(retryAfter) : '';
-  return libraryRetryResponse(pdfHtml('<p>' + pdfEscape(messages[code] || messages.library_server) + '</p>' + pdfDiagnosticHtml(error.diagnostic) + retryHint + (retryable ? libraryRetryLink(doi, code === 'library_sync_pending' ? route || '/api/fulltext' : '/api/acquire') : '') + pdfOfficialLink(doi), status), retryAfter);
+  return libraryRetryResponse(pdfHtml('<p>' + pdfEscape(messages[code] || messages.library_server) + '</p>' + pdfDiagnosticHtml(error.diagnostic) + retryHint + (retryable ? libraryRetryLink(doi, code === 'library_sync_pending' ? route || '/api/fulltext' : '/api/acquire') : '') + pdfOfficialLink(doi), status, '全文服务提示', doi), retryAfter);
 }
 function librarySafeUrl(value, pdf = false) {
   let url; try { url = new URL(value); } catch { libraryFail('library_identity', 409); }
@@ -1450,7 +1458,7 @@ function musePublicJob(value, doi = '') {
   const stage = expired ? 'failed' : job.state;
   const planned = job.state === 'verifying' ? museNextVerificationAt(job.receivedAt || job.updatedAt) : '';
   const verificationDelayed = !!planned && Date.parse(planned) <= Date.now();
-  const messages = {queued:'已加入 Muse 待办，等待下一次轮询。',running:'Muse 已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
+  const messages = {queued:'已加入 Muse 待办，等待 Muse 领取；领取时间取决于 Muse 的运行安排，不保证即时。',running:'Muse 已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
     login_required:'汉堡会话需要重新登录，请维护者在 Muse 的授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'Muse 报告任务失败，需维护者核查。'};
   const reasons = {lease_expired:'Muse 领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
     queue_expired:'任务排队超过 24 小时，已停止；需维护者核查。'};
@@ -1476,13 +1484,25 @@ function museResponse(request, job, paper) {
   if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:publicJob.state,job:publicJob,...(paper ? {paper:libraryObservedPaper(paper,null,publicJob)} : {}),archive,statusUrl,
     ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},job.state === 'available' ? 200 : 202);
   const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60"><p>本页每 60 秒只更新状态，不会重新下载。</p>' : '';
-  const stages = [['queued','待领取'],['running','已领取，获取全文'],['uploading','Drive 已报告上传'],['verifying','PDF 已收到，等待核验'],['available','核验通过，可下载']];
+  const stages = [['queued','待 Muse 领取'],['running','Muse 已领取，正在获取全文'],['uploading','原件已上传私有收件箱'],['verifying','网站已收到 PDF，等待核验'],['available','核验通过，可下载']];
+  // Infer how far a stopped task got from the evidence it carries, so the list never shows no step at all.
+  const reached = job.state === 'available' ? 4 : job.state === 'review' || job.candidateKey ? 3 : job.driveFileId ? 2 : job.leaseId ? 1 : 0;
   const index = stages.findIndex(([stage]) => stage === publicJob.stage);
-  const progress = '<ol>' + stages.map(([,label],i) => '<li' + (i === index ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i === index ? '（当前）' : index > i ? '（已完成）' : '') + '</li>').join('') + '</ol>';
+  const stopped = index < 0 || publicJob.stage === 'failed';
+  const stopLabels = {review:'PDF 核验未通过，等待维护者核查',login_required:'汉堡会话需重新登录（维护者处理）',failed:'任务已停止，等待维护者确认'};
+  const current = stopped ? reached : index;
+  const progress = '<ol class="steps">' + stages.map(([,label],i) => {
+    if (stopped && i === current) return '<li class="stop" aria-current="step">' + pdfEscape(stopLabels[job.state === 'login_required' ? 'login_required' : job.state === 'review' ? 'review' : 'failed']) + '（当前）</li>';
+    return '<li' + (i < current || (i === current && job.state === 'available') ? ' class="done"' : '') + (!stopped && i === current ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i < current || (i === current && job.state === 'available') ? '（已完成）' : i === current ? '（当前）' : '') + '</li>';
+  }).join('') + '</ol>';
   const planned = publicJob.nextVerificationAt ? '<p>本批原件计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
-  return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + progress + '<p>最近更新：北京时间 ' + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '</p>' + planned
-    + (museRecoverable(job) ? '<p><a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">维护者确认后重新入队</a>；优先复用 Muse 已下载文件。</p>' : '') + (job.state === 'available' ? '<p><a href="/api/fulltext?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">下载 PDF</a></p>' : '')
-    + '<p>网站缓存与正式三端归档分别确认。</p>' + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务');
+  const next = job.state === 'available' ? ''
+    : museRecoverable(job) ? '<p class="next">无需重复提交。确认 Muse 没有仍在运行的下载后，可用全文口令<a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">恢复这个任务</a>；会优先复用已下载文件。</p>'
+    : ['review','login_required'].includes(job.state) ? '<p class="next">无需重复提交。维护者处理后，本页和网站上的状态会更新。</p>'
+    : '<p class="next">可以关闭本页。之后回到网站搜索这个 DOI 即可看到最新状态；可下载时，文献卡片会出现“下载 PDF”。</p>';
+  return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + (paper?.title ? '<p>' + pdfEscape(paper.title) + '</p>' : '') + progress + '<p>最近更新：北京时间 ' + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '</p>' + planned + next
+    + (job.state === 'available' ? libraryDownloadForm(job.doi) : '')
+    + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务',job.doi);
 }
 async function museOwnerGuard(env, doi) {
   const previous = fulltextJobRecord(await libraryGet(env.QL_KV,FULLTEXT_JOB_PREFIX + doi),doi);
@@ -1501,7 +1521,7 @@ async function handleMuseRetry(request, env) {
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (!existing || !paper) libraryFail('library_not_found',404);
     if (!museRecoverable(existing)) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>原任务已停止。确认 Muse 没有仍在运行的下载，再重新入队；请优先复用已下载 PDF，不会自动发起新的下载。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">确认重新入队</button></form>' + pdfOfficialLink(doi),200,'恢复 Muse 全文任务');
+    if (request.method === 'GET') return pdfHtml('<p>原任务已停止。确认 Muse 没有仍在运行的下载，再重新入队；请优先复用已下载 PDF，不会自动发起新的下载。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">确认重新入队</button></form>' + pdfOfficialLink(doi),200,'恢复 Muse 全文任务',doi);
     if (paper.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);
@@ -1531,7 +1551,7 @@ async function handleMuseRequest(request, env) {
     const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (existing) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>输入全文口令，把这篇加入现有 Muse 的待办。Muse 在下一次轮询领取任务，上传原件后由网站核验。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">交给 Muse 获取全文</button></form>' + pdfOfficialLink(doi),200,'交给 Muse');
+    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后，由 Muse 获取原件，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>Muse 领取并下载原件（时间取决于 Muse 运行安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
     if (paper?.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);

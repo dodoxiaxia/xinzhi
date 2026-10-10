@@ -1,5 +1,7 @@
 # 付费调用前持久化断点：独立、默认关闭
 
+> 2026-10-10 更新：经站点所有者授权已默认启用（变量设为 0 可关闭）；证据核对未通过记为终态 `rejected`，不再全局暂停；10/07 的暂停已按固定回执解除。见 [运行依赖与故障复盘](运行依赖与故障复盘-20261010.md)。
+
 本修复供唯一集成负责人审查，不能作为“已线上验证”的证据。没有执行真实 GitHub state 写入、模型调用或部署，没有增加 token/权限/预算或生产调度。
 
 `week_precompute_checkpoint.py` 通过既有 GitHub Git Data API，仅提交 `data/week-precompute-ledger.json` 和 `data/week-precompute-cache.json`。每个新请求有独立 requestId；在其预算预留被远端确认之前，模型回调不会执行。每份通过原文/数字校验的结果随后持久化；最终记录 validated。原公开目录、其他 state 文件及 main 代码不会被该模块修改。

@@ -20,7 +20,7 @@ async function helpers() {
   const radar = { id: 'radar-id', doi: '10.1234/radar', title: 'Archived clinical title', archived: true, date: '2025-01-01' };
   const c = vm.createContext({ URL, AbortController, setTimeout, clearTimeout, encodeURIComponent, CURATED: [kept], FEEDS: { items: [radar] }, LIBRARY: { papers: [held] },
     state: { search: '', mode: 'library', lane: 'aitech', range: '7', journal: 'Other', reading: 'guide' }, _maxDateCache: {},
-    PDF_LIBRARY_IDS: new Set([held.id]), DOI_FULLTEXT: new Map(), DOI_LOOKUPS: new Map(), DOI_JOBS: new Map(), DOI_JOB_WATCH: { timer:null, doi:'', startedAt:0 },
+    PDF_LIBRARY_IDS: new Set([held.id]), DOI_FULLTEXT: new Map(), DOI_LOOKUPS: new Map(), DOI_JOBS: new Map(), DOI_JOB_WATCH: { timer:null, doi:'', startedAt:0 }, DOI_TOUCHED: new Set(),
     SUPPLEMENTAL_LIBRARY: { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 },
     esc: value => String(value).replace(/[<>&"']/g, ''), refreshSupplementalView: () => {},
     matchesFilters: () => false, getCurrentDataset: () => [],

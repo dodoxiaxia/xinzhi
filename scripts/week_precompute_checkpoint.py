@@ -34,7 +34,8 @@ PATHS = (LEDGER_PATH, CACHE_PATH)
 _SHA = re.compile(r'[a-f0-9]{40}')
 MAX_BLOB_BYTES = 8 * 1024 * 1024
 UNCERTAIN = {'started', 'failed_or_uncertain'}
-STATUSES = UNCERTAIN | {'validated', 'recovered_existing_cache'}
+# 'rejected': the provider answered and the output failed evidence validation; known, accounted, not retried.
+STATUSES = UNCERTAIN | {'validated', 'recovered_existing_cache', 'rejected'}
 
 
 class CheckpointError(ValueError):
@@ -285,7 +286,7 @@ class GitHubStateCheckpoint:
                     _fail('checkpoint_usage_cannot_change')
             if target['status'] != row['status']:
                 if not (key in self._owned and row['status'] == 'started'
-                        and target['status'] in ('validated', 'failed_or_uncertain')):
+                        and target['status'] in ('validated', 'failed_or_uncertain', 'rejected')):
                     _fail('checkpoint_unowned_status_transition')
         for key, entry in self._cache['entries'].items():
             if cache['entries'].get(key) != entry:

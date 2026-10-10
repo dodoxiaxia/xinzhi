@@ -2,7 +2,7 @@
 
 公开网站：https://learn.dryz.info/ 。实际发布版本与结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
-最新跨对话同步、外部状态边界及未完成事项见 [云端协同同步总账（2026-10-10）](docs/云端协同同步总账-20261010.md)。完整手册提供 [Markdown](docs/使用说明.md)、[离线 HTML](docs/使用说明.html)、[PDF](docs/使用说明.pdf) 和 [含截图压缩包](docs/心知网站使用说明手册.zip)。Muse 当前对接见 [Muse 网站接入](docs/Muse网站接入.md)，下载端定时任务尚未创建。
+最新跨对话同步、外部状态边界及未完成事项见 [云端协同同步总账（2026-10-10）](docs/云端协同同步总账-20261010.md)；外部依赖、10/10 故障与修复见 [运行依赖与故障复盘](docs/运行依赖与故障复盘-20261010.md)。完整手册提供 [Markdown](docs/使用说明.md)、[离线 HTML](docs/使用说明.html)、[PDF](docs/使用说明.pdf) 和 [含截图压缩包](docs/心知网站使用说明手册.zip)。Muse 当前对接见 [Muse 网站接入](docs/Muse网站接入.md)，下载端定时任务尚未创建。
 
 ## 阅读和内容范围
 
