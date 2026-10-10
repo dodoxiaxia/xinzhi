@@ -41,7 +41,7 @@ class ResolvePauseTests(unittest.TestCase):
         ledger = copy.deepcopy(LEGACY)
         resolver.resolve(ledger, RECEIPT, 'now')
         p = w.select([paper()], CLOCK)[0][0]
-        with tempfile.TemporaryDirectory() as d, patch.dict(w.os.environ, {'XINZHI_LLM_ENDPOINT': 'https://model.fixture/api',
+        with tempfile.TemporaryDirectory() as d, patch.dict(w.os.environ, {'GITHUB_ACTIONS': '', 'XINZHI_LLM_ENDPOINT': 'https://model.fixture/api',
                 'XINZHI_LLM_MODEL': 'existing', 'XINZHI_LLM_API_KEY': 'fixture-secret'}):
             report = w.configured_batch([p], {'entries': {}}, Path(d) / 'cache', ledger, Path(d) / 'ledger', 8,
                                         lambda public: {'translate': tr(), 'study': {'wrong': 1}, 'quicklook': ql()})
