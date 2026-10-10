@@ -139,6 +139,38 @@ def sciencedirect_metadata(summary):
     return meta
 
 
+def feed_identifiers(entry):
+    """Dublin Core identifiers as published by PubMed RSS: pmid:N, doi:10.x, and creators."""
+    out, authors = {}, []
+    for child in entry:
+        name, value = local(child.tag), ''.join(child.itertext()).strip()
+        if name == 'identifier':
+            m = re.fullmatch(r'pmid:\s*(\d{1,9})', value, re.I)
+            if m:
+                out['pmid'] = m.group(1)
+            m = re.fullmatch(r'doi:\s*(10\.\d{4,9}/\S+)', value, re.I)
+            if m:
+                out['doi'] = m.group(1).lower()
+        elif name == 'creator' and value and len(authors) < 50:
+            authors.append(value)
+    if authors:
+        out['authors'] = authors
+    return out
+
+
+def canonical_pubmed_link(link, pmid=''):
+    """PubMed RSS links carry per-fetch tracking (ff=timestamp); ids must not change between runs."""
+    try:
+        parsed = urlsplit(link)
+    except ValueError:
+        return link
+    if parsed.hostname in ('pubmed.ncbi.nlm.nih.gov', 'www.ncbi.nlm.nih.gov'):
+        m = re.match(r'^/(?:pubmed/)?(\d{1,9})/?$', parsed.path)
+        if m and (not pmid or m.group(1) == pmid):
+            return 'https://pubmed.ncbi.nlm.nih.gov/' + m.group(1) + '/'
+    return link
+
+
 def extract_doi(link, entry):
     for child in entry:
         if local(child.tag) == 'doi':
@@ -428,13 +460,24 @@ def parse_feed(raw, source, *, checked_at=None):
         category = classify(title, source['name'])
         if category == '待分类':
             continue
-        record = {'id': 'rss-' + hashlib.sha256(link.encode()).hexdigest()[:16], 'title': title,
+        ids = feed_identifiers(entry)
+        stable = canonical_pubmed_link(link, ids.get('pmid', ''))
+        record = {'id': 'rss-' + hashlib.sha256(stable.encode()).hexdigest()[:16], 'title': title,
                   'url': safe_url(link), 'doi': extract_doi(link, entry), 'journal': source['name'],
                   'date': dateval(text(entry, 'pubDate') or text(entry, 'date') or text(entry, 'published') or text(entry, 'updated')),
                   'category': category, 'basis': 'RSS 元数据 · 待编辑核验', 'summary': description[:12000],
                   'summary_truncated': len(description) > 12000, 'sourceId': source['id'],
                   'sourceUrl': safe_url(source.get('url', '')), 'fetchedAt': checked_at,
                   **{k:v for k,v in abstract.items() if k not in {'summary','doi','title'} and (k!='abstractSections' or len(description)<=12000)}}
+        # PubMed search feeds carry PMID/DOI in dc:identifier; without them the item could not
+        # be translated, summarised or matched to its PubMed record.
+        if ids.get('pmid'):
+            record['pmid'] = ids['pmid']
+            record['url'] = safe_url(stable)
+        if ids.get('doi') and not record['doi']:
+            record['doi'] = ids['doi']
+        if ids.get('authors') and not record.get('authors'):
+            record['authors'] = ids['authors']
         meta = sciencedirect_metadata(description)
         if meta:
             if record['date']:
