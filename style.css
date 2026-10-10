@@ -1236,3 +1236,9 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover, html[data-style="c
   .card-source-actions .btn-sm { padding-left: 10px; padding-right: 10px; }
   .card-lead { font-size: 15px; }
 }
+@media (max-width: 720px) {
+  header.app-header { transition: transform .22s ease; will-change: transform; }
+  html.header-tucked header.app-header { transform: translateY(-100%); }
+  html.header-tucked .stream-toolbar, html.header-tucked .weekly-toc { transition: top .22s ease; }
+}
+@media (prefers-reduced-motion: reduce) { header.app-header, html.header-tucked .stream-toolbar { transition: none; } }
