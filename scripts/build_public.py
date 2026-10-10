@@ -17,7 +17,7 @@ from public_content_corrections import (load_corrections, corrected_title,
                                         corrected_quicklook_map)
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
-PUBLIC = {'index.html','public.js','radar.js','style.css','icon.svg','_headers','_worker.js'}
+PUBLIC = {'index.html','public.js','radar.js','feed.xml','style.css','icon.svg','_headers','_worker.js'}
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
 PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
@@ -325,6 +325,40 @@ def make_radar(candidates,tz=None,corrections=None):
             **({'dateBases':date_bases} if date_bases else {}),
             **({'publicationStatuses':publication_statuses} if publication_statuses else {})}
 
+SITE_URL='https://learn.dryz.info/'
+FEED_DAYS=7
+
+def make_feed(items,quicklooks,built_at,days=FEED_DAYS):
+    """RSS 2.0 of recent daily picks, for feed readers and chat bots. Labels say what is machine-made."""
+    from xml.sax.saxutils import escape
+    import email.utils
+    picks=sorted((q for q in items if q.get('autoPick')),key=lambda q:(q['autoPick']['d'],-q['autoPick']['r']),reverse=True)
+    cut=(datetime.date.fromisoformat(picks[0]['autoPick']['d'])-datetime.timedelta(days=days-1)).isoformat() if picks else ''
+    rows=[]
+    for q in picks:
+        if q['autoPick']['d']<cut:break
+        link=safe_url(q.get('url')) or ('https://doi.org/'+q['doi'] if q.get('doi') else SITE_URL)
+        key=str(q.get('doi') or '').lower() or 'pmid-'+str(q.get('pmid') or '')
+        ql=quicklooks.get(key) or {}
+        zh=ql.get('title_zh') or q.get('titleZh') or ''
+        title=(zh+' | '+q['title']) if zh else q['title']
+        parts=[q.get('cleanJournal') or q.get('journal') or '',(q.get('date') or '')[:10]]
+        body='<p>'+escape(' · '.join(x for x in parts if x))+'</p>'
+        if zh:body+='<p>'+escape(q['title'])+'（中文题名为机器翻译）</p>'
+        if ql.get('one_line'):body+='<p>AI 速览（未经人工核对）：'+escape(ql['one_line'])+'</p>'
+        if ql.get('why_read'):body+='<p>为什么读：'+escape(ql['why_read'])+'</p>'
+        if not ql.get('one_line') and q.get('summary'):
+            text=q['summary'].strip()
+            body+='<p>'+escape(text[:400]+('…' if len(text)>400 else ''))+'</p>'
+        body+='<p>规则自动精选，非医学审查。</p>'
+        when=datetime.datetime.fromisoformat(q['autoPick']['d']+'T08:00:00+08:00')
+        rows.append('<item><title>'+escape(title)+'</title><link>'+escape(link)+'</link><guid isPermaLink="false">xinzhi-'+escape(str(q.get('id')))+'</guid>'
+                    '<pubDate>'+email.utils.format_datetime(when)+'</pubDate><description>'+escape(body)+'</description></item>')
+    updated=email.utils.format_datetime(datetime.datetime.fromisoformat(built_at))
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>心知 · 每日精选</title>'
+            '<link>'+SITE_URL+'</link><description>心血管与 AI 医疗每日精选（规则自动精选；AI 速览与机器翻译未经人工核对）</description>'
+            '<language>zh-CN</language><lastBuildDate>'+updated+'</lastBuildDate>'+''.join(rows)+'</channel></rss>\n')
+
 RADAR_INLINE_DAYS=21  # rows this recent ship in public.js; the rest load on demand from radar.js
 
 def split_radar(radar,today=None):
@@ -468,7 +502,7 @@ def main():
     if worker.count(abstract_placeholder)!=1:raise ValueError('Public abstract snapshot placeholder missing')
     sources=public_abstract_sources(weekly,editorial_catalog,candidates['items'])
     worker=worker.replace(abstract_placeholder,'const PUBLIC_ABSTRACT_SOURCES = '+json.dumps(sources,ensure_ascii=False,separators=(',',':'))+';')
-    files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
+    files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'feed.xml':make_feed(candidates['items'],ql,built_at),'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
     if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')
