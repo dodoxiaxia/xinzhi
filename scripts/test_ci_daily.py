@@ -1,4 +1,5 @@
 import copy
+import datetime
 import json
 import os
 import sys
@@ -187,6 +188,12 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertIn(ci_daily.DEEP_READING, calls)
         self.assertLess(calls.index(ci_daily.DEEP_READING), calls.index(ci_daily.BUILD))
 
+    def test_successful_full_run_records_the_day(self):
+        result, report, outputs, calls = self.invoke(fast=False)
+        self.assertEqual(result, 0)
+        marker = json.loads((self.root / ci_daily.FULL_MARKER).read_text())
+        self.assertEqual(marker['day'], ci_daily.beijing_now().date().isoformat())
+
     def test_daily_readings_precede_optional_archive_enrichment(self):
         result, report, outputs, calls = self.invoke(fast=False)
         self.assertLess(calls.index(ci_daily.DEEP_READING), calls.index(ci_daily.FULL_OPTIONAL[0][0]))
@@ -354,6 +361,44 @@ class DeploymentEvidenceTests(PipelineFixture):
                 (self.root / 'docs' / 'last-refresh.json').write_text(json.dumps(data))
                 self.assertFalse(self.status()['refresh']['currentAttempt'])
                 self.assertFalse(self.status()['build']['currentAttempt'])
+
+
+class FullRefreshOncePerDayTests(unittest.TestCase):
+    BJ = datetime.timezone(datetime.timedelta(hours=8))
+
+    def decide(self, fast, marker_day=None, hour=6, enabled='1'):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'data').mkdir()
+            if marker_day:
+                (root / ci_daily.FULL_MARKER).write_text(json.dumps({'day': marker_day}))
+            now = datetime.datetime(2026, 10, 11, hour, 7, tzinfo=self.BJ)
+            with patch.dict(os.environ, {'XINZHI_DAILY_FULL_ONCE': enabled}):
+                return ci_daily.full_refresh_decision(fast, root, now)
+
+    def test_timed_fast_run_catches_up_a_missing_full_refresh(self):
+        self.assertEqual(self.decide(True, '2026-10-10'), (False, 'catch_up_missing_full_refresh'))
+        self.assertEqual(self.decide(True), (False, 'catch_up_missing_full_refresh'))
+
+    def test_no_catch_up_before_five_or_after_success(self):
+        self.assertEqual(self.decide(True, '2026-10-10', hour=4), (True, None))
+        self.assertEqual(self.decide(True, '2026-10-11'), (True, None))
+
+    def test_late_scheduled_full_downgrades_once_done(self):
+        self.assertEqual(self.decide(False, '2026-10-11'), (True, 'full_refresh_already_done_today'))
+        self.assertEqual(self.decide(False, '2026-10-10'), (False, None))
+
+    def test_pushes_and_manual_full_runs_are_unaffected(self):
+        self.assertEqual(self.decide(True, '2026-10-10', enabled=''), (True, None))
+        self.assertEqual(self.decide(False, '2026-10-11', enabled=''), (False, None))
+
+    def test_successful_full_run_writes_the_marker(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(ci_daily, 'ROOT', Path(tmp)), \
+                patch.object(ci_daily, 'content_hash', return_value='h'), patch.object(ci_daily, 'out'), \
+                patch.object(sys, 'argv', ['ci_daily.py']), patch.object(ci_daily, 'run', side_effect=lambda argv, timeout: (1, '', 'x')):
+            (Path(tmp) / 'data').mkdir()
+            ci_daily.main()  # required step fails: no marker
+            self.assertFalse((Path(tmp) / ci_daily.FULL_MARKER).exists())
 
 
 if __name__ == '__main__':

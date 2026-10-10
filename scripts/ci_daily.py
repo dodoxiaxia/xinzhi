@@ -217,18 +217,53 @@ def out(deploy):
             f.write(f'deploy={"true" if deploy else "false"}\n')
 
 
+FULL_MARKER = 'data/full-refresh-marker.json'
+FULL_EARLIEST_HOUR = 5  # Beijing; the full refresh is scheduled for 04:47
+
+
+def beijing_now():
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+
+
+def full_refresh_decision(fast, root=ROOT, now=None):
+    """Timed runs (XINZHI_DAILY_FULL_ONCE=1) do the paid full refresh exactly once per Beijing day.
+
+    GitHub often drops the 04:47 cron (10-10: not fired an hour later), while the external
+    2-hourly dispatcher is punctual. A timed fast run after 05:00 therefore catches up a missing
+    full refresh, and a late scheduled full run after one already succeeded downgrades to fast.
+    Pushes and manual full runs are unaffected."""
+    if os.environ.get('XINZHI_DAILY_FULL_ONCE') != '1':
+        return fast, None
+    now = now or beijing_now()
+    try:
+        done = json.loads((root / FULL_MARKER).read_text()).get('day') == now.date().isoformat()
+    except (OSError, ValueError, AttributeError):
+        done = False
+    if fast and not done and now.hour >= FULL_EARLIEST_HOUR:
+        return False, 'catch_up_missing_full_refresh'
+    if not fast and done:
+        return True, 'full_refresh_already_done_today'
+    return fast, None
+
+
 def main():
-    fast = '--fast' in sys.argv
+    fast, full_policy = full_refresh_decision('--fast' in sys.argv)
     before = content_hash()
     budget = (25 if fast else 50) * 60
     deadline = time.monotonic() + budget
     report = {'startedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'runId': os.environ.get('GITHUB_RUN_ID'), 'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'codeSha': os.environ.get('GITHUB_SHA'), 'fast': fast, 'changed': None, 'status': 'running', 'deploymentRequested': False, 'budgetSeconds': budget, 'beforeContentHash': before, 'steps': []}
+    if full_policy:
+        report['fullRefreshPolicy'] = full_policy
 
     def finish(status, problems=None):
         report['status'] = status
         report['problems'] = problems or []
         report['finishedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         report['deploymentRequested'] = status == 'success' and (report['changed'] or not fast)
+        if status == 'success' and not fast:
+            # Saved with data/ in state only when the run deploys; a failed run stays retryable today.
+            (ROOT / FULL_MARKER).write_text(json.dumps({'day': beijing_now().date().isoformat(), 'runId': report['runId'],
+                                                         'finishedAt': report['finishedAt']}))
         (ROOT / 'docs').mkdir(exist_ok=True)
         (ROOT / 'docs/last-refresh.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
         out(report['deploymentRequested'])
