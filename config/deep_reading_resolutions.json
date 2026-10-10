@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "day": "2026-10-11",
+      "identity": "PMC13645527",
+      "sourceHash": "dd4b8ce164e236f471692d6932b1709d5563869008a417666e34387c6ac77ecb",
+      "at": "2026-10-10T22:01:54.112870+00:00",
+      "basis": "Run 38089594421 raised IndexError in evidence_units after saving this reservation and before any model request (fixed: units now built before reserving)."
+    }
+  ]
+}

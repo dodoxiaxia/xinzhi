@@ -237,7 +237,10 @@ def evidence_units(paragraphs):
                 parts.append(part)
             offset = end
         if len(parts) > 1 and len(parts[-1]) < 30:
-            parts[-2] += ' ' + parts.pop()
+            # Pop first: `parts[-2] += parts.pop()` resolves the index before the pop, which
+            # raised IndexError for two parts and overwrote the opening chunk for three or more.
+            tail = parts.pop()
+            parts[-1] += ' ' + tail
         for index, text in enumerate(parts, 1):
             units.append({'id': paragraph['id'] + '_' + str(index), 'section': paragraph['section'],
                           'text': text, 'evidenceUnit': True})
@@ -512,6 +515,22 @@ def recover_drafts(data, ledger, when, save):
         save(data, ledger)
     return recovered
 
+RESOLUTIONS_PATH = 'config/deep_reading_resolutions.json'
+
+def apply_resolutions(ledger, entries):
+    """Close 'started' rows proven to have crashed before any model request.
+
+    Each entry must match day, identity, sourceHash and the exact reservation time; the row
+    stays in the ledger (still counted against the day's attempt cap) and records why."""
+    changed = 0
+    for e in entries or []:
+        for row in ledger['days'].get(e.get('day'), []):
+            if (row.get('state') == 'started' and row.get('identity') == e.get('identity')
+                    and row.get('sourceHash') == e.get('sourceHash') and row.get('at') == e.get('at')):
+                row.update(state='invalid', errorCode='pre_model_crash', resolution=e.get('basis', ''))
+                changed += 1
+    return changed
+
 def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=call_model, deadline=None):
     check_store(data, ledger)
     today, day = when.astimezone(SHANGHAI).date(), day_of(when)
@@ -547,12 +566,14 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
         except ReadingError as e:
             errors.append(e.code)
             continue
+        # Local preparation happens before the reservation: a processing error here must not
+        # leave a 'started' row that blocks the rest of the day as an uncertain paid attempt.
+        paragraphs = evidence_units(paragraphs)
         reservation = {'identity': identity(paper), 'pmcid': paper['pmcid'], 'sourceHash': source_hash,
                        'at': now().isoformat(), 'state': 'started', 'outputTokenLimit': 3200}
         rows.append(reservation)
         save(data, ledger)  # Must succeed before any paid POST; never retry a uncertain POST.
         try:
-            paragraphs = evidence_units(paragraphs)
             draft = model(cfg, paper, paragraphs)
             data.setdefault('drafts', {})[identity(paper)] = {'paper': paper, 'output': draft, 'sourceParagraphs': paragraphs, 'sourceHash': source_hash, 'createdAt': now().isoformat()}
             save(data, ledger)  # Keep unreviewed content separate from published items, for repair without another paid request.
@@ -643,6 +664,9 @@ def main():
         return 0
     try:
         writer = checkpoint(ROOT)
+        resolutions = read(ROOT / RESOLUTIONS_PATH, {'entries': []}).get('entries', [])
+        if apply_resolutions(ledger, resolutions):
+            writer.save(data, ledger)
         recovered = recover_drafts(data, ledger, when, writer.save)
         cfg = model_config()
         papers, errors = discover(when.astimezone(SHANGHAI).date())
