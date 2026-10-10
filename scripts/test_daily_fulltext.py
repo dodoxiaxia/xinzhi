@@ -180,7 +180,8 @@ class GenerationTests(unittest.TestCase):
         def bad(*_):
             calls.append(True)
             result=output(_[-1][0]['id'])
-            result['sections']['findings']['text'] += '不支持的9999人结果。'
+            # The only sentence carries the unsupported number, so removal-only repair cannot help.
+            result['sections']['findings']['text'] = '不支持的研究结果共纳入9999名患者，这一数字没有原文证据。'
             return result
         data, ledger, status = self.generate(model=bad)
         self.assertEqual(len(calls), 8)
@@ -219,7 +220,7 @@ class DraftRecoveryTests(unittest.TestCase):
         paras,sha=d.parse_fulltext(xml(p),p)
         units=d.evidence_units(paras)
         raw=output(units[0]['id'])
-        raw['sections']['findings']['text']+='999名患者。'
+        raw['sections']['findings']['text']='不支持的研究结果共纳入999名患者，这一数字没有原文证据。'
         data=d.empty_data()
         data['drafts']={d.identity(p):{'paper':p,'output':raw,'sourceParagraphs':units,'sourceHash':sha,'createdAt':WHEN.isoformat()}}
         ledger=d.empty_ledger()
@@ -228,6 +229,58 @@ class DraftRecoveryTests(unittest.TestCase):
         data['drafts'][d.identity(p)]['output']=output(units[0]['id'])
         ledger['days']['2026-10-09'][0]['sourceHash']='0'*64
         self.assertEqual(d.recover_drafts(data,ledger,WHEN,lambda *_:None),0)
+
+class RepairTests(unittest.TestCase):
+    def setUp(self):
+        self.p=paper()
+        paras,self.sha=d.parse_fulltext(xml(self.p),self.p)
+        self.units=d.evidence_units(paras)
+
+    def test_unsupported_trailing_sentence_is_removed_not_rewritten(self):
+        raw=output(self.units[0]['id'])
+        original=raw['sections']['findings']['text']
+        raw['sections']['findings']['text']+='另有999名患者。'
+        with self.assertRaises(d.ReadingError):
+            d.validate_output(raw,self.units,self.p['title'])
+        result,repaired=d.validate_or_repair(raw,self.units,self.p['title'])
+        self.assertTrue(repaired)
+        self.assertEqual(result['sections']['findings']['text'],original)
+        self.assertNotIn('999',result['sections']['findings']['text'])
+
+    def test_gutted_section_keeps_the_original_error(self):
+        raw=output(self.units[0]['id'])
+        raw['sections']['question']['text']='短句一。'+'研究纳入999名患者并随访多年，以评估长期心血管结局与生存差异的全部细节。'
+        with self.assertRaisesRegex(d.ReadingError,'unsupported_number'):
+            d.validate_or_repair(raw,self.units,self.p['title'])
+
+    def test_evidence_over_cap_is_trimmed_to_bound_paragraphs(self):
+        units=[dict(self.units[i % len(self.units)], id='u%d' % i) for i in range(d.MAX_EVIDENCE+3)]
+        raw=output(units[0]['id'])
+        ids=[u['id'] for u in units]
+        raw['sections']['design']['evidence']=[{'paragraph':i} for i in ids]+[{'paragraph':'missing'}]
+        result,repaired=d.validate_or_repair(raw,units,self.p['title'])
+        self.assertTrue(repaired)
+        self.assertEqual(len(result['sections']['design']['evidence']),d.MAX_EVIDENCE)
+        self.assertTrue({e['paragraph'] for e in result['sections']['design']['evidence']}<=set(ids))
+
+    def test_draft_from_an_earlier_day_is_recovered_and_flagged(self):
+        raw=output(self.units[0]['id'])
+        raw['sections']['findings']['text']+='另有999名患者。'
+        data=d.empty_data()
+        data['drafts']={d.identity(self.p):{'paper':self.p,'output':raw,'sourceParagraphs':self.units,'sourceHash':self.sha,'createdAt':WHEN.isoformat()}}
+        ledger=d.empty_ledger()
+        earlier=(WHEN.astimezone(d.SHANGHAI).date()-d.dt.timedelta(days=2)).isoformat()
+        ledger['days'][earlier]=[{'identity':d.identity(self.p),'sourceHash':self.sha,'state':'invalid'}]
+        self.assertEqual(d.recover_drafts(data,ledger,WHEN,lambda *_:None),1)
+        row=ledger['days'][earlier][0]
+        self.assertTrue(row['recoveredWithoutModel'] and row['repairedWithoutModel'])
+        self.assertEqual(data['items'][0]['publishedOn'],d.day_of(WHEN))
+        too_old=(WHEN.astimezone(d.SHANGHAI).date()-d.dt.timedelta(days=d.RECOVERY_DAYS+1)).isoformat()
+        data2=d.empty_data()
+        data2['drafts']={d.identity(self.p):{'paper':self.p,'output':raw,'sourceParagraphs':self.units,'sourceHash':self.sha,'createdAt':WHEN.isoformat()}}
+        ledger2=d.empty_ledger()
+        ledger2['days'][too_old]=[{'identity':d.identity(self.p),'sourceHash':self.sha,'state':'invalid'}]
+        self.assertEqual(d.recover_drafts(data2,ledger2,WHEN,lambda *_:None),0)
 
 class CheckpointTests(unittest.TestCase):
     def test_concurrent_state_update_blocks_write(self):

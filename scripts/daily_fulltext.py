@@ -25,6 +25,8 @@ SHANGHAI = dt.timezone(dt.timedelta(hours=8))
 DATA_PATH = 'data/deep-readings.json'
 LEDGER_PATH = 'data/deep-reading-ledger.json'
 TARGET, MAX_CALLS, MAX_SOURCE_REQUESTS = 4, 8, 20
+MAX_EVIDENCE = 12
+RECOVERY_DAYS = 7  # private drafts from failed attempts stay recoverable this long
 GENERATOR_VERSION = 3
 MAX_TEXT = 120000
 SECTION_KEYS = ('question', 'design', 'findings', 'limitations', 'practice')
@@ -253,31 +255,85 @@ def validate_output(output, paragraphs, title):
     if not isinstance(sections, dict) or set(sections) != set(SECTION_KEYS):
         raise ReadingError('missing_reading_sections')
     byid = {p['id']: p for p in paragraphs}
-    cleaned = {}
-    for key in SECTION_KEYS:
-        block = sections[key]
-        if not isinstance(block, dict) or not isinstance(block.get('text'), str):
-            raise ReadingError('invalid_section')
-        text = block['text'].strip()
-        evidence = block.get('evidence')
-        if not 20 <= len(text) <= 900 or not re.search(r'[\u4e00-\u9fff]', text) or not isinstance(evidence, list) or not 1 <= len(evidence) <= 12:
-            raise ReadingError('invalid_section')
-        quotes = []
-        for e in evidence:
-            if not isinstance(e, dict):
-                raise ReadingError('invalid_evidence')
-            para, quote = byid.get(e.get('paragraph')), e.get('quote')
-            if para and quote is None and para.get('evidenceUnit') is True:
-                quote = para['text']
-            if isinstance(quote, str):
-                quote = normalized(quote)
-            if not para or not isinstance(quote, str) or not 30 <= len(quote) <= 650 or quote not in para['text']:
-                raise ReadingError('quote_not_in_fulltext')
-            quotes.append({'paragraph': para['id'], 'section': para['section'], 'quote': quote})
-        if not numbers(text) <= numbers(' '.join(e['quote'] for e in quotes)):
-            raise ReadingError('unsupported_number')
-        cleaned[key] = {'text': text, 'evidence': quotes}
+    cleaned = {key: validate_section(sections[key], byid) for key in SECTION_KEYS}
     return {'titleZh': zh, 'sections': cleaned}
+
+def evidence_quotes(evidence, byid):
+    quotes = []
+    for e in evidence:
+        if not isinstance(e, dict):
+            raise ReadingError('invalid_evidence')
+        para, quote = byid.get(e.get('paragraph')), e.get('quote')
+        if para and quote is None and para.get('evidenceUnit') is True:
+            quote = para['text']
+        if isinstance(quote, str):
+            quote = normalized(quote)
+        if not para or not isinstance(quote, str) or not 30 <= len(quote) <= 650 or quote not in para['text']:
+            raise ReadingError('quote_not_in_fulltext')
+        quotes.append({'paragraph': para['id'], 'section': para['section'], 'quote': quote})
+    return quotes
+
+def validate_section(block, byid):
+    if not isinstance(block, dict) or not isinstance(block.get('text'), str):
+        raise ReadingError('invalid_section')
+    text = block['text'].strip()
+    evidence = block.get('evidence')
+    if not 20 <= len(text) <= 900 or not re.search(r'[\u4e00-\u9fff]', text) or not isinstance(evidence, list) or not 1 <= len(evidence) <= MAX_EVIDENCE:
+        raise ReadingError('invalid_section')
+    quotes = evidence_quotes(evidence, byid)
+    if not numbers(text) <= numbers(' '.join(e['quote'] for e in quotes)):
+        raise ReadingError('unsupported_number')
+    return {'text': text, 'evidence': quotes}
+
+def repair_output(output, paragraphs):
+    """Removal-only repair of a near-miss draft; never adds wording, numbers or sources.
+
+    Unknown or duplicate evidence ids are dropped, evidence over the cap keeps the
+    entries that carry the section's numbers, and a sentence whose numbers are not in
+    its bound evidence is removed (the prompt already asks the model to omit them).
+    The result must still pass validate_output unchanged."""
+    if not isinstance(output, dict) or not isinstance(output.get('sections'), dict):
+        return output
+    byid = {p['id']: p for p in paragraphs}
+    sections = {}
+    for key, block in output['sections'].items():
+        if not isinstance(block, dict) or not isinstance(block.get('text'), str) or not isinstance(block.get('evidence'), list):
+            sections[key] = block
+            continue
+        text, kept, ids = block['text'].strip(), [], set()
+        for e in block['evidence']:
+            if isinstance(e, dict) and e.get('paragraph') in byid and e['paragraph'] not in ids:
+                try:
+                    evidence_quotes([e], byid)
+                except ReadingError:
+                    continue
+                ids.add(e['paragraph'])
+                kept.append(e)
+        if len(kept) > MAX_EVIDENCE:
+            wanted = numbers(text)
+            carries = lambda e: bool(numbers(evidence_quotes([e], byid)[0]['quote']) & wanted)
+            kept = ([e for e in kept if carries(e)] + [e for e in kept if not carries(e)])[:MAX_EVIDENCE]
+            kept.sort(key=block['evidence'].index)
+        if kept:
+            supported = numbers(' '.join(q['quote'] for q in evidence_quotes(kept, byid)))
+            sentences = re.findall(r'[^。；;！？!?]+[。；;！？!?]?', text)
+            if not numbers(text) <= supported:
+                kept_text = ''.join(x for x in sentences if numbers(x) <= supported).strip()
+                # A section gutted by removal is not published; the original error stands.
+                if len(kept_text) * 2 >= len(text):
+                    text = kept_text
+        sections[key] = dict(block, text=text, evidence=kept)
+    return dict(output, sections=sections)
+
+def validate_or_repair(output, paragraphs, title):
+    """Return (result, repaired). Raises the original validation error if repair cannot help."""
+    try:
+        return validate_output(output, paragraphs, title), False
+    except ReadingError as original:
+        try:
+            return validate_output(repair_output(output, paragraphs), paragraphs, title), True
+        except ReadingError:
+            raise original from None
 
 def model_config():
     cfg = {'endpoint': os.environ.get('XINZHI_LLM_ENDPOINT', ''), 'api_key': os.environ.get('XINZHI_LLM_API_KEY', ''), 'model': os.environ.get('XINZHI_LLM_MODEL', '')}
@@ -431,7 +487,9 @@ def make_item(paper, result, paragraphs, source_hash, when, generated_at=None):
 def recover_drafts(data, ledger, when, save):
     """Revalidate source-bound private drafts without another model request."""
     recovered = 0
-    rows = ledger['days'].get(day_of(when), [])
+    floor = (when.astimezone(SHANGHAI).date() - dt.timedelta(days=RECOVERY_DAYS)).isoformat()
+    # A draft that failed on an earlier day is recoverable too; it was paid for once already.
+    rows = [r for d, old in sorted(ledger['days'].items(), reverse=True) if d >= floor for r in old]
     seen = {identity(p) for p in data['items']}
     for key, draft in list(data.get('drafts', {}).items()):
         if sum(p['publishedOn'] == day_of(when) for p in data['items']) >= TARGET:
@@ -442,13 +500,13 @@ def recover_drafts(data, ledger, when, save):
         if not request or request.get('sourceHash') != draft.get('sourceHash') or identity(draft.get('paper', {})) != key:
             continue
         try:
-            result = validate_output(draft['output'], draft['sourceParagraphs'], draft['paper']['title'])
+            result, repaired = validate_or_repair(draft['output'], draft['sourceParagraphs'], draft['paper']['title'])
         except ReadingError:
             continue
         item = make_item(draft['paper'], result, draft['sourceParagraphs'], draft['sourceHash'], when, draft['createdAt'])
         data['items'].append(item)
         data['drafts'].pop(key)
-        request.update(state='validated', recoveredWithoutModel=True)
+        request.update(state='validated', recoveredWithoutModel=True, **({'repairedWithoutModel': True} if repaired else {}))
         seen.add(key)
         recovered += 1
         save(data, ledger)
@@ -498,11 +556,13 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
             draft = model(cfg, paper, paragraphs)
             data.setdefault('drafts', {})[identity(paper)] = {'paper': paper, 'output': draft, 'sourceParagraphs': paragraphs, 'sourceHash': source_hash, 'createdAt': now().isoformat()}
             save(data, ledger)  # Keep unreviewed content separate from published items, for repair without another paid request.
-            result = validate_output(draft, paragraphs, paper['title'])
+            result, repaired = validate_or_repair(draft, paragraphs, paper['title'])
             item = make_item(paper, result, paragraphs, source_hash, when)
             data['items'].append(item)
             published.append(item)
             reservation['state'] = 'validated'
+            if repaired:
+                reservation['repairedWithoutModel'] = True
             data.get('drafts', {}).pop(identity(paper), None)
         except ReadingError as e:
             errors.append(e.code)
@@ -544,13 +604,35 @@ def public_readings(raw):
     out['updatedAt'] = raw.get('updatedAt', '')
     return out
 
+def recover_only(data, ledger, when):
+    """No model, no network: the run's final state save persists these local files."""
+    def save(d, l):
+        atomic(ROOT / DATA_PATH, d)
+        atomic(ROOT / LEDGER_PATH, l)
+    recovered = recover_drafts(data, ledger, when, save)
+    if recovered:
+        day = day_of(when)
+        done = sum(p['publishedOn'] == day for p in data['items'])
+        status = dict(data.get('status') or {}) if (data.get('status') or {}).get('day') == day else {'day': day, 'target': TARGET}
+        status.update(completed=done, state='complete' if done >= 3 else 'partial',
+                      reason='' if done >= TARGET else status.get('reason') or 'validation_or_fulltext_shortfall')
+        data['status'] = status
+        data['updatedAt'] = now().isoformat()
+        save(data, ledger)
+    print(json.dumps({'mode': 'recover', 'recoveredDrafts': recovered,
+                      'completedToday': sum(p['publishedOn'] == day_of(when) for p in data['items'])}))
+    return 0
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run', action='store_true', help='actual, checkpointed update using existing CI credentials')
+    parser.add_argument('--recover', action='store_true', help='model-free: publish stored drafts that now validate or repair')
     args = parser.parse_args()
     data = read(ROOT / DATA_PATH, empty_data())
     ledger = read(ROOT / LEDGER_PATH, empty_ledger())
     check_store(data, ledger)
+    if args.recover and not args.run:
+        return recover_only(data, ledger, now())
     if not args.run:
         print(json.dumps({'mode': 'offline', 'target': TARGET, 'cached': len(data['items'])}))
         return 0
