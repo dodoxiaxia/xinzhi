@@ -32,7 +32,7 @@ DEEP_READING = ['scripts/daily_fulltext.py', '--run']
 DEEP_READING_RECOVER = ['scripts/daily_fulltext.py', '--recover']  # model-free; fast runs publish repaired drafts
 # Scheduled fast refreshes opt in (env) to one bounded title batch (<=30 newest
 # missing titles, a single model call) so new daily picks get Chinese titles
-# within hours instead of waiting for the next 05:17 full run. Source pushes stay model-free.
+# within hours instead of waiting for the next 04:47 full run. Source pushes stay model-free.
 FAST_TITLES = (['scripts/translate_titles.py', '--run', '--limit', '1'], 240)
 # Same opt-in: up to two Chinese quicklooks for the newest picks (verbatim-quote and number checks unchanged).
 FAST_QUICKLOOKS = (['scripts/generate_quicklooks.py', '--call-model', '--limit', '2', '--lookup-limit', '4'], 240)

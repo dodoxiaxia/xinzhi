@@ -2440,7 +2440,7 @@
     }[status.reason] || '本次更新未完成';
     const showReason = status.day === beijingToday() && status.reason && groups.todayCount < 3;
     const notStarted = !groups.todayCount && status.day && status.day < beijingToday();
-    el.innerHTML = '<p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 3–5 篇</p><p class="deep-reading-timing">每日北京时间 05:17 启动更新' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
+    el.innerHTML = '<p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 3–5 篇</p><p class="deep-reading-timing">每日北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
       (showReason ? '<p class="deep-reading-shortfall">' + esc(reason) + '，当前完成 ' + groups.todayCount + ' 篇。</p>' : '') +
       (notStarted ? '<p class="deep-reading-shortfall">今天的批次尚未生成（GitHub 定时任务常延迟数小时）；下方为最近一次批次。</p>' : '') +
       (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4>' + groups.latest.map(p => dailyReadingCard(p, opened.has(p.pmcid))).join('') : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
