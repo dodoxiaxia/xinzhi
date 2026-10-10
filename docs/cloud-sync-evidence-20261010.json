@@ -42,5 +42,14 @@
     "export_filename": "精选文献清单-2026-10-10.md",
     "source_cards": 82,
     "errors": []
-  }
+  },
+  "manualScreenshotsUpdated": "2026-10-10 evening: live v14.3.9 public package (built 05:45Z) with this commit's app.js and index sidebar label, served locally; API stubbed off",
+  "liveSiteReadEvening": {
+    "release": "v14.3.9",
+    "appJsMatchesMain": true,
+    "museProtocolEnabled": true,
+    "laHcm": "review/verification_rejected",
+    "dailyReadingToday": 0
+  },
+  "stateSaveFailureRun": 38010683523
 }

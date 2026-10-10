@@ -120,6 +120,7 @@ jobs:
           node scripts/test_grok_fulltext.cjs
           node scripts/test_fulltext_import.cjs
           node scripts/test_muse_fulltext.cjs
+          node scripts/test_muse_status_pages.cjs
           npm exec --yes --package=workerd@1.20261009.1 -- node scripts/test_worker_fetch_compat.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_github_lfs_reuse.cjs
@@ -205,17 +206,9 @@ jobs:
             STATE_EXPECTED_SHA=$(cat .local/week-checkpoint-head)
             [[ "$STATE_EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
           fi
-          T=$(mktemp -d)
-          mkdir -p "$T/s/docs"
-          cp -r data public "$T/s/"
-          cp docs/public-manifest.json docs/last-refresh.json docs/deployment-status.json "$T/s/docs/"
-          cd "$T/s"
-          git init -q -b state
-          git config user.name "xinzhi-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add -A
-          git commit -qm "state $(date -u +%F)"
-          git push --force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA" "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
+          # A lease mismatch caused only by this run's own checkpoint commits is merged; any other writer still fails.
+          STATE_REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+            python3 scripts/save_state.py --expected "$STATE_EXPECTED_SHA"
 
       - name: 记录流水线最终结果
         if: always()

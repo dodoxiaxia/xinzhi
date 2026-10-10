@@ -152,7 +152,8 @@ class StateWorkflowTests(unittest.TestCase):
     def test_explicit_lease_rejects_an_unseen_concurrent_state_write(self):
         source = WORKFLOW.read_text()
         self.assertIn("STATE_EXPECTED_SHA='${{ steps.restore_state.outputs.sha }}'", source)
-        self.assertIn('--force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA"', source)
+        self.assertIn('python3 scripts/save_state.py --expected "$STATE_EXPECTED_SHA"', source)
+        self.assertIn("'--force-with-lease=refs/heads/state:' + expected", (ROOT / 'scripts/save_state.py').read_text())
         self.assertIn('STATE_EXPECTED_SHA=$(cat .local/week-checkpoint-head)', source)
         self.assertIn('XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT }}', source)
         self.assertNotIn('git push -f ', source)
@@ -165,6 +166,64 @@ class StateWorkflowTests(unittest.TestCase):
         result = self.git(self.repo, 'push', '--force-with-lease=refs/heads/state:' + self.original_sha, 'origin', 'main:state', check=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.git(self.remote, 'rev-parse', 'refs/heads/state').stdout.strip(), concurrent_sha)
+
+
+    def run_save(self, expected):
+        workspace = self.base / 'workspace'
+        if not workspace.exists():
+            (workspace / 'data').mkdir(parents=True)
+            (workspace / 'public').mkdir()
+            (workspace / 'docs').mkdir()
+            (workspace / 'data' / 'feeds.json').write_text('{"items": ["new run"]}')
+            (workspace / 'data' / 'deep-reading-ledger.json').write_text('{"local": true}')
+            (workspace / 'public' / 'public.js').write_text('new bundle')
+            for name in ('public-manifest.json', 'last-refresh.json', 'deployment-status.json'):
+                (workspace / 'docs' / name).write_text('{}')
+        result = subprocess.run(['python3', str(ROOT / 'scripts/save_state.py'), '--expected', expected, '--remote', str(self.remote)],
+                                cwd=workspace, capture_output=True, text=True)
+        return result, workspace
+
+    def remote_file(self, path):
+        return self.git(self.remote, 'show', 'refs/heads/state:' + path).stdout
+
+    def push_state_commit(self, message, files):
+        self.git(self.repo, 'checkout', 'state')
+        for path, content in files.items():
+            (self.repo / path).write_text(content)
+        self.commit(self.repo, message)
+        self.git(self.repo, 'push', 'origin', 'state')
+        sha = self.git(self.repo, 'rev-parse', 'HEAD').stdout.strip()
+        self.git(self.repo, 'checkout', 'main')
+        return sha
+
+    def test_save_state_with_matching_lease(self):
+        result, _ = self.run_save(self.original_sha)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('"lease": "original"', result.stdout)
+        self.assertEqual(self.remote_file('public/public.js'), 'new bundle')
+        self.assertNotIn('app.js', self.git(self.remote, 'ls-tree', '--name-only', 'refs/heads/state').stdout)
+
+    def test_unconfirmed_own_checkpoint_is_merged_not_lost(self):
+        # The checkpoint landed on GitHub but its client timed out, so the run kept the old lease.
+        self.push_state_commit('Checkpoint daily public full-text reading', {'data/deep-reading-ledger.json': '{"started": true}'})
+        result, workspace = self.run_save(self.original_sha)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('checkpoint_merged', result.stdout)
+        self.assertEqual(self.remote_file('data/deep-reading-ledger.json'), '{"started": true}')
+        self.assertEqual(self.remote_file('data/feeds.json'), '{"items": ["new run"]}')
+        self.assertEqual((workspace / 'data' / 'deep-reading-ledger.json').read_text(), '{"started": true}')
+
+    def test_foreign_writer_or_checkpoint_outside_its_files_still_rejected(self):
+        for message, files in (('concurrent writer', {'data/deep-reading-ledger.json': 'x'}),
+                               ('Checkpoint daily public full-text reading', {'data/feeds.json': 'x'})):
+            with self.subTest(message=message):
+                self.git(self.repo, 'branch', '-f', 'state', self.original_sha)
+                head = self.push_state_commit(message, files)
+                result, _ = self.run_save(self.original_sha)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('state_foreign_writer', result.stdout)
+                self.assertEqual(self.git(self.remote, 'rev-parse', 'refs/heads/state').stdout.strip(), head)
+                self.git(self.repo, 'push', '-f', 'origin', self.original_sha + ':refs/heads/state')
 
 
 if __name__ == '__main__':
