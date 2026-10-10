@@ -1,0 +1,334 @@
+#!/usr/bin/env python3
+"""Extract selected official Abstract candidates from a local literature checkout.
+
+Requires PyMuPDF (``import fitz``). This is an offline, small-batch review tool:
+it never calls GitHub, a publisher, or a model, and never writes public/data.
+Candidates, source paths, and line geometry stay in .local/pdf-abstracts.
+Every candidate needs human comparison with its PDF before a separate,
+public-safe cache can use it. This tool cannot approve or publish candidates.
+
+Example:
+  python scripts/extract_pdf_abstracts.py --library-root /workspace/AI- \
+    --doi 10.1136/bmjdh-2026-000098 --doi 10.1093/ehjdh/ztag153
+"""
+import argparse
+from collections import Counter
+import datetime
+import hashlib
+import html
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import unicodedata
+
+import fitz
+
+import github_library as library
+
+ROOT = Path(__file__).resolve().parents[1]
+MAX_SELECTION = 10
+MIN_PDF_BYTES = 50 * 1024
+MAX_PAGES = 3
+MAX_ABSTRACT_CHARS = 12000
+START = re.compile(r'^abstract\s*[:.]?$', re.I)
+END = re.compile(r'^(?:\d+[.)]?\s+)?(?:introduction|key\s*words|index terms|'
+                 r'background and aims|正文|引言|关键词)(?:\s*[:：].*)?$', re.I)
+STRUCTURED_LABELS = {'background', 'aims', 'objectives', 'objective', 'methods',
+                     'results', 'conclusions', 'conclusion', 'discussion'}
+
+
+def normalize_doi(value):
+    value = re.sub(r'^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)', '', value.strip(), flags=re.I).lower()
+    if not re.fullmatch(r'10\.\d{4,9}/[-._;()/a-z0-9]+', value) or len(value) > 250:
+        raise library.LibraryError('invalid_doi', 'Select a complete DOI, without query parameters')
+    return value
+
+
+def clean_text(value):
+    # Publisher PDFs insert zero-width characters inside words and URLs.
+    return ''.join(c for c in unicodedata.normalize('NFKC', value)
+                   if unicodedata.category(c) not in ('Cf', 'Cc')).strip()
+
+
+def normalize_title(value):
+    value = html.unescape(re.sub(r'<[^>]*>', '', value))
+    return ''.join(c for c in clean_text(value).casefold() if c.isalnum())
+
+
+def safe_read(root, relative, limit):
+    """Reject symlinks and traversal even for local, read-only source files."""
+    library._relative_path(relative)
+    path = root
+    for name in Path(relative).parts:
+        path = path / name
+        if path.is_symlink():
+            raise library.LibraryError('unsafe_source_path', 'Source paths must not use symlinks')
+    if not path.resolve().is_relative_to(root):
+        raise library.LibraryError('unsafe_source_path', 'Source file escapes the library root')
+    try:
+        return library._read_private(path, limit), path
+    except FileNotFoundError:
+        raise library.LibraryError('source_missing', 'Selected source file is missing locally') from None
+    except OSError:
+        raise library.LibraryError('source_unreadable', 'Selected source file cannot be read') from None
+
+
+def page_lines(page):
+    """Use unsorted dict lines: sort=True can expand OUP watermarks enormously."""
+    horizontal, rotated = [], []
+    for block_no, block in enumerate(page.get_text('dict')['blocks']):
+        if block.get('type') != 0:
+            continue
+        for line in block['lines']:
+            raw = ''.join(span['text'] for span in line['spans'])
+            text = clean_text(raw)
+            if not text:
+                continue
+            record = {'page': page.number + 1, 'bbox': list(line['bbox']), 'text': text,
+                      'raw': raw.strip(), 'block': block_no,
+                      'size': max(span['size'] for span in line['spans']),
+                      'font': max(line['spans'], key=lambda s: len(s['text']))['font'],
+                      'bold': any(span['flags'] & 16 for span in line['spans'])}
+            if abs(line['dir'][1]) > 0.1 or line['dir'][0] < 0.9:
+                rotated.append(record)
+                continue
+            x0, y0, x1, _ = record['bbox']
+            # Isolated manuscript line numbers and page numbers, not numbers in prose.
+            if (text.isdigit() and x1 - x0 < 35 and
+                    (x1 < page.rect.width * .13 or y0 > page.rect.height * .9)):
+                continue
+            horizontal.append(record)
+    return horizontal, rotated
+
+
+def line_evidence(line, kind=None):
+    result = {key: line[key] for key in ('page', 'text', 'bbox')}
+    result['bbox'] = [round(v, 2) for v in result['bbox']]
+    if kind:
+        result['kind'] = kind
+    return result
+
+
+def doi_present(doi, lines):
+    # Permit an exact DOI in a publisher URL followed by an article URL component.
+    pattern = re.compile(re.escape(doi) + r'(?![a-z0-9_-])', re.I)
+    return any(pattern.search(line['text']) for line in lines)
+
+
+def identity_evidence(paper, pages, rotated):
+    horizontal = [line for page in pages for line in page]
+    normalized = normalize_title(' '.join(line['text'] for line in horizontal))
+    title = normalize_title(paper['title'])
+    doi_horizontal = doi_present(paper['doi'], horizontal)
+    doi_rotated = doi_present(paper['doi'], rotated)
+    return {'doi_present': doi_horizontal or doi_rotated,
+            'doi_match_rotated_only': doi_rotated and not doi_horizontal,
+            'title_present': bool(title) and title in normalized,
+            'title_match_method': 'case_and_punctuation_normalized_exact'}
+
+
+def join_lines(lines):
+    text = ''
+    ambiguous_hyphens = False
+    previous_raw = ''
+    for line in lines:
+        value = clean_text(line['raw'])
+        if text and previous_raw.endswith('\xad'):
+            text += value  # soft hyphen marks a publisher line wrap
+        elif text and previous_raw.endswith('-'):
+            text += value
+            ambiguous_hyphens = True
+        else:
+            text += (' ' if text else '') + value
+        previous_raw = line['raw']
+    return re.sub(r'\s+', ' ', text).strip(), ambiguous_hyphens
+
+
+def extract_boundary(pages):
+    starts = [line for page in pages for line in page if START.fullmatch(line['text'])]
+    if not starts:
+        return None, 'abstract_heading_missing'
+    if len(starts) != 1:
+        return None, 'multiple_abstract_headings'
+    start = starts[0]
+    anchor = start['bbox'][0]
+    content = []
+    for page_no in range(start['page'] - 1, len(pages)):
+        # A narrow column is anchored at the Abstract's left edge. Other columns
+        # (BMJ key-point boxes / author affiliations) cannot interleave with it.
+        lines = sorted((line for line in pages[page_no]
+                        if abs(line['bbox'][0] - anchor) <= 15),
+                       key=lambda line: (line['bbox'][1], line['bbox'][0]))
+        if page_no == start['page'] - 1:
+            lines = [line for line in lines if line['bbox'][1] >= start['bbox'][3] - 1]
+        elif not content:
+            break
+        for line in lines:
+            if END.fullmatch(line['text']):
+                if content:
+                    return (start, content, line, 'explicit_heading'), None
+                return None, 'empty_abstract'
+            if content:
+                previous = content[-1]
+                same_page = line['page'] == previous['page']
+                gap = line['bbox'][1] - previous['bbox'][3] if same_page else 0
+                short_heading = (line['bold'] and line['size'] >= previous['size'] * 1.2
+                                 and len(line['text']) < 150
+                                 and line['text'].rstrip(':').casefold() not in STRUCTURED_LABELS)
+                # Explicit typographic body heading, e.g. NEJM perspective titles.
+                if short_heading and gap >= previous['size']:
+                    return (start, content, line, 'body_heading_style'), None
+                # BMJ has no Introduction heading. Require all three independent
+                # layout signals plus a complete final sentence; block end alone
+                # must never be treated as an abstract boundary.
+                font_change = line['font'] != previous['font']
+                if (same_page and line['block'] != previous['block'] and font_change
+                        and gap >= previous['size'] * 2
+                        and previous['text'].endswith(('.', '!', '?'))):
+                    return (start, content, line, 'font_block_and_gap_transition'), None
+                if not same_page:
+                    return None, 'abstract_end_not_explicit'
+            elif line['bbox'][1] - start['bbox'][3] > 60:
+                return None, 'abstract_body_not_adjacent'
+            content.append(line)
+            if sum(len(item['text']) for item in content) > MAX_ABSTRACT_CHARS:
+                return None, 'abstract_too_long'
+    return None, 'abstract_end_not_explicit'
+
+
+
+def inspect_paper(paper, library_root):
+    result = {'doi': paper['doi'], 'title': paper['title'], 'status': 'rejected',
+              'approved': False, 'abstractSections': [],
+              'evidence': {'repo_path': paper['repo_path'], 'index_sha256': paper['pdf_sha256']}}
+    evidence = result['evidence']
+    try:
+        if paper['pdf_sha256_status'] != 'valid':
+            raise library.LibraryError('index_sha_invalid', 'A valid index SHA256 is required')
+        data, path = safe_read(library_root, paper['repo_path'], library.MAX_PDF_BYTES)
+        evidence.update(pdf_path=str(path), pdf_bytes=len(data))
+        if data.startswith(b'version https://git-lfs.github.com/spec/v1'):
+            raise library.LibraryError('pdf_lfs_pointer', 'Local file is a Git LFS pointer, not a PDF')
+        if not data.startswith(b'%PDF-'):
+            raise library.LibraryError('pdf_magic', 'Selected source is not a PDF')
+        if len(data) < MIN_PDF_BYTES:
+            raise library.LibraryError('pdf_too_small', 'PDF must be at least 50 KiB')
+        evidence['source_sha256'] = hashlib.sha256(data).hexdigest()
+        library._verify_pdf(data, paper['pdf_sha256'])
+        evidence['sha256_matches_index'] = True
+        try:
+            with fitz.open(stream=data, filetype='pdf') as document:
+                if document.needs_pass:
+                    raise library.LibraryError('pdf_encrypted', 'PDF requires a password')
+                evidence.update(pdf_pages=len(document), pages_scanned=min(len(document), MAX_PAGES))
+                pages, rotated = [], []
+                for number in range(min(len(document), MAX_PAGES)):
+                    horizontal, other = page_lines(document[number])
+                    pages.append(horizontal)
+                    rotated.extend(other)
+        except library.LibraryError:
+            raise
+        except (RuntimeError, ValueError):
+            raise library.LibraryError('pdf_parse_failed', 'PDF text could not be parsed') from None
+        evidence['identity'] = identity_evidence(paper, pages, rotated)
+        if not evidence['identity']['doi_present']:
+            raise library.LibraryError('pdf_doi_mismatch', 'Indexed DOI is absent from the first three PDF pages')
+        if not evidence['identity']['title_present']:
+            raise library.LibraryError('pdf_title_mismatch', 'Indexed title is absent from the first three PDF pages')
+        boundary, reason = extract_boundary(pages)
+        if not boundary:
+            result.update(status='needs_review', reason=reason)
+            return result
+        start, content, end, kind = boundary
+        text, hyphens = join_lines(content)
+        if len(text) < 150 or not text.endswith(('.', '!', '?')):
+            result.update(status='needs_review', reason='abstract_incomplete_or_short')
+            return result
+        result.update(status='candidate_ready', reason='human_review_required',
+                      abstractSections=[{'label': 'Abstract', 'text': text}])
+        evidence.update(start=line_evidence(start, 'abstract_heading'), end=line_evidence(end, kind),
+                        paragraph_lines=[line_evidence(line) for line in content],
+                        ambiguous_line_end_hyphens=hyphens,
+                        extraction_method='PyMuPDF horizontal dict lines within explicit boundaries')
+        return result
+    except library.LibraryError as error:
+        result['reason'] = error.code
+        return result
+
+
+def private_destination(root):
+    path = Path(root).expanduser().resolve()
+    for name in ('.local', 'pdf-abstracts'):
+        path /= name
+        if path.is_symlink() or (path.exists() and not path.is_dir()):
+            raise library.LibraryError('unsafe_cache_path', 'Private output directory is unsafe')
+        path.mkdir(mode=0o700, exist_ok=True)
+        if name == 'pdf-abstracts':
+            os.chmod(path, 0o700)
+    destination = path / 'candidates.json'
+    if destination.is_symlink():
+        raise library.LibraryError('unsafe_cache_path', 'Private output must not use a symlink')
+    if destination.exists():
+        try:
+            existing = json.loads(library._read_private(destination, library.MAX_INDEX_BYTES))
+        except (OSError, ValueError):
+            raise library.LibraryError('candidate_cache_unreadable', 'Existing candidate cache is unreadable') from None
+        if (not isinstance(existing, dict) or not isinstance(existing.get('items'), list)
+                or any(not isinstance(item, dict) for item in existing['items'])):
+            raise library.LibraryError('candidate_cache_unreadable', 'Existing candidate cache has an invalid schema')
+        if existing.get('approved') or any(item.get('approved') or item.get('status') == 'approved'
+                                            for item in existing['items']):
+            raise library.LibraryError('approved_cache_preserved', 'Existing approved records must not be overwritten')
+    return destination
+
+
+def run(library_root, selected_dois, root=ROOT):
+    if not 1 <= len(selected_dois) <= MAX_SELECTION:
+        raise library.LibraryError('selection_limit', 'Explicitly select between 1 and 10 DOIs per run')
+    selected = list(dict.fromkeys(normalize_doi(value) for value in selected_dois))
+    library_root = Path(library_root).expanduser().resolve()
+    raw_index, _ = safe_read(library_root, library.INDEX_PATH, library.MAX_INDEX_BYTES)
+    papers, _ = library.normalize_index(raw_index, library.DEFAULT_REPO)
+    items = []
+    for doi in selected:
+        matching = [paper for paper in papers if paper['doi'] == doi]
+        if len(matching) != 1:
+            items.append({'doi': doi, 'title': '', 'approved': False, 'status': 'rejected',
+                          'reason': 'doi_not_indexed' if not matching else 'doi_index_ambiguous',
+                          'abstractSections': []})
+        else:
+            items.append(inspect_paper(matching[0], library_root))
+    payload = {'schema_version': 1, 'private_only': True, 'review_required': True,
+               'generated_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               'index_fingerprint': hashlib.sha256(raw_index).hexdigest(),
+               'review_instruction': 'Compare each candidate with its source PDF before copying only reviewed '
+                                     'abstract text and public bibliographic fields to a separate public-safe cache.',
+               'items': items}
+    destination = private_destination(root)
+    library._atomic_write(destination, library._json_bytes(payload))
+    return payload
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--library-root', type=Path, required=True, help='existing local PDF/index checkout')
+    parser.add_argument('--doi', action='append', required=True, help='explicit DOI; repeat for at most 10 papers')
+    parser.add_argument('--root', type=Path, default=ROOT, help='project root; output always stays under .local')
+    args = parser.parse_args(argv)
+    try:
+        payload = run(args.library_root, args.doi, args.root)
+        print(json.dumps({'private_only': True, 'review_required': True,
+                          'items': len(payload['items']), 'counts': dict(Counter(item['status'] for item in payload['items']))}))
+        return 0
+    except library.LibraryError as error:
+        print(json.dumps({'error': error.code, 'detail': error.detail}), file=sys.stderr)
+        return 1
+    except OSError:
+        print(json.dumps({'error': 'private_io_failed', 'detail': 'Private source or cache operation failed'}), file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
