@@ -293,6 +293,26 @@ def validate(o, abstract):
     return {k: o[k].strip() for k in fields} | {'findings': [{'text': x['text'].strip(), 'quote': x['quote'].strip()} for x in f]}
 
 
+def validate_or_repair(o, abstract):
+    """Removal-only repair: drop findings with unverbatim quotes or numbers absent from the
+    abstract while at least two remain. Other fields are never edited; the result must still
+    pass validate() unchanged, the same check the public build and Worker apply."""
+    try:
+        return validate(o, abstract), False
+    except QuicklookError as original:
+        if str(original) not in {'numbers_not_in_abstract', 'quote_not_in_abstract'} or not isinstance(o, dict) or not isinstance(o.get('findings'), list):
+            raise
+        have = nums(abstract)
+        kept = [x for x in o['findings'] if isinstance(x, dict) and isinstance(x.get('text'), str) and isinstance(x.get('quote'), str)
+                and len(x['quote']) >= 12 and x['quote'] in abstract and nums(x['text']) <= have]
+        if len(kept) < 2 or len(kept) == len(o['findings']):
+            raise original from None
+        try:
+            return validate(dict(o, findings=kept[:4]), abstract), True
+        except QuicklookError:
+            raise original from None
+
+
 def call(cfg, title, journal, abstract):
     body = {'model': cfg['model'], 'temperature': 0.2, 'max_tokens': 1200, 'response_format': {'type': 'json_object'},
             'messages': [{'role': 'system', 'content': PROMPT}, {'role': 'user', 'content': json.dumps({'title': title, 'journal': journal, 'abstract': abstract}, ensure_ascii=False)}]}
@@ -354,7 +374,8 @@ def record_status(stats, error):
     """Persist safe diagnostics under private data/; never enter the public bundle."""
     summary = safe_failure(error)
     count_fields = {'generated', 'model_calls', 'source_lookups', 'no_abstract_yet',
-                    'failed_validation_or_model', 'total', 'discarded_generated', 'skipped_validation'}
+                    'failed_validation_or_model', 'total', 'discarded_generated', 'skipped_validation',
+                    'repaired_without_model'}
     safe_stats = {key: value for key, value in stats.items()
                   if key in count_fields and type(value) is int and value >= 0}
     for key in ('committed', 'partial', 'failed', 'batch_stopped'):
@@ -405,7 +426,9 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
             stats['model_calls'] += 1
             raw, _usage = model(cfg, p.get('title') or '', p.get('cleanJournal') or p.get('journal', ''), info['abstract'])
             stage = 'validation'
-            item = validate(raw, info['abstract'])
+            item, repaired = validate_or_repair(raw, info['abstract'])
+            if repaired:
+                stats['repaired_without_model'] = stats.get('repaired_without_model', 0) + 1
             staged['items'][key] = item | {'abstract': info['abstract'], 'pmid': info.get('pmid', ''),
                 'abstractSource': info.get('abstractSource', 'Europe PMC'), 'abstractSourceUrl': info.get('abstractSourceUrl', ''),
                 'generatedAt': today.isoformat(), 'model': cfg['model'], 'label': 'AI 速览，模型生成，未经人工核对'}
