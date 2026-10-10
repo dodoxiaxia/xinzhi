@@ -188,6 +188,9 @@ def classify_clinical_tier(journal, title=''):
     return '综合医学与其他'
 
 # 4. Study Design
+CASE_REPORT_JOURNALS = re.compile(r'^(?:JACC: Case Reports|European Heart Journal\s*-\s*Case Reports|BMJ Case Reports|HeartRhythm Case Reports)$', re.I)
+
+
 def classify_study_design(title, summary='', publication_types=()):
     """Use direct design evidence, never a mention of a design in prior work.
 
@@ -541,6 +544,9 @@ def enrich_paper(p, drafts_by_doi={}, drafts_by_url={}):
     clean_j = clean_journal_name(journal)
     tier = classify_clinical_tier(journal, title)
     design = classify_study_design(title, summary, p.get('pubTypes', ()))
+    # A case-report journal is direct evidence of the article type when nothing else is known.
+    if design == '研究类型待核验' and CASE_REPORT_JOURNALS.match(journal):
+        design = '病例报告'
     tags = extract_tags(title, summary)
     quant_metrics = extract_quantitative_metrics(title, summary)
 

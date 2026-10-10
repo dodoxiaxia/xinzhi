@@ -15,7 +15,7 @@
 
   // ---- Data normalisation (runs once): tidy titles/journals/links so filters and cards behave ----
   const KIND_MAP = { Articles: '', Article: '', Comment: '评论', Correspondence: '来信', Review: '综述', Viewpoint: '观点', News: '新闻', Series: '系列', 'World Report': '世界报道', Editorial: '社论', Obituary: '讣告' };
-  const MINOR_RE = /^(author correction|publisher correction|correction to|correction:|erratum|retraction|letter by|response by|reply to|reply by|comment on|regarding)/i;
+  const MINOR_RE = /^(author correction|publisher correction|correction to|correction:|erratum|retraction|letter by|response by|response to|reply to|reply by|reply:|comment on|regarding)/i;
   function shortJournal(j) {
     if (!j) return j;
     const s0 = String(j).split(' : ')[0].trim();

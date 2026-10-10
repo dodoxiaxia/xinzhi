@@ -28,7 +28,7 @@ def has_content(p):
 SECTION_RE = re.compile(r'^\s*\[([A-Za-z ]+)\]')
 EXCLUDED_SECTIONS = {'correspondence', 'obituary', 'news', 'world report', 'department of error', 'retraction'}
 COMMENTARY_SECTIONS = {'comment', 'editorial', 'viewpoint', 'perspectives', 'perspective'}
-MINOR_TITLE_RE = re.compile(r'^\s*(?:author correction|publisher correction|correction to|correction:|erratum|retraction|letter by|response by|reply to|reply by|comment on|regarding)', re.I)
+MINOR_TITLE_RE = re.compile(r'^\s*(?:author correction|publisher correction|correction to|correction:|erratum|retraction|letter by|response by|response to|reply to|reply by|reply:|comment on|regarding)', re.I)
 
 
 def section_of(p):

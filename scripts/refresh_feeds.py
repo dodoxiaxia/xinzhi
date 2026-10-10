@@ -110,6 +110,35 @@ def dateval(raw):
     return parsed.isoformat()
 
 
+MONTHS = {m: i for i, m in enumerate(('january', 'february', 'march', 'april', 'may', 'june', 'july',
+                                     'august', 'september', 'october', 'november', 'december'), 1)}
+SCIENCEDIRECT_META = re.compile(r'^Publication date:\s*(?P<date>[^\n]+?)\s*(?:\n\s*)+Source:\s*(?P<source>[^\n]+?)'
+                                r'(?:\s*(?:\n\s*)+Author\(s\):\s*(?P<authors>[^\n]*))?\s*$')
+
+
+def sciencedirect_metadata(summary):
+    """ScienceDirect RSS has no pubDate; its description is a citation line, not an abstract.
+
+    Returns date fields only for a full day ("Available online 7 October 2026" or an
+    issue date "7 October 2026"); month-only issue dates stay undated."""
+    m = SCIENCEDIRECT_META.match(summary or '')
+    if not m:
+        return None
+    meta = {'summary': '', 'abstractSections': [], 'abstractStatus': 'non_abstract_metadata',
+            'nonAbstractMetadata': [{'kind': 'citation', 'text': summary.strip()}]}
+    if m.group('authors'):
+        meta['authors'] = [a.strip() for a in m.group('authors').split(',') if a.strip()][:50]
+    d = re.fullmatch(r'(?P<online>Available online\s+)?(?P<day>\d{1,2})\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d{4})', m.group('date').strip())
+    if d and d.group('month').lower() in MONTHS:
+        try:
+            when = datetime.datetime(int(d.group('year')), MONTHS[d.group('month').lower()], int(d.group('day')), tzinfo=datetime.timezone.utc)
+        except ValueError:
+            return meta
+        meta.update(date=when.isoformat(), datePrecision='day',
+                    dateBasis='ScienceDirect RSS“Available online”日期' if d.group('online') else 'ScienceDirect RSS 刊期日期')
+    return meta
+
+
 def extract_doi(link, entry):
     for child in entry:
         if local(child.tag) == 'doi':
@@ -399,13 +428,19 @@ def parse_feed(raw, source, *, checked_at=None):
         category = classify(title, source['name'])
         if category == '待分类':
             continue
-        output.append(normalize_paper({'id': 'rss-' + hashlib.sha256(link.encode()).hexdigest()[:16], 'title': title,
-                       'url': safe_url(link), 'doi': extract_doi(link, entry), 'journal': source['name'],
-                       'date': dateval(text(entry, 'pubDate') or text(entry, 'date') or text(entry, 'published') or text(entry, 'updated')),
-                       'category': category, 'basis': 'RSS 元数据 · 待编辑核验', 'summary': description[:12000],
-                       'summary_truncated': len(description) > 12000, 'sourceId': source['id'],
-                       'sourceUrl': safe_url(source.get('url', '')), 'fetchedAt': checked_at,
-                       **{k:v for k,v in abstract.items() if k not in {'summary','doi','title'} and (k!='abstractSections' or len(description)<=12000)}}))
+        record = {'id': 'rss-' + hashlib.sha256(link.encode()).hexdigest()[:16], 'title': title,
+                  'url': safe_url(link), 'doi': extract_doi(link, entry), 'journal': source['name'],
+                  'date': dateval(text(entry, 'pubDate') or text(entry, 'date') or text(entry, 'published') or text(entry, 'updated')),
+                  'category': category, 'basis': 'RSS 元数据 · 待编辑核验', 'summary': description[:12000],
+                  'summary_truncated': len(description) > 12000, 'sourceId': source['id'],
+                  'sourceUrl': safe_url(source.get('url', '')), 'fetchedAt': checked_at,
+                  **{k:v for k,v in abstract.items() if k not in {'summary','doi','title'} and (k!='abstractSections' or len(description)<=12000)}}
+        meta = sciencedirect_metadata(description)
+        if meta:
+            if record['date']:
+                meta = {k: v for k, v in meta.items() if k not in ('date', 'datePrecision', 'dateBasis')}
+            record.update(meta)
+        output.append(normalize_paper(record))
     return {'items': output, 'rawItems': len(entries), 'classifiedItems': len(output),
             'itemsWithLinks': links, 'itemsWithAbstracts': abstracts,
             'feedType': kind, 'parser': parser, 'parserWarnings': warnings, **metadata}
