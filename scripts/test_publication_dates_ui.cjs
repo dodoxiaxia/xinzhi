@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
-const start = source.indexOf('  (function expandRadar() {');
+const start = source.indexOf('  function expandRadar(');
 const end = source.indexOf('  CURATED.forEach(normalizePaper);', start);
 assert(start >= 0 && end > start, 'exercise the actual archive expansion code');
 const code = source.slice(start, end);

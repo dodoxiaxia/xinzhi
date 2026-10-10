@@ -17,14 +17,14 @@ from public_content_corrections import (load_corrections, corrected_title,
                                         corrected_quicklook_map)
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
-PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
+PUBLIC = {'index.html','public.js','radar.js','style.css','icon.svg','_headers','_worker.js'}
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
 PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
 QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
 QL_FIELDS |= {'contentCorrection'}
 SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','rawItems','classifiedItems','eligibleItems','parser','feedType','rootKind','doctypeKind','httpStatus','cachedItems','lastSuccessfulAt','lastSuccessfulAtBasis','lastCachedFetchAt','error','responseUrl','responseContentType','failureReason','blockedReason','excludedItems','latestPublishedAt'}
-RELEASE = 'v14.3.9'
+RELEASE = 'v14.4.0'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
@@ -325,6 +325,23 @@ def make_radar(candidates,tz=None,corrections=None):
             **({'dateBases':date_bases} if date_bases else {}),
             **({'publicationStatuses':publication_statuses} if publication_statuses else {})}
 
+RADAR_INLINE_DAYS=21  # rows this recent ship in public.js; the rest load on demand from radar.js
+
+def split_radar(radar,today=None):
+    """Recent rows stay in the first-load bundle (radar default 14-day view and badges);
+    the 365-day remainder becomes radar.js, fetched only for longer ranges or searches."""
+    if not radar:return None,None
+    today=today or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date()
+    cut=(today-datetime.timedelta(days=RADAR_INLINE_DAYS)).isoformat()
+    tables={k:radar[k] for k in ('v','updatedAt','windowDays','source','jn','pub','tier','design','tag') if k in radar}
+    def part(rows):
+        ids={str(r[0]) for r in rows}
+        out={**tables,'rows':rows}
+        for k in ('abs','zh','dateBases','publicationStatuses'):
+            if k in radar:out[k]={i:v for i,v in radar[k].items() if i in ids}
+        return out
+    return part([r for r in radar['rows'] if r[2]>=cut]),part([r for r in radar['rows'] if r[2]<cut])
+
 def validate_public(text):
     forbidden=(r'/Users/',r'/home/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/')
     for pattern in forbidden:
@@ -430,7 +447,9 @@ def main():
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
     readings=public_readings(load('data/deep-readings.json') if (ROOT/'data/deep-readings.json').exists() else None)
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics),js('DEEP_READINGS',readings)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar)] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
+    radar_recent,radar_archive=split_radar(radar)
+    radar_js=js('RADAR_ARCHIVE',radar_archive if radar else {'rows':[]})+'\n;window.XINZHI_RADAR_READY&&window.XINZHI_RADAR_READY();\n'
+    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics),js('DEEP_READINGS',readings)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar_recent),js('RADAR_SRC','radar.js')] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
     headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
     worker=(ROOT/'edge/_worker.js').read_text()
     from github_oidc_keys import build_keys
@@ -449,7 +468,7 @@ def main():
     if worker.count(abstract_placeholder)!=1:raise ValueError('Public abstract snapshot placeholder missing')
     sources=public_abstract_sources(weekly,editorial_catalog,candidates['items'])
     worker=worker.replace(abstract_placeholder,'const PUBLIC_ABSTRACT_SOURCES = '+json.dumps(sources,ensure_ascii=False,separators=(',',':'))+';')
-    files={'index.html':public_index,'public.js':bundle,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
+    files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
     if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')

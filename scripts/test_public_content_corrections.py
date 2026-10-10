@@ -222,18 +222,22 @@ class SourceBoundCorrections(unittest.TestCase):
             with patch.object(build, 'ROOT', root), patch.object(build, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 build.main()
             text = (root / 'public/public.js').read_text()
-            def payload(name):
-                m = re.search(r'window\.' + name + r'=', text)
-                return json.JSONDecoder().raw_decode(text[m.end():])[0]
-            qls = payload('QUICKLOOKS'); radar = payload('RADAR')
+            archive_text = (root / 'public/radar.js').read_text()
+            def payload(name, source=None):
+                source = text if source is None else source
+                m = re.search(r'window\.' + name + r'=', source)
+                return json.JSONDecoder().raw_decode(source[m.end():])[0]
+            # These July rows are older than the first-load window, so they ship in radar.js.
+            qls = payload('QUICKLOOKS'); radar = payload('RADAR_ARCHIVE', archive_text)
             self.assertEqual(len(qls), 2)
             for f in self.quicklooks:
                 self.assertEqual(qls[f['source']['doi']]['why_read'], f['after']['why_read'])
                 self.assertEqual(qls[f['source']['doi']]['contentCorrection']['sourceHash'], f['source']['sourceHash'])
             self.assertIn('射血分数改善型心力衰竭', radar['zh']['42480259'])
             self.assertIn('safiglipron', radar['zh']['42811187'])
-            self.assertNotIn('safigliptron', text)
-            self.assertNotIn('防治框架', text)
+            for published in (text, archive_text):
+                self.assertNotIn('safigliptron', published)
+                self.assertNotIn('防治框架', published)
             for name, old in untouched.items():self.assertEqual((root / name).read_bytes(), old)
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())
             self.assertEqual(manifest['buildProvenance']['inputs']['editorial/public_content_corrections.json'],

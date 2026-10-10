@@ -2,9 +2,10 @@
 """自动精选:从近 7 天候选文献里选出『每日精选』与『本周精读榜』,写 data/picks.json。
 纯规则打分(无模型调用):相关专科 > 研究类型 > 顶刊 > 媒体关注 > 已有摘要/速览。不做任何医学结论判断。
 每天最多 DAILY_N 篇;周榜取近 7 天总分最高的 WEEKLY_N 篇。结果只存条目 id,展示端按 id 取内容。"""
-import datetime, json
+import datetime, json, re
 from pathlib import Path
 from abstract_quality import normalize_paper, readable_abstract
+from generate_quicklooks import minor_item
 ROOT = Path(__file__).resolve().parents[1]
 DAILY_N, WEEKLY_N, DAYS = 6, 24, 7
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
@@ -23,7 +24,22 @@ def has_content(p):
     return (len(t) > 80 and t.lower() != 'no abstract') or bool(p.get('abstractSections'))
 
 
+# RSS 栏目前缀（如 Lancet 的 [Correspondence]）：来信、讣告、新闻不是可导读的研究；述评类降权。
+SECTION_RE = re.compile(r'^\s*\[([A-Za-z ]+)\]')
+EXCLUDED_SECTIONS = {'correspondence', 'obituary', 'news', 'world report', 'department of error', 'retraction'}
+COMMENTARY_SECTIONS = {'comment', 'editorial', 'viewpoint', 'perspectives', 'perspective'}
+MINOR_TITLE_RE = re.compile(r'^\s*(?:author correction|publisher correction|correction to|correction:|erratum|retraction|letter by|response by|reply to|reply by|comment on|regarding)', re.I)
+
+
+def section_of(p):
+    m = SECTION_RE.match(p.get('title') or '')
+    return m.group(1).strip().casefold() if m else ''
+
+
 def score(p, quicklooks):
+    section = section_of(p)
+    if section in EXCLUDED_SECTIONS or minor_item(p) or MINOR_TITLE_RE.match(p.get('title') or ''):
+        return 0  # 与周榜一致:更正、来信、回复不进精选
     if not has_content(p):
         return 0  # 没有可读摘要的不进精选(无从导读)
     tier = p.get('clinicalTier') or ''
@@ -44,6 +60,8 @@ def score(p, quicklooks):
     if (p.get('cleanJournal') or p.get('journal')) in TOP:
         s += 2
     s += sum(m.get('w', 1) for m in (p.get('media') or [])[:3]) + (2 if p.get('media') else 0)
+    if section in COMMENTARY_SECTIONS or p.get('studyDesign') == '述评观点':
+        s -= 2  # 述评可入选,但需有其他强信号,让位于原创研究
     return s
 
 

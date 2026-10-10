@@ -239,5 +239,44 @@ class CheckpointTests(unittest.TestCase):
             self.assertTrue(writer.blocked)
             self.assertFalse((Path(tmp)/d.DATA_PATH).exists())
 
+    def _lagging_transport(self, stale_reads):
+        state = {'head': 'a'*40, 'stale': stale_reads, 'patched': False}
+        def transport(method, path, body):
+            if method == 'GET' and path.endswith('/git/ref/heads/state'):
+                if state['patched'] and state['stale'] > 0:
+                    state['stale'] -= 1
+                    return 200, {'ref':'refs/heads/state','object':{'type':'commit','sha':'a'*40}}
+                return 200, {'ref':'refs/heads/state','object':{'type':'commit','sha':state['head']}}
+            if method == 'GET' and '/git/commits/' in path:
+                return 200, {'tree':{'sha':'t'*40}}
+            if method == 'POST' and path.endswith('/git/trees'):
+                return 201, {'sha':'u'*40}
+            if method == 'POST' and path.endswith('/git/commits'):
+                return 201, {'sha':'c'*40}
+            if method == 'PATCH':
+                state['head'] = body['sha']; state['patched'] = True
+                return 200, {'ref':'refs/heads/state','object':{'type':'commit','sha':body['sha']}}
+            return 500, {}
+        return transport
+
+    def test_lagging_read_after_update_keeps_local_head_current(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            waits=[]
+            writer=d.StateCheckpoint(Path(tmp),self._lagging_transport(2),'owner/repo','a'*40,sleep=waits.append)
+            writer.save(d.empty_data(),d.empty_ledger())
+            self.assertFalse(writer.blocked)
+            self.assertEqual((Path(tmp)/'.local/week-checkpoint-head').read_text().strip(),'c'*40)
+            self.assertEqual(waits,[1,2])
+
+    def test_persistently_stale_read_blocks_but_records_applied_head(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            writer=d.StateCheckpoint(Path(tmp),self._lagging_transport(99),'owner/repo','a'*40,sleep=lambda *_:None)
+            with self.assertRaises(d.ReadingError):
+                writer.save(d.empty_data(),d.empty_ledger())
+            self.assertTrue(writer.blocked)
+            # The ref was moved by this run; the final state save must lease on it.
+            self.assertEqual((Path(tmp)/'.local/week-checkpoint-head').read_text().strip(),'c'*40)
+            self.assertTrue((Path(tmp)/d.DATA_PATH).exists())
+
 if __name__ == '__main__':
     unittest.main()

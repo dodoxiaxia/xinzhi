@@ -25,6 +25,7 @@ import copy
 import hashlib
 import json
 import re
+import time
 from dataclasses import dataclass
 from typing import Callable
 
@@ -324,7 +325,13 @@ class GitHubStateCheckpoint:
             if (result.get('ref') != 'refs/heads/state' or type(result.get('object')) is not dict
                     or result['object'].get('sha') != commit_sha):
                 _fail('checkpoint_ref_update_uncertain')
-            if self._ref() != commit_sha:
+            # GitHub ref reads can briefly lag a successful update.
+            for delay in (0, 1, 2, 4):
+                if delay:
+                    time.sleep(delay)
+                if self._ref() == commit_sha:
+                    break
+            else:
                 _fail('checkpoint_ref_update_uncertain')
             self._head, self._tree = commit_sha, tree_sha
             self._ledger, self._cache = copy.deepcopy(ledger), copy.deepcopy(cache)
