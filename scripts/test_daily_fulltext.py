@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 import daily_fulltext as d
 
@@ -122,6 +123,24 @@ class GenerationTests(unittest.TestCase):
         fetch = lambda url: xml(bypmc[url.split('/')[-2]])
         result = d.generate(data, ledger, papers, WHEN, save or (lambda *_:None), {}, fetch=fetch, model=model or (lambda *args: output(args[-1][0]['id'])))
         return data, ledger, result
+
+    def test_local_preparation_error_leaves_no_started_reservation(self):
+        ledger = d.empty_ledger()
+        with patch.object(d, 'evidence_units', side_effect=IndexError('boom')):
+            with self.assertRaises(IndexError):
+                self.generate(ledger=ledger)
+        self.assertEqual(ledger['days'][d.day_of(WHEN)], [])
+
+    def test_resolution_closes_only_the_exact_started_row(self):
+        row = {'identity': 'PMC1', 'sourceHash': 'a' * 64, 'at': '2026-10-10T22:01:54+00:00', 'state': 'started'}
+        other = dict(row, at='2026-10-10T23:00:00+00:00')
+        ledger = d.empty_ledger()
+        ledger['days']['2026-10-11'] = [row, other]
+        entry = {'day': '2026-10-11', 'identity': 'PMC1', 'sourceHash': 'a' * 64, 'at': row['at'], 'basis': 'crash before model'}
+        self.assertEqual(d.apply_resolutions(ledger, [entry]), 1)
+        self.assertEqual((row['state'], row['errorCode']), ('invalid', 'pre_model_crash'))
+        self.assertEqual(other['state'], 'started')
+        self.assertEqual(d.apply_resolutions(ledger, [entry]), 0)
 
     def test_new_day_publishes_four_distinct_articles_and_same_day_is_cached(self):
         calls = []
@@ -281,6 +300,21 @@ class RepairTests(unittest.TestCase):
         ledger2=d.empty_ledger()
         ledger2['days'][too_old]=[{'identity':d.identity(self.p),'sourceHash':self.sha,'state':'invalid'}]
         self.assertEqual(d.recover_drafts(data2,ledger2,WHEN,lambda *_:None),0)
+
+class EvidenceUnitTests(unittest.TestCase):
+    def units(self, text):
+        return d.evidence_units([{'id': 'p1', 'section': 'Results', 'text': text}])
+
+    def test_two_chunks_with_short_tail_merge_without_error(self):
+        text = 'A' * 600 + ' tail end'
+        units = self.units(text)
+        self.assertEqual([u['text'] for u in units], [text])
+
+    def test_three_chunks_keep_the_opening_and_merge_the_tail(self):
+        text = 'A' * 350 + '. ' + 'B' * 600 + ' tail end'
+        units = self.units(text)
+        self.assertEqual([u['text'] for u in units], ['A' * 350 + '.', 'B' * 600 + ' tail end'])
+        self.assertTrue(all(u['text'] in text for u in units))
 
 class CheckpointTests(unittest.TestCase):
     def test_concurrent_state_update_blocks_write(self):
