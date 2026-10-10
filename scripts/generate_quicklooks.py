@@ -439,7 +439,10 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
             code = str(error) if isinstance(error, QuicklookError) else 'request_or_processing_failed'
             item_failure = (stage == 'validation' and isinstance(error, QuicklookError)) or (
                 stage == 'model' and isinstance(error, QuicklookError) and
-                code in {'model_output_json', 'model_output_shape', 'model_output_truncated'})
+                code in {'model_output_json', 'model_output_shape', 'model_output_truncated'}) or (
+                # One record's identity mismatch is about that paper, not a source outage; stopping
+                # the batch would block every later run, since picks are retried first.
+                stage == 'source' and code in {'source_doi_mismatch', 'source_pmid_mismatch'})
             current = {'stage': stage, 'code': code, 'error_type': type(error).__name__,
                        'scope': 'item' if item_failure else 'batch'}
             if isinstance(error, urllib.error.HTTPError):

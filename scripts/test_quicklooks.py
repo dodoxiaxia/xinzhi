@@ -278,6 +278,18 @@ class QuicklooksTests(unittest.TestCase):
         self.assertEqual(stats['skipped_validation'], 1)
         self.assertEqual(error['code'], 'model_output_json')
 
+    def test_identity_mismatch_skips_only_that_paper(self):
+        def fetch(p):
+            if p['doi'] == '10.1000/test1':
+                raise q.QuicklookError('source_doi_mismatch')
+            return {'abstract': ABSTRACT, 'pmid': '', 'abstractSource': 'Europe PMC'}
+        staged, _, stats, error = q.batch([paper(1, local=False), paper(2, local=False)], {'items': {}}, {},
+                                          {'model': 'mock'}, TODAY, 3, 3, fetch=fetch,
+                                          model=lambda *a: (valid_output(), {}))
+        self.assertFalse(stats['batch_stopped'])
+        self.assertEqual(stats['generated'], 1)
+        self.assertEqual(error['scope'], 'item')
+
     def test_global_failure_stops_after_verified_success_and_keeps_old_cache(self):
         calls = []
         def model(*args):
