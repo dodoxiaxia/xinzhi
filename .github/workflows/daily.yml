@@ -33,7 +33,7 @@ on:
         type: choice
         options: [full, fast]
       allow_fast_dispatch:
-        description: '确认人工临时快刷；旧外部定时器的重复 fast 请求默认忽略'
+        description: '兼容旧参数；fast 请求现在都会执行'
         default: false
         type: boolean
 
@@ -45,15 +45,11 @@ permissions:
   contents: write
 
 jobs:
-  ignored-dispatch:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.allow_fast_dispatch
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - run: echo "::notice::已忽略未确认的 fast dispatch；定时快刷由 GitHub 每两小时运行，人工临时快刷请勾选 allow_fast_dispatch。此门禁不代表外部定时器已停用。"
   refresh:
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.mode != 'fast' || inputs.allow_fast_dispatch)
+    # Fast dispatches are honoured: the external 2-hourly dispatcher (:07) is the only punctual
+    # timer observed (GitHub cron went 9+ hours without firing on 10-10). The concurrency group
+    # serialises overlapping runs, and an unchanged fast run does not deploy.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -160,6 +156,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_auto_picks.py'
           python3 -m unittest discover -s scripts -p 'test_sciencedirect_dates.py'
           python3 -m unittest discover -s scripts -p 'test_feed.py'
+          python3 -m unittest discover -s scripts -p 'test_pubmed_rss_identity.py'
           python3 -m unittest discover -s scripts -p 'test_week_coverage_status.py'
           python3 -m unittest discover -s scripts -p 'test_public_precompute_pending.py'
           python3 -m unittest discover -s scripts -p 'test_sol_gap_b_overlay.py'
