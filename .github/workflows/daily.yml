@@ -159,6 +159,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_ci_daily.py'
           python3 -m unittest discover -s scripts -p 'test_auto_picks.py'
           python3 -m unittest discover -s scripts -p 'test_sciencedirect_dates.py'
+          python3 -m unittest discover -s scripts -p 'test_feed.py'
           python3 -m unittest discover -s scripts -p 'test_week_coverage_status.py'
           python3 -m unittest discover -s scripts -p 'test_public_precompute_pending.py'
           python3 -m unittest discover -s scripts -p 'test_sol_gap_b_overlay.py'

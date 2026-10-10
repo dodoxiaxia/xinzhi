@@ -24,7 +24,7 @@ class PipelineTests(unittest.TestCase):
   self.assertEqual(len(ids),len(set(ids)));self.assertNotIn('/Users/',json.dumps(data));self.assertEqual(data['stats']['papers'],len(ids))
  def test_public_allowlist(self):
   files={p.name for p in (ROOT/'public').iterdir()}
-  self.assertEqual(files,{'index.html','style.css','public.js','radar.js','icon.svg','_headers','_worker.js'})
+  self.assertEqual(files,{'index.html','style.css','public.js','radar.js','feed.xml','icon.svg','_headers','_worker.js'})
   source=(ROOT/'public/index.html').read_text()
   # v14 reads saved theme/style before paint. Preferences are allowed; private
   # library data and credentials still must not appear in the static page.
