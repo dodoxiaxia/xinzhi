@@ -31,14 +31,23 @@ def rj(path, fb):
         return fb
 
 
+def picked_ids():
+    picks = rj(ROOT / 'data/picks.json', {})
+    ids = set(x for x in picks.get('weekly') or [] if isinstance(x, str))
+    for day in (picks.get('daily') or {}).values():
+        ids.update(x for x in day or [] if isinstance(x, str))
+    return ids
+
+
 def collect():
-    items = []
+    # Daily/weekly picks first (they lead the home page), then newest first.
+    picked, items = picked_ids(), []
     for p in rj(ROOT / 'data/candidates.json', {'items': []})['items'] + rj(ROOT / 'data/library.json', {'papers': []})['papers']:
-        items.append((p.get('date') or '', keyof(p), p.get('title', '')))
+        items.append((p.get('id') in picked, p.get('date') or '', keyof(p), p.get('title', '')))
     for r in rj(ROOT / 'data/radar-archive.json', {'rows': []})['rows']:
-        items.append((r.get('date') or '', 'pmid:%s' % r['pmid'], r.get('title', '')))
+        items.append(('pmid-%s' % r['pmid'] in picked, r.get('date') or '', 'pmid:%s' % r['pmid'], r.get('title', '')))
     seen, out = set(), []
-    for d, k, t in sorted(items, reverse=True):
+    for _, d, k, t in sorted(items, reverse=True):
         if k and t and k not in seen:
             seen.add(k)
             out.append((k, t))

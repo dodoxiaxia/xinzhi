@@ -98,6 +98,8 @@ jobs:
           XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           XINZHI_RESTORED_STATE_SHA: ${{ steps.restore_state.outputs.sha }}
+          # Only the 2-hourly schedule adds one bounded Chinese-title batch; pushes stay model-free.
+          XINZHI_FAST_TITLE_BATCH: ${{ github.event_name == 'schedule' && '1' || '' }}
         run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '17 21 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
 
       - uses: actions/setup-node@v4
@@ -152,6 +154,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_sol_gap_overlay.py'
           python3 -m unittest discover -s scripts -p 'test_journal*.py'
           python3 -m unittest discover -s scripts -p 'test_ci_daily.py'
+          python3 -m unittest discover -s scripts -p 'test_auto_picks.py'
           python3 -m unittest discover -s scripts -p 'test_week_coverage_status.py'
           python3 -m unittest discover -s scripts -p 'test_public_precompute_pending.py'
           python3 -m unittest discover -s scripts -p 'test_sol_gap_b_overlay.py'
@@ -215,7 +218,14 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add -A
           git commit -qm "state $(date -u +%F)"
-          git push --force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA" "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" state
+          STATE_REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          if ! git push --force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA" "$STATE_REMOTE" state; then
+            # Only this run's own checkpoint commits may advance the lease; any other writer still wins.
+            git fetch -q --depth=80 "$STATE_REMOTE" state
+            STATE_EXPECTED_SHA=$(python3 "$GITHUB_WORKSPACE/scripts/resolve_state_lease.py" "$STATE_EXPECTED_SHA")
+            echo "::warning::state lease advanced over this run's checkpoint commits to $STATE_EXPECTED_SHA"
+            git push --force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA" "$STATE_REMOTE" state
+          fi
 
       - name: 记录流水线最终结果
         if: always()

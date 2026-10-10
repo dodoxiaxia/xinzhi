@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
+PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'icon.svg', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
     'scripts/ci_daily.py', 'scripts/daily_fulltext.py',

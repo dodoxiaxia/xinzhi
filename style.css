@@ -1202,3 +1202,37 @@ html { scroll-padding-top: calc(var(--sticky-header-h, var(--header-h)) + var(--
 .deep-reading-history { margin: 16px 0 24px; padding-top: 14px; border-top: 1px solid var(--border); }
 .deep-reading-history > summary { cursor: pointer; color: var(--text-secondary); font-size: 14px; min-height: 44px; line-height: 2; margin-bottom: 10px; }
 .deep-reading-demo-label { padding-top: 16px; border-top: 1px solid var(--border); }
+
+/* ---- v15 卡片与移动端整理：中文要点先行、元信息不再夹点、操作更轻、首屏更早见到正文 ---- */
+.meta-badges { align-items: center; gap: 4px 10px; }
+.meta-badges > *::after, .meta-badges > *:not(:last-child)::after { content: none !important; display: none; }
+.meta-badges > .journal-badge { margin-right: 2px; }
+.article-abstract { -webkit-line-clamp: 3; }
+.card-lead { margin: 2px 0 0; font-size: 15.5px; line-height: 1.75; color: var(--text-primary); }
+.card-lead .content-label { vertical-align: 1px; }
+.card-why { margin: 6px 0 0; font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+.card-why b { font-weight: 600; color: var(--text-muted); }
+html[data-style="b"] .card-lead { font-size: 14.5px; line-height: 1.7; }
+html[data-style="b"] .card-why { display: none; }
+.card-actions { margin-top: 14px; }
+.card-source-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 100%; }
+/* The same filled button repeated on every card shouted; an outline keeps it findable but quiet. */
+html[data-style="a"] .article-card .btn-sm.btn-primary, html[data-style="c"] .article-card .btn-sm.btn-primary, html[data-style="d"] .article-card .btn-sm.btn-primary { background: transparent; color: var(--accent); border-color: var(--accent); }
+html[data-style="a"] .article-card .btn-sm.btn-primary:hover, html[data-style="c"] .article-card .btn-sm.btn-primary:hover, html[data-style="d"] .article-card .btn-sm.btn-primary:hover { background: var(--accent); color: #fff; }
+.drawer-body details[data-journal-metrics-details], .drawer-body .journal-metric-details { margin-bottom: 14px; }
+.radar-archive-note { margin: 0 0 12px; padding: 8px 12px; font-size: 13px; color: var(--text-secondary); background: var(--bg-secondary); border-radius: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 1000px) {
+  /* The header tabs already name each column; topics become one swipeable row. */
+  .stream-rail .home-intro { display: none; }
+  .stream-rail .lane-bar { flex-wrap: nowrap; overflow-x: auto; align-items: center; gap: 6px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+  .stream-rail .lane-label { flex: 0 0 auto; flex-basis: auto; margin: 0 4px 0 0; }
+  .stream-rail .lane-chip { flex: 0 0 auto; white-space: nowrap; }
+  .curated-layout .stream-reading-layout { gap: 8px; }
+}
+@media (max-width: 720px) {
+  .card-actions { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .card-actions .action-buttons-group { width: auto; }
+  .card-source-actions { width: 100%; gap: 8px; }
+  .card-source-actions .btn-sm { padding-left: 10px; padding-right: 10px; }
+  .card-lead { font-size: 15px; }
+}

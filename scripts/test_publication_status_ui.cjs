@@ -27,7 +27,7 @@ for (const design of ['研究方案','述评观点','RCT 二次分析','二次�
 }
 check(c.generateWeChatShareText(original).includes('出版状态：已撤稿'), 'Copied paper includes current official status');
 check(c.generateWeChatShareText(original).includes('https://pubmed.ncbi.nlm.nih.gov/41916660/'), 'Copied paper retains official notice source');
-const start = src.indexOf('  (function expandRadar() {'), end = src.indexOf('  CURATED.forEach(normalizePaper);', start);
+const start = src.indexOf('  function expandRadar('), end = src.indexOf('  CURATED.forEach(normalizePaper);', start);
 c.window = {RADAR:{rows:[['41224473','10.1136/bmj-2024-083382','2025-10-29',0,0,0,0,[],'PREVENT-TAHA8']],jn:['BMJ'],pub:['BMJ'],tier:['Cardiology'],design:['已撤稿'],tag:[],publicationStatuses:{'41224473':original.publicationStatus}}};
 c.FEEDS = {items:[]}; vm.runInContext(src.slice(start,end), c);
 check(c.FEEDS.items[0].publicationStatus.state === 'retracted', 'Compact archive expansion retains status');

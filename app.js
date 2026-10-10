@@ -38,11 +38,12 @@
   FEEDS.items.forEach(normalizePaper);
   LIBRARY.papers.forEach(normalizePaper);
 
-  // 365-day PubMed title archive (compact rows -> paper objects) feeds the radar's 30 / 90 / 365-day views
-  (function expandRadar() {
-    const R = window.RADAR;
-    if (!R || !Array.isArray(R.rows)) return;
+  // 365-day PubMed title archive (compact rows -> paper objects) feeds the radar's 30 / 90 / 365-day views.
+  // Recent rows ship in the first-load bundle; older ones arrive later from radar.js (see loadRadarArchive).
+  function expandRadar(R, onAdd) {
+    if (!R || !Array.isArray(R.rows)) return 0;
     const seen = new Set();
+    let added = 0;
     FEEDS.items.forEach(p => { if (p.doi) seen.add(String(p.doi).toLowerCase()); if (p.pmid) seen.add('pmid:' + p.pmid); });
     R.rows.forEach(r => {
       if ((r[1] && seen.has(r[1])) || seen.has('pmid:' + r[0])) return;
@@ -59,8 +60,15 @@
       if (ab) p.abstractSections = ab.map(x => ({ label: x[0], text: x[1] }));
       normalizePaper(p);
       FEEDS.items.push(p);
+      if (p.doi) seen.add(String(p.doi).toLowerCase());
+      seen.add('pmid:' + p.pmid);
+      added++;
+      if (onAdd) onAdd(p);
     });
-  })();
+    return added;
+  }
+  expandRadar(window.RADAR);
+  expandRadar(window.RADAR_ARCHIVE);
   CURATED.forEach(normalizePaper);
 
   // Chinese -> English search expansion (titles/abstracts are English)
@@ -107,6 +115,38 @@
     }
   });
   const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
+  const RADAR_LOAD = { state: window.RADAR_ARCHIVE || !window.RADAR_SRC ? 'loaded' : 'idle' };
+  // Fetch the older radar archive only when a view needs it (ranges beyond 14 days, or an exact DOI).
+  function loadRadarArchive() {
+    if (RADAR_LOAD.state !== 'idle') return;
+    RADAR_LOAD.state = 'loading';
+    window.XINZHI_RADAR_READY = () => {
+      window.XINZHI_RADAR_READY = null;
+      expandRadar(window.RADAR_ARCHIVE, p => {
+        if (p.id && !allPapersMap.has(p.id)) allPapersMap.set(p.id, p);
+        STATIC_DOI_PAPERS.push(p);
+      });
+      RADAR_LOAD.state = 'loaded';
+      _maxDateCache = null;
+      updateHeaderBadges();
+      if (state.mode === 'candidates' || exactDoi(state.search)) { renderSidebarFilters(); renderStream(); }
+    };
+    const script = document.createElement('script');
+    script.src = window.RADAR_SRC;
+    script.async = true;
+    script.onerror = () => { RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates') renderStream(); };
+    document.head.appendChild(script);
+  }
+  function radarArchiveNeeded() {
+    // First-load rows cover the last three weeks, so only longer ranges (or a site-wide DOI) need the archive.
+    return !!exactDoi(state.search) || (state.mode === 'candidates' && !['7', '14'].includes(state.range));
+  }
+  function radarArchiveNotice() {
+    if (state.mode !== 'candidates' || !radarArchiveNeeded()) return '';
+    if (RADAR_LOAD.state === 'loading') return '<p class="radar-archive-note" role="status">正在载入 365 天题录存档，结果将自动补全…</p>';
+    if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">365 天题录存档载入失败，当前仅显示近 3 周内容。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
+    return '';
+  }
   const DOI_FULLTEXT = new Map();
   const DOI_LOOKUPS = new Map();
   const DOI_JOBS = new Map();
@@ -1525,6 +1565,10 @@
     const tagsHtml = (p.tags || []).map(t => `<span class="tag-pill">${esc(t)}</span>`).join('');
     const qlc = quicklookOf(p);
     const summaryText = esc(p.draftData?.summary || p.summary || (qlc ? 'AI 速览（未核对）：' + qlc.one_line : ('暂无随附摘要，可尝试获取 Europe PMC / PubMed 公开摘要。')));
+    // A Chinese one-line takeaway (when one exists) leads the card; the English abstract stays in the reader.
+    const leadHtml = !p.hasDraft && qlc?.one_line && p.summary
+      ? `<p class="card-lead"><span class="content-label" title="模型依据公开摘要生成，未经人工核对">AI 速览 · 未核对</span>${esc(qlc.one_line)}</p>${qlc.why_read ? `<p class="card-why"><b>为什么读：</b>${esc(qlc.why_read)}</p>` : ''}`
+      : '';
 
     return `
       <article class="article-card" data-paper-id="${esc(p.id)}">
@@ -1547,7 +1591,7 @@
         ${titleZh ? `<div class="article-title-zh"><span class="verified-badge" title="已对照期刊公开摘要核对；非全文精读，未经医生终审">摘要核对</span>${titleZh}</div>` : ''}
         <h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>
 
-        <p class="article-abstract">${summaryText}</p>
+        ${leadHtml || `<p class="article-abstract">${summaryText}</p>`}
         ${p.draftData?.limitations ? `<p class="card-limit"><b>证据边界：</b>${esc(p.draftData.limitations)}</p>` : ''}
         ${p.draftData?.learning_question ? `<p class="card-question"><b>共读问题：</b>${esc(p.draftData.learning_question)}</p>` : ''}
 
@@ -1562,8 +1606,7 @@
             </button>
           </div>
 
-          <div style="display:flex; align-items:center; gap:10px;">
-            ${p.doi ? `<span class="doi-link">DOI: ${esc(p.doi)}</span>` : ''}
+          <div class="card-source-actions">
             ${pdfDownloadLink(p)}
             ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm">官网原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
           </div>
@@ -1659,6 +1702,7 @@
     if (!streamEl) return;
 
     const doi = exactDoi(state.search);
+    if (radarArchiveNeeded()) loadRadarArchive();
     applyDoiSearchLayout(doi);
     if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
     if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
@@ -1675,7 +1719,7 @@
     syncUrl();
 
     if (filtered.length === 0) {
-      streamEl.innerHTML = renderEmptyFilters();
+      streamEl.innerHTML = radarArchiveNotice() + renderEmptyFilters();
       if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
       if (loadMoreBtn) loadMoreBtn.hidden = true;
       return;
@@ -1721,6 +1765,7 @@
     }
 
     if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
+    { const note = radarArchiveNotice(); if (note) streamEl.insertAdjacentHTML('afterbegin', note); }
     if (loadMoreBtn) {
       loadMoreBtn.hidden = visibleItems.length >= filtered.length;
     }
@@ -2698,6 +2743,7 @@
   document.addEventListener('click', e => {
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
     if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
+    if (e.target.closest('[data-action="retry-radar-archive"]')) { RADAR_LOAD.state = 'idle'; renderStream(); return; }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
     if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
     const browseBtn = e.target.closest('[data-browse-only]');

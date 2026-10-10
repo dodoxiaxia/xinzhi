@@ -1,5 +1,6 @@
 import copy
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -148,7 +149,8 @@ class ContentHashTests(PipelineFixture):
 
 class RefreshExecutionTests(PipelineFixture):
     def test_fast_skips_heavy_steps_and_reports_unchanged(self):
-        result, report, outputs, calls = self.invoke()
+        with patch.dict(os.environ, {'XINZHI_FAST_TITLE_BATCH': ''}):
+            result, report, outputs, calls = self.invoke()
         names = [argv[0] for argv in calls]
         for name in ('generate_quicklooks.py', 'fetch_archive.py', 'archive_details.py', 'translate_titles.py'):
             self.assertNotIn('scripts/' + name, names)
@@ -160,6 +162,15 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(report['status'], 'success')
         self.assertIn('finishedAt', report)
         self.assertEqual(outputs, [False])
+
+    def test_scheduled_fast_translates_one_bounded_title_batch(self):
+        with patch.dict(os.environ, {'XINZHI_FAST_TITLE_BATCH': '1'}):
+            result, report, outputs, calls = self.invoke()
+        self.assertIn(ci_daily.FAST_TITLES[0], calls)
+        self.assertEqual(ci_daily.FAST_TITLES[0][-2:], ['--limit', '1'])
+        self.assertLess(calls.index(ci_daily.FAST_TITLES[0]), calls.index(ci_daily.BUILD))
+        for name in ('generate_quicklooks.py', 'fetch_archive.py', 'archive_details.py'):
+            self.assertNotIn('scripts/' + name, [argv[0] for argv in calls])
 
     def test_fast_uses_existing_reading_cache_without_paid_work(self):
         result, report, outputs, calls = self.invoke()

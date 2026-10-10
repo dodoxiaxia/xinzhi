@@ -316,10 +316,11 @@ def call_model(cfg, paper, paragraphs):
 
 class StateCheckpoint:
     """Atomic data+reservation commits on state, using its existing Actions token."""
-    def __init__(self, root, transport, repository, head):
+    def __init__(self, root, transport, repository, head, sleep=time.sleep):
         if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository) or not re.fullmatch(r'[a-f0-9]{40}', head or ''):
             raise ReadingError('checkpoint_not_configured')
         self.root, self.transport, self.prefix, self.head = root, transport, '/repos/' + repository, head
+        self.sleep = sleep
         self.blocked = False
 
     def api(self, method, path, body=None, status=200):
@@ -353,9 +354,12 @@ class StateCheckpoint:
             if self.ref() != self.head:
                 raise ReadingError('checkpoint_concurrent_update')
             changed = self.api('PATCH', '/git/refs/heads/state', {'sha': result['sha'], 'force': False})
-            self.head = result['sha']
-            if changed.get('object', {}).get('sha') != self.head or self.ref() != self.head:
+            if changed.get('object', {}).get('sha') != result['sha']:
                 raise ReadingError('checkpoint_uncertain')
+            # The ref now points at this commit. Record it locally before any
+            # read-back: a lagging GET must not leave the final state save with
+            # a stale lease, which would discard the whole run's work.
+            self.head = result['sha']
             path = self.root / '.local/week-checkpoint-head'
             path.parent.mkdir(parents=True, exist_ok=True)
             temp = path.with_suffix('.tmp')
@@ -363,6 +367,13 @@ class StateCheckpoint:
             temp.replace(path)
             atomic(self.root / DATA_PATH, data)
             atomic(self.root / LEDGER_PATH, ledger)
+            for delay in (0, 1, 2, 4):
+                if delay:
+                    self.sleep(delay)
+                if self.ref() == self.head:
+                    break
+            else:
+                raise ReadingError('checkpoint_uncertain')
         except Exception:
             self.blocked = True
             raise ReadingError('checkpoint_write_failed') from None

@@ -167,5 +167,55 @@ class StateWorkflowTests(unittest.TestCase):
         self.assertEqual(self.git(self.remote, 'rev-parse', 'refs/heads/state').stdout.strip(), concurrent_sha)
 
 
+class StateLeaseTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name)
+        self.git('init', '-q', '-b', 'state')
+        self.git('config', 'user.email', 't@example.com')
+        self.git('config', 'user.name', 't')
+        self.base = self.commit('state 2026-10-10')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def git(self, *args):
+        return subprocess.run(['git', *args], cwd=self.repo, check=True, capture_output=True, text=True).stdout.strip()
+
+    def commit(self, message):
+        self.git('commit', '-q', '--allow-empty', '-m', message)
+        return self.git('rev-parse', 'HEAD')
+
+    def resolve(self, expected):
+        return subprocess.run(['python3', str(ROOT / 'scripts/resolve_state_lease.py'), expected, 'HEAD'],
+                              cwd=self.repo, capture_output=True, text=True)
+
+    def test_workflow_retries_only_through_the_resolver(self):
+        source = WORKFLOW.read_text()
+        self.assertIn('scripts/resolve_state_lease.py" "$STATE_EXPECTED_SHA"', source)
+        self.assertEqual(source.count('--force-with-lease=refs/heads/state:"$STATE_EXPECTED_SHA"'), 2)
+
+    def test_own_checkpoint_commits_advance_the_lease(self):
+        self.commit('Checkpoint daily public full-text reading')
+        tip = self.commit('Checkpoint daily public full-text reading')
+        result = self.resolve(self.base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), tip)
+
+    def test_unchanged_remote_keeps_the_lease(self):
+        self.assertEqual(self.resolve(self.base).stdout.strip(), self.base)
+
+    def test_any_other_writer_is_rejected(self):
+        self.commit('Checkpoint daily public full-text reading')
+        self.commit('state 2026-10-11')
+        self.assertEqual(self.resolve(self.base).returncode, 1)
+
+    def test_unrelated_history_is_rejected(self):
+        self.git('checkout', '-q', '--orphan', 'other')
+        self.commit('Checkpoint daily public full-text reading')
+        self.assertEqual(self.resolve(self.base).returncode, 1)
+        self.assertEqual(self.resolve('not-a-sha').returncode, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

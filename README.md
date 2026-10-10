@@ -2,6 +2,8 @@
 
 公开网站：https://learn.dryz.info/ 。实际发布版本与结果以私有 `state` 分支的 `docs/deployment-status.json` 和相应 GitHub Actions 为准。接手先读 [运营与发布说明](docs/自动化发布说明.md) 和 [当前交付状态](docs/当前交付状态.md)；旧版本记录是历史证据。
 
+v14.4 工作流修复（state 保存不再回滚整日成果、定时快刷补中文标题、每日精选排除来信）与首屏瘦身、卡片改版见 [v14.4 优化与发布](docs/v14.4优化与发布-20261010.md)。
+
 最新跨对话同步、外部状态边界及未完成事项见 [云端协同同步总账（2026-10-10）](docs/云端协同同步总账-20261010.md)。完整手册提供 [Markdown](docs/使用说明.md)、[离线 HTML](docs/使用说明.html)、[PDF](docs/使用说明.pdf) 和 [含截图压缩包](docs/心知网站使用说明手册.zip)。Muse 当前对接见 [Muse 网站接入](docs/Muse网站接入.md)，下载端定时任务尚未创建。
 
 ## 阅读和内容范围
@@ -57,6 +59,6 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory public
 
 v13.6 在阅读抽屉增加“研究结构与全文核对”，晨会清单增加明确选择 2–4 篇的“逐篇证据对照”。仅处理服务器取得的公开摘要，展示逐字引文及缺项；打开页面和选择只读缓存，点击生成才调用模型。模型生成与中文语义仍需回查原文，不能当作全文精读或质量评审。运行配置、缓存、次数限制与连接诊断见 [AI 服务说明](docs/AI解读部署说明.md)。
 
-GitHub Actions 构建后将六个公开文件发布到 Cloudflare Pages 现有 `dryz-xinzhi` 项目 Production：index.html、public.js、style.css、icon.svg、_headers、_worker.js。手动发布也必须用同一白名单包。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。Pages 发布成功和公网页面核验分别记录；失败保留上次有效站点与 state。缺完整摘要缓存时构建停止，不能用题录版覆盖已有摘要。
+GitHub Actions 构建后将七个公开文件发布到 Cloudflare Pages 现有 `dryz-xinzhi` 项目 Production：index.html、public.js、radar.js（365 天雷达存档，按需加载）、style.css、icon.svg、_headers、_worker.js。手动发布也必须用同一白名单包。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。Pages 发布成功和公网页面核验分别记录；失败保留上次有效站点与 state。缺完整摘要缓存时构建停止，不能用题录版覆盖已有摘要。
 
 界面及聚合思路参考 https://github.com/KKKKhazix/AIHOT ，原参考快照589f79eff09470b31ba8a7f1d9eb62d36ff2be6c；未复制其品牌与后端代码。原文版权归各来源所有。

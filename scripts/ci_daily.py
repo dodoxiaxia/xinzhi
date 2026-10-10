@@ -8,7 +8,7 @@ import datetime, hashlib, json, os, re, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC = {'index.html', 'style.css', 'public.js', 'icon.svg', '_headers', '_worker.js'}
+PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'icon.svg', '_headers', '_worker.js'}
 
 REQUIRED = [
     ['scripts/apply_public_library.py'],
@@ -27,6 +27,10 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
 BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
 DEEP_READING = ['scripts/daily_fulltext.py', '--run']
+# Scheduled fast refreshes opt in (env) to one bounded title batch (<=30 newest
+# missing titles, a single model call) so new daily picks get Chinese titles
+# within hours instead of waiting for the next 05:17 full run. Source pushes stay model-free.
+FAST_TITLES = (['scripts/translate_titles.py', '--run', '--limit', '1'], 240)
 
 def deep_reading_needs_bootstrap(root):
     path = root / 'data/deep-readings.json'
@@ -36,7 +40,7 @@ def deep_reading_needs_bootstrap(root):
     return json.loads(path.read_text()).get('generatorVersion', 0) < GENERATOR_VERSION
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
-BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR|DEEP_READINGS)\s*=\s*')
+BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR|RADAR_ARCHIVE|DEEP_READINGS)\s*=\s*')
 
 
 def stable_data(value):
@@ -187,7 +191,7 @@ def content_hash():
     for name in sorted(PUBLIC):
         path = ROOT / 'public' / name
         payload = path.read_bytes() if path.exists() else b'<missing>'
-        if name == 'public.js':
+        if name in ('public.js', 'radar.js'):
             payload = stable_bundle(payload.decode('utf-8')).encode('utf-8')
         digest.update(name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
     return digest.hexdigest()
@@ -254,6 +258,8 @@ def main():
     # later fast refreshes read its persisted cache without paid model calls.
     if not fast or deep_reading_needs_bootstrap(ROOT):
         execute(DEEP_READING, 900, optional=True, reserve=600)
+    if fast and os.environ.get('XINZHI_FAST_TITLE_BATCH') == '1':
+        execute(*FAST_TITLES, optional=True, reserve=300)
     if not fast:
         for argv, t in FULL_OPTIONAL:
             reserve = 300 if argv[0] in ('scripts/week_precompute.py', 'scripts/auto_picks.py') else 900
