@@ -1,0 +1,264 @@
+diff --git a/app.js b/app.js
+index 9115d5b..52352f0 100644
+--- a/app.js
++++ b/app.js
+@@ -373,7 +373,12 @@
+       .catch(() => { paper._aiState = 'error'; paper._aiMsg = '网络错误，请稍后重试。'; })
+       .then(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
+   }
+-  function hasAbstract(p) { return !!(p.summary || (p.abstractSections||[]).some(x=>x.text) || quicklookOf(p)?.abstract); }
++  function nonBlankText(value) {
++    return typeof value === 'string' ? value.trim() : '';
++  }
++  function hasAbstract(p) {
++    return !!(nonBlankText(p.summary) || (p.abstractSections||[]).some(x=>nonBlankText(x?.text)) || nonBlankText(quicklookOf(p)?.abstract));
++  }
+   function datePrecision(p) {
+     if (p.datePrecision) return p.datePrecision;
+     if (!p.date) return 'unknown';
+@@ -391,6 +396,12 @@
+     const val=p.url || (p.doi?'https://doi.org/'+p.doi:'');
+     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
+   }
++  function abstractSourceHtml(source, url) {
++    const name = nonBlankText(source);
++    const sourceUrl = safeSourceUrl({ url: nonBlankText(url) });
++    if (!name && !sourceUrl) return '';
++    return `<p class="text-muted" style="font-size:11.5px;margin-top:8px;">摘要来源：${esc(name)}${name && sourceUrl ? ' · ' : ''}${sourceUrl ? `<a href="${esc(sourceUrl)}" target="_blank" rel="noopener noreferrer">查看来源 ↗</a>` : ''}</p>`;
++  }
+   function inLane(p, lane) {
+     if (lane === 'all') return true;
+     if (lane === 'crossai') return isCrossAI(p);
+@@ -805,7 +816,15 @@
+ 
+     const tagsHtml = (p.tags || []).map(t => `<span class="tag-pill">${esc(t)}</span>`).join('');
+     const qlc = quicklookOf(p);
+-    const summaryText = esc(p.draftData?.summary || p.summary || (qlc ? 'AI 速览（未核对）：' + qlc.one_line : ('暂无随附摘要，可尝试获取 Europe PMC / PubMed 公开摘要。')));
++    const guideSummary = nonBlankText(p.draftData?.summary);
++    const paperSummary = nonBlankText(p.summary) || (p.abstractSections||[]).map(s=>nonBlankText(s?.text)).filter(Boolean).join(' ');
++    const originalSummary = paperSummary || nonBlankText(qlc?.abstract);
++    const quickSummary = nonBlankText(qlc?.one_line);
++    const summaryText = esc(guideSummary || originalSummary || (quickSummary ? 'AI 速览（未核对）：' + quickSummary : '内容待补充，可查看原文。'));
++    const readingLabel = guideSummary ? '阅读导读与摘要' : originalSummary ? '阅读摘要' : quickSummary ? '阅读 AI 速览' : '查看文献';
++    const summarySource = !guideSummary && originalSummary
++      ? abstractSourceHtml(paperSummary ? p.abstractSource : qlc?.abstractSource || qlc?.abstract_source, paperSummary ? p.abstractSourceUrl : qlc?.abstractSourceUrl || qlc?.source_url)
++      : '';
+ 
+     return `
+       <article class="article-card" data-paper-id="${esc(p.id)}">
+@@ -827,6 +846,7 @@
+         <h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>
+ 
+         <p class="article-abstract">${summaryText}</p>
++        ${summarySource}
+         ${p.draftData?.limitations ? `<p class="card-limit"><b>证据边界：</b>${esc(p.draftData.limitations)}</p>` : ''}
+         ${p.draftData?.learning_question ? `<p class="card-question"><b>共读问题：</b>${esc(p.draftData.learning_question)}</p>` : ''}
+ 
+@@ -834,7 +854,7 @@
+ 
+         <div class="card-actions">
+           <div class="action-buttons-group">
+-            <button class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="${esc(p.id)}">${p.hasDraft ? '阅读导读与摘要' : qlc ? '阅读 AI 速览' : '阅读摘要'}</button>
++            <button class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="${esc(p.id)}">${readingLabel}</button>
+             ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}">微信群文案</button>` : ''}
+             <button class="btn-sm ${isHuddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">
+               ${isHuddled ? '已入晨会 ✓' : '加入晨会单'}
+@@ -1086,6 +1106,8 @@
+       if (ql && ql.abstract && !paper.summary && !(paper.abstractSections && paper.abstractSections.length)) {
+         paper.abstractSections = [{ label: '', text: ql.abstract }];
+         paper._absFetched = true;
++        paper.abstractSource = ql.abstractSource || ql.abstract_source || '';
++        paper.abstractSourceUrl = ql.abstractSourceUrl || ql.source_url || '';
+         if (!paper.pmid && ql.pmid) paper.pmid = ql.pmid;
+       }
+       const quickBox = (ql && !draft) ? `
+@@ -1131,8 +1153,7 @@
+       } else {
+         abstractHtml = '<p class="text-muted">公开数据库（Europe PMC / PubMed）暂未收录该文摘要，可能是述评、社论或刚上线的文章。请前往官方原文查看。</p>';
+       }
+-      const absSource = (paper.abstractSections && paper.abstractSections.length && paper._absFetched)
+-        ? '<p class="text-muted" style="font-size:11.5px;margin-top:8px;">摘要来自 Europe PMC / PubMed 公开数据，版权归原出版商；此处未做 AI 加工。</p>' : '';
++      const absSource = abstractSourceHtml(paper.abstractSource, paper.abstractSourceUrl);
+       const hasAbstract = !!(paper.summary || (paper.abstractSections && paper.abstractSections.length));
+ 
+       // Generic reading tips by study design (NOT a paper-specific appraisal)
+@@ -1233,6 +1254,8 @@
+         if (res && res.sections.length) {
+           paper.abstractSections = res.sections;
+           paper._absFetched = true;
++          paper.abstractSource = 'Europe PMC';
++          paper.abstractSourceUrl = res.pmid ? 'https://europepmc.org/article/MED/' + encodeURIComponent(res.pmid) : '';
+           paper._absState = 'ok';
+           if (!paper.authors || !paper.authors.length) paper.authors = res.authors;
+           if ((!paper.affiliations || !paper.affiliations.length) && res.affiliation) paper.affiliations = [res.affiliation];
+diff --git a/scripts/build_public.py b/scripts/build_public.py
+index a617fba..ed4c0a5 100644
+--- a/scripts/build_public.py
++++ b/scripts/build_public.py
+@@ -1,12 +1,13 @@
+ # -*- coding: utf-8 -*-
+ #!/usr/bin/env python3
+ """Reproducible, allowlisted public build. No credentials, PDFs or private paths."""
+-import datetime, hashlib, json, re, shutil
++import datetime, hashlib, json, re, shutil, unicodedata
+ from pathlib import Path
++from urllib.parse import unquote, urlsplit
+ ROOT = Path(__file__).resolve().parents[1]
+ DEST = ROOT / 'public'
+ PUBLIC = {'index.html','public.js','style.css','icon.svg','_headers','_worker.js'}
+-PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh'}
++PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','abstractSource','abstractSourceUrl','localAvailable','quantitativeMetrics','titleZh'}
+ DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','reviewer','source_checked','source_url','source_date','attribution','published','fulltext_status'}
+ QL_FIELDS = {'title_zh','one_line','design','findings','limits','why_read','abstract','pmid','generatedAt','source_url','abstract_source','abstractSource','abstractSourceUrl'}
+ SOURCE_FIELDS = {'id','name','url','checkedAt','status','items','itemsWithLinks','itemsWithAbstracts','error'}
+@@ -18,6 +19,8 @@ def safe_url(v):
+ def public_paper(p):
+     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
+     out['url']=safe_url(out.get('url',''))
++    if 'abstractSourceUrl' in out:out['abstractSourceUrl']=safe_url(out['abstractSourceUrl'])
++    if 'abstractSource' in out and not isinstance(out['abstractSource'],str):out.pop('abstractSource')
+     out['abstractSections']=[{k:v for k,v in s.items() if k in {'label','text'}} for s in out.get('abstractSections',[]) if isinstance(s,dict)]
+     out['quantitativeMetrics']={k:v for k,v in out.get('quantitativeMetrics',{}).items() if k in {'sampleSize','followUp','trialId','effectSizes'}}
+     d=p.get('draftData') or {}
+@@ -25,6 +28,114 @@ def public_paper(p):
+     if out['hasDraft']:out['draftData']={k:v for k,v in d.items() if k in DRAFT_FIELDS}
+     return out
+ 
++def _doi(value):
++    """Canonical DOI identity only; never match papers by title alone."""
++    if not isinstance(value,str):return ''
++    value=value.strip()
++    if re.match(r'^https?://',value,re.I):
++        parsed=urlsplit(value)
++        if (parsed.hostname or '').lower() not in {'doi.org','dx.doi.org'}:return ''
++        value=unquote(parsed.path.lstrip('/'))
++    value=re.sub(r'^doi:\s*','',value,flags=re.I).lower()
++    return value if re.fullmatch(r'10\.\d{4,9}/[^\s\x00-\x1f<>"\\]+',value) else ''
++
++def _pmid(value):
++    value=str(value or '').strip()
++    return value if value.isdigit() else ''
++
++def _abstract_payload(p):
++    sections=p.get('abstractSections') or []
++    sections=[{'label':str(s.get('label') or ''),'text':s['text'].strip()} for s in sections
++              if isinstance(s,dict) and isinstance(s.get('text'),str) and s['text'].strip()] if isinstance(sections,list) else []
++    summary=p.get('summary')
++    summary=summary.strip() if isinstance(summary,str) else ''
++    return {'summary':summary,'abstractSections':sections} if summary or sections else None
++
++def _title_identity(value):
++    return ''.join(c for c in unicodedata.normalize('NFKD',str(value or '')).casefold() if c.isalnum())
++
++def _paper_abstract_source(p):
++    """Require declared official provenance, not the length of an RSS description."""
++    official=p.get('sourceId')=='pubmed-journal-fallback' or p.get('basis')=='PubMed 官方结构化元数据'
++    if official and p.get('summary_truncated') is False and _pmid(p.get('pmid')):
++        return 'PubMed','https://pubmed.ncbi.nlm.nih.gov/'+_pmid(p['pmid'])+'/'
++    source=p.get('abstractSource')
++    if p.get('summary_truncated') is not True and source in {'PubMed','Europe PMC','OpenAlex','Crossref','OpenAlex / Crossref'}:
++        url=safe_url(p.get('abstractSourceUrl',''))
++        if source=='PubMed' and _pmid(p.get('pmid')):url='https://pubmed.ncbi.nlm.nih.gov/'+_pmid(p['pmid'])+'/'
++        return source,url
++    return None
++
++def backfill_public_abstracts(candidates,library,full=None,pdf_abstracts=None):
++    """Fill existing public identities from official text, then verified PDF abstracts.
++
++    Operates on the build's in-memory input lists. It neither adds papers nor changes
++    IDs, titles, dates or guides, and never replaces an existing nonempty abstract.
++    The private PDF receipt and paths are deliberately absent from this projection.
++    """
++    donors=[]
++    def add(p,payload,source,source_url='',require_title=False):
++        if not payload:return
++        doi,pmid=_doi(p.get('doi')),_pmid(p.get('pmid'))
++        if not doi and not pmid:return
++        donors.append({'doi':doi,'pmid':pmid,'title':_title_identity(p.get('title')),
++                       'payload':payload,'source':source,'source_url':safe_url(source_url),
++                       'require_title':require_title})
++    for p in list(candidates)+list(library):
++        payload=_abstract_payload(p);source=_paper_abstract_source(p)
++        if not payload or not source:continue
++        # Explicitly incomplete conclusion-only exports remain on their own card,
++        # but are not spread to another record as the paper's complete abstract.
++        labels=[s['label'].strip().casefold() for s in payload['abstractSections']]
++        if labels and all(re.match(r'^(conclusions?|results?|interpretation|findings|结论|结果)\b',x) for x in labels):continue
++        if not labels and re.match(r'^(conclusions?|结论)\s*:',payload['summary'],re.I):continue
++        add(p,payload,*source)
++    source_names={'pubmed':'PubMed','epmc':'Europe PMC','europepmc':'Europe PMC',
++                  'openalex':'OpenAlex','crossref':'Crossref','openalex/crossref':'OpenAlex / Crossref'}
++    for key,value in (full or {}).items():
++        if not isinstance(value,dict):continue
++        source=source_names.get(str(value.get('src') or '').lower())
++        if not source:continue
++        pmid=_pmid(key)
++        p={'doi':value.get('d'),'pmid':pmid,'abstractSections':[
++            {'label':s.get('l',''),'text':s.get('t','')} for s in value.get('a',[]) if isinstance(s,dict)]}
++        source_url=safe_url(value.get('abstractSourceUrl',''))
++        if source=='PubMed' and pmid:source_url='https://pubmed.ncbi.nlm.nih.gov/'+pmid+'/'
++        add(p,_abstract_payload(p),source,source_url)
++    official_count=len(donors)
++    items=(pdf_abstracts or {}).get('items',{})
++    if isinstance(items,dict):
++        for key,p in items.items():
++            if not isinstance(p,dict):continue
++            doi=_doi(key)
++            if not doi or doi!=_doi(p.get('doi')) or not _title_identity(p.get('title')):continue
++            if p.get('abstractSource')!='论文原摘要（PDF提取）':continue
++            add(p,_abstract_payload(p),p['abstractSource'],p.get('abstractSourceUrl',''),require_title=True)
++    bydoi={};bypmid={}
++    for i,donor in enumerate(donors):
++        if donor['doi']:bydoi.setdefault(donor['doi'],[]).append(i)
++        if donor['pmid']:bypmid.setdefault(donor['pmid'],[]).append(i)
++    report={'candidates':0,'library':0,'pdf':0}
++    for name,papers in [('candidates',candidates),('library',library)]:
++        for p in papers:
++            if _abstract_payload(p):continue
++            doi,pmid=_doi(p.get('doi')),_pmid(p.get('pmid'))
++            matches=sorted(set(bydoi.get(doi,[])+bypmid.get(pmid,[])))
++            for i in matches:
++                donor=donors[i]
++                if doi and donor['doi'] and doi!=donor['doi']:continue
++                if pmid and donor['pmid'] and pmid!=donor['pmid']:continue
++                if donor['require_title'] and (not doi or doi!=donor['doi'] or _title_identity(p.get('title'))!=donor['title']):continue
++                payload=donor['payload']
++                if payload['summary']:p['summary']=payload['summary']
++                if payload['abstractSections']:p['abstractSections']=[dict(s) for s in payload['abstractSections']]
++                p['abstractSource']=donor['source']
++                p['abstractSourceUrl']=donor['source_url']
++                report[name]+=1
++                if i>=official_count:report['pdf']+=1
++                break
++    return report
++
+ def public_quicklook(item):
+     out={k:v for k,v in item.items() if k in QL_FIELDS}
+     for field in ('source_url','abstractSourceUrl'):
+@@ -110,6 +221,9 @@ def main():
+     extra={p.name for p in DEST.iterdir()}-PUBLIC
+     if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
+     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
++    full=load('data/archive-full.json') if (ROOT/'data/archive-full.json').exists() else {}
++    pdf_abstracts=load('data/pdf-abstracts.json') if (ROOT/'data/pdf-abstracts.json').exists() else {}
++    print('abstracts backfilled:',backfill_public_abstracts(c['items'],l['papers'],full,pdf_abstracts))
+     archive=make_archive(c['items'],l['papers'])
+     library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p) for p in l['papers']]}
+     candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p) for p in c['items']]}
+@@ -135,16 +249,6 @@ def main():
+         for i,x in enumerate(picks.get('weekly',[])):
+             if x in byid:byid[x]['weeklyPick']=i+1;byid[x]['weeklyAt']=picks.get('updatedAt')
+         print('auto picks:',sum(1 for q in candidates['items'] if q.get('autoPick')),'weekly:',len(picks.get('weekly',[])))
+-    fullp=ROOT/'data/archive-full.json'
+-    if fullp.exists():
+-        full=json.loads(fullp.read_text());bydoi={str(v.get('d','')).lower():v for v in full.values() if v.get('d')}
+-        filled=0
+-        for q in candidates['items']:
+-            if q.get('summary') or q.get('abstractSections'):continue
+-            v=full.get(str(q.get('pmid') or ''))or bydoi.get(str(q.get('doi') or '').lower())
+-            if v and v.get('a'):
+-                q['abstractSections']=[{'label':x.get('l',''),'text':x.get('t','')} for x in v['a']];filled+=1
+-        print('candidates filled from private store:',filled)
+     radar=make_radar(c['items'],tz)
+     ql=load('data/quicklooks.json').get('items',{}) if (ROOT/'data/quicklooks.json').exists() else {}
+     ql={k:public_quicklook(val) for k,val in ql.items()}

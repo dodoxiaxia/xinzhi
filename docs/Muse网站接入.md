@@ -1,8 +1,18 @@
 # Muse 接入知新文献库
 
-网站：https://learn.dryz.info/ 。本协议让现有 Muse 定时领取读者提交的 DOI，下载原件、上传原私有 Drive「文献」收件箱，并回传原件。网站另行核验 PDF 后提供受全文口令保护的下载。Muse 不需要对外 Webhook。
+网站：https://learn.dryz.info/ 。本协议让现有 Muse 领取读者提交的 DOI，下载原件、上传私有 Drive「Muse 文献收件箱」，并回传原件。网站另行核验 PDF 后提供受全文口令保护的下载。Muse 不需要对外 Webhook。
 
 可直接转发给 Muse 的在线协议：https://learn.dryz.info/api/muse/protocol 。网页同时显示实际是否已启用；机器 GET 返回 JSON 协议，不读取任务或原件。
+
+## 2026-10-10 实际对接与恢复
+
+当前收件箱是私有 [Muse 文献收件箱](https://drive.google.com/drive/folders/128WvPnTcp3jOqlOjtsrgKjv3ihVGEOQO)。对话已核对文件夹和样本只有所有者访问，本次未重复检查 Drive ACL；原“文献”文件夹及正式三端归档保持不动。后续上传须核实没有 anyone/domain 权限。
+
+领取后立即在 Muse 私有环境保存 DOI、taskId、leaseId、阶段、原件路径及哈希；这些任务凭据不提交 GitHub。浏览器下载耗时时仍每五分钟续租：下载阶段发送 running；已经发送 uploaded 回执进入上传阶段时，只能重发相同 sha256/bytes/driveFileId 的 uploaded 回执续租，不能退回 running。先 uploaded 回执，再 PUT 同一原件。
+
+401/403/429、登录失效或来源拦截时停止，保存检查点并通知；租约过期不另行下载。失败任务由读者用既有全文口令在 `/api/muse/retry?doi=…` 确认恢复，再领取任务并复用已存原件。Muse 的机器密钥不能替代网站全文口令。“一分钟”是状态刷新间隔，不是下载完成承诺。
+
+网站核验 `muse-review.yml` 已观察到 schedule 成功；最新已读日志 processed=0，不能据此确认某篇已通过。LA-HCM `10.1093/ehjci/jeag280` 在上次对话结束时仍需 workflow_dispatch 的 recheck_doi 单篇复核，未重新下载。本次公网读取受阻，状态保留待核对。完整来源与证据见 [同步总账](云端协同同步总账-20261010.md)。
 
 ## 先在私密配置中完成这一步
 
@@ -32,7 +42,7 @@ Cloudflare Workers 只接受 `redirect:"manual"` 或 `"follow"`。请求使用 `
 1. 网站是 `https://learn.dryz.info/`。所有 Muse 机器请求带 `Authorization: Bearer <私密配置中的 MUSE_FULLTEXT_KEY>`，禁止把密钥放入查询参数、日志或结果。读者照常在网站表单输入全文口令。
 2. 待办通过 `POST https://learn.dryz.info/api/muse/claim` 领取；`Content-Type: application/json`，请求正文 `{}`。每次只领一篇，返回 `{"ok":true,"task":null}` 表示没有待办；有任务时返回下述 JSON。
 3. 进度和完成信息 `POST https://learn.dryz.info/api/muse/receipt`，JSON 结构见下；PDF 原件另行 `PUT https://learn.dryz.info/api/muse/upload`。只返回私有 Drive 链接不能完成网站导入。
-4. 建议每 10 分钟轮询一次。无任务静默，有失败或需重新登录才通知维护者。建立一个定时任务，禁止重复建立或与现有下载流程并行领取。
+4. 协议支持每 10 分钟轮询一次，但截至 2026-10-10 的执行对话，Muse 下载端定时任务保持未创建。当前按获授权的一次性任务执行；未来启用须沿用唯一消费者，无任务静默，有失败或需重新登录才通知维护者。不能将此协议或 GitHub 核验 cron 当作 Muse cron 已开启。
 5. 每轮最多三篇，串行处理。每篇结束后再领下一篇。按 DOI 复用现有 Muse 下载结果和原领取账本，已有文件不再次从出版社下载。
 
 领取响应示例（`taskId`、`leaseId` 必须使用网站当次返回的值）：
@@ -105,9 +115,9 @@ Cloudflare Workers 只接受 `redirect:"manual"` 或 `"follow"`。请求使用 `
 
 ## 读者使用
 
-启用配置后，原“获取全文”入口自动进入 Muse 任务页。网站只读取官方 DOI 元数据、写入待办；Muse 定时领取。重复读者请求复用同一任务；已经可用的 PDF 直接下载。公开状态响应不包含密钥、租约、私有 Drive ID、正文或机构会话。PDF 仍需原全文口令，普通 GET 不返回文件。
+启用配置后，原“获取全文”入口自动进入 Muse 任务页。网站只读取官方 DOI 元数据、写入待办；Muse 在获授权执行时领取。重复读者请求复用同一任务；已经可用的 PDF 直接下载。公开状态响应不包含密钥、租约、私有 Drive ID、正文或机构会话。PDF 仍需原全文口令，普通 GET 不返回文件。
 
-没有在此环境代建 Muse cron；转发上述任务说明后，由已有 Muse 建立或更新其唯一任务。上线代码或空队列核验成功不能证明 Muse 私密配置、真实领取或真实回传已完成。
+没有在此环境代建 Muse cron；本次同步也不创建或启用。上线代码或空队列核验成功不能证明 Muse 私密配置、真实领取或真实回传已完成。
 
 ## 样本与正式归档边界
 
@@ -115,4 +125,4 @@ Cloudflare Workers 只接受 `redirect:"manual"` 或 `"follow"`。请求使用 `
 
 `editorial/fulltext-imports.json` 固定原 GitHub commit、DOI、校验值；独立导入工作流重新读取该 commit 母索引和真实 PDF/LFS 对象，并在网站缓存回读成功后确认。不会调 Muse、OA、出版社或 GitHub/Drive 写接口。
 
-Muse「文献」是私有收件箱，不是正式 Drive「mac文献-三端同步」。网站可下载只说明网站缓存核验成功；不等于原 20 列母索引、Macmini、GitHub、正式 Drive 全部归档。所有 API 保持 `archive.complete:false`；Muse 的 Drive 上传仅记为 `reported`。正式三端工作继续按原归档所有者与核验流程执行，本接入不删除文件、不切换归档所有者、不新增原库下载消费者。
+Muse「Muse 文献收件箱」是私有收件箱，不是正式 Drive「mac文献-三端同步」。网站可下载只说明网站缓存核验成功；不等于原 20 列母索引、Macmini、GitHub、正式 Drive 全部归档。所有 API 保持 `archive.complete:false`；Muse 的 Drive 上传仅记为 `reported`。正式三端工作继续按原归档所有者与核验流程执行，本接入不删除文件、不切换归档所有者、不新增原库下载消费者。

@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-10",
+  "codeBaseline": "f3e0ff83bab15f0b38edf21bb6d4d15cc28a6eb1",
+  "stateSnapshot": "d51f4e4474fe312a94f019e29d9a662a4aa3b9cb",
+  "files": {
+    ".github/workflows/daily.yml": "0d4d6b9139a0a8c8ecacb6bf2fb7c24775427b43c9502606ddce9b4b24305f9b",
+    ".github/workflows/muse-review.yml": "2e9c4469dec838065c7491763456b8a07b5ca519bd8cf249aa9fa54e9130cfcd",
+    "edge/_worker.js": "cdba0a8df8b81f927462ead48cda580351900199c1700c3cc66928f41c1edd6e",
+    "app.js": "9c68c7c7e26cc0f268c67a3da39a644149c7f7ad56656e2a35ad17c77a1d1fd6",
+    "scripts/daily_fulltext.py": "4e9c2588a9b5a4a2fb1cfaeed62df6154b5c5c2e0bb32b5729ac6de0848ce06d",
+    "scripts/muse_pdf_verifier.py": "25f9277af6db016671faffc714ce987782a5f405bd0830f943a9dad860e6a313",
+    "scripts/muse_review_runner.cjs": "b26b7b4e2c4f2981e2d2e6429ffea3e8c9b42cea92a7a15da4ac62d87d5ce0a7"
+  },
+  "dailyRun": 38028484880,
+  "dailyStepsVerified": [
+    "refresh",
+    "deploy",
+    "save_state",
+    "final_record",
+    "upload_artifact"
+  ],
+  "artifactContentRead": false,
+  "museRun": 38029374760,
+  "museEvent": "schedule",
+  "museProcessed": 0,
+  "museDownloadCron": "not_created_per_source_thread",
+  "liveSiteRead": "http_error",
+  "manualScreenshots": "state public package served locally; API generation disabled",
+  "manualBrowserVerification": {
+    "preview": "source UI with existing public data",
+    "api": "GET availability stubbed off; no generated results or model calls",
+    "curated_count": "43",
+    "ranges": [
+      "近 7 天",
+      "近 14 天",
+      "近 30 天",
+      "近 90 天",
+      "近 365 天"
+    ],
+    "search_房颤消融": "共找到 46 篇文献 · 默认隐藏更正 / 来信\n检索范围：文献雷达 · 当前筛选；切换栏目保留关键词\n搜索: \"房颤消融\"\n×",
+    "huddle_count": "2",
+    "export_filename": "精选文献清单-2026-10-10.md",
+    "source_cards": 82,
+    "errors": []
+  }
+}
