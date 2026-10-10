@@ -27,6 +27,7 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
 BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
 DEEP_READING = ['scripts/daily_fulltext.py', '--run']
+DEEP_READING_RECOVER = ['scripts/daily_fulltext.py', '--recover']  # model-free; fast runs publish repaired drafts
 # Scheduled fast refreshes opt in (env) to one bounded title batch (<=30 newest
 # missing titles, a single model call) so new daily picks get Chinese titles
 # within hours instead of waiting for the next 05:17 full run. Source pushes stay model-free.
@@ -258,6 +259,8 @@ def main():
     # later fast refreshes read its persisted cache without paid model calls.
     if not fast or deep_reading_needs_bootstrap(ROOT):
         execute(DEEP_READING, 900, optional=True, reserve=600)
+    else:
+        execute(DEEP_READING_RECOVER, 120, optional=True, reserve=600)
     if fast and os.environ.get('XINZHI_FAST_TITLE_BATCH') == '1':
         execute(*FAST_TITLES, optional=True, reserve=300)
     if not fast:
