@@ -461,6 +461,8 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     published = [p for p in data['items'] if p['publishedOn'] == day]
     seen = {identity(p) for p in data['items']}
     attempted = {p['identity'] for p in rows}
+    # A source that already failed validation on an earlier day would only spend the budget again.
+    attempted |= {r['identity'] for d, old in ledger['days'].items() if d < day for r in old if r['state'] == 'invalid'}
     pending = [p for p in papers if p.get('topic') in ('心血管', '心血管 × AI', 'AI 医疗') and identity(p) not in seen and identity(p) not in attempted]
     # Round-robin topics before falling back, so one theme does not occupy the entire day.
     ordered = []

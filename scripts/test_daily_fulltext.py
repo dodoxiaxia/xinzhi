@@ -187,6 +187,16 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(status['completed'], 0)
         self.assertEqual(status['attempts'], 8)
 
+    def test_sources_invalid_on_earlier_days_are_not_paid_for_again(self):
+        ledger = d.empty_ledger()
+        ledger['days']['2026-10-08'] = [{'identity':'10.1234/fixture1','state':'invalid'},
+                                        {'identity':'10.1234/fixture2','state':'validated'}]
+        tried = []
+        model = lambda *args: (tried.append(args[1]['doi']) or output(args[-1][0]['id']))
+        data, ledger, status = self.generate(ledger=ledger, model=model)
+        self.assertNotIn('10.1234/fixture1', tried)
+        self.assertEqual(status['completed'], 4)
+
 class DraftRecoveryTests(unittest.TestCase):
     def test_recovery_revalidates_cached_source_and_does_not_call_model(self):
         p=paper()

@@ -363,10 +363,13 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   except Halt:raise
   except (ValueError,KeyError,IndexError,TypeError):raise Halt('model_output_invalid') from None
  item=None
+ rejected={(r.get('paperID'),r.get('sourceHash')) for d in ledger['days'].values() for r in d.get('requests',[]) if r.get('status')=='rejected'}
  try:
   for p in selected:
    missing=[task for task in TASKS if not find(cache,p,task)[0]]
    if not missing:continue
+   # A paper whose output already failed evidence validation is not paid for again.
+   if (p['paperID'],p['sourceHash']) in rejected:report['skippedRejected']=report.get('skippedRejected',0)+1;continue
    if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');break
    try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS)
    except BudgetError as exc:report.update(stopped=True,blocker=exc.code);break
@@ -388,7 +391,13 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
      if checkpoint:checkpoint.save(ledger,cache)
     except CheckpointError:raise
     except ValueError:invalid=True
-   if invalid:raise Halt('evidence_validation_failed')
+   if invalid:
+    # The response is known and accounted: record a terminal rejection instead of
+    # an uncertain charge, so one bad output does not pause every later batch.
+    item['status']='rejected';item['failureCode']='evidence_validation_failed';atomic(ledger_path,ledger)
+    rejected.add((p['paperID'],p['sourceHash']));report['rejectedRequests']=report.get('rejectedRequests',0)+1
+    if checkpoint:checkpoint.save(ledger,cache)
+    item=None;continue
    item['status']='validated';atomic(ledger_path,ledger)
    if checkpoint:checkpoint.save(ledger,cache)
  except (Halt,ValueError) as exc:

@@ -22,7 +22,7 @@ async function manual(response) {
   const writes=h.writes.length,calls=h.calls.length;
   const lookup=await (await h.request('/api/library',{method:'GET'})).json();assert.equal(lookup.status,'manual_needed');assert(!Object.hasOwn(lookup,'retryAfter'));
   const page=await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}}),html=await page.text();
-  assert.equal(page.headers.get('retry-after'),null);assert(html.includes('需要人工处理'));assert(html.includes('核对已有文件是否登记及网站读取版本'));assert(html.includes('确需新的订阅获取时'));assert(html.includes('等待或反复提交不会自动取得全文'));
+  assert.equal(page.headers.get('retry-after'),null);assert(html.includes('需要人工处理'));assert(html.includes('核对已有文件是否登记'));assert(html.includes('机构授权执行桥尚未接通'));assert(html.includes('等待或反复提交不会自动取得全文'));
   assert(!html.includes('后手动重试'));assert(!html.includes('北京时间'));assert(!html.includes('<form'));assert(!html.includes('http-equiv="refresh"'));
   const form=await h.request('/api/acquire/retry',{method:'GET',headers:{accept:'text/html'}}),formHtml=await form.text();
   assert(formHtml.includes('检查已归档全文'));assert(formHtml.includes('只查询私有索引'));assert(!formHtml.includes('后手动重试'));

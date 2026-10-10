@@ -50,18 +50,18 @@ class RunnerIntegration(unittest.TestCase):
         remote, l, c, report = self.run_case(lambda _: response)
         saved = next(iter(remote.contents(LEDGER_PATH)['days'].values()))
         row = saved['requests'][0]
-        self.assertTrue(report['stopped'])
+        self.assertFalse(report['stopped'])
         self.assertEqual(row['providerUsage'], USAGE)
         self.assertTrue(row['providerUsageKnown'])
-        self.assertEqual(row['status'], 'failed_or_uncertain')
-        self.assertEqual(saved['paused'], 'evidence_validation_failed')
+        self.assertEqual(row['status'], 'rejected')
+        self.assertEqual(row['failureCode'], 'evidence_validation_failed')
+        self.assertNotIn('paused', saved)
         self.assertEqual(len(c['entries']), 2)
+        # A known rejection is accounted, so a later paid call for other work may proceed.
         again = GitHubStateCheckpoint('example/site', remote, restore.merge_ledger)
         restored = again.restore(ledger(), cache())
         reserve(restored.ledger, 'another-call')
-        with self.assertRaises(CheckpointError):
-            again.run_reserved(restored.ledger, restored.cache, 'another-call',
-                               lambda: self.fail('no repeated paid call'))
+        self.assertEqual(again.run_reserved(restored.ledger, restored.cache, 'another-call', lambda: 'paid once'), 'paid once')
 
     def test_truncated_response_preserves_reported_usage_and_stops(self):
         envelope = {'usage': USAGE, 'choices': [{'finish_reason': 'length',
