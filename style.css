@@ -1205,7 +1205,8 @@ html { scroll-padding-top: calc(var(--sticky-header-h, var(--header-h)) + var(--
 
 /* ---- v15 卡片与移动端整理：中文要点先行、元信息不再夹点、操作更轻、首屏更早见到正文 ---- */
 .meta-badges { align-items: center; gap: 4px 10px; }
-.meta-badges > *::after, .meta-badges > *:not(:last-child)::after { content: none !important; display: none; }
+.meta-badges > *::after, .meta-badges > *:not(:last-child)::after, #drawerJournalBadges > *::after, #drawerJournalBadges > *:not(:last-child)::after { content: none !important; display: none; }
+.drawer-header #drawerJournalBadges { align-items: center; gap: 4px 10px; }
 .meta-badges > .journal-badge { margin-right: 2px; }
 .article-abstract { -webkit-line-clamp: 3; }
 .card-lead { margin: 2px 0 0; font-size: 15.5px; line-height: 1.75; color: var(--text-primary); }
@@ -1236,3 +1237,9 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover, html[data-style="c
   .card-source-actions .btn-sm { padding-left: 10px; padding-right: 10px; }
   .card-lead { font-size: 15px; }
 }
+@media (max-width: 720px) {
+  header.app-header { transition: transform .22s ease; will-change: transform; }
+  html.header-tucked header.app-header { transform: translateY(-100%); }
+  html.header-tucked .stream-toolbar, html.header-tucked .weekly-toc { transition: top .22s ease; }
+}
+@media (prefers-reduced-motion: reduce) { header.app-header, html.header-tucked .stream-toolbar { transition: none; } }

@@ -2585,7 +2585,8 @@
   const header = $('header.app-header');
   function measureStickyHeader() {
     const height = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
-    document.documentElement.style.setProperty('--sticky-header-h', `${height}px`);
+    // While the phone header is tucked away, sticky bars slide up to the top edge.
+    document.documentElement.style.setProperty('--sticky-header-h', `${document.documentElement.classList.contains('header-tucked') ? 0 : height}px`);
     document.documentElement.style.setProperty('--mobile-header-h', `${height}px`);
     const toolbar = $('.stream-toolbar'), toc = $('.weekly-toc');
     document.documentElement.style.setProperty('--sticky-toolbar-h', `${toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 0}px`);
@@ -2597,6 +2598,26 @@
     [header, $('.stream-toolbar'), $('.weekly-toc')].filter(Boolean).forEach(element => observer.observe(element));
   }
   window.addEventListener('resize', measureStickyHeader);
+  // Phones: the three-row header (about a fifth of the screen) hides while reading down and
+  // returns on any upward scroll, near the top, or while something inside it has focus.
+  {
+    const root = document.documentElement, narrow = window.matchMedia('(max-width: 720px)');
+    let lastY = window.scrollY;
+    const setTucked = tucked => {
+      if (root.classList.contains('header-tucked') === tucked) return;
+      root.classList.toggle('header-tucked', tucked);
+      measureStickyHeader();
+    };
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY, delta = y - lastY;
+      if (!narrow.matches || y < 160 || (header && header.contains(document.activeElement)) || $('#appSidebar.open')) setTucked(false);
+      else if (delta > 6) setTucked(true);
+      else if (delta < -6) setTucked(false);
+      if (Math.abs(delta) > 6 || y < 160) lastY = y;
+    }, { passive: true });
+    header?.addEventListener('focusin', () => setTucked(false));
+    narrow.addEventListener?.('change', () => setTucked(false));
+  }
   // Backward tabbing must reveal the focused control below sticky surfaces.
   document.addEventListener('focusin', event => {
     const target = event.target;
