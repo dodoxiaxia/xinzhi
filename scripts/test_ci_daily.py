@@ -169,7 +169,9 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertIn(ci_daily.FAST_TITLES[0], calls)
         self.assertEqual(ci_daily.FAST_TITLES[0][-2:], ['--limit', '1'])
         self.assertLess(calls.index(ci_daily.FAST_TITLES[0]), calls.index(ci_daily.BUILD))
-        for name in ('generate_quicklooks.py', 'fetch_archive.py', 'archive_details.py'):
+        self.assertIn(ci_daily.FAST_QUICKLOOKS[0], calls)
+        self.assertEqual(ci_daily.FAST_QUICKLOOKS[0][2:4], ['--limit', '2'])
+        for name in ('fetch_archive.py', 'archive_details.py'):
             self.assertNotIn('scripts/' + name, [argv[0] for argv in calls])
 
     def test_fast_uses_existing_reading_cache_without_paid_work(self):
@@ -279,12 +281,13 @@ class RefreshExecutionTests(PipelineFixture):
             return 0, '', ''
         # Archive work reaches its budget, leaving 600 seconds for the model and
         # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [0, 1000, 2100, 2100, 2100, 2700, 2700, 2700]
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [0, 1000, 2100, 2100, 2100, 2100, 2700, 2700, 2700]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)
         self.assertNotIn('scripts/archive_details.py', timeouts)
         self.assertNotIn('scripts/translate_titles.py', timeouts)
+        self.assertNotIn('scripts/generate_quicklooks.py', timeouts)
         self.assertEqual(timeouts['scripts/week_precompute.py:paid'], 600)
         self.assertEqual(timeouts['scripts/build_public.py'], 300)
         self.assertEqual(outputs, [True])

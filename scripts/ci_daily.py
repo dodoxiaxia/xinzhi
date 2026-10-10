@@ -21,6 +21,8 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
     (['scripts/fetch_archive.py', '--incremental'], 1500),
     (['scripts/archive_details.py', '--fill'], 1800),
     (['scripts/translate_titles.py', '--run', '--limit', '60'], 900),
+    # Picks first; results are written once at the end, so the timeout covers 6 x 90s calls.
+    (['scripts/generate_quicklooks.py', '--call-model', '--limit', '6', '--lookup-limit', '12'], 660),
     (['scripts/week_precompute.py', '--run', '--provider', 'configured', '--attempt-limit', '8'], 600),
     (['scripts/auto_picks.py'], 120),
 ]
@@ -32,6 +34,8 @@ DEEP_READING_RECOVER = ['scripts/daily_fulltext.py', '--recover']  # model-free;
 # missing titles, a single model call) so new daily picks get Chinese titles
 # within hours instead of waiting for the next 05:17 full run. Source pushes stay model-free.
 FAST_TITLES = (['scripts/translate_titles.py', '--run', '--limit', '1'], 240)
+# Same opt-in: up to two Chinese quicklooks for the newest picks (verbatim-quote and number checks unchanged).
+FAST_QUICKLOOKS = (['scripts/generate_quicklooks.py', '--call-model', '--limit', '2', '--lookup-limit', '4'], 240)
 
 def deep_reading_needs_bootstrap(root):
     path = root / 'data/deep-readings.json'
@@ -263,6 +267,7 @@ def main():
         execute(DEEP_READING_RECOVER, 120, optional=True, reserve=600)
     if fast and os.environ.get('XINZHI_FAST_TITLE_BATCH') == '1':
         execute(*FAST_TITLES, optional=True, reserve=300)
+        execute(*FAST_QUICKLOOKS, optional=True, reserve=300)
     if not fast:
         for argv, t in FULL_OPTIONAL:
             reserve = 300 if argv[0] in ('scripts/week_precompute.py', 'scripts/auto_picks.py') else 900
