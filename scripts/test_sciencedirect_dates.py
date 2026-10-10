@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import refresh_feeds  # noqa: E402
+import enrich_metadata  # noqa: E402
 
 ITEM = ('<item><title><![CDATA[{title}]]></title><description><![CDATA[<p>Publication date: {date}</p>'
         '<p><b>Source:</b> JACC</p><p>Author(s): Olga Toleva, Ann Lee</p>]]></description>'
@@ -41,6 +42,20 @@ class ScienceDirectDateTests(unittest.TestCase):
 
     def test_ordinary_description_is_untouched(self):
         self.assertIsNone(refresh_feeds.sciencedirect_metadata('Background: a real abstract about atrial fibrillation.'))
+
+
+class CaseReportJournalTests(unittest.TestCase):
+    def design(self, title, journal):
+        paper = {'title': title, 'journal': journal}
+        enrich_metadata.enrich_paper(paper)
+        return paper['studyDesign']
+
+    def test_case_report_journal_labels_otherwise_unknown_articles(self):
+        self.assertEqual(self.design('Left atrial appendage occlusion after a rare complication', 'JACC: Case Reports'), '病例报告')
+
+    def test_direct_design_evidence_still_wins(self):
+        self.assertEqual(self.design('Appendage occlusion: a randomized trial', 'JACC: Case Reports'), 'RCT')
+        self.assertEqual(self.design('Left atrial appendage occlusion after a rare complication', 'JACC'), '研究类型待核验')
 
 
 if __name__ == '__main__':
