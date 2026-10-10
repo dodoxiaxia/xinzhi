@@ -155,7 +155,7 @@ class StateWorkflowTests(unittest.TestCase):
         self.assertIn('python3 scripts/save_state.py --expected "$STATE_EXPECTED_SHA"', source)
         self.assertIn("'--force-with-lease=refs/heads/state:' + expected", (ROOT / 'scripts/save_state.py').read_text())
         self.assertIn('STATE_EXPECTED_SHA=$(cat .local/week-checkpoint-head)', source)
-        self.assertIn('XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT }}', source)
+        self.assertIn("XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT || '1' }}", source)
         self.assertNotIn('git push -f ', source)
         self.git(self.repo, 'checkout', 'state')
         (self.repo / 'data' / 'feeds.json').write_text('{"items": ["concurrent"]}')

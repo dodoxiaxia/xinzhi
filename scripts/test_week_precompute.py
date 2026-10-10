@@ -122,7 +122,17 @@ class CacheAndBudgetTests(unittest.TestCase):
   cache={'entries':{}};ledger={'days':{}}
   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
    report=w.configured_batch([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',1,lambda public:{'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()})
-   self.assertEqual(report['generatedTasks'],2);self.assertTrue(report['stopped']);self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+   self.assertEqual(report['generatedTasks'],2);self.assertFalse(report['stopped']);self.assertEqual(report['rejectedRequests'],1);self.assertNotIn('paused',ledger);self.assertEqual(next(iter(ledger['days'].values()))['requests'][0]['status'],'rejected');self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+ def test_rejected_paper_is_not_paid_for_again_and_others_continue(self):
+  cache={'entries':{}};ledger={'days':{}};calls=[]
+  other=dict(self.p,paperID='doi:10.1234/other',sourceHash='b'*64)
+  def model(public):
+   calls.append(public['title']);return {'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()}
+  with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
+   report=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
+   self.assertEqual(len(calls),2,'a rejection does not stop the next paper');self.assertFalse(report['stopped'])
+   again=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
+   self.assertEqual(len(calls),2,'rejected papers are skipped on later runs');self.assertEqual(again['skippedRejected'],2)
  def test_runtime_output_budget_prevents_second_task_after_translation(self):
   with tempfile.TemporaryDirectory() as d:
    cache={'entries':{}};ledger={'days':{}};posts=[]

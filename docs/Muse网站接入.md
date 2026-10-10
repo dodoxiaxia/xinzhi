@@ -12,7 +12,7 @@
 
 401/403/429、登录失效或来源拦截时停止，保存检查点并通知；租约过期不另行下载。失败任务由读者用既有全文口令在 `/api/muse/retry?doi=…` 确认恢复，再领取任务并复用已存原件。Muse 的机器密钥不能替代网站全文口令。“一分钟”是状态刷新间隔，不是下载完成承诺。
 
-网站核验 `muse-review.yml` 已观察到 schedule 成功；最新已读日志 processed=0，不能据此确认某篇已通过。LA-HCM `10.1093/ehjci/jeag280` 10/10 晚公网读取为 `review / verification_rejected`（10/09 21:09，早于接受稿修复 f3e0ff8），仍需 workflow_dispatch 的 recheck_doi 单篇复核，不重新下载。完整来源与证据见 [同步总账](云端协同同步总账-20261010.md)；读者任务页的状态展示与下载路径见 [运行依赖与故障复盘](运行依赖与故障复盘-20261010.md)。
+网站核验 `muse-review.yml` 已观察到 schedule 成功；最新已读日志 processed=0，不能据此确认某篇已通过。LA-HCM `10.1093/ehjci/jeag280` 10/10 晚公网读取为 `review / verification_rejected`（10/09 21:09，早于接受稿修复 f3e0ff8）；随后运行 recheck_doi 单篇复核（[38045612306](https://github.com/dodoxiaxia/xinzhi/actions/runs/38045612306)，未重新下载），公开状态变为 `available`。完整来源与证据见 [同步总账](云端协同同步总账-20261010.md)；读者任务页的状态展示与下载路径见 [运行依赖与故障复盘](运行依赖与故障复盘-20261010.md)。
 
 ## 先在私密配置中完成这一步
 
