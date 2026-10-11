@@ -2051,7 +2051,10 @@ function numberTokens(value) {
   text = text.replace(/\b(\d{1,2})\s+(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)\.?\s+(\d{4})\b/gi, (_, day, name, year) => day.replace(/^0+(?=\d)/,'') + ' ' + months[name.toLowerCase()] + ' ' + year);
   text = text.replace(/\b(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)\.?\s+(\d{1,4})\b/gi, (_, name, date) => String(months[name.toLowerCase()]) + ' ' + (date.length <= 2 ? date.replace(/^0+(?=\d)/,'') : date));
   text = text.replace(/\b(\d{4})-(\d{2})(?:-(\d{2}))?\b/g, (_, year, month, day) => year + ' ' + month.replace(/^0/, '') + (day ? ' ' + day.replace(/^0/, '') : ''));
-  return (text.match(/\d+(?:\.\d+)?|\.\d+/g) || []).map(token => {
+  // Some journals (AHA: "13 238 patients", "N=137 704") group thousands with a space. Keep the
+  // parts and also add the joined number, so a correct "13238" or "137,704" is recognised.
+  const grouped = (text.match(/(?<![\d.])\d{1,3}(?: \d{3})+(?![\d.])/g) || []).map(s => s.replace(/ /g, ''));
+  return [...(text.match(/\d+(?:\.\d+)?|\.\d+/g) || []), ...grouped].map(token => {
     if (!token.includes('.')) return token; // Preserve identifiers such as NCT02316886.
     const [whole, fraction] = token.split('.');
     const left = (whole || '0').replace(/^0+(?=\d)/, '');

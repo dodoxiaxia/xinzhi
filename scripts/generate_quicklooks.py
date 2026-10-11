@@ -285,8 +285,9 @@ def number_tokens(value):
                   lambda m: f"{MONTHS[m.group(1).lower()]} {strip(m.group(2)) if len(m.group(2)) <= 2 else m.group(2)}", text, flags=re.I | re.A)
     text = re.sub(r'\b(\d{4})-(\d{2})(?:-(\d{2}))?\b',
                   lambda m: m.group(1) + ' ' + re.sub(r'^0', '', m.group(2)) + (' ' + re.sub(r'^0', '', m.group(3)) if m.group(3) else ''), text, flags=re.A)
+    grouped = [s.replace(' ', '') for s in re.findall(r'(?<![\d.])\d{1,3}(?: \d{3})+(?![\d.])', text, flags=re.A)]
     out = []
-    for token in re.findall(r'\d+(?:\.\d+)?|\.\d+', text, flags=re.A):
+    for token in re.findall(r'\d+(?:\.\d+)?|\.\d+', text, flags=re.A) + grouped:
         if '.' not in token:
             out.append(token)  # identifiers such as NCT02316886 keep their zeros
             continue
