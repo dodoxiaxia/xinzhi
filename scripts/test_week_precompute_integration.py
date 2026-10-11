@@ -55,6 +55,8 @@ class RunnerIntegration(unittest.TestCase):
         self.assertTrue(row['providerUsageKnown'])
         self.assertEqual(row['status'], 'rejected')
         self.assertEqual(row['failureCode'], 'evidence_validation_failed')
+        # The Worker's own code says which check failed, so the next fix can be targeted.
+        self.assertEqual(row['taskFailures'], {'study': 'invalid_study_field'})
         self.assertNotIn('paused', saved)
         self.assertEqual(len(c['entries']), 2)
         # A known rejection is accounted, so a later paid call for other work may proceed.

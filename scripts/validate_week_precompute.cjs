@@ -24,5 +24,9 @@ process.stdin.on('end',()=>{
     throw Error('invalid_task');
   })()`,ctx);
   process.stdout.write(JSON.stringify({ok:true,value:result}));
- } catch {process.stdout.write(JSON.stringify({ok:false,error:'evidence_validation_failed'}));process.exitCode=1;}
+ } catch (error) {
+  // The Worker's fixed failure code (e.g. quote_not_in_abstract, numbers_not_in_abstract:12.5) says which check
+  // rejected the output; only short code-shaped strings are passed on, never model or abstract text.
+  const code=String(error&&error.message||'').slice(0,80);
+  process.stdout.write(JSON.stringify({ok:false,error:'evidence_validation_failed',code:/^[A-Za-z0-9_:.,%-]+$/.test(code)?code:'unrecognized'}));process.exitCode=1;}
 });
