@@ -1679,7 +1679,7 @@
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
-    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#browseToggle', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
     const filters = $('#activeFiltersBar');
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
@@ -2553,7 +2553,17 @@
 
   function renderBrowseBar() {
     const bar=$('#browseBar'); if(!bar)return;
-    bar.hidden=!usesLane(); if(bar.hidden)return;
+    bar.hidden=!usesLane();
+    const tog=$('#browseToggle');
+    if(tog){
+      const n=(state.journal?1:0)+(state.reading?1:0)+(state.favoritesOnly?1:0);
+      const open=state.browseOpen||n>0;
+      tog.hidden=bar.hidden; bar.classList.toggle('browse-open',open);
+      tog.setAttribute('aria-expanded',String(open));
+      tog.textContent='期刊与可读内容'+(n?` · ${n} 项`:'')+(open?' ▴':' ▾');
+      tog.disabled=n>0;
+    }
+    if(bar.hidden)return;
     const journals=[...new Set(getCurrentDataset().map(p=>p.cleanJournal||p.journal).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
     if (state.journal && !journals.includes(state.journal)) journals.push(state.journal);
     const sel=$('#journalSelect');
@@ -2563,6 +2573,8 @@
     const fav=$('#favoritesOnlyBtn');fav.textContent='我的期刊 '+state.favoriteJournals.length;fav.classList.toggle('active',state.favoritesOnly);fav.setAttribute('aria-pressed',String(state.favoritesOnly));
     const period=$('#rangeExplanation');period.textContent=state.range==='all'?'日期与研究类型均以来源信息为准；未知项明确保留。':`北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
   }
+  $('#browseToggle')?.addEventListener('click',()=>{state.browseOpen=!state.browseOpen;renderBrowseBar();});
+  $('#modeNote')?.addEventListener('click',e=>{if(e.target.closest('a,button'))return;e.currentTarget.classList.toggle('note-open');});
   $('#journalSelect')?.addEventListener('change',e=>changeSidebarFilter('journal', e.target.value, false, e.target));
   $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
