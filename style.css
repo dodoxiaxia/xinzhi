@@ -1256,3 +1256,9 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover, html[data-style="c
   .ai-digest .brief-box { flex-direction: row; align-items: center; }
   .ai-digest .brief-help { display: none; }
 }
+@media (max-width: 720px) {
+  .drawer-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px 14px calc(8px + env(safe-area-inset-bottom)); }
+  .drawer-footer .btn-sm { min-height: 38px; padding: 6px 8px; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drawer-footer [hidden] { display: none !important; }
+  .drawer-footer #drawerPdfLink:not([hidden]) { grid-column: 1 / -1; }
+}
