@@ -68,7 +68,7 @@ async function claimRun(h) {
  const pendingPage=await pendingHarness.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}});const pendingText=await pendingPage.text();assert(pendingText.includes('/api/acquire/retry?doi='));assert(!pendingText.includes('http-equiv="refresh"'));
  const retryForm=await pendingHarness.request('/api/acquire/retry',{method:'GET',headers:{accept:'text/html'}});assert.equal(retryForm.status,200);assert((await retryForm.text()).includes('<form method="post"'));
  const clock={now:Date.now()},transient=await setup({clock,githubPdfResponse:()=>new Response('temporary failure',{status:503})});
- await enqueue(transient);
+ await enqueue(transient);const capDay=new Date(clock.now).toISOString().slice(0,10); // retries below advance ~11 minutes and may cross UTC midnight
  for(let attempt=1;attempt<=3;attempt++) {
   const result=await claimRun(transient);assert.equal(result.attempts,attempt);assert.equal(result.state,attempt<3?'queued':'failed');
   if(attempt<3){assert.deepEqual(await signal(transient),{ok:true,pending:false});assert.equal((await (await service(transient,{action:'claim'})).json()).job,null);clock.now+=attempt===1?61000:601000;assert.deepEqual(await signal(transient),{ok:true,pending:true});}
@@ -79,7 +79,7 @@ async function claimRun(h) {
   const stopped=await claimRun(paused);assert.equal(stopped.state,'failed');assert.equal(stopped.attempts,1);assert(stopped.message.includes('任务暂停'));
   assert(!paused.calls.some(c=>c.url.hostname==='api.openalex.org'));assert.equal([...paused.values.keys()].filter(k=>k.startsWith('library:queue:')).length,0);
  }
- assert.equal(JSON.parse(transient.values.get('library:cap:'+new Date(clock.now).toISOString().slice(0,10))),1,'automatic retries do not consume another reader submission');
+ assert.equal(JSON.parse(transient.values.get('library:cap:'+capDay)),1,'automatic retries do not consume another reader submission');
  h=await setup({crossref:{DOI:'10.1000/wrong'}});await enqueue(h);assert.equal((await claimRun(h)).state,'review');assert(!h.values.has('library:paper:'+doi));
  h=await setup();await enqueue(h);const pointer=(await (await service(h,{action:'claim'})).json()).job;
  assert.equal((await service(h,{action:'run',...pointer},{claims:{run_id:'9876'}})).status,409);
