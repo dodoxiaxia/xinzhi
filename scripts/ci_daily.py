@@ -23,7 +23,9 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
     (['scripts/translate_titles.py', '--run', '--limit', '60'], 900),
     # Picks first; results are written once at the end, so the timeout covers 6 x 90s calls.
     (['scripts/generate_quicklooks.py', '--call-model', '--limit', '6', '--lookup-limit', '12'], 660),
-    (['scripts/week_precompute.py', '--run', '--provider', 'configured', '--attempt-limit', '8'], 600),
+    # Up to six 5800-token calls a day (owner-approved ceiling) at 90s each; a timeout mid-call
+    # would leave a 'started' row that blocks the rest of the day.
+    (['scripts/week_precompute.py', '--run', '--provider', 'configured', '--attempt-limit', '8'], 900),
     (['scripts/auto_picks.py'], 120),
 ]
 BUILD = ['scripts/build_public.py']
