@@ -325,8 +325,11 @@ def validate(o, abstract):
         if len(x['quote']) < 12 or x['quote'] not in abstract:
             raise QuicklookError('quote_not_in_abstract')
     body = ' '.join([o[k] for k in fields] + [x['text'] for x in f])
-    if nums(body) - nums(abstract):
-        raise QuicklookError('numbers_not_in_abstract')
+    extra = nums(body) - nums(abstract)
+    if extra:
+        error = QuicklookError('numbers_not_in_abstract')
+        error.numbers = sorted(extra)[:5]  # recorded with the rejection to show what the check disliked
+        raise error
     return {k: o[k].strip() for k in fields} | {'findings': [{'text': x['text'].strip(), 'quote': x['quote'].strip()} for x in f]}
 
 
@@ -494,6 +497,8 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
                 if stage == 'validation' and rejected is not None:
                     entry = rejected.setdefault(key, {'count': 0})
                     entry.update(count=entry['count'] + 1, last=today.isoformat(), code=code)
+                    if getattr(error, 'numbers', None):
+                        entry['numbers'] = error.numbers
                 continue
             stats['batch_stopped'] = True
             break
