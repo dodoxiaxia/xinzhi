@@ -288,6 +288,7 @@ class QuicklooksTests(unittest.TestCase):
             q.batch(todo[:1], {'items': {}}, {}, {'model': 'mock'}, TODAY, 1, 1,
                     model=lambda *a: (bad, {}), rejected=rejected)
         self.assertEqual(rejected['10.1000/test1']['code'], 'numbers_not_in_abstract')
+        self.assertEqual(rejected['10.1000/test1']['numbers'], ['99'])
         todo = q.eligible_papers([paper(1), paper(2)], {'items': {}}, {}, set(), TODAY, rejected)
         self.assertEqual([q.paper_key(p) for p in todo], ['10.1000/test2'])
         # Provider or format failures are not the paper's fault and are not counted.
