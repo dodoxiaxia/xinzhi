@@ -278,6 +278,23 @@ class QuicklooksTests(unittest.TestCase):
         self.assertEqual(stats['skipped_validation'], 1)
         self.assertEqual(error['code'], 'model_output_json')
 
+    def test_repeated_validation_failures_stop_spending_calls_on_that_paper(self):
+        bad = valid_output()
+        bad['one_line'] = '纳入99名患者。'
+        rejected = {}
+        for _ in range(q.MAX_REJECTIONS):
+            todo = q.eligible_papers([paper(1), paper(2)], {'items': {}}, {}, set(), TODAY, rejected)
+            self.assertEqual(q.paper_key(todo[0]), '10.1000/test1')
+            q.batch(todo[:1], {'items': {}}, {}, {'model': 'mock'}, TODAY, 1, 1,
+                    model=lambda *a: (bad, {}), rejected=rejected)
+        self.assertEqual(rejected['10.1000/test1']['code'], 'numbers_not_in_abstract')
+        todo = q.eligible_papers([paper(1), paper(2)], {'items': {}}, {}, set(), TODAY, rejected)
+        self.assertEqual([q.paper_key(p) for p in todo], ['10.1000/test2'])
+        # Provider or format failures are not the paper's fault and are not counted.
+        q.batch([paper(3)], {'items': {}}, {}, {'model': 'mock'}, TODAY, 1, 1,
+                model=Mock(side_effect=q.QuicklookError('model_output_json')), rejected=rejected)
+        self.assertNotIn('10.1000/test3', rejected)
+
     def test_identity_mismatch_skips_only_that_paper(self):
         def fetch(p):
             if p['doi'] == '10.1000/test1':

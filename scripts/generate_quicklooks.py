@@ -32,6 +32,10 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/quicklooks.json'
 MISS = ROOT / '.local/quicklook-misses.json'
 DIAGNOSTIC = ROOT / '.local/quicklook-diagnostics/last-run.json'
+# Persisted with data/: papers whose model output failed validation. Picks are tried first, so
+# without this one hard abstract would take the paid calls of every run.
+REJECTIONS = ROOT / 'data/quicklook-rejections.json'
+MAX_REJECTIONS = 2
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构',
           '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 RECENT_DAYS, MISS_DAYS = 45, 10
@@ -233,7 +237,7 @@ def picked_ids():
         return set()
 
 
-def eligible_papers(papers, have, miss, checked, today):
+def eligible_papers(papers, have, miss, checked, today, rejected=None):
     cutoff = today - datetime.timedelta(days=RECENT_DAYS)
     miss_cutoff = (today - datetime.timedelta(days=MISS_DAYS)).isoformat()
     cached = {str(key).strip().lower() for key in have['items']}
@@ -250,6 +254,8 @@ def eligible_papers(papers, have, miss, checked, today):
         if p.get('datePrecision') in {'month', 'year'} or p.get('dateConfidence') == '低':
             continue
         if not key or not lane_core(p) or minor_item(p) or p.get('hasDraft') or identity_keys(p) & (checked | cached):
+            continue
+        if (rejected or {}).get(key, {}).get('count', 0) >= MAX_REJECTIONS:
             continue
         if not cutoff <= date <= today:
             continue
@@ -429,7 +435,7 @@ def record_status(stats, error):
     return summary
 
 
-def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=call):
+def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=call, rejected=None):
     """Stage verified outputs only; skip invalid items and stop on global failures."""
     staged, missing = copy.deepcopy(have), copy.deepcopy(miss)
     stats = {'generated': 0, 'model_calls': 0, 'source_lookups': 0, 'no_abstract_yet': 0,
@@ -485,6 +491,9 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
                 diagnostic = current | {'paper': key}
             if item_failure:
                 stats['skipped_validation'] += 1
+                if stage == 'validation' and rejected is not None:
+                    entry = rejected.setdefault(key, {'count': 0})
+                    entry.update(count=entry['count'] + 1, last=today.isoformat(), code=code)
                 continue
             stats['batch_stopped'] = True
             break
@@ -529,7 +538,12 @@ def main(argv=None):
         ap.error('quicklooks cache items must be an object; existing file preserved')
     miss = read_json(MISS, {})
     editorial = read_json(ROOT / 'editorial/source_checked_drafts.json', {'articles': []})
-    todo = eligible_papers(merge_papers(candidates, library), have, miss, checked_keys(editorial), today)
+    rejected = read_json(REJECTIONS, {})
+    if not isinstance(rejected, dict):
+        rejected = {}
+    cutoff = (today - datetime.timedelta(days=RECENT_DAYS)).isoformat()
+    rejected = {k: v for k, v in rejected.items() if isinstance(v, dict) and str(v.get('last', '')) >= cutoff}
+    todo = eligible_papers(merge_papers(candidates, library), have, miss, checked_keys(editorial), today, rejected)
     if not a.call_model:
         print(json.dumps({'dry_run': True, 'have': len(have['items']), 'eligible': len(todo),
             'model_limit': a.limit, 'lookup_limit': a.lookup_limit,
@@ -559,7 +573,10 @@ def main(argv=None):
     if not safe_endpoint:
         record_status({}, {'stage': 'config', 'code': 'unsafe_endpoint', 'error_type': 'QuicklookError'})
         ap.error('LLM config missing or not a safe https endpoint')
-    staged, missing, stats, error = batch(todo, have, miss, cfg, today, a.limit, a.lookup_limit)
+    before = copy.deepcopy(rejected)
+    staged, missing, stats, error = batch(todo, have, miss, cfg, today, a.limit, a.lookup_limit, rejected=rejected)
+    if rejected != before:
+        atomic_json(REJECTIONS, rejected)
     stats.setdefault('committed', False)
     if stats['generated']:
         atomic_json(OUT, staged)
