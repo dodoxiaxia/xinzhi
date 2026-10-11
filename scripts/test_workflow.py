@@ -64,8 +64,8 @@ class RefreshModeTests(unittest.TestCase):
     def test_daily_0517_beijing_remains_full(self):
         self.assertEqual(self.select('schedule', schedule='47 20 * * *'), '')
 
-    def test_every_two_hours_remains_fast(self):
-        self.assertEqual(self.select('schedule', schedule='37 */2 * * *'), '--fast')
+    def test_every_four_hours_remains_fast(self):
+        self.assertEqual(self.select('schedule', schedule='37 */4 * * *'), '--fast')
 
     def test_explicit_manual_fast_remains_fast(self):
         self.assertEqual(self.select('workflow_dispatch', mode='fast'), '--fast')

@@ -139,7 +139,8 @@ class CacheAndBudgetTests(unittest.TestCase):
    def transport(url,payload=None):
     if payload is None:return {'found':False}
     posts.append(payload);return {'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])}
-   report=w.acquire_runtime([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,True,transport)
+   with patch.object(w,'MAX_DAILY_OUTPUT_TOKENS',9600):  # a ceiling below translate + study
+    report=w.acquire_runtime([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,True,transport)
    self.assertEqual(len(posts),1);self.assertEqual(report['blocker'],'existing_daily_output_token_budget_exhausted');self.assertEqual(report['remainingOutputTokens'],600)
  def test_ephemeral_ci_paid_calls_fail_closed_before_configuration_or_network(self):
   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'GITHUB_ACTIONS':'true'}):

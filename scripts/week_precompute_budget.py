@@ -7,7 +7,8 @@ in-memory counters are not a distributed or provider billing cap.
 """
 
 MAX_ATTEMPTS = 8
-MAX_OUTPUT_TOKENS = 9600
+# Owner-approved 2026-10-11: six full configured calls per day (was 9600, about one).
+MAX_OUTPUT_TOKENS = 6 * 5800
 MAX_CONFIGURED_OUTPUT_TOKENS = 5800
 _OUTPUT_BY_TASK = {"translate": 9000, "study": 3800, "quicklook": 3600}
 _LEGACY_DAY = "2026-10-07"

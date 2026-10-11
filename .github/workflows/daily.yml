@@ -24,7 +24,7 @@ on:
   schedule:
     # 避开整点前后的 GitHub 高负载时段（官方说明此时定时任务常被延迟或丢弃）。
     - cron: '47 20 * * *'   # 每天北京时间 04:47:完整刷新(归档、补摘要、翻译)
-    - cron: '37 */2 * * *'  # 每 2 小时:轻量刷新,内容有变化才发布
+    - cron: '37 */4 * * *'  # 每 4 小时:轻量刷新兜底(外部每 2 小时触发,gate 限为约 4 小时一次)
   workflow_dispatch:
     inputs:
       mode:
@@ -33,7 +33,11 @@ on:
         type: choice
         options: [full, fast]
       allow_fast_dispatch:
-        description: '兼容旧参数；fast 请求现在都会执行'
+        description: '兼容旧参数；不再起作用'
+        default: false
+        type: boolean
+      force:
+        description: 'fast 时跳过约 3 小时最短间隔(人工临时刷新用)'
         default: false
         type: boolean
 
@@ -45,11 +49,39 @@ permissions:
   contents: write
 
 jobs:
-  refresh:
-    # Fast dispatches are honoured: the external 2-hourly dispatcher (:07) is the only punctual
-    # timer observed (GitHub cron went 9+ hours without firing on 10-10). The concurrency group
-    # serialises overlapping runs, and an unchanged fast run does not deploy.
+  gate:
+    # Owner choice (2026-10-11): timed fast refreshes every 3-4 hours. The external dispatcher
+    # (:07, every 2 hours) is the only punctual timer observed, so it stays; this small job skips
+    # a timed fast run when the last successful refresh started under 170 minutes ago, unless
+    # today's full refresh is still missing. Pushes, full runs and forced runs always pass.
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: 轻量刷新最短间隔
+        id: gate
+        env:
+          TIMED_FAST: ${{ ((github.event_name == 'schedule' && github.event.schedule != '47 20 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.force)) && '1' || '' }}
+          XINZHI_FAST_MIN_INTERVAL_MINUTES: ${{ vars.XINZHI_FAST_MIN_INTERVAL_MINUTES || '170' }}
+        run: |
+          if [ "$TIMED_FAST" != 1 ]; then echo run=true >> "$GITHUB_OUTPUT"; exit 0; fi
+          mkdir -p .gate
+          if git fetch -q --depth=1 origin state; then
+            git show FETCH_HEAD:docs/last-refresh.json > .gate/last.json 2>/dev/null || true
+            git show FETCH_HEAD:data/full-refresh-marker.json > .gate/marker.json 2>/dev/null || true
+          fi
+          python3 scripts/fast_refresh_gate.py .gate/last.json .gate/marker.json | tee -a "$GITHUB_OUTPUT" \
+            || echo run=true >> "$GITHUB_OUTPUT"
+
+  refresh:
+    # The concurrency group serialises overlapping runs, and an unchanged fast run does not deploy.
+    needs: gate
+    if: github.ref == 'refs/heads/main' && needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -161,6 +193,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_pubmed_rss_identity.py'
           python3 -m unittest discover -s scripts -p 'test_quicklook_repair.py'
           python3 -m unittest discover -s scripts -p 'test_quicklook_numbers.py'
+          python3 -m unittest discover -s scripts -p 'test_fast_refresh_gate.py'
           python3 -m unittest discover -s scripts -p 'test_quicklooks.py'
           python3 -m unittest discover -s scripts -p 'test_week_coverage_status.py'
           python3 -m unittest discover -s scripts -p 'test_public_precompute_pending.py'
