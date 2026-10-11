@@ -133,6 +133,10 @@ class CacheAndBudgetTests(unittest.TestCase):
    self.assertEqual(len(calls),2,'a rejection does not stop the next paper');self.assertFalse(report['stopped'])
    again=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
    self.assertEqual(len(calls),2,'rejected papers are skipped on later runs');self.assertEqual(again['skippedRejected'],2)
+   for day in ledger['days'].values():
+    for row in day['requests']:row['checkVersion']=w.EVIDENCE_CHECK_VERSION-1
+   w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
+   self.assertEqual(len(calls),4,'papers rejected under older checks are retried once')
  def test_runtime_output_budget_prevents_second_task_after_translation(self):
   with tempfile.TemporaryDirectory() as d:
    cache={'entries':{}};ledger={'days':{}};posts=[]

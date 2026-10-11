@@ -2063,6 +2063,17 @@ function numberTokens(value) {
   });
 }
 const nums = s => new Set(numberTokens(s));
+// AHA abstracts start sentences with spelled-out counts ("Thirteen studies"). A digit in the
+// output may match such a word in the source; words never become required numbers.
+const NUMBER_WORDS = {zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+function wordNumberTokens(value) {
+  const out = [];
+  for (const m of String(value).normalize('NFKC').matchAll(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[- ](one|two|three|four|five|six|seven|eight|nine)\b|\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/gi)) {
+    out.push(String(m[1] ? NUMBER_WORDS[m[1].toLowerCase()] + NUMBER_WORDS[m[2].toLowerCase()] : NUMBER_WORDS[m[3].toLowerCase()]));
+  }
+  return out;
+}
+const allowedNums = s => new Set([...numberTokens(s), ...wordNumberTokens(s)]);
 function validate(o, abstract) {
   if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('model_not_object');
   const fields = ['title_zh', 'one_line', 'design', 'limits', 'why_read'];
@@ -2074,7 +2085,7 @@ function validate(o, abstract) {
     if (x.quote.length < 12 || !abstract.includes(x.quote)) throw new Error('quote_not_in_abstract');
   }
   const body = [...fields.map(f => o[f]), ...fs.map(x => x.text)].join(' ');
-  const have = nums(abstract);
+  const have = allowedNums(abstract);
   const bad = [...nums(body)].filter(n => !have.has(n));
   if (bad.length) throw new Error('numbers_not_in_abstract:' + bad.slice(0, 5).join(','));
   const out = {};
@@ -2422,7 +2433,7 @@ function retryableModelError(error) {
 }
 const hasCJK = s => /[一-鿿]/.test(s);
 function numbersOk(text, source) {
-  const have = nums(source);
+  const have = allowedNums(source);
   const bad = [...nums(text)].filter(n => !have.has(n));
   if (bad.length) throw new Error('numbers_not_in_source:' + bad.slice(0, 5).join(','));
 }
@@ -2434,6 +2445,8 @@ function translationNumbersOk(text, source) {
     if (!remaining.get(token)) throw new Error('numbers_missing_from_translation');
     remaining.set(token, remaining.get(token) - 1);
   }
+  // A spelled-out source count may appear as digits once in the translation.
+  for (const token of wordNumberTokens(source)) if (remaining.get(token) > 0) remaining.set(token, remaining.get(token) - 1);
   if ([...remaining.values()].some(n => n > 0)) throw new Error('numbers_not_in_source:repeated_number');
 }
 
