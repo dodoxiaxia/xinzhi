@@ -194,6 +194,17 @@ class RefreshExecutionTests(PipelineFixture):
         marker = json.loads((self.root / ci_daily.FULL_MARKER).read_text())
         self.assertEqual(marker['day'], ci_daily.beijing_now().date().isoformat())
 
+    def test_timed_marker_is_written_by_timed_and_full_runs_only(self):
+        with patch.dict(os.environ, {'XINZHI_FAST_TITLE_BATCH': ''}):
+            self.invoke()  # push deploy: model-free, does not count as a timed refresh
+        self.assertFalse((self.root / ci_daily.TIMED_MARKER).exists())
+        with patch.dict(os.environ, {'XINZHI_FAST_TITLE_BATCH': '1'}):
+            result, report, outputs, calls = self.invoke()
+        self.assertEqual(json.loads((self.root / ci_daily.TIMED_MARKER).read_text())['startedAt'], report['startedAt'])
+        (self.root / ci_daily.TIMED_MARKER).unlink()
+        self.invoke(fast=False)
+        self.assertTrue((self.root / ci_daily.TIMED_MARKER).exists())
+
     def test_daily_readings_precede_optional_archive_enrichment(self):
         result, report, outputs, calls = self.invoke(fast=False)
         self.assertLess(calls.index(ci_daily.DEEP_READING), calls.index(ci_daily.FULL_OPTIONAL[0][0]))
