@@ -26,10 +26,13 @@ def read(path):
         return {}
 
 
-def decide(last, marker, now, minutes=DEFAULT_MINUTES):
+def decide(last, marker, now, minutes=DEFAULT_MINUTES, timed=None):
     bj = now.astimezone(BEIJING)
     if bj.hour >= FULL_EARLIEST_HOUR and marker.get('day') != bj.date().isoformat():
         return True, 'full_refresh_due'
+    if timed and timed.get('startedAt'):
+        # Measured from the last timed/full run: push deploys are model-free and do not count.
+        last = {'status': 'success', 'startedAt': timed['startedAt']}
     if last.get('status') != 'success':
         return True, 'last_refresh_not_successful'
     try:
@@ -49,7 +52,8 @@ def main(argv):
         minutes = int(os.environ.get('XINZHI_FAST_MIN_INTERVAL_MINUTES') or DEFAULT_MINUTES)
     except ValueError:
         minutes = DEFAULT_MINUTES
-    run, reason = decide(read(argv[1]), read(argv[2]), datetime.datetime.now(datetime.timezone.utc), minutes)
+    timed = read(argv[3]) if len(argv) > 3 else {}
+    run, reason = decide(read(argv[1]), read(argv[2]), datetime.datetime.now(datetime.timezone.utc), minutes, timed)
     print('run=' + ('true' if run else 'false'))
     print('reason=' + reason)
     return 0

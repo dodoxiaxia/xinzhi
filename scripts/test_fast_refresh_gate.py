@@ -39,6 +39,12 @@ class FastRefreshGateTests(unittest.TestCase):
         self.assertTrue(gate.decide({'status': 'success', 'startedAt': '2026-10-11T06:00:00'}, DONE, NOW)[0])
         self.assertTrue(gate.decide(last(-30), DONE, NOW)[0])  # clock skew: a future start never blocks
 
+    def test_push_deploys_do_not_postpone_timed_runs(self):
+        push = last(37)  # a code merge deployed 37 minutes ago
+        self.assertTrue(gate.decide(push, DONE, NOW, timed={'startedAt': (NOW - datetime.timedelta(minutes=240)).isoformat()})[0])
+        self.assertFalse(gate.decide(push, DONE, NOW, timed={'startedAt': (NOW - datetime.timedelta(minutes=120)).isoformat()})[0])
+        self.assertFalse(gate.decide(push, DONE, NOW, timed={})[0])  # no marker yet: previous behaviour
+
     def test_main_prints_step_outputs(self):
         import io, contextlib
         out = io.StringIO()

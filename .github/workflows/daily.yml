@@ -74,8 +74,9 @@ jobs:
           if git fetch -q --depth=1 origin state; then
             git show FETCH_HEAD:docs/last-refresh.json > .gate/last.json 2>/dev/null || true
             git show FETCH_HEAD:data/full-refresh-marker.json > .gate/marker.json 2>/dev/null || true
+            git show FETCH_HEAD:data/timed-refresh-marker.json > .gate/timed.json 2>/dev/null || true
           fi
-          python3 scripts/fast_refresh_gate.py .gate/last.json .gate/marker.json | tee -a "$GITHUB_OUTPUT" \
+          python3 scripts/fast_refresh_gate.py .gate/last.json .gate/marker.json .gate/timed.json | tee -a "$GITHUB_OUTPUT" \
             || echo run=true >> "$GITHUB_OUTPUT"
 
   refresh:

@@ -221,6 +221,9 @@ def out(deploy):
 
 FULL_MARKER = 'data/full-refresh-marker.json'
 FULL_EARLIEST_HOUR = 5  # Beijing; the full refresh is scheduled for 04:47
+# Last successful timed or full refresh; fast_refresh_gate measures the interval from it so
+# model-free push deploys do not postpone the timed title/quicklook batches.
+TIMED_MARKER = 'data/timed-refresh-marker.json'
 
 
 def beijing_now():
@@ -266,6 +269,8 @@ def main():
             # Saved with data/ in state only when the run deploys; a failed run stays retryable today.
             (ROOT / FULL_MARKER).write_text(json.dumps({'day': beijing_now().date().isoformat(), 'runId': report['runId'],
                                                          'finishedAt': report['finishedAt']}))
+        if status == 'success' and (not fast or os.environ.get('XINZHI_FAST_TITLE_BATCH') == '1'):
+            (ROOT / TIMED_MARKER).write_text(json.dumps({'startedAt': report['startedAt'], 'runId': report['runId']}))
         (ROOT / 'docs').mkdir(exist_ok=True)
         (ROOT / 'docs/last-refresh.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
         out(report['deploymentRequested'])
