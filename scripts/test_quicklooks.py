@@ -291,6 +291,12 @@ class QuicklooksTests(unittest.TestCase):
         self.assertEqual(rejected['10.1000/test1']['numbers'], ['99'])
         todo = q.eligible_papers([paper(1), paper(2)], {'items': {}}, {}, set(), TODAY, rejected)
         self.assertEqual([q.paper_key(p) for p in todo], ['10.1000/test2'])
+        self.assertEqual(rejected['10.1000/test1']['checkVersion'], q.CHECK_VERSION)
+        # A fix to the checks (new CHECK_VERSION) and the 45-day window both release a paper.
+        old = dict(rejected['10.1000/test1'], checkVersion=q.CHECK_VERSION - 1)
+        stale = dict(rejected['10.1000/test1'], last='2026-01-01')
+        self.assertEqual(q.load_rejections({'a': old, 'b': stale, 'c': rejected['10.1000/test1']}, TODAY), {'c': rejected['10.1000/test1']})
+        self.assertEqual(q.load_rejections([], TODAY), {})
         # Provider or format failures are not the paper's fault and are not counted.
         q.batch([paper(3)], {'items': {}}, {}, {'model': 'mock'}, TODAY, 1, 1,
                 model=Mock(side_effect=q.QuicklookError('model_output_json')), rejected=rejected)

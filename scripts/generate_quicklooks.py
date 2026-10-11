@@ -36,6 +36,8 @@ DIAGNOSTIC = ROOT / '.local/quicklook-diagnostics/last-run.json'
 # without this one hard abstract would take the paid calls of every run.
 REJECTIONS = ROOT / 'data/quicklook-rejections.json'
 MAX_REJECTIONS = 2
+# Bump when the checks change, so papers rejected under the old rules get another try.
+CHECK_VERSION = 2  # 2: space-grouped thousands (13 238)
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构',
           '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 RECENT_DAYS, MISS_DAYS = 45, 10
@@ -497,7 +499,7 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
                 stats['skipped_validation'] += 1
                 if stage == 'validation' and rejected is not None:
                     entry = rejected.setdefault(key, {'count': 0})
-                    entry.update(count=entry['count'] + 1, last=today.isoformat(), code=code)
+                    entry.update(count=entry['count'] + 1, last=today.isoformat(), code=code, checkVersion=CHECK_VERSION)
                     if getattr(error, 'numbers', None):
                         entry['numbers'] = error.numbers
                 continue
@@ -526,6 +528,13 @@ def read_json(path, fallback):
     return json.loads(path.read_text()) if path.exists() else fallback
 
 
+def load_rejections(raw, today):
+    """Entries count only within the quicklook window and under the current checks."""
+    cutoff = (today - datetime.timedelta(days=RECENT_DAYS)).isoformat()
+    return {k: v for k, v in (raw if isinstance(raw, dict) else {}).items()
+            if isinstance(v, dict) and str(v.get('last', '')) >= cutoff and v.get('checkVersion') == CHECK_VERSION}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--limit', type=int, default=3, help='maximum model calls; default 3, maximum 20')
@@ -544,11 +553,7 @@ def main(argv=None):
         ap.error('quicklooks cache items must be an object; existing file preserved')
     miss = read_json(MISS, {})
     editorial = read_json(ROOT / 'editorial/source_checked_drafts.json', {'articles': []})
-    rejected = read_json(REJECTIONS, {})
-    if not isinstance(rejected, dict):
-        rejected = {}
-    cutoff = (today - datetime.timedelta(days=RECENT_DAYS)).isoformat()
-    rejected = {k: v for k, v in rejected.items() if isinstance(v, dict) and str(v.get('last', '')) >= cutoff}
+    rejected = load_rejections(read_json(REJECTIONS, {}), today)
     todo = eligible_papers(merge_papers(candidates, library), have, miss, checked_keys(editorial), today, rejected)
     if not a.call_model:
         print(json.dumps({'dry_run': True, 'have': len(have['items']), 'eligible': len(todo),
