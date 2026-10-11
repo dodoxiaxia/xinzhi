@@ -20,6 +20,7 @@ import datetime
 import json
 import os
 import re
+import unicodedata
 import sys
 import urllib.error
 import urllib.parse
@@ -259,8 +260,38 @@ def eligible_papers(papers, have, miss, checked, today):
     return sorted(todo, key=lambda p: (p.get('id') in picked, p.get('date', '')), reverse=True)  # 精选/周榜条目优先补速览
 
 
+MONTHS = {'january': 1, 'jan': 1, 'february': 2, 'feb': 2, 'march': 3, 'mar': 3, 'april': 4, 'apr': 4,
+          'may': 5, 'june': 6, 'jun': 6, 'july': 7, 'jul': 7, 'august': 8, 'aug': 8, 'september': 9,
+          'sep': 9, 'sept': 9, 'october': 10, 'oct': 10, 'november': 11, 'nov': 11, 'december': 12, 'dec': 12}
+MONTH_RE = r'(January|Jan|February|Feb|March|Mar|April|Apr|May|June|Jun|July|Jul|August|Aug|September|Sept|Sep|October|Oct|November|Nov|December|Dec)'
+
+
+def number_tokens(value):
+    """Port of numberTokens() in edge/_worker.js, the check the site applies: same spelling
+    rules (thousands separators, trailing zeros, full-width digits, month names), no
+    conversion or rounding. Raw string matching rejected "8.9" against an abstract's "8.90"."""
+    text = unicodedata.normalize('NFKC', str(value))
+    text = re.sub(r'\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b', lambda m: m.group(0).replace(',', ''), text, flags=re.A)
+    strip = lambda d: re.sub(r'^0+(?=\d)', '', d, flags=re.A)
+    text = re.sub(r'\b(\d{1,2})\s+' + MONTH_RE + r'\.?\s+(\d{4})\b',
+                  lambda m: f"{strip(m.group(1))} {MONTHS[m.group(2).lower()]} {m.group(3)}", text, flags=re.I | re.A)
+    text = re.sub(r'\b' + MONTH_RE + r'\.?\s+(\d{1,4})\b',
+                  lambda m: f"{MONTHS[m.group(1).lower()]} {strip(m.group(2)) if len(m.group(2)) <= 2 else m.group(2)}", text, flags=re.I | re.A)
+    text = re.sub(r'\b(\d{4})-(\d{2})(?:-(\d{2}))?\b',
+                  lambda m: m.group(1) + ' ' + re.sub(r'^0', '', m.group(2)) + (' ' + re.sub(r'^0', '', m.group(3)) if m.group(3) else ''), text, flags=re.A)
+    out = []
+    for token in re.findall(r'\d+(?:\.\d+)?|\.\d+', text, flags=re.A):
+        if '.' not in token:
+            out.append(token)  # identifiers such as NCT02316886 keep their zeros
+            continue
+        whole, fraction = token.split('.', 1)
+        left, right = strip(whole or '0'), fraction.rstrip('0')
+        out.append(left + '.' + right if right else left)
+    return out
+
+
 def nums(s):
-    return set(re.findall(r'\d+(?:\.\d+)?', s))
+    return set(number_tokens(s))
 
 
 def validate(o, abstract):
