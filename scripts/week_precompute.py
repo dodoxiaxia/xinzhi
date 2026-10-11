@@ -150,9 +150,16 @@ def select(rows,clock,target=24):
  counts=dict(collections.Counter(p['weeklyCategory'] for p in eligible))
  return selected,{'start':start.isoformat(),'end':end.isoformat(),'timezone':'Asia/Shanghai','days':7,'target':target,'eligible':len(eligible),'selected':len(selected),'eligibleByCategory':{c:counts.get(c,0) for c in CATEGORIES},'excluded':dict(reasons),'shortfallReason':'严格7日出版窗口内，具完整公开摘要且相关的去重条目不足20；未用旧稿或低相关内容补数。' if len(selected)<20 else None}
 
+class EvidenceError(ValueError):
+ def __init__(self,code):
+  super().__init__('evidence_validation_failed');self.code=code
+
 def validate(task,value,p):
  r=subprocess.run(['node',str(ROOT/'scripts/validate_week_precompute.cjs')],input=json.dumps({'task':task,'value':value,'title':p['title'],'abstract':p['abstract']},ensure_ascii=False),capture_output=True,text=True,timeout=15)
- if r.returncode:raise ValueError('evidence_validation_failed')
+ if r.returncode:
+  try:code=json.loads(r.stdout).get('code') or ''
+  except ValueError:code=''
+  raise EvidenceError(code if re.fullmatch(r'[A-Za-z0-9_:.,%-]{1,80}',code) else 'unrecognized')
  return json.loads(r.stdout)['value']
 
 def version(task,origin='runtime'):
@@ -383,18 +390,18 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
    result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
    record_usage(item,result);atomic(ledger_path,ledger)
    if checkpoint:checkpoint.save(ledger,cache)
-   invalid=False
+   invalid=False;failures={}
    for task in missing:
     try:
      value=validate('study_evidence',result.get(task),p) if task=='study' else result.get(task)
      store(cache,p,task,value,cfg['model'],stamp(),'configured-precompute');atomic(cache_path,cache);report['generatedTasks']+=1
      if checkpoint:checkpoint.save(ledger,cache)
     except CheckpointError:raise
-    except ValueError:invalid=True
+    except ValueError as exc:invalid=True;failures[task]=getattr(exc,'code','') or 'invalid'
    if invalid:
     # The response is known and accounted: record a terminal rejection instead of
     # an uncertain charge, so one bad output does not pause every later batch.
-    item['status']='rejected';item['failureCode']='evidence_validation_failed';atomic(ledger_path,ledger)
+    item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;atomic(ledger_path,ledger)
     rejected.add((p['paperID'],p['sourceHash']));report['rejectedRequests']=report.get('rejectedRequests',0)+1
     if checkpoint:checkpoint.save(ledger,cache)
     item=None;continue
