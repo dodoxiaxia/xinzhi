@@ -37,7 +37,7 @@ DIAGNOSTIC = ROOT / '.local/quicklook-diagnostics/last-run.json'
 REJECTIONS = ROOT / 'data/quicklook-rejections.json'
 MAX_REJECTIONS = 2
 # Bump when the checks change, so papers rejected under the old rules get another try.
-CHECK_VERSION = 2  # 2: space-grouped thousands (13 238)
+CHECK_VERSION = 3  # 2: space-grouped thousands (13 238); 3: spelled-out counts (Thirteen)
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构',
           '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 RECENT_DAYS, MISS_DAYS = 45, 10
@@ -299,8 +299,26 @@ def number_tokens(value):
     return out
 
 
+NUMBER_WORDS = {w: i for i, w in enumerate(('zero one two three four five six seven eight nine ten eleven twelve thirteen '
+                                             'fourteen fifteen sixteen seventeen eighteen nineteen').split())}
+NUMBER_WORDS.update({w: 10 * i for i, w in enumerate('twenty thirty forty fifty sixty seventy eighty ninety'.split(), 2)})
+WORD_RE = re.compile(r'\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[- ](one|two|three|four|five|six|seven|eight|nine)\b'
+                     r'|\b(' + '|'.join(sorted(NUMBER_WORDS, key=len, reverse=True)) + r')\b', re.I | re.A)
+
+
+def word_number_tokens(value):
+    """Port of wordNumberTokens() in edge/_worker.js: spelled-out counts ("Thirteen studies")."""
+    return [str(NUMBER_WORDS[m[1].lower()] + NUMBER_WORDS[m[2].lower()]) if m[1] else str(NUMBER_WORDS[m[3].lower()])
+            for m in WORD_RE.finditer(unicodedata.normalize('NFKC', str(value)))]
+
+
 def nums(s):
     return set(number_tokens(s))
+
+
+def allowed_nums(s):
+    """Numbers an output may use: digits in the source, plus its spelled-out counts."""
+    return nums(s) | set(word_number_tokens(s))
 
 
 def validate(o, abstract):
@@ -328,7 +346,7 @@ def validate(o, abstract):
         if len(x['quote']) < 12 or x['quote'] not in abstract:
             raise QuicklookError('quote_not_in_abstract')
     body = ' '.join([o[k] for k in fields] + [x['text'] for x in f])
-    extra = nums(body) - nums(abstract)
+    extra = nums(body) - allowed_nums(abstract)
     if extra:
         error = QuicklookError('numbers_not_in_abstract')
         error.numbers = sorted(extra)[:5]  # recorded with the rejection to show what the check disliked
@@ -345,7 +363,7 @@ def validate_or_repair(o, abstract):
     except QuicklookError as original:
         if str(original) not in {'numbers_not_in_abstract', 'quote_not_in_abstract'} or not isinstance(o, dict) or not isinstance(o.get('findings'), list):
             raise
-        have = nums(abstract)
+        have = allowed_nums(abstract)
         kept = [x for x in o['findings'] if isinstance(x, dict) and isinstance(x.get('text'), str) and isinstance(x.get('quote'), str)
                 and len(x['quote']) >= 12 and x['quote'] in abstract and nums(x['text']) <= have]
         if len(kept) < 2 or len(kept) == len(o['findings']):

@@ -25,6 +25,8 @@ CATEGORIES=('心血管','综合医学','AI医疗','AI前沿')
 QUOTAS=(10,6,6,2)
 TASKS=('translate','study','quicklook')
 MAX_ATTEMPTS=8
+# Bump when the shared evidence checks change, so papers rejected under the old rules are retried once.
+EVIDENCE_CHECK_VERSION=2  # 2: spelled-out counts and space-grouped thousands (2026-10-12)
 MAX_DAILY_OUTPUT_TOKENS=6*5800  # Owner-approved 2026-10-11: ~6 papers/day (was 8*1200, about one). Not a provider billing cap.
 RUNTIME='https://learn.dryz.info'
 SCHEMA=1
@@ -370,7 +372,7 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   except Halt:raise
   except (ValueError,KeyError,IndexError,TypeError):raise Halt('model_output_invalid') from None
  item=None
- rejected={(r.get('paperID'),r.get('sourceHash')) for d in ledger['days'].values() for r in d.get('requests',[]) if r.get('status')=='rejected'}
+ rejected={(r.get('paperID'),r.get('sourceHash')) for d in ledger['days'].values() for r in d.get('requests',[]) if r.get('status')=='rejected' and r.get('checkVersion')==EVIDENCE_CHECK_VERSION}
  try:
   for p in selected:
    missing=[task for task in TASKS if not find(cache,p,task)[0]]
@@ -401,7 +403,7 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
    if invalid:
     # The response is known and accounted: record a terminal rejection instead of
     # an uncertain charge, so one bad output does not pause every later batch.
-    item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;atomic(ledger_path,ledger)
+    item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;item['checkVersion']=EVIDENCE_CHECK_VERSION;atomic(ledger_path,ledger)
     rejected.add((p['paperID'],p['sourceHash']));report['rejectedRequests']=report.get('rejectedRequests',0)+1
     if checkpoint:checkpoint.save(ledger,cache)
     item=None;continue
