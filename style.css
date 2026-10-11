@@ -1243,3 +1243,16 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover, html[data-style="c
   html.header-tucked .stream-toolbar, html.header-tucked .weekly-toc { transition: top .22s ease; }
 }
 @media (prefers-reduced-motion: reduce) { header.app-header, html.header-tucked .stream-toolbar { transition: none; } }
+
+/* ---- v15.1 手机雷达首屏：说明两行可展开、综述按钮去说明、期刊/可读内容折叠 ---- */
+.browse-toggle { display: none; }
+@media (max-width: 720px) {
+  .browse-toggle:not([hidden]) { display: inline-flex; margin: 0 0 8px; }
+  .browse-toggle:disabled { opacity: 1; cursor: default; color: var(--accent); border-color: var(--accent); }
+  .browse-bar:not(.browse-open) { display: none; }
+  .mode-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer; }
+  .mode-note.note-open { display: block; -webkit-line-clamp: unset; }
+  .mode-note[hidden] { display: none; }
+  .ai-digest .brief-box { flex-direction: row; align-items: center; }
+  .ai-digest .brief-help { display: none; }
+}
