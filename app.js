@@ -369,6 +369,8 @@
     minor: urlParams.get('minor') === '1',
     reading: ['abstract','guide','quicklook'].includes(urlParams.get('reading')) ? urlParams.get('reading') : '',
     favoritesOnly: urlParams.get('favorites') === '1',
+    weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
+    weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
@@ -1136,6 +1138,9 @@
       set('minor', state.minor ? '1' : '', '');
       set('reading', usesLane()?state.reading:'', '');
       set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
+      set('wcat', state.mode === 'weekly' ? state.weeklyCat : '', '');
+      set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
+      set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
         || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
@@ -2351,6 +2356,7 @@
 
   // Switch App Mode (Candidates, Curated, Library, Weekly, Sources)
   function switchMode(newMode, keepRange) {
+    if (newMode !== 'weekly') closeDeepReading({ fromHistory: true });
     if (!keepRange && newMode !== state.mode) state.range = defaultRange(newMode);
     state.mode = newMode;
     state.page = 1;
@@ -2409,6 +2415,9 @@
 
 
   let deepReadingHistoryLimit = 12;
+  // var: syncUrl reads this before the weekly code below has run.
+  var activeDeepReadingId = '';
+  const DEMO_READING_ID = 'demo-tailored-af';
   const DEEP_READING_LABELS = { question: '研究问题', design: '设计与人群', findings: '主要结果', limitations: '局限与不确定性', practice: '临床讨论' };
   function dailyReadingGroups(data, today = beijingToday()) {
     const rows = (Array.isArray(data?.items) ? data.items : []).filter(p => p.scope === 'public-fulltext-body' && p.humanReviewed === false && /^\d{4}-\d{2}-\d{2}$/.test(p.publishedOn || '') && p.publishedOn <= today);
@@ -2416,19 +2425,32 @@
     const latestDay = rows[0]?.publishedOn || '';
     return { todayCount: rows.filter(p => p.publishedOn === today).length, latestDay, latest: rows.filter(p => p.publishedOn === latestDay), history: rows.filter(p => p.publishedOn !== latestDay) };
   }
-  function dailyReadingCard(p, opened = false) {
-    const source = /^PMC\d+$/.test(p.pmcid || '') ? 'https://europepmc.org/articles/' + p.pmcid : '';
+  // Newest first; this is also the order of 上一篇 / 下一篇 in the reading panel.
+  function dailyReadingList(data = window.DEEP_READINGS || {}) {
+    const groups = dailyReadingGroups(data);
+    return groups.latest.concat(groups.history);
+  }
+  // The rail is an index only: each entry opens the reading in #deepReader.
+  function dailyReadingItem(p) {
+    const active = p.pmcid === activeDeepReadingId, topic = p.whySelected || p.topic;
+    return '<button type="button" class="deep-reading-item' + (active ? ' active' : '') + '" data-action="open-deep-reading" data-reading-id="' + esc(p.pmcid) + '" data-deep-reading="' + esc(p.pmcid) + '"' + (active ? ' aria-current="true"' : '') + '><span class="deep-reading-item-title">' + esc(p.titleZh || p.title) + '</span><small>' + esc(p.journal) + ' · 论文 ' + esc(p.date) + '</small>' + (topic ? '<span class="deep-reading-topic">' + esc(topic) + '</span>' : '') + '<span class="deep-reading-go">读精读 →</span></button>';
+  }
+  function deepReadingBody(p) {
     const sections = Object.entries(DEEP_READING_LABELS).map(([key, label]) => {
       const block = p.sections?.[key]; if (!block || typeof block.text !== 'string') return '';
-      const evidence = (Array.isArray(block.evidence) ? block.evidence : []).map(e => '<blockquote><p>' + esc(e.quote || '') + '</p><cite>正文 · ' + esc(e.section || e.paragraph || '') + '</cite></blockquote>').join('');
-      return '<section class="deep-reading-section"><h5>' + esc(label) + '</h5><p>' + esc(block.text) + '</p><details class="deep-reading-evidence"><summary>查看原文证据</summary>' + evidence + '</details></section>';
+      const quotes = Array.isArray(block.evidence) ? block.evidence : [];
+      const evidence = quotes.map(e => '<blockquote><p>' + esc(e.quote || '') + '</p><cite>正文 · ' + esc(e.section || e.paragraph || '') + '</cite></blockquote>').join('');
+      return '<section class="deep-reading-section" id="dr-' + key + '" data-toc="' + esc(label) + '"><h3>' + esc(label) + '</h3><p>' + esc(block.text) + '</p>' + (quotes.length ? '<details class="deep-reading-evidence"><summary>查看原文证据 · ' + quotes.length + ' 处</summary>' + evidence + '</details>' : '') + '</section>';
     }).join('');
-    return '<details class="deep-reading-card" data-deep-reading="' + esc(p.pmcid) + '"' + (opened ? ' open' : '') + '><summary><span class="content-label">AI 全文精读 · 未经人工审核</span><strong>' + esc(p.titleZh || p.title) + '</strong><small>' + esc(p.journal) + ' · 论文 ' + esc(p.date) + ' · 更新 ' + esc(p.publishedOn) + '</small><span class="deep-reading-topic">' + esc(p.whySelected || p.topic) + '</span><span class="deep-reading-open">展开精读 ↓</span></summary><div class="deep-reading-body"><p class="deep-reading-original">' + esc(p.title) + '</p><p class="deep-reading-scope">基于开放全文正文，未核对补充材料；模型生成，未经医生终审。</p>' + sections + '<div class="deep-reading-sources">' + (source ? '<a class="btn-sm" href="' + esc(source) + '" target="_blank" rel="noopener noreferrer">阅读开放全文 ↗</a>' : '') + (p.doi ? '<a class="btn-sm" href="' + esc('https://doi.org/' + p.doi) + '" target="_blank" rel="noopener noreferrer">出版商原文 ↗</a>' : '') + '</div><button class="btn-sm" type="button" data-action="close-daily-reading">收起精读 ↑</button></div></details>';
+    return '<p class="deep-reading-original">' + esc(p.title) + '</p><p class="deep-reading-scope">基于开放全文正文，未核对补充材料；模型生成，未经医生终审。</p>' + sections;
+  }
+  function deepReadingLinks(p) {
+    const source = /^PMC\d+$/.test(p.pmcid || '') ? 'https://europepmc.org/articles/' + p.pmcid : '';
+    return (source ? '<a class="btn-sm" href="' + esc(source) + '" target="_blank" rel="noopener noreferrer">开放全文 ↗</a>' : '') + (p.doi ? '<a class="btn-sm" href="' + esc('https://doi.org/' + p.doi) + '" target="_blank" rel="noopener noreferrer">出版商原文 ↗</a>' : '');
   }
   function renderDailyDeepRead() {
     const el = $('#dailyDeepRead'); if (!el) return;
     const data = window.DEEP_READINGS || {}, status = data.status || {}, groups = dailyReadingGroups(data);
-    const opened = new Set(Array.from(el.querySelectorAll('.deep-reading-card[open]')).map(p => p.dataset.deepReading));
     const historyOpen = !!el.querySelector('.deep-reading-history[open]');
     const reason = {
       model_not_configured: '精读生成服务尚未就绪', model_unavailable: '精读生成服务暂时不可用',
@@ -2440,39 +2462,121 @@
     }[status.reason] || '本次更新未完成';
     const showReason = status.day === beijingToday() && status.reason && groups.todayCount < 3;
     const notStarted = !groups.todayCount && status.day && status.day < beijingToday();
-    el.innerHTML = '<p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 3–5 篇</p><p class="deep-reading-timing">每日北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
+    const days = [];
+    groups.history.slice(0, deepReadingHistoryLimit).forEach(p => {
+      let day = days[days.length - 1];
+      if (!day || day.day !== p.publishedOn) days.push(day = { day: p.publishedOn, items: [] });
+      day.items.push(p);
+    });
+    el.innerHTML = '<p class="deep-reading-label"><span class="content-label">AI 全文精读 · 未经人工审核</span></p><p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 3–5 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
       (showReason ? '<p class="deep-reading-shortfall">' + esc(reason) + '，当前完成 ' + groups.todayCount + ' 篇。</p>' : '') +
       (notStarted ? '<p class="deep-reading-shortfall">今天的批次尚未生成（GitHub 定时任务常延迟数小时）；下方为最近一次批次。</p>' : '') +
-      (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4>' + groups.latest.map(p => dailyReadingCard(p, opened.has(p.pmcid))).join('') : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
-      (groups.history.length ? '<details class="deep-reading-history"' + (historyOpen ? ' open' : '') + '><summary>历史精读 · ' + groups.history.length + ' 篇</summary>' + groups.history.slice(0, deepReadingHistoryLimit).map(p => dailyReadingCard(p, opened.has(p.pmcid))).join('') + (groups.history.length > deepReadingHistoryLimit ? '<button class="btn-sm" type="button" data-action="more-daily-readings">查看更多历史精读</button>' : '') + '</details>' : '');
-  }
-
-  const ISSUES = [
-    { no: 1, demo: true, published: '2026-09-29', title: 'AI 指导的持续性房颤消融：获益与临床边界', meta: 'TAILORED-AF · Nature Medicine 2025 · 全文精读' }
-  ];
-
-  function isoWeekStart(d) {
-    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const day = (x.getDay() + 6) % 7; // Mon=0
-    x.setDate(x.getDate() - day);
-    return x;
-  }
-  function currentWeekIssues() {
-    const today = new Date(beijingToday() + 'T12:00:00');
-    const start = isoWeekStart(today), end = new Date(start); end.setDate(end.getDate() + 7);
-    return ISSUES.filter(i => !i.demo && (() => { const t = new Date(i.published + 'T12:00:00'); return t >= start && t < end; })());
+      (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4><div class="deep-reading-list">' + groups.latest.map(dailyReadingItem).join('') + '</div>' : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
+      (groups.history.length ? '<details class="deep-reading-history"' + (historyOpen ? ' open' : '') + '><summary>往期精读 · ' + groups.history.length + ' 篇</summary>' + days.map(d => '<h5 class="deep-reading-day">' + esc(d.day) + ' <span>' + d.items.length + ' 篇</span></h5><div class="deep-reading-list">' + d.items.map(dailyReadingItem).join('') + '</div>').join('') + (groups.history.length > deepReadingHistoryLimit ? '<button class="btn-sm" type="button" data-action="more-daily-readings">查看更多往期精读</button>' : '') + '</details>' : '');
+    const count = $('#weeklyPaneReadingCount'); if (count) count.textContent = groups.latest.length || '';
   }
 
   function renderWeeklyHeader() {
     renderStaticJournalMetrics();
-    const list = $('#issueList');
     renderWeeklyAuto();
     renderDailyDeepRead();
-    if (list) {
-      const published = ISSUES.filter(i => !i.demo);
-      list.hidden = !published.length;
-      list.innerHTML = published.map(i => `<button class="issue-card" data-issue="${i.no}"><b>第 ${String(i.no).padStart(2, '0')} 期 · ${esc(i.published)}</b>${esc(i.title)}<br><small>${esc(i.meta)}</small></button>`).join('');
+    renderWeeklyPane();
+  }
+
+  // Narrow screens show one pane at a time; wide screens show both and ignore it.
+  function renderWeeklyPane() {
+    const section = $('#weeklySection'); if (!section) return;
+    section.dataset.pane = state.weeklyPane;
+    $$('[data-weekly-pane]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.weeklyPane === state.weeklyPane)));
+  }
+
+  // Full-text readings open in their own panel, so the close button, the section
+  // list and 上一篇 / 下一篇 stay on screen however long the reading is.
+  var deepReaderFocus = null;
+  function deepReaderUrl(id) {
+    const u = new URL(window.location.href);
+    if (id) u.searchParams.set('read', id); else u.searchParams.delete('read');
+    return u.pathname + u.search + u.hash;
+  }
+  function openDeepReading(id, { push = true } = {}) {
+    const reader = $('#deepReader'), body = $('#deepReaderBody'); if (!reader || !body) return false;
+    const list = dailyReadingList(), demo = id === DEMO_READING_ID;
+    const item = demo ? null : list.find(p => p.pmcid === id);
+    if (!demo && !item) return false;
+    const wasOpen = reader.classList.contains('open');
+    if (!wasOpen) deepReaderFocus = document.activeElement;
+    activeDeepReadingId = id;
+    if (demo) {
+      $('#deepReaderLabel').textContent = '第 01 期 · 体例示范 · 人工精读';
+      $('#deepReaderTitle').textContent = 'AI 指导的持续性房颤消融：获益与临床边界';
+      $('#deepReaderMeta').textContent = 'TAILORED-AF · Nature Medicine · 2025-02 · 2025 年论文，非本周新文';
+      body.innerHTML = '';
+      const tpl = $('#demoReadingTemplate'); if (tpl) body.appendChild(tpl.content.cloneNode(true));
+      renderStaticJournalMetrics();
+      $('#deepReaderLinks').innerHTML = '<a class="btn-sm" target="_blank" rel="noopener" href="https://doi.org/10.1038/s41591-025-03517-w">Nature Medicine 原文 ↗</a>';
+    } else {
+      $('#deepReaderLabel').textContent = 'AI 全文精读 · 未经人工审核';
+      $('#deepReaderTitle').textContent = item.titleZh || item.title;
+      $('#deepReaderMeta').textContent = [item.journal, '论文 ' + item.date, '更新 ' + item.publishedOn].filter(Boolean).join(' · ');
+      body.innerHTML = deepReadingBody(item);
+      $('#deepReaderLinks').innerHTML = deepReadingLinks(item);
     }
+    const index = demo ? -1 : list.indexOf(item);
+    const prev = $('#deepReaderPrev'), next = $('#deepReaderNext'), pos = $('#deepReaderPos');
+    if (prev) { prev.hidden = demo; prev.disabled = index <= 0; prev.dataset.readingId = index > 0 ? list[index - 1].pmcid : ''; }
+    if (next) { next.hidden = demo; next.disabled = index < 0 || index >= list.length - 1; next.dataset.readingId = index >= 0 && index < list.length - 1 ? list[index + 1].pmcid : ''; }
+    if (pos) pos.textContent = demo ? '' : (index + 1) + ' / ' + list.length;
+    const toc = $('#deepReaderToc');
+    if (toc) {
+      const targets = [...body.querySelectorAll('[data-toc][id]')];
+      toc.hidden = targets.length < 2;
+      toc.innerHTML = targets.map((t, i) => '<button type="button" data-toc-target="' + esc(t.id) + '"' + (i === 0 ? ' aria-current="true"' : '') + '>' + esc(t.dataset.toc) + '</button>').join('');
+    }
+    body.scrollTop = 0;
+    $$('.deep-reading-item').forEach(b => {
+      const on = b.dataset.readingId === id;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+    });
+    reader.classList.add('open');
+    reader.setAttribute('aria-hidden', 'false');
+    $('#drawerBackdrop')?.classList.add('open');
+    document.body.classList.add('dialog-open');
+    try {
+      if (push && !wasOpen) history.pushState({ deepReader: id }, '', deepReaderUrl(id));
+      else history.replaceState(history.state && history.state.deepReader ? { deepReader: id } : history.state, '', deepReaderUrl(id));
+    } catch (e) { /* file:// or sandboxed */ }
+    if (!wasOpen) { try { reader.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    return true;
+  }
+  function closeDeepReading({ fromHistory = false } = {}) {
+    const reader = $('#deepReader');
+    if (!reader || !reader.classList.contains('open')) return;
+    // Opening pushed a history entry so the phone back button closes the panel;
+    // closing by button or Esc walks back over it instead of leaving it behind.
+    if (!fromHistory && history.state && history.state.deepReader) { history.back(); return; }
+    const id = activeDeepReadingId;
+    activeDeepReadingId = '';
+    reader.classList.remove('open');
+    reader.setAttribute('aria-hidden', 'true');
+    if (!$('#readerDrawer.open')) { $('#drawerBackdrop')?.classList.remove('open'); document.body.classList.remove('dialog-open'); }
+    $$('.deep-reading-item.active').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+    syncUrl();
+    const item = [...document.querySelectorAll('.deep-reading-item')].find(b => b.dataset.readingId === id && b.getClientRects().length);
+    const target = item || (deepReaderFocus && deepReaderFocus.isConnected ? deepReaderFocus : null);
+    if (target && target.focus) { try { target.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+    deepReaderFocus = null;
+  }
+  function syncDeepReaderToc() {
+    const body = $('#deepReaderBody'), toc = $('#deepReaderToc'); if (!body || !toc || toc.hidden) return;
+    const top = body.getBoundingClientRect().top + 48;
+    let current = '';
+    body.querySelectorAll('[data-toc][id]').forEach(t => { if (!current || t.getBoundingClientRect().top <= top) current = t.id; });
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 4) { const all = body.querySelectorAll('[data-toc][id]'); if (all.length) current = all[all.length - 1].id; }
+    toc.querySelectorAll('[data-toc-target]').forEach(b => {
+      if (b.dataset.tocTarget === current) { b.setAttribute('aria-current', 'true'); if (toc.scrollWidth > toc.clientWidth) toc.scrollLeft = Math.max(0, b.offsetLeft - 16); }
+      else b.removeAttribute('aria-current');
+    });
   }
 
   // Weekly board dates are publication days in Beijing, independent of other views.
@@ -2504,6 +2608,34 @@
     return { start, end, entries };
   }
 
+  const WEEKLY_CATEGORIES = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']];
+  function weeklyReadingIds() {
+    const byDoi = new Map();
+    dailyReadingList().forEach(p => { if (p.doi && !byDoi.has(String(p.doi).toLowerCase())) byDoi.set(String(p.doi).toLowerCase(), p.pmcid); });
+    return byDoi;
+  }
+  function weeklyCard(p, date, readingId) {
+    const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '', huddled = state.huddle.includes(p.id);
+    const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
+    const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
+    const read = hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息';
+    return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
+      publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${esc(zh || p.title)}</button>${deep}</div>` +
+      (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
+      (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
+      `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${read}</button><button class="btn-sm ${huddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${huddled ? '已入精选 ✓' : '加入精选清单'}</button></div></div></article>`;
+  }
+  // One line per paper: rank, title, source line and the AI one-liner, with a star to collect.
+  function weeklyRow(p, date, readingId) {
+    const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '', huddled = state.huddle.includes(p.id);
+    const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
+    const design = p.publicationStatus?.label || p.studyDesign || '';
+    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${esc(zh || p.title)}</button>${deep}</div>` +
+      publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(p.cleanJournal || p.journal)}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
+      (q && q.one_line ? `<div class="weekly-row-line"><span class="content-label">AI 速览</span>${esc(q.one_line)}</div>` : '') +
+      `</div><button type="button" class="weekly-star${huddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${huddled}" aria-label="${huddled ? '移出精选清单' : '加入精选清单'}" title="${huddled ? '已入精选清单' : '加入精选清单'}">${huddled ? '★' : '☆'}</button></li>`;
+  }
+
   function renderWeeklyAuto() {
     const el = $('#weeklyAuto'); if (!el) return;
     const now = Date.now(), boardWindow = weeklyPublicationWindow(FEEDS.items, now);
@@ -2512,32 +2644,37 @@
       .sort((a, b) => Date.parse(b) - Date.parse(a));
     const updatedAt = reports[0] || FEEDS.updatedAt;
     const validUpdate = typeof updatedAt === 'string' && updatedAt.includes('T') && weeklyPublicationDate({ date: updatedAt }, now);
-    const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}（北京时间）${now - Date.parse(updatedAt) > 6 * 3600000 ? ' · 更新已超过 6 小时，时效待确认' : ''}` : '更新时间暂无有效记录，时效待确认';
+    const stale = validUpdate && now - Date.parse(updatedAt) > 6 * 3600000;
+    const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}` : '更新时间暂无有效记录，时效待确认';
     const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper));
-    const groups = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']].map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
-    const heading = `<h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span><small>发表日期：北京时间 ${boardWindow.start}–${boardWindow.end}，含今天；${timing}。分类与排序为自动规则，未经逐篇质量评审。</small></h3>`
-      + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');
-    if (!entries.length) { el.innerHTML = heading + `<p class="text-muted" role="status">${state.search ? '当前榜内没有匹配文献，可清除关键词；更大范围请到文献雷达检索。' : '近7天暂无入榜条目'}</p>`; return; }
-    const categoryNav = `<nav class="weekly-category-nav" aria-label="文献榜分类">${groups.map(g => `<a href="#weekly-group-${g.id}">${g.name} <span>${g.entries.length}</span></a>`).join('')}</nav>`;
+    const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
+    const boardCount = $('#weeklyPaneBoardCount'); if (boardCount) boardCount.textContent = entries.length || '';
     const preparedTranslations = entries.filter(({paper:p})=>validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)])).length;
     const preparedQuicklooks = entries.filter(({paper:p})=>quicklookOf(p)).length;
-    const preparation = `<details class="weekly-preparation"><summary>摘要内容准备状态</summary><p>中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，模型内容未经人工核对，不代表全文精读。</p></details>`;
-    el.innerHTML = heading + categoryNav + preparation + groups.map(g => `<section class="weekly-group" id="weekly-group-${g.id}" aria-labelledby="weekly-title-${g.id}"><h4 id="weekly-title-${g.id}" class="weekly-group-title">${g.name}<span>${g.entries.length} 篇</span></h4>` + (g.entries.length ? '<div class="weekly-card-grid">' +
-      g.entries.map(({ paper: p, date }) => {
-        const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '';
-        const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
-        return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
-          publicationStatusHtml(p) + `<div class="weekly-auto-title"><a href="${esc(p.url || ('https://doi.org/' + p.doi))}" target="_blank" rel="noopener noreferrer">${esc(zh || p.title)}</a></div>` +
-          (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
-          (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
-          `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息'}</button><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入精选 ✓' : '加入精选清单'}</button></div></div></article>`;
-      }).join('') + '</div>' : `<p class="weekly-group-empty">${state.search ? '本类暂无匹配文献。' : '本类暂无入榜文献。'}</p>`) + '</section>').join('');
+    const infoOpen = !!el.querySelector?.('.weekly-info[open]');
+    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` +
+      `<div class="weekly-meta"><span>发表于 ${boardWindow.start.slice(5)} 至 ${boardWindow.end.slice(5)}（北京时间，含今天）· ${timing}</span>${stale ? '<b class="weekly-stale">更新已超过 6 小时，时效待确认</b>' : ''}` +
+      `<details class="weekly-info"${infoOpen ? ' open' : ''}><summary>榜单说明</summary><div class="weekly-info-body"><p>收录北京时间 ${boardWindow.start}–${boardWindow.end} 发表的入榜文献。分类与排序为自动规则，未经逐篇质量评审。</p><p class="weekly-preparation">摘要内容准备：中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，模型内容未经人工核对，不代表全文精读。</p><p>点题名打开阅读台看摘要；出版商原文链接在阅读台底部。</p></div></details></div></div>`
+      + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');
+    if (!entries.length) { el.innerHTML = heading + `<p class="text-muted" role="status">${state.search ? '当前榜内没有匹配文献，可清除关键词；更大范围请到文献雷达检索。' : '近7天暂无入榜条目'}</p>`; return; }
+    const cat = groups.some(g => g.id === state.weeklyCat) ? state.weeklyCat : '';
+    const compact = state.viewMode === 'compact';
+    const bar = `<div class="weekly-bar"><div class="weekly-category-nav" role="group" aria-label="文献榜分类"><button type="button" data-weekly-cat="" aria-pressed="${!cat}">全部 <span>${entries.length}</span></button>` +
+      groups.map(g => `<button type="button" data-weekly-cat="${g.id}" aria-pressed="${cat === g.id}"${g.entries.length || cat === g.id ? '' : ' disabled'}>${g.name} <span>${g.entries.length}</span></button>`).join('') +
+      `</div><div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compact ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compact}">详细</button><button type="button" class="view-toggle-btn${compact ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compact}">列表</button></div></div>`;
+    const readings = weeklyReadingIds();
+    const shown = cat ? groups.filter(g => g.id === cat) : groups.filter(g => g.entries.length);
+    el.innerHTML = heading + bar + `<div class="weekly-board ${compact ? 'weekly-board-compact' : ''}">` + shown.map(g => `<section class="weekly-group" id="weekly-group-${g.id}" aria-labelledby="weekly-title-${g.id}"><h4 id="weekly-title-${g.id}" class="weekly-group-title">${g.name}<span>${g.entries.length} 篇</span></h4>` + (g.entries.length ?
+      (compact ? '<ol class="weekly-list">' : '<div class="weekly-card-grid">') +
+      g.entries.map(({ paper: p, date }) => (compact ? weeklyRow : weeklyCard)(p, date, readings.get(String(p.doi || '').toLowerCase()) || '')).join('') +
+      (compact ? '</ol>' : '</div>') : `<p class="weekly-group-empty">${state.search ? '本类暂无匹配文献。' : '本类暂无入榜文献。'}</p>`) + '</section>').join('') + '</div>';
   }
 
   function renderNextCandidates() {
     const el = $('#nextCandidates');
     if (!el) return;
-    if (state.search) { el.innerHTML = ''; return; }
+    const wrap = $('#weeklyNextWrap');
+    if (state.search) { el.innerHTML = ''; if (wrap) wrap.hidden = true; return; }
     const okDesign = new Set(['RCT', '方法/模型验证', 'Meta/综述', '队列研究']);
     const top = new Set(['New England Journal of Medicine', 'The Lancet', 'JAMA', 'JAMA Cardiology', 'European Heart Journal', 'JACC', 'Circulation', 'Nature Medicine', 'npj Digital Medicine', 'EHJ-Digital Health', 'EHJ - Digital Health', 'European Heart Journal - Digital Health']);
     const score = p => (okDesign.has(p.studyDesign) ? 2 : 0) + (top.has(p.cleanJournal) ? 2 : 0) + ((p.tags || []).some(t => t !== '#大模型/NLP') ? 1 : 0) + (AI_RE.test(p.title) ? 2 : 0) + (isCrossAI(p) ? 3 : (laneOf(p) === 'cardio' ? 2 : 0));
@@ -2546,8 +2683,9 @@
       .map(p => [score(p), p]).filter(x => x[0] >= 4)
       .sort((a, b) => b[0] - a[0] || (b[1].date || '').localeCompare(a[1].date || ''))
       .slice(0, 5).map(x => x[1]);
+    if (wrap) wrap.hidden = !list.length;
     if (!list.length) { el.innerHTML = ''; return; }
-    el.innerHTML = `<h3 class="next-title">下期候选 <small>公共题录中的近期心血管 / AI 论文，优先心血管与“心血管 × AI”，按研究类型与期刊自动排序，<b>尚未评估质量</b>；全文获取与共享权限需另行核验。想推荐哪篇就加入精选清单。</small></h3>` +
+    el.innerHTML = `<p class="weekly-next-note">公共题录中的近期心血管 / AI 论文，优先心血管与“心血管 × AI”，按研究类型与期刊自动排序，<b>尚未评估质量</b>；全文获取与共享权限需另行核验。想推荐哪篇就加入精选清单。</p>` +
       list.map(p => `<div class="next-item"><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div><div class="next-item-title">${esc(p.title)}</div><div class="next-item-actions"><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入精选 ✓' : '加入精选清单'}</button><a class="btn-sm" target="_blank" rel="noopener" href="${esc(p.url || (p.doi ? 'https://doi.org/' + p.doi : '#'))}">出版商 / 题录 ↗</a></div></div>`).join('');
   }
 
@@ -2680,40 +2818,63 @@
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
       if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey
-        || $('#huddleModalBackdrop.open') || $('#readerDrawer.open')
+        || $('#huddleModalBackdrop.open') || $('#readerDrawer.open') || $('#deepReader.open')
         || document.activeElement?.matches('input,textarea,select') || document.activeElement?.isContentEditable) return;
       e.preventDefault();
       searchInput?.focus();
     } else if (e.key === 'Tab') {
-      const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open');
+      const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open');
       if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
     } else if (e.key === 'Escape') {
-      closeReaderDrawer();
-      closeHuddleModal();
+      if ($('#readerDrawer.open') || $('#huddleModalBackdrop.open')) { closeReaderDrawer(); closeHuddleModal(); }
+      else closeDeepReading();
     }
   });
 
   document.addEventListener('click', e => {
-    const dailyClose = e.target.closest('[data-action="close-daily-reading"]');
-    if (dailyClose) {
-      const reading = dailyClose.closest('.deep-reading-card');
-      if (reading) { reading.open = false; reading.querySelector('summary')?.focus({ preventScroll: true }); }
-      return;
-    }
+    const deepOpen = e.target.closest('[data-action="open-deep-reading"]');
+    if (deepOpen) { openDeepReading(deepOpen.dataset.readingId); return; }
     if (e.target.closest('[data-action="more-daily-readings"]')) {
       deepReadingHistoryLimit += 12;
       renderDailyDeepRead();
       return;
     }
-    const weeklyClose = e.target.closest('[data-action="close-weekly"]');
-    if (weeklyClose) {
-      const details = weeklyClose.closest('.weekly-demo');
-      if (details) {
-        details.open = false;
-        const summary = details.querySelector(':scope > summary');
-        summary?.focus({ preventScroll: true });
-        summary?.scrollIntoView({ block: 'center', behavior: 'instant' });
-      }
+    const tocTarget = e.target.closest('[data-toc-target]');
+    if (tocTarget) {
+      const body = $('#deepReaderBody'), target = body && document.getElementById(tocTarget.dataset.tocTarget);
+      if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: 'smooth' });
+      return;
+    }
+    const weeklyCat = e.target.closest('[data-weekly-cat]');
+    if (weeklyCat) {
+      state.weeklyCat = weeklyCat.dataset.weeklyCat;
+      renderWeeklyAuto();
+      syncUrl();
+      // Keep the bar in place: a shorter list must not leave the reader below its end.
+      const board = $('#weeklyAuto'), top = board ? board.getBoundingClientRect().top + window.scrollY : 0;
+      if (board && window.scrollY > top) window.scrollTo({ top, behavior: 'instant' });
+      $(`[data-weekly-cat="${state.weeklyCat}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+    const weeklyView = e.target.closest('[data-weekly-view]');
+    if (weeklyView) {
+      state.viewMode = weeklyView.dataset.weeklyView;
+      viewInUrl = true;
+      safeSet('xinzhi_view_mode', state.viewMode);
+      $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
+      $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
+      renderWeeklyAuto();
+      syncUrl();
+      $(`[data-weekly-view="${state.viewMode}"]`)?.focus({ preventScroll: true });
+      return;
+    }
+    const weeklyPane = e.target.closest('[data-weekly-pane]');
+    if (weeklyPane) {
+      state.weeklyPane = weeklyPane.dataset.weeklyPane;
+      renderWeeklyPane();
+      syncUrl();
+      const section = $('#weeklySection');
+      if (section && section.getBoundingClientRect().top < 0) window.scrollTo({ top: section.getBoundingClientRect().top + window.scrollY - 70, behavior: 'instant' });
       return;
     }
     const mb = e.target.closest('[data-minor]');
@@ -2981,7 +3142,15 @@
 
   // Drawer events
   $('#drawerCloseBtn')?.addEventListener('click', closeReaderDrawer);
-  $('#drawerBackdrop')?.addEventListener('click', closeReaderDrawer);
+  $('#drawerBackdrop')?.addEventListener('click', () => { if ($('#readerDrawer.open')) closeReaderDrawer(); else closeDeepReading(); });
+  $('#deepReaderClose')?.addEventListener('click', () => closeDeepReading());
+  ['#deepReaderPrev', '#deepReaderNext'].forEach(sel => $(sel)?.addEventListener('click', e => { const id = e.currentTarget.dataset.readingId; if (id) openDeepReading(id); }));
+  $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
+  window.addEventListener('popstate', () => {
+    const id = history.state && history.state.deepReader;
+    if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
+    else closeDeepReading({ fromHistory: true });
+  });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
     if (state.activeDrawerPaper) {
@@ -3062,6 +3231,8 @@
   aiRequest('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } })
     .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
     .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
+
+  if (state.mode === 'weekly' && urlParams.get('read')) openDeepReading(urlParams.get('read'), { push: false });
 
   if (urlParams.get('drawer') === 'first') {
     const list = getFilteredArticles();

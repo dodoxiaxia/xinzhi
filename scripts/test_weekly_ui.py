@@ -2,6 +2,7 @@
 """Offline weekly-board QA. Expanded picks and AI output are test fixtures only."""
 import functools
 import json
+import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -77,31 +78,50 @@ def main():
     def overflow(page, label):
         check(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), label + ': no overflow')
 
-    def fold(page, touch=False):
-        details = page.locator('.weekly-demo')
-        summary = details.locator(':scope > summary')
-        activate = summary.tap if touch else summary.click
+    def reading_panel(page, touch=False):
+        reader, close = page.locator('#deepReader'), page.locator('#deepReaderClose')
+        if page.locator('#weeklyPaneSwitch').is_visible():
+            page.locator('[data-weekly-pane="reading"]').click()
+        demo = page.locator('.deep-reading-demo-item')
+        activate = demo.tap if touch else demo.click
         for i in range(3):
             activate()
-            expect(details).to_have_attribute('open', '')
-            expect(summary.locator('.weekly-read-close')).to_be_visible()
-            activate()
-            check(not details.evaluate('(e)=>e.open'), f'{touch}/{i}: repeat collapse')
-        summary.focus()
-        for key in ['Enter', 'Space']:
-            summary.press(key)
-            expect(details).to_have_attribute('open', '')
-            summary.press(key)
-            check(not details.evaluate('(e)=>e.open'), key + ': keyboard collapse')
+            expect(reader).to_have_class(re.compile(r'\bopen\b'))
+            expect(close).to_be_in_viewport()
+            close.click()
+            expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
+            check(demo.evaluate('(e)=>e===document.activeElement'), f'{touch}/{i}: closing returns focus to the list')
         activate()
+        page.keyboard.press('Escape')
+        expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
+        check('read=' not in page.url, 'closing clears the reading link')
+        activate()
+        page.locator('#deepReaderBody').evaluate('(e)=>e.scrollTo(0, e.scrollHeight)')
+        expect(close).to_be_in_viewport()
+        check(page.locator('#deepReaderToc button').count() >= 5, 'demo reading has a section list')
+        if touch:
+            page.go_back()
+            expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
+            check('mode=weekly' in page.url, 'back button closes the panel and stays on the board')
+        else:
+            close.click()
+        expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
         page.locator('#sourceStatusBtn').click()
         page.locator('[data-mode="weekly"]').click()
-        expect(details).to_have_attribute('open', '')
-        expect(summary.locator('.weekly-read-close')).to_be_visible()
-        page.locator('[data-action="close-weekly"]').click()
-        check(not details.evaluate('(e)=>e.open'), 'bottom button collapses after mode return')
-        check(summary.evaluate('(e)=>e===document.activeElement'), 'collapse restores summary focus')
-        expect(summary.locator('.weekly-read-open')).to_be_visible()
+        check(not reader.evaluate("(e)=>e.classList.contains('open')"), 'panel stays closed after a mode round trip')
+        daily = page.locator('.deep-reading-item:not(.deep-reading-demo-item)')
+        if daily.count() > 1:
+            if page.locator('#weeklyPaneSwitch').is_visible():
+                page.locator('[data-weekly-pane="reading"]').click()
+            daily.first.click()
+            expect(page.locator('#deepReaderPos')).to_have_text(re.compile(r'^1 / '))
+            page.locator('#deepReaderNext').click()
+            expect(page.locator('#deepReaderPos')).to_have_text(re.compile(r'^2 / '))
+            check('read=' in page.url, 'open reading is linkable')
+            close.click()
+            expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
+        if page.locator('#weeklyPaneSwitch').is_visible():
+            page.locator('[data-weekly-pane="board"]').click()
 
     errors = []
     try:
@@ -133,15 +153,19 @@ def main():
                         check(deep['x']>=board['x']+board['width'], f'{count}/{width}: right deep read')
                     else:
                         check(b['y']>a['y'] and abs(a['x']-b['x'])<1, f'{count}/{width}: mobile stacked cards')
-                        check(deep['y']>=board['y']+board['height'], f'{count}/{width}: deep read follows categories')
+                        check(deep is None, f'{count}/{width}: readings sit behind the 全文精读 tab')
+                        page.locator('[data-weekly-pane="reading"]').click()
+                        check(page.locator('.weekly-deep-read').is_visible() and not page.locator('#weeklyAuto').is_visible(), f'{count}/{width}: tab shows the reading list')
+                        page.locator('[data-weekly-pane="board"]').click()
                     overflow(page, f'{count}/{width}')
                     if count == 24 and width in [1440, 390]:
                         page.screenshot(path=str(out/f'categorized-{width}.png'))
-            fold(page)
-            page.locator('.weekly-demo > summary').click()
-            expect(page.locator('.weekly-read-close')).to_be_visible()
+            reading_panel(page)
+            page.locator('[data-weekly-pane="reading"]').click()
+            page.locator('.deep-reading-demo-item').click()
             page.screenshot(path=str(out/'deep-read-open-mobile.png'))
-            page.locator('.weekly-demo > summary').click()
+            page.locator('#deepReaderClose').click()
+            page.locator('[data-weekly-pane="board"]').click()
             before = len(calls)
             page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
             expect(page.locator('.abstract-translation')).to_contain_text(NOTICE)
@@ -168,8 +192,8 @@ def main():
             touch.route('**/*', mock)
             mobile = touch.new_page()
             mobile.goto(base+'?mode=weekly', wait_until='networkidle')
-            fold(mobile, touch=True)
-            overflow(mobile, 'touch fold')
+            reading_panel(mobile, touch=True)
+            overflow(mobile, 'touch reading panel')
             check(not any(c['method'] == 'POST' for c in calls), 'No model POST in weekly browsing')
             check(not errors, 'No page JavaScript errors')
             browser.close()

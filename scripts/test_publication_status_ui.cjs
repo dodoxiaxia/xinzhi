@@ -33,7 +33,7 @@ c.FEEDS = {items:[]}; vm.runInContext(src.slice(start,end), c);
 check(c.FEEDS.items[0].publicationStatus.state === 'retracted', 'Compact archive expansion retains status');
 check(c.publicationStatusHtml(c.FEEDS.items[0]).includes('41916660'), 'Compact archive retains notice link');
 // Explicit integration points: the source-backed banner must precede content.
-for (const name of ['renderArticleCard','renderCompactRow','openReaderDrawer','openHuddleModal','renderWeeklyAuto']) {
+for (const name of ['renderArticleCard','renderCompactRow','openReaderDrawer','openHuddleModal','weeklyCard','weeklyRow']) {
   check(fn(name).includes('publicationStatusHtml('), 'Status is displayed in '+name);
 }
 check(fn('openReaderDrawer').includes('prioritizedDesign(paper) || ql.design'), 'Cached AI design cannot override publication role');

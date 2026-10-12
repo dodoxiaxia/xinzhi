@@ -88,15 +88,18 @@ def main():
                 check(20 <= len(rows) <= 30, f'{width}: actual board contains 20–30 source-selected papers')
                 for group in page.locator('.weekly-group').all():
                     check_badges('.weekly-auto-item', f'{width}: classified picks')
-                check(page.locator('[data-journal-metrics="Nature Medicine"] .journal-metrics-badge').count() == 3, f'{width}: static journal references populated')
-                summary = page.locator('.weekly-demo > summary')
-                summary.click()
-                native = page.locator('.weekly-demo > [data-journal-metrics-details] .journal-metrics-details > summary')
+                if page.locator('#weeklyPaneSwitch').is_visible():
+                    page.locator('[data-weekly-pane="reading"]').click()
+                page.locator('.deep-reading-demo-item').click()
+                check(page.locator('#deepReaderBody [data-journal-metrics="Nature Medicine"] .journal-metrics-badge').count() == 1, f'{width}: static journal references populated in the reading panel')
+                native = page.locator('#deepReaderBody > [data-journal-metrics-details] .journal-metrics-details > summary')
                 native.focus()
                 native.press('Enter')
                 expect(native.locator('..')).to_have_attribute('open', '')
-                overflow(page, f'{width}/expanded deep-read metrics')
-                summary.click()
+                overflow(page, f'{width}/open reading metrics')
+                page.locator('#deepReaderClose').click()
+                if page.locator('#weeklyPaneSwitch').is_visible():
+                    page.locator('[data-weekly-pane="board"]').click()
                 page.screenshot(path=str(out / f'weekly-real-{width}.png'))
 
                 cached_id = page.evaluate("() => window.FEEDS.items.find(p=>p.weeklyPick && window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()]?.translation?.abstract_zh)?.id")
