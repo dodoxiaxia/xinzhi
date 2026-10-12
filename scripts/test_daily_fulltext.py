@@ -118,7 +118,7 @@ class SourceTests(unittest.TestCase):
 class GenerationTests(unittest.TestCase):
     def generate(self, data=None, ledger=None, model=None, save=None):
         data, ledger = data or d.empty_data(), ledger or d.empty_ledger()
-        papers = [paper(i, 'AI 医疗' if i % 2 == 0 else '心血管') for i in range(1,9)]
+        papers = [paper(i, 'AI 医疗' if i % 2 == 0 else '心血管') for i in range(1, d.MAX_CALLS + 5)]
         bypmc = {p['pmcid']:p for p in papers}
         fetch = lambda url: xml(bypmc[url.split('/')[-2]])
         result = d.generate(data, ledger, papers, WHEN, save or (lambda *_:None), {}, fetch=fetch, model=model or (lambda *args: output(args[-1][0]['id'])))
@@ -142,16 +142,17 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(other['state'], 'started')
         self.assertEqual(d.apply_resolutions(ledger, [entry]), 0)
 
-    def test_new_day_publishes_four_distinct_articles_and_same_day_is_cached(self):
+    def test_new_day_publishes_target_distinct_articles_and_same_day_is_cached(self):
         calls = []
         model = lambda *args: (calls.append(True) or output(args[-1][0]['id']))
         data, ledger, status = self.generate(model=model)
-        self.assertEqual(status['completed'], 4)
-        self.assertEqual(len(calls), 4)
-        self.assertEqual(len({d.identity(p) for p in data['items']}), 4)
+        self.assertEqual(d.TARGET, 8)
+        self.assertEqual(status['completed'], d.TARGET)
+        self.assertEqual(len(calls), d.TARGET)
+        self.assertEqual(len({d.identity(p) for p in data['items']}), d.TARGET)
         self.generate(data=data, ledger=ledger, model=model)
-        self.assertEqual(len(calls), 4)
-        self.assertEqual(len(data['items']), 4)
+        self.assertEqual(len(calls), d.TARGET)
+        self.assertEqual(len(data['items']), d.TARGET)
 
     def test_reservation_is_saved_before_each_model_request(self):
         observed = []
@@ -160,7 +161,7 @@ class GenerationTests(unittest.TestCase):
             self.assertEqual(observed[-1]['days']['2026-10-09'][-1]['state'], 'started')
             return output(_[-1][0]['id'])
         data, ledger, status = self.generate(model=model, save=save)
-        self.assertEqual(status['completed'], 4)
+        self.assertEqual(status['completed'], d.TARGET)
         self.assertTrue(all(r['state']=='validated' for r in ledger['days']['2026-10-09']))
 
     def test_failed_checkpoint_never_dispatches_model(self):
@@ -194,7 +195,7 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertEqual(status['reason'], 'prior_attempt_uncertain')
 
-    def test_invalid_outputs_are_skipped_with_eight_attempt_cap(self):
+    def test_invalid_outputs_are_skipped_with_daily_attempt_cap(self):
         calls = []
         def bad(*_):
             calls.append(True)
@@ -203,9 +204,10 @@ class GenerationTests(unittest.TestCase):
             result['sections']['findings']['text'] = '不支持的研究结果共纳入9999名患者，这一数字没有原文证据。'
             return result
         data, ledger, status = self.generate(model=bad)
-        self.assertEqual(len(calls), 8)
+        self.assertEqual(len(calls), d.MAX_CALLS)
+        self.assertEqual(d.MAX_CALLS, 2 * d.TARGET)
         self.assertEqual(status['completed'], 0)
-        self.assertEqual(status['attempts'], 8)
+        self.assertEqual(status['attempts'], d.MAX_CALLS)
 
     def test_sources_invalid_on_earlier_days_are_not_paid_for_again(self):
         ledger = d.empty_ledger()
@@ -215,7 +217,7 @@ class GenerationTests(unittest.TestCase):
         model = lambda *args: (tried.append(args[1]['doi']) or output(args[-1][0]['id']))
         data, ledger, status = self.generate(ledger=ledger, model=model)
         self.assertNotIn('10.1234/fixture1', tried)
-        self.assertEqual(status['completed'], 4)
+        self.assertEqual(status['completed'], d.TARGET)
 
 class DraftRecoveryTests(unittest.TestCase):
     def test_recovery_revalidates_cached_source_and_does_not_call_model(self):

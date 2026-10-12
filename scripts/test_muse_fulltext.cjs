@@ -34,7 +34,7 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   h = await create(); h.env.FULLTEXT_ASYNC_ENABLED = 'true'; await error(await api(h,'claim'),409,'muse_owner_conflict');
   h = await create(); const queued = await enqueue(h),writes = h.writes.length;
   const again = await enqueue(h); assert.equal(again.id,queued.id); assert.equal(h.writes.length,writes);
-  assert(h.calls.every(c => /crossref/.test(c.url))); assert(!JSON.stringify(again).includes(secret));
+  assert(h.calls.every(c => ['api.crossref.org','api.unpaywall.org','api.openalex.org'].includes(c.url.hostname)),'enqueue only reads bibliography and open-access catalogues'); assert(!JSON.stringify(again).includes(secret));
   const lookup = await (await h.request('/api/library',{method:'GET'})).json(); assert.equal(lookup.job.state,'queued'); assert.equal(lookup.job.stage,'queued'); assert.equal(lookup.status,'pending'); assert.equal(lookup.paper.fulltextStatus,'pending'); assert(!lookup.error); assert(!Object.hasOwn(lookup,'retryAfter')); assert.equal(JSON.parse(h.values.get('library:paper:' + doi)).paper.fulltextStatus,'manual_needed','projection does not mutate bibliography');
   assert.equal(h.context.museNextVerificationAt(Date.parse('2026-10-09T11:22:00Z')),'2026-10-09T11:23:00.000Z');
   assert.equal(h.context.museNextVerificationAt(Date.parse('2026-10-09T11:23:00Z')),'2026-10-09T12:23:00.000Z');
@@ -130,7 +130,7 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   assert.equal(restoreForm.status,200); assert((await restoreForm.text()).includes('确认重新入队')); assert.equal(h.writes.length,restoreWrites); assert.equal(h.calls.length,restoreCalls);
   assert.equal((await h.request('/api/muse/retry',{passphrase:'wrong'})).status,403); assert.equal(h.writes.length,restoreWrites);
   const restored = await h.request('/api/muse/retry'); assert.equal(restored.status,202); const restoredJob = (await restored.json()).job;
-  assert.notEqual(restoredJob.id,expired.taskId); assert.equal(restoredJob.state,'queued'); assert.equal(h.calls.length,restoreCalls,'recover reuses saved official bibliography');
+  assert.notEqual(restoredJob.id,expired.taskId); assert.equal(restoredJob.state,'queued'); assert(h.calls.slice(restoreCalls).every(c => ['api.crossref.org','api.unpaywall.org','api.openalex.org'].includes(c.url.hostname)),'recover only rechecks open-access catalogues, never a publisher login');
   const restoreDedup = h.writes.length; assert.equal((await h.request('/api/muse/retry')).status,202); assert.equal(h.writes.length,restoreDedup,'double confirmation does not replace active job');
   await error(await api(h,'receipt',{...identity(expired),state:'running'}),409,'muse_stale');
   const resumed = await claim(h); assert.equal(resumed.taskId,restoredJob.id);

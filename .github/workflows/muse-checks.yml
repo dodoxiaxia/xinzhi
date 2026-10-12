@@ -36,6 +36,7 @@ jobs:
           node scripts/test_fulltext_import.cjs
           node scripts/test_muse_fulltext.cjs
           node scripts/test_muse_status_pages.cjs
+          node scripts/test_muse_reader_upload.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_fulltext_jobs.cjs

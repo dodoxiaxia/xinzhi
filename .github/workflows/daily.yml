@@ -84,11 +84,15 @@ jobs:
     needs: gate
     if: github.ref == 'refs/heads/main' && needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Covers ci_daily's 110-minute full budget plus tests, deploy and state save.
+    timeout-minutes: 150
     env:
       XINZHI_LLM_ENDPOINT: ${{ vars.XINZHI_LLM_ENDPOINT }}
       XINZHI_LLM_MODEL: ${{ vars.XINZHI_LLM_MODEL }}
       XINZHI_LLM_API_KEY: ${{ secrets.XINZHI_LLM_API_KEY }}
+      # Optional ceilings (unset = defaults in code): weekly calls per UTC day, full-text readings per day.
+      XINZHI_WEEK_MAX_CALLS: ${{ vars.XINZHI_WEEK_MAX_CALLS }}
+      XINZHI_DEEP_READING_TARGET: ${{ vars.XINZHI_DEEP_READING_TARGET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -128,7 +132,7 @@ jobs:
           XINZHI_PRECOMPUTE_STATE_CHECKPOINT: ${{ vars.XINZHI_PRECOMPUTE_STATE_CHECKPOINT || '1' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           XINZHI_RESTORED_STATE_SHA: ${{ steps.restore_state.outputs.sha }}
-          # Scheduled and manually dispatched fast runs add one bounded title/quicklook batch; pushes stay model-free.
+          # Scheduled and manually dispatched fast runs add title, quicklook, weekly and reading top-ups; pushes stay model-free.
           XINZHI_FAST_TITLE_BATCH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
           # Timed runs (cron or the external fast dispatch) run the paid full refresh once per Beijing day.
           XINZHI_DAILY_FULL_ONCE: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '1' || '' }}
@@ -155,6 +159,7 @@ jobs:
           node scripts/test_fulltext_import.cjs
           node scripts/test_muse_fulltext.cjs
           node scripts/test_muse_status_pages.cjs
+          node scripts/test_muse_reader_upload.cjs
           npm exec --yes --package=workerd@1.20261009.1 -- node scripts/test_worker_fetch_compat.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_github_lfs_reuse.cjs
