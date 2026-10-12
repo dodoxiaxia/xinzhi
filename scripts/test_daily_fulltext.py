@@ -146,7 +146,7 @@ class GenerationTests(unittest.TestCase):
         calls = []
         model = lambda *args: (calls.append(True) or output(args[-1][0]['id']))
         data, ledger, status = self.generate(model=model)
-        self.assertEqual(d.TARGET, 8)
+        self.assertEqual(d.TARGET, 12)
         self.assertEqual(status['completed'], d.TARGET)
         self.assertEqual(len(calls), d.TARGET)
         self.assertEqual(len({d.identity(p) for p in data['items']}), d.TARGET)

@@ -31,9 +31,9 @@ def _env_int(name, default, low, high):
         return default
     return value if low <= value <= high else default
 
-# Owner decision 2026-10-12: the provider plan has ample headroom; publish up to 8 readings a day.
+# Owner decision 2026-10-13: the provider plan has ample headroom; publish up to 12 readings a day.
 # Repository variable XINZHI_DEEP_READING_TARGET (1..20) adjusts it; calls and source fetches scale.
-TARGET = _env_int('XINZHI_DEEP_READING_TARGET', 8, 1, 20)
+TARGET = _env_int('XINZHI_DEEP_READING_TARGET', 12, 1, 20)
 MAX_CALLS, MAX_SOURCE_REQUESTS = 2 * TARGET, 5 * TARGET
 LEDGER_ROWS_PER_DAY = 40  # structural sanity bound for stored ledgers, independent of today's cap
 MAX_EVIDENCE = 12

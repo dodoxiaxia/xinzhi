@@ -95,6 +95,12 @@ class QuicklooksTests(unittest.TestCase):
         self.assertEqual(len(q.eligible_papers([paper()], {'items': {}}, missing, set(), TODAY)), 1)
         self.assertEqual(q.eligible_papers([paper(local=False)], {'items': {}}, missing, set(), TODAY), [])
 
+    def test_every_lane_is_eligible_and_the_core_lane_comes_first(self):
+        other = paper(2, clinicalTier='前沿大模型与科技', category='AI前沿')
+        core = paper(3)
+        todo = q.eligible_papers([other, core], {'items': {}}, {}, set(), TODAY)
+        self.assertEqual([p['doi'] for p in todo], [core['doi'], other['doi']])
+
     def test_recent_new_candidates_and_pmid_without_doi_are_eligible(self):
         candidates = [paper(doi=''), paper(2, hasDraft=True), paper(3), paper(4),
                       paper(5, date='2026-09'), paper(6, date='2026-10-01'), paper(7, pubTypes=['Published Erratum'])]

@@ -171,7 +171,7 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(ci_daily.FAST_TITLES[0][-2:], ['--limit', '1'])
         self.assertLess(calls.index(ci_daily.FAST_TITLES[0]), calls.index(ci_daily.BUILD))
         self.assertIn(ci_daily.FAST_QUICKLOOKS[0], calls)
-        self.assertEqual(ci_daily.FAST_QUICKLOOKS[0][2:4], ['--limit', '8'])
+        self.assertEqual(ci_daily.FAST_QUICKLOOKS[0][2:4], ['--limit', '30'])
         self.assertIn(ci_daily.FAST_WEEK_PRECOMPUTE[0], calls)
         self.assertIn(ci_daily.DEEP_READING, calls)  # tops up today's readings; exits when the target is met
         self.assertNotIn(ci_daily.DEEP_READING_RECOVER, calls)
