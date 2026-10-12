@@ -88,5 +88,15 @@ const job = h => JSON.parse(h.values.get('library:muse-job:' + doi));
   assert.equal((await (await h.request()).json()).job.stage,'queued');
   h = await create({oa:true});
   assert.equal((await (await h.request()).json()).job.stage,'queued','a tiny file is not treated as the article');
+  // A new candidate asks GitHub for a verification run right away; one run covers a burst.
+  const dispatches = h => h.calls.filter(c => c.url.href === 'https://api.github.com/repos/dodoxiaxia/xinzhi/actions/workflows/muse-review.yml/dispatches');
+  h = await create(); h.env.MUSE_REVIEW_DISPATCH_TOKEN = 'github_pat_synthetic_dispatch_0123456789';
+  assert.equal((await readerUpload(h)).status,202,'a failed dispatch never fails the upload');
+  assert.equal(dispatches(h).length,1); const sent = dispatches(h)[0].init;
+  assert.equal(sent.method,'POST'); assert.equal(sent.headers.authorization,'Bearer github_pat_synthetic_dispatch_0123456789'); assert.deepEqual(JSON.parse(sent.body),{ref:'main'});
+  h.values.delete('library:muse-job:' + doi);
+  assert.equal((await readerUpload(h,{bytes:Buffer.concat([original.subarray(0,20),Buffer.from('y'),original.subarray(20)])})).status,202);
+  assert.equal(dispatches(h).length,1,'a second candidate inside two minutes reuses the pending run');
+  h = await create(); assert.equal((await readerUpload(h)).status,202); assert.equal(dispatches(h).length,0,'no token, no dispatch');
   console.log('Muse reader upload, open-access first and six-day queue window passed');
 })().catch(error => {console.error(error);process.exitCode = 1;});

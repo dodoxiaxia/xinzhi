@@ -22,6 +22,19 @@
 - **读者自传 PDF**：`/api/muse/reader-upload?doi=…`（GET 为表单，POST 为 multipart：`pdf` 文件 + `passphrase` 全文口令）。读者在自己的浏览器里打开原文（开放获取或汉堡登录）下载后上传，原件进入同一隔离区与核验流程；不记录 Drive，`archive.sides.drive` 保持 `pending`。Muse 正在领取或已有原件待核验时拒绝（409 `muse_busy`）。排队中、已停止、待核验未通过或需重新登录的任务页都显示上传入口。
 - **排队期延长到 6 天**：未被领取的请求在任务记录 7 天有效期内一直可被 Muse 领取，不再一天后作废。
 
+### 收到原件后立即核验（可选令牌）
+
+GitHub 的 `23 * * * *` 定时实际常隔三四小时才运行。网站在收到新原件（读者上传、开放获取、Muse PUT）时，会用 `MUSE_REVIEW_DISPATCH_TOKEN` 立即触发一次 `muse-review.yml`；两分钟内多次收到只触发一次。触发失败不影响上传，定时核验照常兜底。没有配置令牌时行为与原来相同。
+
+配置步骤（维护者）：
+
+1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token。
+2. Repository access 选 **Only select repositories → dodoxiaxia/xinzhi**；Permissions 里只把 **Actions** 设为 **Read and write**（Metadata 只读会自动带上），其他都不选。有效期按需设置，到期前更换。
+3. Cloudflare → Workers & Pages → `dryz-xinzhi` → Settings → Variables and Secrets → Production，新增 **Secret** `MUSE_REVIEW_DISPATCH_TOKEN`，值为上面的令牌；保存后重新部署 Production（或等下一次发布）。
+4. 验证：上传一篇后，几分钟内 Actions 里应出现一次 `workflow_dispatch` 的 muse-original-verification。
+
+令牌只能触发工作流，不能读写代码、PDF 或 Muse 凭据；核验本身仍用 GitHub OIDC。
+
 ## 先在私密配置中完成这一步
 
 Cloudflare Pages 项目 `dryz-xinzhi` 的 Production 环境设置：
