@@ -218,6 +218,7 @@ async function handleMuseUpload(request, env) {
     await musePut(env,verifying);
     await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
     await museDelete(env,job.queueKey);
+    if (job.state !== 'verifying') await museRequestReview(env);
     return json({ok:true,job:musePublicJob(verifying),verified:false,archive:libraryArchiveStatus()});
   } catch (error) { return museError(error); }
 }
