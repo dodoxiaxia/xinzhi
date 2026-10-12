@@ -175,7 +175,7 @@ async function handleMuseReceipt(request, env) {
       if (input.state === 'uploaded' && job.sha256 === input.sha256 && job.bytes === input.bytes && job.driveFileId === input.driveFileId) return json({ok:true,job:musePublicJob(job),needsUpload:false});
       libraryFail('muse_stale',409);
     }
-    if (job.state === 'login_required' && input.state === 'running' && Date.now() - job.createdAt < 86400000) job = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseUntil:Date.now() + MUSE_LEASE_MS};
+    if (job.state === 'login_required' && input.state === 'running' && Date.now() - (job.acquisitionStartedAt || job.createdAt) < 86400000) job = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseUntil:Date.now() + MUSE_LEASE_MS};
     if (!['running','uploading'].includes(job.state) || job.leaseUntil < Date.now()) libraryFail('muse_stale',409);
     // Progress renews only this lease, up to two hours after first creation.
     const leaseUntil = Math.min(Date.now() + MUSE_LEASE_MS,(job.acquisitionStartedAt || job.createdAt) + 7200000);
