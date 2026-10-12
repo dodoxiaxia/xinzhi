@@ -14,7 +14,7 @@
 
 精选包含一个 `atrial fibrillation` 非期刊主题标签，因此实际期刊文章为 24 条，已核实 18/24。四个缺 JIF 的精选期刊为 JAHA（2 条）、Heart Rhythm（2 条）、Journal of Cardiovascular Electrophysiology（1 条）、Heart（1 条）。JCR 官方完整分区目前覆盖文献库 2 条；精选和雷达尚无完整官方分区。覆盖统计直接读上述 state 的 public.js；priority 列表只含期刊/身份不清标签，不能据其小计声称是全部页面条数。
 
-逐刊源 URL、值、年份、ISSN 和已公开的全部学科见 [覆盖 CSV](journal-public-coverage-batch1-20261007.csv)，页面出现次数、剩余刊名见 [统计 JSON](journal-public-coverage-batch1-20261007.json)。可复验的最小公开事实集见 [48 刊 observation JSON](journal-public-observations-batch1-20261007.json)，核验时间 `2026-10-07T14:28:04Z`。这是人工读取官方公开页后的有限事实记录；不是受限 JCR 数据库抓取或整表复制。
+逐刊源 URL、值、年份、ISSN 和已公开的全部学科见 [覆盖 CSV](journal-public-coverage-batch1-20261007.csv)，页面出现次数、剩余刊名见 [统计 JSON](journal-public-coverage-batch1-20261007.json)。可复验的最小公开事实集见 [48 刊 observation JSON](../journal-public-observations-batch1-20261007.json)，核验时间 `2026-10-07T14:28:04Z`。这是人工读取官方公开页后的有限事实记录；不是受限 JCR 数据库抓取或整表复制。
 
 ## 可靠来源与展示边界
 
