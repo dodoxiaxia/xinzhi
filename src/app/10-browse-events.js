@@ -31,7 +31,7 @@
     const period = $('#rangeExplanation');
     if (period) period.textContent = state.range === 'all' ? '日期与研究类型均以来源信息为准；未知项明确保留。' : `发表时间：北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
   }
-  $('#modeNote')?.addEventListener('click',e=>{if(e.target.closest('a,button'))return;e.currentTarget.classList.toggle('note-open');});
+  $('#modeNote')?.addEventListener('click',e=>{const t=e.target.closest('.mode-note-toggle');if(!t)return;const open=e.currentTarget.classList.toggle('note-open');t.setAttribute('aria-expanded',String(open));});
   $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
   $('#favoritesOnlyBtn')?.addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;renderSidebarFilters();renderStream();});

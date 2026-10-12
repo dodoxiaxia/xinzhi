@@ -146,7 +146,6 @@
         <div class="mode-note" id="modeNote" role="note"></div>
         <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
         <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
-        <div class="ai-digest" id="aiDigest" hidden></div>
         <div class="stream-toolbar">
           <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">更多筛选</button>
           <div class="active-filters-bar" id="activeFiltersBar" tabindex="-1" aria-label="当前筛选与结果数量">
@@ -154,12 +153,13 @@
           </div>
 
           <div class="stream-controls">
+            <div class="ai-digest" id="aiDigest" hidden></div>
             <label for="sortSelector" class="sr-only">排序方式</label>
             <select id="sortSelector" class="sort-select">
-              <option value="date-desc">按时间：最新在前</option>
-              <option value="date-asc">按时间：最早在前</option>
-              <option value="journal-date">按期刊分组（各刊最新在前）</option>
-              <option value="smart">推荐（导读/摘要优先）</option>
+              <option value="date-desc">最新在前</option>
+              <option value="date-asc">最早在前</option>
+              <option value="journal-date">按期刊分组</option>
+              <option value="smart">导读与摘要优先</option>
             </select>
 
             <div class="view-toggle">

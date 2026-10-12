@@ -825,8 +825,9 @@
   function briefHtml(mode, list) {
     const items = briefItems(list); if (items.length < 2) return '';
     const k = briefKey(mode, items), b = BRIEFS[k];
-    const label = mode === 'huddle' ? 'AI 生成前 ' + items.length + ' 篇讨论提纲' : 'AI 综述当前结果前 ' + items.length + ' 篇';
-    if (!b || b.state === 'error') return `<div class="brief-box">${b ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm btn-primary" data-action="ai-brief" data-mode="${mode}">${label}</button><span class="text-muted brief-help">按当前顺序选最多 8 篇有标识的不同文献；基于可取得的公开摘要，结果全站共享。耗时随摘要与服务响应而变化。</span></div>`;
+    const label = mode === 'huddle' ? 'AI 生成前 ' + items.length + ' 篇讨论提纲' : 'AI 综述前 ' + items.length + ' 篇';
+    const help = '按当前顺序选最多 8 篇有标识的不同文献；基于可取得的公开摘要，结果全站共享。耗时随摘要与服务响应而变化。';
+    if (!b || b.state === 'error') return `<div class="brief-box">${b ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm ${mode === 'digest' && !b ? 'brief-start' : 'btn-primary'}" data-action="ai-brief" data-mode="${mode}" title="${help}">${mode === 'digest' && !b ? '<span aria-hidden="true">✦</span> ' : ''}${label}</button><span class="text-muted brief-help">${help}</span></div>`;
     if (b.state === 'loading') return `<div class="brief-box" aria-busy="true"><p class="ql-meta" role="status">正在读取摘要并生成，请稍候…${b.slow ? '用时较长，无需重复点击；不会自动重新提交。' : ''}</p></div>`;
     if (b.state === 'waiting') return `<div class="brief-box"><p class="ql-meta" role="status">${b.timedOut ? '本次等待已到时限，完成状态尚未确认' : '网络中断，完成状态尚未确认'}；后台可能仍在处理，未重新提交。</p>${b.msg ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm" data-action="brief-check" data-mode="${mode}"${b.checking ? ' disabled' : ''}>${b.checking ? '读取中…' : '读取已有综述'}</button></div>`;
     const r = b.brief;
@@ -845,6 +846,13 @@
     const l = state._digestList || [];
     const top = briefItems(l);
     if (exactDoi(state.search) || AI_AVAIL !== true || state.mode === 'weekly' || top.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+    // Before the first request the button sits in the toolbar; progress and the
+    // result move below it so the sticky toolbar never grows.
+    const idle = !BRIEFS[briefKey('digest', briefItems(top))];
+    const home = idle ? $('.stream-controls') : $('.stream-toolbar');
+    if (home && idle && el.parentElement !== home) home.prepend(el);
+    if (home && !idle && el.previousElementSibling !== home) home.after(el);
+    el.classList.toggle('digest-idle', idle);
     el.hidden = false; el.innerHTML = briefHtml('digest', top);
   }
   // ---- Public-abstract study services: GET only reads cache; POST requires a click. ----
@@ -1202,8 +1210,8 @@
     return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
   }
   const MODE_NOTES = {
-    candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
-    library: '文献档案：按期刊与时间检索既有题录。输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
+    candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
+    library: '既往题录档案，按期刊与时间检索。<span class="mode-note-more">输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。</span><button type="button" class="mode-note-toggle" aria-expanded="false">使用说明</button>'
   };
 
   function renderModeNote() {
@@ -1757,14 +1765,12 @@
           <div class="action-buttons-group">
             <button class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="${esc(p.id)}">${p.hasDraft ? '阅读导读与摘要' : qlc ? '阅读 AI 速览' : '阅读摘要'}</button>
             ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}">微信群文案</button>` : ''}
-            <button class="btn-sm ${isHuddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">
-              ${isHuddled ? '已入精选 ✓' : '加入精选清单'}
-            </button>
+            <button type="button" class="btn-sm card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已入清单' : '精选清单'}</button>
           </div>
 
           <div class="card-source-actions">
             ${pdfDownloadLink(p)}
-            ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm">官网原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
+            ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="card-link" title="在期刊官网打开">官网原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
           </div>
         </div>
       </article>
@@ -2980,7 +2986,7 @@
     const period = $('#rangeExplanation');
     if (period) period.textContent = state.range === 'all' ? '日期与研究类型均以来源信息为准；未知项明确保留。' : `发表时间：北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
   }
-  $('#modeNote')?.addEventListener('click',e=>{if(e.target.closest('a,button'))return;e.currentTarget.classList.toggle('note-open');});
+  $('#modeNote')?.addEventListener('click',e=>{const t=e.target.closest('.mode-note-toggle');if(!t)return;const open=e.currentTarget.classList.toggle('note-open');t.setAttribute('aria-expanded',String(open));});
   $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
   $('#favoritesOnlyBtn')?.addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;renderSidebarFilters();renderStream();});

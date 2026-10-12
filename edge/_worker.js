@@ -1519,8 +1519,10 @@ async function musePut(env, job) {
   libraryCatalogCache.clear();
 }
 function museExpired(job) {
-  const age = Date.now() - job.createdAt;
-  return job.state === 'queued' ? age >= MUSE_QUEUE_MS : ['running','uploading'].includes(job.state) && (age >= 86400000 || job.leaseUntil <= Date.now());
+  // A queued request may wait six days; an acquisition's 24 hours start when Muse claims it.
+  const now = Date.now();
+  return job.state === 'queued' ? now - job.createdAt >= MUSE_QUEUE_MS
+    : ['running','uploading'].includes(job.state) && (now - (job.acquisitionStartedAt || job.createdAt) >= 86400000 || job.leaseUntil <= now);
 }
 function museRecoverable(job) {
   return job && (job.state === 'failed' || museExpired(job));
@@ -1599,6 +1601,26 @@ async function handleMuseRetry(request, env) {
   } catch (error) { return libraryError(request,error,doi,'/api/muse/retry'); }
   finally { if (release) await release(); }
 }
+// GitHub runs the hourly :23 schedule hours late, so a new candidate asks for a verification run
+// at once. Optional and best effort: without MUSE_REVIEW_DISPATCH_TOKEN (a fine-grained token with
+// only Actions write on this repository) the schedule still picks the candidate up.
+async function museRequestReview(env) {
+  const token = env.MUSE_REVIEW_DISPATCH_TOKEN;
+  if (typeof token !== 'string' || !/^[A-Za-z0-9_]{20,255}$/.test(token)) return false;
+  try {
+    // One run verifies every waiting candidate, so a burst of uploads needs one dispatch.
+    if (await env.QL_KV.get('library:muse-review-dispatch')) return false;
+    await env.QL_KV.put('library:muse-review-dispatch','1',{expirationTtl:120});
+  } catch { return false; }
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(),5000);
+  try {
+    const response = await fetch('https://api.github.com/repos/dodoxiaxia/xinzhi/actions/workflows/muse-review.yml/dispatches',{method:'POST',redirect:'manual',signal:controller.signal,
+      headers:{authorization:'Bearer ' + token,accept:'application/vnd.github+json','content-type':'application/json','user-agent':'XinZhiMuseReview/1.0','x-github-api-version':'2022-11-28'},
+      body:JSON.stringify({ref:'main'})});
+    return response.status === 204;
+  } catch { return false; }
+  finally { clearTimeout(timer); }
+}
 // Bytes that did not come through Muse (reader upload, open access) enter the same private candidate
 // area; the GitHub dual-parser verifier still has to confirm DOI, title and every page before download.
 async function museIntake(env, doi, bytes, source, previous) {
@@ -1615,6 +1637,7 @@ async function museIntake(env, doi, bytes, source, previous) {
   await musePut(env,job);
   await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
   if (previous) await museDelete(env,previous.queueKey);
+  await museRequestReview(env);
   return job;
 }
 // ==== edge/src/04-fulltext-upload.js · Open-access copy, reader/Muse uploads, /api/fulltext ====
@@ -1794,7 +1817,7 @@ async function handleMuseReceipt(request, env) {
       if (input.state === 'uploaded' && job.sha256 === input.sha256 && job.bytes === input.bytes && job.driveFileId === input.driveFileId) return json({ok:true,job:musePublicJob(job),needsUpload:false});
       libraryFail('muse_stale',409);
     }
-    if (job.state === 'login_required' && input.state === 'running' && Date.now() - job.createdAt < 86400000) job = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseUntil:Date.now() + MUSE_LEASE_MS};
+    if (job.state === 'login_required' && input.state === 'running' && Date.now() - (job.acquisitionStartedAt || job.createdAt) < 86400000) job = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseUntil:Date.now() + MUSE_LEASE_MS};
     if (!['running','uploading'].includes(job.state) || job.leaseUntil < Date.now()) libraryFail('muse_stale',409);
     // Progress renews only this lease, up to two hours after first creation.
     const leaseUntil = Math.min(Date.now() + MUSE_LEASE_MS,(job.acquisitionStartedAt || job.createdAt) + 7200000);
@@ -1837,6 +1860,7 @@ async function handleMuseUpload(request, env) {
     await musePut(env,verifying);
     await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
     await museDelete(env,job.queueKey);
+    if (job.state !== 'verifying') await museRequestReview(env);
     return json({ok:true,job:musePublicJob(verifying),verified:false,archive:libraryArchiveStatus()});
   } catch (error) { return museError(error); }
 }

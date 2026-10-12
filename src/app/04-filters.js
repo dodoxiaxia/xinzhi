@@ -139,8 +139,8 @@
     return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
   }
   const MODE_NOTES = {
-    candidates: '<b>默认显示近 14 天文献与 AI 动态，可切换到近 30 / 90 / 365 天。</b>近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。自动聚合条目未经逐篇核对；已核对导读与 AI 速览分别标记。',
-    library: '文献档案：按期刊与时间检索既有题录。输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。'
+    candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
+    library: '既往题录档案，按期刊与时间检索。<span class="mode-note-more">输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。</span><button type="button" class="mode-note-toggle" aria-expanded="false">使用说明</button>'
   };
 
   function renderModeNote() {
