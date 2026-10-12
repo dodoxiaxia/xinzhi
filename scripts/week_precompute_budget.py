@@ -9,7 +9,7 @@ in-memory counters are not a distributed or provider billing cap.
 import os
 
 MAX_CONFIGURED_OUTPUT_TOKENS = 5800
-DEFAULT_DAILY_CALLS = 80
+DEFAULT_DAILY_CALLS = 150
 HARD_DAILY_CALLS = 400
 
 

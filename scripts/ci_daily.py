@@ -15,9 +15,9 @@ WEEK_BOARD = ['scripts/week_precompute.py']
 DEEP_READING = ['scripts/daily_fulltext.py', '--run']
 DEEP_READING_RECOVER = ['scripts/daily_fulltext.py', '--recover']  # model-free; push runs publish repaired drafts
 WEEK_PRECOMPUTE = ['scripts/week_precompute.py', '--run', '--provider', 'configured']
-DEEP_READING_TIMEOUT = 2400  # up to 16 calls at 120s plus source fetches
-FAST_BUDGET_MINUTES, FULL_BUDGET_MINUTES = 40, 110  # daily.yml job timeout must exceed the full budget
-ARCHIVE_RESERVE = 3600
+DEEP_READING_TIMEOUT = 3000  # up to 24 calls plus source fetches
+FAST_BUDGET_MINUTES, FULL_BUDGET_MINUTES = 60, 150  # daily.yml job timeout must exceed the full budget
+ARCHIVE_RESERVE = 5400
 
 REQUIRED = [
     ['scripts/apply_public_library.py'],
@@ -32,7 +32,7 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
     (['scripts/translate_titles.py', '--run', '--limit', '60'], 900),
     # Owner decision 2026-10-12: provider quota has ample headroom, so the paid steps are sized by
     # runner time, not by a token budget. Both stop starting new calls near XINZHI_STEP_DEADLINE.
-    (['scripts/generate_quicklooks.py', '--call-model', '--limit', '40', '--lookup-limit', '80'], 2400),
+    (['scripts/generate_quicklooks.py', '--call-model', '--limit', '120', '--lookup-limit', '240'], 3600),
     # Daily ceiling: week_precompute_budget.MAX_ATTEMPTS (repository variable XINZHI_WEEK_MAX_CALLS).
     (WEEK_PRECOMPUTE, 3000),
     (['scripts/auto_picks.py'], 120),
@@ -43,9 +43,9 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
 FAST_TITLES = (['scripts/translate_titles.py', '--run', '--limit', '1'], 240)
 # Same opt-in: Chinese quicklooks for the newest picks (verbatim-quote and number checks unchanged),
 # new weekly-board papers, and a top-up of today's full-text readings if the full run fell short.
-FAST_QUICKLOOKS = (['scripts/generate_quicklooks.py', '--call-model', '--limit', '8', '--lookup-limit', '16'], 720)
+FAST_QUICKLOOKS = (['scripts/generate_quicklooks.py', '--call-model', '--limit', '30', '--lookup-limit', '60'], 1500)
 FAST_WEEK_PRECOMPUTE = (WEEK_PRECOMPUTE, 900)
-FAST_DEEP_READING = (DEEP_READING, 900)
+FAST_DEEP_READING = (DEEP_READING, 1500)
 
 def deep_reading_needs_bootstrap(root):
     path = root / 'data/deep-readings.json'

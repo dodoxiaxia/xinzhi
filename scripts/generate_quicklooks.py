@@ -42,7 +42,7 @@ CHECK_VERSION = 3  # 2: space-grouped thousands (13 238); 3: spelled-out counts 
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构',
           '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 RECENT_DAYS, MISS_DAYS = 45, 10
-MAX_MODEL_CALLS, MAX_LOOKUPS = 60, 120  # program ceilings; the CI step picks its own --limit
+MAX_MODEL_CALLS, MAX_LOOKUPS = 200, 400  # program ceilings; the CI step picks its own --limit
 SAFE_ERROR_CODES = {
     'invalid_doi', 'missing_source_identifier', 'source_response_shape',
     'source_doi_mismatch', 'source_pmid_mismatch', 'model_response_shape',
@@ -256,8 +256,9 @@ def eligible_papers(papers, have, miss, checked, today, rejected=None):
             continue
         if p.get('datePrecision') in {'month', 'year'} or p.get('dateConfidence') == '低':
             continue
-        # Daily and weekly picks lead the home page, so they get a quicklook whatever their lane.
-        if not key or not (lane_core(p) or p.get('id') in picked) or minor_item(p) or p.get('hasDraft') or identity_keys(p) & (checked | cached):
+        # Owner decision 2026-10-13: quota is ample, so every lane gets quicklooks; the core
+        # cardiovascular / AI-medicine lane is only ordered first (after picks).
+        if not key or minor_item(p) or p.get('hasDraft') or identity_keys(p) & (checked | cached):
             continue
         if (rejected or {}).get(key, {}).get('count', 0) >= MAX_REJECTIONS:
             continue
@@ -266,7 +267,7 @@ def eligible_papers(papers, have, miss, checked, today, rejected=None):
         if miss.get(key, {}).get('first', today.isoformat()) < miss_cutoff and not local_abstract(p):
             continue
         todo.append(p)
-    return sorted(todo, key=lambda p: (p.get('id') in picked, p.get('date', '')), reverse=True)  # 精选/周榜条目优先补速览
+    return sorted(todo, key=lambda p: (p.get('id') in picked, lane_core(p), p.get('date', '')), reverse=True)  # 精选/周榜优先，其次核心栏目
 
 
 MONTHS = {'january': 1, 'jan': 1, 'february': 2, 'feb': 2, 'march': 3, 'mar': 3, 'april': 4, 'apr': 4,

@@ -2712,7 +2712,7 @@
       if (!day || day.day !== p.publishedOn) days.push(day = { day: p.publishedOn, items: [] });
       day.items.push(p);
     });
-    el.innerHTML = '<p class="deep-reading-label"><span class="content-label">AI 全文精读 · 未经人工审核</span></p><p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 ' + (Number.isInteger(status.target) && status.target > 0 ? status.target : 8) + ' 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
+    el.innerHTML = '<p class="deep-reading-label"><span class="content-label">AI 全文精读 · 未经人工审核</span></p><p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 ' + (Number.isInteger(status.target) && status.target > 0 ? status.target : 12) + ' 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
       (showReason ? '<p class="deep-reading-shortfall">' + esc(reason) + '，当前完成 ' + groups.todayCount + ' 篇。</p>' : '') +
       (notStarted ? '<p class="deep-reading-shortfall">今天的批次尚未生成（GitHub 定时任务常延迟数小时）；下方为最近一次批次。</p>' : '') +
       (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4><div class="deep-reading-list">' + groups.latest.map(dailyReadingItem).join('') + '</div>' : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +

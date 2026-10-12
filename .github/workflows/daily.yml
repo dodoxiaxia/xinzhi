@@ -89,8 +89,8 @@ jobs:
     needs: gate
     if: github.ref == 'refs/heads/main' && needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
-    # Covers ci_daily's 110-minute full budget plus tests, deploy and state save.
-    timeout-minutes: 150
+    # Covers ci_daily's 150-minute full budget plus tests, deploy and state save.
+    timeout-minutes: 200
     env:
       XINZHI_LLM_ENDPOINT: ${{ vars.XINZHI_LLM_ENDPOINT }}
       XINZHI_LLM_MODEL: ${{ vars.XINZHI_LLM_MODEL }}
