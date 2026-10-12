@@ -6,11 +6,11 @@ const code=src.slice(src.indexOf('  // Weekly board dates are publication days')
 assert(code.includes('function weeklyPublicationDate') && code.includes('function renderWeeklyAuto'));
 const now=Date.parse('2026-10-07T02:00:00Z');
 class FixedDate extends Date { static now(){return now;} }
-let node={innerHTML:''};
+let node={innerHTML:'',querySelector:()=>null};
 const ctx=vm.createContext({Date:FixedDate,Intl,$:()=>node,FEEDS:{items:[]},state:{huddle:[],search:''},queryMatches:(text,q)=>text.includes(q),
  esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
  contentDate:value=>value,quicklookOf:()=>null,getPublisherClass:()=>'',getDesignClass:()=>'',hasAbstract:()=>true,
- journalMetricBadge:()=>'',preGeneratedOf:()=>null,validTranslation:tr=>!!tr?.abstract_zh,LIVE_TR:{},trKeyOf:()=>''});
+ journalMetricBadge:()=>'',dailyReadingList:()=>[],preGeneratedOf:()=>null,validTranslation:tr=>!!tr?.abstract_zh,LIVE_TR:{},trKeyOf:()=>''});
 const designStart=src.indexOf('  // Study design badge class');
 const designEnd=src.indexOf('  //',designStart+5);
 vm.runInContext(src.slice(designStart,designEnd),ctx);
@@ -80,4 +80,16 @@ eq(ctx.FEEDS.items.length,2,'search never overwrites the selected source board')
 ctx.state.search='no-existing-paper';html=render([paper('2026-10-07')]);
 eq(html.includes('当前榜内没有匹配文献'),true,'honest query empty state');
 eq(html.includes('清除关键词'),true,'query can be cleared from the visible special view');
+ctx.state.search='';
+const mixed=[paper('2026-10-07',{weeklyPick:1}),paper('2026-10-06',{weeklyPick:2,weeklyCategory:'aimed',doi:'10.1/X'})];
+html=render(mixed);
+eq(html.includes('data-weekly-cat="aimed" aria-pressed="false"'),true,'category bar offers each category');
+eq(html.includes('id="weekly-group-general"'),false,'empty categories are not listed under 全部');
+eq(html.includes('data-action="open-drawer" data-paper-id="2026-10-07">2026-10-07</button>'),true,'title opens the on-site reader');
+ctx.state.weeklyCat='aimed';html=render(mixed);
+eq([html.includes('id="weekly-group-aimed"'),html.includes('id="weekly-group-cardio"')],[true,false],'category filter shows only that category');
+ctx.state.weeklyCat='';ctx.state.viewMode='compact';ctx.dailyReadingList=()=>[{pmcid:'PMC9',doi:'10.1/x'}];html=render(mixed);
+eq(html.includes('<ol class="weekly-list">'),true,'list view renders one row per paper');
+eq(html.includes('data-action="open-deep-reading" data-reading-id="PMC9"'),true,'board links a paper to its full-text reading by DOI');
+ctx.state.viewMode='cards';ctx.dailyReadingList=()=>[];
 console.log(JSON.stringify({passed:true,checks,networkCalls:0,scope:'weekly helpers and renderer only'}));

@@ -194,14 +194,23 @@
       </section>
 
       <!-- Weekly Deep Read Section (Journal Club) -->
-      <section id="weeklySection" class="weekly-container" hidden>
-        <div class="next-candidates" id="weeklyAuto"></div>
-        <aside class="weekly-deep-read" aria-label="全文精读">
-        <h3 class="next-title">全文精读</h3>
-        <div id="dailyDeepRead" aria-label="每日全文精读" aria-live="polite"><p class="deep-reading-empty">正在读取精读内容…</p></div>
-        <h4 class="deep-reading-demo-label">历史体例示范</h4>
-        <div class="issue-list" id="issueList" aria-label="精读期次" hidden></div>
-        <details class="weekly-demo"><summary><span class="content-label">第 01 期 · 体例示范</span><strong>AI 指导的持续性房颤消融：获益与临床边界</strong><small>TAILORED-AF · Nature Medicine · 2025 年论文，非本周新文</small><span data-journal-metrics="Nature Medicine"></span><span class="weekly-read-link"><span class="weekly-read-open">展开精读 ↓</span><span class="weekly-read-close">收起精读 ↑</span></span></summary>
+      <section id="weeklySection" class="weekly-container" data-pane="board" hidden>
+        <div class="weekly-pane-switch" id="weeklyPaneSwitch" role="tablist" aria-label="近7天榜内容">
+          <button type="button" role="tab" id="weeklyPaneBoardTab" data-weekly-pane="board" aria-controls="weeklyBoardPane" aria-selected="true">榜单 <span id="weeklyPaneBoardCount"></span></button>
+          <button type="button" role="tab" id="weeklyPaneReadingTab" data-weekly-pane="reading" aria-controls="weeklyReadingPane" aria-selected="false">全文精读 <span id="weeklyPaneReadingCount"></span></button>
+        </div>
+        <div class="weekly-board-pane" id="weeklyBoardPane" role="tabpanel" aria-labelledby="weeklyPaneBoardTab">
+          <div class="next-candidates" id="weeklyAuto"></div>
+          <details class="weekly-next" id="weeklyNextWrap" hidden><summary>下期候选 <small>来自文献库，尚未评估质量</small></summary><div class="next-candidates" id="nextCandidates"></div></details>
+        </div>
+        <aside class="weekly-deep-read" id="weeklyReadingPane" role="tabpanel" aria-labelledby="weeklyPaneReadingTab" aria-label="全文精读">
+          <h3 class="next-title">全文精读</h3>
+          <div id="dailyDeepRead" aria-label="每日全文精读" aria-live="polite"><p class="deep-reading-empty">正在读取精读内容…</p></div>
+          <h4 class="deep-reading-demo-label">体例示范</h4>
+          <button type="button" class="deep-reading-item deep-reading-demo-item" data-action="open-deep-reading" data-reading-id="demo-tailored-af"><span class="deep-reading-item-title">AI 指导的持续性房颤消融：获益与临床边界</span><small>TAILORED-AF · Nature Medicine · 2025 年论文，非本周新文</small><span class="deep-reading-go">读精读 →</span></button>
+        </aside>
+      </section>
+      <template id="demoReadingTemplate">
         <div data-journal-metrics-details="Nature Medicine"></div>
         <div class="weekly-hero">
           <span class="design-pill design-rct">第 01 期 · 全文精读示范</span> <span class="tag-pill">论文发表于 2025-02 · 用作精读体例示范，非当周新文</span>
@@ -230,20 +239,19 @@
         </div>
 
         <div class="weekly-full-report" style="margin-top:24px; line-height:1.75;">
-          <nav class="weekly-toc" aria-label="精读目录"><a href="#wk1">背景</a><a href="#wk2">AI 环节</a><a href="#wk3">设计与人群</a><a href="#wk4">结果与安全性</a><a href="#wk5">局限</a></nav>
           <div class="editorial-box">
             <p><b>AI 辅助全文学习报告：</b>由 AI 通读 24 页主 PDF，并交叉核查关键图表与统计量；独立补充附件未获取。未经科室医生终审，仅用于科室文献研讨，不构成诊疗建议。</p>
           </div>
 
           <div class="drawer-section" style="margin-top:20px;">
-            <h3 id="wk1">一、 临床问题与背景：持续性房颤基质消融的探索瓶颈</h3>
+            <h3 id="wk1" data-toc="背景">一、 临床问题与背景：持续性房颤基质消融的探索瓶颈</h3>
             <p>肺静脉隔离（PVI）单独实施时，仅在约半数持续性房颤（persAF）患者中获得长期成功。过去十余年间，经验性解剖线性消融、左房后壁隔离（CAPLA 试验，JAMA 2023）、碎裂电位消融（STAR AF II 试验，NEJM 2015）以及 MRI 纤维化引导消融（DECAAF II 试验，JAMA 2022）等“PVI+”策略在多中心 RCT 中均未能证实额外获益。</p>
             <p class="text-muted">文中期刊的当前指标：<span class="static-journal-metric"><b>JAMA</b><span data-journal-metrics="JAMA"></span></span><span class="static-journal-metric"><b>NEJM</b><span data-journal-metrics="New England Journal of Medicine"></span></span></p>
             <p>这反映出当前心房基质消融的核心瓶颈：<b>缺乏客观、可重复的基质识别与量化标准</b>。基于心内电图（EGM）时空离散度（spatio-temporal dispersion）的手术策略此前在单中心研究中提示过潜在价值，但在人工视觉判读下，不同术者间的一致性较差。TAILORED-AF 试验（NCT04702451）旨在评估引入确定性 AI 辅助系统标测时空离散度并指导消融，是否优于单纯解剖 PVI 策略。</p>
           </div>
 
           <div class="drawer-section">
-            <h3 id="wk2">二、 AI 介入环节：双模型集成与术中闭环工作流</h3>
+            <h3 id="wk2" data-toc="AI 环节">二、 AI 介入环节：双模型集成与术中闭环工作流</h3>
             <p>本研究评估的系统为法国 Volta Medical 开发的 <b>Volta AF-Xplorer</b>（早期代号 VX1），为锁定版商用医疗软件：</p>
             <ul style="padding-left:20px; margin: 10px 0;">
               <li><b>算法架构：</b>集成二分类模型，结合了基于人工特征提取的 XGBoost 分类器与端到端卷积神经网络（CNN）。</li>
@@ -253,7 +261,7 @@
           </div>
 
           <div class="drawer-section">
-            <h3 id="wk3">三、 RCT 设计与分析集拆解：盲法、资质与受试者流转</h3>
+            <h3 id="wk3" data-toc="设计与人群">三、 RCT 设计与分析集拆解：盲法、资质与受试者流转</h3>
             <p>本研究在欧美 26 家高容量中心由 51 位术者完成。其试验设计与人群流转如下：</p>
             <ol style="padding-left:20px; margin: 10px 0;">
               <li><b>盲法设计与监管属性：</b>试验设计为受试者和终点评估者双盲；由于术者必须依据 AI 标测执行个体化消融，术者不设盲。试验由器械厂商 Volta Medical 资助。由于在美国使用该 AI 系统指导消融属于试验阶段，试验获得了美国 FDA 的试验用器械豁免（IDE）。</li>
@@ -266,7 +274,7 @@
           </div>
 
           <div class="drawer-section">
-            <h3 id="wk4">四、 主要结果与安全性：数据与统计呈现</h3>
+            <h3 id="wk4" data-toc="结果与安全性">四、 主要结果与安全性：数据与统计呈现</h3>
             <h4>1. 疗效终点结果</h4>
             <ul style="padding-left:20px; margin: 10px 0;">
               <li><b>主要终点（单次手术 12 个月无 AF）：</b>mITT 人群（n=357）中，单次消融后 12 个月无 &gt;30 秒记录房颤的 Kaplan–Meier 估计成功率，Tailored 组为 <b>88%</b>，Anatomical 组为 <b>70%</b>（HR 0.34, 95% CI 0.21–0.57, log-rank P &lt; 0.0001）。PP 人群中 HR 为 0.29（P &lt; 0.0001）。12 个月末停用 AADs 受试者中成功率为 86% vs 68%（HR 0.35, P &lt; 0.001）。</li>
@@ -283,7 +291,7 @@
           </div>
 
           <div class="drawer-section">
-            <h3 id="wk5">五、 局限与外推性考量（重点说不好）</h3>
+            <h3 id="wk5" data-toc="局限">五、 局限与外推性考量（重点说不好）</h3>
             <ol style="padding-left:20px; margin: 10px 0;">
               <li><b>终点维度的临床审视：</b>主要终点仅针对房颤，Tailored 组显示优势；但当纳入房速与房扑后，单次消融在 mITT 分析集中未见统计学显著差异（60% vs 60%, P = 0.16）。不能将“未见显著差异”等同于“证明等效”，客观反映出单次消融全心律失常未能检出优效。</li>
               <li><b>基质识别特异性与房速机制：</b>较广泛的消融（31% vs 17%）可能人为创造慢传导峡部，诱发大折返性房速，增加术后二次消融复杂度。</li>
@@ -293,7 +301,7 @@
           </div>
 
           <div class="drawer-section">
-            <h3>关键图表速查表</h3>
+            <h3 id="wk6" data-toc="图表速查">关键图表速查表</h3>
             <div style="overflow-x:auto; margin-top:10px;">
               <table class="weekly-table" style="width:100%; border-collapse:collapse; font-size:12.5px;">
                 <thead>
@@ -339,25 +347,15 @@
             </div>
           </div>
 
-          <div class="clinical-question-box" style="margin-top:24px;">
+          <div class="clinical-question-box" id="wk7" data-toc="讨论三问" style="margin-top:24px;">
             <b>文献讨论思考三问：</b>
             <p>1. 终点迁移：“无房颤”达标而“无任何房性心律失常”两组未见显著差异（60% vs 60%，不能据此认定等效），在指导患者术后抗凝停药与症状缓解上有何本质差别？</p>
             <p>2. 代价权衡：当总手术时长增加 86 分钟、射频放电翻倍时，是否会抵消消融团队的日间手术周转效率与液体负荷风险？</p>
             <p>3. 脉冲电场（PFA）时代外推：该系统基于射频能量开发，若结合局灶型 PFA 导管，其消融深度、透壁性与房速转化率是否会发生颠覆？</p>
           </div>
 
-          <div style="margin-top: 24px; display:flex; gap:12px; flex-wrap:wrap;">
-            <a class="btn-sm btn-primary" target="_blank" rel="noopener" href="https://doi.org/10.1038/s41591-025-03517-w">
-              前往 Nature Medicine 官方原文 ↗
-            </a>
-            <span data-journal-metrics="Nature Medicine"></span>
-            <button class="btn-sm" type="button" data-action="close-weekly">收起精读 ↑</button>
-          </div>
         </div>
-        </details>
-        <div class="next-candidates" id="nextCandidates"></div>
-        </aside>
-      </section>
+      </template>
 
       <!-- Sources Observability Section -->
       <section id="sourcesSection" hidden>
@@ -391,6 +389,26 @@
       <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerExternalLink">官网原文 ↗</a>
       <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开">汉堡登录入口 ↗</a>
       <a href="#" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>
+    </div>
+  </aside>
+
+  <!-- Full-text reading panel -->
+  <aside class="reader-drawer deep-reader" id="deepReader" aria-modal="true" aria-hidden="true" tabindex="-1" role="dialog" aria-labelledby="deepReaderTitle">
+    <div class="deep-reader-head">
+      <div class="deep-reader-heading">
+        <span class="content-label" id="deepReaderLabel"></span>
+        <h2 id="deepReaderTitle"></h2>
+        <p class="deep-reader-meta" id="deepReaderMeta"></p>
+      </div>
+      <button class="drawer-close-btn" id="deepReaderClose" type="button" title="关闭 (Esc)" aria-label="关闭精读">&times;</button>
+    </div>
+    <nav class="deep-reader-toc" id="deepReaderToc" aria-label="本篇目录"></nav>
+    <div class="drawer-body deep-reader-body" id="deepReaderBody"></div>
+    <div class="drawer-footer deep-reader-foot">
+      <button class="btn-sm" type="button" id="deepReaderPrev">← 上一篇</button>
+      <button class="btn-sm" type="button" id="deepReaderNext">下一篇 →</button>
+      <span class="deep-reader-pos" id="deepReaderPos"></span>
+      <span class="deep-reader-links" id="deepReaderLinks"></span>
     </div>
   </aside>
 

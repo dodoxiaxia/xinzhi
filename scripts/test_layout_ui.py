@@ -154,15 +154,20 @@ def main():
                             first, second = [cards.nth(i).bounding_box() for i in [0, 1]]
                             board, deep = page.locator('#weeklyAuto').bounding_box(), page.locator('.weekly-deep-read').bounding_box()
                             if width > 1000:
-                                check(abs(first['y'] - second['y']) < 2 and second['x'] > first['x'], label + ': two card columns')
+                                # view=compact now applies to the weekly board: one row per paper.
+                                check(abs(first['x'] - second['x']) < 2 and second['y'] > first['y'] and page.locator('.weekly-list').count() > 0, label + ': list view rows')
                                 check(deep['x'] >= board['x'] + board['width'] and board['width'] > deep['width'] * 2, label + ': narrow right deep read')
                                 check(board['width'] + deep['width'] > width * .9, label + ': weekly board uses available page width')
                             elif width <= 640:
-                                check(abs(first['x'] - second['x']) < 2 and second['y'] > first['y'], label + ': stacked mobile cards')
+                                check(abs(first['x'] - second['x']) < 2 and second['y'] > first['y'], label + ': stacked mobile rows')
                             check(page.locator('#weeklySection').get_by_text('尚未发布', exact=False).count() == 0, label + ': no unpublished placeholder')
                             if width == 320:
-                                page.locator('.weekly-demo > summary').click()
-                                overflow(page, label + '/expanded deep read')
+                                page.locator('[data-weekly-pane="reading"]').click()
+                                page.locator('.deep-reading-demo-item').click()
+                                expect(page.locator('#deepReaderClose')).to_be_in_viewport()
+                                overflow(page, label + '/open reading panel')
+                                page.locator('#deepReaderClose').click()
+                                page.locator('[data-weekly-pane="board"]').click()
                         else:
                             data = page.evaluate('window.SOURCE_HEALTH')
                             count = len(data['sources'])
