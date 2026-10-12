@@ -3,7 +3,7 @@ const fs = require('fs');
 const {identityToken} = require('./fulltext_queue_runner.cjs');
 const ENDPOINT = 'https://learn.dryz.info/api/fulltext-import';
 const SAFE_ERRORS = new Set(['job_auth','job_auth_unavailable','library_not_configured','library_disabled','library_storage','library_sync_pending','library_integrity','library_identity','library_timeout','library_upstream','library_paused',
-  'pdf_integrity','pdf_index_invalid','pdf_timeout','pdf_upstream','pdf_not_found','pdf_too_large','import_bad_request','import_owner_conflict','import_server','muse_bad_request','muse_stale','muse_sync_pending','muse_server']);
+  'pdf_integrity','pdf_index_invalid','pdf_timeout','pdf_upstream','pdf_not_found','pdf_too_large','import_bad_request','import_owner_conflict','import_server','muse_bad_request','muse_stale','muse_sync_pending','muse_server','drive_bad_request','drive_stale','drive_server']);
 const SAFE_STAGES = new Set(['configuration','metadata','index','contents_metadata','contents_raw','lfs_batch','lfs_object','body_timeout']);
 const SAFE_REASONS = new Set(['configuration','identity','integrity','size_limit','http_error','object_error','no_object','no_download','action_header','unsafe_host','expired_action','redirect','network','parse','no_body','header_timeout','body_timeout','total_timeout','unavailable']);
 function serviceError(message, response, body, token, audience, workflow) {

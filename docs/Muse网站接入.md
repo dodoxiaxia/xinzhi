@@ -22,6 +22,21 @@
 - **读者自传 PDF**：`/api/muse/reader-upload?doi=…`（GET 为表单，POST 为 multipart：`pdf` 文件 + `passphrase` 全文口令）。读者在自己的浏览器里打开原文（开放获取或汉堡登录）下载后上传，原件进入同一隔离区与核验流程；不记录 Drive，`archive.sides.drive` 保持 `pending`。Muse 正在领取或已有原件待核验时拒绝（409 `muse_busy`）。排队中、已停止、待核验未通过或需重新登录的任务页都显示上传入口。
 - **排队期延长到 6 天**：未被领取的请求在任务记录 7 天有效期内一直可被 Muse 领取，不再一天后作废。
 
+## 2026-10-12 全部全文同步到 Drive
+
+网站 `QL_KV` 里每一份已核验全文（Muse、读者自传、开放获取、旧有 DOI 补录）都由 GitHub 工作流 `drive-archive.yml` 复制到私有「Muse 文献收件箱」。网站仍不持有任何 Drive 凭据：
+
+- 新原件写入 `QL_KV` 时登记 `library:drive-pending:<sha256>`；Muse 回传过 `driveFileId` 的原件核验通过时直接记为已归档，不重复上传。
+- 工作流每小时第 41 分钟运行：凭短时 OIDC 调 `/api/drive-archive` 领取、取原件并核对 sha256，用 Drive 凭据上传，核对 Drive 返回的 md5/sha256 与大小，确认文件没有 anyone/domain 共享，最后回传文件 ID（记在 `library:drive:<sha256>`）。崩溃重跑按 `appProperties.xinzhiSha256` 复用已上传文件。
+- 文件名为「题名 [DOI 中 / 换成 _].pdf」。
+
+一次性配置（未配置时工作流只给出警告，不报错）：
+
+1. Google Cloud 项目启用 Drive API；OAuth 同意屏幕选「内部」（dryz.info Workspace，刷新令牌不会 7 天过期）；创建「桌面应用」OAuth 客户端。
+2. 以收件箱所有者 dryz@dryz.info 登录，授权范围 `https://www.googleapis.com/auth/drive`（收件箱不是该应用创建的，`drive.file` 写不进去），取得刷新令牌。
+3. GitHub 仓库 Settings → Secrets：`GDRIVE_CLIENT_ID`、`GDRIVE_CLIENT_SECRET`、`GDRIVE_REFRESH_TOKEN`；Variables：`GDRIVE_FOLDER_ID` = `128WvPnTcp3jOqlOjtsrgKjv3ihVGEOQO`。
+4. 合并部署后，在 Actions 手动运行 `drive-archive` 并勾选 backfill，一次性把已有全文补齐。
+
 ## 先在私密配置中完成这一步
 
 Cloudflare Pages 项目 `dryz-xinzhi` 的 Production 环境设置：
