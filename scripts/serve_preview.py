@@ -4,7 +4,7 @@ from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote,urlsplit
 ROOT=Path(__file__).resolve().parents[1]
-ALLOWED={'index.html','style.css','app.js','icon.svg','data/library.js','data/feeds.js','data/candidates.js','data/source-health.js','data/curated.js','data/quicklooks.js','public/index.html','public/style.css','public/public.js','public/icon.svg'}
+ALLOWED={'index.html','style.css','app.js','icon.png','demo-reading.html','data/library.js','data/feeds.js','data/candidates.js','data/source-health.js','data/curated.js','data/quicklooks.js','public/index.html','public/style.css','public/public.js','public/icon.png','public/demo-reading.html'}
 class Preview(SimpleHTTPRequestHandler):
  def __init__(self,*args,**kwargs):super().__init__(*args,directory=str(ROOT),**kwargs)
  def do_GET(self):

@@ -117,9 +117,9 @@ def main():
                     check('q' not in parse_qs(urlsplit(page.url).query), label + ': reset removes query from URL')
                     check(count(page) > 0, label + ': reset restores results')
                     if mode != 'curated':
-                        if width < 500:
-                            page.locator('#filterToggleBtn').click()
                         tier = page.locator('[data-filter-tier]:not([data-filter-tier=""])').first
+                        if not tier.is_visible():  # 更多筛选 starts collapsed on every width
+                            page.locator('#filterToggleBtn').click()
                         tier_name = tier.get_attribute('data-filter-tier')
                         tier.click()
                         if width < 500:
@@ -238,7 +238,11 @@ def main():
                 check(count(page) == total - hidden and hidden > 0, f'{width}: count difference is minor filter')
                 expect(page.locator('.results-meta')).to_contain_text('默认隐藏更正 / 来信')
                 expect(page.locator('#libCountBadge')).to_have_attribute('title', '已收录题录总数，含更正 / 来信；列表按当前筛选计数')
+                if not page.locator('[data-minor]').is_visible():  # lives in 更多筛选
+                    page.locator('#filterToggleBtn').click()
                 page.locator('[data-minor]').click()
+                if page.locator('#sheetClose').is_visible():
+                    page.locator('#sheetClose').click()
                 check(count(page) == total, f'{width}: including minor equals total badge')
                 check('默认隐藏' not in page.locator('.results-meta').inner_text(), f'{width}: explanation follows toggle')
                 page.locator('#openHuddleBtn').click()

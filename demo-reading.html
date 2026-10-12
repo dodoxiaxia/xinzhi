@@ -1,0 +1,145 @@
+<!-- 体例示范精读（TAILORED-AF）。阅读面板打开时按需加载，插入 #deepReaderBody；只含正文片段。 -->
+<div data-journal-metrics-details="Nature Medicine"></div>
+<div class="weekly-hero">
+  <span class="design-pill design-rct">第 01 期 · 全文精读示范</span> <span class="tag-pill">论文发表于 2025-02 · 用作精读体例示范，非当周新文</span>
+  <h2>AI 指导的持续性房颤消融：获益与临床边界</h2>
+  <p class="text-secondary">TAILORED-AF 多中心随机对照试验 · <i>Nature Medicine</i> (2025-02)<span data-journal-metrics="Nature Medicine"></span></p>
+  <a href="https://doi.org/10.1038/s41591-025-03517-w" target="_blank" rel="noopener">官方期刊原文链接 ↗</a>
+</div>
+
+<div class="evidence-grid">
+  <div class="evidence-stat">
+    <strong>370 例</strong>
+    <span>难治性持续性房颤患者</span>
+  </div>
+  <div class="evidence-stat">
+    <strong>12 个月</strong>
+    <span>主要疗效终点随访</span>
+  </div>
+  <div class="evidence-stat">
+    <strong>88% vs 70%</strong>
+    <span>1年无房颤率（精读正文见统计范围）</span>
+  </div>
+  <div class="evidence-stat">
+    <strong>约 2.0 倍</strong>
+    <span>个体化组手术与消融耗时</span>
+  </div>
+</div>
+
+<div class="weekly-full-report demo-report">
+  <div class="editorial-box">
+    <p><b>AI 辅助全文学习报告：</b>由 AI 通读 24 页主 PDF，并交叉核查关键图表与统计量；独立补充附件未获取。未经科室医生终审，仅用于科室文献研讨，不构成诊疗建议。</p>
+  </div>
+
+  <div class="drawer-section demo-first-section">
+    <h3 id="wk1" data-toc="背景">一、 临床问题与背景：持续性房颤基质消融的探索瓶颈</h3>
+    <p>肺静脉隔离（PVI）单独实施时，仅在约半数持续性房颤（persAF）患者中获得长期成功。过去十余年间，经验性解剖线性消融、左房后壁隔离（CAPLA 试验，JAMA 2023）、碎裂电位消融（STAR AF II 试验，NEJM 2015）以及 MRI 纤维化引导消融（DECAAF II 试验，JAMA 2022）等“PVI+”策略在多中心 RCT 中均未能证实额外获益。</p>
+    <p class="text-muted">文中期刊的当前指标：<span class="static-journal-metric"><b>JAMA</b><span data-journal-metrics="JAMA"></span></span><span class="static-journal-metric"><b>NEJM</b><span data-journal-metrics="New England Journal of Medicine"></span></span></p>
+    <p>这反映出当前心房基质消融的核心瓶颈：<b>缺乏客观、可重复的基质识别与量化标准</b>。基于心内电图（EGM）时空离散度（spatio-temporal dispersion）的手术策略此前在单中心研究中提示过潜在价值，但在人工视觉判读下，不同术者间的一致性较差。TAILORED-AF 试验（NCT04702451）旨在评估引入确定性 AI 辅助系统标测时空离散度并指导消融，是否优于单纯解剖 PVI 策略。</p>
+  </div>
+
+  <div class="drawer-section">
+    <h3 id="wk2" data-toc="AI 环节">二、 AI 介入环节：双模型集成与术中闭环工作流</h3>
+    <p>本研究评估的系统为法国 Volta Medical 开发的 <b>Volta AF-Xplorer</b>（早期代号 VX1），为锁定版商用医疗软件：</p>
+    <ul class="demo-list">
+      <li><b>算法架构：</b>集成二分类模型，结合了基于人工特征提取的 XGBoost 分类器与端到端卷积神经网络（CNN）。</li>
+      <li><b>训练与标定：</b>基于 275,020 条多极心内电图离线训练；独立测试集（113,920 条 EGM）ROC-AUC 为 0.94；在 5 位国际专家标注的 14,490 条验证集中，模型预测概率与专家共识程度正相关（0 人认可时中位概率 0.02，5 人一致时升至 0.83）。该算法模型于 2020 年正式冻结。</li>
+      <li><b>术中指导：</b>系统推理耗时 &lt;100 ms，实时在 Carto3、EnSite 或 Rhythmia 等主流三维系统上呈现离散区。工作流规定：在房颤律下先行双房离散区标测并消融，消融灶连接至瓣环或肺静脉等中性结构；消融直至房颤终止或离散区完全清除；若转为房速（AT）则进一步标测并根治；最后补齐标准的肺静脉前庭隔离（PVI）。</li>
+    </ul>
+  </div>
+
+  <div class="drawer-section">
+    <h3 id="wk3" data-toc="设计与人群">三、 RCT 设计与分析集拆解：盲法、资质与受试者流转</h3>
+    <p>本研究在欧美 26 家高容量中心由 51 位术者完成。其试验设计与人群流转如下：</p>
+    <ol class="demo-list">
+      <li><b>盲法设计与监管属性：</b>试验设计为受试者和终点评估者双盲；由于术者必须依据 AI 标测执行个体化消融，术者不设盲。试验由器械厂商 Volta Medical 资助。由于在美国使用该 AI 系统指导消融属于试验阶段，试验获得了美国 FDA 的试验用器械豁免（IDE）。</li>
+      <li><b>筛选与入组：</b>筛选 391 例，14 例筛选失败，入组 377 例。</li>
+      <li><b>随机化与安全性分析集：</b>3 例手术取消，374 例按 1:1 分层随机分配（Tailored 组 188 例 vs Anatomical 组 186 例）。消融前 4 例撤回知情，<b>实际接受首次消融的手术安全性分析集为 370 例（187 例 vs 183 例）</b>。</li>
+      <li><b>改良意向性治疗集（mITT，主疗效集）：</b>370 例消融患者中，术后 3 个月空白期内退出或无随访数据者共计 13 例。<b>因此 mITT 分析集为 357 例（Tailored 组 180 例 vs 对照组 177 例；即 370 - 13 = 357）</b>。</li>
+      <li><b>符合方案集（PP）：</b>在 mITT 基础上排除 88 例方案违背，<b>PP 人群为 269 例（Tailored 组 137 例 vs 对照组 132 例）</b>。</li>
+    </ol>
+    <p>随访采用 3、6、12 个月 24 小时动态心电图（依从率 91.0%）结合便携式 6 导联 Kardia 仪每周打卡（依从率 83.6%），独立盲态核心实验室判读。</p>
+  </div>
+
+  <div class="drawer-section">
+    <h3 id="wk4" data-toc="结果与安全性">四、 主要结果与安全性：数据与统计呈现</h3>
+    <h4>1. 疗效终点结果</h4>
+    <ul class="demo-list">
+      <li><b>主要终点（单次手术 12 个月无 AF）：</b>mITT 人群（n=357）中，单次消融后 12 个月无 &gt;30 秒记录房颤的 Kaplan–Meier 估计成功率，Tailored 组为 <b>88%</b>，Anatomical 组为 <b>70%</b>（HR 0.34, 95% CI 0.21–0.57, log-rank P &lt; 0.0001）。PP 人群中 HR 为 0.29（P &lt; 0.0001）。12 个月末停用 AADs 受试者中成功率为 86% vs 68%（HR 0.35, P &lt; 0.001）。</li>
+      <li><b>病程亚组：</b>病程 ≥6 个月亚组（mITT n=196）估计成功率为 88% vs 65%（差值 23%, HR 0.29, P = 5.9×10<sup>-5</sup>）。</li>
+      <li><b>次要终点（单次手术无任何房性心律失常）：</b>终点纳入房速与房扑后，<b>mITT 人群两组估计率均为 60% vs 60%（HR 0.94, 95% CI 0.68–1.31, log-rank P = 0.16），组间未见统计学显著差异</b>。</li>
+      <li><b>多次手术后终点：</b>经历 1–2 次消融后，mITT 人群全心律失常自由率为 76% vs 71%（HR 0.77, 95% CI 0.51–1.16, log-rank P = 0.07，未达统计学显著）。</li>
+    </ul>
+
+    <h4 class="demo-subhead">2. 手术特征与心律失常演变</h4>
+    <p>Tailored 组总手术时间 178 ± 60 min vs 92 ± 36 min（P &lt; 2.2×10<sup>-16</sup>），总射频放电时间 42 ± 17 min vs 20 ± 11 min（P &lt; 2.2×10<sup>-16</sup>），左房消融面积占比 31 ± 14% vs 17 ± 8%（P &lt; 2.2×10<sup>-16</sup>）。术中急性房颤终止率 Tailored 组显著高于对照组（66% vs 15%）；终止的 122 例中，78% 转为规整性房速（AT）。</p>
+
+    <h4 class="demo-subhead">3. 安全性与并发症明细</h4>
+    <p>严重并发症受试者两组各为 5 例（Tailored 组 5/187 [2.7%] vs 对照组 5/183 [2.7%], P &gt; 0.99）。主要复合安全性终点发生率为 8/187 例（4.3%）vs 5/183 例（2.7%），P &gt; 0.05。试验组记录到 2 例死亡（经评定与消融无关）。轻度手术并发症 Tailored 组记录到 15 例（8.0%），对照组为 6 例（3.3%），其中心包积液与体液超负荷例数在试验组较高。</p>
+  </div>
+
+  <div class="drawer-section">
+    <h3 id="wk5" data-toc="局限">五、 局限与外推性考量（重点说不好）</h3>
+    <ol class="demo-list">
+      <li><b>终点维度的临床审视：</b>主要终点仅针对房颤，Tailored 组显示优势；但当纳入房速与房扑后，单次消融在 mITT 分析集中未见统计学显著差异（60% vs 60%, P = 0.16）。不能将“未见显著差异”等同于“证明等效”，客观反映出单次消融全心律失常未能检出优效。</li>
+      <li><b>基质识别特异性与房速机制：</b>较广泛的消融（31% vs 17%）可能人为创造慢传导峡部，诱发大折返性房速，增加术后二次消融复杂度。</li>
+      <li><b>算法冻结与闭源属性：</b>系统于 2020 年冻结代码，属于专有商用医疗器械，代码未公开，外部无法审计算法内部特征权重及不同硬件平台间的校准细节。</li>
+      <li><b>中心外推性：</b>试验由 51 位高容量中心顶级专家实施，推广至中低容量中心时，其手术耗时翻倍带来的疲劳度与并发症风险需审慎评估。</li>
+    </ol>
+  </div>
+
+  <div class="drawer-section">
+    <h3 id="wk6" data-toc="图表速查">关键图表速查表</h3>
+    <div class="demo-table-scroll">
+      <table class="weekly-table demo-table">
+        <thead>
+          <tr>
+            <th>图表编号</th>
+            <th>核心内容</th>
+            <th>客观数据与关键说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Figure 1</b></td>
+            <td>受试者流转 CONSORT 图</td>
+            <td>筛选 391 → 入组 377 → 随机 374 → 实际消融安全集 370 → mITT 357 → PP 269。</td>
+          </tr>
+          <tr>
+            <td><b>Figure 2</b></td>
+            <td>主要终点（无 AF）K-M 曲线</td>
+            <td>单次手术无 AF：mITT 为 88% vs 70%（HR 0.34, P &lt; 0.0001）；仅指房颤。</td>
+          </tr>
+          <tr>
+            <td><b>Figure 3</b></td>
+            <td>次要终点（全心律失常）K-M 曲线</td>
+            <td>第 5 页图 3 的 a–d 均为 PP 人群；全体 PP 分析为 Tailored 137 例、Anatomical 132 例，c–d 为其中病程亚组。</td>
+          </tr>
+          <tr>
+            <td><b>第 4 页正文</b></td>
+            <td>次要终点 · mITT 分析（非图 3 数据）</td>
+            <td>单次消融 mITT 为 60% vs 60%（HR 0.94, P = 0.16，未见显著差异）；来源为第 4 页“Secondary efficacy endpoints”正文。</td>
+          </tr>
+          <tr>
+            <td><b>Table 2</b></td>
+            <td>术中程序特征比较</td>
+            <td>Tailored 组手术时长（178 vs 92 min）、射频时间（42 vs 20 min）、左房消融面积（31% vs 17%）显著增加。</td>
+          </tr>
+          <tr>
+            <td><b>Table 3</b></td>
+            <td>安全性终点与并发症明细</td>
+            <td>严重并发症受试者两组各 5 例（受试者人数比较 P &gt; 0.99）；主要复合终点发生率为 8/187（4%）vs 5/183（3%）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="clinical-question-box demo-questions" id="wk7" data-toc="讨论三问">
+    <b>文献讨论思考三问：</b>
+    <p>1. 终点迁移：“无房颤”达标而“无任何房性心律失常”两组未见显著差异（60% vs 60%，不能据此认定等效），在指导患者术后抗凝停药与症状缓解上有何本质差别？</p>
+    <p>2. 代价权衡：当总手术时长增加 86 分钟、射频放电翻倍时，是否会抵消消融团队的日间手术周转效率与液体负荷风险？</p>
+    <p>3. 脉冲电场（PFA）时代外推：该系统基于射频能量开发，若结合局灶型 PFA 导管，其消融深度、透壁性与房速转化率是否会发生颠覆？</p>
+  </div>
+
+</div>

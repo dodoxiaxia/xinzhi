@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'feed.xml', 'icon.svg', '_headers', '_worker.js'}
+PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
     'scripts/ci_daily.py', 'scripts/daily_fulltext.py',
@@ -31,7 +31,7 @@ INPUTS = (
     'scripts/public_library_quality.py',
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
-    'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.svg', 'edge/_worker.js',
+    'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.png', 'demo-reading.html', 'edge/_worker.js',
     'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/publication_status.py', 'config/publication-status.json',

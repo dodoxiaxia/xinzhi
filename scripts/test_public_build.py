@@ -1,4 +1,4 @@
-import json,tempfile,unittest
+import contextlib,io,json,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 import build_public as b
@@ -56,6 +56,14 @@ class PublicBuildTests(unittest.TestCase):
    from test_release_build import synthetic_root
    root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir();(dest/'secret.txt').write_text('secret')
    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),self.assertRaisesRegex(ValueError,'Unexpected public files'):b.main()
+ def test_obsolete_public_file_is_replaced_by_build(self):
+  with tempfile.TemporaryDirectory() as d:
+   from test_release_build import synthetic_root
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir();(dest/'icon.svg').write_text('<svg>old release</svg>')
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),contextlib.redirect_stdout(io.StringIO()):b.main()
+   self.assertEqual({p.name for p in dest.iterdir()},b.PUBLIC)
+   self.assertTrue((dest/'icon.png').read_bytes().startswith(b'\x89PNG'))
+   self.assertIn('/icon.png',(dest/'_headers').read_text())
  def test_snapshot_guard_holds_before_replacing_previous_public_build(self):
   from test_release_build import synthetic_root
   for failure in ('missing_snapshot','changed_snapshot','missing_approved_id'):

@@ -47,11 +47,10 @@ def main():
         assert value, label
         checks.append(label)
 
-    icon = ET.fromstring((ROOT / 'public/icon.svg').read_text())
-    logo_image = icon.find('{http://www.w3.org/2000/svg}image')
-    check(logo_image is not None, 'Public icon embeds the user logo')
-    logo_bytes = base64.b64decode(logo_image.attrib['href'].split(',', 1)[1], validate=True)
-    check(hashlib.sha256(logo_bytes).hexdigest() == '8afd21b439f6e1e3ab49ae3cc8127926fc61311df6ce88b878dd145ec07dd6c5', 'Embedded logo preserves exact user PNG bytes')
+    # icon.png is the user's logo (originally a 1024px PNG wrapped in icon.svg) scaled to 192px.
+    logo_bytes = (ROOT / 'public/icon.png').read_bytes()
+    check(logo_bytes.startswith(b'\x89PNG\r\n\x1a\n') and len(logo_bytes) < 65536, 'Public icon is a small PNG file')
+    check(hashlib.sha256(logo_bytes).hexdigest() == 'c6dc7553ea87b3040cd2f4da1704bcad4ef9367b0d738bf42fa5b9fc66368fa4', 'Public icon is the scaled user logo')
 
     def mock(route):
         request = route.request

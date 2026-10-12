@@ -6,9 +6,9 @@ import tempfile
 import zipfile
 from release_integrity import validate_release
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT.parent
-PUBLIC={'index.html','style.css','public.js','radar.js','feed.xml','icon.svg','_headers','_worker.js'}
+PUBLIC={'index.html','style.css','public.js','radar.js','feed.xml','icon.png','demo-reading.html','_headers','_worker.js'}
 ROOTS={'data','scripts','service','editor','public','editorial','docs'}
-FILES={'index.html','style.css','app.js','citation-export.js','icon.svg','README.md','start.command'}
+FILES={'index.html','style.css','app.js','citation-export.js','icon.png','demo-reading.html','README.md','start.command'}
 
 def public_payloads(root=ROOT):
  public=root/'public'
