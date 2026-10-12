@@ -171,6 +171,29 @@ class GenerationTests(unittest.TestCase):
             self.generate(model=lambda *_:calls.append(True), save=failed)
         self.assertEqual(calls, [])
 
+    def test_cut_off_reply_skips_that_paper_and_the_day_continues(self):
+        calls = []
+        def model(*args):
+            calls.append(True)
+            if len(calls) == 1:
+                raise d.ReadingError('model_output_incomplete')
+            return output(args[-1][0]['id'])
+        data, ledger, status = self.generate(model=model)
+        rows = ledger['days']['2026-10-09']
+        self.assertEqual((rows[0]['state'], rows[0]['errorCode']), ('invalid', 'model_output_incomplete'))
+        self.assertEqual(status['completed'], d.TARGET)
+        self.assertEqual(len(calls), d.TARGET + 1)
+
+    def test_old_failed_row_for_a_cut_off_reply_no_longer_blocks_the_day(self):
+        ledger = d.empty_ledger()
+        ledger['days']['2026-10-09'] = [{'identity': '10.1234/fixture1', 'state': 'failed', 'errorCode': 'model_output_incomplete'}]
+        data, ledger, status = self.generate(ledger=ledger)
+        self.assertEqual(status['completed'], d.TARGET)
+        blocked = d.empty_ledger()
+        blocked['days']['2026-10-09'] = [{'identity': '10.1234/fixture1', 'state': 'failed', 'errorCode': 'model_unavailable'}]
+        data, blocked, status = self.generate(ledger=blocked)
+        self.assertEqual((status['completed'], status['reason']), (0, 'provider_failed_today'))
+
     def test_provider_error_stops_and_keeps_previous_readings(self):
         raw = d.empty_data()
         old = item(99)

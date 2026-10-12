@@ -37,6 +37,10 @@ TARGET = _env_int('XINZHI_DEEP_READING_TARGET', 8, 1, 20)
 MAX_CALLS, MAX_SOURCE_REQUESTS = 2 * TARGET, 5 * TARGET
 LEDGER_ROWS_PER_DAY = 40  # structural sanity bound for stored ledgers, independent of today's cap
 MAX_EVIDENCE = 12
+OUTPUT_TOKENS = 6000  # was 3200; a reply cut off at the cap is rejected, so leave room
+# The provider answered but the reply is unusable (cut off, filtered): that paper is skipped like a
+# failed validation. Only unknown outcomes (transport, HTTP, malformed body) stop the day's paid work.
+KNOWN_REPLY_ERRORS = ('model_output_incomplete',)
 RECOVERY_DAYS = 7  # private drafts from failed attempts stay recoverable this long
 GENERATOR_VERSION = 3
 MAX_TEXT = 120000
@@ -361,7 +365,7 @@ def model_config():
     return cfg
 
 def call_model(cfg, paper, paragraphs):
-    body = {'model': cfg['model'], 'temperature': 0.2, 'max_tokens': 3200, 'response_format': {'type': 'json_object'},
+    body = {'model': cfg['model'], 'temperature': 0.2, 'max_tokens': OUTPUT_TOKENS, 'response_format': {'type': 'json_object'},
             'messages': [{'role': 'system', 'content': PROMPT},
                          {'role': 'user', 'content': json.dumps({'title': paper['title'], 'journal': paper['journal'], 'paragraphs': paragraphs}, ensure_ascii=False)}]}
     if cfg['model'].startswith('glm-5.3'):
@@ -570,7 +574,8 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     errors, fetched, stopped = [], 0, None
     if any(r['state'] == 'started' for r in rows):
         stopped = 'prior_attempt_uncertain'
-    elif any(r['state'] == 'failed' for r in rows):
+    # Rows recorded as failed before cut-off replies were reclassified do not stop the day either.
+    elif any(r['state'] == 'failed' and r.get('errorCode') not in KNOWN_REPLY_ERRORS for r in rows):
         stopped = 'provider_failed_today'
     for paper in ordered:
         if stopped or len(published) >= TARGET or len(rows) >= MAX_CALLS or fetched >= MAX_SOURCE_REQUESTS:
@@ -588,7 +593,7 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
         # leave a 'started' row that blocks the rest of the day as an uncertain paid attempt.
         paragraphs = evidence_units(paragraphs)
         reservation = {'identity': identity(paper), 'pmcid': paper['pmcid'], 'sourceHash': source_hash,
-                       'at': now().isoformat(), 'state': 'started', 'outputTokenLimit': 3200}
+                       'at': now().isoformat(), 'state': 'started', 'outputTokenLimit': OUTPUT_TOKENS}
         rows.append(reservation)
         save(data, ledger)  # Must succeed before any paid POST; never retry a uncertain POST.
         try:
@@ -606,7 +611,7 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
         except ReadingError as e:
             errors.append(e.code)
             reservation['errorCode'] = e.code
-            reservation['state'] = 'failed' if e.code.startswith('model_') or e.code == 'redirect_blocked' else 'invalid'
+            reservation['state'] = 'failed' if (e.code.startswith('model_') and e.code not in KNOWN_REPLY_ERRORS) or e.code == 'redirect_blocked' else 'invalid'
             if reservation['state'] == 'failed':
                 stopped = e.code
         save(data, ledger)
