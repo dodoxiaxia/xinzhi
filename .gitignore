@@ -13,3 +13,7 @@ work/
 
 docs/*.png
 .git-broken/
+
+# 本机 Agent 运行记录与内部账号/文档信息不进公开仓库
+.agy-staff/
+docs/internal-workspace.json

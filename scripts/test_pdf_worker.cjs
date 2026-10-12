@@ -9,12 +9,12 @@ const library = {
   invalid: { doi:'not-a-doi', title:'Clinical, "quoted" STRASSE study' }
 };
 const defaultPassphrase = 'synthetic-default-passphrase';
-const defaultDigest = createHash('sha256').update(defaultPassphrase).digest('hex');
-assert(original.includes("const PDF_DEFAULT_PASSPHRASE_SHA256 = '09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab';"));
+// The repository is public: no passphrase or digest may be baked into the Worker.
+assert(!/PDF_DEFAULT_PASSPHRASE|[0-9a-f]{64}'/.test(original.slice(0, original.indexOf('async function pdfRead('))));
 assert(!/CF_ACCESS_|pdfAuthorize/i.test(original));
 const readerPdf = original.slice(original.indexOf('async function handlePdf('), original.indexOf('const LIBRARY_PREFIX'));
 assert(!/RS256|jwks|fulltextJobAuthorize/i.test(readerPdf), 'reader downloads use the shared password; OIDC belongs only to the background task endpoint');
-const source = original.replace('const PDF_LIBRARY = {};', 'const PDF_LIBRARY = ' + JSON.stringify(library) + ';').replace(/const PDF_DEFAULT_PASSPHRASE_SHA256 = '[a-f0-9]{64}';/, "const PDF_DEFAULT_PASSPHRASE_SHA256 = '" + defaultDigest + "';").replace('export default {', 'globalThis.worker = {');
+const source = original.replace('const PDF_LIBRARY = {};', 'const PDF_LIBRARY = ' + JSON.stringify(library) + ';').replace('export default {', 'globalThis.worker = {');
 assert.notEqual(source, original);
 const commit = 'a'.repeat(40), otherCommit = 'b'.repeat(40);
 const repo = '/repos/dodoxiaxia/AI-';
@@ -51,7 +51,7 @@ function harness(options = {}) {
     return options.pdfResponse ? options.pdfResponse(target, init) : new Response(options.pdf || pdf);
   };
   const timers = options.timeoutMs ? (callback, ms) => setTimeout(callback, Math.min(ms, options.timeoutMs)) : setTimeout;
-  const context = vm.createContext({btoa, URL, Response, Request, TextEncoder, TextDecoder, AbortController, setTimeout:timers, clearTimeout, Uint8Array, URLSearchParams, crypto:webcrypto, fetch, console });
+  const context = vm.createContext({caches:options.caches, btoa, URL, Response, Request, TextEncoder, TextDecoder, AbortController, setTimeout:timers, clearTimeout, Uint8Array, URLSearchParams, crypto:webcrypto, fetch, console });
   vm.runInContext(source, context);
   const request = async (passphrase, changes = {}, url = 'https://site.test/api/pdf?id=article', headers = {}, rawBody) => {
     const response = await context.worker.fetch(new Request(url, { method:'POST', headers:{ 'content-type':'application/x-www-form-urlencoded', ...headers }, body:rawBody === undefined ? new URLSearchParams({ passphrase:passphrase || '' }).toString() : rawBody }), { ...env, ...changes });
@@ -104,7 +104,18 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
   }
   h = harness(); assert.equal((await h.request(valid, {}, undefined, { 'sec-fetch-site':'same-origin' })).status, 200);
   h = harness(); assert.equal((await h.request(valid, {}, undefined, { origin:'https://site.test' })).status, 200);
-  h = harness(); assert.equal((await h.request(defaultPassphrase, { PDF_DOWNLOAD_PASSPHRASE:undefined })).status, 200, 'configured digest fallback works without exposing plaintext in source');
+  h = harness(); await error(await h.request(defaultPassphrase, { PDF_DOWNLOAD_PASSPHRASE:undefined }), 503, 'pdf_not_configured'); assert.equal(h.calls.length, 0);
+  {
+    // Ten wrong passphrases from one IP lock that IP out for the hour, even with the right one.
+    const store = new Map(), caches = { default:{ match:async key => store.has(key.url) ? new Response(store.get(key.url)) : undefined, put:async (key, response) => { store.set(key.url, await response.text()); } } };
+    const ip = { 'cf-connecting-ip':'203.0.113.9' };
+    h = harness({ caches });
+    for (let i = 0; i < 10; i++) await error(await h.request('wrong-' + i, {}, undefined, ip), 403, 'pdf_passphrase_invalid');
+    await error(await h.request(valid, {}, undefined, ip), 429, 'pdf_rate_limited');
+    assert.equal(h.calls.length, 0);
+    assert(![...store.keys()].some(key => key.includes('203.0.113')), 'IP addresses are stored only as digests');
+    assert.equal((await h.request(valid, {}, undefined, { 'cf-connecting-ip':'203.0.113.10' })).status, 200, 'other readers are not locked out');
+  }
   h = harness(); await error(await h.request(defaultPassphrase), 403, 'pdf_passphrase_invalid'); assert.equal(h.calls.length, 0);
 
   h = harness(); const success = await h.request(valid);

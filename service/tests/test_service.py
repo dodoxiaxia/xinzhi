@@ -867,6 +867,11 @@ class TestGithubLibraryReadOnly(unittest.TestCase):
                     status, raw, _ = self.pdf_request()
                     self.assertEqual(status, 503)
                     self.assertEqual(json.loads(raw)["code"], "pdf_not_configured")
+            with mock.patch.dict(os.environ, {}):
+                os.environ.pop("PDF_DOWNLOAD_PASSPHRASE", None)
+                status, raw, _ = self.pdf_request()
+                self.assertEqual(status, 503, "no built-in phrase when the environment has none")
+                self.assertEqual(json.loads(raw)["code"], "pdf_not_configured")
             public_read.assert_not_called()
             private_read.assert_not_called()
 
