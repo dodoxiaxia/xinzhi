@@ -25,7 +25,7 @@ CATEGORIES=('心血管','综合医学','AI医疗','AI前沿')
 QUOTAS=(10,6,6,2)
 TASKS=('translate','study','quicklook')
 # Bump when the shared evidence checks change, so papers rejected under the old rules are retried once.
-EVIDENCE_CHECK_VERSION=2  # 2: spelled-out counts and space-grouped thousands (2026-10-12)
+EVIDENCE_CHECK_VERSION=3  # 2: spelled-out counts and space-grouped thousands; 3: study re-cite/trim and quicklook finding repair (2026-10-12)
 MAX_DAILY_OUTPUT_TOKENS=MAX_OUTPUT_TOKENS  # Reservation ceiling only (env XINZHI_WEEK_MAX_CALLS); not a provider billing cap.
 # A task whose output failed the evidence checks this many times (current check version) is not paid for again.
 MAX_TASK_REJECTIONS=2
@@ -394,7 +394,7 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   invalid=False;failures={}
   for task in missing:
    try:
-    value=validate('study_evidence',result.get(task),p) if task=='study' else result.get(task)
+    value=study_value(result.get(task),p) if task=='study' else quicklook_value(result.get(task),p) if task=='quicklook' else result.get(task)
     store(cache,p,task,value,cfg['model'],stamp(),'configured-precompute');atomic(cache_path,cache);report['generatedTasks']+=1
     if checkpoint:checkpoint.save(ledger,cache)
    except CheckpointError:raise
@@ -436,6 +436,20 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report)
  report['remainingBudget']=max(0,limit-daily['reservedAttempts'])
  return report
+
+def study_value(raw,p):
+ """Strict evidence check first; on failure, the mechanical repair (re-cite or trim, never add)."""
+ try:return validate('study_evidence',raw,p)
+ except EvidenceError as original:
+  try:return validate('study_evidence_repair',raw,p)
+  except EvidenceError:raise original from None
+
+def quicklook_value(raw,p):
+ """Strict check first; on failure, drop only the findings that fail their own quote."""
+ try:return validate('quicklook',raw,p)
+ except EvidenceError as original:
+  try:return validate('quicklook_repair',raw,p)
+  except EvidenceError:raise original from None
 
 def out_of_time(margin=150):
  try:return time.time()+margin>float(os.environ['XINZHI_STEP_DEADLINE'])
