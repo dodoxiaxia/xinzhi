@@ -267,7 +267,10 @@ def content_status(candidates, health, archive, quicklooks, built_at):
             'quicklookLatestAt':latest(q.get('generatedAt') for q in quicklooks.values()),
             'guideCount':len(archive),'quicklookCount':len(quicklooks)}
 
-def _titlekey(t): return re.sub(r'[^a-z0-9]','',(t or '').lower())
+def _titlekey(t):
+    # Shared with merge_candidates: RSS "[Articles] X" and the PubMed row "X" are one paper.
+    from resolve_dois import title_key
+    return title_key(t)
 
 _RADAR_JOURNAL_FIX={'Lancet (London, England)':'The Lancet','BMJ (Clinical research ed.)':'The BMJ'}
 
