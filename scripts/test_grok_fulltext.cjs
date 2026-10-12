@@ -65,7 +65,8 @@ async function browserCheck() {
       const req = route.request();
       assert.equal(new URL(req.url()).origin,origin,'the institution is never navigated in this test');
       requests.push({method:req.method(),url:req.url()});
-      const response = await h.context.worker.fetch(new Request(req.url(),{method:req.method(),headers:req.headers(),
+      // The maintainer's browser carries the cookie set by ?maintainer=1.
+      const response = await h.context.worker.fetch(new Request(req.url(),{method:req.method(),headers:{...req.headers(),cookie:'xz_maintainer=1'},
         ...(req.method() === 'POST' ? {body:req.postData()} : {})}),h.env);
       await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:Buffer.from(await response.arrayBuffer())});
     });
@@ -104,7 +105,10 @@ async function browserCheck() {
 (async()=>{
   let h = setup();
   delete h.env.GROK_FULLTEXT_ENABLED;
-  const page = await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}});
+  const colleague = await (await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html'}})).text();
+  assert(!colleague.includes('uni-hamburg') && !colleague.includes('汉堡登录入口'), 'colleagues never see the maintainer-only Hamburg access');
+  assert(colleague.includes('前往官网原文'));
+  const page = await h.request('/api/acquire',{method:'GET',headers:{accept:'text/html',cookie:'theme=dark; xz_maintainer=1'}});
   const html = await page.text();
   assert(html.includes('https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1000/exact'));
   assert(html.includes('noopener noreferrer')); assert.equal(h.calls.length,0); assert.equal(h.writes.length,0);
