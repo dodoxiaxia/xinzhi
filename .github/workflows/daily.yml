@@ -74,7 +74,9 @@ jobs:
         run: |
           if [ "$TIMED_FAST" != 1 ]; then echo run=true >> "$GITHUB_OUTPUT"; exit 0; fi
           mkdir -p .gate
-          if git fetch -q --depth=1 "$STATE_URL" state; then
+          # actions/checkout adds this repository's token as an http.extraheader for github.com, which
+          # would override the token in STATE_URL; reset it for state requests only.
+          if git -c 'http.https://github.com/.extraheader=' fetch -q --depth=1 "$STATE_URL" state; then
             git show FETCH_HEAD:docs/last-refresh.json > .gate/last.json 2>/dev/null || true
             git show FETCH_HEAD:data/full-refresh-marker.json > .gate/marker.json 2>/dev/null || true
             git show FETCH_HEAD:data/timed-refresh-marker.json > .gate/timed.json 2>/dev/null || true
@@ -109,17 +111,23 @@ jobs:
         run: |
           rm -f docs/last-refresh.json docs/deployment-status.json .local/week-checkpoint-head
           STATE_URL="${STATE_URL:-https://x-access-token:${XINZHI_STATE_TOKEN}@github.com/${XINZHI_STATE_REPOSITORY}.git}"
+          # actions/checkout adds this repository's token as an http.extraheader for github.com, which
+          # would override the token in STATE_URL; reset it for every state request.
+          state_git() { git -c 'http.https://github.com/.extraheader=' "$@"; }
+          if ! state_git ls-remote "$STATE_URL" >/dev/null 2>&1; then
+            echo "::error::无法访问 $XINZHI_STATE_REPOSITORY：请检查仓库是否存在、Secret XINZHI_STATE_TOKEN 是否授权了该仓库（Contents 读写）"; exit 1
+          fi
           # One-time move: a newly configured private state repository starts empty, so copy this
           # repository's state branch there first. Afterwards the old branch can be deleted.
           if [ "${XINZHI_STATE_REPOSITORY:-}" != "${GITHUB_REPOSITORY:-}" ] \
-             && ! git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1 \
+             && ! state_git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1 \
              && git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
             git fetch -q origin state
-            git push -q "$STATE_URL" FETCH_HEAD:refs/heads/state
+            state_git push -q "$STATE_URL" FETCH_HEAD:refs/heads/state
             echo "::notice::state 已从本仓库复制到 $XINZHI_STATE_REPOSITORY；首次成功运行后可删除本仓库的 state 分支"
           fi
-          if git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1; then
-            git fetch -q --depth=1 "$STATE_URL" state
+          if state_git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1; then
+            state_git fetch -q --depth=1 "$STATE_URL" state
             RESTORED_STATE_SHA=$(git rev-parse FETCH_HEAD)
             echo "sha=$RESTORED_STATE_SHA" >> "$GITHUB_OUTPUT"
             # State carries runtime data only; never let it overwrite main code.
