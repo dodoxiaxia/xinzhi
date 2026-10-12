@@ -134,12 +134,29 @@ class StateWorkflowTests(unittest.TestCase):
         # The workflow reads state from vars.XINZHI_STATE_REPO (or this repository); point it at the fixture remote.
         return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', restore_commands()], cwd=self.repo, env=dict(os.environ, GITHUB_OUTPUT=str(output), STATE_URL=str(self.remote)), capture_output=True, text=True), output
 
+    def test_restore_moves_state_into_an_empty_private_repository_once(self):
+        private = self.base / 'private.git'
+        self.git(self.base, 'init', '--bare', str(private))
+        output = self.base / 'github-output'
+        env = dict(os.environ, GITHUB_OUTPUT=str(output), STATE_URL=str(private),
+                   XINZHI_STATE_REPOSITORY='owner/private-state', GITHUB_REPOSITORY='owner/site')
+        result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', restore_commands()], cwd=self.repo, env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.git(private, 'rev-parse', 'refs/heads/state').stdout.strip(), self.original_sha)
+        self.assertIn('sha=' + self.original_sha, output.read_text())
+        self.assertEqual((self.repo / 'public' / 'public.js').read_text(), 'published bundle')
+        # Once the private repository has state, the old branch is never read again.
+        self.git(self.repo, 'push', '-f', 'origin', 'main:refs/heads/state')
+        result = subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', restore_commands()], cwd=self.repo, env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.git(private, 'rev-parse', 'refs/heads/state').stdout.strip(), self.original_sha)
+
     def test_state_location_is_configurable_and_defaults_to_this_repository(self):
         source = WORKFLOW.read_text()
         self.assertIn("XINZHI_STATE_REPOSITORY: ${{ vars.XINZHI_STATE_REPO || github.repository }}", source)
         self.assertIn("XINZHI_STATE_TOKEN: ${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}", source)
         self.assertIn('STATE_REMOTE="https://x-access-token:${XINZHI_STATE_TOKEN}@github.com/${XINZHI_STATE_REPOSITORY}.git"', source)
-        self.assertNotIn('origin state', source, 'every state read goes through the configured location')
+        self.assertNotIn('--depth=1 origin state', source, 'restores read the configured location; origin is read only by the one-time move')
         import week_precompute_ci as ci
         with mock.patch.dict(os.environ, {'GITHUB_REPOSITORY': 'o/public', 'GITHUB_TOKEN': 'gh'}, clear=False):
             os.environ.pop('XINZHI_STATE_REPOSITORY', None); os.environ.pop('XINZHI_STATE_TOKEN', None)

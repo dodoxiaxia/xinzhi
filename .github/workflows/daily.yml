@@ -109,6 +109,15 @@ jobs:
         run: |
           rm -f docs/last-refresh.json docs/deployment-status.json .local/week-checkpoint-head
           STATE_URL="${STATE_URL:-https://x-access-token:${XINZHI_STATE_TOKEN}@github.com/${XINZHI_STATE_REPOSITORY}.git}"
+          # One-time move: a newly configured private state repository starts empty, so copy this
+          # repository's state branch there first. Afterwards the old branch can be deleted.
+          if [ "${XINZHI_STATE_REPOSITORY:-}" != "${GITHUB_REPOSITORY:-}" ] \
+             && ! git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1 \
+             && git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
+            git fetch -q origin state
+            git push -q "$STATE_URL" FETCH_HEAD:refs/heads/state
+            echo "::notice::state 已从本仓库复制到 $XINZHI_STATE_REPOSITORY；首次成功运行后可删除本仓库的 state 分支"
+          fi
           if git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1; then
             git fetch -q --depth=1 "$STATE_URL" state
             RESTORED_STATE_SHA=$(git rev-parse FETCH_HEAD)
