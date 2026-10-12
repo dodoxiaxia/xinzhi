@@ -457,13 +457,12 @@ def step_deadline(default_seconds=840):
     return time.monotonic() + max(0, remaining)
 
 def checkpoint(root):
-    from week_precompute_ci import existing_token_transport
-    if os.environ.get('GITHUB_ACTIONS') != 'true' or not os.environ.get('GITHUB_TOKEN'):
+    from week_precompute_ci import existing_token_transport, state_repository, state_token
+    if os.environ.get('GITHUB_ACTIONS') != 'true' or not state_token():
         raise ReadingError('durable_checkpoint_required')
     headfile = root / '.local/week-checkpoint-head'
     head = headfile.read_text().strip() if headfile.exists() else os.environ.get('XINZHI_RESTORED_STATE_SHA', '')
-    return StateCheckpoint(root, existing_token_transport(os.environ['GITHUB_TOKEN']),
-                           os.environ.get('GITHUB_REPOSITORY', ''), head)
+    return StateCheckpoint(root, existing_token_transport(state_token()), state_repository(), head)
 
 def check_store(data, ledger):
     if not isinstance(data, dict) or data.get('schemaVersion') != 1 or not isinstance(data.get('items'), list):

@@ -30,7 +30,10 @@ scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ �
 
 - **调度**：daily.yml 每天北京时间 04:47 完整刷新，另有每 4 小时的轻量刷新兜底；`workers/cron-dispatch/` 是每 2 小时触发一次的外部定时器，`scripts/fast_refresh_gate.py` 限制轻量刷新间隔。推送到 main 且改动前端、`edge/`、`scripts/`、`editorial/` 等路径时也会运行（推送触发的运行不调用模型）。
 - **其他工作流**：`fulltext.yml`（全文队列，仓库变量 `FULLTEXT_ASYNC_ENABLED` 为 true 时才运行）、`fulltext-import.yml`（`editorial/fulltext-imports.json` 导入）、`muse-review.yml`（每小时核验 Muse 送来的原件）、`muse-checks.yml` 与 `daily-reading-checks.yml`（PR 检查）。
-- **state 分支**：保存运行时数据 `data/`、上次构建的 `public/`，以及 `docs/public-manifest.json`、`docs/last-refresh.json`、`docs/deployment-status.json`。工作流恢复 state 后再构建，state 从不覆盖 main 的代码。历史文档把 state 称为“私有数据”，但仓库是公开的，**state 实际也公开**：不要往 `data/` 写任何不能公开的内容（凭据、内部文档、邮箱、未授权全文等）。
+- **state 分支**：保存运行时数据 `data/`、上次构建的 `public/`，以及 `docs/public-manifest.json`、`docs/last-refresh.json`、`docs/deployment-status.json`。工作流恢复 state 后再构建，state 从不覆盖 main 的代码。
+  - **位置**：仓库变量 `XINZHI_STATE_REPO`（如 `dodoxiaxia/xinzhi-state`，私有）加 Secret `XINZHI_STATE_TOKEN`（只授权该私有仓库的 Contents 读写）时，所有读写都去那个私有仓库的 `state` 分支；两者都没配置时退回本仓库的 `state` 分支（公开）。`daily.yml`、`daily-reading-checks.yml` 与全文/周榜检查点（`week_precompute_ci.state_repository()`/`state_token()`）用同一位置。
+  - **一次性迁移**：私有仓库还没有 `state` 时，`daily.yml` 的恢复步骤会先把本仓库的 `state` 复制过去；首次成功运行后可删除本仓库的 `state` 分支。
+  - 本仓库仍是公开的：不要往 `data/` 以外的地方写不能公开的内容；在完成迁移前，`data/` 也要按公开对待。
 - **API**：`edge/_worker.js` 由构建复制为 `public/_worker.js`，在 Pages 上提供 `/api/*`：AI 速览/翻译/综述/研究结构（`/api/ql`、`/api/ai`）、DOI 查重与补录、PDF 下载、全文任务、Muse/Grok 回传。存储用 KV `QL_KV`。配置项名称（不含值）见 [docs/AI解读部署说明.md](docs/AI解读部署说明.md)、[docs/PDF下载接入.md](docs/PDF下载接入.md)、[docs/网站配置与外部状态清单.md](docs/网站配置与外部状态清单.md)。
 - **前端**：`index.html` + `app.js` + `citation-export.js` + `journal-metrics.js` + `style.css`；构建时把数据和脚本打包进 `public.js`。365 天雷达题录单独放在 `radar.js`，按需加载。
 - **四个栏目**（URL 参数 `mode`）：
@@ -48,8 +51,8 @@ scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ �
 ## 2. 本地恢复数据、构建与预览
 
 ```sh
-git fetch origin state
-git archive origin/state | tar -x -C . data public      # data/ 与 public/ 已在 .gitignore
+git fetch origin state                                # 迁移后改为：git fetch https://github.com/dodoxiaxia/xinzhi-state.git state（需有访问权）
+git archive FETCH_HEAD | tar -x -C . data public       # data/ 与 public/ 已在 .gitignore
 python3 scripts/build_public.py                        # 生成 public/ 9 个文件
 python3 -m http.server 8765 --bind 127.0.0.1 --directory public   # http://127.0.0.1:8765/
 ```

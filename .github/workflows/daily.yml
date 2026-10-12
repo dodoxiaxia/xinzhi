@@ -70,10 +70,11 @@ jobs:
         env:
           TIMED_FAST: ${{ ((github.event_name == 'schedule' && github.event.schedule != '47 20 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.force)) && '1' || '' }}
           XINZHI_FAST_MIN_INTERVAL_MINUTES: ${{ vars.XINZHI_FAST_MIN_INTERVAL_MINUTES || '170' }}
+          STATE_URL: https://x-access-token:${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.XINZHI_STATE_REPO || github.repository }}.git
         run: |
           if [ "$TIMED_FAST" != 1 ]; then echo run=true >> "$GITHUB_OUTPUT"; exit 0; fi
           mkdir -p .gate
-          if git fetch -q --depth=1 origin state; then
+          if git fetch -q --depth=1 "$STATE_URL" state; then
             git show FETCH_HEAD:docs/last-refresh.json > .gate/last.json 2>/dev/null || true
             git show FETCH_HEAD:data/full-refresh-marker.json > .gate/marker.json 2>/dev/null || true
             git show FETCH_HEAD:data/timed-refresh-marker.json > .gate/timed.json 2>/dev/null || true
@@ -95,6 +96,11 @@ jobs:
       # Optional ceilings (unset = defaults in code): weekly calls per UTC day, full-text readings per day.
       XINZHI_WEEK_MAX_CALLS: ${{ vars.XINZHI_WEEK_MAX_CALLS }}
       XINZHI_DEEP_READING_TARGET: ${{ vars.XINZHI_DEEP_READING_TARGET }}
+      # Runtime data (data/, public/, run reports) lives on the `state` branch of
+      # vars.XINZHI_STATE_REPO (a private repository; token in secrets.XINZHI_STATE_TOKEN with
+      # Contents read/write). Without them it stays on this repository's own state branch.
+      XINZHI_STATE_REPOSITORY: ${{ vars.XINZHI_STATE_REPO || github.repository }}
+      XINZHI_STATE_TOKEN: ${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -102,8 +108,18 @@ jobs:
         id: restore_state
         run: |
           rm -f docs/last-refresh.json docs/deployment-status.json .local/week-checkpoint-head
-          if git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
-            git fetch --depth=1 origin state
+          STATE_URL="${STATE_URL:-https://x-access-token:${XINZHI_STATE_TOKEN}@github.com/${XINZHI_STATE_REPOSITORY}.git}"
+          # One-time move: a newly configured private state repository starts empty, so copy this
+          # repository's state branch there first. Afterwards the old branch can be deleted.
+          if [ "${XINZHI_STATE_REPOSITORY:-}" != "${GITHUB_REPOSITORY:-}" ] \
+             && ! git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1 \
+             && git ls-remote --exit-code --heads origin state >/dev/null 2>&1; then
+            git fetch -q origin state
+            git push -q "$STATE_URL" FETCH_HEAD:refs/heads/state
+            echo "::notice::state 已从本仓库复制到 $XINZHI_STATE_REPOSITORY；首次成功运行后可删除本仓库的 state 分支"
+          fi
+          if git ls-remote --exit-code --heads "$STATE_URL" state >/dev/null 2>&1; then
+            git fetch -q --depth=1 "$STATE_URL" state
             RESTORED_STATE_SHA=$(git rev-parse FETCH_HEAD)
             echo "sha=$RESTORED_STATE_SHA" >> "$GITHUB_OUTPUT"
             # State carries runtime data only; never let it overwrite main code.
@@ -114,7 +130,7 @@ jobs:
               fi
             done
           else
-            echo "::error::没有 state 分支,请先运行 scripts/seed_state.sh 播种一次"; exit 1
+            echo "::error::$XINZHI_STATE_REPOSITORY 没有 state 分支(或令牌无权读取),请先运行 scripts/seed_state.sh 播种一次"; exit 1
           fi
           # A restored report describes an older run, never this attempt.
           rm -f docs/last-refresh.json docs/deployment-status.json
@@ -257,7 +273,7 @@ jobs:
             [[ "$STATE_EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
           fi
           # A lease mismatch caused only by this run's own checkpoint commits is merged; any other writer still fails.
-          STATE_REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+          STATE_REMOTE="https://x-access-token:${XINZHI_STATE_TOKEN}@github.com/${XINZHI_STATE_REPOSITORY}.git" \
             python3 scripts/save_state.py --expected "$STATE_EXPECTED_SHA"
 
       - name: 记录流水线最终结果
