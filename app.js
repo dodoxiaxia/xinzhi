@@ -356,6 +356,11 @@
   if (urlParams.get('maintainer') === '1') safeSet('xz_maintainer', '1');
   if (urlParams.get('maintainer') === '0') safeRemove('xz_maintainer');
   const MAINTAINER = safeGet('xz_maintainer') === '1';
+  // Server pages (PDF download, full-text request) read the same choice from a cookie.
+  try {
+    if (MAINTAINER) document.cookie = 'xz_maintainer=1; Path=/; Max-Age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    else if (/(?:^|;\s*)xz_maintainer=/.test(document.cookie)) document.cookie = 'xz_maintainer=; Path=/; Max-Age=0; SameSite=Lax';
+  } catch (e) { /* cookies blocked */ }
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
   // Saved view preferences affect rendering without adding a URL parameter.
