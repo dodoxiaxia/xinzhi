@@ -1,11 +1,16 @@
 """Offline saved-bundle AI brief count and stalled-request browser regression."""
 if __name__ == '__main__':
-    import functools, json, sys, threading
+    import functools, json, os, sys, threading
     from pathlib import Path
     from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
     from playwright.sync_api import sync_playwright, expect
-    root = Path(sys.argv[1]); public = root / 'public' if (root / 'public').is_dir() else root
-    fixed = '--fixed' in sys.argv; out = root.parent / ('qa-' + root.name + '-brief'); out.mkdir(exist_ok=True)
+    # Usage: test_brief_feedback_ui.py [PUBLIC_DIR_OR_ROOT] [--fixed]. With no directory it checks this checkout's
+    # built public/ and expects the fixed behavior; evidence goes to .local/.
+    positional = [a for a in sys.argv[1:] if not a.startswith('--')]
+    repo = Path(__file__).resolve().parents[1]
+    root = Path(positional[0]) if positional else repo
+    public = root / 'public' if (root / 'public').is_dir() else root
+    fixed = '--fixed' in sys.argv or not positional; out = repo / '.local' / ('qa-' + root.name + '-brief'); out.mkdir(parents=True, exist_ok=True)
     class Quiet(SimpleHTTPRequestHandler):
         def log_message(self, *args): pass
     server = ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=str(public)))
@@ -25,7 +30,7 @@ if __name__ == '__main__':
         return r.continue_()
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
             context = browser.new_context(viewport={'width': 390, 'height': 950}); context.route('**/*', route)
             page = context.new_page(); page.on('pageerror', lambda e: errors.append(str(e)))
             page.goto(base+'?mode=candidates&lane=all&view=compact', wait_until='networkidle')
@@ -47,7 +52,7 @@ if __name__ == '__main__':
             page.clock.fast_forward(195001)
             stalled = page.locator('#aiDigest').inner_text()
             if fixed:
-                assert '等待已超过 4 分钟' in stalled
+                assert '本次等待已到时限' in stalled, stalled  # client deadline is 170 s
                 before = len(posts)
                 page.locator('#aiDigest [data-action="brief-check"]').click(no_wait_after=True)
                 expect(page.locator('#aiDigest')).to_contain_text('尚未查到已保存结果')

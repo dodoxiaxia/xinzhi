@@ -1,6 +1,6 @@
 # 第六批：6 刊公开 JIF 增量与两刊优先缺口审计
 
-保留已交付 `7f7b2b7`，专用分支不修改 `config/journal-metrics.json`。本批交 [可复验数据 overlay](journal-public-observations-batch6-20261007.json)、安全合并函数及离线测试，让唯一集成任务在其当前注册表上合入，避免覆盖正在集成的数据。没有发布、调用模型 API、新权限费用或调度变更。
+保留已交付 `7f7b2b7`，专用分支不修改 `config/journal-metrics.json`。本批交 [可复验数据 overlay](../journal-public-observations-batch6-20261007.json)、安全合并函数及离线测试，让唯一集成任务在其当前注册表上合入，避免覆盖正在集成的数据。没有发布、调用模型 API、新权限费用或调度变更。
 
 | 本站期刊 | 2025 两年 JIF | 官方公开源 |
 |---|---:|---|
