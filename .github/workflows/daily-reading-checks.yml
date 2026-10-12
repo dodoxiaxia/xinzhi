@@ -62,8 +62,11 @@ jobs:
           assert checked >= 3, 'Fewer than three complete identity-matched full texts'
           PY
       - name: Revalidate stored source-bound drafts without model calls
+        env:
+          # Same state location as daily.yml (a separate private repository when configured).
+          STATE_URL: https://x-access-token:${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.XINZHI_STATE_REPO || github.repository }}.git
         run: |
-          git fetch --depth=1 origin state
+          git fetch -q --depth=1 "$STATE_URL" state
           if git cat-file -e 'FETCH_HEAD:data/deep-readings.json' 2>/dev/null; then
             git archive FETCH_HEAD data/deep-readings.json data/deep-reading-ledger.json | tar -x -C .
             PYTHONPATH=scripts python3 - <<'PY'

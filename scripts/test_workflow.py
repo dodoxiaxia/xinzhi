@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,7 +131,21 @@ class StateWorkflowTests(unittest.TestCase):
 
     def restore(self):
         output = self.base / 'github-output'
-        return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', restore_commands()], cwd=self.repo, env=dict(os.environ, GITHUB_OUTPUT=str(output)), capture_output=True, text=True), output
+        # The workflow reads state from vars.XINZHI_STATE_REPO (or this repository); point it at the fixture remote.
+        return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', restore_commands()], cwd=self.repo, env=dict(os.environ, GITHUB_OUTPUT=str(output), STATE_URL=str(self.remote)), capture_output=True, text=True), output
+
+    def test_state_location_is_configurable_and_defaults_to_this_repository(self):
+        source = WORKFLOW.read_text()
+        self.assertIn("XINZHI_STATE_REPOSITORY: ${{ vars.XINZHI_STATE_REPO || github.repository }}", source)
+        self.assertIn("XINZHI_STATE_TOKEN: ${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}", source)
+        self.assertIn('STATE_REMOTE="https://x-access-token:${XINZHI_STATE_TOKEN}@github.com/${XINZHI_STATE_REPOSITORY}.git"', source)
+        self.assertNotIn('origin state', source, 'every state read goes through the configured location')
+        import week_precompute_ci as ci
+        with mock.patch.dict(os.environ, {'GITHUB_REPOSITORY': 'o/public', 'GITHUB_TOKEN': 'gh'}, clear=False):
+            os.environ.pop('XINZHI_STATE_REPOSITORY', None); os.environ.pop('XINZHI_STATE_TOKEN', None)
+            self.assertEqual((ci.state_repository(), ci.state_token()), ('o/public', 'gh'))
+            with mock.patch.dict(os.environ, {'XINZHI_STATE_REPOSITORY': 'o/private-state', 'XINZHI_STATE_TOKEN': 'pat'}):
+                self.assertEqual((ci.state_repository(), ci.state_token()), ('o/private-state', 'pat'))
 
     def test_restore_uses_pinned_data_only_and_accepts_old_state_schema(self):
         result, output = self.restore()
