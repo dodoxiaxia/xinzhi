@@ -11,7 +11,9 @@ from test_week_precompute_checkpoint import GitFixture, ledger, cache, LEDGER_PA
 
 ENV={'GITHUB_ACTIONS':'true','XINZHI_PRECOMPUTE_STATE_CHECKPOINT':'1',
  'GITHUB_REPOSITORY':'example/site','XINZHI_LLM_ENDPOINT':'https://model.fixture/api',
- 'XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}
+ 'XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret',
+ # The workflow sets these job-wide; empty values keep the fixture on GITHUB_REPOSITORY.
+ 'XINZHI_STATE_REPOSITORY':'','XINZHI_STATE_TOKEN':''}
 
 
 class CiIntegration(unittest.TestCase):
