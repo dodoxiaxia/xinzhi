@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline weekly-board QA. Expanded picks and AI output are test fixtures only."""
 import functools
+import os
 import json
 import re
 import threading
@@ -126,7 +127,7 @@ def main():
     errors = []
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
             context = browser.new_context()
             context.route('**/*', mock)
             page = context.new_page()

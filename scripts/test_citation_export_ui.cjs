@@ -8,7 +8,8 @@ let checks=0;
 const same=(a,b,label)=>{assert.deepStrictEqual(a,b,label);checks++;};
 const check=(v,label)=>{assert(v,label);checks++;};
 async function run(){
-  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium'});
+  // Without a UTF-8 locale Chromium saves non-ASCII download names as "download".
+  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',env:{...process.env,LANG:process.env.LANG||'C.UTF-8'}});
   const evidence=path.join(root,'.local/citation-export-qa');fs.mkdirSync(evidence,{recursive:true});
   try {
     for(const width of [1280,390,320]){
@@ -55,7 +56,7 @@ async function run(){
       }
       const pending=page.waitForEvent('download');await panel.locator('[data-citation-ris]').click();
       const download=await pending;
-      check(download.suggestedFilename().startsWith('精选文献引用-')&&download.suggestedFilename().endsWith('.ris'),'Chinese RIS filename');
+      check(download.suggestedFilename().startsWith('精选文献引用-')&&download.suggestedFilename().endsWith('.ris'),'Chinese RIS filename: '+download.suggestedFilename());
       const file=path.join(evidence,`subset-${width}.ris`);await download.saveAs(file);
       const downloaded=fs.readFileSync(file), text=new TextDecoder('utf-8',{fatal:true}).decode(downloaded), records=parseRis(text);
       same(records.map(r=>r.TI[0]),[papers[0].title,papers[3].title],'Actual downloaded RIS parsed back');

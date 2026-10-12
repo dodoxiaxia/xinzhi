@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline browser checks; external requests blocked and API calls mocked."""
 import functools
+import os
 import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -29,7 +30,7 @@ def main():
         return route.continue_()
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
             for width in [320, 390, 1440]:
                 for reduced in [False, True]:
                     context = browser.new_context(viewport={'width': width, 'height': 900}, reduced_motion='reduce' if reduced else 'no-preference')
@@ -38,7 +39,7 @@ def main():
                     page.goto(base+'?mode=weekly', wait_until='networkidle')
                     button = page.get_by_role('button', name='回到页面顶部', exact=True)
                     expect(button).to_be_hidden()
-                    page.evaluate('window.scrollTo(0, 900)')
+                    page.evaluate("window.scrollTo({top: 900, behavior: 'instant'})")  # html has scroll-behavior: smooth
                     expect(button).to_be_visible()
                     box = button.bounding_box()
                     check(box['width'] >= 44 and box['height'] >= 44, f'{width}/{reduced}: touch target')
@@ -66,13 +67,13 @@ def main():
                     expect(button).to_be_hidden()
                     check(page.locator('#brandLogo').evaluate('(e)=>e===document.activeElement'), f'{width}/{reduced}: keyboard focus restored')
                     check(page.evaluate('window.__scrollBehavior.at(-1)') == ('instant' if reduced else 'smooth'), f'{width}/{reduced}: respects motion preference')
-                    page.evaluate('window.scrollTo(0,900)')
+                    page.evaluate("window.scrollTo({top: 900, behavior: 'instant'})")
                     expect(button).to_be_visible()
                     button.click()
                     page.wait_for_function('window.scrollY < 2')
                     expect(button).to_be_hidden()
                     check(True, f'{width}/{reduced}: pointer click works')
-                    page.evaluate('window.scrollTo(0,900)')
+                    page.evaluate("window.scrollTo({top: 900, behavior: 'instant'})")
                     expect(button).to_be_visible()
                     button.focus()
                     button.press('Space')

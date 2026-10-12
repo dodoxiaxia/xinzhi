@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Public-bundle journal/weekly integration QA; all remote requests are blocked or mocked."""
 import functools
+import os
 import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -67,7 +68,7 @@ def main():
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
             for width in [1440, 390, 320]:
                 context = browser.new_context(viewport={'width': width, 'height': 950})
                 context.add_init_script("""(() => {
@@ -171,7 +172,8 @@ def main():
                 if width <= 1000:
                     page.locator('#sheetClose').click()
                 page.locator('[data-clear="journal"]').click()
-                page.locator('[data-clear="publisher"]').click()
+                # Clearing the journal chip also clears its publisher; no separate publisher chip remains.
+                expect(page.locator('[data-clear="pub"], [data-clear="journal"]')).to_have_count(0)
                 if width <= 1000:
                     page.locator('#filterToggleBtn').click()
                 page.locator('.accordion-header').filter(has_text='The Lancet Group').click()
@@ -184,6 +186,9 @@ def main():
                 journal = option_node.get_attribute('value')
                 compact = page.evaluate('j=>window.JournalMetrics.compactText(j)', journal)
                 check(compact in option, f'{width}: option uses pure-text metrics')
+                # Phones fold the journal/reading pickers behind one toggle.
+                if not page.locator('#journalSelect').is_visible() and page.locator('#browseToggle').is_visible():
+                    page.locator('#browseToggle').click()
                 page.locator('#journalSelect').select_option(journal)
                 verified = page.evaluate('j=>window.JournalMetrics.badgeText(j)', journal)
                 expect(page.locator('.filter-badge-active .journal-metrics-badge')).to_have_count(1 if verified else 0)
