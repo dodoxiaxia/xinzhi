@@ -3,11 +3,15 @@
 import datetime,json,re,unicodedata,xml.etree.ElementTree as ET
 from pathlib import Path
 from publication_dates import canonical_publication_date
+import resolve_dois
 ROOT=Path(__file__).resolve().parents[1]
-def titlekey(t):return re.sub(r'[^a-z0-9]','',unicodedata.normalize('NFKD',t).lower())
+# Same title identity as resolve_dois: RSS titles such as "[Articles] X" must match PubMed's "X".
+def titlekey(t):return resolve_dois.title_key(t)
 def main():
  feed=json.loads((ROOT/'data/feeds.json').read_text());pub=json.loads((ROOT/'data/pubmed.json').read_text())
  now=datetime.datetime.now(datetime.timezone.utc);seen=set();items=[];excluded=0
+ # Feeds without DOIs (Lancet, JACC, BMJ…) get one from Crossref, so titles translate and duplicates merge.
+ doi_stats=resolve_dois.fill(feed['items'],ROOT)
  # Prefer PubMed's DOI and structured abstract when the same paper also appears in RSS.
  for source_record in pub['items']+feed['items']:
   p=canonical_publication_date(source_record)
@@ -29,7 +33,7 @@ def main():
  for s in health['sources']:
   if s['status']=='ok':ET.SubElement(body,'outline',text=s['name'],title=s['name'],type='rss',xmlUrl=s['url'])
  ET.indent(opml);ET.ElementTree(opml).write(ROOT/'data/xinzhi-verified.opml',encoding='utf-8',xml_declaration=True)
- print('Merged candidates:',len(items),'PubMed fetched:',pub['fetched'],'RSS export:',len(body))
+ print('Merged candidates:',len(items),'PubMed fetched:',pub['fetched'],'RSS export:',len(body),'DOI lookup:',json.dumps(doi_stats))
  import subprocess, sys
  subprocess.run([sys.executable, str(ROOT/'scripts/enrich_metadata.py')], check=True)
 if __name__=='__main__':main()

@@ -270,7 +270,10 @@ def content_status(candidates, health, archive, quicklooks, built_at):
             'quicklookLatestAt':latest(q.get('generatedAt') for q in quicklooks.values()),
             'guideCount':len(archive),'quicklookCount':len(quicklooks)}
 
-def _titlekey(t): return re.sub(r'[^a-z0-9]','',(t or '').lower())
+def _titlekey(t):
+    # Shared with merge_candidates: RSS "[Articles] X" and the PubMed row "X" are one paper.
+    from resolve_dois import title_key
+    return title_key(t)
 
 _RADAR_JOURNAL_FIX={'Lancet (London, England)':'The Lancet','BMJ (Clinical research ed.)':'The BMJ'}
 
@@ -411,7 +414,8 @@ def main():
     corrections=load_corrections(ROOT)
     from week_precompute import editorial_title
     editorial_titles=load('editorial/public_title_translations.json') if (ROOT/'editorial/public_title_translations.json').exists() else {'entries':{}}
-    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower())
+    from resolve_dois import title_cache_key
+    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower()) or (tz.get(title_cache_key(q.get('title'))) if not q.get('doi') and not q.get('pmid') else None)
     for q in candidates['items']+library['papers']:
         z=zhkey(q) or ('' if q.get('titleZh') else editorial_title(q,editorial_titles))
         if z:q['titleZh']=z
