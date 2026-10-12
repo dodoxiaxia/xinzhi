@@ -5,7 +5,7 @@ const src=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
 const fn=n=>{const m=src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'));if(!m)throw Error(n);return m[0];};
 const cs=n=>src.match(new RegExp('  const '+n+' =[^]*?;'))[0];
 const start=src.indexOf('  // ---- Public-abstract study services:'),end=src.indexOf('  // ---- End public-abstract study services.');
-const code=[...['aiRequest','aiTaskStatus','aiWaitingMessage','aiLookupRecord','aiPostRecord','aiApiCheck','trCheck','aiTranslate','aiTitle','aiTitleCheck','translationCanGenerate','validTranslation','trBoxHtml','aiInterpret','aiErrorMessage'].map(fn),cs('AI_ERR'),cs('AI_MODEL_ERR'),src.slice(start,end),'const LIVE_TR={},LIVE_QL={}; let AI_AVAIL=true;const trKeyOf=p=>p.pmid?"pmid:"+p.pmid:"doi:"+p.doi;Object.assign(globalThis,{STUDY_RESULTS,COMPARE_RESULTS,LIVE_TR,LIVE_QL});'].join('\n');
+const code=[...['aiRequest','aiRun','aiUnconfirmed','paperTask','recordTask','rerenderReader','aiTaskStatus','aiWaitingMessage','aiLookupRecord','aiPostRecord','aiApiCheck','trCheck','aiTranslate','aiTitle','aiTitleCheck','translationCanGenerate','validTranslation','trBoxHtml','aiInterpret','aiErrorMessage'].map(fn),cs('AI_ERR'),cs('AI_MODEL_ERR'),src.slice(start,end),'const LIVE_TR={},LIVE_QL={}; let AI_AVAIL=true;const trKeyOf=p=>p.pmid?"pmid:"+p.pmid:"doi:"+p.doi;Object.assign(globalThis,{STUDY_RESULTS,COMPARE_RESULTS,LIVE_TR,LIVE_QL});'].join('\n');
 let calls=[],ticks=new Map(),seq=0,reply,renders=0;
 const a={id:'a',pmid:'1001',doi:'10.1000/a',title:'Public title',summary:'Never send browser summary'},b={id:'b',pmid:'1002',doi:'10.1000/b',title:'Second'};
 const state={huddle:['a','b'],huddleCompare:['a','b'],activeDrawerPaper:a};

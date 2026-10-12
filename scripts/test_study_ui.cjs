@@ -18,7 +18,7 @@ const end = src.indexOf('  // ---- End public-abstract study services.');
 assert(start > 0 && end > start);
 const code = [
   src.slice(src.indexOf('  const esc ='), src.indexOf('  // Toast notification')),
-  fn('aiRequest'), fn('aiTaskStatus'), fn('aiWaitingMessage'), fn('aiLookupRecord'), fn('aiPostRecord'), fn('safeSourceUrl'), fn('contentDate'), cs('AI_ERR'), cs('AI_MODEL_ERR'), fn('aiErrorMessage'),
+  fn('aiRequest'), fn('aiTaskStatus'), fn('aiWaitingMessage'), fn('aiLookupRecord'), fn('aiPostRecord'), ...['aiRun', 'aiUnconfirmed', 'paperTask', 'recordTask', 'rerenderReader'].map(fn), fn('safeSourceUrl'), fn('contentDate'), cs('AI_ERR'), cs('AI_MODEL_ERR'), fn('aiErrorMessage'),
   src.slice(start, end)
 ].join('\n');
 let assertions = 0;

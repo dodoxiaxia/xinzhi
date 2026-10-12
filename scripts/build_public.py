@@ -10,6 +10,7 @@ from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
 from publication_dates import DATE_CORRECTIONS, canonical_publication_date
 from journal_metrics import public_registry
+from build_sources import require_fresh as require_fresh_sources
 from public_library_quality import QUALITY_FIELDS, project_public_library
 from publication_status import annotate_publication, checked_records
 from public_content_corrections import (load_corrections, corrected_title,
@@ -384,6 +385,7 @@ def validate_public(text):
         if re.search(pattern,text):raise ValueError('Public build contains a private field or path')
 
 def main():
+    require_fresh_sources(ROOT)  # app.js / edge/_worker.js must match their src parts
     build_before = provenance(ROOT)
     inputs_before = build_before['inputs']
     legacy_guides()  # Required publication registry, even when article lists are empty.
