@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Real public-bundle browsing QA; APIs are mocked and never call a model."""
 import functools
+import os
 import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -63,7 +64,7 @@ def main():
 
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = playwright.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
 
             def new_context(width):
                 context = browser.new_context(viewport={'width': width, 'height': 950}, is_mobile=width < 500, has_touch=width < 500)

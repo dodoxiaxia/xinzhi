@@ -10,6 +10,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
 
+BUILD = ['scripts/build_public.py']
+WEEK_BOARD = ['scripts/week_precompute.py']
+DEEP_READING = ['scripts/daily_fulltext.py', '--run']
+DEEP_READING_RECOVER = ['scripts/daily_fulltext.py', '--recover']  # model-free; push runs publish repaired drafts
+WEEK_PRECOMPUTE = ['scripts/week_precompute.py', '--run', '--provider', 'configured']
+DEEP_READING_TIMEOUT = 2400  # up to 16 calls at 120s plus source fetches
+FAST_BUDGET_MINUTES, FULL_BUDGET_MINUTES = 40, 110  # daily.yml job timeout must exceed the full budget
+ARCHIVE_RESERVE = 3600
+
 REQUIRED = [
     ['scripts/apply_public_library.py'],
     ['scripts/refresh_feeds.py', '--all'],
@@ -21,23 +30,22 @@ FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklook
     (['scripts/fetch_archive.py', '--incremental'], 1500),
     (['scripts/archive_details.py', '--fill'], 1800),
     (['scripts/translate_titles.py', '--run', '--limit', '60'], 900),
-    # Picks first; results are written once at the end, so the timeout covers 6 x 90s calls.
-    (['scripts/generate_quicklooks.py', '--call-model', '--limit', '6', '--lookup-limit', '12'], 660),
-    # Up to six 5800-token calls a day (owner-approved ceiling) at 90s each; a timeout mid-call
-    # would leave a 'started' row that blocks the rest of the day.
-    (['scripts/week_precompute.py', '--run', '--provider', 'configured', '--attempt-limit', '8'], 900),
+    # Owner decision 2026-10-12: provider quota has ample headroom, so the paid steps are sized by
+    # runner time, not by a token budget. Both stop starting new calls near XINZHI_STEP_DEADLINE.
+    (['scripts/generate_quicklooks.py', '--call-model', '--limit', '40', '--lookup-limit', '80'], 2400),
+    # Daily ceiling: week_precompute_budget.MAX_ATTEMPTS (repository variable XINZHI_WEEK_MAX_CALLS).
+    (WEEK_PRECOMPUTE, 3000),
     (['scripts/auto_picks.py'], 120),
 ]
-BUILD = ['scripts/build_public.py']
-WEEK_BOARD = ['scripts/week_precompute.py']
-DEEP_READING = ['scripts/daily_fulltext.py', '--run']
-DEEP_READING_RECOVER = ['scripts/daily_fulltext.py', '--recover']  # model-free; fast runs publish repaired drafts
 # Scheduled fast refreshes opt in (env) to one bounded title batch (<=30 newest
 # missing titles, a single model call) so new daily picks get Chinese titles
 # within hours instead of waiting for the next 04:47 full run. Source pushes stay model-free.
 FAST_TITLES = (['scripts/translate_titles.py', '--run', '--limit', '1'], 240)
-# Same opt-in: up to two Chinese quicklooks for the newest picks (verbatim-quote and number checks unchanged).
-FAST_QUICKLOOKS = (['scripts/generate_quicklooks.py', '--call-model', '--limit', '2', '--lookup-limit', '4'], 240)
+# Same opt-in: Chinese quicklooks for the newest picks (verbatim-quote and number checks unchanged),
+# new weekly-board papers, and a top-up of today's full-text readings if the full run fell short.
+FAST_QUICKLOOKS = (['scripts/generate_quicklooks.py', '--call-model', '--limit', '8', '--lookup-limit', '16'], 720)
+FAST_WEEK_PRECOMPUTE = (WEEK_PRECOMPUTE, 900)
+FAST_DEEP_READING = (DEEP_READING, 900)
 
 def deep_reading_needs_bootstrap(root):
     path = root / 'data/deep-readings.json'
@@ -205,8 +213,10 @@ def content_hash():
 
 
 def run(argv, timeout):
+    # Paid steps read the deadline and stop starting model calls before the runner kills them.
+    env = dict(os.environ, XINZHI_STEP_DEADLINE=str(time.time() + timeout))
     try:
-        r = subprocess.run([sys.executable, *argv], cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run([sys.executable, *argv], cwd=ROOT, capture_output=True, text=True, timeout=timeout, env=env)
         return r.returncode, r.stdout[-800:], r.stderr[-800:]
     except subprocess.TimeoutExpired:
         return 124, '', 'timeout'
@@ -254,7 +264,7 @@ def full_refresh_decision(fast, root=ROOT, now=None):
 def main():
     fast, full_policy = full_refresh_decision('--fast' in sys.argv)
     before = content_hash()
-    budget = (25 if fast else 50) * 60
+    budget = (FAST_BUDGET_MINUTES if fast else FULL_BUDGET_MINUTES) * 60
     deadline = time.monotonic() + budget
     report = {'startedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'runId': os.environ.get('GITHUB_RUN_ID'), 'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'codeSha': os.environ.get('GITHUB_SHA'), 'fast': fast, 'changed': None, 'status': 'running', 'deploymentRequested': False, 'budgetSeconds': budget, 'beforeContentHash': before, 'steps': []}
     if full_policy:
@@ -303,16 +313,22 @@ def main():
         execute(argv, t, optional=True, reserve=300 if fast else 900)
     # Daily readings run before archive enrichment. Bootstrap the new column once;
     # later fast refreshes read its persisted cache without paid model calls.
+    timed_fast = fast and os.environ.get('XINZHI_FAST_TITLE_BATCH') == '1'
     if not fast or deep_reading_needs_bootstrap(ROOT):
-        execute(DEEP_READING, 900, optional=True, reserve=600)
+        execute(DEEP_READING, DEEP_READING_TIMEOUT, optional=True, reserve=600)
+    elif timed_fast:
+        execute(*FAST_DEEP_READING, optional=True, reserve=600)  # exits at once when today's target is met
     else:
         execute(DEEP_READING_RECOVER, 120, optional=True, reserve=600)
-    if fast and os.environ.get('XINZHI_FAST_TITLE_BATCH') == '1':
+    if timed_fast:
         execute(*FAST_TITLES, optional=True, reserve=300)
         execute(*FAST_QUICKLOOKS, optional=True, reserve=300)
+        execute(*FAST_WEEK_PRECOMPUTE, optional=True, reserve=300)
     if not fast:
         for argv, t in FULL_OPTIONAL:
-            reserve = 300 if argv[0] in ('scripts/week_precompute.py', 'scripts/auto_picks.py') else 900
+            # Archive enrichment leaves an hour for the paid steps after it.
+            reserve = (300 if argv[0] in ('scripts/week_precompute.py', 'scripts/auto_picks.py') else
+                       ARCHIVE_RESERVE if argv[0] in ('scripts/fetch_archive.py', 'scripts/archive_details.py') else 900)
             execute(argv, t, optional=True, reserve=reserve)
 
     code = execute(WEEK_BOARD, 180, build=True)
@@ -348,7 +364,7 @@ def main():
     if report['weeklyContent']['status'] != 'complete':
         report['warnings'] = ['weekly_precompute_' + report['weeklyContent']['status']]
     generation = next((step for step in report['steps'] if step['script'].startswith('scripts/week_precompute.py --run ')), None)
-    report['weeklyContent']['generationStep'] = ({'outcome': 'not_requested_fast', 'exitCode': None} if fast else
+    report['weeklyContent']['generationStep'] = ({'outcome': 'not_requested_fast', 'exitCode': None} if fast and generation is None else
         {'outcome': 'not_reached', 'exitCode': None} if generation is None else
         {'outcome': generation.get('outcome') or ('returned_without_generation_guarantee' if generation['exitCode'] == 0 else 'failed'),
          'exitCode': generation['exitCode']})

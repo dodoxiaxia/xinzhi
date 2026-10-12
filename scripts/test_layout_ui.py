@@ -6,6 +6,7 @@ Screenshots/results go to ignored .local/layout-qa; no production writes.
 """
 import argparse
 import functools
+import os
 import base64
 import hashlib
 import json
@@ -29,7 +30,7 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--browser', default=shutil.which('chromium'))
+    parser.add_argument('--browser', default=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'))
     parser.add_argument('--output', default=str(ROOT / '.local/layout-qa'))
     args = parser.parse_args()
     out = Path(args.output)
@@ -73,8 +74,10 @@ def main():
                 if controls['lookup'] == 'abort':
                     return route.abort('failed')
                 if controls['lookup'] == 'cached':
-                    return route.fulfill(json={'ok': True, 'found': True, 'tr': {'abstract_zh': FIXTURE_ZH, 'title_zh': ''}})
-                return route.fulfill(json={'ok': True, 'found': False})
+                    return route.fulfill(json={'ok': True, 'found': True, 'canGenerate': False, 'tr': {'abstract_zh': FIXTURE_ZH, 'title_zh': ''}})
+                # Like the real worker: a lookup reports whether generation is enabled, and a
+                # lookup with no running task reports it idle.
+                return route.fulfill(json={'ok': True, 'found': False, 'taskStatus': 'idle', 'canGenerate': controls['lookup'] != 'off'})
             if url.path == '/api/ql':
                 return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': controls['lookup'] not in ['off', 'cached']})
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
@@ -189,7 +192,16 @@ def main():
                     expect(page.locator('#streamRail')).to_be_visible()
                     expect(page.locator('#modeNote')).to_be_hidden()
                     check(page.get_by_text('带“摘要核对”标记的是', exact=False).count() == 0, label + ': green-box paragraph removed')
-                    check(page.locator('#streamRail #homeIntro').count() == 1 and page.locator('#streamRail #laneBar').count() == 1, label + ': both red-box blocks moved together')
+                    check(page.locator('#streamRail #curatedDayBar').count() == 1 and page.locator('#streamRail #laneBar').count() == 1, label + ': day and topic filters share the rail')
+                    days = page.locator('#curatedDayBar [data-day]')
+                    if days.count() > 2:
+                        latest = page.locator('#articlesStream .day-heading').all_text_contents()
+                        check(len(latest) == 1, label + ': opens on the newest day only')
+                        days.nth(1).click()
+                        check(page.locator('#articlesStream .day-heading').count() == 1 and 'day=' in page.url, label + ': a day chip shows that day and is linkable')
+                        page.locator('#curatedDayBar [data-day="all"]').click()
+                        check(page.locator('#articlesStream .day-heading').count() > 1, label + ': 全部 shows every day')
+                        page.locator('#curatedDayBar [data-day]').first.click()
                     body, rail = page.locator('.stream-content').bounding_box(), page.locator('#streamRail').bounding_box()
                     if width > 1000:
                         check(rail['x'] >= body['x'] + body['width'] and body['width'] > rail['width'] * 2, label + ': wide reading column and right tools')
@@ -292,12 +304,23 @@ def main():
                 open_weekly(page, legacy_reader=True)
                 page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
                 page.locator('[data-action="ai-translate"]').click()
-                expect(page.locator('[data-action="ai-translate"]')).to_have_text('重试翻译')
+                if outcome in ['abort', 'bad_json']:
+                    # The outcome of an interrupted request is unknown: the reader waits and offers
+                    # a read-only cache check instead of a second paid request.
+                    expect(page.locator('[data-action="tr-check"]')).to_have_text('读取已有译文')
+                    expect(page.locator('.abstract-translation')).to_contain_text('完成状态尚未确认')
+                    check(page.locator('[data-action="ai-translate"]').count() == 0, outcome + ': no duplicate paid retry while waiting')
+                else:
+                    expect(page.locator('[data-action="ai-translate"]')).to_have_text('重试翻译')
                 check(FIXTURE_ZH not in page.locator('.abstract-translation').inner_text(), outcome + ': no invented translation')
                 check(original[:60] in page.locator('.abstract-original').inner_text(), outcome + ': original retained after failure')
                 if outcome == 'abort':
-                    expect(page.locator('.translation-error')).to_contain_text('网络中断')
                     page.screenshot(path=str(out / 'reader-interrupted.png'))
+                if outcome in ['abort', 'bad_json']:
+                    posts_before_check = len(posts)
+                    page.locator('[data-action="tr-check"]').click()
+                    expect(page.locator('[data-action="ai-translate"]')).to_be_visible()
+                    check(len(posts) == posts_before_check, outcome + ': cache check never generates')
                 controls['post'] = 'success'
                 page.locator('[data-action="ai-translate"]').click()
                 expect(page.locator('.abstract-translation')).to_contain_text(FIXTURE_ZH)

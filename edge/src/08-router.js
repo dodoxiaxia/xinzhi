@@ -1,6 +1,12 @@
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {
   async fetch(request, env) {
+    const response = await routeRequest(request, env);
+    return new URL(request.url).pathname.startsWith('/api/') ? hideInstitutionLinks(request, response) : response;
+  }
+};
+
+async function routeRequest(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
@@ -27,5 +33,4 @@ export default {
       try { return await handleAI(request, env); } catch (e) { return json({ ok: false, error: 'server' }, 500); }
     }
     return env.ASSETS.fetch(request);
-  }
-};
+}

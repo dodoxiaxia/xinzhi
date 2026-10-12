@@ -112,10 +112,12 @@ def main():
             page.locator('#articlesStream [data-action="open-drawer"]').first.click()
             page.locator('#readerDrawer.open').wait_for()
             check(page.locator('#drawerInstitutionLoginLink').is_visible(), 'maintainer sees the Hamburg login')
+            check(any(c['name'] == 'xz_maintainer' and c['value'] == '1' for c in context.cookies()), 'maintainer mode sets the cookie server pages read')
             page.goto(base + '?mode=library&lane=all&maintainer=0', wait_until='networkidle')
             page.locator('#articlesStream [data-action="open-drawer"]').first.click()
             page.locator('#readerDrawer.open').wait_for()
             check(not page.locator('#drawerInstitutionLoginLink').is_visible(), 'maintainer=0 hides the Hamburg login again')
+            check(not any(c['name'] == 'xz_maintainer' for c in context.cookies()), 'maintainer=0 clears the cookie')
 
             # Shortlist: papers that are not loaded keep their saved record; unknown IDs stay removable.
             page.evaluate("""() => {

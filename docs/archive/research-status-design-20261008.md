@@ -22,14 +22,14 @@
 | 42418194 | PubMed 只有 Journal Article；JAMA 页面为 Comment & Response，正文以 In Reply 开始；显示「述评观点」 | [PubMed](https://pubmed.ncbi.nlm.nih.gov/42418194/)、[JAMA](https://jamanetwork.com/journals/jamacardiology/article-abstract/2851275) |
 | 42836743、42836296 | 当前 AFACT 与 PREVENT 事后分析。题名和 Methods 表明使用母试验数据；两篇均显示「RCT 二次分析」 | [PubMed AFACT](https://pubmed.ncbi.nlm.nih.gov/42836743/)、[PubMed PREVENT](https://pubmed.ncbi.nlm.nih.gov/42836296/) |
 
-精确核验记录在 [publication-status.json](../config/publication-status.json)，包含 PMID、官方题名、DOI、出版类型、关系与来源链接。只在 PMID/DOI 与题名一致时使用静态核验关联，冲突时不传播状态。不会因为另一篇题名含相同试验名称而把它标为撤稿。后续新取得的 PubMed 类型/关联可增加更高优先级的状态，静态角色不会屏蔽新撤稿信息。
+精确核验记录在 [publication-status.json](../../config/publication-status.json)，包含 PMID、官方题名、DOI、出版类型、关系与来源链接。只在 PMID/DOI 与题名一致时使用静态核验关联，冲突时不传播状态。不会因为另一篇题名含相同试验名称而把它标为撤稿。后续新取得的 PubMed 类型/关联可增加更高优先级的状态，静态角色不会屏蔽新撤稿信息。
 
 官方 XML 字节摘要：
 
 - 九个报告样例：`3accf16a849729e24f73e06ce62fccb8279c0d202dd8cc7dbcea5ee4374163bd`。
 - VICTOR 原文及两篇当前事后分析：`523155ddc14db10ed273dc257ee1558759b4c5f9a84676e36982379294136c10`。
 
-原始响应字节现已保存在候选证据目录：[九个报告样例的 XML 原件](evidence/pubmed-study-status-20261008/pubmed-verified.xml)、[三篇补充核验的 XML 原件](evidence/pubmed-study-status-20261008/pubmed-additional.xml)及[字节/哈希/来源清单](evidence/pubmed-study-status-20261008/manifest.json)。本次证据补交仅复用本任务已经取得的下载，未发起新的 PubMed 或出版商请求，未重新序列化 XML；复制前后字节一致，并与上述原 SHA-256 一致。复核者可直接解析原件中的 `PublicationTypeList` 和 `CommentsCorrectionsList`，核对 PREVENT-TAHA8 及两声明的双向关联。
+原始响应字节现已保存在候选证据目录：[九个报告样例的 XML 原件](../evidence/pubmed-study-status-20261008/pubmed-verified.xml)、[三篇补充核验的 XML 原件](../evidence/pubmed-study-status-20261008/pubmed-additional.xml)及[字节/哈希/来源清单](../evidence/pubmed-study-status-20261008/manifest.json)。本次证据补交仅复用本任务已经取得的下载，未发起新的 PubMed 或出版商请求，未重新序列化 XML；复制前后字节一致，并与上述原 SHA-256 一致。复核者可直接解析原件中的 `PublicationTypeList` 和 `CommentsCorrectionsList`，核对 PREVENT-TAHA8 及两声明的双向关联。
 
 独立复核提出的未来状态边界已补修：声明自身的新 `Retracted Publication`/`RetractionIn` 优先于其旧关注、撤稿或更正声明角色；`ExpressionOfConcernIn` 也描述这篇记录自身的关注状态。`RetractionOf` 仅表示声明指向被撤稿原文，不能把声明自身标成撤稿。新增三个回归方法覆盖「已注册关注声明自身后来被撤稿」「更正声明自身后来被撤稿」和「撤稿声明目标不代表自身撤稿」。这些更新使用假设 fixture，不是关于 PMID 41224475 当前状态的新指控；已取得的当前官方原件和九个实际样例不变。
 

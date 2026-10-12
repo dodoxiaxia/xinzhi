@@ -125,7 +125,7 @@
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
-    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
     const filters = $('#activeFiltersBar');
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
@@ -162,6 +162,7 @@
     renderActiveFilterChips(filtered.length);
     renderModeNote();
     renderLaneBar();
+    renderCuratedDayBar();
     renderRangeBar();
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
@@ -205,6 +206,12 @@
       streamEl.innerHTML = Array.from(groups.entries()).map(([d, arr]) =>
         `<h2 class="day-heading">${esc(d)} · 每日精选 <small>${arr.length} 篇</small></h2>` + arr.map(state.viewMode==='compact'?renderCompactRow:renderArticleCard).join('')
       ).join('');
+      // At the end of one day, offer the previous day instead of a dead end.
+      const days = curatedDays(), day = curatedDay(days), index = days.findIndex(([d]) => d === day);
+      if (day && index >= 0 && index < days.length - 1) {
+        const [older, count] = days[index + 1];
+        streamEl.insertAdjacentHTML('beforeend', `<button type="button" class="load-more-btn day-next-btn" data-day="${esc(older)}">继续看 ${esc(older)} · ${count} 篇</button>`);
+      }
     } else if (state.viewMode === 'compact') {
       streamEl.className = 'articles-compact-list';
       streamEl.innerHTML = visibleItems.map(renderCompactRow).join('');

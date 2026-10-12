@@ -171,7 +171,10 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(ci_daily.FAST_TITLES[0][-2:], ['--limit', '1'])
         self.assertLess(calls.index(ci_daily.FAST_TITLES[0]), calls.index(ci_daily.BUILD))
         self.assertIn(ci_daily.FAST_QUICKLOOKS[0], calls)
-        self.assertEqual(ci_daily.FAST_QUICKLOOKS[0][2:4], ['--limit', '2'])
+        self.assertEqual(ci_daily.FAST_QUICKLOOKS[0][2:4], ['--limit', '8'])
+        self.assertIn(ci_daily.FAST_WEEK_PRECOMPUTE[0], calls)
+        self.assertIn(ci_daily.DEEP_READING, calls)  # tops up today's readings; exits when the target is met
+        self.assertNotIn(ci_daily.DEEP_READING_RECOVER, calls)
         for name in ('fetch_archive.py', 'archive_details.py'):
             self.assertNotIn('scripts/' + name, [argv[0] for argv in calls])
 
@@ -278,7 +281,7 @@ class RefreshExecutionTests(PipelineFixture):
 
     def test_budget_skips_optional_steps_but_reserves_build(self):
         # Light steps and the model-free reading recovery are optional; board and build are not.
-        clock = [0] * (1 + len(ci_daily.REQUIRED)) + [1250] * (len(ci_daily.LIGHT_OPTIONAL) + 3)
+        clock = [0] * (1 + len(ci_daily.REQUIRED)) + [ci_daily.FAST_BUDGET_MINUTES * 60 - 250] * (len(ci_daily.LIGHT_OPTIONAL) + 3)
         result, report, outputs, calls = self.invoke(clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(calls[-1], ci_daily.BUILD)
@@ -286,7 +289,7 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertEqual(outputs, [False])
 
     def test_required_budget_exhaustion_is_reported(self):
-        result, report, outputs, calls = self.invoke(clock=[0, 1300])
+        result, report, outputs, calls = self.invoke(clock=[0, ci_daily.FAST_BUDGET_MINUTES * 60 - 200])
         self.assertEqual(result, 1)
         self.assertEqual(calls, [])
         self.assertEqual(report['steps'][0]['exitCode'], 124)
@@ -297,9 +300,12 @@ class RefreshExecutionTests(PipelineFixture):
         def run(argv, timeout):
             timeouts[argv[0] + (':paid' if '--run' in argv else '')] = timeout
             return 0, '', ''
-        # Archive work reaches its budget, leaving 600 seconds for the model and
-        # 300 for the build. Later archive/translation steps must be skipped.
-        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [0, 1000, 2100, 2100, 2100, 2100, 2700, 2700, 2700]
+        # Archive work reaches its budget (it leaves ARCHIVE_RESERVE for the paid steps), then
+        # 600 seconds remain for the weekly model step and 300 for the build.
+        # Later archive/translation steps must be skipped.
+        full = ci_daily.FULL_BUDGET_MINUTES * 60
+        start = full - ci_daily.ARCHIVE_RESERVE - 1100
+        clock = [0] * (1 + len(ci_daily.REQUIRED) + len(ci_daily.LIGHT_OPTIONAL)) + [0, start, full - 3600, full - 900, full - 900, full - 900, full - 300, full - 300, full - 300]
         result, report, outputs, calls = self.invoke(fast=False, run=run, clock=clock)
         self.assertEqual(result, 0)
         self.assertEqual(timeouts['scripts/fetch_archive.py'], 1100)

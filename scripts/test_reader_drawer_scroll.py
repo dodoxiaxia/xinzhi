@@ -3,12 +3,17 @@
 All external/API requests intercepted; no shared writes/model POST.
 """
 if __name__ == "__main__":
-    import functools,json,sys,threading
+    import functools,json,os,sys,threading
     from pathlib import Path
     from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
     from playwright.sync_api import sync_playwright,expect
-    root=Path(sys.argv[1]);public=root/'public' if (root/'public').exists() else root
-    fixed='--fixed' in sys.argv;out=root.parent/('qa-'+root.name+'-scroll');out.mkdir(exist_ok=True)
+    # Usage: test_reader_drawer_scroll.py [PUBLIC_DIR_OR_ROOT] [--fixed]. With no directory it checks this checkout's
+    # built public/ and expects the fixed behavior; evidence goes to .local/.
+    positional = [a for a in sys.argv[1:] if not a.startswith('--')]
+    repo = Path(__file__).resolve().parents[1]
+    root = Path(positional[0]) if positional else repo
+    public=root/'public' if (root/'public').exists() else root
+    fixed='--fixed' in sys.argv or not positional;out=repo/'.local'/('qa-'+root.name+'-scroll');out.mkdir(parents=True,exist_ok=True)
     class Quiet(SimpleHTTPRequestHandler):
         def log_message(self,*args):pass
     server=ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=str(public)))
@@ -21,7 +26,7 @@ if __name__ == "__main__":
         return r.continue_()
     try:
      with sync_playwright() as p:
-      browser=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+      browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium',args=['--no-sandbox'])
       for width in [320,390,768,1440]:
        c=browser.new_context(viewport={'width':width,'height':950},is_mobile=width<500,has_touch=width<500);c.route('**/*',route)
        page=c.new_page();page.set_default_timeout(20000);page.on('pageerror',lambda e:errors.append(str(e)))

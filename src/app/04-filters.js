@@ -62,8 +62,10 @@
     const el = $('#laneBar');
     if (!el) return;
     if (state.mode === 'curated') {
-      const counts = {};
-      getCuratedList().forEach(p => (p.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+      // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
+      const counts = {}, day = curatedDay();
+      getCuratedList().filter(p => !day || publishedDate(p) === day).forEach(p => (p.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+      if (state.tag && !counts[state.tag]) counts[state.tag] = 0;
       const tags = Object.entries(counts).sort((a, b) => b[1] - a[1]);
       el.hidden = tags.length === 0;
       el.innerHTML = tags.length ? `<span class="lane-label">主题</span>` + tags.map(([t, n]) => `<button class="lane-chip ${state.tag === t ? 'active' : ''}" data-filter-tag="${esc(t)}">${esc(t.replace(/^#/, ''))} <small>${n}</small></button>`).join('') : '';
@@ -81,6 +83,28 @@
     }
     el.hidden = false;
     el.innerHTML = LANES.map(l => `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}">${esc(l.name)} <small>${counts[l.id]}</small></button>`).join('');
+  }
+
+  // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.
+  function curatedDays() {
+    const counts = new Map();
+    getCuratedList().filter(p => matchesFilters(p, false)).forEach(p => { const d = publishedDate(p); counts.set(d, (counts.get(d) || 0) + 1); });
+    return [...counts.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }
+  // '' means every day. An explicit day wins; otherwise a search spans all days.
+  function curatedDay(days = curatedDays()) {
+    if (state.day === 'all') return '';
+    if (state.day && days.some(([d]) => d === state.day)) return state.day;
+    return state.search || !days.length ? '' : days[0][0];
+  }
+  function renderCuratedDayBar() {
+    const el = $('#curatedDayBar'); if (!el) return;
+    if (state.mode !== 'curated' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
+    const days = curatedDays(), active = curatedDay(days), total = days.reduce((sum, [, n]) => sum + n, 0);
+    const label = d => /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.slice(5) : d;
+    el.hidden = days.length < 2;
+    el.innerHTML = '<span class="lane-label">日期</span>' + days.map(([d, n], i) => `<button type="button" class="lane-chip${d === active ? ' active' : ''}" data-day="${esc(i === 0 && !state.search ? '' : d)}" aria-pressed="${d === active}">${i === 0 ? '最新 · ' : ''}${esc(label(d))} <small>${n}</small></button>`).join('')
+      + `<button type="button" class="lane-chip${active ? '' : ' active'}" data-day="all" aria-pressed="${!active}">全部 <small>${total}</small></button>`;
   }
 
   function publishedDate(p) {
@@ -122,8 +146,6 @@
   function renderModeNote() {
     const el = $('#modeNote');
     if (!el) return;
-    const intro = $('#homeIntro');
-    if (intro) intro.hidden = state.mode !== 'curated';
     const rail = $('#streamRail');
     if (rail) rail.hidden = state.mode !== 'curated';
     const laneBar = $('#laneBar'), laneSlot = $(state.mode === 'curated' ? '#curatedTopicsSlot' : '#streamLaneSlot');
@@ -152,6 +174,7 @@
       set('reading', usesLane()?state.reading:'', '');
       set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
       set('wcat', state.mode === 'weekly' ? state.weeklyCat : '', '');
+      set('day', state.mode === 'curated' ? state.day : '', '');
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       u.searchParams.delete('maintainer');
@@ -333,7 +356,8 @@
     if (doi) return exactDoiPapers(doi);
     const list = getCurrentDataset();
     const curated = state.mode === 'curated';
-    const arr = list.filter(p => matchesFilters(p, false));
+    let arr = list.filter(p => matchesFilters(p, false));
+    if (curated) { const day = curatedDay(); if (day) arr = arr.filter(p => publishedDate(p) === day); }
     const jn = p => p.cleanJournal || p.journal || '';
     // The comparator runs O(n log n) times; rank each paper once.
     const ranks = new Map();

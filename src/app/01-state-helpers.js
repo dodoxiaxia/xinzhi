@@ -11,6 +11,11 @@
   if (urlParams.get('maintainer') === '1') safeSet('xz_maintainer', '1');
   if (urlParams.get('maintainer') === '0') safeRemove('xz_maintainer');
   const MAINTAINER = safeGet('xz_maintainer') === '1';
+  // Server pages (PDF download, full-text request) read the same choice from a cookie.
+  try {
+    if (MAINTAINER) document.cookie = 'xz_maintainer=1; Path=/; Max-Age=31536000; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+    else if (/(?:^|;\s*)xz_maintainer=/.test(document.cookie)) document.cookie = 'xz_maintainer=; Path=/; Max-Age=0; SameSite=Lax';
+  } catch (e) { /* cookies blocked */ }
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
   // Saved view preferences affect rendering without adding a URL parameter.
@@ -33,6 +38,7 @@
     minor: urlParams.get('minor') === '1',
     reading: ['abstract','guide','quicklook'].includes(urlParams.get('reading')) ? urlParams.get('reading') : '',
     favoritesOnly: urlParams.get('favorites') === '1',
+    day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
     weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
     weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),

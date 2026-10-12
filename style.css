@@ -1189,3 +1189,14 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover { background: var(-
   .deep-reader-foot #deepReaderNext { order: 2; }
   .deep-reader-links { order: 3; }
 }
+
+/* ---- v16 每日精选：按日查看，右栏放日期与主题 ---- */
+.stream-rail .day-bar { margin-bottom: 22px; }
+.stream-rail .day-bar[hidden] { display: none; }
+.stream-rail .day-bar .lane-chip { font-variant-numeric: tabular-nums; }
+@media (max-width: 1000px) {
+  .stream-rail .day-bar { margin-bottom: 8px; }
+}
+@media (min-width: 1001px) {
+  .curated-layout .stream-rail { position: sticky; top: calc(var(--sticky-header-h, var(--header-h)) + 16px); max-height: calc(100vh - var(--sticky-header-h, var(--header-h)) - 32px); overflow-y: auto; scrollbar-width: thin; }
+}

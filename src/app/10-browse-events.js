@@ -174,6 +174,16 @@
       if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: 'smooth' });
       return;
     }
+    const dayBtn = e.target.closest('[data-day]');
+    if (dayBtn) {
+      state.day = dayBtn.dataset.day;
+      state.page = 1;
+      renderStream();
+      const stream = $('#streamSection'), top = stream ? stream.getBoundingClientRect().top + window.scrollY - 70 : 0;
+      if (stream && window.scrollY > top) window.scrollTo({ top, behavior: 'instant' });
+      $(`[data-day="${state.day}"]`)?.focus({ preventScroll: true });
+      return;
+    }
     const weeklyCat = e.target.closest('[data-weekly-cat]');
     if (weeklyCat) {
       state.weeklyCat = weeklyCat.dataset.weeklyCat;

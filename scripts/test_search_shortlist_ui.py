@@ -5,6 +5,7 @@ Run scripts/build_public.py first. Evidence stays in ignored .local; no model ca
 """
 import argparse
 import functools
+import os
 import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -65,7 +66,7 @@ def main():
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, executable_path='/usr/bin/chromium')
+            browser = p.chromium.launch(headless=True, executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium')
             for width in [1440, 390, 320]:
                 context = browser.new_context(viewport={'width': width, 'height': 900}, is_mobile=width < 500, has_touch=width < 500)
                 context.add_init_script('Object.defineProperty(navigator, "clipboard", {value: {writeText: async text => {window.__copiedSummary = text}}})')
@@ -134,13 +135,29 @@ def main():
                     saved_url, saved_count = page.url, count(page)
                     page.goto(base + '?mode=sources', wait_until='load')
                     page.go_back(wait_until='load')
+                    # Chromium may restore the page from the back/forward cache, which go_back() does not wait for.
+                    page.wait_for_url(saved_url)
                     check(page.url == saved_url and count(page) == saved_count, label + ': browser Back restores query')
+                    expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
+                    # In-page tab switches add one history entry each; Back returns to the previous tab with its query.
+                    sources_tab = page.locator('[data-mode="sources"]')
+                    if sources_tab.is_visible():
+                        sources_tab.click()
+                    else:
+                        sources_tab.evaluate('(e)=>e.click()')
+                    expect(page.locator('#sourcesSection')).to_be_visible()
+                    check(parse_qs(urlsplit(page.url).query).get('mode') == ['sources'], label + ': tab switch reflected in URL')
+                    page.go_back()
+                    page.wait_for_url(saved_url)
+                    expect(page.locator('#activeFiltersBar .results-meta b')).to_have_text(str(saved_count))
+                    check(page.url == saved_url, label + ': browser Back after tab switch restores previous tab and query')
                     expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
                     next_mode = {'curated': 'candidates', 'candidates': 'library', 'library': 'curated'}[mode]
                     page.locator(f'[data-mode="{next_mode}"]').click()
                     expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
                     check(parse_qs(urlsplit(page.url).query)['q'] == ['AI-ECG'], label + ': mode switch preserves query')
-                    expect(page.locator('.search-scope')).to_contain_text({'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[next_mode])
+                    # The (hidden) sources section keeps its own scope line once visited.
+                    expect(page.locator('#streamSection .search-scope')).to_contain_text({'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[next_mode])
 
                 composite = {'mode': 'library', 'lane': 'all', 'journal': 'No matching journal', 'design': 'RCT', 'range': '30'}
                 page.goto(base + '?' + urlencode(composite), wait_until='load')
@@ -259,6 +276,14 @@ def main():
                 page.evaluate('localStorage.setItem("xinzhi_huddle_ids", JSON.stringify(["missing-public-id"]))')
                 page.reload(wait_until='load')
                 page.locator('#openHuddleBtn').click()
+                # An unresolved saved ID stays listed (it may be an older radar paper) and can be removed.
+                missing = page.locator('.huddle-item-missing')
+                expect(missing).to_have_count(1)
+                expect(missing).to_contain_text('missing-public-id')
+                expect(page.locator('#clearHuddleBtn')).to_be_enabled()
+                for button_id in ['copyHuddleSummaryBtn', 'exportHuddleMdBtn']:
+                    expect(page.locator('#' + button_id)).to_be_disabled()
+                missing.locator('[data-action="remove-huddle"]').click()
                 empty_actions(page, f'unresolved saved ID/{width}')
                 context.close()
                 print(f'Real browser search/count/shortlist passed at {width}px', flush=True)
