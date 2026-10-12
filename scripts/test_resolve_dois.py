@@ -53,6 +53,19 @@ class ResolveDoisTest(unittest.TestCase):
         self.assertEqual((stats['resolved'], stats['unresolved']), (1, 1))
         self.assertTrue(all('filter' in c for c in calls), 'PII links use the exact alternative-id filter')
 
+    def test_pii_match_tolerates_a_missing_subtitle_but_title_query_does_not(self):
+        case = {'title': 'Giant Thrombosed Coronary Aneurysm Causing Recurrent Ischemic Events: Insights From Multimodality Imaging', 'doi': '',
+                'url': 'https://www.sciencedirect.com/science/article/pii/S2666084926028949'}
+        item = dict(case)
+        self.run_fill([item], lambda p: rows('10.1016/j.jaccas.2026.109733', 'Giant Thrombosed Coronary Aneurysm Causing Recurrent Ischemic Events'))
+        self.assertEqual(item['doi'], '10.1016/j.jaccas.2026.109733')
+        item = dict(case, url='https://example.org/article', title=case['title'])
+        self.run_fill([item], lambda p: rows('10.1016/j.jaccas.2026.109733', 'Giant Thrombosed Coronary Aneurysm Causing Recurrent Ischemic Events'))
+        self.assertEqual(item['doi'], '', 'without a PII only an exact title is trusted')
+        item = dict(case)
+        rd.fill([item], tempfile.mkdtemp(), fetch=lambda p: rows('10.1/x', 'Giant'), now=NOW, network=True, sleep=lambda s: None)
+        self.assertEqual(item['doi'], '', 'a very short prefix is not a match')
+
     def test_title_query_for_links_without_pii_and_ambiguity(self):
         item = dict(OPENAI)
         self.run_fill([item], lambda p: rows('10.1000/a', OPENAI['title']) + rows('10.1000/b', OPENAI['title']))

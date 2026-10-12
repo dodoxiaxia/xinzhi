@@ -74,12 +74,20 @@ def crossref(params):
 
 
 def lookup(item, fetch=crossref):
-    """Return the DOI whose Crossref title equals the item's title, else ''."""
+    """Return the DOI whose Crossref title matches the item's title, else ''."""
     want = title_key(item.get('title'))
     pii = pii_of(item.get('url'))
     rows = fetch({'filter': 'alternative-id:' + pii} if pii else {'query.bibliographic': str(item.get('title'))[:300]})
+    def same(title):
+        got = title_key(title)
+        if got == want:
+            return True
+        # A PII already names one article; Crossref often registers the title without the
+        # subtitle ("Giant Thrombosed Coronary Aneurysm…" for "…: Insights From Imaging").
+        short, long_ = sorted((got, want), key=len)
+        return bool(pii) and len(short) >= 20 and long_.startswith(short)
     hits = {str(r.get('DOI', '')).lower() for r in rows
-            if any(title_key(t) == want for t in r.get('title') or []) and DOI_RE.match(str(r.get('DOI', '')))}
+            if any(same(t) for t in r.get('title') or []) and DOI_RE.match(str(r.get('DOI', '')))}
     return hits.pop() if len(hits) == 1 else ''
 
 
