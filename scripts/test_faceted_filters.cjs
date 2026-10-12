@@ -44,9 +44,9 @@ const context = vm.createContext({
 context.history = { replaceState: (_state, _title, url) => { context.window.location.href = new URL(url, context.window.location.href).href; } };
 vm.runInContext([
   'publisherForJournal', 'sidebarSelections', 'clearSidebarFilters', 'selectSidebarFilter',
-  'browseOnlyButton', 'matchesQuery', 'matchesSidebarFilters', 'matchesFilters',
+  'browseOnlyButton', 'paperDerived', 'paperSearchText', 'matchesQuery', 'sidebarMisses', 'matchesSidebarFilters', 'matchesFilters',
   'renderSidebarFilters', 'renderActiveFilterChips', 'renderEmptyFilters', 'syncUrl', 'defaultRange'
-].map(fn).join('\n'), context);
+].map(fn).join('\n') + '\n' + ['PAPER_DERIVED', 'FACET_BITS'].map(name => source.match(new RegExp('  const ' + name + ' = [^\\n]+'))[0]).join('\n'), context);
 let checks = 0;
 const check = (value, label) => { assert(value, label); checks++; };
 const matches = () => papers.filter(p => context.matchesFilters(p, false)).map(p => p.id).join(',');

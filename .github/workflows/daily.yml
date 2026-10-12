@@ -6,9 +6,11 @@ on:
     paths:
       - 'index.html'
       - 'app.js'
+      - 'src/**'
       - 'citation-export.js'
       - 'style.css'
-      - 'icon.svg'
+      - 'icon.png'
+      - 'demo-reading.html'
       - 'journal-metrics.js'
       - 'edge/**'
       - 'workers/cron-dispatch/**'

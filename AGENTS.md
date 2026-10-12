@@ -18,8 +18,8 @@ scripts/ci_daily.py 依次运行：
   generate_quicklooks.py（AI 速览）、week_precompute.py（近7天榜预生成）、daily_fulltext.py（AI 全文精读）
         │
         ▼
-scripts/build_public.py  →  public/ 8 个公开文件
-  index.html  public.js  radar.js  feed.xml  style.css  icon.svg  _headers  _worker.js
+scripts/build_public.py  →  public/ 9 个公开文件
+  index.html  public.js  radar.js  feed.xml  style.css  icon.png  demo-reading.html  _headers  _worker.js
         │  发布前离线测试（daily.yml 中的 node/unittest 列表）
         ▼
 wrangler pages deploy public → Cloudflare Pages（dryz-xinzhi）
@@ -50,7 +50,7 @@ scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ �
 ```sh
 git fetch origin state
 git archive origin/state | tar -x -C . data public      # data/ 与 public/ 已在 .gitignore
-python3 scripts/build_public.py                        # 生成 public/ 8 个文件
+python3 scripts/build_public.py                        # 生成 public/ 9 个文件
 python3 -m http.server 8765 --bind 127.0.0.1 --directory public   # http://127.0.0.1:8765/
 ```
 
@@ -90,8 +90,10 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 - **PDF 下载口令**只存在于 Cloudflare Secret `PDF_DOWNLOAD_PASSPHRASE`。代码、测试、文档、提交信息里都不写口令值；测试用明显的假值。其他凭据（`LLM_API_KEY`、`GITHUB_LIBRARY_TOKEN`、GitHub Actions 的 `XINZHI_LLM_API_KEY`、`CLOUDFLARE_API_TOKEN` 等）同理，只在 Cloudflare/GitHub 的 Secret 中配置。
 - **AI 内容必须标注“未经人工核对”**（或同义的“未经人工审核”“未经人工医学终审”）。AI 速览、机器翻译、AI 综述、AI 全文精读都要带标注；不要把 AI 结果显示成“已核对导读”。
 - **不要用旧导入脚本覆盖公开题录**：`scripts/build_data.py`、`service/import_data.py` 等早期导入工具不能用来重建文献库。文献库只能通过审核后的快照（`editorial/public_library_snapshot.json` + manifest，由 `apply_public_library.py` 应用）更新，构建守卫会阻止旧状态覆盖已批准条目。也不要恢复旧前端模板。
-- **公开文件白名单**：只发布第 1 节列出的 8 个文件。不上传 PDF、数据库、`.local/`、凭据或内部记录。
-- **改界面要同步更新 UI 测试**：改 `index.html`、`app.js`、`style.css` 时，运行浏览器测试，并在同一提交里更新失效的断言（保持断言原意）。
+- **公开文件白名单**：只发布第 1 节列出的 9 个文件。不上传 PDF、数据库、`.local/`、凭据或内部记录。
+- **`app.js` 与 `edge/_worker.js` 是拼接产物**：源码在 `src/app/*.js` 与 `edge/src/*.js`（按文件名顺序逐字拼接）。改源文件后运行 `python3 scripts/build_sources.py`，并把拼接结果一起提交；不要直接编辑 `app.js` 或 `_worker.js`（`build_public.py` 与测试会检查两者是否一致）。
+- **界面只有一套风格 + 深浅色**：「临床期刊」风格（`data-style="a"` 固定），旧链接里的 `?style=` 会被忽略。筛选区为「领域 + 时间 + 搜索」常显，其余在「更多筛选」里；期刊只有出版方/期刊树一个入口。
+- **改界面要同步更新 UI 测试**：改 `index.html`、`src/app/`、`style.css` 时，运行浏览器测试，并在同一提交里更新失效的断言（保持断言原意）。
 - **维护者模式**：汉堡菜单（登录、按 DOI 获取全文等）只对维护者显示。在浏览器访问一次 `?maintainer=1` 开启（存在 localStorage），`?maintainer=0` 关闭。普通读者看不到这些入口。
 - **历史与返回键**：切换栏目会 `pushState`，返回键回到上一个栏目；打开阅读面板/精选清单会压入一条历史，返回键先关闭面板（见 `scripts/test_reader_overlays_ui.py`）。
 - **模型调用要有边界**：打开页面不触发付费生成；网络中断后进入“完成状态尚未确认”等待态，只允许只读查询，不自动重新提交。
