@@ -84,6 +84,14 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   h = await create(); await enqueue(h); const loginTask = await claim(h); assert.equal((await api(h,'receipt',{...identity(loginTask),state:'login_required'})).status,200);
   assert.equal((await (await api(h,'claim')).json()).task,null); assert.equal((await api(h,'receipt',{...identity(loginTask),state:'running'})).status,200,'same owner resumes after browser login');
   assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).id,loginTask.taskId);
+  h = await create(); await enqueue(h); const queuedNow = h.context.Date.now, waited = Date.now() + 2 * 86400000; h.context.Date.now = () => waited;
+  try {
+    const lateTask = await claim(h); assert.equal((await api(h,'receipt',{...identity(lateTask),state:'running'})).status,200,'a request that waited in the queue is not expired on claim');
+    assert.equal((await api(h,'receipt',{...identity(lateTask),state:'login_required'})).status,200);
+    assert.equal((await api(h,'receipt',{...identity(lateTask),state:'running'})).status,200,'login resume counts 24 hours from the claim, not the queue entry');
+    assert.equal((await api(h,'receipt',{...identity(lateTask),state:'login_required'})).status,200);
+    h.context.Date.now = () => waited + 86400000; await error(await api(h,'receipt',{...identity(lateTask),state:'running'}),409,'muse_stale');
+  } finally { h.context.Date.now = queuedNow; }
   h = await create(); await enqueue(h); const rejectedTask = await claim(h); assert.equal((await upload(h,rejectedTask)).status,200); const rejectedCandidate = (await (await review(h,{action:'claim'})).json()).task;
   assert.equal((await review(h,{...proof(rejectedCandidate),result:'rejected',pages:0})).status,200); assert(!h.values.has('library:pdf:' + hash(original))); assert.equal(JSON.parse(h.values.get('library:muse-job:' + doi)).state,'review');
   const recheckInput = {action:'recheck',doi}, manualReview = {claims:{event_name:'workflow_dispatch'}};
