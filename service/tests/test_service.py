@@ -79,7 +79,7 @@ class TestXinzhiService(unittest.TestCase):
         cls.static_dir.mkdir(parents=True, exist_ok=True)
         (cls.static_dir / "index.html").write_text("<!doctype html><html>Root Index</html>", encoding="utf-8")
         (cls.static_dir / "style.css").write_text("body { color: #183b38; }", encoding="utf-8")
-        (cls.static_dir / "icon.svg").write_text("<svg></svg>", encoding="utf-8")
+        (cls.static_dir / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
 
         # public 目录
         cls.public_dir = cls.static_dir / "public"

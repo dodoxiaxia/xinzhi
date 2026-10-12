@@ -14,7 +14,8 @@ const ctx=vm.createContext({Date:FixedDate,Intl,$:()=>node,FEEDS:{items:[]},stat
 const designStart=src.indexOf('  // Study design badge class');
 const designEnd=src.indexOf('  //',designStart+5);
 vm.runInContext(src.slice(designStart,designEnd),ctx);
-vm.runInContext(['matchesQuery','specialSearchStatus'].map(n=>src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'))[0]).join('\n'),ctx);
+vm.runInContext(src.match(/  const PAPER_DERIVED = [^\n]+/)[0],ctx);
+vm.runInContext(['paperDerived','paperSearchText','matchesQuery','specialSearchStatus'].map(n=>src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'))[0]).join('\n'),ctx);
 vm.runInContext(code,ctx);
 let checks=0;const eq=(a,b,label)=>{assert.deepStrictEqual(a,b,label);checks++;};
 const plain=x=>JSON.parse(JSON.stringify(x));

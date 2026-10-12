@@ -49,7 +49,7 @@ async function run() {
         if (u.pathname==='/citation-export.js') { await route.fulfill({body:fs.readFileSync(path.join(root,'citation-export.js')),contentType:'application/javascript'}); return; }
         if (u.pathname==='/app.js') { if(hold) await appGate; await route.fulfill({body:fs.readFileSync(path.join(root,'app.js')),contentType:'application/javascript'}); return; }
         if (scripts[u.pathname]) { await route.fulfill({body:scripts[u.pathname],contentType:'application/javascript'}); return; }
-        if (u.pathname==='/icon.svg') { await route.fulfill({body:'<svg xmlns="http://www.w3.org/2000/svg"/>',contentType:'image/svg+xml'}); return; }
+        if (u.pathname==='/icon.png') { await route.fulfill({body:fs.readFileSync(path.join(root,'icon.png')),contentType:'image/png'}); return; }
         if (u.pathname==='/' || u.pathname==='/index.html') { await route.fulfill({body:fs.readFileSync(path.join(root,'index.html')),contentType:'text/html'}); return; }
         throw Error('Unexpected offline request '+u.href);
       });

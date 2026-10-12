@@ -17,7 +17,9 @@ from public_content_corrections import (load_corrections, corrected_title,
                                         corrected_quicklook_map)
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
-PUBLIC = {'index.html','public.js','radar.js','feed.xml','style.css','icon.svg','_headers','_worker.js'}
+PUBLIC = {'index.html','public.js','radar.js','feed.xml','style.css','icon.png','demo-reading.html','_headers','_worker.js'}
+# Outputs of earlier releases that a restored public/ may still hold; removed before building.
+OBSOLETE_PUBLIC = {'icon.svg'}
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
 PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
@@ -387,7 +389,7 @@ def main():
     legacy_guides()  # Required publication registry, even when article lists are empty.
     checked_records(str(ROOT))  # Missing official-status evidence blocks a complete release.
     DEST.mkdir(exist_ok=True)
-    extra={p.name for p in DEST.iterdir()}-PUBLIC
+    extra={p.name for p in DEST.iterdir()}-PUBLIC-OBSOLETE_PUBLIC
     if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
     require_snapshot(l, ROOT)
@@ -484,7 +486,7 @@ def main():
     radar_recent,radar_archive=split_radar(radar)
     radar_js=js('RADAR_ARCHIVE',radar_archive if radar else {'rows':[]})+'\n;window.XINZHI_RADAR_READY&&window.XINZHI_RADAR_READY();\n'
     bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics),js('DEEP_READINGS',readings)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar_recent),js('RADAR_SRC','radar.js')] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
-    headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n"
+    headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n/icon.png\n  Cache-Control: public, max-age=86400\n"
     worker=(ROOT/'edge/_worker.js').read_text()
     from github_oidc_keys import build_keys
     key_placeholder='const FULLTEXT_OIDC_BUILD_KEYS = {};'
@@ -502,10 +504,16 @@ def main():
     if worker.count(abstract_placeholder)!=1:raise ValueError('Public abstract snapshot placeholder missing')
     sources=public_abstract_sources(weekly,editorial_catalog,candidates['items'])
     worker=worker.replace(abstract_placeholder,'const PUBLIC_ABSTRACT_SOURCES = '+json.dumps(sources,ensure_ascii=False,separators=(',',':'))+';')
-    files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'feed.xml':make_feed(candidates['items'],ql,built_at),'style.css':(ROOT/'style.css').read_text(),'icon.svg':(ROOT/'icon.svg').read_text(),'_headers':headers,'_worker.js':worker}
+    files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'feed.xml':make_feed(candidates['items'],ql,built_at),'style.css':(ROOT/'style.css').read_text(),'demo-reading.html':(ROOT/'demo-reading.html').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
+    icon=(ROOT/'icon.png').read_bytes()
+    if not icon.startswith(b'\x89PNG\r\n\x1a\n') or len(icon)>65536:raise ValueError('icon.png must be a small PNG')
+    payloads['icon.png']=icon
     if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')
+    for name in OBSOLETE_PUBLIC:
+        old=ordinary_file(ROOT,'public/'+name)
+        if old.exists():old.unlink()
     for name,value in payloads.items():(DEST/name).write_bytes(value)
     # Local generated assets use the same sanitized archive/quicklooks as the public build.
     archive_text=json.dumps({'papers':archive},ensure_ascii=False,indent=2)
@@ -528,7 +536,7 @@ def main():
         if ordinary_file(ROOT,'public/'+name).read_bytes()!=content:
             raise ValueError('Public output changed before completion: '+name)
     meta['buildProvenance']=build_after
-    # Local audit only; the six-file public allowlist does not include this report.
+    # Local audit only; the public allowlist does not include this report.
     (ROOT/'docs/public-library-quality-audit.json').write_text(json.dumps(library_quality,ensure_ascii=False,indent=2)+'\n')
     (ROOT/'docs/public-manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
     print(json.dumps({'built':len(manifest),'release':meta['release'],'counts':meta['counts']},ensure_ascii=False))

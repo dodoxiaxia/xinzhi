@@ -33,8 +33,8 @@ async function run(){
         if(u.pathname.startsWith('/api/')){assert.equal(request.method(),'GET','No model mutations');await route.fulfill({json:{ok:true,available:false,found:false,canGenerate:false}});return;}
         if(data[u.pathname]){await route.fulfill({body:data[u.pathname],contentType:'application/javascript'});return;}
         const name=u.pathname==='/'?'index.html':u.pathname.slice(1);
-        assert(['index.html','app.js','citation-export.js','journal-metrics.js','style.css','icon.svg','config/journal-metrics.json'].includes(name),'Expected local asset '+name);
-        await route.fulfill({body:fs.readFileSync(path.join(root,name)),contentType:name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':name.endsWith('.json')?'application/json':name.endsWith('.svg')?'image/svg+xml':'text/html'});
+        assert(['index.html','app.js','citation-export.js','journal-metrics.js','style.css','icon.png','config/journal-metrics.json'].includes(name),'Expected local asset '+name);
+        await route.fulfill({body:fs.readFileSync(path.join(root,name)),contentType:name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':name.endsWith('.json')?'application/json':name.endsWith('.png')?'image/png':'text/html'});
       });
       await page.goto(origin,{waitUntil:'networkidle'});
       await page.locator('#openHuddleBtn').click();

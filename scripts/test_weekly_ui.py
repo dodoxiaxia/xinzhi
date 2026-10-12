@@ -96,6 +96,8 @@ def main():
         expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
         check('read=' not in page.url, 'closing clears the reading link')
         activate()
+        # The example reading is fetched on first open; wait for its section list.
+        expect(page.locator('#deepReaderToc button').nth(4)).to_be_attached()
         page.locator('#deepReaderBody').evaluate('(e)=>e.scrollTo(0, e.scrollHeight)')
         expect(close).to_be_in_viewport()
         check(page.locator('#deepReaderToc button').count() >= 5, 'demo reading has a section list')

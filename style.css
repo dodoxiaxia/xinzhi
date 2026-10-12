@@ -575,6 +575,17 @@ aside.sidebar {
 .weekly-full-report p, .weekly-full-report li { font-size: 15.5px; line-height: 1.95; color: var(--text-primary); }
 .weekly-table { min-width: 520px; }
 .weekly-table th { font-size: 12px; letter-spacing: .06em; color: var(--text-muted); background: none !important; }
+/* Example full-text reading (demo-reading.html, loaded on demand into the reading panel) */
+.demo-report { margin-top: 24px; line-height: 1.75; }
+.demo-report .demo-first-section { margin-top: 20px; }
+.demo-list { padding-left: 20px; margin: 10px 0; }
+.demo-subhead { margin-top: 16px; }
+.demo-table-scroll { overflow-x: auto; margin-top: 10px; }
+.demo-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.demo-table th, .demo-table td { padding: 8px 12px; text-align: left; }
+.demo-table thead tr { background: var(--bg-secondary); border-bottom: 2px solid var(--border); }
+.demo-table tbody tr { border-bottom: 1px solid var(--border); }
+.demo-questions { margin-top: 24px; }
 .next-candidates { margin-bottom: 24px; }
 .next-title { font-family: var(--font-serif); font-size: 17px; margin: 0 0 10px; }
 .next-title small { display: block; font-family: var(--font-sans); font-weight: 400; font-size: 12.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.7; }

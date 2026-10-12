@@ -90,21 +90,29 @@
   };
   const zhTerms = Object.keys(ZH_EN).sort((a,b) => b.length - a.length);
   // Segment adjacent Chinese terms: 房颤消融 and 房颤 消融 both mean AND.
+  // The segmentation depends only on the query, so it is planned once per query string
+  // (the filter calls this for every paper; re-segmenting per paper froze 14k-row searches).
   function queryMatches(text, q) {
-    return q.split(/\s+/).filter(Boolean).every(term => {
-      if (text.includes(term)) return true;
-      const groups = []; let rest = term;
-      while (rest) {
-        const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));
-        if (zh) { groups.push([zh.toLowerCase(), ...ZH_EN[zh].map(x=>x.toLowerCase())]); rest = rest.slice(zh.length); }
-        else {
-          const next = [...rest].findIndex((_,i) => i>0 && zhTerms.some(k=>rest.slice(i).startsWith(k.toLowerCase())));
-          const n = next > 0 ? next : rest.length;
-          groups.push([rest.slice(0,n)]); rest = rest.slice(n);
+    const plans = queryMatches.plans || (queryMatches.plans = new Map());
+    let plan = plans.get(q);
+    if (!plan) {
+      plan = q.split(/\s+/).filter(Boolean).map(term => {
+        const groups = []; let rest = term;
+        while (rest) {
+          const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));
+          if (zh) { groups.push([zh.toLowerCase(), ...ZH_EN[zh].map(x=>x.toLowerCase())]); rest = rest.slice(zh.length); }
+          else {
+            const next = [...rest].findIndex((_,i) => i>0 && zhTerms.some(k=>rest.slice(i).startsWith(k.toLowerCase())));
+            const n = next > 0 ? next : rest.length;
+            groups.push([rest.slice(0,n)]); rest = rest.slice(n);
+          }
         }
-      }
-      return groups.every(alts=>alts.some(a=>text.includes(a)));
-    });
+        return { term, groups };
+      });
+      if (plans.size > 50) plans.clear();
+      plans.set(q, plan);
+    }
+    return plan.every(({ term, groups }) => text.includes(term) || groups.every(alts=>alts.some(a=>text.includes(a))));
   }
 
   // All papers indexed by ID
@@ -570,6 +578,18 @@
   function isCrossAI(p) {
     return AI_RE.test(paperText(p)) && (laneOf(p)==='cardio' || CARDIO_RE.test(p.title || ''));
   }
+  // Derived per-paper values for the filter hot path (about 14k rows once the radar archive
+  // loads): lane, cross-AI flag and lower-case search text are computed once per paper.
+  // forgetPaper() drops them whenever a paper's text changes (abstract fetched, AI title, etc.).
+  const PAPER_DERIVED = new WeakMap();
+  function paperDerived(p) {
+    let d = PAPER_DERIVED.get(p);
+    if (!d) PAPER_DERIVED.set(p, d = { lane: null, crossAI: null, text: null, query: null, hit: false });
+    return d;
+  }
+  function forgetPaper(p) { if (p && typeof p === 'object') PAPER_DERIVED.delete(p); }
+  function paperLane(p) { const d = paperDerived(p); return d.lane === null ? (d.lane = laneOf(p)) : d.lane; }
+  function paperCrossAI(p) { const d = paperDerived(p); return d.crossAI === null ? (d.crossAI = isCrossAI(p)) : d.crossAI; }
   const LIVE_QL = {};
   function qlKey(p) { return p.doi ? String(p.doi).toLowerCase() : 'pmid-' + p.pmid; }
   function preGeneratedOf(p) {
@@ -623,7 +643,7 @@
       .then(j => {
         if (paper._aiToken !== token) return;
         if (!j?.ok) throw Error('Lookup unavailable');
-        if (j.found && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; paper._aiState = 'done'; }
+        if (j.found && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; forgetPaper(paper); paper._aiState = 'done'; }
         else if (aiTaskStatus(j) === 'waiting' || aiTaskStatus(j) === 'completed' || (previous === 'waiting' && !aiTaskStatus(j))) { paper._aiState = 'waiting'; paper._aiMsg = aiWaitingMessage(j); }
         else { paper._aiState = j.canGenerate ? 'none' : 'off'; paper._aiMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'quicklook') : ''; if (paper._aiMsg && j.canGenerate) paper._aiState = 'error'; }
       })
@@ -657,7 +677,7 @@
         if (!j || j.ok === false) throw new Error('Translation lookup unavailable');
         paper._trLookupState = 'done';
         paper._trCanGenerate = typeof j.canGenerate === 'boolean' ? j.canGenerate : undefined;
-        if (j.found && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; }
+        if (j.found && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) { paper.titleZh = j.tr.title_zh; forgetPaper(paper); } paper._trState = 'done'; }
         else if (aiTaskStatus(j) === 'waiting' || aiTaskStatus(j) === 'completed' || (previous === 'waiting' && !aiTaskStatus(j))) { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); }
         else if (aiTaskStatus(j) === 'failed') { paper._trState = 'error'; paper._trMsg = aiErrorMessage({...j, ...j.task}, 'translate'); }
         else paper._trState = '';
@@ -670,7 +690,7 @@
     const token = {}; paper._trToken = token; paper._trState = 'loading'; paper._trSlow = false; openReaderDrawer(paper);
     const render = () => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); };
     aiRequest('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'translate', pmid: paper.pmid || '', doi: paper.doi || '' }) }, () => { if (paper._trToken === token) { paper._trSlow = true; render(); } })
-      .then(j => { if (paper._trToken !== token) return; if (j.ok && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) paper.titleZh = j.tr.title_zh; paper._trState = 'done'; } else if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
+      .then(j => { if (paper._trToken !== token) return; if (j.ok && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) { paper.titleZh = j.tr.title_zh; forgetPaper(paper); } paper._trState = 'done'; } else if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } })
       .catch(error => { if (paper._trToken === token) { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(null, error.code === 'request_timeout'); } })
       .finally(render);
   }
@@ -679,7 +699,7 @@
     const token = {}; paper._ttToken = token; paper._ttState = 'loading'; paper._ttMsg = '翻译中…'; openReaderDrawer(paper);
     const render = () => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); };
     aiRequest('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ task: 'title', pmid: paper.pmid || '', doi: paper.doi || '' }) }, () => { if (paper._ttToken === token) { paper._ttMsg = '标题翻译用时较长，无需重复点击。'; render(); } })
-      .then(j => { if (paper._ttToken !== token) return; if (j.ok && j.tt) { paper.titleZh = j.tt.title_zh; paper._ttState = ''; paper._ttMsg = ''; } else { paper._ttState = j.error === 'in_progress' || aiTaskStatus(j) === 'waiting' ? 'waiting' : ''; paper._ttMsg = paper._ttState === 'waiting' ? aiWaitingMessage(j) : aiErrorMessage(j, 'title'); } })
+      .then(j => { if (paper._ttToken !== token) return; if (j.ok && j.tt) { paper.titleZh = j.tt.title_zh; forgetPaper(paper); paper._ttState = ''; paper._ttMsg = ''; } else { paper._ttState = j.error === 'in_progress' || aiTaskStatus(j) === 'waiting' ? 'waiting' : ''; paper._ttMsg = paper._ttState === 'waiting' ? aiWaitingMessage(j) : aiErrorMessage(j, 'title'); } })
       .catch(error => { if (paper._ttToken === token) { paper._ttState = 'waiting'; paper._ttMsg = aiWaitingMessage(null, error.code === 'request_timeout'); } })
       .finally(render);
   }
@@ -687,7 +707,7 @@
     const k = trKeyOf(paper); if (!k || paper._ttState === 'checking' || paper._ttState === 'loading') return;
     const token = {}; paper._ttToken = token; paper._ttState = 'checking';
     aiRequest('/api/ai?task=title&k=' + encodeURIComponent(k), { headers: { accept: 'application/json' } })
-      .then(j => { if (paper._ttToken !== token) return; if (!j?.ok) throw Error('Title lookup unavailable'); if (j.found && j.tt?.title_zh) { paper.titleZh = j.tt.title_zh; paper._ttState = ''; paper._ttMsg = ''; } else if (['idle', 'failed'].includes(aiTaskStatus(j))) { paper._ttState = ''; paper._ttMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'title') : '上次任务已结束，未查到标题译文。可点击重试。'; } else { paper._ttState = 'waiting'; paper._ttMsg = aiWaitingMessage(j); } })
+      .then(j => { if (paper._ttToken !== token) return; if (!j?.ok) throw Error('Title lookup unavailable'); if (j.found && j.tt?.title_zh) { paper.titleZh = j.tt.title_zh; forgetPaper(paper); paper._ttState = ''; paper._ttMsg = ''; } else if (['idle', 'failed'].includes(aiTaskStatus(j))) { paper._ttState = ''; paper._ttMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'title') : '上次任务已结束，未查到标题译文。可点击重试。'; } else { paper._ttState = 'waiting'; paper._ttMsg = aiWaitingMessage(j); } })
       .catch(() => { if (paper._ttToken === token) { paper._ttState = 'waiting'; paper._ttMsg = '已有标题译文读取失败，请重查；没有重新调用模型。'; } })
       .finally(() => { if (state.activeDrawerPaper === paper) openReaderDrawer(paper); });
   }
@@ -993,7 +1013,7 @@
     aiRequest('/api/ql', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pmid: paper.pmid || '', doi: paper.doi || '' }) }, () => { if (paper._aiToken === token) { paper._aiSlow = true; render(); } })
       .then(j => {
         if (paper._aiToken !== token) return;
-        if (j.ok && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; paper._aiState = 'done'; }
+        if (j.ok && j.ql) { LIVE_QL[qlKey(paper)] = j.ql; forgetPaper(paper); paper._aiState = 'done'; }
         else if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') { paper._aiState = 'waiting'; paper._aiMsg = aiWaitingMessage(j); }
         else if (j.error === 'no_abstract') { paper._aiState = 'noabs'; }
         else { paper._aiState = 'error'; paper._aiMsg = aiErrorMessage(j, 'quicklook'); }
@@ -1042,8 +1062,8 @@
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;
-    if (lane === 'crossai') return isCrossAI(p);
-    const l = laneOf(p);
+    if (lane === 'crossai') return paperCrossAI(p);
+    const l = paperLane(p);
     return lane === 'core' ? (l === 'cardio' || l === 'aimed') : l === lane;
   }
   const usesLane = () => state.mode === 'candidates' || state.mode === 'library';
@@ -1073,12 +1093,17 @@
       return;
     }
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
-    const base = getCurrentDataset();
+    // One pass: every paper that passes the non-lane conditions counts towards its own lanes.
+    const counts = { core: 0, crossai: 0, cardio: 0, aimed: 0, general: 0, aitech: 0, all: 0 };
+    for (const p of getCurrentDataset()) {
+      if (!matchesFilters(p, true)) continue;
+      const lane = paperLane(p);
+      counts.all++; counts[lane]++;
+      if (lane === 'cardio' || lane === 'aimed') counts.core++;
+      if (paperCrossAI(p)) counts.crossai++;
+    }
     el.hidden = false;
-    el.innerHTML = LANES.map(l => {
-      const n = base.filter(p => inLane(p, l.id) && matchesFilters(p, true)).length;
-      return `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}">${esc(l.name)} <small>${n}</small></button>`;
-    }).join('');
+    el.innerHTML = LANES.map(l => `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}">${esc(l.name)} <small>${counts[l.id]}</small></button>`).join('');
   }
 
   function publishedDate(p) {
@@ -1248,40 +1273,57 @@
   }
 
   // Filter & Sort
-  function matchesQuery(p) {
-    const q = state.search.trim().toLowerCase();
-    if (!q) return true;
-    const text = [
+  function paperSearchText(p) {
+    const d = paperDerived(p);
+    if (d.text === null) d.text = [
       p.title, p.draftData?.title_zh, p.titleZh, p.cleanJournal, p.journal, p.publisher, p.doi, p.pmid, p.id,
       p.summary, ...(p.abstractSections || []).map(x => x.text), quicklookOf(p)?.title_zh,
       p.draftData?.summary, ...(p.authors || []), ...(p.tags || []),
       p.quantitativeMetrics?.trialId, p.quantitativeMetrics?.sampleSize
     ].filter(Boolean).join(' ').toLowerCase();
-    return queryMatches(text, q);
+    return d.text;
+  }
+  function matchesQuery(p) {
+    const q = state.search.trim().toLowerCase();
+    if (!q) return true;
+    // List, lane counts and sidebar counts all ask again for the same keyword.
+    const d = paperDerived(p);
+    if (d.query !== q) { d.query = q; d.hit = queryMatches(paperSearchText(p), q); }
+    return d.hit;
   }
   function specialSearchStatus(scope, matched, total, noun) {
     if (!state.search) return '';
     return `<div class="special-search-status"><span class="search-scope" role="status">检索范围：${esc(scope)} · 匹配 ${matched}/${total} ${noun}；切换栏目保留关键词</span><span>搜索：${esc(state.search)}</span><button class="btn-sm" data-clear="search" aria-label="清除检索关键词">清除关键词</button></div>`;
   }
+  // All conditions must hold; the cheap ones run first and the keyword search last.
   function matchesFilters(p, skipLane, skip) {
-    if (!skipLane && usesLane() && !inLane(p, state.lane)) return false;
-    if (!matchesQuery(p)) return false;
-    if (!state.minor && usesLane() && p.minor) return false;
-    if (state.range !== 'all' && usesLane() && (datePrecision(p)!=='day' || p.date.slice(0,10)<rangeStart() || p.date.slice(0,10)>beijingToday())) return false;
-    if (usesLane() && state.favoritesOnly && !state.favoriteJournals.includes(p.cleanJournal || p.journal || '')) return false;
-    if (usesLane() && state.reading==='abstract' && !hasAbstract(p)) return false;
-    if (usesLane() && state.reading==='guide' && !p.hasDraft) return false;
-    if (usesLane() && state.reading==='quicklook' && (!quicklookOf(p) || p.hasDraft)) return false;
-    return matchesSidebarFilters(p, skip);
+    const lane = usesLane();
+    if (lane) {
+      if (!state.minor && p.minor) return false;
+      if (state.range !== 'all' && (datePrecision(p)!=='day' || p.date.slice(0,10)<rangeStart() || p.date.slice(0,10)>beijingToday())) return false;
+      if (!skipLane && !inLane(p, state.lane)) return false;
+      if (state.favoritesOnly && !state.favoriteJournals.includes(p.cleanJournal || p.journal || '')) return false;
+      if (state.reading==='guide' && !p.hasDraft) return false;
+    }
+    if (!matchesSidebarFilters(p, skip)) return false;
+    if (lane && state.reading==='abstract' && !hasAbstract(p)) return false;
+    if (lane && state.reading==='quicklook' && (!quicklookOf(p) || p.hasDraft)) return false;
+    return matchesQuery(p);
+  }
+  // Bit set of the sidebar groups a paper fails, so facet counts need one pass, not one per group.
+  const FACET_BITS = { tier: 1, pub: 2, design: 4, tag: 8 };
+  function sidebarMisses(p) {
+    let miss = 0;
+    if (state.clinicalTier && (p.clinicalTier || '综合医学与其他') !== state.clinicalTier) miss |= 1;
+    if (state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) miss |= 2;
+    if (state.journal && (p.cleanJournal !== state.journal && p.journal !== state.journal)) miss |= 2;
+    if (state.studyDesign && p.studyDesign !== state.studyDesign) miss |= 4;
+    if (state.tag && (!p.tags || !p.tags.includes(state.tag))) miss |= 8;
+    return miss;
   }
   function matchesSidebarFilters(p, skip) {
     if (skip === 'sidebar') return true;
-    if (skip !== 'tier' && state.clinicalTier && (p.clinicalTier || '综合医学与其他') !== state.clinicalTier) return false;
-    if (skip !== 'pub' && state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) return false;
-    if (skip !== 'pub' && state.journal && (p.cleanJournal !== state.journal && p.journal !== state.journal)) return false;
-    if (skip !== 'design' && state.studyDesign && p.studyDesign !== state.studyDesign) return false;
-    if (skip !== 'tag' && state.tag && (!p.tags || !p.tags.includes(state.tag))) return false;
-    return true;
+    return (sidebarMisses(p) & ~(FACET_BITS[skip] || 0)) === 0;
   }
 
   let _maxDateCache = null;
@@ -1307,7 +1349,7 @@
   function richRank(p) {
     return (p.hasDraft ? 8 : 0) + (quicklookOf(p) ? 4 : 0)
       + (p.media ? 2 + Math.min(4, p.media.reduce((s, m) => s + (m.w || 1), 0)) : 0)
-      + (laneOf(p) === 'cardio' || isCrossAI(p) ? 3 : 0) + (p.summary ? 2 : 0) + (p.abstractSections && p.abstractSections.length ? 1 : 0);
+      + (paperLane(p) === 'cardio' || paperCrossAI(p) ? 3 : 0) + (p.summary ? 2 : 0) + (p.abstractSections && p.abstractSections.length ? 1 : 0);
   }
   function getFilteredArticles() {
     const doi = exactDoi(state.search);
@@ -1316,6 +1358,9 @@
     const curated = state.mode === 'curated';
     const arr = list.filter(p => matchesFilters(p, false));
     const jn = p => p.cleanJournal || p.journal || '';
+    // The comparator runs O(n log n) times; rank each paper once.
+    const ranks = new Map();
+    const rank = p => { let r = ranks.get(p); if (r === undefined) ranks.set(p, r = richRank(p)); return r; };
     let jLatest = null;
     if (!curated && state.sort === 'journal-date') {
       jLatest = new Map();
@@ -1327,7 +1372,7 @@
         if (c) return c;
       }
       if (state.sort === 'smart') {
-        const d = richRank(b) - richRank(a);
+        const d = rank(b) - rank(a);
         if (d) return d;
       }
       if (jLatest) {
@@ -1336,8 +1381,8 @@
       }
       const da = (a.date || '').slice(0, 10), db = (b.date || '').slice(0, 10);
       if (!da || !db) return da ? -1 : db ? 1 : 0;
-      if (state.sort === 'date-asc') return da.localeCompare(db) || richRank(b) - richRank(a);
-      return db.localeCompare(da) || richRank(b) - richRank(a);
+      if (state.sort === 'date-asc') return da.localeCompare(db) || rank(b) - rank(a);
+      return db.localeCompare(da) || rank(b) - rank(a);
     });
   }
 
@@ -1345,7 +1390,16 @@
   function renderSidebarFilters() {
     const all = getCurrentDataset();
     const base = all.filter(p => matchesFilters(p, false, 'sidebar'));
-    const facet = skip => base.filter(p => matchesSidebarFilters(p, skip));
+    // One pass: a paper belongs to a group's facet when it fails no other group.
+    const facets = { tier: [], pub: [], design: [], tag: [] };
+    for (const p of base) {
+      const miss = sidebarMisses(p);
+      if (!(miss & ~FACET_BITS.tier)) facets.tier.push(p);
+      if (!(miss & ~FACET_BITS.pub)) facets.pub.push(p);
+      if (!(miss & ~FACET_BITS.design)) facets.design.push(p);
+      if (!(miss & ~FACET_BITS.tag)) facets.tag.push(p);
+    }
+    const facet = skip => facets[skip];
     const dataset = facet('tier');
 
     // 1. Clinical Tier Counts
@@ -1933,6 +1987,7 @@
       const editorialQuicklook = ql === preGeneratedOf(paper)?.quicklook && preGeneratedOf(paper)?.meta?.generationMeta?.quicklook?.origin === 'sol-session-public-abstract';
       if (ql && ql.abstract && !paper.summary && !(paper.abstractSections && paper.abstractSections.length)) {
         paper.abstractSections = [{ label: '', text: ql.abstract }];
+        forgetPaper(paper);
         paper._absFetched = true;
         if (!paper.pmid && ql.pmid) paper.pmid = ql.pmid;
       }
@@ -2098,6 +2153,7 @@
           if (!paper.authors || !paper.authors.length) paper.authors = res.authors;
           if ((!paper.affiliations || !paper.affiliations.length) && res.affiliation) paper.affiliations = [res.affiliation];
           if (!paper.pmid && res.pmid) paper.pmid = res.pmid;
+          forgetPaper(paper);
         } else {
           paper._absState = 'none';
         }
@@ -2616,9 +2672,15 @@
       $('#deepReaderLabel').textContent = '第 01 期 · 体例示范 · 人工精读';
       $('#deepReaderTitle').textContent = 'AI 指导的持续性房颤消融：获益与临床边界';
       $('#deepReaderMeta').textContent = 'TAILORED-AF · Nature Medicine · 2025-02 · 2025 年论文，非本周新文';
-      body.innerHTML = '';
-      const tpl = $('#demoReadingTemplate'); if (tpl) body.appendChild(tpl.content.cloneNode(true));
-      renderStaticJournalMetrics();
+      body.innerHTML = '<p class="deep-reading-empty" role="status">正在载入示范精读…</p>';
+      loadDemoReading().then(html => {
+        if (activeDeepReadingId !== DEMO_READING_ID) return;
+        body.innerHTML = html;
+        renderStaticJournalMetrics();
+        renderDeepReaderToc(body);
+      }, () => {
+        if (activeDeepReadingId === DEMO_READING_ID) body.innerHTML = '<p class="deep-reading-empty" role="status">示范精读载入失败，请检查网络后重新打开。</p>';
+      });
       $('#deepReaderLinks').innerHTML = '<a class="btn-sm" target="_blank" rel="noopener" href="https://doi.org/10.1038/s41591-025-03517-w">Nature Medicine 原文 ↗</a>';
     } else {
       $('#deepReaderLabel').textContent = 'AI 全文精读 · 未经人工审核';
@@ -2632,12 +2694,7 @@
     if (prev) { prev.hidden = demo; prev.disabled = index <= 0; prev.dataset.readingId = index > 0 ? list[index - 1].pmcid : ''; }
     if (next) { next.hidden = demo; next.disabled = index < 0 || index >= list.length - 1; next.dataset.readingId = index >= 0 && index < list.length - 1 ? list[index + 1].pmcid : ''; }
     if (pos) pos.textContent = demo ? '' : (index + 1) + ' / ' + list.length;
-    const toc = $('#deepReaderToc');
-    if (toc) {
-      const targets = [...body.querySelectorAll('[data-toc][id]')];
-      toc.hidden = targets.length < 2;
-      toc.innerHTML = targets.map((t, i) => '<button type="button" data-toc-target="' + esc(t.id) + '"' + (i === 0 ? ' aria-current="true"' : '') + '>' + esc(t.dataset.toc) + '</button>').join('');
-    }
+    renderDeepReaderToc(body);
     body.scrollTop = 0;
     $$('.deep-reading-item').forEach(b => {
       const on = b.dataset.readingId === id;
@@ -2654,6 +2711,23 @@
     } catch (e) { /* file:// or sandboxed */ }
     if (!wasOpen) { try { reader.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     return true;
+  }
+  function renderDeepReaderToc(body) {
+    const toc = $('#deepReaderToc');
+    if (!toc) return;
+    const targets = [...body.querySelectorAll('[data-toc][id]')];
+    toc.hidden = targets.length < 2;
+    toc.innerHTML = targets.map((t, i) => '<button type="button" data-toc-target="' + esc(t.id) + '"' + (i === 0 ? ' aria-current="true"' : '') + '>' + esc(t.dataset.toc) + '</button>').join('');
+  }
+  // The example reading is a 12 KB static fragment fetched only when someone opens it.
+  let demoReadingRequest = null;
+  function loadDemoReading() {
+    if (!demoReadingRequest) {
+      demoReadingRequest = fetch('demo-reading.html', { headers: { accept: 'text/html' } })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
+      demoReadingRequest.catch(() => { demoReadingRequest = null; });
+    }
+    return demoReadingRequest;
   }
   function closeDeepReading({ fromHistory = false } = {}) {
     const reader = $('#deepReader');
@@ -2783,9 +2857,9 @@
     if (state.search) { el.innerHTML = ''; if (wrap) wrap.hidden = true; return; }
     const okDesign = new Set(['RCT', '方法/模型验证', 'Meta/综述', '队列研究']);
     const top = new Set(['New England Journal of Medicine', 'The Lancet', 'JAMA', 'JAMA Cardiology', 'European Heart Journal', 'JACC', 'Circulation', 'Nature Medicine', 'npj Digital Medicine', 'EHJ-Digital Health', 'EHJ - Digital Health', 'European Heart Journal - Digital Health']);
-    const score = p => (okDesign.has(p.studyDesign) ? 2 : 0) + (top.has(p.cleanJournal) ? 2 : 0) + ((p.tags || []).some(t => t !== '#大模型/NLP') ? 1 : 0) + (AI_RE.test(p.title) ? 2 : 0) + (isCrossAI(p) ? 3 : (laneOf(p) === 'cardio' ? 2 : 0));
+    const score = p => (okDesign.has(p.studyDesign) ? 2 : 0) + (top.has(p.cleanJournal) ? 2 : 0) + ((p.tags || []).some(t => t !== '#大模型/NLP') ? 1 : 0) + (AI_RE.test(p.title) ? 2 : 0) + (paperCrossAI(p) ? 3 : (paperLane(p) === 'cardio' ? 2 : 0));
     const list = LIBRARY.papers
-      .filter(p => okDesign.has(p.studyDesign) && (p.date || '') >= '2026-01' && laneOf(p) !== 'general' && laneOf(p) !== 'aitech')
+      .filter(p => okDesign.has(p.studyDesign) && (p.date || '') >= '2026-01' && paperLane(p) !== 'general' && paperLane(p) !== 'aitech')
       .map(p => [score(p), p]).filter(x => x[0] >= 4)
       .sort((a, b) => b[0] - a[0] || (b[1].date || '').localeCompare(a[1].date || ''))
       .slice(0, 5).map(x => x[1]);

@@ -361,7 +361,7 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
         """
         静态文件严格白名单服务：
         仅允许访问：
-        1. 根文件：/ -> index.html, /index.html, /style.css, /icon.svg
+        1. 根文件：/ -> index.html, /index.html, /style.css, /icon.png, /demo-reading.html
         2. /public/ 目录下的非目录文件
         3. /editor/ 目录下的非目录文件（/editor 或 /editor/ 映射为 /editor/index.html）
 
@@ -397,8 +397,8 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
             target_file = self.static_base_dir / "index.html"
         elif norm_path == "/style.css":
             target_file = self.static_base_dir / "style.css"
-        elif norm_path == "/icon.svg":
-            target_file = self.static_base_dir / "icon.svg"
+        elif norm_path in ("/icon.png", "/demo-reading.html"):
+            target_file = self.static_base_dir / norm_path.lstrip("/")
         elif norm_path in ("/editor", "/editor/"):
             target_file = self.static_base_dir / "editor" / "index.html"
         elif norm_path.startswith("/editor/"):
