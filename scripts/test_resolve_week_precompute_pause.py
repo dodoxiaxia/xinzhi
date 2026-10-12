@@ -46,7 +46,7 @@ class ResolvePauseTests(unittest.TestCase):
             report = w.configured_batch([p], {'entries': {}}, Path(d) / 'cache', ledger, Path(d) / 'ledger', 8,
                                         lambda public: {'translate': tr(), 'study': {'wrong': 1}, 'quicklook': ql()})
         self.assertNotEqual(report['blocker'], 'http_502:quote_not_in_abstract')
-        self.assertEqual(report['paidRequests'], 1)
+        self.assertEqual(report['paidRequests'], 2)  # the call, then one retry told why study failed
 
 
 if __name__ == '__main__':

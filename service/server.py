@@ -83,18 +83,17 @@ MAX_BODY_SIZE = 1024 * 1024  # 1MB 请求体限制
 GITHUB_LIBRARY_MAX_LIMIT = 100
 PUBLIC_LIBRARY_MAX_BYTES = 16 * 1024 * 1024
 PDF_FORM_MAX_BYTES = 2048
-DEFAULT_PDF_PASSPHRASE_SHA256 = "09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab"
 
 
 def verify_pdf_passphrase(value: str) -> bool:
     """Shared download phrase, independent of the editor account and its session."""
     if not isinstance(value, str) or not 0 < len(value) <= 256:
         return False
+    # No built-in default: this repository is public, so the phrase comes only from the environment.
     configured = os.environ.get("PDF_DOWNLOAD_PASSPHRASE")
-    if configured is not None and not 0 < len(configured) <= 256:
+    if configured is None or not 0 < len(configured) <= 256:
         raise ValueError("Invalid PDF passphrase configuration")
-    expected = (hashlib.sha256(configured.encode("utf-8")).hexdigest()
-                if configured is not None else DEFAULT_PDF_PASSPHRASE_SHA256)
+    expected = hashlib.sha256(configured.encode("utf-8")).hexdigest()
     return hmac.compare_digest(hashlib.sha256(value.encode("utf-8")).hexdigest(), expected)
 
 
@@ -362,7 +361,7 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
         """
         静态文件严格白名单服务：
         仅允许访问：
-        1. 根文件：/ -> index.html, /index.html, /style.css, /icon.svg
+        1. 根文件：/ -> index.html, /index.html, /style.css, /icon.png, /demo-reading.html
         2. /public/ 目录下的非目录文件
         3. /editor/ 目录下的非目录文件（/editor 或 /editor/ 映射为 /editor/index.html）
 
@@ -398,8 +397,8 @@ class XinzhiRequestHandler(http.server.BaseHTTPRequestHandler):
             target_file = self.static_base_dir / "index.html"
         elif norm_path == "/style.css":
             target_file = self.static_base_dir / "style.css"
-        elif norm_path == "/icon.svg":
-            target_file = self.static_base_dir / "icon.svg"
+        elif norm_path in ("/icon.png", "/demo-reading.html"):
+            target_file = self.static_base_dir / norm_path.lstrip("/")
         elif norm_path in ("/editor", "/editor/"):
             target_file = self.static_base_dir / "editor" / "index.html"
         elif norm_path.startswith("/editor/"):

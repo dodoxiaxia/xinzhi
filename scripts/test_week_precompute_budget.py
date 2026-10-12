@@ -1,7 +1,9 @@
 import copy
+import os
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import week_precompute_budget as budget
 
@@ -42,7 +44,7 @@ class RuntimeBudgetTests(unittest.TestCase):
         self.assertEqual(daily, {"reservedAttempts": 8, "reservedOutputTokens": 9600, "requests": [], "extra": "preserved"})
 
     def test_attempt_rejection_never_reserves_output(self):
-        self.rejected_unchanged({"reservedAttempts": 7, "reservedOutputTokens": 0, "requests": []}, "existing_daily_attempt_budget_exhausted")
+        self.rejected_unchanged({"reservedAttempts": budget.MAX_ATTEMPTS - 1, "reservedOutputTokens": 0, "requests": []}, "existing_daily_attempt_budget_exhausted")
 
     def test_output_rejection_never_reserves_attempts(self):
         self.rejected_unchanged({"reservedAttempts": 0, "reservedOutputTokens": budget.MAX_OUTPUT_TOKENS - 3799, "requests": []}, "existing_daily_output_token_budget_exhausted")
@@ -50,7 +52,7 @@ class RuntimeBudgetTests(unittest.TestCase):
     def test_reduced_limits_and_no_expansion(self):
         self.rejected_unchanged(fresh(), "existing_daily_attempt_budget_exhausted", attempt_limit=1)
         self.rejected_unchanged(fresh(), "existing_daily_output_token_budget_exhausted", output_limit=3799)
-        for value in (-1, 9, True, 8.0, "8"):
+        for value in (-1, budget.MAX_ATTEMPTS + 1, True, 8.0, "8"):
             self.rejected_unchanged(fresh(), "invalid_attempt_limit", attempt_limit=value)
         for value in (-1, budget.MAX_OUTPUT_TOKENS + 1, False, float(budget.MAX_OUTPUT_TOKENS), str(budget.MAX_OUTPUT_TOKENS)):
             self.rejected_unchanged(fresh(), "invalid_output_limit", output_limit=value)
@@ -121,35 +123,44 @@ class ConfiguredBudgetTests(unittest.TestCase):
         self.assertEqual(reservation, {"reservedAttempts": 1, "reservedOutputTokens": 5800})
         self.assertEqual(daily, {"reservedAttempts": 1, "reservedOutputTokens": 5800, "requests": []})
 
-    def test_daily_ceiling_allows_six_full_calls_then_stops(self):
+    def test_daily_ceiling_allows_max_full_calls_then_stops(self):
+        self.assertEqual(budget.MAX_ATTEMPTS, budget.DEFAULT_DAILY_CALLS)
+        self.assertEqual(budget.MAX_OUTPUT_TOKENS, budget.MAX_ATTEMPTS * 5800)
         daily = fresh()
-        for _ in range(6):
+        for _ in range(budget.MAX_ATTEMPTS):
             reservation = budget.reserve_configured(daily)
             self.assertEqual(reservation, {"reservedAttempts": 1, "reservedOutputTokens": 5800})
             daily["requests"].append({"status": "validated", **reservation})
-        self.assertEqual((daily["reservedAttempts"], daily["reservedOutputTokens"]), (6, 34800))
+        self.assertEqual((daily["reservedAttempts"], daily["reservedOutputTokens"]), (budget.MAX_ATTEMPTS, budget.MAX_OUTPUT_TOKENS))
         self.rejected_unchanged(daily, "existing_daily_output_token_budget_exhausted")
+
+    def test_daily_ceiling_reads_repository_variable_within_bounds(self):
+        with patch.dict(os.environ, {"XINZHI_WEEK_MAX_CALLS": "12"}):
+            self.assertEqual(budget._daily_calls(), 12)
+        for value in ("0", "401", "lots", ""):
+            with patch.dict(os.environ, {"XINZHI_WEEK_MAX_CALLS": value}):
+                self.assertEqual(budget._daily_calls(), budget.DEFAULT_DAILY_CALLS)
 
     def test_last_call_uses_only_remaining_balance(self):
         daily = {"reservedAttempts": 5, "reservedOutputTokens": budget.MAX_OUTPUT_TOKENS - 3800, "requests": []}
         self.assertEqual(budget.reserve_configured(daily), {"reservedAttempts": 1, "reservedOutputTokens": 3800})
 
     def test_custom_small_request_and_exact_attempt_boundary(self):
-        daily = {"reservedAttempts": 7, "reservedOutputTokens": budget.MAX_OUTPUT_TOKENS - 1, "requests": []}
+        daily = {"reservedAttempts": budget.MAX_ATTEMPTS - 1, "reservedOutputTokens": budget.MAX_OUTPUT_TOKENS - 1, "requests": []}
         self.assertEqual(budget.reserve_configured(daily, requested_output=1), {"reservedAttempts": 1, "reservedOutputTokens": 1})
-        self.assertEqual((daily["reservedAttempts"], daily["reservedOutputTokens"]), (8, budget.MAX_OUTPUT_TOKENS))
+        self.assertEqual((daily["reservedAttempts"], daily["reservedOutputTokens"]), (budget.MAX_ATTEMPTS, budget.MAX_OUTPUT_TOKENS))
         daily = fresh()
         self.assertEqual(budget.reserve_configured(daily, requested_output=1200)["reservedOutputTokens"], 1200)
 
     def test_attempt_exhaustion_changes_neither_counter(self):
-        daily = {"reservedAttempts": 8, "reservedOutputTokens": 0, "requests": []}
+        daily = {"reservedAttempts": budget.MAX_ATTEMPTS, "reservedOutputTokens": 0, "requests": []}
         self.rejected_unchanged(daily, "existing_daily_attempt_budget_exhausted")
         self.rejected_unchanged(fresh(), "existing_daily_attempt_budget_exhausted", attempt_limit=0)
 
     def test_bad_requested_output_and_expanded_limits_are_rejected(self):
         for value in (None, 0, -1, 5801, True, 5800.0, "5800"):
             self.rejected_unchanged(fresh(), "invalid_requested_output", requested_output=value)
-        self.rejected_unchanged(fresh(), "invalid_attempt_limit", attempt_limit=9)
+        self.rejected_unchanged(fresh(), "invalid_attempt_limit", attempt_limit=budget.MAX_ATTEMPTS + 1)
         self.rejected_unchanged(fresh(), "invalid_output_limit", output_limit=budget.MAX_OUTPUT_TOKENS + 1)
 
     def test_reduced_output_limit_is_respected_and_zero_is_exhausted(self):

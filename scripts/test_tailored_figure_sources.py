@@ -23,7 +23,8 @@ class TailoredFigureSources(unittest.TestCase):
             self.assertIn(value, body)
 
     def test_actual_website_table_separates_physical_page5_pp_and_page4_mitt(self):
-        self.check_populations(*self.html_rows('index.html'))
+        # The site's example reading lives in demo-reading.html and loads when opened.
+        self.check_populations(*self.html_rows('demo-reading.html'))
 
     def test_editorial_html_mirror_preserves_both_original_mitt_endpoints(self):
         figure, body = self.html_rows('editorial/weekly_checked.html')
@@ -40,8 +41,8 @@ class TailoredFigureSources(unittest.TestCase):
         self.assertIn('P = 0.07', body)
 
     def test_guide_remains_historical_example_and_original_conclusion_numbers_remain(self):
-        text = (ROOT/'index.html').read_text()
-        self.assertIn('2025 年论文，非本周新文',text)
+        self.assertIn('2025 年论文，非本周新文',(ROOT/'index.html').read_text())
+        text = (ROOT/'demo-reading.html').read_text()
         self.assertIn('用作精读体例示范，非当周新文',text)
         for value in ('88% vs 70%', 'HR 0.94, 95% CI 0.68–1.31', 'HR 0.77, 95% CI 0.51–1.16', 'P = 0.07'):
             self.assertIn(value,text)

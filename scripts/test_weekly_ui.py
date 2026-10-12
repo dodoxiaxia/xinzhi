@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Offline weekly-board QA. Expanded picks and AI output are test fixtures only."""
 import functools
+import os
 import json
 import re
 import threading
@@ -96,6 +97,8 @@ def main():
         expect(reader).not_to_have_class(re.compile(r'\bopen\b'))
         check('read=' not in page.url, 'closing clears the reading link')
         activate()
+        # The example reading is fetched on first open; wait for its section list.
+        expect(page.locator('#deepReaderToc button').nth(4)).to_be_attached()
         page.locator('#deepReaderBody').evaluate('(e)=>e.scrollTo(0, e.scrollHeight)')
         expect(close).to_be_in_viewport()
         check(page.locator('#deepReaderToc button').count() >= 5, 'demo reading has a section list')
@@ -126,7 +129,7 @@ def main():
     errors = []
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
             context = browser.new_context()
             context.route('**/*', mock)
             page = context.new_page()

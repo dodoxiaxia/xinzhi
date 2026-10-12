@@ -24,7 +24,18 @@ ROOT = Path(__file__).resolve().parents[1]
 SHANGHAI = dt.timezone(dt.timedelta(hours=8))
 DATA_PATH = 'data/deep-readings.json'
 LEDGER_PATH = 'data/deep-reading-ledger.json'
-TARGET, MAX_CALLS, MAX_SOURCE_REQUESTS = 4, 8, 20
+def _env_int(name, default, low, high):
+    try:
+        value = int(os.environ.get(name, ''))
+    except ValueError:
+        return default
+    return value if low <= value <= high else default
+
+# Owner decision 2026-10-12: the provider plan has ample headroom; publish up to 8 readings a day.
+# Repository variable XINZHI_DEEP_READING_TARGET (1..20) adjusts it; calls and source fetches scale.
+TARGET = _env_int('XINZHI_DEEP_READING_TARGET', 8, 1, 20)
+MAX_CALLS, MAX_SOURCE_REQUESTS = 2 * TARGET, 5 * TARGET
+LEDGER_ROWS_PER_DAY = 40  # structural sanity bound for stored ledgers, independent of today's cap
 MAX_EVIDENCE = 12
 RECOVERY_DAYS = 7  # private drafts from failed attempts stay recoverable this long
 GENERATOR_VERSION = 3
@@ -437,14 +448,21 @@ class StateCheckpoint:
             self.blocked = True
             raise ReadingError('checkpoint_write_failed') from None
 
+def step_deadline(default_seconds=840):
+    """Monotonic deadline for this step: the CI runner's XINZHI_STEP_DEADLINE (wall clock) if set."""
+    try:
+        remaining = float(os.environ['XINZHI_STEP_DEADLINE']) - time.time() - 20
+    except (KeyError, ValueError):
+        remaining = default_seconds
+    return time.monotonic() + max(0, remaining)
+
 def checkpoint(root):
-    from week_precompute_ci import existing_token_transport
-    if os.environ.get('GITHUB_ACTIONS') != 'true' or not os.environ.get('GITHUB_TOKEN'):
+    from week_precompute_ci import existing_token_transport, state_repository, state_token
+    if os.environ.get('GITHUB_ACTIONS') != 'true' or not state_token():
         raise ReadingError('durable_checkpoint_required')
     headfile = root / '.local/week-checkpoint-head'
     head = headfile.read_text().strip() if headfile.exists() else os.environ.get('XINZHI_RESTORED_STATE_SHA', '')
-    return StateCheckpoint(root, existing_token_transport(os.environ['GITHUB_TOKEN']),
-                           os.environ.get('GITHUB_REPOSITORY', ''), head)
+    return StateCheckpoint(root, existing_token_transport(state_token()), state_repository(), head)
 
 def check_store(data, ledger):
     if not isinstance(data, dict) or data.get('schemaVersion') != 1 or not isinstance(data.get('items'), list):
@@ -468,7 +486,7 @@ def check_store(data, ledger):
         if not re.fullmatch(r'[a-f0-9]{64}', item.get('sourceHash', '')):
             raise ReadingError('invalid_reading_provenance')
     for day, rows in ledger['days'].items():
-        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', day) or not isinstance(rows, list) or len(rows) > MAX_CALLS:
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', day) or not isinstance(rows, list) or len(rows) > LEDGER_ROWS_PER_DAY:
             raise ReadingError('invalid_reading_ledger')
         ids = set()
         for row in rows:
@@ -670,7 +688,7 @@ def main():
         recovered = recover_drafts(data, ledger, when, writer.save)
         cfg = model_config()
         papers, errors = discover(when.astimezone(SHANGHAI).date())
-        result = generate(data, ledger, papers, when, writer.save, cfg, deadline=time.monotonic()+840)
+        result = generate(data, ledger, papers, when, writer.save, cfg, deadline=step_deadline())
         result['recoveredDrafts'] = recovered
         print(json.dumps(result, ensure_ascii=False))
         return 0 if result['completed'] >= 3 else 1

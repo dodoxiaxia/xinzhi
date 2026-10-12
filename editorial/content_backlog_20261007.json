@@ -25,7 +25,7 @@
         "official abstract receipt",
         "original content hash"
       ],
-      "historical_record": "docs/核验记录-20261001.md",
+      "historical_record": "docs/archive/核验记录-20261001.md",
       "physician_review": "not_evidenced",
       "published": false
     },
@@ -39,7 +39,7 @@
         "official abstract receipt",
         "original content hash"
       ],
-      "historical_record": "docs/核验记录-20261001.md",
+      "historical_record": "docs/archive/核验记录-20261001.md",
       "physician_review": "not_evidenced",
       "published": false
     },
@@ -53,7 +53,7 @@
         "official abstract receipt",
         "original content hash"
       ],
-      "historical_record": "docs/核验记录-20261001.md",
+      "historical_record": "docs/archive/核验记录-20261001.md",
       "physician_review": "not_evidenced",
       "published": false
     }
@@ -80,10 +80,10 @@
     "physician_review": "not_evidenced",
     "published": false,
     "historical_records": [
-      "docs/核验记录-20261002.md",
-      "docs/核验记录-20261003.md",
-      "docs/核验记录-20261004.md",
-      "docs/核验记录-20261005.md"
+      "docs/archive/核验记录-20261002.md",
+      "docs/archive/核验记录-20261003.md",
+      "docs/archive/核验记录-20261004.md",
+      "docs/archive/核验记录-20261005.md"
     ]
   },
   "current_week": {

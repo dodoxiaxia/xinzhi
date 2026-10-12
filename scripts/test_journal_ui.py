@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Public-bundle journal/weekly integration QA; all remote requests are blocked or mocked."""
 import functools
+import os
 import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -67,7 +68,7 @@ def main():
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
             for width in [1440, 390, 320]:
                 context = browser.new_context(viewport={'width': width, 'height': 950})
                 context.add_init_script("""(() => {
@@ -156,7 +157,8 @@ def main():
                 page.goto(base + '?mode=candidates&style=a&range=all', wait_until='networkidle')
                 expect(page.locator('#articlesStream .article-card').first).to_be_visible()
                 check_badges('#articlesStream .article-card', f'{width}: detailed cards')
-                if width <= 1000:
+                # 更多筛选 is collapsed by default on every width (a bottom sheet on phones).
+                if not page.locator('.accordion-header').first.is_visible():
                     page.locator('#filterToggleBtn').click()
                 page.locator('.accordion-header').first.click()
                 check(page.locator('#publisherAccordion .journal-metrics-badge, #publisherAccordion .journal-metrics-details').count() == 0, f'{width}: publisher sidebar has no metric blocks')
@@ -171,25 +173,27 @@ def main():
                 if width <= 1000:
                     page.locator('#sheetClose').click()
                 page.locator('[data-clear="journal"]').click()
-                page.locator('[data-clear="publisher"]').click()
-                if width <= 1000:
+                # Clearing the journal chip also clears its publisher; no separate publisher chip remains.
+                expect(page.locator('[data-clear="pub"], [data-clear="journal"]')).to_have_count(0)
+                if not page.locator('.accordion-header').first.is_visible():
                     page.locator('#filterToggleBtn').click()
                 page.locator('.accordion-header').filter(has_text='The Lancet Group').click()
                 page.screenshot(path=str(out / f'publisher-sidebar-{width}.png'))
-                if width <= 1000:
-                    page.locator('#sheetClose').click()
-                journal = page.locator('#articlesStream .article-card .journal-badge').first.inner_text()
-                option_node = page.locator('#journalSelect option').filter(has_text=journal).first
-                option = option_node.inner_text()
-                journal = option_node.get_attribute('value')
-                compact = page.evaluate('j=>window.JournalMetrics.compactText(j)', journal)
-                check(compact in option, f'{width}: option uses pure-text metrics')
-                page.locator('#journalSelect').select_option(journal)
+                # The publisher/journal tree is the single journal picker (the old dropdown is gone).
+                tree_button = page.locator('.accordion-group.open [data-filter-journal]').first
+                journal = tree_button.get_attribute('data-filter-journal')
+                tree_button.click()
+                check(parse_qs(urlsplit(page.url).query).get('journal') == [journal], f'{width}: tree selects the canonical journal')
                 verified = page.evaluate('j=>window.JournalMetrics.badgeText(j)', journal)
                 expect(page.locator('.filter-badge-active .journal-metrics-badge')).to_have_count(1 if verified else 0)
+                if not page.locator('#favoriteJournalBtn').is_visible():
+                    page.locator('#filterToggleBtn').click()
                 page.locator('#favoriteJournalBtn').click()
                 expect(page.locator('#favoriteJournalBtn')).to_have_attribute('aria-pressed', 'true')
-                check(page.locator('#journalSelect option:checked').get_attribute('value') == journal, f'{width}: canonical journal filter retained after favorite')
+                check(parse_qs(urlsplit(page.url).query).get('journal') == [journal], f'{width}: canonical journal filter retained after favorite')
+                check('★' in page.locator(f'[data-filter-journal="{journal}"]').first.inner_text(), f'{width}: followed journal is starred in the tree')
+                if width <= 1000 and page.locator('#sheetClose').is_visible():
+                    page.locator('#sheetClose').click()
                 page.locator('#viewCompactBtn').click()
                 expect(page.locator('#articlesStream .compact-row').first).to_be_visible()
                 check_badges('#articlesStream .compact-row', f'{width}: compact rows')

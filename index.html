@@ -7,34 +7,34 @@
   <meta name="description" content="面向科室同事的心血管与 AI 医疗每日精选、每周精读与文献雷达。所有导读均标注核对范围，仅供学习讨论。">
   <meta name="theme-color" content="#ffffff">
   <script>
-    // Resolve appearance before CSS and body paint; storage may be unavailable.
+    // Resolve light/dark before CSS and body paint; storage may be unavailable.
+    // One interface style remains ("a", 临床期刊); an old saved choice or ?style= is ignored.
     (function () {
       const root = document.documentElement, params = new URLSearchParams(location.search);
       const read = key => { try { return localStorage.getItem(key); } catch (e) { return null; } };
+      try { localStorage.removeItem('xz-style'); } catch (e) {}
       const choose = (values, query, saved, fallback) => values.includes(query) ? query : values.includes(saved) ? saved : fallback;
-      const style = choose(['a', 'b', 'c', 'd'], params.get('style'), read('xz-style'), 'a');
       let systemTheme = 'light';
       try { if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) systemTheme = 'dark'; } catch (e) {}
       const theme = choose(['light', 'dark'], params.get('theme'), read('xinzhi_theme'), systemTheme);
-      const backgrounds = { light: { a: '#eef2f7', b: '#ffffff', c: '#f0f2f4', d: '#f5f2ea' }, dark: { a: '#0e1520', b: '#121212', c: '#121517', d: '#14120f' } };
-      const bars = { light: { a: '#ffffff', b: '#d13a1f', c: '#ffffff', d: '#f5f2ea' }, dark: { a: '#141d2b', b: '#b8321a', c: '#1c2024', d: '#14120f' } };
-      function apply(theme, style) {
-        if (!['light', 'dark'].includes(theme) || !['a', 'b', 'c', 'd'].includes(style)) return;
+      const backgrounds = { light: '#eef2f7', dark: '#0e1520' }, bars = { light: '#ffffff', dark: '#141d2b' };
+      function apply(theme) {
+        if (!['light', 'dark'].includes(theme)) return;
         if (root.dataset.theme !== theme) root.dataset.theme = theme;
-        if (root.dataset.style !== style) root.dataset.style = style;
+        root.dataset.style = 'a';
         root.style.colorScheme = theme;
-        root.style.backgroundColor = backgrounds[theme][style];
+        root.style.backgroundColor = backgrounds[theme];
         const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.content = bars[theme][style];
+        if (meta) meta.content = bars[theme];
       }
-      window.XINZHI_BOOT = { theme, style, apply };
-      apply(theme, style);
+      window.XINZHI_BOOT = { theme, style: 'a', apply };
+      apply(theme);
     })();
   </script>
   <link rel="stylesheet" href="style.css">
   <link rel="alternate" type="application/rss+xml" title="心知 · 每日精选" href="feed.xml">
-  <!-- 128px copy of icon.svg (same logo) so first load skips the 740 KB original. -->
-  <link rel="icon" href="data:image/png;base64,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" type="image/png">
+  <link rel="icon" href="icon.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icon.png">
 </head>
 <body>
 
@@ -43,7 +43,7 @@
     <div class="header-container">
       <div class="brand-section">
         <a href="./" class="brand-logo" id="brandLogo" aria-label="心知 AIHOT-Med 首页">
-          <img class="brand-mark brand-image" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAMAAAD04JH5AAABGWlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGBSSCwoyGESYGDIzSspCnJ3UoiIjFJgf8HAzcDLwMUgyiCVmFxc4BgQ4MMABDAaFXy7xsAIoi/rgszClMcLuFJSi5OB9B8gzk4uKCphYGDMALKVy0sKQOweIFskKRvMXgBiFwEdCGRvAbHTIewTYDUQ9h2wmpAgZyD7A5DNlwRmM4Hs4kuHsAVAbKi9ICDomJKflKoA8r2GoaWlhSaJfiAISlIrSkC0c35BZVFmekaJgiMwpFIVPPOS9XQUjAyMTBgYQOEOUf05EByejGJnEGIIgBCbI8HA4L+UgYHlD0LMpJeBYYEOAwP/VISYmiEDg4A+A8O+OcmlRWVQYxiZjBkYCPEBEBZKTxW849IAAAMAUExURf///////v/+///+/v7///7+//3///3+//z+///9//79///9/f/8//78///8/v78/v39//z9//38//77//37//77/f75/f3z/Pj4/+72//rq+Ojr/vje8+re/u/M/PbL3sXj/r7O/nzT/XbR/X3N/XHO/W7F/fC74+2p1tuv/KC0/emR5eaFY+GDibaJ+269/Wm5/W2z/Gex/Gmr/GSo/Gyg/HOL/GGq/GCi/GKd/Fqd/F+X/GCS/FWV/FeQ/F6M+1iM+16G+1iG+1KJ+11/+1t7+1aA++JrqN9dfOF0Q99pTdxamd1ZYtJk951l+9xFots9nNxOcttHfMZE5Ik/+twzstw1q9wvsto3n9k5k9oyndUyvaEx+Is3+ow1+o00+oc5+og3+pEx+pMv+o0y+mZy+19x+2Nq+19r+1t2+1R2+1ty+1tv+2pf+2df+25Z+2la+2Nl+11m+2Vh+2Fc+3VN+3NP+3lJ+nZK+m5V+2pW+3BS+2hM+n1E+n9B+npG+nNE+oI/+nY/+n85+tknwNglwtckxNIl19Qiy9MfztQgzNAg2dUhytwruNsou9kqrdkro9omutgmrdchudgir88a2M8Z2swY380W3c8U3cwU38sS4ckR5tId0tEc09Ac1NMez9cdu9Ab1NcZv9UUx9YN0s8M2NQJ1coQ48sN4MsK3ckP5sgN6MgM58kJ4MYM7MYK7McM6MYJ7MUI7cYI4s4D5NIA39AA4c4A4ssA5NYE2dUA3dEE1dIA28QG8sQF8sUH8MYG5MYC6sYA7MgB4qoi+aQg+qge+aEk+qIh+rEY9qwa+qgd+qgZ+pso+pgq+pYs+oor+p0n+p4l+p4g+pIg+r4M7MIH5rsH9L8G6bsG+cAF9r0F67sF7LUO+bYM+bgJ+bcG87ES+rMN+acP+sEE+cIC98EB+cEA+sME9MID9sIB6r4D+r4B+bgD8LwC6rgD7bUD8bQD87QC87EC9bMA8q8D968B964B+K8A9a0B+K0A+qwA+q0A96sA+qUA+zmEZ/oAABQBSURBVHja7Zt5XFNX2scPFzKUUEREQwwhgsoSUlFUAoLixtLO2+DMBLWjdB2BiuJurdWpVqzL4KhVK1qxrWWxUi3aotXRqtC4VMQWW+C1BRfqgo0sIobFEuY599x7c+9NYu1i5x9P+7GL/eT7nOf8fs/znEOK0KP1aD1aj9bvuihX127u7t1cXaj/BbybOw9Lubu7Un8o3RX/xUvZJxCWSulF/1t3d+qPwsMvikBN/PiJGzZt2rhj49rJek2QUoZjcP0D+ICXBcZP2LBhw7qJ/4a1du3yjTk5OSsmawK98GE8ZLwjhbyCxq1fP2H8+PETafza5bDeXLEiJzd3pU4F/4nbw+RDimn8hAnjJ06cyPIBv2LFmlWrVue+rw+k0EN0RTekiF8/aQLHJwG8iQNYs2bNv/61+v28PH3gw0tCN9RnHN69Hf7q1e9v3749P1+nRG7Uw+EHTnpmwv32//72d9977+38TDVCLr9YXa7EQ65Q2yg759/nGYbPE6CY/8Hbb2duKdDJftkxODL+dXQgf3XpZR0DRXmNm/TM+vXrN4D7NzEGJAIk/NUMf/PmLVkGveIXREDjlX0GDBjw5P/Fx8cHBSqwmcQhuKOg9ePGxWs0QUEaTfzkt3bsoBMg4L9L+FveyTKsVD5oBA6AVwQ98eenn376r3/729//vn7TprV6jcJKyhRSBiq4MuOl1MS/lWMJgBbgux/gAID/zras4qwHjMARNj/gqT9z/Enr123MyTuyFUJ4nE1Ct24U5dqtGy0E6H+wHPHfqzTLc97k89/j+Ns+zDZkKh5Eia7Ia8BTAv6GjTm5ef85/PlWDRy7KAnuvdimR7ni1qPU5axZIRAgHADN//Cj7BK97Gfd6OiI+jzxFAmA4+/A/MMHDhzUeSLyAYHxtDTofoPTwQYPBxK4IneVkL+F8D/ak23UIc+fTT9sn+H/leR/E8v/bL9BL5NSyFEWPwkvKMDj4kVNzwVKoz53FcP/gM/fvXtfoVF9fxk4ol5P8Pg4gHWbQAA7Mf/AZwf3G3TIzR2qz7i//IUuAOs2bFo3nml6FOuNXrpckQC3Ef7ewk8LlZTL/fgyMZ8WAMs/eGi/QYNkqA8EwFUgPAJM1uCmx4QAnUeTJ+J/+NHuPfsK935aCIfgdp/zt/BFAjxM+IcOGYqVVC/X+EnjBBX4rR0bJwfK6MmAViaOQChAnP+9nxw/fvym/UNwcHVk+LYE+BkJoBi20IuSxVt1oB05k4NkiFgCItDlZ4r4+/Z+8unxo0dvZsnsNWdXoj+BATbx+IfwKin5BMoBojTrRR1o+fKcnMmBWAJ0BDJ9vkiANP/YzaP1ajtOgM7ylLUBcgifzUBJSYlRgzyhHARBBHw+LoC5uToFicAFKVZuJgLg84/evHmzPsuTsi1AxVM2DIAFePjAIWMDrEYjjsCoh0OEMTRo3cTxTABcB1qVuzKQRNALBeZv5hsA+MeB/+P1a3ZS4IjsGsDY8pOZrJZGCCBbhqsRmHHiOqsWvOr9XA3pWiCDgizOAHuxAOEAfsQB6JDU7gHYMICxDcg/kQUhGI3VSrqi90J9xk+0HoFW52noEVBKKfkGJHxIwI0b9d8prVuCg6PMtgEOtXRhupn5A/5saFQRI0GWd1iPINu379TQFcEN6QzvCAWI+XU3rrVorM/AFQWJBEgMYDTTUDOXhHtmUxMTAESgzv+39QiUma/DEbhRqo+3CQVI829916JHYhk6OMgEAmA7QEMXTjvZO42/d6+j4y4bAI6gcfnaN8UjSGa+Bn4LUS76omyhAK/X1d367vKlWh+xCogC+AKkDdBipvkWeBssUzsXAPJ0ULevWkv4vBEkswBH4Ik0hmyOfwzzbxC+2coHjrgGWhmg1XyPt3EMb2uFBQFw8Xs6hHS9t9xqBNpcAAg3pCr+aDdnAPoAbt367tLFM1fFDYFOgNgAsH/gd5hMHTx4a2tL+xW+iD0ddF1vvykagaAAbFPBJhXZ+3bzDVBXDwm4WFt6NUlqXYStDHDHDPs2gfpMLJsJ4IwXT0OUJ9J3bVshHoGydmUqKBcXfUmhwACEX3r2tFgEMAWIR5Amc1tHW0enXqfvNHFwvNqFGqakXie6KteIRyAYw90gNmOh0ADAry09dfJbYUvEJyAyQG6VubXN1GHSwG/rcAQt7GpuF41VUuRTCxGwAmA7wDaYHCidsVBsgNrSsydPV6hRD2EREHeAgo7WVpPJBIHKkKqTo7fcuXOlXVxGQGzmrsrVYMD3BCNQsQpBACyfGOAHmn++IkQQgCMaIDbAnbbWFlO7GvWEkqpi2Xg1N3NlQOLGnKMnUneZa8Qz8EfFWV44AM6A2ACY/+U35yoSkITP93pC1AGqO1paTJ0a4OP9tTcTNtCbb9/la1BKMRHocATCEWjPbqNO/4XYAKWngP91eUIPnpBAAiIDHIQjb+4kZw3ba7/SjNdtvK7c1RMBS1EIfv2gN0K5eeq7uirfFc/AJdYGoPn/mJLoxUsBBCCawRuw1vS96LYKu4MAbrPryl1GAnjX34bI2GhAiF2Vb4tGoL0CAzACPP/VP156LtGHF0AvFMQYYBI9Au00tNxpbrmoJJ9NeZ65e4Wh46nkig/LVJyvqEjwJv+EZXD1avZmbgTaY6MDMPyvX3ruhQx+IYAyJKiAhxtaQOtMuQYJWOANDTVwAkwZ7IHUFc+XJ3IR6CCCrK3byAiERxBRB6AN8CXmP/9iYoYKdeebgM//jwHzWbPDB9+90sCtGosJKYk8sfyNZQlyqYSWgSzp6rdlNkcQbIDLrAGA/+wLbyxT8wJArk8KRqAGOPFKBbnAUFTPM2TzTXjVNFxScPLtgULKX1+wNIR8FKTq6rcVZyx3gE/FBjjLCBD4/1zGq0Tgwif5d4BDzRal4bO9W0PgTTWw2nl9TIq8X1/y6iuL/UgEPZCu4quKbBsjkNAAwIewBQEoBJfQRmw1F+YaLXXTN9UwcFgNvFkAWzBh6SsLZyXLJRK6Jii+qig/uWu39QgkMADwlyxY6mcVADuDH4SM32YxbkjNsunVrud3MTiDpTNnpc/jUhBSMaW8cs8+RoC8Csw3wBuv/3PB/MWCAJS8Gfxwye2au2yeKZeeei6A6urq5k7BKNMd+S1OT099WSsnCZF4PVue8c2ewsJPBHymAp8mBgABLJi/iB+AKwTAu4TCideoKCmTAE0Tw4Z1oaHzhCd/nu6OfF5Ln52aPM2XS0H5Cy9W8u4Awg7w9UtTMH/J/FcWssJhMvAMxz98qKGmyZIAr+xGhg78mhZhAnD9mzU7NSUmLRg5k87gk5Gx7BQUQNsdgBgAdLtw5jxBAIoJlktwCWhORbkxFtA0VRI4Xs0dJzyllDADc1OTp8aMDpMjJxJRQsaS561GEIEBgL9oZvo8X0sAFPIaz12CD1TXNLFCc6EUldUXCBxWg6lTdLWHAOZg/shR3iQFPSj1sgVLKjl+nbUBsABemzV3ng8/ANnkHewryKGamiY2z3C1aWTpF6pqTJ16SjjIgQjnJAN/eLQf8iC+9F6wdNEppgLX8UcQbIAXCX/hrBmzU735AwGazPIPGGoas5l+D6Wt2sK/APOBSjRMe6Dg6TExI4dHjWBEQFeG177+4qiVAHkGwPw5yXJeAN2QjnuFMFY26rgE6Bs5fNUdU6fV644zCp42evTIqGGR/YkGsA8Wz0q0GIDXAYgAwQCzZsxNnaMVjMRIc4R9BblwoZGRINSgxioMp1cNTIg+lPhW7aGNhQMYFhEx8DG2NEFlWHDMjgGwABe+NmPu7NQ5wfxehANgX2EusCdAST31jVXsutBu6rKRAB/Mj4oYGj6QsQHIcvGMmd8LDXCabwAQ4OyXU6YHE9GQ9ThSfc4+w+ETcGMsaOHDAXSc8ZKKrrQggTTgDxs6ZPDA3iQACVSGuemXxCOIwADAn5rmy88AhRT5hH/QUNVI+iDUoCwOX1TTZjJbv6459dSOAX7E0MGDLAF4Q2m8KJzBaQG+wQkw9eVpU2N6C0xAoZXMM2BxVRW5eUIRbtwH7GJYRVWtJrPeit8d+cYx/EH95WwAvZNfTqm9ccNigPPnhAbA/LQwAR9PPZ+TZ7hiYxb9AERRiuyqomIaX1R0B26oKisFOqOwMcz+B/b3sASQklLLGeAUzwCv0gaY/fL0qbFpAgng7Qayz5CNejYBhj2YjVf1PRsKxAkg/MGDAgL6chOCd/K0qRfr7BsA82PifJm6YSnGW2k+BEBLACeAxRcVtbSZT1i/8zt3Dxs1DAtw0MCAAD/0JzaAlNjkS3XkEnr2y29AgFOe4xuA5od5iD4Mvyftx8+gxQa6DuO3jT0M/uOan0xdahsJ8BvL8vv5szsCG06NSb58y74Bpk2NHR0nOgF68mMCKMbllqK8Mg0sv6jV1GWtQNgqa4AA/37+3lwAfmkjk0UGEAowNm7MWG/hCdBnsI1+By75EL9+4Hh2ARuvgqafOrrY/sxLgCQ0muP368uYgC4N0en1l4QzOMufzfBFHmB8YMDPwIYsXAel8E+7PiarqLPDfKKnWAAAGsvwA/r18+/LfiJ0h7gR8+trrUcQ1gBxY0aN9ROfAN356ACMKz3xz6W8sgwMv6DJ3GFtAQ/kO4oYgE4AJwEnJNeOjky8ZT2CsAKMBX6Y3Mn6pVaK9EbgG/VMNEwCCoraIIAQfE0X8L1JBSZ8fAKcNUcNj0y6XMoIUNQBpk6NHTMm2lYCaCgXADQnw64CsqrN5qtdIVRPoQG8o4DPCsCSAPgdOJnhpVYGwAKgDQAHEB0ml9jIAMxfeiMXgI4LoNXcdbUiQfCkBfsP4wkQEsA0AuTkJA+LitD+cB8DjLKTAJICo7FxpQtcM5GeCSC/ChLwbUWFj2WId+4u4vflJ8Avelh4wg+nBAZgBJhC+NFDPCS2f2CDB6DqRuwCyhLA7S7gf1WeIEc9pRKJpDvuob7Doy0GwBaQOzEJkMjDIiOGJpWetGuA6KgRvuIawEtBdXUDXYiQ/nPCL6D3X/4cjoBZPsFjhvMMIFSA34ih4drak/YMMGaUZXq0GYGu6f8b6Xdu/ef59KrCCSgvf/GNZQlqH29vb79gbcwYgQH6+fuxnwjFEUeWWPul5RLK8RkBjIjoLZHY/TaS1Cu7Ad+KXLgArhB+xj8XLF48Kz05dXpaHD0CWQTIOwBnSWjk0MHaMsEllBiAFeB9DoA5hIbbMA+AC5gAGP7rC+AyhS+B+A4QxTeApQuAtP0ihwwZlFhm3wD3PQD2OQbuZTIYUjF+5y4sAOAvmb8I81NiYvAMLuD7Wvi+kUOHDNKWneZGEM4AHH/IfQ6Afe6jH4eU9P53fgj8KRZ+bAw9g1sMIOTTykw6KzDAaxYDjIqOjPS+fwLoHzeeuahAbpQep2BnJeZnLHl10cL0uakpU2PIDM4KsK9/PwE/fPDggISy8+f5l1CeASABfuixn/v2BMgALkAyFHgkfycEQAsQO5lcgkcKDODfl92QkzPD15Z9Y3mF4Y0grAA8fv77GzAKnHDDrelIXn7eNpY/IzU5RSjAvv7+fnKGD7/60fzQ01+eExmAJ8D+EmenB/gGixT2jy/mmUfyduZjATAGiI0RGMC/ry9i+I8hj+BIXJgGJpWdO2fXAKG2e5CtCGgxqN49kpd3bhlfgLwRrJ8vzED058GuvEOBHzowILHsvOgSyjNAaG8kedCvR5LrmnLlkZ1b4IOEBgBOAOy+N7N9CU7/0Ai6MNN82wbABvw5A4jX40im2X6kclF6enpqcjLDBwEOCiB4JwYP2w+nrwbAtxpBuA4Q+ov59HffFJqVWRnz5sDHYAFGRoaHD+rv5/0YD987OCJiCOaHJtF86xkcEhA19tfwydfYHlNpQhK02pHDh4eFhfb388V0gnem8WFQ/YDvH5ZUZvUKw3WAsaHyX86HwTQpQU1/OddRJu8Ni2nIGEzmAu/gsBH4VEAW2lJSgW2PQMHOD6w/vhncQroqkkKUDgix7pE4OzvDUOKBdyP3DY4aETkUqyIgNLH21GlLBRaMQCNHRfshya/gQw4cNGfKy6ckqBX0Nwqd/uTszDReTA8bBWMRKcsJpVYjCGeAkWOjfJGzE/pVAUgdNAVJGRkZiQkhah+FDIdByeQ+vjCVxI2NjsJ8MIU26VLpyZOnz4EAxQbAd5Aw7wepv/YiQJq8rKTXl8KaPzMhAcSo1SanpKXFjRkORXFYRPigwdqkyz+cPWX3Ejo22IP/FPMrvrAduDI/MynxlVmz5uE1BzsSSgJuiuHh4dqEE/WXbb7CEAPEhfkiJEG/ZbkjJTTmLVkQwwwsqtgYKCsjRkRGRgwD+q2672otl1CRAWLS4oLlv2X7bARIk/Xx1q27sitPJCUumJmenpycPjMx8cSluro6+hXIziU0LS2M61a/ablQSKn7uCg7e8/+/ftLSo4fP3bs2M3r16/jn0PYegdnn+FG+8HpO6HfY8E1QaU3FGfvLiwsJO/w339/7UY981UA/g+CGH7q9Omxwb1/l+0zSYAGrYa7M8v/0f4zJP0OPWdasDf67acvSAKFPCGEL44XWv0kVDSDp8+bk0LjJej3XXAOlFp/3Hjz6E3rHwQxfBDgvHnJDwVPT+z4W8O67Ov1N65du2b9gyDgL148Qwtz4kPBkyzAhOCl1h2tr6/nG/D5ZxNBgEsXL9QG+6CHiCcdEv+/LGrdmctt966WldEdYArcHDKWzYfLK+6XDxVPTgLH0FOl1umSTpzGP4hJTMC9So4e9ubFMUAUCh+VysdHQZ6PpD3+GDrbJz09La9Gkh49pH8knYtCIsVL8r/4v8oerUfr0Xq0Hq3fc/0XChcMk8kX/1UAAAAASUVORK5CYII=" width="44" height="44" alt="" decoding="async">
+          <img class="brand-mark brand-image" src="icon.png" width="44" height="44" alt="" decoding="async">
         </a>
       </div>
 
@@ -58,14 +58,6 @@
         <div class="search-wrapper">
           <input type="search" id="globalSearch" class="search-input" placeholder="搜索题名、DOI…" aria-label="搜索文献（支持中文关键词）" autocomplete="off">
           <kbd class="search-shortcut">/</kbd>
-        </div>
-
-        <div class="style-picker" id="stylePicker">
-          <button class="icon-btn style-btn" id="styleBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="styleMenu" title="界面风格" aria-label="切换界面风格">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
-            <span class="style-btn-label" id="styleBtnLabel">风格</span>
-          </button>
-          <div class="style-menu" id="styleMenu" role="menu" aria-label="界面风格" hidden></div>
         </div>
 
         <button class="icon-btn" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
@@ -85,9 +77,20 @@
   <div class="app-container">
 
     <!-- Left Faceted Filter Sidebar -->
-    <aside class="sidebar" id="appSidebar" aria-label="筛选条件">
-      <div class="sheet-head"><b>筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
-      <p class="sidebar-filter-help" role="note">同组点选替换，不同组同时满足。<br>“只看”清除其他左侧条件，切换浏览。<br><span>数量按其余条件计算；箭头只展开期刊。</span></p>
+    <aside class="sidebar" id="appSidebar" aria-label="更多筛选">
+      <div class="sheet-head"><b>更多筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
+      <p class="sidebar-filter-help" role="note">各组条件同时满足；“只看”只保留该项，领域、时间与搜索不变。</p>
+      <!-- Readable content, followed journals and minor items -->
+      <div class="sidebar-card more-filters-basic">
+        <div class="sidebar-title"><span>可读内容与我的期刊</span></div>
+        <label class="reading-picker">可读内容<select id="readingSelect" aria-label="按可读内容筛选"><option value="">全部</option><option value="abstract">有公开摘要</option><option value="guide">已核对导读</option><option value="quicklook">AI 速览（未核对）</option></select></label>
+        <div class="more-filters-row">
+          <button class="btn-sm" id="favoritesOnlyBtn" aria-pressed="false" title="关注清单仅保存在此浏览器，不会同步给同事">我的期刊</button>
+          <button class="btn-sm" id="favoriteJournalBtn" aria-pressed="false" title="先在下方“出版方 / 期刊”中选一本期刊">☆ 关注期刊</button>
+          <button type="button" class="btn-sm" id="minorToggleBtn" data-minor="1" aria-pressed="false" title="更正、来信、回复等非原创内容默认隐藏">含更正 / 来信</button>
+        </div>
+        <p id="rangeExplanation" class="browse-help"></p>
+      </div>
       <!-- Clinical Tier Matrix -->
       <div class="sidebar-card">
         <div class="sidebar-title">
@@ -143,17 +146,9 @@
         <div class="mode-note" id="modeNote" role="note"></div>
         <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
         <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
-        <button class="btn-sm browse-toggle" id="browseToggle" aria-expanded="false" aria-controls="browseBar" hidden>期刊与可读内容</button>
-        <div class="browse-bar" id="browseBar" hidden>
-          <label class="journal-picker">期刊 / 信源<select id="journalSelect" aria-label="选择期刊或信源"></select></label>
-          <button class="btn-sm" id="favoriteJournalBtn" aria-pressed="false">☆ 关注期刊</button>
-          <button class="btn-sm" id="favoritesOnlyBtn" aria-pressed="false" title="关注清单仅保存在此浏览器，不会同步给同事">我的期刊</button>
-          <label class="reading-picker">可读内容<select id="readingSelect" aria-label="按可读内容筛选"><option value="">全部</option><option value="abstract">有公开摘要</option><option value="guide">已核对导读</option><option value="quicklook">AI 速览（未核对）</option></select></label>
-          <p id="rangeExplanation" class="browse-help"></p>
-        </div>
         <div class="ai-digest" id="aiDigest" hidden></div>
         <div class="stream-toolbar">
-          <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">筛选</button>
+          <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">更多筛选</button>
           <div class="active-filters-bar" id="activeFiltersBar" tabindex="-1" aria-label="当前筛选与结果数量">
             <span class="results-meta">共找到 <b id="resultsTotalCount">0</b> 篇文献</span>
           </div>
@@ -183,11 +178,7 @@
         <button id="loadMoreBtn" class="load-more-btn" hidden>显示更多</button>
         </div>
         <aside class="stream-rail" id="streamRail" aria-label="阅读导航与主题" hidden>
-          <ol class="home-intro" id="homeIntro" hidden>
-            <li><b>每日精选</b><span>人工核对导读 + 每日自动精选</span></li>
-            <li><b>近7天榜</b><span>近 7 天榜单每天更新；AI 全文精读每天目标 3–5 篇</span></li>
-            <li><b>精选清单</b><span>任意文献点“加入精选清单”，汇总后复制或导出</span></li>
-          </ol>
+          <div class="lane-bar day-bar" id="curatedDayBar" role="group" aria-label="精选日期" hidden></div>
           <div id="curatedTopicsSlot"></div>
         </aside>
         </div>
@@ -210,152 +201,6 @@
           <button type="button" class="deep-reading-item deep-reading-demo-item" data-action="open-deep-reading" data-reading-id="demo-tailored-af"><span class="deep-reading-item-title">AI 指导的持续性房颤消融：获益与临床边界</span><small>TAILORED-AF · Nature Medicine · 2025 年论文，非本周新文</small><span class="deep-reading-go">读精读 →</span></button>
         </aside>
       </section>
-      <template id="demoReadingTemplate">
-        <div data-journal-metrics-details="Nature Medicine"></div>
-        <div class="weekly-hero">
-          <span class="design-pill design-rct">第 01 期 · 全文精读示范</span> <span class="tag-pill">论文发表于 2025-02 · 用作精读体例示范，非当周新文</span>
-          <h2>AI 指导的持续性房颤消融：获益与临床边界</h2>
-          <p class="text-secondary">TAILORED-AF 多中心随机对照试验 · <i>Nature Medicine</i> (2025-02)<span data-journal-metrics="Nature Medicine"></span></p>
-          <a href="https://doi.org/10.1038/s41591-025-03517-w" target="_blank" rel="noopener">官方期刊原文链接 ↗</a>
-        </div>
-
-        <div class="evidence-grid">
-          <div class="evidence-stat">
-            <strong>370 例</strong>
-            <span>难治性持续性房颤患者</span>
-          </div>
-          <div class="evidence-stat">
-            <strong>12 个月</strong>
-            <span>主要疗效终点随访</span>
-          </div>
-          <div class="evidence-stat">
-            <strong>88% vs 70%</strong>
-            <span>1年无房颤率（精读正文见统计范围）</span>
-          </div>
-          <div class="evidence-stat">
-            <strong>约 2.0 倍</strong>
-            <span>个体化组手术与消融耗时</span>
-          </div>
-        </div>
-
-        <div class="weekly-full-report" style="margin-top:24px; line-height:1.75;">
-          <div class="editorial-box">
-            <p><b>AI 辅助全文学习报告：</b>由 AI 通读 24 页主 PDF，并交叉核查关键图表与统计量；独立补充附件未获取。未经科室医生终审，仅用于科室文献研讨，不构成诊疗建议。</p>
-          </div>
-
-          <div class="drawer-section" style="margin-top:20px;">
-            <h3 id="wk1" data-toc="背景">一、 临床问题与背景：持续性房颤基质消融的探索瓶颈</h3>
-            <p>肺静脉隔离（PVI）单独实施时，仅在约半数持续性房颤（persAF）患者中获得长期成功。过去十余年间，经验性解剖线性消融、左房后壁隔离（CAPLA 试验，JAMA 2023）、碎裂电位消融（STAR AF II 试验，NEJM 2015）以及 MRI 纤维化引导消融（DECAAF II 试验，JAMA 2022）等“PVI+”策略在多中心 RCT 中均未能证实额外获益。</p>
-            <p class="text-muted">文中期刊的当前指标：<span class="static-journal-metric"><b>JAMA</b><span data-journal-metrics="JAMA"></span></span><span class="static-journal-metric"><b>NEJM</b><span data-journal-metrics="New England Journal of Medicine"></span></span></p>
-            <p>这反映出当前心房基质消融的核心瓶颈：<b>缺乏客观、可重复的基质识别与量化标准</b>。基于心内电图（EGM）时空离散度（spatio-temporal dispersion）的手术策略此前在单中心研究中提示过潜在价值，但在人工视觉判读下，不同术者间的一致性较差。TAILORED-AF 试验（NCT04702451）旨在评估引入确定性 AI 辅助系统标测时空离散度并指导消融，是否优于单纯解剖 PVI 策略。</p>
-          </div>
-
-          <div class="drawer-section">
-            <h3 id="wk2" data-toc="AI 环节">二、 AI 介入环节：双模型集成与术中闭环工作流</h3>
-            <p>本研究评估的系统为法国 Volta Medical 开发的 <b>Volta AF-Xplorer</b>（早期代号 VX1），为锁定版商用医疗软件：</p>
-            <ul style="padding-left:20px; margin: 10px 0;">
-              <li><b>算法架构：</b>集成二分类模型，结合了基于人工特征提取的 XGBoost 分类器与端到端卷积神经网络（CNN）。</li>
-              <li><b>训练与标定：</b>基于 275,020 条多极心内电图离线训练；独立测试集（113,920 条 EGM）ROC-AUC 为 0.94；在 5 位国际专家标注的 14,490 条验证集中，模型预测概率与专家共识程度正相关（0 人认可时中位概率 0.02，5 人一致时升至 0.83）。该算法模型于 2020 年正式冻结。</li>
-              <li><b>术中指导：</b>系统推理耗时 &lt;100 ms，实时在 Carto3、EnSite 或 Rhythmia 等主流三维系统上呈现离散区。工作流规定：在房颤律下先行双房离散区标测并消融，消融灶连接至瓣环或肺静脉等中性结构；消融直至房颤终止或离散区完全清除；若转为房速（AT）则进一步标测并根治；最后补齐标准的肺静脉前庭隔离（PVI）。</li>
-            </ul>
-          </div>
-
-          <div class="drawer-section">
-            <h3 id="wk3" data-toc="设计与人群">三、 RCT 设计与分析集拆解：盲法、资质与受试者流转</h3>
-            <p>本研究在欧美 26 家高容量中心由 51 位术者完成。其试验设计与人群流转如下：</p>
-            <ol style="padding-left:20px; margin: 10px 0;">
-              <li><b>盲法设计与监管属性：</b>试验设计为受试者和终点评估者双盲；由于术者必须依据 AI 标测执行个体化消融，术者不设盲。试验由器械厂商 Volta Medical 资助。由于在美国使用该 AI 系统指导消融属于试验阶段，试验获得了美国 FDA 的试验用器械豁免（IDE）。</li>
-              <li><b>筛选与入组：</b>筛选 391 例，14 例筛选失败，入组 377 例。</li>
-              <li><b>随机化与安全性分析集：</b>3 例手术取消，374 例按 1:1 分层随机分配（Tailored 组 188 例 vs Anatomical 组 186 例）。消融前 4 例撤回知情，<b>实际接受首次消融的手术安全性分析集为 370 例（187 例 vs 183 例）</b>。</li>
-              <li><b>改良意向性治疗集（mITT，主疗效集）：</b>370 例消融患者中，术后 3 个月空白期内退出或无随访数据者共计 13 例。<b>因此 mITT 分析集为 357 例（Tailored 组 180 例 vs 对照组 177 例；即 370 - 13 = 357）</b>。</li>
-              <li><b>符合方案集（PP）：</b>在 mITT 基础上排除 88 例方案违背，<b>PP 人群为 269 例（Tailored 组 137 例 vs 对照组 132 例）</b>。</li>
-            </ol>
-            <p>随访采用 3、6、12 个月 24 小时动态心电图（依从率 91.0%）结合便携式 6 导联 Kardia 仪每周打卡（依从率 83.6%），独立盲态核心实验室判读。</p>
-          </div>
-
-          <div class="drawer-section">
-            <h3 id="wk4" data-toc="结果与安全性">四、 主要结果与安全性：数据与统计呈现</h3>
-            <h4>1. 疗效终点结果</h4>
-            <ul style="padding-left:20px; margin: 10px 0;">
-              <li><b>主要终点（单次手术 12 个月无 AF）：</b>mITT 人群（n=357）中，单次消融后 12 个月无 &gt;30 秒记录房颤的 Kaplan–Meier 估计成功率，Tailored 组为 <b>88%</b>，Anatomical 组为 <b>70%</b>（HR 0.34, 95% CI 0.21–0.57, log-rank P &lt; 0.0001）。PP 人群中 HR 为 0.29（P &lt; 0.0001）。12 个月末停用 AADs 受试者中成功率为 86% vs 68%（HR 0.35, P &lt; 0.001）。</li>
-              <li><b>病程亚组：</b>病程 ≥6 个月亚组（mITT n=196）估计成功率为 88% vs 65%（差值 23%, HR 0.29, P = 5.9×10<sup>-5</sup>）。</li>
-              <li><b>次要终点（单次手术无任何房性心律失常）：</b>终点纳入房速与房扑后，<b>mITT 人群两组估计率均为 60% vs 60%（HR 0.94, 95% CI 0.68–1.31, log-rank P = 0.16），组间未见统计学显著差异</b>。</li>
-              <li><b>多次手术后终点：</b>经历 1–2 次消融后，mITT 人群全心律失常自由率为 76% vs 71%（HR 0.77, 95% CI 0.51–1.16, log-rank P = 0.07，未达统计学显著）。</li>
-            </ul>
-
-            <h4 style="margin-top:16px;">2. 手术特征与心律失常演变</h4>
-            <p>Tailored 组总手术时间 178 ± 60 min vs 92 ± 36 min（P &lt; 2.2×10<sup>-16</sup>），总射频放电时间 42 ± 17 min vs 20 ± 11 min（P &lt; 2.2×10<sup>-16</sup>），左房消融面积占比 31 ± 14% vs 17 ± 8%（P &lt; 2.2×10<sup>-16</sup>）。术中急性房颤终止率 Tailored 组显著高于对照组（66% vs 15%）；终止的 122 例中，78% 转为规整性房速（AT）。</p>
-
-            <h4 style="margin-top:16px;">3. 安全性与并发症明细</h4>
-            <p>严重并发症受试者两组各为 5 例（Tailored 组 5/187 [2.7%] vs 对照组 5/183 [2.7%], P &gt; 0.99）。主要复合安全性终点发生率为 8/187 例（4.3%）vs 5/183 例（2.7%），P &gt; 0.05。试验组记录到 2 例死亡（经评定与消融无关）。轻度手术并发症 Tailored 组记录到 15 例（8.0%），对照组为 6 例（3.3%），其中心包积液与体液超负荷例数在试验组较高。</p>
-          </div>
-
-          <div class="drawer-section">
-            <h3 id="wk5" data-toc="局限">五、 局限与外推性考量（重点说不好）</h3>
-            <ol style="padding-left:20px; margin: 10px 0;">
-              <li><b>终点维度的临床审视：</b>主要终点仅针对房颤，Tailored 组显示优势；但当纳入房速与房扑后，单次消融在 mITT 分析集中未见统计学显著差异（60% vs 60%, P = 0.16）。不能将“未见显著差异”等同于“证明等效”，客观反映出单次消融全心律失常未能检出优效。</li>
-              <li><b>基质识别特异性与房速机制：</b>较广泛的消融（31% vs 17%）可能人为创造慢传导峡部，诱发大折返性房速，增加术后二次消融复杂度。</li>
-              <li><b>算法冻结与闭源属性：</b>系统于 2020 年冻结代码，属于专有商用医疗器械，代码未公开，外部无法审计算法内部特征权重及不同硬件平台间的校准细节。</li>
-              <li><b>中心外推性：</b>试验由 51 位高容量中心顶级专家实施，推广至中低容量中心时，其手术耗时翻倍带来的疲劳度与并发症风险需审慎评估。</li>
-            </ol>
-          </div>
-
-          <div class="drawer-section">
-            <h3 id="wk6" data-toc="图表速查">关键图表速查表</h3>
-            <div style="overflow-x:auto; margin-top:10px;">
-              <table class="weekly-table" style="width:100%; border-collapse:collapse; font-size:12.5px;">
-                <thead>
-                  <tr style="background:var(--bg-secondary); border-bottom:2px solid var(--border);">
-                    <th style="padding:8px 12px; text-align:left;">图表编号</th>
-                    <th style="padding:8px 12px; text-align:left;">核心内容</th>
-                    <th style="padding:8px 12px; text-align:left;">客观数据与关键说明</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px 12px;"><b>Figure 1</b></td>
-                    <td style="padding:8px 12px;">受试者流转 CONSORT 图</td>
-                    <td style="padding:8px 12px;">筛选 391 → 入组 377 → 随机 374 → 实际消融安全集 370 → mITT 357 → PP 269。</td>
-                  </tr>
-                  <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px 12px;"><b>Figure 2</b></td>
-                    <td style="padding:8px 12px;">主要终点（无 AF）K-M 曲线</td>
-                    <td style="padding:8px 12px;">单次手术无 AF：mITT 为 88% vs 70%（HR 0.34, P &lt; 0.0001）；仅指房颤。</td>
-                  </tr>
-                  <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px 12px;"><b>Figure 3</b></td>
-                    <td style="padding:8px 12px;">次要终点（全心律失常）K-M 曲线</td>
-                    <td style="padding:8px 12px;">第 5 页图 3 的 a–d 均为 PP 人群；全体 PP 分析为 Tailored 137 例、Anatomical 132 例，c–d 为其中病程亚组。</td>
-                  </tr>
-                  <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px 12px;"><b>第 4 页正文</b></td>
-                    <td style="padding:8px 12px;">次要终点 · mITT 分析（非图 3 数据）</td>
-                    <td style="padding:8px 12px;">单次消融 mITT 为 60% vs 60%（HR 0.94, P = 0.16，未见显著差异）；来源为第 4 页“Secondary efficacy endpoints”正文。</td>
-                  </tr>
-                  <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px 12px;"><b>Table 2</b></td>
-                    <td style="padding:8px 12px;">术中程序特征比较</td>
-                    <td style="padding:8px 12px;">Tailored 组手术时长（178 vs 92 min）、射频时间（42 vs 20 min）、左房消融面积（31% vs 17%）显著增加。</td>
-                  </tr>
-                  <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px 12px;"><b>Table 3</b></td>
-                    <td style="padding:8px 12px;">安全性终点与并发症明细</td>
-                    <td style="padding:8px 12px;">严重并发症受试者两组各 5 例（受试者人数比较 P &gt; 0.99）；主要复合终点发生率为 8/187（4%）vs 5/183（3%）。</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="clinical-question-box" id="wk7" data-toc="讨论三问" style="margin-top:24px;">
-            <b>文献讨论思考三问：</b>
-            <p>1. 终点迁移：“无房颤”达标而“无任何房性心律失常”两组未见显著差异（60% vs 60%，不能据此认定等效），在指导患者术后抗凝停药与症状缓解上有何本质差别？</p>
-            <p>2. 代价权衡：当总手术时长增加 86 分钟、射频放电翻倍时，是否会抵消消融团队的日间手术周转效率与液体负荷风险？</p>
-            <p>3. 脉冲电场（PFA）时代外推：该系统基于射频能量开发，若结合局灶型 PFA 导管，其消融深度、透壁性与房速转化率是否会发生颠覆？</p>
-          </div>
-
-        </div>
-      </template>
 
       <!-- Sources Observability Section -->
       <section id="sourcesSection" hidden>
@@ -387,7 +232,7 @@
       <button class="btn-sm" id="drawerHuddleToggleBtn">加入精选清单</button>
       <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" hidden>下载 PDF</a>
       <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerExternalLink">官网原文 ↗</a>
-      <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开">汉堡登录入口 ↗</a>
+      <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开" hidden>汉堡登录入口 ↗</a>
       <a href="#" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>
     </div>
   </aside>
