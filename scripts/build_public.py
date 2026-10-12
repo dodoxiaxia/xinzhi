@@ -407,7 +407,8 @@ def main():
     corrections=load_corrections(ROOT)
     from week_precompute import editorial_title
     editorial_titles=load('editorial/public_title_translations.json') if (ROOT/'editorial/public_title_translations.json').exists() else {'entries':{}}
-    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower())
+    from resolve_dois import title_cache_key
+    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower()) or (tz.get(title_cache_key(q.get('title'))) if not q.get('doi') and not q.get('pmid') else None)
     for q in candidates['items']+library['papers']:
         z=zhkey(q) or ('' if q.get('titleZh') else editorial_title(q,editorial_titles))
         if z:q['titleZh']=z
