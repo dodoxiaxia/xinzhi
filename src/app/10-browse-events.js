@@ -174,6 +174,12 @@
       if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: 'smooth' });
       return;
     }
+    const sourceFilter = e.target.closest('[data-source-filter]');
+    if (sourceFilter) {
+      state.sourceFilter = sourceFilter.dataset.sourceFilter;
+      renderSourcesHealth(); syncUrl();
+      return;
+    }
     const dayBtn = e.target.closest('[data-day]');
     if (dayBtn) {
       state.day = dayBtn.dataset.day;

@@ -399,6 +399,7 @@
     day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
     weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
     weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
+    sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
@@ -1247,6 +1248,7 @@
       set('wcat', state.mode === 'weekly' ? state.weeklyCat : '', '');
       set('day', state.mode === 'curated' ? state.day : '', '');
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
+      set('sf', state.mode === 'sources' ? state.sourceFilter : '', '');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       u.searchParams.delete('maintainer');
       const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
@@ -2563,7 +2565,10 @@
     const successful = s => ['ok','empty_feed','filtered_empty'].includes(s.status);
     const okCount = sources.filter(successful).length;
     const summary = $('#sourcesHealthSummary');
-    if (summary) summary.innerHTML = `<div><strong>${sources.length}</strong><span>订阅信源</span></div><div><strong>${okCount}</strong><span>本轮获取成功</span></div><div class="${sources.length > okCount ? 'source-summary-attention' : ''}"><strong>${sources.length - okCount}</strong><span>需要关注</span></div>`;
+    // The three totals double as filters; counts always describe the whole report.
+    const view = ['ok', 'attention'].includes(state.sourceFilter) ? state.sourceFilter : '';
+    const tile = (value, n, label, cls = '') => `<button type="button" class="source-filter${cls}" data-source-filter="${value}" aria-pressed="${view === value}"><strong>${n}</strong><span>${label}</span></button>`;
+    if (summary) summary.innerHTML = tile('', sources.length, '订阅信源') + tile('ok', okCount, '本轮获取成功') + tile('attention', sources.length - okCount, '需要关注', sources.length > okCount ? ' source-summary-attention' : '');
 
     if (meta) {
       meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
@@ -2573,13 +2578,19 @@
     const q = state.search.trim().toLowerCase();
     const filtered = sources.filter(s => !q || queryMatches([s.name, s.id, s.url, s.status, sourceHealthDetails(s),
       s.status === 'not_feed' ? '返回非订阅内容' : successful(s) ? '获取成功' : '获取异常 暂停'].filter(Boolean).join(' ').toLowerCase(), q));
+    const shown = filtered.filter(s => !view || (view === 'ok') === successful(s));
+    let group = null;
     grid.innerHTML = specialSearchStatus('信源状态（名称、订阅地址与状态）', filtered.length, sources.length, '个信源')
       + (!filtered.length ? '<p class="special-search-empty" role="status">没有匹配的信源，请清除关键词或更换名称；论文请到文献雷达检索。</p>' : '')
-      + [...filtered].sort((a, b) => Number(successful(a)) - Number(successful(b))).map(s => {
+      + (filtered.length && !shown.length ? `<p class="special-search-empty" role="status">${view === 'ok' ? '没有获取成功的信源。' : '没有需要关注的信源。'}<button type="button" class="btn-sm" data-source-filter="">查看全部</button></p>` : '')
+      + [...shown].sort((a, b) => Number(successful(a)) - Number(successful(b))).map(s => {
       const isOk = successful(s);
+      // Problems come first; a heading marks where each group starts.
+      const heading = group === isOk ? '' : `<h3 class="source-group-title">${isOk ? '获取成功' : '需要关注'} <span>${shown.filter(x => successful(x) === isOk).length}</span></h3>`;
+      group = isOk;
       const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '获取成功 · 暂无入选' : isOk ? '获取成功' :
         s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'not_checked_host_blocked' ? '同主机暂停检查' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
-      return `
+      return heading + `
         <article class="source-item${isOk ? '' : ' source-needs-attention'}">
           <div class="source-item-head">
             <h3 class="source-item-name">${esc(s.name)}</h3>
@@ -3127,6 +3138,12 @@
     if (tocTarget) {
       const body = $('#deepReaderBody'), target = body && document.getElementById(tocTarget.dataset.tocTarget);
       if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: 'smooth' });
+      return;
+    }
+    const sourceFilter = e.target.closest('[data-source-filter]');
+    if (sourceFilter) {
+      state.sourceFilter = sourceFilter.dataset.sourceFilter;
+      renderSourcesHealth(); syncUrl();
       return;
     }
     const dayBtn = e.target.closest('[data-day]');
