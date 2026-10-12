@@ -151,6 +151,15 @@ class StateWorkflowTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.git(private, 'rev-parse', 'refs/heads/state').stdout.strip(), self.original_sha)
 
+    def test_state_requests_never_carry_the_checkout_token(self):
+        # actions/checkout stores this repository's token as http.extraheader for github.com; it would
+        # override the private state repository's token in STATE_URL ("Repository not found").
+        for path in (WORKFLOW, ROOT / '.github/workflows/daily-reading-checks.yml'):
+            for line in path.read_text().splitlines():
+                if '"$STATE_URL"' in line and 'git' in line:
+                    self.assertTrue("extraheader=" in line or 'state_git ' in line, (path.name, line.strip()))
+        self.assertIn("state_git() { git -c 'http.https://github.com/.extraheader=' \"$@\"; }", WORKFLOW.read_text())
+
     def test_state_location_is_configurable_and_defaults_to_this_repository(self):
         source = WORKFLOW.read_text()
         self.assertIn("XINZHI_STATE_REPOSITORY: ${{ vars.XINZHI_STATE_REPO || github.repository }}", source)
