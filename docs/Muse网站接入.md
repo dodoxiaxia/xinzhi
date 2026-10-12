@@ -14,6 +14,14 @@
 
 网站核验 `muse-review.yml` 已观察到 schedule 成功；最新已读日志 processed=0，不能据此确认某篇已通过。LA-HCM `10.1093/ehjci/jeag280` 10/10 晚公网读取为 `review / verification_rejected`（10/09 21:09，早于接受稿修复 f3e0ff8）；随后运行 recheck_doi 单篇复核（[38045612306](https://github.com/dodoxiaxia/xinzhi/actions/runs/38045612306)，未重新下载），公开状态变为 `available`。完整来源与证据见 [同步总账](云端协同同步总账-20261010.md)；读者任务页的状态展示与下载路径见 [运行依赖与故障复盘](运行依赖与故障复盘-20261010.md)。
 
+## 2026-10-12 不依赖 Muse 的两条路
+
+`10.1093/ehjci/jeag228` 于 10/10 入队后一直没人领取：Muse 下载端定时任务仍未创建，旧规则排队满 24 小时即作废，读者只看到“需维护者核查”。现在：
+
+- **开放获取先试**：提交请求或恢复任务时，先用 Crossref 登记的 PDF 链接与 Unpaywall/OpenAlex 找开放获取副本；取得的原件进入同一私有隔离区，仍须 `muse-review.yml` 双解析器核验后才能下载。来源拦截（如出版社的 Cloudflare 验证）、超时或文件过小时照常排给 Muse。
+- **读者自传 PDF**：`/api/muse/reader-upload?doi=…`（GET 为表单，POST 为 multipart：`pdf` 文件 + `passphrase` 全文口令）。读者在自己的浏览器里打开原文（开放获取或汉堡登录）下载后上传，原件进入同一隔离区与核验流程；不记录 Drive，`archive.sides.drive` 保持 `pending`。Muse 正在领取或已有原件待核验时拒绝（409 `muse_busy`）。排队中、已停止、待核验未通过或需重新登录的任务页都显示上传入口。
+- **排队期延长到 6 天**：未被领取的请求在任务记录 7 天有效期内一直可被 Muse 领取，不再一天后作废。
+
 ## 先在私密配置中完成这一步
 
 Cloudflare Pages 项目 `dryz-xinzhi` 的 Production 环境设置：
