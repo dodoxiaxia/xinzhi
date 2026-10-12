@@ -144,7 +144,7 @@ async function browserChecks() {
     return route.fulfill({ status: 404, body: '' });
   });
   try {
-    await page.goto(origin + '/?mode=library&lane=aitech&range=7&journal=Other&reading=guide&q=DOI%3A10.1234%2Farchive');
+    await page.goto(origin + '/?mode=library&lane=aitech&range=7&journal=Other&reading=guide&maintainer=1&q=DOI%3A10.1234%2Farchive');
     await page.locator('.doi-search-notice').waitFor();
     assert((await page.locator('#articlesStream').innerText()).includes('Archived clinical title'));
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 1, 'Archive result ignores filters');

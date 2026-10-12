@@ -129,12 +129,14 @@
       RADAR_LOAD.state = 'loaded';
       _maxDateCache = null;
       updateHeaderBadges();
+      updateHuddleCounter();
+      if ($('#huddleModalBackdrop.open')) openHuddleModal();
       if (state.mode === 'candidates' || exactDoi(state.search)) { renderSidebarFilters(); renderStream(); }
     };
     const script = document.createElement('script');
     script.src = window.RADAR_SRC;
     script.async = true;
-    script.onerror = () => { RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates') renderStream(); };
+    script.onerror = () => { RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates') renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
     document.head.appendChild(script);
   }
   function radarArchiveNeeded() {
@@ -294,6 +296,7 @@
     if (!exactDoi(state.search) && state.mode !== 'weekly' && state.mode !== 'sources') renderSidebarFilters();
     renderStream();
     if (state.activeDrawerPaper) openReaderDrawer(allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper);
+    if ($('#huddleModalBackdrop.open')) openHuddleModal();
   }
   async function lookupSupplementalDoi(doi, retry = false) {
     if (!doi || (!retry && DOI_LOOKUPS.has(doi)) || DOI_LOOKUPS.get(doi)?.state === 'loading') return;
@@ -344,9 +347,15 @@
   // Safe storage (private mode / blocked storage must not break the page)
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+  function safeRemove(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
 
   // URL State & Query Params
   const urlParams = new URLSearchParams(window.location.search);
+  // Maintainer-only links (Hamburg institutional access) stay hidden from colleagues.
+  // ?maintainer=1 turns them on for this browser, ?maintainer=0 turns them off.
+  if (urlParams.get('maintainer') === '1') safeSet('xz_maintainer', '1');
+  if (urlParams.get('maintainer') === '0') safeRemove('xz_maintainer');
+  const MAINTAINER = safeGet('xz_maintainer') === '1';
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
   // Saved view preferences affect rendering without adding a URL parameter.
@@ -375,7 +384,9 @@
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
-    huddle: (function () { try { const v = JSON.parse(safeGet('xinzhi_huddle_ids') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } })(),
+    huddle: (function () { try { const v = JSON.parse(safeGet('xinzhi_huddle_ids') || '[]'); return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []; } catch (e) { return []; } })(),
+    // Minimal record of each shortlisted paper, so the list stays complete when its paper is not loaded.
+    huddleSnap: (function () { try { const v = JSON.parse(safeGet('xinzhi_huddle_snap') || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } })(),
     activeDrawerPaper: null,
     huddleCompare: [] // Explicit selection, kept only in this browser session.
   };
@@ -790,7 +801,7 @@
   }
   function selectedComparePapers() {
     const seen = new Set();
-    return state.huddle.filter(id => state.huddleCompare.includes(id)).map(id => allPapersMap.get(id)).filter(p => {
+    return state.huddle.filter(id => state.huddleCompare.includes(id)).map(huddlePaper).filter(p => {
       const key = p && studyKey(p);
       const doi = p?.doi && 'doi:' + String(p.doi).toLowerCase();
       if (!key || seen.has(key) || (doi && seen.has(doi))) return false;
@@ -801,7 +812,7 @@
     return JSON.stringify(list.map(studyKey).sort());
   }
   function setCompareSelection(id, checked) {
-    const paper = allPapersMap.get(id);
+    const paper = huddlePaper(id);
     if (!state.huddle.includes(id) || !paper || !studyKey(paper)) return false;
     if (!checked) { state.huddleCompare = state.huddleCompare.filter(x => x !== id); return true; }
     if (state.huddleCompare.includes(id)) return true;
@@ -1165,12 +1176,30 @@
       set('day', state.mode === 'curated' ? state.day : '', '');
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
+      u.searchParams.delete('maintainer');
       const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
         || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
-      history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+      history.replaceState(history.state, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
+  }
+
+  // Phones: the Back button closes the open panel instead of leaving the site.
+  // Opening a panel pushes one history entry; closing it by button or Esc walks back over it.
+  const OVERLAY_PUSHED = new Set();
+  function pushOverlay(name) {
+    try {
+      if (OVERLAY_PUSHED.has(name) && history.state && history.state.overlay === name) return;
+      history.pushState({ overlay: name }, '', location.href);
+      OVERLAY_PUSHED.add(name);
+    } catch (e) { /* file:// or sandboxed */ }
+  }
+  function popOverlay(name) {
+    try {
+      if (OVERLAY_PUSHED.has(name) && history.state && history.state.overlay === name) { history.back(); return true; }
+    } catch (e) { /* file:// or sandboxed */ }
+    return false;
   }
 
   // Get current dataset based on mode
@@ -2011,7 +2040,7 @@
 
       const tagsHtml = (paper.tags || []).map(t => `<span class="tag-chip active">${esc(t)}</span>`).join('');
 
-      bodyEl.innerHTML = `
+      const head = `
         ${publicationStatusHtml(paper)}
         <div class="drawer-meta-line">
           <span style="font-size:12px; color:var(--text-muted);">${esc(paper.publisher || '')} · ${esc(paper.clinicalTier || '')}</span>
@@ -2030,9 +2059,8 @@
         ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;">${tagsHtml}</div>` : ''}
 
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字（请对照下方原文核验）</summary>${quantBox}</details>` : ''}
-
-        ${editorialSection}
-
+      `;
+      const abstractSection = `
         <section class="drawer-section abstract-reader" aria-label="公开摘要阅读">
           <div class="drawer-section-title">公开摘要 <small class="abstract-translation-status" role="status">${hasAbstract ? abstractTranslationStatus(paper) : '原文'}</small></div>
           ${hasAbstract ? `<nav class="abstract-jump-nav" aria-label="摘要阅读位置"><button type="button" class="btn-sm" data-action="abstract-jump" data-column="original">原始摘要</button><button type="button" class="btn-sm" data-action="abstract-jump" data-column="translation">${validTranslation(LIVE_TR[trKeyOf(paper)]) ? '中文译文' : '译文状态'}</button></nav>` : ''}
@@ -2043,13 +2071,9 @@
           </div>
           ${absSource}
         </section>
-
-        ${quickBox}${aiBox}
-
-        ${studyBoxHtml(paper)}
-
-        ${citationSection}
       `;
+      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['editorial', editorialSection], ['abstract', abstractSection],
+        ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
     }
 
     // Footer buttons
@@ -2067,16 +2091,18 @@
     }
     const institutionLink = $('#drawerInstitutionLink');
     if (institutionLink) {
-      const institutionUrl = hamburgFulltextUrl(paper.doi);
+      const institutionUrl = MAINTAINER ? hamburgFulltextUrl(paper.doi) : '';
       institutionLink.href = institutionUrl || '#'; institutionLink.hidden = !institutionUrl;
     }
+    const institutionLogin = $('#drawerInstitutionLoginLink');
+    if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
     const pdfLink = $('#drawerPdfLink');
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
     }
 
-    if (!drawer.classList.contains('open')) lastFocus = document.activeElement;
+    if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
     drawer.classList.add('open');
     backdrop.classList.add('open');
     if (changedPaper && bodyEl) bodyEl.scrollTop = 0;
@@ -2111,6 +2137,31 @@
         if (state.activeDrawerPaper === paper) openBodyOnly(paper);
       });
     }
+  }
+
+  // AI lookups finish one by one and each rerenders the drawer. Replacing only the region whose
+  // markup changed keeps the reader's open <details>, text selection and focus everywhere else.
+  let drawerRegionHtml = {};
+  function renderDrawerRegions(bodyEl, paper, changedPaper, regions) {
+    const fresh = changedPaper || bodyEl.dataset.paperId !== String(paper.id) || !bodyEl.querySelector('[data-drawer-region]');
+    if (fresh) {
+      bodyEl.innerHTML = regions.map(([key, html]) => `<div class="drawer-region" data-drawer-region="${key}">${html}</div>`).join('');
+      bodyEl.dataset.paperId = String(paper.id);
+      drawerRegionHtml = Object.fromEntries(regions);
+      return;
+    }
+    regions.forEach(([key, html]) => {
+      if (drawerRegionHtml[key] === html) return;
+      const el = bodyEl.querySelector(`[data-drawer-region="${key}"]`);
+      if (!el) return;
+      const open = new Set([...el.querySelectorAll('details[open] > summary')].map(x => x.textContent));
+      const active = el.contains(document.activeElement) ? document.activeElement.closest('[data-action]') : null;
+      const focus = active && { action: active.dataset.action, id: active.dataset.paperId };
+      el.innerHTML = html;
+      el.querySelectorAll('details > summary').forEach(x => { if (open.has(x.textContent)) x.parentElement.open = true; });
+      if (focus) [...el.querySelectorAll('[data-action]')].find(x => x.dataset.action === focus.action && x.dataset.paperId === focus.id && !x.disabled)?.focus({ preventScroll: true });
+      drawerRegionHtml[key] = html;
+    });
   }
 
   function openBodyOnly(paper) {
@@ -2154,7 +2205,10 @@
     return res;
   }
 
-  function closeReaderDrawer() {
+  function closeReaderDrawer({ fromHistory = false } = {}) {
+    if (!$('#readerDrawer.open')) return;
+    if (!fromHistory && popOverlay('drawer')) return;
+    OVERLAY_PUSHED.delete('drawer');
     if (state.activeDrawerPaper && state.activeDrawerPaper._absState === 'error') { state.activeDrawerPaper._absTries = 0; state.activeDrawerPaper._absState = ''; }
     state.activeDrawerPaper = null;
     const drawer = $('#readerDrawer');
@@ -2174,10 +2228,48 @@
   }
 
   // Morning Huddle Modal Logic
+  // The shortlist keeps a small record of each paper. Radar papers older than three weeks load
+  // only on demand, and old ones leave the archive, so the IDs alone cannot always be resolved.
+  const HUDDLE_SNAP_PAPERS = new Map();
+  function huddleSnapshot(p) {
+    return { title: String(p.title || '').slice(0, 800), titleZh: p.draftData?.title_zh || quicklookOf(p)?.title_zh || p.titleZh || '',
+      journal: p.cleanJournal || p.journal || '', date: String(p.date || '').slice(0, 10), doi: p.doi ? String(p.doi) : '',
+      pmid: p.pmid ? String(p.pmid) : '', url: safeSourceUrl(p), studyDesign: p.studyDesign || '' };
+  }
+  function huddlePaper(id) {
+    const live = allPapersMap.get(id);
+    if (live) return live;
+    const snap = state.huddleSnap[id];
+    if (!snap || typeof snap.title !== 'string' || !snap.title) return null;
+    if (!HUDDLE_SNAP_PAPERS.has(id)) HUDDLE_SNAP_PAPERS.set(id, { ...snap, id, cleanJournal: snap.journal, tags: [], quantitativeMetrics: {}, snapshot: true });
+    return HUDDLE_SNAP_PAPERS.get(id);
+  }
+  function huddlePapers() { return state.huddle.map(huddlePaper).filter(Boolean); }
   function updateHuddleCounter() {
     const counter = $('#huddleCounter');
     if (counter) counter.textContent = state.huddle.length;
+    const snap = {};
+    state.huddle.forEach(id => {
+      const live = allPapersMap.get(id);
+      if (live) snap[id] = huddleSnapshot(live);
+      else if (state.huddleSnap[id]) snap[id] = state.huddleSnap[id];
+    });
+    state.huddleSnap = snap;
     safeSet('xinzhi_huddle_ids', JSON.stringify(state.huddle));
+    safeSet('xinzhi_huddle_snap', JSON.stringify(snap));
+  }
+  function toggleHuddle(paperId) {
+    if (state.huddle.includes(paperId)) {
+      state.huddle = state.huddle.filter(id => id !== paperId);
+      showToast('已从精选清单移出');
+    } else {
+      state.huddle.push(paperId);
+      showToast('已加入精选清单');
+    }
+    updateHuddleCounter();
+    renderStream();
+    if (state.mode === 'weekly') { renderWeeklyAuto(); renderNextCandidates(); }
+    if (state.activeDrawerPaper?.id === paperId) openReaderDrawer(state.activeDrawerPaper);
   }
 
   let huddleLastFocus=null;
@@ -2188,18 +2280,29 @@
     const activeControl = body.contains(document.activeElement) ? document.activeElement.closest('[data-action]') : null;
     const focusAction = activeControl ? { action: activeControl.dataset.action, paperId: activeControl.dataset.paperId, mode: activeControl.dataset.mode } : null;
 
-    const list = state.huddle.map(id => allPapersMap.get(id)).filter(Boolean);
-    state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && allPapersMap.has(id));
+    const list = huddlePapers();
+    const missing = state.huddle.filter(id => !huddlePaper(id));
+    // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
+    if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
+    state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
     const selected = selectedComparePapers();
     ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn'].forEach(id => {
       const button = $('#' + id);
       if (!button) return;
-      button.disabled = list.length === 0;
-      if (!list.length) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
+      button.disabled = id === 'clearHuddleBtn' ? state.huddle.length === 0 : list.length === 0;
+      if (button.disabled) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
       else button.removeAttribute('aria-describedby');
     });
+    const missingHtml = missing.map(id => `
+        <div class="huddle-item huddle-item-missing">
+          <div class="huddle-item-content">
+            <h4>文献信息暂未载入</h4>
+            <p class="huddle-original-title">${RADAR_LOAD.state === 'loading' ? '正在载入题录存档…' : '这条可能已超出站内收录范围。'}编号 ${esc(id)}</p>
+          </div>
+          <button class="btn-sm" data-action="remove-huddle" data-paper-id="${esc(id)}">移出</button>
+        </div>`).join('');
 
-    if (list.length === 0) {
+    if (list.length === 0 && !missing.length) {
       body.innerHTML = `
         <div class="empty-state" style="padding:30px;">
           <p id="huddleEmptyHelp" role="status">精选清单当前为空，添加文献后可清空、复制或导出。</p>
@@ -2222,13 +2325,13 @@
           </div>
           <button class="btn-sm" data-action="remove-huddle" data-paper-id="${esc(p.id)}">移出</button>
         </div>
-      `).join('') + compareBoxHtml(list) + (AI_AVAIL === true ? briefHtml('huddle', list) : '');
+      `).join('') + missingHtml + (list.length ? compareBoxHtml(list) + (AI_AVAIL === true ? briefHtml('huddle', list) : '') : '');
     }
 
     window.CITATION_EXPORT?.mount(body, list, { formatter: buildCitations, copy: copyToClipboard, today: beijingToday });
 
     const newlyOpened = !modal.classList.contains('open');
-    if(newlyOpened) huddleLastFocus=document.activeElement;
+    if(newlyOpened) { huddleLastFocus=document.activeElement; pushOverlay('huddle'); }
     modal.classList.add('open'); document.body.classList.add('dialog-open');
     if(newlyOpened) $('#closeHuddleModalBtn')?.focus({preventScroll:true});
     else if (focusAction) {
@@ -2238,7 +2341,10 @@
     compareCheck();
   }
 
-  function closeHuddleModal() {
+  function closeHuddleModal({ fromHistory = false } = {}) {
+    if (!$('#huddleModalBackdrop.open')) return;
+    if (!fromHistory && popOverlay('huddle')) return;
+    OVERLAY_PUSHED.delete('huddle');
     const modal = $('#huddleModalBackdrop');
     if (modal) modal.classList.remove('open');
     if(!$('#readerDrawer.open')) document.body.classList.remove('dialog-open');
@@ -2247,7 +2353,7 @@
 
   // Export Huddle Markdown
   function exportHuddleMarkdown() {
-    const list = state.huddle.map(id => allPapersMap.get(id)).filter(Boolean);
+    const list = huddlePapers();
     if (!list.length) {
       showToast('清单为空，无法导出');
       return;
@@ -2288,7 +2394,7 @@
 
   // Copy Huddle Batch Summary for WeChat
   function copyHuddleSummary() {
-    const list = state.huddle.map(id => allPapersMap.get(id)).filter(Boolean);
+    const list = huddlePapers();
     if (!list.length) {
       showToast('清单为空');
       return;
@@ -2813,6 +2919,9 @@
   // Header Nav Tab Clicks
   $$('[data-mode]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.dataset.mode === state.mode) return switchMode(btn.dataset.mode);
+      // A new entry per tab, so the phone Back button returns to the previous tab.
+      try { history.pushState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
       switchMode(btn.dataset.mode);
     });
   });
@@ -2829,7 +2938,6 @@
   const closeSheet = () => { const sb = $('#appSidebar'); if (sb) sb.classList.remove('open'); const t = $('#filterToggleBtn'); if (t) t.setAttribute('aria-expanded', 'false'); };
   $('#sheetClose')?.addEventListener('click', closeSheet);
   document.addEventListener('click', e => { if (e.target === document.body && $('#appSidebar')?.classList.contains('open')) closeSheet(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 
   // Global Search Input with debounce
   let searchTimer = null;
@@ -2858,8 +2966,12 @@
       const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open');
       if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
     } else if (e.key === 'Escape') {
-      if ($('#readerDrawer.open') || $('#huddleModalBackdrop.open')) { closeReaderDrawer(); closeHuddleModal(); }
-      else closeDeepReading();
+      // One press closes the topmost layer only: shortlist, then reader, then full-text reading, then filters.
+      if ($('#styleMenu:not([hidden])')) return;
+      if ($('#huddleModalBackdrop.open')) closeHuddleModal();
+      else if ($('#readerDrawer.open')) closeReaderDrawer();
+      else if ($('#deepReader.open')) closeDeepReading();
+      else if ($('#appSidebar.open')) closeSheet();
     }
   });
 
@@ -3121,7 +3233,7 @@
     if (briefAction) {
       const mode = briefAction.dataset.mode;
       const action = briefAction.dataset.action === 'brief-check' ? briefLookup : aiBrief;
-      if (mode === 'huddle') action('huddle', state.huddle.map(id => allPapersMap.get(id)).filter(Boolean), () => { if ($('#huddleModalBackdrop')?.classList.contains('open')) openHuddleModal(); });
+      if (mode === 'huddle') action('huddle', huddlePapers(), () => { if ($('#huddleModalBackdrop')?.classList.contains('open')) openHuddleModal(); });
       else action('digest', state._digestList || [], () => renderDigestBar());
       return;
     }
@@ -3153,20 +3265,7 @@
     // 10. Toggle Morning Huddle
     const huddleAction = e.target.closest('[data-action="toggle-huddle"]');
     if (huddleAction) {
-      const paperId = huddleAction.dataset.paperId;
-      if (state.huddle.includes(paperId)) {
-        state.huddle = state.huddle.filter(id => id !== paperId);
-        showToast('已从精选清单移出');
-      } else {
-        state.huddle.push(paperId);
-        showToast('已加入精选清单');
-      }
-      updateHuddleCounter();
-      renderStream();
-      if (state.mode === 'weekly') { renderWeeklyAuto(); renderNextCandidates(); }
-      if (state.activeDrawerPaper?.id === paperId) {
-        openReaderDrawer(state.activeDrawerPaper);
-      }
+      toggleHuddle(huddleAction.dataset.paperId);
       return;
     }
 
@@ -3183,15 +3282,21 @@
   });
 
   // Drawer events
-  $('#drawerCloseBtn')?.addEventListener('click', closeReaderDrawer);
+  $('#drawerCloseBtn')?.addEventListener('click', () => closeReaderDrawer());
   $('#drawerBackdrop')?.addEventListener('click', () => { if ($('#readerDrawer.open')) closeReaderDrawer(); else closeDeepReading(); });
   $('#deepReaderClose')?.addEventListener('click', () => closeDeepReading());
   ['#deepReaderPrev', '#deepReaderNext'].forEach(sel => $(sel)?.addEventListener('click', e => { const id = e.currentTarget.dataset.readingId; if (id) openDeepReading(id); }));
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
-    const id = history.state && history.state.deepReader;
+    const entry = history.state || {};
+    if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
+    if (entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
+    const id = entry.deepReader;
     if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
     else closeDeepReading({ fromHistory: true });
+    // Back after switching tabs returns to the previous tab.
+    const mode = new URLSearchParams(location.search).get('mode') || 'curated';
+    if (!entry.overlay && !entry.deepReader && mode !== state.mode && ['curated', 'weekly', 'candidates', 'library', 'sources'].includes(mode)) switchMode(mode);
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
@@ -3202,20 +3307,7 @@
   });
 
   $('#drawerHuddleToggleBtn')?.addEventListener('click', () => {
-    if (state.activeDrawerPaper) {
-      const paperId = state.activeDrawerPaper.id;
-      if (state.huddle.includes(paperId)) {
-        state.huddle = state.huddle.filter(id => id !== paperId);
-        showToast('已从精选清单移出');
-      } else {
-        state.huddle.push(paperId);
-        showToast('已加入精选清单');
-      }
-      updateHuddleCounter();
-      renderStream();
-      if (state.mode === 'weekly') { renderWeeklyAuto(); renderNextCandidates(); }
-      openReaderDrawer(state.activeDrawerPaper);
-    }
+    if (state.activeDrawerPaper) toggleHuddle(state.activeDrawerPaper.id);
   });
 
   // Load More Button
@@ -3234,7 +3326,7 @@
     [...$('#huddleModalBody').querySelectorAll('[data-action="compare-select"]')].find(x => x.dataset.paperId === id)?.focus({ preventScroll: true });
   });
   $('#openHuddleBtn')?.addEventListener('click', openHuddleModal);
-  $('#closeHuddleModalBtn')?.addEventListener('click', closeHuddleModal);
+  $('#closeHuddleModalBtn')?.addEventListener('click', () => closeHuddleModal());
   $('#huddleModalBackdrop')?.addEventListener('click', e => {
     if (e.target.id === 'huddleModalBackdrop') closeHuddleModal();
   });
@@ -3250,6 +3342,8 @@
   });
 
   // Initialize
+  // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.
+  try { if (history.state && history.state.overlay) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
@@ -3270,7 +3364,7 @@
   window.addEventListener('focus', refreshLibraryAfterReturn);
   window.addEventListener('pageshow', event => { if (event.persisted) refreshLibraryAfterReturn(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && doiJobActive(DOI_JOBS.get(exactDoi(state.search)))) lookupSupplementalDoi(exactDoi(state.search), true); });
-  aiRequest('/api/ql?k=pmid:1', { headers: { accept: 'application/json' } })
+  aiRequest('/api/ai?task=status', { headers: { accept: 'application/json' } })
     .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
     .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
 

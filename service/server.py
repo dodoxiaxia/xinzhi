@@ -83,18 +83,17 @@ MAX_BODY_SIZE = 1024 * 1024  # 1MB 请求体限制
 GITHUB_LIBRARY_MAX_LIMIT = 100
 PUBLIC_LIBRARY_MAX_BYTES = 16 * 1024 * 1024
 PDF_FORM_MAX_BYTES = 2048
-DEFAULT_PDF_PASSPHRASE_SHA256 = "09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab"
 
 
 def verify_pdf_passphrase(value: str) -> bool:
     """Shared download phrase, independent of the editor account and its session."""
     if not isinstance(value, str) or not 0 < len(value) <= 256:
         return False
+    # No built-in default: this repository is public, so the phrase comes only from the environment.
     configured = os.environ.get("PDF_DOWNLOAD_PASSPHRASE")
-    if configured is not None and not 0 < len(configured) <= 256:
+    if configured is None or not 0 < len(configured) <= 256:
         raise ValueError("Invalid PDF passphrase configuration")
-    expected = (hashlib.sha256(configured.encode("utf-8")).hexdigest()
-                if configured is not None else DEFAULT_PDF_PASSPHRASE_SHA256)
+    expected = hashlib.sha256(configured.encode("utf-8")).hexdigest()
     return hmac.compare_digest(hashlib.sha256(value.encode("utf-8")).hexdigest(), expected)
 
 

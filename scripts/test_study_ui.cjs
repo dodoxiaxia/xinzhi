@@ -32,6 +32,7 @@ const papers = [paper('a', '1001', '10.1000/A'), paper('b', '1002', '10.1000/B')
 const state = { huddle: papers.map(p => p.id), huddleCompare: [], activeDrawerPaper: null };
 const c = vm.createContext({
   AbortController, setTimeout, clearTimeout, state, allPapersMap: new Map(papers.map(p => [p.id, p])), URL, Date,
+  huddlePaper: id => papers.find(p => p.id === id) || null,
   showToast: text => toasts.push(text),
   openReaderDrawer: p => renders.push(['drawer', p.id]),
   openHuddleModal: () => renders.push(['huddle']),

@@ -40,7 +40,8 @@ const PDF_MAX_FORM_BYTES = 2048;
 const HAN_LOGIN_URL = 'https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles';
 const HAN_DOI_BASE = 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/';
 // Only the default digest is stored in source; never expose submitted or configured plaintext.
-const PDF_DEFAULT_PASSPHRASE_SHA256 = '09c0511115f6c26ef033df2522991fd0cd65af038f8d74c48b8f51b9d898bbab';
+// The passphrase lives only in the PDF_DOWNLOAD_PASSPHRASE secret; this repository is public.
+const PDF_PASSPHRASE_FAIL_LIMIT = 10, PDF_PASSPHRASE_FAIL_WINDOW_MS = 3600000;
 
 class PdfFailure extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -81,7 +82,7 @@ function pdfError(request, code, status, doi = '', diagnostic = null) {
   if (!(request.headers.get('accept') || '').includes('text/html')) return json({ ok:false, error:code, ...(PDF_REQUEST_DIAGNOSTICS.has(request) ? {diagnostic:safe,diagnosticStatus:safe ? 'available' : 'unavailable'} : {}) }, status);
   const messages = {
     pdf_disabled:'PDF 下载尚未启用。', pdf_not_configured:'PDF 下载服务尚未完成配置。',
-    pdf_passphrase_invalid:'下载口令不正确，请重新输入。', pdf_bad_form:'口令提交格式无效，请重新打开下载页面。',
+    pdf_passphrase_invalid:'下载口令不正确，请重新输入。', pdf_rate_limited:'口令错误次数过多，请一小时后再试。', pdf_bad_form:'口令提交格式无效，请重新打开下载页面。',
     pdf_origin:'请在本站下载页面提交口令。',
     pdf_content_type:'请通过下载页面的口令表单提交。', pdf_body_too_large:'口令提交内容超过大小限制。',
     pdf_bad_id:'文献标识无效。', pdf_not_found:'这篇文献暂未提供可下载的 PDF。',
@@ -176,16 +177,28 @@ async function pdfReadPassphrase(request) {
   if (!values[0] || values[0].length > 256) pdfFail('pdf_passphrase_invalid', 403);
   return values[0];
 }
-async function pdfVerifyPassphrase(passphrase, env) {
-  let expected = PDF_DEFAULT_PASSPHRASE_SHA256;
-  if (env.PDF_DOWNLOAD_PASSPHRASE !== undefined) {
-    if (typeof env.PDF_DOWNLOAD_PASSPHRASE !== 'string' || !env.PDF_DOWNLOAD_PASSPHRASE || env.PDF_DOWNLOAD_PASSPHRASE.length > 256) pdfFail('pdf_not_configured', 503);
-    expected = await pdfDigest('SHA-256', new TextEncoder().encode(env.PDF_DOWNLOAD_PASSPHRASE));
-  }
+// Wrong passphrases are counted per IP and hour in the edge cache (not KV, which stays untouched
+// before authorization), so the shared passphrase cannot be guessed online.
+async function pdfPassphraseFailures(request, add = false) {
+  const cache = typeof caches !== 'undefined' && caches && caches.default;
+  if (!cache || !request) return 0;
+  try {
+    const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+    const bucket = Math.floor(Date.now() / PDF_PASSPHRASE_FAIL_WINDOW_MS);
+    const key = new Request(new URL('/__pdf-passphrase-failures/' + bucket + '/' + (await pdfDigest('SHA-256', new TextEncoder().encode(ip))).slice(0, 16), request.url).href);
+    const hit = await cache.match(key), count = hit ? parseInt(await hit.text(), 10) || 0 : 0;
+    if (add) await cache.put(key, new Response(String(count + 1), { headers: { 'cache-control': 'max-age=' + PDF_PASSPHRASE_FAIL_WINDOW_MS / 1000 } }));
+    return count + (add ? 1 : 0);
+  } catch { return 0; }
+}
+async function pdfVerifyPassphrase(passphrase, env, request) {
+  if (typeof env.PDF_DOWNLOAD_PASSPHRASE !== 'string' || !env.PDF_DOWNLOAD_PASSPHRASE || env.PDF_DOWNLOAD_PASSPHRASE.length > 256) pdfFail('pdf_not_configured', 503);
+  if (await pdfPassphraseFailures(request) >= PDF_PASSPHRASE_FAIL_LIMIT) pdfFail('pdf_rate_limited', 429);
+  const expected = await pdfDigest('SHA-256', new TextEncoder().encode(env.PDF_DOWNLOAD_PASSPHRASE));
   const actual = await pdfDigest('SHA-256', new TextEncoder().encode(passphrase));
   let difference = 0;
   for (let index = 0; index < 64; index++) difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
-  if (difference) pdfFail('pdf_passphrase_invalid', 403);
+  if (difference) { await pdfPassphraseFailures(request, true); pdfFail('pdf_passphrase_invalid', 403); }
 }
 
 // Timeout covers headers AND the streamed body. Authorization is sent only to api.github.com.
@@ -411,7 +424,7 @@ async function handlePdf(request, env) {
       try { sourceOrigin = new URL(origin).origin; } catch { pdfFail('pdf_origin', 403); }
       if (sourceOrigin !== url.origin) pdfFail('pdf_origin', 403);
     }
-    await pdfVerifyPassphrase(await pdfReadPassphrase(request), env); // No GitHub request before successful password verification.
+    await pdfVerifyPassphrase(await pdfReadPassphrase(request), env, request); // No GitHub request before successful password verification.
     const diagnostic = pdfDiagnosticStart(request);
     if (env.QL_KV && doi) {
       const previous = await libraryGet(env.QL_KV,'library:attempt:' + doi);
@@ -531,7 +544,7 @@ function libraryConfig(env) {
 }
 async function libraryAuthorize(request, env, url) {
   libraryOrigin(request, url);
-  await pdfVerifyPassphrase(await pdfReadPassphrase(request), env);
+  await pdfVerifyPassphrase(await pdfReadPassphrase(request), env, request);
 }
 function libraryOrigin(request, url) {
   const site = request.headers.get('sec-fetch-site');
@@ -1630,7 +1643,7 @@ async function handleMuseReaderUpload(request, env) {
     if (request.method !== 'POST') libraryFail('muse_bad_request',405);
     libraryOrigin(request,parsed.url);
     const {passphrase,file} = await museReadForm(request);
-    await pdfVerifyPassphrase(passphrase,env);
+    await pdfVerifyPassphrase(passphrase,env,request);
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
     try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
