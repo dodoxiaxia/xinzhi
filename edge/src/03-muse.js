@@ -93,8 +93,10 @@ async function musePut(env, job) {
   libraryCatalogCache.clear();
 }
 function museExpired(job) {
-  const age = Date.now() - job.createdAt;
-  return job.state === 'queued' ? age >= MUSE_QUEUE_MS : ['running','uploading'].includes(job.state) && (age >= 86400000 || job.leaseUntil <= Date.now());
+  // A queued request may wait six days; an acquisition's 24 hours start when Muse claims it.
+  const now = Date.now();
+  return job.state === 'queued' ? now - job.createdAt >= MUSE_QUEUE_MS
+    : ['running','uploading'].includes(job.state) && (now - (job.acquisitionStartedAt || job.createdAt) >= 86400000 || job.leaseUntil <= now);
 }
 function museRecoverable(job) {
   return job && (job.state === 'failed' || museExpired(job));
