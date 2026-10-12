@@ -16,8 +16,9 @@ const scripts = {
 };
 let checks = 0;
 const eq = (actual, expected, label) => { assert.deepStrictEqual(actual, expected, label); checks++; };
-const colors = { light: { a: '#eef2f7', b: '#ffffff', c: '#f0f2f4', d: '#f5f2ea' }, dark: { a: '#0e1520', b: '#121212', c: '#121517', d: '#14120f' } };
-const accent = { light: { a:'#1b4f9c', b:'#d13a1f', c:'#0b8f7e', d:'#9b2335' }, dark:{ a:'#78aeff', b:'#ff6b4d', c:'#40cdb7', d:'#e0707a' } };
+// One interface style ("a") remains; an old saved choice or ?style= is ignored.
+const colors = { light: { a: '#eef2f7' }, dark: { a: '#0e1520' } };
+const accent = { light: { a:'#1b4f9c' }, dark:{ a:'#78aeff' } };
 const rgb = hex => 'rgb(' + hex.slice(1).match(/../g).map(x => parseInt(x,16)).join(', ') + ')';
 async function snapshot(page) {
   return page.evaluate(() => ({ style:document.documentElement.dataset.style, theme:document.documentElement.dataset.theme,
@@ -49,7 +50,7 @@ async function run() {
         if (u.pathname==='/citation-export.js') { await route.fulfill({body:fs.readFileSync(path.join(root,'citation-export.js')),contentType:'application/javascript'}); return; }
         if (u.pathname==='/app.js') { if(hold) await appGate; await route.fulfill({body:fs.readFileSync(path.join(root,'app.js')),contentType:'application/javascript'}); return; }
         if (scripts[u.pathname]) { await route.fulfill({body:scripts[u.pathname],contentType:'application/javascript'}); return; }
-        if (u.pathname==='/icon.svg') { await route.fulfill({body:'<svg xmlns="http://www.w3.org/2000/svg"/>',contentType:'image/svg+xml'}); return; }
+        if (u.pathname==='/icon.png') { await route.fulfill({body:fs.readFileSync(path.join(root,'icon.png')),contentType:'image/png'}); return; }
         if (u.pathname==='/' || u.pathname==='/index.html') { await route.fulfill({body:fs.readFileSync(path.join(root,'index.html')),contentType:'text/html'}); return; }
         throw Error('Unexpected offline request '+u.href);
       });
@@ -64,7 +65,8 @@ async function run() {
       eq(beforeApp.body,rgb(colors[expected.theme][expected.style]),name+' pre-app body background');
       releaseApp(); hold=false;
       await page.waitForLoadState('load');
-      await page.waitForFunction(() => document.getElementById('styleBtnLabel').textContent !== '风格');
+      await page.waitForFunction(() => document.getElementById('libCountBadge').title !== '');
+      eq(await page.locator('#stylePicker, #styleBtn').count(),0,name+' no style picker');
       const after=await snapshot(page);
       eq(after,beforeApp,name+' no appearance change at app initialization');
       eq(new URL(page.url()).searchParams.get('view'),expected.viewParam || null,name+' URL view');
@@ -85,26 +87,26 @@ async function run() {
       eq(await page.locator('#viewCompactBtn').evaluate(el=>el.classList.contains('active')),options.toggle?false:expected.view==='compact',name+' stable reload view');
       if(options.toggleAppearance) {
         await page.click('#themeToggle');
-        await page.click('#styleBtn');
-        await page.click('[data-s="d"]');
         const changed=await snapshot(page), t=expected.theme==='light'?'dark':'light';
-        eq([changed.theme,changed.style,changed.scheme,changed.background,changed.body],[t,'d',t,rgb(colors[t].d),rgb(colors[t].d)],name+' appearance toggles keep root canvas consistent');
+        eq([changed.theme,changed.style,changed.scheme,changed.background,changed.body,changed.bar],[t,'a',t,rgb(colors[t].a),rgb(colors[t].a),{light:'#ffffff',dark:'#141d2b'}[t]],name+' theme toggle keeps root canvas consistent');
       }
+      if(options.savedStyleCleared) eq(await page.evaluate(()=>localStorage.getItem('xz-style')),null,name+' old saved style is dropped');
       eq(errors,[],name+' no page errors');
       eq(requests.every(r=>['GET','HEAD'].includes(r.method)),true,name+' all requests read-only and intercepted');
       evidence.push({name,beforeCss,beforeApp,after,initializedUrl,url:page.url(),requests:requests.length});
       await context.close();
     }
+    // Legacy ?style= links keep working (the parameter is left alone) but always show style a.
     for (const theme of ['light','dark']) for (const style of ['a','b','c','d'])
-      await scenario('appearance '+style+' '+theme,'/?style='+style+'&theme='+theme,{}, {style,theme,view:'cards'},{params:{style,theme}});
+      await scenario('appearance '+style+' '+theme,'/?style='+style+'&theme='+theme,{}, {style:'a',theme,view:'cards'},{params:{style,theme}});
     await scenario('bare default','/',{}, {style:'a',theme:'light',view:'cards'}, {toggleAppearance:true});
-    await scenario('bare saved compact','/',{'xinzhi_view_mode':'compact','xz-style':'c','xinzhi_theme':'dark'},{style:'c',theme:'dark',view:'compact'},{toggle:true});
+    await scenario('bare saved compact','/',{'xinzhi_view_mode':'compact','xz-style':'c','xinzhi_theme':'dark'},{style:'a',theme:'dark',view:'compact'},{toggle:true,savedStyleCleared:true});
     await scenario('explicit cards overrides compact','/?view=cards',{'xinzhi_view_mode':'compact'},{style:'a',theme:'light',view:'cards',viewParam:'cards'});
     await scenario('explicit compact overrides cards','/?view=compact',{'xinzhi_view_mode':'cards'},{style:'a',theme:'light',view:'compact',viewParam:'compact'});
-    await scenario('query appearance wins','/?style=b&theme=dark',{'xz-style':'c','xinzhi_theme':'light'},{style:'b',theme:'dark',view:'cards'});
-    await scenario('invalid query uses valid saved','/?style=invalid&theme=invalid&view=invalid',{'xz-style':'d','xinzhi_theme':'dark','xinzhi_view_mode':'compact'},{style:'d',theme:'dark',view:'compact'});
+    await scenario('query appearance wins','/?style=b&theme=dark',{'xz-style':'c','xinzhi_theme':'light'},{style:'a',theme:'dark',view:'cards'});
+    await scenario('invalid query uses valid saved','/?style=invalid&theme=invalid&view=invalid',{'xz-style':'d','xinzhi_theme':'dark','xinzhi_view_mode':'compact'},{style:'a',theme:'dark',view:'compact'});
     await scenario('invalid saved uses system','/',{'xz-style':'invalid','xinzhi_theme':'invalid','xinzhi_view_mode':'invalid'},{style:'a',theme:'dark',view:'cards'},{system:'dark'});
-    await scenario('storage refused query','/?style=c&theme=dark&view=cards',{}, {style:'c',theme:'dark',view:'cards',viewParam:'cards'},{blocked:true,toggleAppearance:true});
+    await scenario('storage refused query','/?style=c&theme=dark&view=cards',{}, {style:'a',theme:'dark',view:'cards',viewParam:'cards'},{blocked:true,toggleAppearance:true});
     await scenario('storage refused system','/',{}, {style:'a',theme:'dark',view:'cards'},{blocked:true,system:'dark'});
     await scenario('filter hash and drawer','/?mode=candidates&q=Offline&range=365&reading=abstract&drawer=first#paper',{'xinzhi_view_mode':'compact'}, {style:'a',theme:'light',view:'compact',viewParam:'compact'},{params:{mode:'candidates',q:'Offline',range:'365',reading:'abstract',drawer:'first'},hash:'#paper',drawer:true});
     await scenario('invalid mode preserves hash','/?mode=invalid#keep',{}, {style:'a',theme:'light',view:'cards'},{params:{mode:null},hash:'#keep'});

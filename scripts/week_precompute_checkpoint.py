@@ -3,7 +3,8 @@
 The integrator supplies the already-authorized GitHub transport and existing
 request-level ledger merge function. No token is read or permission requested by
 this module. Transport: ``(method, repository_relative_path, body) -> (status, JSON)``.
-It must use the existing GITHUB_TOKEN only with api.github.com, reject redirects,
+It must use the existing state token (GITHUB_TOKEN, or XINZHI_STATE_TOKEN for a separate
+private state repository) only with api.github.com, reject redirects,
 and bound its timeout. Never log its headers or raw error bodies.
 
 Restore before paid work. ``run_reserved`` persists a new, fully accounted started

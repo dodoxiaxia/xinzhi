@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Real public-bundle browsing QA; APIs are mocked and never call a model."""
 import functools
+import os
 import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -50,13 +51,20 @@ def main():
         query = {'mode': 'library', 'lane': 'all', 'range': 'all', 'style': 'a', **conditions}
         page.goto(base + '?' + urlencode(query), wait_until='networkidle')
 
+    def pick_journal(page, journal):
+        # The publisher/journal tree in 更多筛选 is the only journal control.
+        expand = locator(page, 'data-pub-expand', publisher[journal])
+        if expand.get_attribute('aria-expanded') != 'true':
+            expand.click()
+        locator(page, 'data-filter-journal', journal).click()
+
     def fits(page, label):
         check(page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), label + ': no horizontal page overflow')
         check(page.locator('#activeFiltersBar').evaluate('e => e.scrollWidth <= e.clientWidth + 1'), label + ': condition bar fits')
 
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(executable_path='/usr/bin/chromium', args=['--no-sandbox'])
+            browser = playwright.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
 
             def new_context(width):
                 context = browser.new_context(viewport={'width': width, 'height': 950}, is_mobile=width < 500, has_touch=width < 500)
@@ -92,6 +100,10 @@ def main():
             design_count = sum(paper.get('studyDesign') == design for paper in pool)
             combined_count = sum(journal_name(paper) == journal_a and paper.get('studyDesign') == design for paper in pool)
             check(count(page) == len(pool), 'Initial count matches actual public library')
+            expect(page.locator('#appSidebar')).not_to_be_visible()
+            check(page.locator('#filterToggleBtn').inner_text() == '更多筛选', 'More filters start folded with no active condition')
+            page.locator('#filterToggleBtn').click()
+            expect(page.locator('#appSidebar')).to_be_visible()
 
             before = page.url
             locator(page, 'data-pub-expand', publisher[journal_a]).click()
@@ -108,8 +120,9 @@ def main():
             fits(page, 'desktop combination')
             page.screenshot(path=str(out / 'desktop-combination.png'))
 
-            page.locator('#journalSelect').select_option(journal_b)
-            check(params(page).get('pub') == publisher[journal_b] and params(page).get('design') == design, 'Dropdown replaces the source family and retains design')
+            check(page.locator('#filterToggleBtn').inner_text() == '更多筛选 · 2', 'More filters counts the active conditions')
+            pick_journal(page, journal_b)
+            check(params(page).get('pub') == publisher[journal_b] and params(page).get('design') == design, 'Another journal replaces the source family and retains design')
             check(count(page) == 0, 'Incompatible combination stays empty until an explicit action')
             expect(locator(page, 'data-filter-journal', journal_b)).to_have_attribute('aria-pressed', 'true')
             check(locator(page, 'data-filter-journal', journal_a).count() == 1, 'Other journals remain available when a combination is empty')
@@ -118,17 +131,19 @@ def main():
             locator(page, 'data-browse-only', 'design', '#articlesStream ').click()
             check(count(page) == design_count and not params(page).get('journal') and not params(page).get('pub'), 'Empty-state action replaces the source with the selected design')
 
-            page.locator('#journalSelect').select_option(journal_a)
+            pick_journal(page, journal_a)
             locator(page, 'data-clear', 'journal', '#activeFiltersBar ').click()
             check(count(page) == design_count and not params(page).get('pub'), 'Removing a journal chip also removes its hidden parent')
-            page.locator('#journalSelect').select_option(journal_a)
+            pick_journal(page, journal_a)
             page.locator('#resetDesignBtn').click()
             check(count(page) == source_count(journal_a) and params(page).get('journal') == journal_a, 'Group reset preserves the other dimensions')
 
             navigate(page, journal=journal_a, pub=publisher[journal_b], design=design)
             check(params(page).get('pub') == publisher[journal_a] and count(page) == combined_count, 'Legacy conflicting URL is normalized to the journal parent')
             page.reload(wait_until='networkidle')
-            check(count(page) == combined_count and page.locator('#journalSelect').input_value() == journal_a, 'Refreshing a shared URL restores the same combination')
+            check(count(page) == combined_count, 'Refreshing a shared URL restores the same combination')
+            expect(page.locator('#appSidebar')).to_be_visible()
+            expect(locator(page, 'data-filter-journal', journal_a)).to_have_attribute('aria-pressed', 'true')
             only = locator(page, 'data-browse-value', design, '#designFilterList ')
             only.focus()
             only.press('Enter')
@@ -139,7 +154,8 @@ def main():
             before = params(page)
             locator(page, 'data-browse-value', design, '#designFilterList ').click()
             check(all(params(page).get(key) == before.get(key) for key in ['q', 'range', 'lane', 'reading', 'favorites']), 'Only-browse preserves all base conditions in the real URL')
-            page.locator('#journalSelect').select_option(journal_a)
+            # With no keyword match the tree lists no journals; the design stays as the sidebar condition.
+            check(params(page).get('design') == design, 'Only-browse keeps the chosen design')
             locator(page, 'data-clear', 'sidebar', '#activeFiltersBar ').click()
             after = params(page)
             check(all(after.get(key) == before.get(key) for key in ['q', 'range', 'lane', 'reading', 'favorites']), 'Clear sidebar preserves all base conditions')

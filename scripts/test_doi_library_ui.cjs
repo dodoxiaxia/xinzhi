@@ -140,11 +140,11 @@ async function browserChecks() {
     };
     if (assets[u.pathname]) return route.fulfill({ body: assets[u.pathname], contentType: 'application/javascript' });
     const file = u.pathname === '/' ? 'index.html' : u.pathname.slice(1);
-    if (['index.html', 'app.js', 'style.css', 'icon.svg'].includes(file)) return route.fulfill({ body: fs.readFileSync(path.join(root, file)), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.svg') ? 'image/svg+xml' : 'text/html' });
+    if (['index.html', 'app.js', 'style.css', 'icon.png'].includes(file)) return route.fulfill({ body: fs.readFileSync(path.join(root, file)), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.png') ? 'image/png' : 'text/html' });
     return route.fulfill({ status: 404, body: '' });
   });
   try {
-    await page.goto(origin + '/?mode=library&lane=aitech&range=7&journal=Other&reading=guide&q=DOI%3A10.1234%2Farchive');
+    await page.goto(origin + '/?mode=library&lane=aitech&range=7&journal=Other&reading=guide&maintainer=1&q=DOI%3A10.1234%2Farchive');
     await page.locator('.doi-search-notice').waitFor();
     assert((await page.locator('#articlesStream').innerText()).includes('Archived clinical title'));
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 1, 'Archive result ignores filters');

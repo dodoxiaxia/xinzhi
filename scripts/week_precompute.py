@@ -2,19 +2,19 @@
 """Select a quality-filtered seven-day board and incrementally precompute public abstracts.
 
 Offline by default. --run uses only the existing configured model or public runtime.
-The local conservative trial cap is 8 attempts/9600 output tokens per UTC day,
-inferred from the former quicklook step per invocation; it is NOT account quota.
+The daily ceiling (week_precompute_budget.MAX_ATTEMPTS, env XINZHI_WEEK_MAX_CALLS) is a
+runaway guard against loops, NOT account quota or a spending decision.
 Runtime requests reserve TWO attempts for the Worker's bounded internal retry.
 An uncertain in-flight attempt, authorization/rate error or transport failure pauses
 paid work; successful siblings remain readable. Never reads library/PDF/private indexes.
 """
-import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess, sys, uuid
+import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess, sys, time, uuid
 import urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from build_data import clean
 from generate_quicklooks import local_abstract, minor_item, NoModelRedirect
 from auto_picks import CARDIO, GOOD_DESIGN, TOP
-from week_precompute_budget import BudgetError, reserve_runtime, reserve_configured
+from week_precompute_budget import BudgetError, MAX_ATTEMPTS, MAX_OUTPUT_TOKENS, reserve_runtime, reserve_configured
 import week_precompute_cache as cache_contract
 from week_precompute_checkpoint import CheckpointError
 from week_precompute_usage import ModelReply, record_usage, safe_usage
@@ -24,10 +24,11 @@ ZONE=dt.timezone(dt.timedelta(hours=8))
 CATEGORIES=('心血管','综合医学','AI医疗','AI前沿')
 QUOTAS=(10,6,6,2)
 TASKS=('translate','study','quicklook')
-MAX_ATTEMPTS=8
 # Bump when the shared evidence checks change, so papers rejected under the old rules are retried once.
 EVIDENCE_CHECK_VERSION=2  # 2: spelled-out counts and space-grouped thousands (2026-10-12)
-MAX_DAILY_OUTPUT_TOKENS=6*5800  # Owner-approved 2026-10-11: ~6 papers/day (was 8*1200, about one). Not a provider billing cap.
+MAX_DAILY_OUTPUT_TOKENS=MAX_OUTPUT_TOKENS  # Reservation ceiling only (env XINZHI_WEEK_MAX_CALLS); not a provider billing cap.
+# A task whose output failed the evidence checks this many times (current check version) is not paid for again.
+MAX_TASK_REJECTIONS=2
 RUNTIME='https://learn.dryz.info'
 SCHEMA=1
 PROMPT_VERSION='week-public-abstract-v1'
@@ -359,7 +360,11 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   report.update(stopped=True,blocker='output_budget_unreconciled');return report
  output_limit=5800
  def call(public):
-  body={'model':cfg['model'],'temperature':0.1,'max_tokens':output_limit,'response_format':{'type':'json_object'},'messages':[{'role':'system','content':COMBINED_PROMPT},{'role':'user','content':json.dumps(public,ensure_ascii=False)}]}
+  public=dict(public);feedback=public.pop('previousFailures',None)
+  messages=[{'role':'system','content':COMBINED_PROMPT},{'role':'user','content':json.dumps(public,ensure_ascii=False)}]
+  # The retry note is a separate turn, so the system prompt and its cache key stay unchanged.
+  if feedback:messages.append({'role':'user','content':retry_note(feedback)})
+  body={'model':cfg['model'],'temperature':0.1,'max_tokens':output_limit,'response_format':{'type':'json_object'},'messages':messages}
   if cfg['model'].startswith('glm-5.3'):body['reasoning_effort']='low'
   elif cfg['model'].startswith('glm-'):body['thinking']={'type':'disabled'}
   req=urllib.request.Request(cfg['endpoint'],data=json.dumps(body).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+cfg['api_key']},method='POST')
@@ -371,48 +376,87 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   except (urllib.error.URLError,TimeoutError,OSError):raise Halt('provider_transport_error') from None
   except Halt:raise
   except (ValueError,KeyError,IndexError,TypeError):raise Halt('model_output_invalid') from None
+ def attempt_paper(p,missing,feedback):
+  nonlocal item,output_limit
+  try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS)
+  except BudgetError as exc:report.update(stopped=True,blocker=exc.code);return False
+  output_limit=reservation['reservedOutputTokens']
+  item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'tasks':missing,'maxOutputTokens':output_limit,'status':'started','at':stamp(),'requestId':str(uuid.uuid4()),**reservation}
+  daily['requests'].append(item);atomic(ledger_path,ledger);report['reservedModelAttempts']+=1
+  public={'title':p['title'],'journal':p.get('cleanJournal') or p.get('journal',''),'abstract':p['abstract'],'evidence':validate('study_evidence_catalog',None,p),'missingTasks':missing}
+  if feedback:public['previousFailures']=feedback;item['retryOfRejection']=True
+  def dispatch():
+   report['paidRequests']+=1
+   return (model_call or call)(public)
+  result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
+  record_usage(item,result);atomic(ledger_path,ledger)
+  if checkpoint:checkpoint.save(ledger,cache)
+  invalid=False;failures={}
+  for task in missing:
+   try:
+    value=validate('study_evidence',result.get(task),p) if task=='study' else result.get(task)
+    store(cache,p,task,value,cfg['model'],stamp(),'configured-precompute');atomic(cache_path,cache);report['generatedTasks']+=1
+    if checkpoint:checkpoint.save(ledger,cache)
+   except CheckpointError:raise
+   except ValueError as exc:invalid=True;failures[task]=getattr(exc,'code','') or 'invalid'
+  if invalid:
+   # The response is known and accounted: record a terminal rejection instead of
+   # an uncertain charge, so one bad output does not pause every later batch.
+   item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;item['checkVersion']=EVIDENCE_CHECK_VERSION;atomic(ledger_path,ledger)
+   for task in failures:rejected[(p['paperID'],p['sourceHash'],task)]+=1
+   report['rejectedRequests']=report.get('rejectedRequests',0)+1
+   if checkpoint:checkpoint.save(ledger,cache)
+   return True
+  item['status']='validated';atomic(ledger_path,ledger)
+  if checkpoint:checkpoint.save(ledger,cache)
+  return True
  item=None
- rejected={(r.get('paperID'),r.get('sourceHash')) for d in ledger['days'].values() for r in d.get('requests',[]) if r.get('status')=='rejected' and r.get('checkVersion')==EVIDENCE_CHECK_VERSION}
+ rejected=task_rejections(ledger)
  try:
   for p in selected:
-   missing=[task for task in TASKS if not find(cache,p,task)[0]]
-   if not missing:continue
-   # A paper whose output already failed evidence validation is not paid for again.
-   if (p['paperID'],p['sourceHash']) in rejected:report['skippedRejected']=report.get('skippedRejected',0)+1;continue
-   if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');break
-   try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS)
-   except BudgetError as exc:report.update(stopped=True,blocker=exc.code);break
-   output_limit=reservation['reservedOutputTokens']
-   item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'tasks':missing,'maxOutputTokens':output_limit,'status':'started','at':stamp(),'requestId':str(uuid.uuid4()),**reservation}
-   daily['requests'].append(item);atomic(ledger_path,ledger);report['reservedModelAttempts']+=1
-   public={'title':p['title'],'journal':p.get('cleanJournal') or p.get('journal',''),'abstract':p['abstract'],'evidence':validate('study_evidence_catalog',None,p),'missingTasks':missing}
-   def dispatch():
-    report['paidRequests']+=1
-    return (model_call or call)(public)
-   result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
-   record_usage(item,result);atomic(ledger_path,ledger)
-   if checkpoint:checkpoint.save(ledger,cache)
-   invalid=False;failures={}
-   for task in missing:
-    try:
-     value=validate('study_evidence',result.get(task),p) if task=='study' else result.get(task)
-     store(cache,p,task,value,cfg['model'],stamp(),'configured-precompute');atomic(cache_path,cache);report['generatedTasks']+=1
-     if checkpoint:checkpoint.save(ledger,cache)
-    except CheckpointError:raise
-    except ValueError as exc:invalid=True;failures[task]=getattr(exc,'code','') or 'invalid'
-   if invalid:
-    # The response is known and accounted: record a terminal rejection instead of
-    # an uncertain charge, so one bad output does not pause every later batch.
-    item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;item['checkVersion']=EVIDENCE_CHECK_VERSION;atomic(ledger_path,ledger)
-    rejected.add((p['paperID'],p['sourceHash']));report['rejectedRequests']=report.get('rejectedRequests',0)+1
-    if checkpoint:checkpoint.save(ledger,cache)
-    item=None;continue
-   item['status']='validated';atomic(ledger_path,ledger)
-   if checkpoint:checkpoint.save(ledger,cache)
+   feedback=None
+   for attempt in range(2):  # one immediate retry, told why the first output failed
+    item=None
+    missing=[task for task in TASKS if not find(cache,p,task)[0]]
+    if not missing:break
+    # A task whose output already failed evidence validation twice is not paid for again;
+    # the paper's other missing tasks still are.
+    missing=[task for task in missing if rejected[(p['paperID'],p['sourceHash'],task)]<MAX_TASK_REJECTIONS]
+    if not missing:
+     if not attempt:report['skippedRejected']=report.get('skippedRejected',0)+1
+     break
+    if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');break
+    # Never start a paid call the runner may kill: a 'started' row would block the rest of the day.
+    if out_of_time():report['timeBudgetReached']=True;break
+    if not attempt_paper(p,missing,feedback):break
+    feedback=item.get('taskFailures') if item else None
+    if not feedback:break
+   if report.get('stopped') or report.get('timeBudgetReached'):break
  except (Halt,ValueError) as exc:
   finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report)
  report['remainingBudget']=max(0,limit-daily['reservedAttempts'])
  return report
+
+def out_of_time(margin=150):
+ try:return time.time()+margin>float(os.environ['XINZHI_STEP_DEADLINE'])
+ except (KeyError,ValueError):return False
+
+def task_rejections(ledger):
+ """Count evidence rejections per (paper, source, task) under the current checks."""
+ counts=collections.Counter()
+ for d in ledger['days'].values():
+  for r in d.get('requests',[]):
+   if r.get('status')!='rejected' or r.get('checkVersion')!=EVIDENCE_CHECK_VERSION:continue
+   failed=r.get('taskFailures') if isinstance(r.get('taskFailures'),dict) and r.get('taskFailures') else None
+   for task in (failed or r.get('tasks') or TASKS):
+    if task in TASKS:counts[(r.get('paperID'),r.get('sourceHash'),task)]+=1
+ return counts
+
+def retry_note(failures):
+ codes='；'.join(f'{task}: {code}' for task,code in sorted(failures.items()) if task in TASKS and isinstance(code,str))[:600]
+ return ('上一次输出未通过机械校验（'+codes+'）。请只重写missingTasks中的字段并输出完整JSON。'
+  '数字必须逐字出现在摘要（study为对应quote_id片段）中，不得增加、计算或换算数字；翻译须保留原文全部数字及出现次数；'
+  '英文拼写的数字可写成阿拉伯数字。没有片段足以支持时study该项写{text:"摘要未提供",quote_id:""}。')
 
 def parse_configured_response(result):
  usage=result.get('usage') if isinstance(result,dict) else None
@@ -435,7 +479,7 @@ def main(argv=None):
  ap.add_argument('--attempt-limit',type=int,default=MAX_ATTEMPTS);ap.add_argument('--output',type=Path,default=ROOT/'data/weekly-board.json')
  args=ap.parse_args(argv)
  if not 20<=args.target<=30:ap.error('--target must be 20..30')
- if not 0<=args.attempt_limit<=MAX_ATTEMPTS:ap.error('--attempt-limit must be 0..8; local trial cap unchanged pending budget review')
+ if not 0<=args.attempt_limit<=MAX_ATTEMPTS:ap.error(f'--attempt-limit must be 0..{MAX_ATTEMPTS}')
  cache_path=ROOT/'data/week-precompute-cache.json';ledger_path=ROOT/'data/week-precompute-ledger.json'
  lock=ROOT/'.local/week-precompute.lock';lock.parent.mkdir(parents=True,exist_ok=True)
  try:fd=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)

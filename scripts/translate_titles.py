@@ -9,6 +9,8 @@ Output is machine translation; the site labels it 机器翻译. Numbers/drug/tri
 """
 import argparse, json, os, sys, urllib.request, urllib.parse
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from resolve_dois import title_cache_key
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/translations.json'
@@ -21,7 +23,9 @@ PROMPT = ('你是心血管与医学AI领域的专业译者。把用户给出的�
 def keyof(p):
     if p.get('pmid'):
         return 'pmid:%s' % p['pmid']
-    return ('doi:%s' % str(p['doi']).lower()) if p.get('doi') else ''
+    if p.get('doi'):
+        return 'doi:%s' % str(p['doi']).lower()
+    return title_cache_key(p.get('title'))  # e.g. OpenAI News: no DOI anywhere
 
 
 def rj(path, fb):

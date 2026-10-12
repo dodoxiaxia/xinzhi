@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const src=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
 const start=src.indexOf('  function briefItems('),end=src.indexOf('  // ---- Public-abstract study services:',start);
 const helper=n=>src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'))[0];
-const extra=['aiRequest','aiTaskStatus','aiWaitingMessage'].map(helper).join('\n');
+const extra=['aiRequest','aiRun','recordTask','aiTaskStatus','aiWaitingMessage'].map(helper).join('\n');
 const doiFn=src.match(/  function exactDoi\([^]*?\n  }/)[0];
 let reply, calls=[], ticks=new Map(),serial=0,renders=0;
 const node={};

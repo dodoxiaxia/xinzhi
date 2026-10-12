@@ -53,15 +53,22 @@ class CiCheckpoint:
   return self.backend.run_reserved(ledger,cache,request_id,dispatch)
 
 
+# Runtime data may live in a separate private repository (vars.XINZHI_STATE_REPO with a
+# token in secrets.XINZHI_STATE_TOKEN); without them it stays on this repository's state branch.
+def state_repository():
+ return os.environ.get('XINZHI_STATE_REPOSITORY') or os.environ.get('GITHUB_REPOSITORY','')
+def state_token():
+ return os.environ.get('XINZHI_STATE_TOKEN') or os.environ.get('GITHUB_TOKEN','')
+
 def initialize_checkpoint(root,ledger,cache,transport=None):
  if os.environ.get('GITHUB_ACTIONS')!='true' or os.environ.get('XINZHI_PRECOMPUTE_STATE_CHECKPOINT')!='1':return None
  # Lazy import avoids a cycle with the existing request-level merge helper.
  from restore_week_precompute_snapshot import merge_ledger
  if transport is None:
-  token=os.environ.get('GITHUB_TOKEN','')
+  token=state_token()
   if not token:raise CheckpointError('checkpoint_existing_token_missing')
   transport=existing_token_transport(token)
- backend=GitHubStateCheckpoint(os.environ.get('GITHUB_REPOSITORY',''),transport,merge_ledger)
+ backend=GitHubStateCheckpoint(state_repository(),transport,merge_ledger)
  snapshot=backend.restore(ledger,cache)
  checkpoint=CiCheckpoint(backend,root)
  checkpoint.save(snapshot.ledger,snapshot.cache)

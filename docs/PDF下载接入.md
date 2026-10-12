@@ -6,7 +6,7 @@
 
 浏览器访问同源 `/api/pdf?id=公开文献ID`，GET 只展示口令表单。口令通过 POST 请求体发送，服务端校验通过后才读取私有 `dodoxiaxia/AI-` 索引与 PDF；错误时提示重新输入。每篇下载单独验证，不要求账号登录，不将口令保存到浏览器。
 
-默认口令采用本次会话指定值，源码只保存 SHA-256 摘要；前端、表单回显、URL 和请求日志不含口令。可选服务端 Secret `PDF_DOWNLOAD_PASSPHRASE` 覆盖默认值，用于以后修改口令。
+口令只保存在服务端 Secret `PDF_DOWNLOAD_PASSPHRASE` 中；源码（公开仓库）不含口令或其摘要，前端、表单回显、URL 和请求日志也不含口令。未配置该 Secret 时下载返回“尚未完成配置”。同一 IP 每小时输错 10 次后暂停该 IP 一小时（计数存于边缘缓存，只记录 IP 摘要）。
 
 服务端只接受现有文献库中的 ID，按 DOI 精确匹配；无 DOI 时仅接受唯一的完全相同题名（忽略大小写和连续空白），不用模糊匹配。有 DOI 的条目不回退到题名。索引和单篇 PDF 固定在同一 GitHub commit。匹配歧义、异常校验记录、非 PDF 或缺少全文时拒绝下载并提示官网入口。下载响应为 `application/pdf` 与 attachment，支持中文文件名，并禁止缓存。
 
@@ -24,7 +24,7 @@ v14.1 增加独立的[按 DOI 获取与补录](DOI按需全文与补录.md)。�
 |---|---|
 | `PDF_DOWNLOAD_ENABLED` | 配置完成后设置为 `true` |
 | `GITHUB_LIBRARY_TOKEN` | Secret；仅私有 `dodoxiaxia/AI-` 的 Contents 只读权限 |
-| `PDF_DOWNLOAD_PASSPHRASE` | 可选 Secret；省略时使用本次指定口令 |
+| `PDF_DOWNLOAD_PASSPHRASE` | **必需** Secret；全文口令。2026-10-12 起代码不再内置默认口令 |
 | `PDF_GITHUB_COMMIT` | 可选，40 位固定 commit；省略时读取 main 的当前 commit |
 
 下载端点直接展示口令表单。若此前配置过该路径的 Cloudflare Access 应用，应移除该路径的账号登录门禁，让请求到达口令表单；Worker 本身仍在读取 PDF 前验证口令。
@@ -36,7 +36,7 @@ GitHub 只读凭据通过 GitHub/Cloudflare 的受保护界面配置，不写入
 1. 打开[已预填的 GitHub fine-grained token 创建页](https://github.com/settings/personal-access-tokens/new?name=xinzhi-pdf-readonly&description=Read%20PDF%20library%20for%20dryz-xinzhi%3B%20select%20only%20dodoxiaxia%2FAI-.&target_name=dodoxiaxia&expires_in=90&contents=read)。模板设置资源所有者 `dodoxiaxia`、有效期 90 天和 `Contents: Read-only`。GitHub 不支持通过该模板预选单个仓库，仍需在页面选择 **Only select repositories**，并只选 **AI-**。`Metadata: Read-only` 自动附带，不添加其他权限。确认后点击 **Generate token**。
 2. 在 [Cloudflare Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) 打开 `dryz-xinzhi`，进入 **Settings → Variables and Secrets**，选择 **Production** 环境。
 3. 新增 `GITHUB_LIBRARY_TOKEN`，将刚生成的令牌直接粘贴到该界面，选择 **Encrypt / Secret** 后保存；不要通过聊天、源码、普通文本变量或 workflow 输入传递令牌。当前方案不需要在 GitHub Actions 中另存这份令牌。
-4. 在同一环境添加文本变量 `PDF_DOWNLOAD_ENABLED`，值为 `true`。使用本次指定口令时省略 `PDF_DOWNLOAD_PASSPHRASE`。Preview 环境不自动复制这些配置。
+4. 在同一环境添加文本变量 `PDF_DOWNLOAD_ENABLED`，值为 `true`。再新增 Secret `PDF_DOWNLOAD_PASSPHRASE`（新口令，选择 Encrypt）。Preview 环境不自动复制这些配置。
 5. 保存配置后，通过现有 `daily-refresh` 发布流程部署包含下载功能的版本。Secret 必须在该次部署前保存，旧部署不会因新增变量而完成上线。部署后以错误口令与正确口令分别验证，并确认正确口令能下载对应 PDF；令牌到期时在同一界面替换并重新发布。
 
 配置入口与权限依据：[GitHub 令牌和模板说明](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)、[Cloudflare Pages 变量与 Secret 说明](https://developers.cloudflare.com/pages/functions/bindings/#secrets)。
