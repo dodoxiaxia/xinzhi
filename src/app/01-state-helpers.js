@@ -182,7 +182,7 @@
   function applyTheme(theme) {
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
-    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(theme, document.documentElement.dataset.style);
+    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(theme);
     safeSet('xinzhi_theme', theme);
   }
   applyTheme(state.theme);

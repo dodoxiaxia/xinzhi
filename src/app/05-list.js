@@ -125,7 +125,7 @@
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
-    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#browseToggle', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
     const filters = $('#activeFiltersBar');
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
@@ -163,7 +163,7 @@
     renderModeNote();
     renderLaneBar();
     renderRangeBar();
-    renderBrowseBar();
+    renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
 

@@ -7,28 +7,28 @@
   <meta name="description" content="面向科室同事的心血管与 AI 医疗每日精选、每周精读与文献雷达。所有导读均标注核对范围，仅供学习讨论。">
   <meta name="theme-color" content="#ffffff">
   <script>
-    // Resolve appearance before CSS and body paint; storage may be unavailable.
+    // Resolve light/dark before CSS and body paint; storage may be unavailable.
+    // One interface style remains ("a", 临床期刊); an old saved choice or ?style= is ignored.
     (function () {
       const root = document.documentElement, params = new URLSearchParams(location.search);
       const read = key => { try { return localStorage.getItem(key); } catch (e) { return null; } };
+      try { localStorage.removeItem('xz-style'); } catch (e) {}
       const choose = (values, query, saved, fallback) => values.includes(query) ? query : values.includes(saved) ? saved : fallback;
-      const style = choose(['a', 'b', 'c', 'd'], params.get('style'), read('xz-style'), 'a');
       let systemTheme = 'light';
       try { if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) systemTheme = 'dark'; } catch (e) {}
       const theme = choose(['light', 'dark'], params.get('theme'), read('xinzhi_theme'), systemTheme);
-      const backgrounds = { light: { a: '#eef2f7', b: '#ffffff', c: '#f0f2f4', d: '#f5f2ea' }, dark: { a: '#0e1520', b: '#121212', c: '#121517', d: '#14120f' } };
-      const bars = { light: { a: '#ffffff', b: '#d13a1f', c: '#ffffff', d: '#f5f2ea' }, dark: { a: '#141d2b', b: '#b8321a', c: '#1c2024', d: '#14120f' } };
-      function apply(theme, style) {
-        if (!['light', 'dark'].includes(theme) || !['a', 'b', 'c', 'd'].includes(style)) return;
+      const backgrounds = { light: '#eef2f7', dark: '#0e1520' }, bars = { light: '#ffffff', dark: '#141d2b' };
+      function apply(theme) {
+        if (!['light', 'dark'].includes(theme)) return;
         if (root.dataset.theme !== theme) root.dataset.theme = theme;
-        if (root.dataset.style !== style) root.dataset.style = style;
+        root.dataset.style = 'a';
         root.style.colorScheme = theme;
-        root.style.backgroundColor = backgrounds[theme][style];
+        root.style.backgroundColor = backgrounds[theme];
         const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.content = bars[theme][style];
+        if (meta) meta.content = bars[theme];
       }
-      window.XINZHI_BOOT = { theme, style, apply };
-      apply(theme, style);
+      window.XINZHI_BOOT = { theme, style: 'a', apply };
+      apply(theme);
     })();
   </script>
   <link rel="stylesheet" href="style.css">
@@ -60,14 +60,6 @@
           <kbd class="search-shortcut">/</kbd>
         </div>
 
-        <div class="style-picker" id="stylePicker">
-          <button class="icon-btn style-btn" id="styleBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="styleMenu" title="界面风格" aria-label="切换界面风格">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>
-            <span class="style-btn-label" id="styleBtnLabel">风格</span>
-          </button>
-          <div class="style-menu" id="styleMenu" role="menu" aria-label="界面风格" hidden></div>
-        </div>
-
         <button class="icon-btn" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
         </button>
@@ -85,9 +77,20 @@
   <div class="app-container">
 
     <!-- Left Faceted Filter Sidebar -->
-    <aside class="sidebar" id="appSidebar" aria-label="筛选条件">
-      <div class="sheet-head"><b>筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
-      <p class="sidebar-filter-help" role="note">同组点选替换，不同组同时满足。<br>“只看”清除其他左侧条件，切换浏览。<br><span>数量按其余条件计算；箭头只展开期刊。</span></p>
+    <aside class="sidebar" id="appSidebar" aria-label="更多筛选">
+      <div class="sheet-head"><b>更多筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
+      <p class="sidebar-filter-help" role="note">各组条件同时满足；“只看”只保留该项，领域、时间与搜索不变。</p>
+      <!-- Readable content, followed journals and minor items -->
+      <div class="sidebar-card more-filters-basic">
+        <div class="sidebar-title"><span>可读内容与我的期刊</span></div>
+        <label class="reading-picker">可读内容<select id="readingSelect" aria-label="按可读内容筛选"><option value="">全部</option><option value="abstract">有公开摘要</option><option value="guide">已核对导读</option><option value="quicklook">AI 速览（未核对）</option></select></label>
+        <div class="more-filters-row">
+          <button class="btn-sm" id="favoritesOnlyBtn" aria-pressed="false" title="关注清单仅保存在此浏览器，不会同步给同事">我的期刊</button>
+          <button class="btn-sm" id="favoriteJournalBtn" aria-pressed="false" title="先在下方“出版方 / 期刊”中选一本期刊">☆ 关注期刊</button>
+          <button type="button" class="btn-sm" id="minorToggleBtn" data-minor="1" aria-pressed="false" title="更正、来信、回复等非原创内容默认隐藏">含更正 / 来信</button>
+        </div>
+        <p id="rangeExplanation" class="browse-help"></p>
+      </div>
       <!-- Clinical Tier Matrix -->
       <div class="sidebar-card">
         <div class="sidebar-title">
@@ -143,17 +146,9 @@
         <div class="mode-note" id="modeNote" role="note"></div>
         <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
         <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
-        <button class="btn-sm browse-toggle" id="browseToggle" aria-expanded="false" aria-controls="browseBar" hidden>期刊与可读内容</button>
-        <div class="browse-bar" id="browseBar" hidden>
-          <label class="journal-picker">期刊 / 信源<select id="journalSelect" aria-label="选择期刊或信源"></select></label>
-          <button class="btn-sm" id="favoriteJournalBtn" aria-pressed="false">☆ 关注期刊</button>
-          <button class="btn-sm" id="favoritesOnlyBtn" aria-pressed="false" title="关注清单仅保存在此浏览器，不会同步给同事">我的期刊</button>
-          <label class="reading-picker">可读内容<select id="readingSelect" aria-label="按可读内容筛选"><option value="">全部</option><option value="abstract">有公开摘要</option><option value="guide">已核对导读</option><option value="quicklook">AI 速览（未核对）</option></select></label>
-          <p id="rangeExplanation" class="browse-help"></p>
-        </div>
         <div class="ai-digest" id="aiDigest" hidden></div>
         <div class="stream-toolbar">
-          <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">筛选</button>
+          <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">更多筛选</button>
           <div class="active-filters-bar" id="activeFiltersBar" tabindex="-1" aria-label="当前筛选与结果数量">
             <span class="results-meta">共找到 <b id="resultsTotalCount">0</b> 篇文献</span>
           </div>

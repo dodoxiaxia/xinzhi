@@ -56,8 +56,7 @@
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
-      `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('')
-      + `<span class="range-sep"></span><button type="button" class="lane-chip${state.minor ? ' active' : ''}" data-minor="1" aria-pressed="${state.minor}" title="更正、来信、回复等非原创内容默认隐藏">含更正 / 来信</button>`;
+      `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -483,7 +482,7 @@
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
           jHtml += `<div class="journal-filter-item facet-option-row"><button type="button" class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">
-            <span class="journal-filter-label"><span>${esc(jName)}</span></span>
+            <span class="journal-filter-label"><span>${state.favoriteJournals?.includes(jName) ? '<span class="journal-followed" title="我的期刊">★</span> ' : ''}${esc(jName)}</span></span>
             <span class="filter-count">${jCount}</span>
           </button>${browseOnlyButton('journal', jName, jName)}</div>`;
         }

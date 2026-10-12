@@ -540,7 +540,7 @@
   function applyTheme(theme) {
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
-    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(theme, document.documentElement.dataset.style);
+    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(theme);
     safeSet('xinzhi_theme', theme);
   }
   applyTheme(state.theme);
@@ -1113,8 +1113,7 @@
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
-      `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('')
-      + `<span class="range-sep"></span><button type="button" class="lane-chip${state.minor ? ' active' : ''}" data-minor="1" aria-pressed="${state.minor}" title="更正、来信、回复等非原创内容默认隐藏">含更正 / 来信</button>`;
+      `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -1540,7 +1539,7 @@
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
           jHtml += `<div class="journal-filter-item facet-option-row"><button type="button" class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">
-            <span class="journal-filter-label"><span>${esc(jName)}</span></span>
+            <span class="journal-filter-label"><span>${state.favoriteJournals?.includes(jName) ? '<span class="journal-followed" title="我的期刊">★</span> ' : ''}${esc(jName)}</span></span>
             <span class="filter-count">${jCount}</span>
           </button>${browseOnlyButton('journal', jName, jName)}</div>`;
         }
@@ -1803,7 +1802,7 @@
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
-    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#browseToggle', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
     const filters = $('#activeFiltersBar');
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
@@ -1841,7 +1840,7 @@
     renderModeNote();
     renderLaneBar();
     renderRangeBar();
-    renderBrowseBar();
+    renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
 
@@ -2683,6 +2682,8 @@
     renderWeeklyAuto();
     renderDailyDeepRead();
     renderWeeklyPane();
+    // The example reading is listed only here: fetch it now so opening it is instant.
+    loadDemoReading().catch(() => {});
   }
 
   // Narrow screens show one pane at a time; wide screens show both and ignore it.
@@ -2759,7 +2760,7 @@
     toc.hidden = targets.length < 2;
     toc.innerHTML = targets.map((t, i) => '<button type="button" data-toc-target="' + esc(t.id) + '"' + (i === 0 ? ' aria-current="true"' : '') + '>' + esc(t.dataset.toc) + '</button>').join('');
   }
-  // The example reading is a 12 KB static fragment fetched only when someone opens it.
+  // The example reading is a 12 KB static fragment, fetched once the 近7天榜 is shown (not on first page load).
   let demoReadingRequest = null;
   function loadDemoReading() {
     if (!demoReadingRequest) {
@@ -2910,31 +2911,39 @@
   }
 
   // ==== src/app/10-browse-events.js · Browse controls, event wiring and start-up ====
-  function renderBrowseBar() {
-    const bar=$('#browseBar'); if(!bar)return;
-    bar.hidden=!usesLane();
-    const tog=$('#browseToggle');
-    if(tog){
-      const n=(state.journal?1:0)+(state.reading?1:0)+(state.favoritesOnly?1:0);
-      const open=state.browseOpen||n>0;
-      tog.hidden=bar.hidden; bar.classList.toggle('browse-open',open);
-      tog.setAttribute('aria-expanded',String(open));
-      tog.textContent='期刊与可读内容'+(n?` · ${n} 项`:'')+(open?' ▴':' ▾');
-      tog.disabled=n>0;
-    }
-    if(bar.hidden)return;
-    const journals=[...new Set(getCurrentDataset().map(p=>p.cleanJournal||p.journal).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    if (state.journal && !journals.includes(state.journal)) journals.push(state.journal);
-    const sel=$('#journalSelect');
-    sel.innerHTML='<option value="">所有期刊 / 信源</option>'+journals.map(j=>`<option value="${esc(j)}" ${state.journal===j?'selected':''}>${state.favoriteJournals.includes(j)?'★ ':''}${esc(j)} · ${esc(journalMetricText(j))}</option>`).join('');
-    $('#readingSelect').value=state.reading;
-    const star=$('#favoriteJournalBtn');star.disabled=!state.journal;star.textContent=state.favoriteJournals.includes(state.journal)?'★ 已关注':'☆ 关注期刊';star.setAttribute('aria-pressed',String(state.favoriteJournals.includes(state.journal)));
-    const fav=$('#favoritesOnlyBtn');fav.textContent='我的期刊 '+state.favoriteJournals.length;fav.classList.toggle('active',state.favoritesOnly);fav.setAttribute('aria-pressed',String(state.favoritesOnly));
-    const period=$('#rangeExplanation');period.textContent=state.range==='all'?'日期与研究类型均以来源信息为准；未知项明确保留。':`北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
+  // 更多筛选: everything beyond lane, time and search. The panel is the left column on wide
+  // screens (folded away until a condition is active or the reader opens it) and a bottom sheet on phones.
+  const NARROW_FILTERS = '(max-width: 1024px)';
+  function moreFilterCount() {
+    return sidebarSelections().length + (state.reading ? 1 : 0) + (state.favoritesOnly ? 1 : 0) + (state.minor ? 1 : 0);
   }
-  $('#browseToggle')?.addEventListener('click',()=>{state.browseOpen=!state.browseOpen;renderBrowseBar();});
+  function moreFiltersOpen() {
+    return typeof state.moreFiltersOpen === 'boolean' ? state.moreFiltersOpen : moreFilterCount() > 0;
+  }
+  function renderMoreFilters() {
+    const toggle = $('#filterToggleBtn'), app = $('.app-container');
+    const n = moreFilterCount(), lane = usesLane();
+    const narrow = !!(window.matchMedia && window.matchMedia(NARROW_FILTERS).matches);
+    if (app) app.classList.toggle('filters-collapsed', lane && !moreFiltersOpen());
+    if (toggle) {
+      toggle.textContent = '更多筛选' + (n ? ` · ${n}` : '');
+      toggle.classList.toggle('active', n > 0);
+      toggle.setAttribute('aria-expanded', String(narrow ? !!$('#appSidebar.open') : lane && moreFiltersOpen()));
+      toggle.setAttribute('aria-label', n ? `更多筛选，已生效 ${n} 项` : '更多筛选');
+    }
+    if (!lane) return;
+    const reading = $('#readingSelect'); if (reading) reading.value = state.reading;
+    const followed = state.favoriteJournals.includes(state.journal);
+    const star = $('#favoriteJournalBtn');
+    if (star) { star.disabled = !state.journal; star.textContent = followed ? '★ 已关注' : '☆ 关注期刊'; star.setAttribute('aria-pressed', String(followed)); }
+    const fav = $('#favoritesOnlyBtn');
+    if (fav) { fav.textContent = '我的期刊 ' + state.favoriteJournals.length; fav.classList.toggle('active', state.favoritesOnly); fav.setAttribute('aria-pressed', String(state.favoritesOnly)); }
+    const minor = $('#minorToggleBtn');
+    if (minor) { minor.classList.toggle('active', state.minor); minor.setAttribute('aria-pressed', String(state.minor)); }
+    const period = $('#rangeExplanation');
+    if (period) period.textContent = state.range === 'all' ? '日期与研究类型均以来源信息为准；未知项明确保留。' : `发表时间：北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
+  }
   $('#modeNote')?.addEventListener('click',e=>{if(e.target.closest('a,button'))return;e.currentTarget.classList.toggle('note-open');});
-  $('#journalSelect')?.addEventListener('change',e=>changeSidebarFilter('journal', e.target.value, false, e.target));
   $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
   $('#favoritesOnlyBtn')?.addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;renderSidebarFilters();renderStream();});
@@ -3009,12 +3018,18 @@
     });
   });
 
-  // Mobile: collapsible filter panel
+  // 更多筛选: a bottom sheet on phones, a foldable left column on wide screens
   $('#filterToggleBtn')?.addEventListener('click', () => {
     const sb = $('#appSidebar');
     if (!sb) return;
-    const open = sb.classList.toggle('open');
-    $('#filterToggleBtn').setAttribute('aria-expanded', String(open));
+    if (window.matchMedia && window.matchMedia(NARROW_FILTERS).matches) {
+      const open = sb.classList.toggle('open');
+      $('#filterToggleBtn').setAttribute('aria-expanded', String(open));
+      return;
+    }
+    state.moreFiltersOpen = !moreFiltersOpen();
+    renderMoreFilters();
+    if (state.moreFiltersOpen) sb.querySelector('button, select')?.focus({ preventScroll: true });
   });
 
   // Mobile filter sheet: close button, backdrop tap (via body::after), Esc
@@ -3050,7 +3065,6 @@
       if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
     } else if (e.key === 'Escape') {
       // One press closes the topmost layer only: shortlist, then reader, then full-text reading, then filters.
-      if ($('#styleMenu:not([hidden])')) return;
       if ($('#huddleModalBackdrop.open')) closeHuddleModal();
       else if ($('#readerDrawer.open')) closeReaderDrawer();
       else if ($('#deepReader.open')) closeDeepReading();
@@ -3450,60 +3464,6 @@
 
 })();
 // ==== src/app/11-page-extras.js · Standalone page helpers outside the main app scope ====
-
-;(function () { /* 界面风格选择器:页眉按钮 + 菜单,记住读者的选择 */
-  const STYLES = [
-    ['a', '临床期刊', '白底蓝灰，盒状卡片，稳重专业', '#1b4f9c'],
-    ['b', '资讯榜单', '编号列表，信息密度高，扫读最快', '#d13a1f'],
-    ['c', '卡片杂志', '浅灰底大圆角卡片，轻松友好', '#0b8f7e'],
-    ['d', '纸感', '米色纸张质感，安静耐读', '#9b2335']
-  ];
-  const BAR = { // 浏览器地址栏/状态栏颜色，跟随页眉，避免顶部出现突兀的色块
-    light: { a: '#ffffff', b: '#d13a1f', c: '#ffffff', d: '#f5f2ea' },
-    dark:  { a: '#141d2b', b: '#b8321a', c: '#1c2024', d: '#14120f' }
-  };
-  const root = document.documentElement;
-  const get = () => { try { return localStorage.getItem('xz-style'); } catch (e) { return null; } };
-  const put = v => { try { localStorage.setItem('xz-style', v); } catch (e) {} };
-  const valid = v => STYLES.some(x => x[0] === v);
-  function syncBar() {
-    const m = document.querySelector('meta[name="theme-color"]'); if (!m) return;
-    const t = root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    if (window.XINZHI_BOOT) window.XINZHI_BOOT.apply(t, root.dataset.style);
-    else m.setAttribute('content', BAR[t][root.dataset.style] || '#ffffff');
-  }
-  let st = window.XINZHI_BOOT ? window.XINZHI_BOOT.style : new URLSearchParams(location.search).get('style');
-  if (!valid(st)) st = get();
-  if (!valid(st)) st = 'a';
-  root.dataset.style = st; put(st);
-  new MutationObserver(syncBar).observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-style'] });
-  syncBar();
-
-  const btn = document.getElementById('styleBtn'), menu = document.getElementById('styleMenu'), label = document.getElementById('styleBtnLabel');
-  if (!btn || !menu) return;
-  const name = k => (STYLES.find(x => x[0] === k) || [])[1] || '风格';
-  function paint() {
-    label.textContent = name(root.dataset.style);
-    menu.innerHTML = '<div class="style-menu-head">选择你喜欢的界面风格</div>' + STYLES.map(([k, n, d, c]) =>
-      `<button type="button" role="menuitemradio" class="style-opt" data-s="${k}" aria-checked="${k === root.dataset.style}">` +
-      `<span class="style-swatch" style="background:${c}">${k.toUpperCase()}</span>` +
-      `<span class="style-opt-text"><b>${n}</b><small>${d}</small></span>` +
-      `<span class="style-opt-check">${k === root.dataset.style ? '✓' : ''}</span></button>`).join('');
-  }
-  function setOpen(o) {
-    menu.hidden = !o; btn.setAttribute('aria-expanded', String(o));
-    if (o) { paint(); (menu.querySelector('[aria-checked="true"]') || menu.querySelector('.style-opt'))?.focus(); }
-  }
-  btn.addEventListener('click', e => { e.stopPropagation(); setOpen(menu.hidden); });
-  menu.addEventListener('click', e => {
-    const b = e.target.closest('.style-opt'); if (!b) return;
-    root.dataset.style = b.dataset.s; put(b.dataset.s); paint(); label.textContent = name(b.dataset.s);
-    setOpen(false); btn.focus();
-  });
-  document.addEventListener('click', e => { if (!menu.hidden && !e.target.closest('#stylePicker')) setOpen(false); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) { setOpen(false); btn.focus(); } });
-  label.textContent = name(root.dataset.style);
-})();
 
 ;(function () {
   const button = document.getElementById('backToTopBtn');

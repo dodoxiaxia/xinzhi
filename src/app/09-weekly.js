@@ -66,6 +66,8 @@
     renderWeeklyAuto();
     renderDailyDeepRead();
     renderWeeklyPane();
+    // The example reading is listed only here: fetch it now so opening it is instant.
+    loadDemoReading().catch(() => {});
   }
 
   // Narrow screens show one pane at a time; wide screens show both and ignore it.
@@ -142,7 +144,7 @@
     toc.hidden = targets.length < 2;
     toc.innerHTML = targets.map((t, i) => '<button type="button" data-toc-target="' + esc(t.id) + '"' + (i === 0 ? ' aria-current="true"' : '') + '>' + esc(t.dataset.toc) + '</button>').join('');
   }
-  // The example reading is a 12 KB static fragment fetched only when someone opens it.
+  // The example reading is a 12 KB static fragment, fetched once the 近7天榜 is shown (not on first page load).
   let demoReadingRequest = null;
   function loadDemoReading() {
     if (!demoReadingRequest) {
