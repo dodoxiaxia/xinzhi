@@ -87,7 +87,7 @@ if __name__ == '__main__':
                     page.evaluate('scrollTo(0, 1600)'); page.wait_for_timeout(100)
                     rect = page.locator('.header-nav').bounding_box()
                     visible = bool(rect and rect['y'] >= -1 and rect['y'] + rect['height'] <= 850)
-                    controls = {selector: page.locator(selector).bounding_box() for selector in ['#themeToggle', '#styleBtn', '#openHuddleBtn', '#globalSearch', '#sourceStatusBtn']}
+                    controls = {selector: page.locator(selector).bounding_box() for selector in ['#themeToggle', '#openHuddleBtn', '#globalSearch', '#sourceStatusBtn']}
                     if fixed:
                         assert visible, (width, rect)
                         assert all(v and round(v['height']) >= 44 and round(v['width']) >= 44 for v in controls.values()), controls  # subpixel layout: 43.99998 counts as 44
@@ -95,16 +95,18 @@ if __name__ == '__main__':
                     records.append({'width': width, 'mode': 'mobile-scroll', 'navigationVisibleAfterScroll': visible, 'controlSizes': controls})
                     if fixed:
                         page.screenshot(path=str(out / f'mobile-navigation-{width}.png'))
+                        # One look remains; legacy ?style= links must still open cleanly.
                         for style in ['a', 'b', 'c', 'd']:
                             for theme in ['light', 'dark']:
                                 page.goto(base + f'?mode=candidates&lane=all&view=compact&style={style}&theme={theme}', wait_until='networkidle')
                                 page.evaluate('scrollTo(0, 1400)'); page.wait_for_timeout(100)
                                 rect = page.locator('.header-nav').bounding_box()
                                 assert rect and rect['y'] >= 0
-                                for target in ['#themeToggle', '#styleBtn', '#openHuddleBtn', '#globalSearch', '#sourceStatusBtn']:
+                                assert page.locator('#styleBtn').count() == 0 and page.evaluate('document.documentElement.dataset.style') == 'a'
+                                for target in ['#themeToggle', '#openHuddleBtn', '#globalSearch', '#sourceStatusBtn']:
                                     size = page.locator(target).bounding_box(); assert round(size['height']) >= 44 and round(size['width']) >= 44, (style, theme, target, size)
                                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
-                        records.append({'width': width, 'mode': 'all-mobile-appearances', 'styles': 4, 'themes': 2, 'minimumTouchSize': 44})
+                        records.append({'width': width, 'mode': 'all-mobile-appearances', 'legacyStyleLinks': 4, 'themes': 2, 'minimumTouchSize': 44})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 context.close()
             browser.close()
