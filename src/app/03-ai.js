@@ -210,8 +210,9 @@
   function briefHtml(mode, list) {
     const items = briefItems(list); if (items.length < 2) return '';
     const k = briefKey(mode, items), b = BRIEFS[k];
-    const label = mode === 'huddle' ? 'AI 生成前 ' + items.length + ' 篇讨论提纲' : 'AI 综述当前结果前 ' + items.length + ' 篇';
-    if (!b || b.state === 'error') return `<div class="brief-box">${b ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm btn-primary" data-action="ai-brief" data-mode="${mode}">${label}</button><span class="text-muted brief-help">按当前顺序选最多 8 篇有标识的不同文献；基于可取得的公开摘要，结果全站共享。耗时随摘要与服务响应而变化。</span></div>`;
+    const label = mode === 'huddle' ? 'AI 生成前 ' + items.length + ' 篇讨论提纲' : 'AI 综述前 ' + items.length + ' 篇';
+    const help = '按当前顺序选最多 8 篇有标识的不同文献；基于可取得的公开摘要，结果全站共享。耗时随摘要与服务响应而变化。';
+    if (!b || b.state === 'error') return `<div class="brief-box">${b ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm ${mode === 'digest' && !b ? 'brief-start' : 'btn-primary'}" data-action="ai-brief" data-mode="${mode}" title="${help}">${mode === 'digest' && !b ? '<span aria-hidden="true">✦</span> ' : ''}${label}</button><span class="text-muted brief-help">${help}</span></div>`;
     if (b.state === 'loading') return `<div class="brief-box" aria-busy="true"><p class="ql-meta" role="status">正在读取摘要并生成，请稍候…${b.slow ? '用时较长，无需重复点击；不会自动重新提交。' : ''}</p></div>`;
     if (b.state === 'waiting') return `<div class="brief-box"><p class="ql-meta" role="status">${b.timedOut ? '本次等待已到时限，完成状态尚未确认' : '网络中断，完成状态尚未确认'}；后台可能仍在处理，未重新提交。</p>${b.msg ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm" data-action="brief-check" data-mode="${mode}"${b.checking ? ' disabled' : ''}>${b.checking ? '读取中…' : '读取已有综述'}</button></div>`;
     const r = b.brief;
@@ -230,6 +231,13 @@
     const l = state._digestList || [];
     const top = briefItems(l);
     if (exactDoi(state.search) || AI_AVAIL !== true || state.mode === 'weekly' || top.length < 2) { el.hidden = true; el.innerHTML = ''; return; }
+    // Before the first request the button sits in the toolbar; progress and the
+    // result move below it so the sticky toolbar never grows.
+    const idle = !BRIEFS[briefKey('digest', briefItems(top))];
+    const home = idle ? $('.stream-controls') : $('.stream-toolbar');
+    if (home && idle && el.parentElement !== home) home.prepend(el);
+    if (home && !idle && el.previousElementSibling !== home) home.after(el);
+    el.classList.toggle('digest-idle', idle);
     el.hidden = false; el.innerHTML = briefHtml('digest', top);
   }
   // ---- Public-abstract study services: GET only reads cache; POST requires a click. ----
