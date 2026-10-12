@@ -378,6 +378,7 @@
     minor: urlParams.get('minor') === '1',
     reading: ['abstract','guide','quicklook'].includes(urlParams.get('reading')) ? urlParams.get('reading') : '',
     favoritesOnly: urlParams.get('favorites') === '1',
+    day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
     weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
     weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
@@ -1065,8 +1066,10 @@
     const el = $('#laneBar');
     if (!el) return;
     if (state.mode === 'curated') {
-      const counts = {};
-      getCuratedList().forEach(p => (p.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+      // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
+      const counts = {}, day = curatedDay();
+      getCuratedList().filter(p => !day || publishedDate(p) === day).forEach(p => (p.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+      if (state.tag && !counts[state.tag]) counts[state.tag] = 0;
       const tags = Object.entries(counts).sort((a, b) => b[1] - a[1]);
       el.hidden = tags.length === 0;
       el.innerHTML = tags.length ? `<span class="lane-label">主题</span>` + tags.map(([t, n]) => `<button class="lane-chip ${state.tag === t ? 'active' : ''}" data-filter-tag="${esc(t)}">${esc(t.replace(/^#/, ''))} <small>${n}</small></button>`).join('') : '';
@@ -1079,6 +1082,28 @@
       const n = base.filter(p => inLane(p, l.id) && matchesFilters(p, true)).length;
       return `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}">${esc(l.name)} <small>${n}</small></button>`;
     }).join('');
+  }
+
+  // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.
+  function curatedDays() {
+    const counts = new Map();
+    getCuratedList().filter(p => matchesFilters(p, false)).forEach(p => { const d = publishedDate(p); counts.set(d, (counts.get(d) || 0) + 1); });
+    return [...counts.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }
+  // '' means every day. An explicit day wins; otherwise a search spans all days.
+  function curatedDay(days = curatedDays()) {
+    if (state.day === 'all') return '';
+    if (state.day && days.some(([d]) => d === state.day)) return state.day;
+    return state.search || !days.length ? '' : days[0][0];
+  }
+  function renderCuratedDayBar() {
+    const el = $('#curatedDayBar'); if (!el) return;
+    if (state.mode !== 'curated' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
+    const days = curatedDays(), active = curatedDay(days), total = days.reduce((sum, [, n]) => sum + n, 0);
+    const label = d => /^\d{4}-\d{2}-\d{2}$/.test(d) ? d.slice(5) : d;
+    el.hidden = days.length < 2;
+    el.innerHTML = '<span class="lane-label">日期</span>' + days.map(([d, n], i) => `<button type="button" class="lane-chip${d === active ? ' active' : ''}" data-day="${esc(i === 0 && !state.search ? '' : d)}" aria-pressed="${d === active}">${i === 0 ? '最新 · ' : ''}${esc(label(d))} <small>${n}</small></button>`).join('')
+      + `<button type="button" class="lane-chip${active ? '' : ' active'}" data-day="all" aria-pressed="${!active}">全部 <small>${total}</small></button>`;
   }
 
   function publishedDate(p) {
@@ -1120,8 +1145,6 @@
   function renderModeNote() {
     const el = $('#modeNote');
     if (!el) return;
-    const intro = $('#homeIntro');
-    if (intro) intro.hidden = state.mode !== 'curated';
     const rail = $('#streamRail');
     if (rail) rail.hidden = state.mode !== 'curated';
     const laneBar = $('#laneBar'), laneSlot = $(state.mode === 'curated' ? '#curatedTopicsSlot' : '#streamLaneSlot');
@@ -1150,6 +1173,7 @@
       set('reading', usesLane()?state.reading:'', '');
       set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
       set('wcat', state.mode === 'weekly' ? state.weeklyCat : '', '');
+      set('day', state.mode === 'curated' ? state.day : '', '');
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       u.searchParams.delete('maintainer');
@@ -1314,7 +1338,8 @@
     if (doi) return exactDoiPapers(doi);
     const list = getCurrentDataset();
     const curated = state.mode === 'curated';
-    const arr = list.filter(p => matchesFilters(p, false));
+    let arr = list.filter(p => matchesFilters(p, false));
+    if (curated) { const day = curatedDay(); if (day) arr = arr.filter(p => publishedDate(p) === day); }
     const jn = p => p.cleanJournal || p.journal || '';
     let jLatest = null;
     if (!curated && state.sort === 'journal-date') {
@@ -1713,7 +1738,7 @@
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
-    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#browseToggle', '#homeIntro', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+    ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#browseBar', '#browseToggle', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
     const filters = $('#activeFiltersBar');
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
@@ -1750,6 +1775,7 @@
     renderActiveFilterChips(filtered.length);
     renderModeNote();
     renderLaneBar();
+    renderCuratedDayBar();
     renderRangeBar();
     renderBrowseBar();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
@@ -1793,6 +1819,12 @@
       streamEl.innerHTML = Array.from(groups.entries()).map(([d, arr]) =>
         `<h2 class="day-heading">${esc(d)} · 每日精选 <small>${arr.length} 篇</small></h2>` + arr.map(state.viewMode==='compact'?renderCompactRow:renderArticleCard).join('')
       ).join('');
+      // At the end of one day, offer the previous day instead of a dead end.
+      const days = curatedDays(), day = curatedDay(days), index = days.findIndex(([d]) => d === day);
+      if (day && index >= 0 && index < days.length - 1) {
+        const [older, count] = days[index + 1];
+        streamEl.insertAdjacentHTML('beforeend', `<button type="button" class="load-more-btn day-next-btn" data-day="${esc(older)}">继续看 ${esc(older)} · ${count} 篇</button>`);
+      }
     } else if (state.viewMode === 'compact') {
       streamEl.className = 'articles-compact-list';
       streamEl.innerHTML = visibleItems.map(renderCompactRow).join('');
@@ -2574,7 +2606,7 @@
       if (!day || day.day !== p.publishedOn) days.push(day = { day: p.publishedOn, items: [] });
       day.items.push(p);
     });
-    el.innerHTML = '<p class="deep-reading-label"><span class="content-label">AI 全文精读 · 未经人工审核</span></p><p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 3–5 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
+    el.innerHTML = '<p class="deep-reading-label"><span class="content-label">AI 全文精读 · 未经人工审核</span></p><p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 ' + (Number.isInteger(status.target) && status.target > 0 ? status.target : 8) + ' 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
       (showReason ? '<p class="deep-reading-shortfall">' + esc(reason) + '，当前完成 ' + groups.todayCount + ' 篇。</p>' : '') +
       (notStarted ? '<p class="deep-reading-shortfall">今天的批次尚未生成（GitHub 定时任务常延迟数小时）；下方为最近一次批次。</p>' : '') +
       (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4><div class="deep-reading-list">' + groups.latest.map(dailyReadingItem).join('') + '</div>' : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
@@ -2955,6 +2987,16 @@
     if (tocTarget) {
       const body = $('#deepReaderBody'), target = body && document.getElementById(tocTarget.dataset.tocTarget);
       if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: 'smooth' });
+      return;
+    }
+    const dayBtn = e.target.closest('[data-day]');
+    if (dayBtn) {
+      state.day = dayBtn.dataset.day;
+      state.page = 1;
+      renderStream();
+      const stream = $('#streamSection'), top = stream ? stream.getBoundingClientRect().top + window.scrollY - 70 : 0;
+      if (stream && window.scrollY > top) window.scrollTo({ top, behavior: 'instant' });
+      $(`[data-day="${state.day}"]`)?.focus({ preventScroll: true });
       return;
     }
     const weeklyCat = e.target.closest('[data-weekly-cat]');

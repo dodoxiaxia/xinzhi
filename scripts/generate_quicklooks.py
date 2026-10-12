@@ -22,6 +22,7 @@ import os
 import re
 import unicodedata
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -41,7 +42,7 @@ CHECK_VERSION = 3  # 2: space-grouped thousands (13 238); 3: spelled-out counts 
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构',
           '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
 RECENT_DAYS, MISS_DAYS = 45, 10
-MAX_MODEL_CALLS, MAX_LOOKUPS = 20, 40
+MAX_MODEL_CALLS, MAX_LOOKUPS = 60, 120  # program ceilings; the CI step picks its own --limit
 SAFE_ERROR_CODES = {
     'invalid_doi', 'missing_source_identifier', 'source_response_shape',
     'source_doi_mismatch', 'source_pmid_mismatch', 'model_response_shape',
@@ -246,7 +247,7 @@ def eligible_papers(papers, have, miss, checked, today, rejected=None):
     for item in have['items'].values():
         if isinstance(item, dict):
             cached.update(identity_keys(item))
-    todo = []
+    todo, picked = [], picked_ids()
     for p in papers:
         key = paper_key(p)
         try:
@@ -255,7 +256,8 @@ def eligible_papers(papers, have, miss, checked, today, rejected=None):
             continue
         if p.get('datePrecision') in {'month', 'year'} or p.get('dateConfidence') == '低':
             continue
-        if not key or not lane_core(p) or minor_item(p) or p.get('hasDraft') or identity_keys(p) & (checked | cached):
+        # Daily and weekly picks lead the home page, so they get a quicklook whatever their lane.
+        if not key or not (lane_core(p) or p.get('id') in picked) or minor_item(p) or p.get('hasDraft') or identity_keys(p) & (checked | cached):
             continue
         if (rejected or {}).get(key, {}).get('count', 0) >= MAX_REJECTIONS:
             continue
@@ -264,7 +266,6 @@ def eligible_papers(papers, have, miss, checked, today, rejected=None):
         if miss.get(key, {}).get('first', today.isoformat()) < miss_cutoff and not local_abstract(p):
             continue
         todo.append(p)
-    picked = picked_ids()
     return sorted(todo, key=lambda p: (p.get('id') in picked, p.get('date', '')), reverse=True)  # 精选/周榜条目优先补速览
 
 
@@ -439,7 +440,7 @@ def record_status(stats, error):
                     'repaired_without_model'}
     safe_stats = {key: value for key, value in stats.items()
                   if key in count_fields and type(value) is int and value >= 0}
-    for key in ('committed', 'partial', 'failed', 'batch_stopped'):
+    for key in ('committed', 'partial', 'failed', 'batch_stopped', 'time_budget_reached'):
         if type(stats.get(key)) is bool:
             safe_stats[key] = stats[key]
     failures = [safe_failure(failure) for failure in stats.get('failures', [])[:MAX_MODEL_CALLS + 1]
@@ -459,6 +460,14 @@ def record_status(stats, error):
     return summary
 
 
+def out_of_time(margin=120):
+    """True when the CI step deadline (XINZHI_STEP_DEADLINE, wall clock) is too close for another call."""
+    try:
+        return time.time() + margin > float(os.environ['XINZHI_STEP_DEADLINE'])
+    except (KeyError, ValueError):
+        return False
+
+
 def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=call, rejected=None):
     """Stage verified outputs only; skip invalid items and stop on global failures."""
     staged, missing = copy.deepcopy(have), copy.deepcopy(miss)
@@ -469,6 +478,10 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
     diagnostic = None
     for p in todo:
         if stats['model_calls'] >= limit:
+            break
+        if out_of_time():
+            # Results are committed once at the end; stop early rather than lose the batch to a kill.
+            stats['time_budget_reached'] = True
             break
         key, stage = paper_key(p), 'source'
         try:
@@ -555,14 +568,14 @@ def load_rejections(raw, today):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--limit', type=int, default=3, help='maximum model calls; default 3, maximum 20')
-    ap.add_argument('--lookup-limit', type=int, default=12, help='maximum Europe PMC requests; default 12, maximum 40')
+    ap.add_argument('--limit', type=int, default=3, help=f'maximum model calls; default 3, maximum {MAX_MODEL_CALLS}')
+    ap.add_argument('--lookup-limit', type=int, default=12, help=f'maximum Europe PMC requests; default 12, maximum {MAX_LOOKUPS}')
     ap.add_argument('--call-model', action='store_true')
     a = ap.parse_args(argv)
     if not 1 <= a.limit <= MAX_MODEL_CALLS:
-        ap.error('--limit 1..20')
+        ap.error(f'--limit 1..{MAX_MODEL_CALLS}')
     if not 1 <= a.lookup_limit <= MAX_LOOKUPS:
-        ap.error('--lookup-limit 1..40')
+        ap.error(f'--lookup-limit 1..{MAX_LOOKUPS}')
     today = datetime.date.today()
     candidates = read_json(ROOT / 'data/candidates.json', {'items': []})['items']
     library = read_json(ROOT / 'data/library.json', {'papers': []})['papers']
