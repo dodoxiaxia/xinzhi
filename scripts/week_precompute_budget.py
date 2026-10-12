@@ -6,10 +6,28 @@ request and durably save the returned reservation before making the POST. These
 in-memory counters are not a distributed or provider billing cap.
 """
 
-MAX_ATTEMPTS = 8
-# Owner-approved 2026-10-11: six full configured calls per day (was 9600, about one).
-MAX_OUTPUT_TOKENS = 6 * 5800
+import os
+
 MAX_CONFIGURED_OUTPUT_TOKENS = 5800
+DEFAULT_DAILY_CALLS = 80
+HARD_DAILY_CALLS = 400
+
+
+def _daily_calls():
+    """Owner decision 2026-10-12: the provider plan has ample headroom, so the daily ceiling
+    is a runaway guard, not a spending cap. Repository variable XINZHI_WEEK_MAX_CALLS may
+    lower or raise it (1..400); anything unparsable keeps the default."""
+    raw = os.environ.get("XINZHI_WEEK_MAX_CALLS", "")
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_DAILY_CALLS
+    return value if 1 <= value <= HARD_DAILY_CALLS else DEFAULT_DAILY_CALLS
+
+
+MAX_ATTEMPTS = _daily_calls()
+# Every configured call reserves its full 5800-token output cap; real replies use ~1000-1500.
+MAX_OUTPUT_TOKENS = MAX_ATTEMPTS * MAX_CONFIGURED_OUTPUT_TOKENS
 _OUTPUT_BY_TASK = {"translate": 9000, "study": 3800, "quicklook": 3600}
 _LEGACY_DAY = "2026-10-07"
 _LEGACY_PAPER = "doi:10.1001/jamanetworkopen.2026.37545"

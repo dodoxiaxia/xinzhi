@@ -83,7 +83,7 @@ class PipelineCoverageTests(PipelineFixture):
         self.assertEqual(report["weeklyContent"]["status"],"partial");self.assertEqual(report["warnings"],["weekly_precompute_partial"])
         self.assertEqual(report["weeklyContent"]["fullyPreparedPapers"],0)
         paid=[args for args in calls if "--run" in args and args[0]=="scripts/week_precompute.py"]
-        self.assertEqual(len(paid),1);self.assertIn("8",paid[0])
+        self.assertEqual(len(paid),1);self.assertEqual(paid[0],["scripts/week_precompute.py","--run","--provider","configured"])
     def test_fast_is_read_only_cache_without_extra_generation(self):
         self.install();code,r,out,calls=self.invoke()
         self.assertEqual(code,0);self.assertEqual(r["weeklyContent"]["publicationPolicy"]["generationMode"],"cache_only")
