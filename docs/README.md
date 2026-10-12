@@ -7,7 +7,7 @@
 | 文件 | 内容 |
 | --- | --- |
 | [使用说明.md](使用说明.md) | 读者使用手册（源文件） |
-| 使用说明.html / 使用说明.pdf / 心知网站使用说明手册.zip | 由 [manual-tools/](manual-tools) 从 Markdown 和 [manual-assets/](manual-assets) 截图导出的离线版本 |
+| 使用说明.html / 使用说明.pdf | 由 [manual-tools/](manual-tools) 从 Markdown 和 [manual-assets/](manual-assets) 截图导出的离线版本；截图是 2026-10-12 界面简化之前的，待界面定稿后重新导出。含截图的压缩包由同一脚本生成，不提交（`.gitignore` 忽略 `*.zip`） |
 
 ## 运维与部署
 
