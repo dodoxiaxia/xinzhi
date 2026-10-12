@@ -122,21 +122,34 @@ class CacheAndBudgetTests(unittest.TestCase):
   cache={'entries':{}};ledger={'days':{}}
   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
    report=w.configured_batch([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',1,lambda public:{'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()})
-   self.assertEqual(report['generatedTasks'],2);self.assertFalse(report['stopped']);self.assertEqual(report['rejectedRequests'],1);self.assertNotIn('paused',ledger);self.assertEqual(next(iter(ledger['days'].values()))['requests'][0]['status'],'rejected');self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+   # The one-call ceiling leaves no room for the retry; successes are kept.
+   self.assertEqual(report['generatedTasks'],2);self.assertEqual(report['blocker'],'existing_daily_attempt_budget_exhausted');self.assertEqual(report['rejectedRequests'],1);self.assertNotIn('paused',ledger);self.assertEqual(next(iter(ledger['days'].values()))['requests'][0]['status'],'rejected');self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
  def test_rejected_paper_is_not_paid_for_again_and_others_continue(self):
   cache={'entries':{}};ledger={'days':{}};calls=[]
   other=dict(self.p,paperID='doi:10.1234/other',sourceHash='b'*64)
   def model(public):
-   calls.append(public['title']);return {'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()}
+   calls.append((public['title'],public['missingTasks'],public.get('previousFailures')));return {'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()}
   with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
    report=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
-   self.assertEqual(len(calls),2,'a rejection does not stop the next paper');self.assertFalse(report['stopped'])
+   self.assertEqual(len(calls),4,'each paper: one call plus one retry, and a rejection does not stop the next paper');self.assertFalse(report['stopped'])
+   first,retry=calls[0],calls[1]
+   self.assertEqual(first[1],list(w.TASKS));self.assertIsNone(first[2])
+   self.assertEqual(retry[1],['study'],'the retry asks only for the task that failed');self.assertEqual(set(retry[2]),{'study'})
+   self.assertTrue(all(w.find(cache,self.p,t)[0] for t in ('translate','quicklook')),'valid sibling tasks are kept')
    again=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
-   self.assertEqual(len(calls),2,'rejected papers are skipped on later runs');self.assertEqual(again['skippedRejected'],2)
+   self.assertEqual(len(calls),4,'a task rejected twice is not paid for again');self.assertEqual(again['skippedRejected'],2)
    for day in ledger['days'].values():
     for row in day['requests']:row['checkVersion']=w.EVIDENCE_CHECK_VERSION-1
    w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
-   self.assertEqual(len(calls),4,'papers rejected under older checks are retried once')
+   self.assertEqual(len(calls),8,'tasks rejected under older checks are retried')
+ def test_retry_note_reaches_the_model_without_changing_the_system_prompt(self):
+  note=w.retry_note({'study':'numbers_not_in_source:13','other':'x'})
+  self.assertIn('study: numbers_not_in_source:13',note);self.assertNotIn('other',note)
+ def test_old_rejections_without_task_detail_count_for_every_requested_task(self):
+  ledger={'days':{'d':{'requests':[{'status':'rejected','checkVersion':w.EVIDENCE_CHECK_VERSION,'paperID':'p','sourceHash':'h','tasks':['translate','study']},
+   {'status':'rejected','checkVersion':w.EVIDENCE_CHECK_VERSION,'paperID':'p','sourceHash':'h','tasks':list(w.TASKS),'taskFailures':{'study':'bad'}}]}}}
+  counts=w.task_rejections(ledger)
+  self.assertEqual((counts[('p','h','translate')],counts[('p','h','study')],counts[('p','h','quicklook')]),(1,2,0))
  def test_runtime_output_budget_prevents_second_task_after_translation(self):
   with tempfile.TemporaryDirectory() as d:
    cache={'entries':{}};ledger={'days':{}};posts=[]

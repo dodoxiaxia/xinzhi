@@ -193,7 +193,16 @@ def main():
                     expect(page.locator('#streamRail')).to_be_visible()
                     expect(page.locator('#modeNote')).to_be_hidden()
                     check(page.get_by_text('带“摘要核对”标记的是', exact=False).count() == 0, label + ': green-box paragraph removed')
-                    check(page.locator('#streamRail #homeIntro').count() == 1 and page.locator('#streamRail #laneBar').count() == 1, label + ': both red-box blocks moved together')
+                    check(page.locator('#streamRail #curatedDayBar').count() == 1 and page.locator('#streamRail #laneBar').count() == 1, label + ': day and topic filters share the rail')
+                    days = page.locator('#curatedDayBar [data-day]')
+                    if days.count() > 2:
+                        latest = page.locator('#articlesStream .day-heading').all_text_contents()
+                        check(len(latest) == 1, label + ': opens on the newest day only')
+                        days.nth(1).click()
+                        check(page.locator('#articlesStream .day-heading').count() == 1 and 'day=' in page.url, label + ': a day chip shows that day and is linkable')
+                        page.locator('#curatedDayBar [data-day="all"]').click()
+                        check(page.locator('#articlesStream .day-heading').count() > 1, label + ': 全部 shows every day')
+                        page.locator('#curatedDayBar [data-day]').first.click()
                     body, rail = page.locator('.stream-content').bounding_box(), page.locator('#streamRail').bounding_box()
                     if width > 1000:
                         check(rail['x'] >= body['x'] + body['width'] and body['width'] > rail['width'] * 2, label + ': wide reading column and right tools')
