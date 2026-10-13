@@ -1,0 +1,46 @@
+name: drive-archive
+
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '重新扫描整个文献库，把尚未进 Drive 的全文全部排队'
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/drive-archive.yml'
+      - 'scripts/drive_archive_runner.cjs'
+
+concurrency:
+  group: xinzhi-drive-archive
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  archive:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 已核验全文同步到 Drive「Muse 文献收件箱」（只写 Drive，不发布网站）
+        env:
+          GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          GDRIVE_FOLDER_ID: ${{ vars.GDRIVE_FOLDER_ID }}
+          DRIVE_BACKFILL: ${{ inputs.backfill && 'true' || 'false' }}
+        run: node scripts/drive_archive_runner.cjs

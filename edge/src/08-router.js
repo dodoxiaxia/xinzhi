@@ -19,6 +19,7 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/muse/upload') return handleMuseUpload(request, env);
     if (url.pathname === '/api/muse/reader-upload') return handleMuseReaderUpload(request, env);
     if (url.pathname === '/api/muse/review') return handleMuseReview(request, env);
+    if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);
     if (url.pathname === '/api/acquire') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);

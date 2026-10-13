@@ -299,10 +299,67 @@ async function handleMuseReview(request, env) {
     const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi);
     if (!libraryPaper(saved,job.doi) || saved.pdf?.sha256 !== job.sha256) libraryFail('muse_sync_pending',503);
     await libraryStoredPdf(env.QL_KV,saved);
+    // Muse already stored this original in its Drive inbox; record it so the archive workflow does not upload it twice.
+    if (job.driveFileId) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + job.sha256,JSON.stringify({version:1,doi:job.doi,sha256:job.sha256,driveFileId:job.driveFileId,source:'muse',archivedAt:Date.now()}));
     const done = {...job,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes}};
     await musePut(env,done); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
     return json({ok:true,job:musePublicJob(done),downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi),archive:{...libraryArchiveStatus(),sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}}});
   } catch (error) { return museError(error); }
+}
+// Every verified original in QL_KV is copied to the private Drive inbox by drive-archive.yml.
+// The site never holds Drive credentials: it only hands the workflow bytes and records the file ID it reports.
+async function driveArchiveRecord(env, doi, sha256) {
+  const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
+  return paper && paper.fulltextStatus === 'available' && record.pdf.sha256 === sha256 ? {record,paper} : null;
+}
+async function handleDriveArchive(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'drive_bad_request',protocolVersion:1},405);
+    const owner = await fulltextJobAuthorize(request,DRIVE_ARCHIVE_POLICY);
+    libraryConfig(env);
+    const input = await fulltextReadJson(request,1024,'drive_bad_request');
+    if (input.action === 'backfill') {
+      // Only a maintainer dispatch rescans the whole library; scheduled runs work from the pending index.
+      await fulltextJobAuthorize(request,{...DRIVE_ARCHIVE_POLICY,events:['workflow_dispatch']});
+      if (Object.keys(input).some(k => !['action','cursor'].includes(k)) || (Object.hasOwn(input,'cursor') && (typeof input.cursor !== 'string' || !input.cursor || input.cursor.length > 1024))) libraryFail('drive_bad_request',400);
+      let listing; try { listing = await env.QL_KV.list({prefix:LIBRARY_PREFIX,limit:100,...(input.cursor ? {cursor:input.cursor} : {})}); } catch { libraryFail('library_storage',503); }
+      if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 100) libraryFail('library_storage',503);
+      let added = 0;
+      for (const entry of listing.keys) {
+        const doi = typeof entry.name === 'string' && entry.name.startsWith(LIBRARY_PREFIX) ? entry.name.slice(LIBRARY_PREFIX.length) : '';
+        const record = doi && await libraryGet(env.QL_KV,entry.name), paper = record && libraryPaper(record,doi);
+        if (!paper || paper.fulltextStatus !== 'available') continue;
+        if (await libraryGet(env.QL_KV,DRIVE_ARCHIVE_PREFIX + record.pdf.sha256) || await libraryGet(env.QL_KV,DRIVE_PENDING_PREFIX + record.pdf.sha256)) continue;
+        await libraryPut(env.QL_KV,DRIVE_PENDING_PREFIX + record.pdf.sha256,JSON.stringify({doi})); added++;
+      }
+      return json({ok:true,added,cursor:!listing.list_complete && typeof listing.cursor === 'string' ? listing.cursor : null});
+    }
+    if (input.action === 'claim') {
+      if (Object.keys(input).length !== 1) libraryFail('drive_bad_request',400);
+      for (const entry of await museList(env,DRIVE_PENDING_PREFIX)) {
+        const sha256 = entry.name.slice(DRIVE_PENDING_PREFIX.length), pointer = await libraryGet(env.QL_KV,entry.name);
+        const found = /^[a-f0-9]{64}$/.test(sha256) && libraryDoi(pointer?.doi) === pointer?.doi ? await driveArchiveRecord(env,pointer.doi,sha256) : null;
+        if (!found || await libraryGet(env.QL_KV,DRIVE_ARCHIVE_PREFIX + sha256)) { await museDelete(env,entry.name); continue; }
+        return json({ok:true,task:{doi:found.paper.doi,title:found.paper.title,sha256,bytes:found.record.pdf.size}});
+      }
+      return json({ok:true,task:null});
+    }
+    if (!['bytes','complete'].includes(input.action) || !libraryDoi(input.doi) || libraryDoi(input.doi) !== input.doi || !/^[a-f0-9]{64}$/.test(input.sha256 || '')
+        || Object.keys(input).some(k => !['action','doi','sha256',...(input.action === 'complete' ? ['driveFileId'] : [])].includes(k))
+        || (input.action === 'complete' && (typeof input.driveFileId !== 'string' || !/^[A-Za-z0-9_-]{10,200}$/.test(input.driveFileId)))) libraryFail('drive_bad_request',400);
+    const found = await driveArchiveRecord(env,input.doi,input.sha256);
+    if (!found) libraryFail('drive_stale',409);
+    if (input.action === 'bytes') {
+      const bytes = await libraryStoredPdf(env.QL_KV,found.record);
+      return new Response(bytes,{headers:{'content-type':'application/pdf','content-length':String(bytes.length),'cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+    }
+    const existing = await libraryGet(env.QL_KV,DRIVE_ARCHIVE_PREFIX + input.sha256);
+    if (!existing) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + input.sha256,JSON.stringify({version:1,doi:input.doi,sha256:input.sha256,driveFileId:input.driveFileId,source:'drive_archive',archivedBy:owner,archivedAt:Date.now()}));
+    await museDelete(env,DRIVE_PENDING_PREFIX + input.sha256);
+    return json({ok:true,doi:input.doi,driveFileId:(existing || {}).driveFileId || input.driveFileId});
+  } catch (error) {
+    return json({ok:false,error:error instanceof LibraryFailure ? error.code : 'drive_server'},error instanceof LibraryFailure ? error.status : 500);
+  }
 }
 async function handleAcquire(request, env) {
   let doi = '', release;

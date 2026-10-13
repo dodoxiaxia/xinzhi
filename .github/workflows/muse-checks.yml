@@ -14,6 +14,8 @@ on:
       - 'editorial/fulltext-imports.json'
       - '.github/workflows/*muse*'
       - '.github/workflows/fulltext-import.yml'
+      - '.github/workflows/drive-archive.yml'
+      - 'scripts/*drive*'
 permissions:
   contents: read
 jobs:
@@ -37,6 +39,7 @@ jobs:
           node scripts/test_muse_fulltext.cjs
           node scripts/test_muse_status_pages.cjs
           node scripts/test_muse_reader_upload.cjs
+          node scripts/test_drive_archive.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_doi_library_ui.cjs --helpers-only
           node scripts/test_fulltext_jobs.cjs

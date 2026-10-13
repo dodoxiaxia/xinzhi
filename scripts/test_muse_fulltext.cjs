@@ -157,6 +157,7 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   };
   assert.equal(await runReview(env,http,async (bytes,t) => {assert.deepEqual(bytes,original);return {verified:true,pages:13,method:'dual_parser_all_pages_title_doi',sha256:t.sha256,bytes:t.bytes};},x => logs.push(x),async () => {}),1);
   assert(!logs.join('').includes(secret)); assert(!logs.join('').includes('synthetic-runtime-token')); assert(!logs.join('').includes('Bearer'));
+  assert.equal(JSON.parse(h.values.get('library:drive:' + hash(original))).driveFileId,'syntheticDriveFileId12345','a Muse delivery already in Drive is not archived twice');
   for (const event of ['push','schedule']) {
     await assert.rejects(runReview({...env,GITHUB_EVENT_NAME:event,MUSE_RECHECK_DOI:doi},async () => {throw new Error('unexpected network');}),/invalid_recheck/);
   }

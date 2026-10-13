@@ -12,6 +12,9 @@ const FULLTEXT_WORKFLOW_REF = 'dodoxiaxia/xinzhi/.github/workflows/fulltext.yml@
 const FULLTEXT_OIDC_SUBJECTS = ['repo:dodoxiaxia/xinzhi:ref:refs/heads/main','repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main'];
 const FULLTEXT_OIDC_BUILD_KEYS = {};
 const FULLTEXT_IMPORT_POLICY = { audience:'https://learn.dryz.info/api/fulltext-import', workflow:'dodoxiaxia/xinzhi/.github/workflows/fulltext-import.yml@refs/heads/main', events:['push','workflow_dispatch'] };
+const DRIVE_ARCHIVE_POLICY = { audience:'https://learn.dryz.info/api/drive-archive', workflow:'dodoxiaxia/xinzhi/.github/workflows/drive-archive.yml@refs/heads/main', events:['push','workflow_dispatch','schedule'] };
+const DRIVE_PENDING_PREFIX = 'library:drive-pending:';
+const DRIVE_ARCHIVE_PREFIX = 'library:drive:';
 const MUSE_REVIEW_POLICY = { audience:'https://learn.dryz.info/api/muse/review', workflow:'dodoxiaxia/xinzhi/.github/workflows/muse-review.yml@refs/heads/main', events:['push','workflow_dispatch','schedule'] };
 const FULLTEXT_JOB_LEASE_MS = 180000;
 const FULLTEXT_JOB_LIFETIME_MS = 86400000;
@@ -405,6 +408,8 @@ async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
   if (fetched && fetched.bytes) {
     const checksum = await pdfDigest('SHA-256', fetched.bytes), blobKey = 'library:pdf:' + checksum;
     await libraryPut(kv, blobKey, fetched.bytes.buffer.slice(fetched.bytes.byteOffset, fetched.bytes.byteOffset + fetched.bytes.byteLength));
+    // Queue the original for the Drive archive before the record can point at it; stale pointers are dropped on claim.
+    await libraryPut(kv, DRIVE_PENDING_PREFIX + checksum, JSON.stringify({ doi:paper.doi }));
     pdf = { key:blobKey, sha256:checksum, size:fetched.bytes.length, source:fetched.source, ...(fetched.commit ? { commit:fetched.commit } : {}) };
     paper = { ...paper, fulltextStatus:'available' };
   }
