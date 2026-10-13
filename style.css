@@ -1242,3 +1242,45 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover { background: var(-
   .stream-controls .view-toggle-btn { padding: 4px 10px; }
   .article-title-zh + .article-title .title-open { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 }
+
+/* ---- v18 信源状态：总数即筛选，异常在前，一行一个信源 ---- */
+.sources-summary .source-filter { display: flex; align-items: baseline; gap: 12px; padding: 14px 20px; text-align: left; font: inherit; color: inherit; cursor: pointer; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); transition: border-color .12s, background .12s; }
+.sources-summary .source-filter:hover { border-color: var(--border-subtle); }
+.sources-summary .source-filter[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-light); box-shadow: inset 0 0 0 1px var(--accent); }
+.sources-summary .source-filter strong { font-size: 24px; }
+.sources-grid { display: block; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.sources-grid .special-search-status, .sources-grid .special-search-empty { margin: 0; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+.special-search-empty .btn-sm { margin-left: 10px; }
+.source-group-title { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 10px 20px; font-size: 12.5px; font-weight: 600; letter-spacing: .04em; color: var(--text-secondary); background: var(--bg-secondary); border-bottom: 1px solid var(--border); }
+.source-group-title span { font-weight: 400; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.sources-grid .source-item {
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px 150px; grid-template-areas: "head counts foot" "metrics counts foot" "cache cache cache" "note note note";
+  align-items: center; gap: 2px 24px; padding: 12px 20px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none;
+}
+.sources-grid .source-item:last-child { border-bottom: 0; }
+.sources-grid .source-needs-attention { box-shadow: inset 3px 0 0 var(--amber); }
+.source-item-head { grid-area: head; flex-wrap: nowrap; align-items: baseline; justify-content: flex-start; gap: 10px; }
+.source-item-name { flex: 0 1 auto; font-size: 14.5px; }
+.source-journal-metrics { grid-area: metrics; margin: 0; font-size: 11.5px; color: var(--text-muted); }
+.source-journal-metrics .journal-metrics-badge { display: none; }
+.source-journal-metrics .journal-metrics-details summary { font-size: 11.5px; }
+.sources-grid .source-counts { grid-area: counts; margin: 0; gap: 12px; }
+.source-counts dt { margin-bottom: 0; font-size: 11px; }
+.source-counts dd { font-size: 14px; }
+.source-cache-note { grid-area: cache; margin: 6px 0 0; }
+.source-detail-note { grid-area: note; margin: 4px 0 0; }
+.source-item-foot { grid-area: foot; flex-direction: column; align-items: flex-end; justify-content: center; gap: 0; padding: 0; border: 0; font-size: 11px; text-align: right; }
+@media (max-width: 1000px) {
+  .sources-grid .source-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head head" "metrics metrics" "counts foot" "cache cache" "note note"; gap: 6px 16px; }
+}
+@media (max-width: 720px) {
+  .sources-summary .source-filter { flex-direction: column; gap: 2px; padding: 10px 12px; }
+  .sources-summary .source-filter strong { font-size: 22px; }
+  .sources-grid { margin: 0 -16px; border-left: 0; border-right: 0; border-radius: 0; }
+  .sources-grid .source-item { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "metrics" "counts" "cache" "note" "foot"; padding: 12px 16px; }
+  .source-item-head { flex-wrap: wrap; justify-content: space-between; }
+  .sources-grid .source-counts { display: flex; gap: 14px; }
+  .source-counts > div { display: flex; align-items: baseline; gap: 4px; }
+  .source-item-foot { flex-direction: row; justify-content: space-between; text-align: left; }
+  .source-group-title { padding: 8px 16px; }
+}

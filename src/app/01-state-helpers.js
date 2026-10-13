@@ -41,6 +41,7 @@
     day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
     weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
     weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
+    sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,

@@ -176,6 +176,7 @@
       set('wcat', state.mode === 'weekly' ? state.weeklyCat : '', '');
       set('day', state.mode === 'curated' ? state.day : '', '');
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
+      set('sf', state.mode === 'sources' ? state.sourceFilter : '', '');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       u.searchParams.delete('maintainer');
       const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
