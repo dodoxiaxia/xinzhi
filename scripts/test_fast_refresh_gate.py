@@ -45,6 +45,18 @@ class FastRefreshGateTests(unittest.TestCase):
         self.assertFalse(gate.decide(push, DONE, NOW, timed={'startedAt': (NOW - datetime.timedelta(minutes=120)).isoformat()})[0])
         self.assertFalse(gate.decide(push, DONE, NOW, timed={})[0])  # no marker yet: previous behaviour
 
+    def test_full_cron_runs_when_due_and_is_gated_when_late(self):
+        on_time = datetime.datetime(2026, 10, 12, 20, 47, tzinfo=UTC)  # 04:47 Beijing, before the 05:00 catch-up hour
+        yesterday = {'day': '2026-10-12'}
+        recent_run = {'status': 'success', 'startedAt': (on_time - datetime.timedelta(minutes=30)).isoformat()}
+        self.assertEqual(gate.decide(recent_run, yesterday, on_time, full_cron=True), (True, 'full_refresh_due'))
+        self.assertFalse(gate.decide(recent_run, yesterday, on_time)[0])  # an ordinary timed run at 04:47 is still gated
+        # 10-13 02:15 UTC: the 04:47 cron arrived 5.5 hours late, 8 minutes after a timed run, full already done.
+        late = datetime.datetime(2026, 10, 13, 2, 15, tzinfo=UTC)
+        recent = {'startedAt': (late - datetime.timedelta(minutes=8)).isoformat()}
+        self.assertFalse(gate.decide({}, {'day': '2026-10-13'}, late, timed=recent, full_cron=True)[0])
+        self.assertTrue(gate.decide({}, {}, late, timed=recent, full_cron=True)[0])  # unreadable marker: run
+
     def test_main_prints_step_outputs(self):
         import io, contextlib
         out = io.StringIO()

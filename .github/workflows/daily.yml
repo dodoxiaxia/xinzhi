@@ -68,7 +68,9 @@ jobs:
       - name: 轻量刷新最短间隔
         id: gate
         env:
-          TIMED_FAST: ${{ ((github.event_name == 'schedule' && github.event.schedule != '47 20 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.force)) && '1' || '' }}
+          TIMED_FAST: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.force)) && '1' || '' }}
+          # The full cron always runs while today's full refresh is missing; a late one after it is held to the interval.
+          XINZHI_FULL_CRON: ${{ (github.event_name == 'schedule' && github.event.schedule == '47 20 * * *') && '1' || '' }}
           XINZHI_FAST_MIN_INTERVAL_MINUTES: ${{ vars.XINZHI_FAST_MIN_INTERVAL_MINUTES || '170' }}
           STATE_URL: https://x-access-token:${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.XINZHI_STATE_REPO || github.repository }}.git
         run: |
