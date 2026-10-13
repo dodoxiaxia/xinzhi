@@ -26,9 +26,12 @@ def read(path):
         return {}
 
 
-def decide(last, marker, now, minutes=DEFAULT_MINUTES, timed=None):
+def decide(last, marker, now, minutes=DEFAULT_MINUTES, timed=None, full_cron=False):
     bj = now.astimezone(BEIJING)
-    if bj.hour >= FULL_EARLIEST_HOUR and marker.get('day') != bj.date().isoformat():
+    # The 04:47 full cron runs whenever today's full refresh is missing (it fires before 05:00).
+    # When GitHub delivers it hours late after the catch-up already ran, ci_daily downgrades it
+    # to a fast run, so it is then held to the same interval as any timed fast run.
+    if (full_cron or bj.hour >= FULL_EARLIEST_HOUR) and marker.get('day') != bj.date().isoformat():
         return True, 'full_refresh_due'
     if timed and timed.get('startedAt'):
         # Measured from the last timed/full run: push deploys are model-free and do not count.
@@ -53,7 +56,8 @@ def main(argv):
     except ValueError:
         minutes = DEFAULT_MINUTES
     timed = read(argv[3]) if len(argv) > 3 else {}
-    run, reason = decide(read(argv[1]), read(argv[2]), datetime.datetime.now(datetime.timezone.utc), minutes, timed)
+    full_cron = os.environ.get('XINZHI_FULL_CRON') == '1'
+    run, reason = decide(read(argv[1]), read(argv[2]), datetime.datetime.now(datetime.timezone.utc), minutes, timed, full_cron)
     print('run=' + ('true' if run else 'false'))
     print('reason=' + reason)
     return 0
