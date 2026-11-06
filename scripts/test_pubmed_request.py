@@ -2,6 +2,7 @@
 import datetime
 import http.client
 import io
+import json
 import unittest
 import urllib.error
 import urllib.parse
@@ -108,6 +109,83 @@ class PubmedRequestTests(unittest.TestCase):
         self.assertIn('efetch.fcgi', error.__notes__[0])
         self.assertIn('Invalid uid', error.__notes__[0])
         self.assertNotIn('synthetic-invalid',error.__notes__[0])
+
+    def test_timeout_is_retried_with_backoff_then_raised(self):
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=TimeoutError('timed out')) as opener, \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            with self.assertRaises(TimeoutError):
+                fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'})
+        self.assertEqual(opener.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [call(0.5), call(1.0)])
+        self.assertEqual(opener.call_args.kwargs, {'timeout': 30})
+
+    def test_server_error_retries_then_returns_the_completed_body(self):
+        failure = urllib.error.HTTPError('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi', 500, 'Internal Server Error', {}, io.BytesIO(b''))
+        success = MagicMock()
+        success.__enter__.return_value.read.return_value = b'{"esearchresult":{"count":"0","idlist":[]}}'
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[failure, success]) as opener, \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            body = fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'})
+        self.assertEqual(body, b'{"esearchresult":{"count":"0","idlist":[]}}')
+        self.assertEqual(opener.call_count, 2)
+        sleep.assert_called_once_with(0.5)
+
+    def test_missing_idlist_and_error_payloads_do_not_replace_the_previous_file(self):
+        import tempfile
+        from pathlib import Path
+        cases = [
+            ({'esearchresult': {'count': '12'}}, 'pubmed_idlist_missing'),
+            ({'esearchresult': {'count': '12', 'ERROR': 'Search Backend failed'}}, 'pubmed_upstream_error'),
+            ({'error': 'API rate limit exceeded'}, 'pubmed_upstream_error'),
+            ({'header': {}}, 'pubmed_esearchresult_missing'),
+        ]
+        previous = '{"items":[{"id":"pmid-previous"}],"note":"previous good"}\n'
+        clock = datetime.datetime(2026, 11, 5, tzinfo=datetime.timezone.utc)
+        for payload, code in cases:
+            with self.subTest(code=code):
+                with tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / 'pubmed.json'
+                    path.write_text(previous)
+                    raw = json.dumps(payload).encode()
+                    with patch.object(fetch_pubmed, 'request', return_value=raw) as opener, \
+                            patch.object(fetch_pubmed.time, 'sleep') as sleep:
+                        with self.assertRaises(fetch_pubmed.PubmedError) as caught:
+                            fetch_pubmed.refresh(path, 30, 1500, now=clock)
+                    self.assertEqual(caught.exception.code, code)
+                    self.assertEqual(path.read_text(), previous)
+                    self.assertFalse(path.with_name('.pubmed.json.tmp').exists())
+                    self.assertEqual(opener.call_count, 3)
+                    self.assertEqual(sleep.call_args_list, [call(0.5), call(1.0)])
+
+    def test_empty_idlist_is_a_complete_result_and_efetch_error_keeps_previous(self):
+        import json as jsonlib
+        import tempfile
+        from pathlib import Path
+        previous = '{"items":[{"id":"pmid-previous"}]}\n'
+        clock = datetime.datetime(2026, 11, 5, tzinfo=datetime.timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'pubmed.json'
+            path.write_text(previous)
+            raw = jsonlib.dumps({'esearchresult': {'count': '0', 'idlist': []}}).encode()
+            with patch.object(fetch_pubmed, 'request', return_value=raw), patch.object(fetch_pubmed.time, 'sleep'):
+                data = fetch_pubmed.refresh(path, 30, 1500, now=clock)
+            saved = jsonlib.loads(path.read_text())
+            self.assertEqual(data['fetched'], 0)
+            self.assertEqual(saved['totalHits'], 0)
+            self.assertEqual(saved['items'], [])
+            self.assertFalse(path.with_name('.pubmed.json.tmp').exists())
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'pubmed.json'
+            path.write_text(previous)
+            def fake(action, params, attempts=3):
+                if action == 'esearch.fcgi':
+                    return jsonlib.dumps({'esearchresult': {'count': '1', 'idlist': ['12345678']}}).encode()
+                return b'<ERROR>Unable to obtain query</ERROR>'
+            with patch.object(fetch_pubmed, 'request', side_effect=fake), patch.object(fetch_pubmed.time, 'sleep'):
+                with self.assertRaises(fetch_pubmed.PubmedError) as caught:
+                    fetch_pubmed.refresh(path, 30, 1500, now=clock)
+            self.assertEqual(caught.exception.code, 'pubmed_efetch_error')
+            self.assertEqual(path.read_text(), previous)
 
 
 if __name__ == '__main__':

@@ -126,13 +126,42 @@ def _cache(cache):
     return cache
 
 
+_TASKS = ('translate', 'study', 'quicklook')
+
+
 def _pause_reasons(value):
     reasons = value.get('pauseReasons', [])
     paused = value.get('paused')
+    tasks = value.get('pausedTasks', {})
+    if tasks is None:
+        tasks = {}
     if (not isinstance(reasons, list) or any(not isinstance(reason, str) for reason in reasons)
-            or (paused is not None and not isinstance(paused, str))):
+            or (paused is not None and not isinstance(paused, str))
+            or type(tasks) is not dict
+            or any(task not in _TASKS or not isinstance(reason, str) or not reason
+                   for task, reason in tasks.items())):
         _fail('checkpoint_invalid_pause')
     return [paused] + reasons
+
+
+def _row_tasks(row):
+    """Tasks on one request. A row without a known task list covers every task."""
+    tasks = row.get('tasks')
+    task = row.get('task')
+    if isinstance(tasks, list) and tasks and all(isinstance(item, str) and item in _TASKS for item in tasks):
+        return set(tasks)
+    if isinstance(task, str) and task in _TASKS:
+        return {task}
+    return set(_TASKS)
+
+
+def _blocked_tasks(scope):
+    """Legacy paused/pauseReasons stop every task. pausedTasks stops only named tasks."""
+    _pause_reasons(scope)
+    if ((isinstance(scope.get('paused'), str) and scope.get('paused'))
+            or any(isinstance(reason, str) and reason for reason in (scope.get('pauseReasons') or []))):
+        return set(_TASKS)
+    return set(scope.get('pausedTasks') or {})
 
 
 def _pauses_preserved(old, new):
@@ -140,6 +169,9 @@ def _pauses_preserved(old, new):
     kept = _pause_reasons(new)
     if any(reason and reason not in kept for reason in reasons):
         _fail('checkpoint_pause_cannot_be_cleared')
+    for task, reason in (old.get('pausedTasks') or {}).items():
+        if (new.get('pausedTasks') or {}).get(task) != reason:
+            _fail('checkpoint_pause_cannot_be_cleared')
 
 
 @dataclass(frozen=True)
@@ -352,10 +384,14 @@ class GitHubStateCheckpoint:
                 or records[key][2]['reservedAttempts'] <= 0
                 or records[key][2]['reservedOutputTokens'] <= 0):
             _fail('checkpoint_new_reservation_required')
-        if (any(_pause_reasons(ledger))
-                or any(any(_pause_reasons(d)) for d in ledger['days'].values())):
+        new_tasks = _row_tasks(records[key][2])
+        # A pause or an unresolved charge blocks only the tasks it names. A legacy
+        # global pause string still blocks every task, and is never cleared here.
+        if (_blocked_tasks(ledger) & new_tasks or any(
+                _blocked_tasks(day) & new_tasks for day in ledger['days'].values())):
             _fail('checkpoint_paid_work_paused')
-        if any(k != key and r[2]['status'] in UNCERTAIN for k, r in records.items()):
+        if any(k != key and row[2]['status'] in UNCERTAIN and _row_tasks(row[2]) & new_tasks
+               for k, row in records.items()):
             _fail('checkpoint_uncertain_prior_attempt')
         if set(records) - set(old) != {key}:
             _fail('checkpoint_one_reservation_required')

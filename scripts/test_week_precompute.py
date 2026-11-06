@@ -77,19 +77,33 @@ class CacheAndBudgetTests(unittest.TestCase):
   cache={'entries':{}};key=w.cache_key(self.p,'translate','model-v1');w.store(cache,self.p,'translate',tr(),'model-v1','2026-10-07','fixture')
   self.assertIsNotNone(w.find(cache,self.p,'translate')[0]);changed=dict(self.p,sourceHash='new');self.assertNotEqual(key,w.cache_key(changed,'translate','model-v1'));self.assertIsNone(w.find(cache,changed,'translate')[0]);self.assertNotEqual(key,w.cache_key(self.p,'translate','model-v2'))
   with patch.object(w,'PROMPT_VERSION','new'):self.assertIsNone(w.find(cache,self.p,'translate')[0])
- def test_budget_precharged_failed_attempt_keeps_sibling_and_pauses(self):
+ def test_budget_precharged_failed_attempt_keeps_sibling_and_pauses_that_task(self):
   with tempfile.TemporaryDirectory() as d:
    cp=Path(d)/'cache.json';lp=Path(d)/'ledger.json';cache={'entries':{}};ledger={'days':{}};calls=[]
    def transport(url,payload=None):
     calls.append(payload)
     if payload is None:
      return {'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])} if 'task=translate' in url else {'found':False}
-    disk=json.loads(lp.read_text());self.assertEqual(next(iter(disk['days'].values()))['reservedAttempts'],2);self.assertEqual(next(iter(disk['days'].values()))['reservedOutputTokens'],3800)
-    if payload['task']=='translate':return {'ok':True,'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])}
+    disk=json.loads(lp.read_text());row=next(iter(disk['days'].values()))['requests'][-1]
+    self.assertEqual(row['status'],'started')
+    if 'task' in payload:self.assertEqual(row['task'],payload['task'])
+    if payload.get('task')=='translate':return {'ok':True,'tr':dict(tr(),model='existing',generatedAt='2026-10-07',validationVersion=2,sourceFingerprint=self.p['sourceHash'])}
+    if 'task' not in payload:return {'ql':dict(ql(),model='existing',generatedAt='2026-10-07')}
     raise w.Halt('http_429:provider_rate_limit')
    report=w.acquire_runtime([self.p],cache,cp,ledger,lp,8,True,transport)
-   self.assertTrue(report['stopped']);self.assertEqual(report['paidRequests'],1);self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertEqual(json.loads(cp.read_text()),cache)
-   count=len(calls);again=w.acquire_runtime([self.p],cache,cp,ledger,lp,8,True,transport);self.assertTrue(again['stopped']);self.assertEqual(len(calls),count)
+   self.assertTrue(report['stopped']);self.assertEqual(report['blocker'],'http_429:provider_rate_limit');self.assertEqual(report['paidRequests'],1)
+   self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0]);self.assertEqual(json.loads(cp.read_text()),cache)
+   self.assertNotIn('paused',ledger);self.assertEqual(ledger['pausedTasks'],{'study':'http_429:provider_rate_limit'})
+   posted=lambda payload: payload.get('task') or 'quicklook'
+   self.assertEqual([posted(payload) for payload in calls if payload],['study'])
+   again=w.acquire_runtime([self.p],cache,cp,ledger,lp,8,True,transport)
+   self.assertFalse(again['stopped']);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+   self.assertEqual([posted(payload) for payload in calls if payload],['study','quicklook'])
+   def no_more(url,payload=None):
+    if payload is not None:self.fail('study stays paused')
+    return {'found':False}
+   third=w.acquire_runtime([self.p],cache,cp,ledger,lp,8,True,no_more)
+   self.assertFalse(third['stopped']);self.assertIsNone(w.find(cache,self.p,'study')[0]);self.assertEqual(ledger['pausedTasks'],{'study':'http_429:provider_rate_limit'})
  def test_daily_budget_never_exceeded_even_with_worker_retry(self):
   with tempfile.TemporaryDirectory() as d:
    cache={'entries':{}};ledger={'days':{}};posts=[]
@@ -105,6 +119,24 @@ class CacheAndBudgetTests(unittest.TestCase):
    self.assertEqual(report['blocker'],'uncertain_prior_attempt')
  def test_runtime_source_fingerprint_mismatch_is_not_reused(self):
   self.assertIsNone(w.runtime_value('translate',{'tr':dict(tr(),validationVersion=2,sourceFingerprint='wrong')},self.p))
+ def test_study_pause_leaves_translation_and_quicklook_runnable(self):
+  cache={'entries':{}};ledger={'days':{}};calls=[]
+  other=dict(self.p,paperID='doi:10.1234/other',id='p2',doi='10.1234/other',pmid='9',title='A randomized clinical trial B')
+  other['sourceHash']=w.text_hash(other['title'],other['abstract'])
+  def model(public):
+   calls.append(list(public['missingTasks']))
+   if public['missingTasks']==['study']:raise w.Halt('provider_http_403')
+   if 'study' in public['missingTasks']:return {'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()}
+   return {'translate':tr(),'quicklook':ql()}
+  with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
+   first=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
+   self.assertTrue(first['stopped']);self.assertEqual(first['blocker'],'provider_http_403');self.assertEqual(calls,[['translate','study','quicklook'],['study']])
+   self.assertNotIn('paused',ledger);self.assertEqual(ledger['pausedTasks'],{'study':'provider_http_403'})
+   self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+   again=w.configured_batch([self.p,other],cache,Path(d)/'cache',ledger,Path(d)/'ledger',8,model)
+   self.assertFalse(again['stopped']);self.assertEqual(calls[-1],['translate','quicklook'])
+   self.assertTrue(w.find(cache,other,'translate')[0]);self.assertTrue(w.find(cache,other,'quicklook')[0]);self.assertIsNone(w.find(cache,other,'study')[0])
+   self.assertEqual(ledger['pausedTasks'],{'study':'provider_http_403'})
  def test_configured_batch_one_call_covers_three_tasks_and_preserves_partial_on_403(self):
   cache={'entries':{}};ledger={'days':{}};calls=[]
   second=dict(self.p,paperID='doi:10.1234/2',id='p2',doi='10.1234/2',pmid='2')
