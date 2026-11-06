@@ -164,6 +164,15 @@ class RestoreLedger(unittest.TestCase):
         self.assertEqual(merged['paused'], 'prior_auth_failure')
         self.assertEqual(merged['pauseReasons'], ['prior_auth_failure', 'http_502:quote_not_in_abstract'])
 
+    def test_task_pauses_union_and_keep_the_existing_reason(self):
+        old = {'days': {'2026-10-07': {'requests': [], 'reservedAttempts': 0, 'reservedOutputTokens': 0,
+                                       'pausedTasks': {'translate': 'translate_paused'}}}}
+        new = {'days': {'2026-10-07': {'requests': [], 'reservedAttempts': 0, 'reservedOutputTokens': 0,
+                                       'pausedTasks': {'study': 'study_paused', 'translate': 'other'}}}}
+        merged = restore.merge_ledger(old, new)
+        self.assertEqual(merged['days']['2026-10-07']['pausedTasks'],
+                         {'translate': 'translate_paused', 'study': 'study_paused'})
+
     def test_known_configured_max_output_is_accounted(self):
         request = accounted_ledger()['days']['2026-10-07']['requests'][0]
         request.pop('task')

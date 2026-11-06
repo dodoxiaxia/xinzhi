@@ -109,6 +109,17 @@ def _preserve_pauses(target, incoming):
     if reasons:
         target['paused'] = target.get('paused') or incoming.get('paused') or reasons[0]
         target['pauseReasons'] = reasons
+    # Per-task pauses union the same way. A task pause is not dropped because the
+    # other copy only has a different task, and an existing reason is not rewritten.
+    paused = {}
+    for source in (target, incoming):
+        raw = source.get('pausedTasks') or {}
+        if isinstance(raw, dict):
+            for task, reason in raw.items():
+                if reason and task not in paused:
+                    paused[task] = reason
+    if paused:
+        target['pausedTasks'] = paused
 
 
 def merge_ledger(existing, imported):

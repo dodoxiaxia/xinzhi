@@ -76,6 +76,21 @@ class RuntimeBudgetTests(unittest.TestCase):
         for status in ("started", "failed_or_uncertain"):
             daily = fresh(); daily["requests"] = [{"status": status}]
             self.rejected_unchanged(daily, "uncertain_prior_attempt")
+
+    def test_task_pause_does_not_block_a_different_task(self):
+        daily = fresh(pausedTasks={"study": "provider_http_403"})
+        daily["requests"] = [
+            {"status": "failed_or_uncertain", "task": "study", "reservedAttempts": 1, "reservedOutputTokens": 5800}]
+        daily["reservedAttempts"] = 1
+        daily["reservedOutputTokens"] = 5800
+        budget.reserve_runtime(daily, "translate")
+        self.assertEqual(daily["reservedAttempts"], 3)
+        before = copy.deepcopy(daily)
+        with self.assertRaises(budget.BudgetError) as caught:
+            budget.reserve_runtime(daily, "study")
+        self.assertEqual(caught.exception.code, "paid_work_paused")
+        self.assertEqual(daily, before)
+        self.rejected_unchanged(fresh(paused="provider_http_403"), "paid_work_paused", task="translate")
         for requests in (None, {}, [None], [{}], [{"status": ""}]):
             daily = fresh(); daily["requests"] = requests
             self.rejected_unchanged(daily, "invalid_request_accounting")
