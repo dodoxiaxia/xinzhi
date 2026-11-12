@@ -1636,9 +1636,11 @@ async function museRequestReview(env) {
   const token = env.MUSE_REVIEW_DISPATCH_TOKEN;
   if (typeof token !== 'string' || !/^[A-Za-z0-9_]{20,255}$/.test(token)) return false;
   try {
-    // One run verifies every waiting candidate, so a burst of uploads needs one dispatch.
+    // One run verifies every waiting candidate, so a burst of uploads needs one dispatch. KV's shortest TTL is
+    // 60 seconds; the dispatched run keeps claiming for about two minutes (scripts/muse_review_runner.cjs), so an
+    // upload inside this window is still picked up by the run that is already coming.
     if (await env.QL_KV.get('library:muse-review-dispatch')) return false;
-    await env.QL_KV.put('library:muse-review-dispatch','1',{expirationTtl:120});
+    await env.QL_KV.put('library:muse-review-dispatch','1',{expirationTtl:60});
   } catch { return false; }
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(),5000);
   try {
