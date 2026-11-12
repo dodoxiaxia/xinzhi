@@ -165,7 +165,7 @@ def main():
                 button = page.locator('.accordion-group.open [data-filter-journal]').first
                 sidebar_journal = button.get_attribute('data-filter-journal')
                 expect(button.locator('.journal-filter-label')).to_have_text(sidebar_journal)
-                check(int(button.locator('.filter-count').inner_text()) > 0, f'{width}: sidebar journal count retained')
+                check(button.locator('.filter-count').count() == 0, f'{width}: sidebar journal chips carry no numbers')
                 button.focus()
                 button.press('Enter')
                 check(parse_qs(urlsplit(page.url).query).get('journal') == [sidebar_journal], f'{width}: sidebar keyboard filter retained')

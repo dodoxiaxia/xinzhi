@@ -43,7 +43,7 @@
     if (star) { star.disabled = !state.journal; star.textContent = followed ? '★ 已关注' : '☆ 关注期刊'; star.setAttribute('aria-pressed', String(followed)); }
   }
   document.addEventListener('click', e => {
-    const opt = e.target.closest && e.target.closest('.panel-opt');
+    const opt = e.target.closest && e.target.closest('.panel-opt[data-panel]');
     if (!opt) return;
     const v = opt.dataset.value;
     if (opt.dataset.panel === 'lane') state.lane = v;
@@ -123,7 +123,7 @@
   const openSheet = () => {
     const sb = $('#appSidebar'); if (!sb) return;
     sb.classList.add('open'); $('#filterToggleBtn')?.setAttribute('aria-expanded', 'true');
-    (sb.querySelector('.panel-opt[aria-pressed="true"]') || sb.querySelector('button'))?.focus({ preventScroll: true });
+    (sb.querySelector('.panel-opt[data-panel][aria-pressed="true"]') || sb.querySelector('button'))?.focus({ preventScroll: true });
   };
   $('#filterToggleBtn')?.addEventListener('click', () => { if ($('#appSidebar')?.classList.contains('open')) closeSheet(); else openSheet(); });
   $('#panelApplyBtn')?.addEventListener('click', e => {
@@ -321,10 +321,6 @@
   }
 
   // Sidebar Filter Reset buttons
-  $('#resetTierBtn')?.addEventListener('click', e => changeSidebarFilter('tier', '', false, e.target));
-  $('#resetPubBtn')?.addEventListener('click', e => changeSidebarFilter('pub', '', false, e.target));
-  $('#resetDesignBtn')?.addEventListener('click', e => changeSidebarFilter('design', '', false, e.target));
-  $('#resetTagBtn')?.addEventListener('click', e => changeSidebarFilter('tag', '', false, e.target));
 
   // Global Document Clicks Delegation
   document.addEventListener('submit', e => {

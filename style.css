@@ -125,7 +125,7 @@ header.app-header {
 .nav-tab-btn:hover { color: var(--text-primary); }
 .nav-tab-btn.active { color: var(--text-primary); font-weight: 700; }
 .nav-tab-btn.active::after { transform: scaleX(1); }
-.nav-tab-btn .badge { font-size: 11.5px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.nav-tab-btn .badge { display: none; font-size: 11.5px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .nav-tab-btn.active .badge { color: var(--accent); }
 
 .header-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
@@ -657,7 +657,7 @@ main.main-content { min-width: 0; }
   .header-nav::-webkit-scrollbar { display: none; }
   .nav-tab-btn { height: 46px; padding: 0 13px; font-size: 15px; }
   .nav-tab-btn::after { left: 13px; right: 13px; }
-  .nav-tab-btn .badge { display: inline; font-size: 11px; }
+  .nav-tab-btn .badge { display: none; font-size: 11px; }
   .brand-mark { font-size: 24px; }
   .stream-toolbar { top: 0; padding: 8px 0; }
   .stream-controls { width: 100%; justify-content: space-between; }
@@ -1512,3 +1512,19 @@ body:has(aside.sidebar.open) { overflow: hidden; }
 @media (max-width: 379px) { .app-footer > .view-toggle { display: inline-flex; align-items: center; } .app-footer .view-toggle-btn { min-height: 44px; min-width: 44px; font-size: 13px; background: none; box-shadow: none; } .app-footer .view-toggle-btn.active { color: var(--text-primary); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; } }
 .panel-group .sidebar-card, .panel-more .sidebar-card { border: 0 !important; background: none !important; box-shadow: none !important; padding: 8px 0 6px !important; }
 .panel-body .filter-item-btn.active .filter-count { color: #fff; }
+
+/* 面板里所有可选项统一成平铺小块：不显示数字，没有各组单独的重置 */
+.panel-sub { margin: 14px 0 6px; font: 500 12px var(--font-sans); color: var(--text-muted); }
+.panel-more .panel-sub:first-of-type { margin-top: 4px; }
+.panel-body .panel-options { gap: 6px; }
+.panel-body .panel-opt, .panel-body .tag-chip { display: inline-flex; align-items: center; min-height: 44px; width: auto; max-width: 100%; padding: 0 14px; border: 1px solid var(--border); border-radius: var(--radius-full); background: none; font: inherit; font-size: 14px; color: var(--text-secondary); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.panel-body .panel-opt[aria-pressed="true"], .panel-body .panel-opt.active, .panel-body .tag-chip.active, .panel-body .accordion-heading.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.panel-body .is-empty { opacity: .5; }
+.panel-body .accordion-group { display: contents; border: 0; }
+.panel-body .accordion-heading.panel-opt { padding: 0 0 0 14px; gap: 0; }
+.panel-body .accordion-heading .accordion-header { display: inline-flex; align-items: center; width: auto; min-height: 44px; padding: 0; border: 0; background: none; font: inherit; font-size: 14px; color: inherit; font-weight: inherit; }
+.panel-body .accordion-expand-btn { width: 40px; min-height: 44px; min-width: 40px; border: 0; background: none; }
+.panel-body .accordion-content { display: none; flex: 1 1 100%; padding: 2px 0 8px 10px; margin-left: 4px; border-left: 2px solid var(--border); }
+.panel-body .accordion-group.open .accordion-content { display: flex; flex-wrap: wrap; }
+.panel-body .panel-opt .journal-filter-label { display: inline; flex: none; }
+.panel-body .panel-options[hidden], .panel-body .panel-sub[hidden] { display: none; }

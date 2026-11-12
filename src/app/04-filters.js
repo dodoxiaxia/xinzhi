@@ -514,13 +514,7 @@
         const count = isAll ? dataset.length : (tierCounts[t.id] || 0);
         const isActive = isAll ? !state.clinicalTier : state.clinicalTier === t.id;
 
-        return `<li class="facet-option-row">
-          <button type="button" class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-tier="${esc(t.id)}" aria-pressed="${isActive}">
-            <span style="display:flex; align-items:center;"><span class="tier-dot ${t.dotClass}"></span>${esc(t.name)}</span>
-            <span class="filter-count">${count}</span>
-          </button>
-          ${browseOnlyButton('tier', t.id, t.name)}
-        </li>`;
+        return `<button type="button" class="panel-opt${isActive ? ' active' : ''}" data-filter-tier="${esc(t.id)}" aria-pressed="${isActive}">${esc(isAll ? '全部信源' : t.name)}</button>`;
       }).join('');
     }
 
@@ -586,26 +580,16 @@
         let jHtml = '';
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
-          jHtml += `<div class="journal-filter-item facet-option-row"><button type="button" class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">
-            <span class="journal-filter-label"><span>${state.favoriteJournals?.includes(jName) ? '<span class="journal-followed" title="我的期刊">★</span> ' : ''}${esc(jName)}</span></span>
-            <span class="filter-count">${jCount}</span>
-          </button>${browseOnlyButton('journal', jName, jName)}</div>`;
+          jHtml += `<button type="button" class="panel-opt accordion-journal-btn${isJActive ? ' active' : ''}${jCount ? '' : ' is-empty'}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">${state.favoriteJournals?.includes(jName) ? '★ ' : ''}<span class="journal-filter-label">${esc(jName)}</span></button>`;
         }
 
-        accHtml += `
-          <div class="accordion-group ${isOpen ? 'open' : ''}">
-            <div class="accordion-heading">
-              <button type="button" class="accordion-header ${isPubActive && !state.journal ? 'active' : ''}" data-filter-publisher="${esc(pubName)}" aria-pressed="${isPubActive && !state.journal}">
-                <span>${esc(pubName)} <span class="filter-count">(${pubTotal})</span></span>
-              </button>
-              ${browseOnlyButton('pub', pubName, pubName)}
-              <button type="button" class="accordion-expand-btn" data-pub-expand="${esc(pubName)}" aria-expanded="${isOpen}" aria-controls="${contentId}" aria-label="展开或收起${esc(pubName)}旗下期刊"><span class="accordion-arrow" aria-hidden="true">▶</span></button>
+        accHtml += `<div class="accordion-group ${isOpen ? 'open' : ''}">
+            <div class="accordion-heading panel-opt${isPubActive && !state.journal ? ' active' : ''}${pubTotal ? '' : ' is-empty'}">
+              <button type="button" class="accordion-header ${isPubActive && !state.journal ? 'active' : ''}" data-filter-publisher="${esc(pubName)}" aria-pressed="${isPubActive && !state.journal}">${esc(pubName)}</button>
+              <button type="button" class="accordion-expand-btn" data-pub-expand="${esc(pubName)}" aria-expanded="${isOpen}" aria-controls="${contentId}" aria-label="展开或收起${esc(pubName)}旗下期刊"><span class="accordion-arrow" aria-hidden="true">▸</span></button>
             </div>
-            <div class="accordion-content" id="${contentId}">
-              ${jHtml}
-            </div>
-          </div>
-        `;
+            <div class="accordion-content panel-options" id="${contentId}">${jHtml}</div>
+          </div>`;
       }
       pubAccEl.innerHTML = accHtml || '<p class="text-muted" style="padding:10px; font-size:12px;">暂无匹配期刊</p>';
     }
@@ -645,13 +629,7 @@
         const count = isAll ? facet('design').length : (designCounts[d.key] || 0);
         const isActive = isAll ? !state.studyDesign : state.studyDesign === d.key;
 
-        return `<li class="facet-option-row">
-          <button type="button" class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-design="${esc(d.key)}" aria-pressed="${isActive}">
-            <span>${d.name}</span>
-            <span class="filter-count">${count}</span>
-          </button>
-          ${browseOnlyButton('design', d.key, d.name)}
-        </li>`;
+        return `<button type="button" class="panel-opt${isActive ? ' active' : ''}${isAll || designCounts[d.key] ? '' : ' is-empty'}" data-filter-design="${esc(d.key)}" aria-pressed="${isActive}">${esc(isAll ? '全部设计' : d.name)}</button>`;
       }).join('');
     }
 
@@ -670,9 +648,7 @@
       const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
         const isActive = state.tag === tag;
-        return `<span class="facet-option-row tag-option"><button type="button" class="tag-chip ${isActive ? 'active' : ''}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">
-          ${esc(tag)} (${count})
-        </button>${browseOnlyButton('tag', tag, tag)}</span>`;
+        return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)}</button>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
   }

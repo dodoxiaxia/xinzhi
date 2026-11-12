@@ -75,53 +75,24 @@
       <div class="sheet-head"><button class="panel-reset" id="panelResetBtn" type="button">重置</button><b>筛选</b><button class="sheet-close" id="sheetClose" type="button" aria-label="关闭筛选">&times;</button></div>
       <div class="panel-body" id="panelBody">
         <section class="panel-group" id="pgLane"><h3>领域</h3><div class="panel-options" id="panelOptLane" role="group" aria-label="领域"></div></section>
-        <section class="panel-group" id="pgFt"><h3>全文状态</h3><div class="panel-options" id="panelOptFt" role="group" aria-label="全文状态"></div><div class="panel-options" id="panelOptReading" role="group" aria-label="可读内容"></div></section>
+        <section class="panel-group" id="pgFt"><h3>全文状态</h3><div class="panel-options" id="panelOptFt" role="group" aria-label="全文状态"></div><h4 class="panel-sub">可读内容</h4><div class="panel-options" id="panelOptReading" role="group" aria-label="可读内容"></div></section>
         <section class="panel-group" id="pgRange"><h3>发表时间</h3><div class="panel-options" id="panelOptRange" role="group" aria-label="发表时间"></div></section>
-        <section class="panel-group" id="pgJournal"><h3>期刊</h3><div class="panel-options" id="panelOptJournal" role="group" aria-label="期刊"></div>
+        <section class="panel-group" id="pgJournal"><h3>期刊</h3>
+          <h4 class="panel-sub">我的期刊</h4>
+          <div class="panel-options" id="panelOptJournal" role="group" aria-label="我的期刊"></div>
           <button type="button" class="panel-opt panel-follow" id="favoriteJournalBtn" aria-pressed="false">☆ 关注期刊</button>
-      <div class="sidebar-card">
-        <div class="sidebar-title">
-          <span>信源分组</span>
-          <button class="sidebar-reset-btn" id="resetTierBtn">重置</button>
-        </div>
-        <ul class="filter-list" id="tierFilterList">
-          <!-- Dynamically populated -->
-        </ul>
-      </div>
-
-      <div class="sidebar-card">
-        <div class="sidebar-title">
-          <span>出版方 / 期刊</span>
-          <button class="sidebar-reset-btn" id="resetPubBtn">重置</button>
-        </div>
-        <div id="publisherAccordion">
-          <!-- Dynamically populated with Accordion groups -->
-        </div>
-      </div>
-
+          <h4 class="panel-sub">信源分组</h4>
+          <div class="panel-options" id="tierFilterList" role="group" aria-label="信源分组"></div>
+          <h4 class="panel-sub">出版方</h4>
+          <div class="panel-options publisher-chips" id="publisherAccordion" role="group" aria-label="出版方与期刊"></div>
         </section>
         <section class="panel-group" id="pgType"><h3>文章类型</h3><div class="panel-options" id="panelOptType" role="group" aria-label="文章类型"></div></section>
         <details class="panel-more">
           <summary>更多条件</summary>
-      <div class="sidebar-card">
-        <div class="sidebar-title">
-          <span>研究设计 <small class="heuristic-note" title="按题名/摘要关键词自动判断，未经人工核验">自动判断</small></span>
-          <button class="sidebar-reset-btn" id="resetDesignBtn">重置</button>
-        </div>
-        <ul class="filter-list" id="designFilterList">
-          <!-- Dynamically populated -->
-        </ul>
-      </div>
-
-      <div class="sidebar-card">
-        <div class="sidebar-title">
-          <span>主题标签</span>
-          <button class="sidebar-reset-btn" id="resetTagBtn">重置</button>
-        </div>
-        <div class="tags-cloud" id="tagsCloud">
-          <!-- Dynamically populated -->
-        </div>
-      </div>
+          <h4 class="panel-sub">研究设计</h4>
+          <div class="panel-options" id="designFilterList" role="group" aria-label="研究设计"></div>
+          <h4 class="panel-sub">主题标签</h4>
+          <div class="panel-options" id="tagsCloud" role="group" aria-label="主题标签"></div>
         </details>
       </div>
       <div class="panel-foot"><button type="button" class="btn-sm btn-primary" id="panelApplyBtn">查看 0 篇</button></div>
