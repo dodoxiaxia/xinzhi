@@ -57,6 +57,8 @@ def main():
                 check(cards.count() >= 3 and all((cards.nth(i).bounding_box()['y'] + cards.nth(i).bounding_box()['height']) <= 844 for i in range(3)) if phone else True, label + ': three full cards fit the first screen')
                 check(page.locator('.article-card .btn-primary').count() <= cards.count(), label + ': at most one solid button per card')
                 check(page.evaluate("[...document.querySelectorAll('.article-card')].every(c=>c.querySelectorAll('.btn-primary').length<=1)"), label + ': each card has one solid button at most')
+                check(not any(ch.isdigit() for ch in page.locator('#laneBar .lane-select').inner_text() + ft.inner_text()), label + ': dropdown names carry no counts')
+                check(page.evaluate("[...document.querySelectorAll('#laneBar .lane-select, #ftBar select')].every(s=>{const c=document.createElement('canvas').getContext('2d');const cs=getComputedStyle(s);c.font=cs.fontSize+' '+cs.fontFamily;const w=c.measureText(s.options[s.selectedIndex].text).width;return w+parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)<=s.clientWidth})"), label + ': selected dropdown text is not truncated')
                 lane = page.locator('#laneBar .lane-select')
                 lane.select_option('all')
                 check('lane=all' in page.url, label + ': lane select updates the URL state')

@@ -2,13 +2,13 @@
   // ---- Relevance lanes: keep the reader's default view on cardiology + medical AI ----
   const CARDIO_TIERS = new Set(['心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队']);
   const LANES = [
-    { id: 'core', name: '心血管 + AI 医疗' },
-    { id: 'crossai', name: '心血管 × AI' },
-    { id: 'cardio', name: '心血管' },
-    { id: 'aimed', name: 'AI 医疗' },
-    { id: 'general', name: '综合医学' },
-    { id: 'aitech', name: 'AI 行业动态' },
-    { id: 'all', name: '全部' }
+    { id: 'core', name: '心血管 + AI 医疗', short: '心血管+AI' },
+    { id: 'crossai', name: '心血管 × AI', short: '心血管×AI' },
+    { id: 'cardio', name: '心血管', short: '心血管' },
+    { id: 'aimed', name: 'AI 医疗', short: 'AI 医疗' },
+    { id: 'general', name: '综合医学', short: '综合医学' },
+    { id: 'aitech', name: 'AI 行业动态', short: 'AI 行业' },
+    { id: 'all', name: '全部', short: '全部领域' }
   ];
   const AI_RE = /artificial intelligence|machine learning|deep learning|neural network|language model|\bLLMs?\b|\bAI\b|foundation model|generative (?:AI|model)|ChatGPT|\bGPT-?\d|transformer|federated learning|convolutional|natural language processing|computer[- ]aided|radiomics/i;
   const CARDIO_RE = /\bcardi[a-z]*|\bheart\b|atrial|ventric|coronary|myocard|arrhythm|\bECG\b|\bEKG\b|electrocardio|aort|hypertens|stroke|vascular|angio|valv|thrombo|anticoag|lipoprotein|cholesterol|statin|pacemaker|defibrill|tachycardia|fibrillation/i;

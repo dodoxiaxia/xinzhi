@@ -307,7 +307,7 @@ async function searchFill(page, text) {
     await page.locator('#ftBar').waitFor();
     const chipText = await page.locator('#ftBar').textContent();
     for (const label of ['全部', '可阅读', '核验中', '排队下载', '未取得', '未申请']) assert(chipText.includes(label), 'filter chip ' + label);
-    const countOf = value => page.locator('#ftBar option[value="' + value + '"]').textContent().then(t => Number(t.trim().split(/\s+/).pop()));
+    const countOf = value => page.locator('#ftBar option[value="' + value + '"]').getAttribute('data-count').then(Number);
     assert(await countOf('') >= 4, '全部 counts every paper in the current list');
     assert(await countOf('ready') >= 1);
     assert.equal(await countOf('verifying'), 1);

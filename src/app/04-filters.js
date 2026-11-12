@@ -143,7 +143,7 @@
     const active = state.ftFilter || '';
     el.hidden = false;
     el.innerHTML = '<select class="range-select ft-select" data-ft-select aria-label="全文状态（各档篇数按当前领域、时间与搜索统计）">' + FT_FILTERS.map(([v, n]) =>
-      `<option value="${v}"${active === v ? ' selected' : ''}>全文：${n} ${counts[v]}</option>`).join('') + '</select>';
+      `<option value="${v}" data-count="${counts[v]}"${active === v ? ' selected' : ''}>${v === '' ? '全部全文' : n}</option>`).join('') + '</select>';
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -169,7 +169,7 @@
       if (paperCrossAI(p)) counts.crossai++;
     }
     el.hidden = false;
-    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}"${state.lane === l.id ? ' selected' : ''}>${esc(l.name)} ${counts[l.id]}</option>`).join('') + '</select>';
+    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}" data-count="${counts[l.id]}"${state.lane === l.id ? ' selected' : ''}>${esc(l.short || l.name)}</option>`).join('') + '</select>';
   }
 
   // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.

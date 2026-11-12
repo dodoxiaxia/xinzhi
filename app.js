@@ -593,13 +593,13 @@
   // ---- Relevance lanes: keep the reader's default view on cardiology + medical AI ----
   const CARDIO_TIERS = new Set(['心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队']);
   const LANES = [
-    { id: 'core', name: '心血管 + AI 医疗' },
-    { id: 'crossai', name: '心血管 × AI' },
-    { id: 'cardio', name: '心血管' },
-    { id: 'aimed', name: 'AI 医疗' },
-    { id: 'general', name: '综合医学' },
-    { id: 'aitech', name: 'AI 行业动态' },
-    { id: 'all', name: '全部' }
+    { id: 'core', name: '心血管 + AI 医疗', short: '心血管+AI' },
+    { id: 'crossai', name: '心血管 × AI', short: '心血管×AI' },
+    { id: 'cardio', name: '心血管', short: '心血管' },
+    { id: 'aimed', name: 'AI 医疗', short: 'AI 医疗' },
+    { id: 'general', name: '综合医学', short: '综合医学' },
+    { id: 'aitech', name: 'AI 行业动态', short: 'AI 行业' },
+    { id: 'all', name: '全部', short: '全部领域' }
   ];
   const AI_RE = /artificial intelligence|machine learning|deep learning|neural network|language model|\bLLMs?\b|\bAI\b|foundation model|generative (?:AI|model)|ChatGPT|\bGPT-?\d|transformer|federated learning|convolutional|natural language processing|computer[- ]aided|radiomics/i;
   const CARDIO_RE = /\bcardi[a-z]*|\bheart\b|atrial|ventric|coronary|myocard|arrhythm|\bECG\b|\bEKG\b|electrocardio|aort|hypertens|stroke|vascular|angio|valv|thrombo|anticoag|lipoprotein|cholesterol|statin|pacemaker|defibrill|tachycardia|fibrillation/i;
@@ -1237,7 +1237,7 @@
     const active = state.ftFilter || '';
     el.hidden = false;
     el.innerHTML = '<select class="range-select ft-select" data-ft-select aria-label="全文状态（各档篇数按当前领域、时间与搜索统计）">' + FT_FILTERS.map(([v, n]) =>
-      `<option value="${v}"${active === v ? ' selected' : ''}>全文：${n} ${counts[v]}</option>`).join('') + '</select>';
+      `<option value="${v}" data-count="${counts[v]}"${active === v ? ' selected' : ''}>${v === '' ? '全部全文' : n}</option>`).join('') + '</select>';
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -1263,7 +1263,7 @@
       if (paperCrossAI(p)) counts.crossai++;
     }
     el.hidden = false;
-    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}"${state.lane === l.id ? ' selected' : ''}>${esc(l.name)} ${counts[l.id]}</option>`).join('') + '</select>';
+    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}" data-count="${counts[l.id]}"${state.lane === l.id ? ' selected' : ''}>${esc(l.short || l.name)}</option>`).join('') + '</select>';
   }
 
   // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.
@@ -1859,9 +1859,8 @@
     // Everything else (impact factor, study type, tags, abstract, evidence limits, second links) lives in the reader.
     const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
     const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
-    const zhLabel = titleZh ? '' : machineZh ? '<span class="content-label" title="机器翻译，未经人工核对">机器翻译</span>' : '';
     const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhLabel}${zhHtml}</button></h3>`
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
       : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
 
     // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.

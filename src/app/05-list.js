@@ -14,9 +14,8 @@
     // Everything else (impact factor, study type, tags, abstract, evidence limits, second links) lives in the reader.
     const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
     const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
-    const zhLabel = titleZh ? '' : machineZh ? '<span class="content-label" title="机器翻译，未经人工核对">机器翻译</span>' : '';
     const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhLabel}${zhHtml}</button></h3>`
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
       : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
 
     // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
