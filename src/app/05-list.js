@@ -55,9 +55,10 @@
 
           <div class="card-source-actions">
             ${pdfDownloadLink(p)}
-            ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="card-link" title="在期刊官网打开">官网原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
+            ${doiUrl!=='#' && !doiStatusBlock(p) ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="card-link" title="在期刊官网打开">官网原文 ↗</a>` : doiUrl==='#' ? '<span class="text-muted">原文链接待补</span>' : ''}
           </div>
         </div>
+        ${doiStatusBlock(p)}
       </article>
     `;
   }
@@ -79,6 +80,7 @@
           <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${title}</button>
           ${translatedTitle ? `<div class="compact-original-title" lang="en">${esc(p.title)}</div>` : ''}
           ${publicationStatusHtml(p)}
+          ${doiStatusBlock(p)}
           <div class="compact-meta">
             <span class="journal-badge ${pubClass}" title="${esc(journalName)}">${esc(journalName)}</span>
             ${journalMetricBadge(p)}
@@ -129,16 +131,17 @@
     const pendingLookup = !lookup || lookup.state === 'loading';
     const uncertain = lookup && ['error', 'unsupported'].includes(lookup.state);
     const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : '站内暂未收录这个 DOI。';
+    // The bibliography-conflict note is maintainer information; ordinary readers only see the one status block.
     let conflictNotice = '';
     const record = DOI_FULLTEXT.get(doi);
-    if (record) {
+    if (record && ftMaintainerMode()) {
       const conflicts = STATIC_DOI_PAPERS.filter(p => exactDoi(p.doi) === doi && !sameDoiTitle(p.title, record.title));
-      if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
+      if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>维护者：原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
-    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${doiJobNotice(doi)}<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}"${pendingLookup ? ' disabled' : ''}>刷新收录状态</button></div>`
+    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
-      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3><p>' + (activeJob ? '后台取得官方题录后会加入文献库，取得全文后可下载。' : '输入全文口令提交请求；取得并核验全文后，这里会出现“下载 PDF”。') + '</p><a href="' + esc(job && !activeJob ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi)) + '" target="_blank" rel="noopener" class="btn-sm btn-primary">' + (activeJob ? '查看任务状态' : job ? '重新提交全文任务' : '获取全文') + '</a></div>' : '');
+      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3>' + (pendingLookup ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
     if (!lookup) lookupSupplementalDoi(doi);
   }

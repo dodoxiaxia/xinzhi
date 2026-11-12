@@ -186,7 +186,7 @@
     return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
   }
   function doiTitleKey(value) {
-    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim();
+    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim().replace(/[\s.。!?;:,，；：]+$/u, '');
   }
   function sameDoiTitle(left, right) {
     return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
@@ -273,8 +273,13 @@
     if (typeof raw.id !== 'string' || !/^[a-f0-9-]{36}$/.test(raw.id) || raw.doi !== doi
         || !['queued', 'running', 'available', 'pending', 'review', 'failed', 'manual_needed'].includes(raw.state)) throw new Error('library_unavailable');
     const stage = ['queued','running','uploading','verifying','available','login_required','review','failed'].includes(raw.stage) ? raw.stage : '';
+    const iso = value => typeof value === 'string' && value.length <= 40 && Number.isFinite(Date.parse(value)) ? value : '';
     DOI_JOBS.set(doi, { id: raw.id, doi, state: raw.state, stage,
       message: typeof raw.message === 'string' ? raw.message.slice(0, 500) : '',
+      verificationMode: ['immediate', 'hourly'].includes(raw.verificationMode) ? raw.verificationMode : '',
+      verificationExpectedAt: iso(raw.verificationExpectedAt), nextVerificationAt: iso(raw.nextVerificationAt),
+      sourceKind: ['reader_upload', 'open_access', 'download'].includes(raw.sourceKind) ? raw.sourceKind : '',
+      reason: typeof raw.reason === 'string' && /^[a-z_]{1,40}$/.test(raw.reason) ? raw.reason : '',
       nextCheckSeconds: Number.isInteger(raw.nextCheckSeconds) && raw.nextCheckSeconds >= 15 && raw.nextCheckSeconds <= 120 ? raw.nextCheckSeconds : 15 });
   }
   function watchDoiJob(doi) {
@@ -285,14 +290,6 @@
     if (typeof document === 'undefined' || document.hidden || Date.now() - DOI_JOB_WATCH.startedAt > 3600000) return;
     DOI_JOB_WATCH.timer = setTimeout(() => lookupSupplementalDoi(doi, true), DOI_JOBS.get(doi).nextCheckSeconds * 1000);
   }
-  function doiJobNotice(doi) {
-    const job = DOI_JOBS.get(doi);
-    if (!job) return '';
-    const labels = { queued: '全文任务已排队，页面会自动更新状态。', running: '后台正在获取全文，完成后会显示下载入口。',
-      manual_needed: '题录已保存，全文需人工处理；等待不会自动获取。', available: '全文已取得，题录与文件正在同步，可刷新状态。', pending: '后台查询已结束，目前未找到可获取的全文。',
-      review: '后台查询已结束，全文来源对应需要核验。', failed: '后台未能完成获取，可重新提交任务。' };
-    return '<p class="doi-job-notice" role="status">' + esc(job.message || labels[job.state]) + ' <a href="' + esc(acquireDoiUrl(doi)) + '" target="_blank" rel="noopener">查看任务</a></p>';
-  }
   async function libraryJson(url) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
     try {
@@ -301,6 +298,30 @@
       const result = await response.json();
       if (!result || result.ok !== true) throw new Error('library_unavailable');
       return result;
+    } finally { clearTimeout(timer); }
+  }
+  // Submitting a request, retrying and refreshing all happen inside the status block, so there is no second page
+  // to visit and come back from. The passphrase goes in the POST body of a same-origin request, never in a URL.
+  async function submitFulltextForm(form) {
+    const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
+    if (!doi || !input || !input.value) return;
+    const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
+    const messages = { pdf_passphrase_invalid: '全文口令不正确，请重新输入。', pdf_rate_limited: '口令错误次数过多，请一小时后再试。', library_paused: '这篇暂时停止获取，请稍后再试。', library_identity: '这篇的全文来源还在核对中，暂时不能重新提交。', muse_owner_conflict: '这篇已有任务在进行，请刷新状态。' };
+    if (error) error.textContent = ''; if (button) button.disabled = true;
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(route + '?doi=' + encodeURIComponent(doi), { method: 'POST', cache: 'no-store', signal: controller.signal,
+        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ passphrase: input.value }).toString() });
+      let result = null; try { result = await response.json(); } catch (e) { result = null; }
+      if (!response.ok && response.status !== 202) { const code = result && result.error; throw Object.assign(new Error(code || 'submit_failed'), { code }); }
+      input.value = '';
+      if (result && result.job) mergeDoiJob(doi, result.job);
+      if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
+      await lookupSupplementalDoi(doi, true);
+      refreshSupplementalView();
+    } catch (e) {
+      if (error) error.textContent = messages[e.code] || (e.name === 'AbortError' ? '请求超时，请稍后刷新状态确认是否已提交。' : '提交没有成功，请稍后再试。');
+      if (button) button.disabled = false;
     } finally { clearTimeout(timer); }
   }
   function refreshSupplementalView() {
@@ -1096,19 +1117,70 @@
     }
     return p && PDF_LIBRARY_IDS.has(String(p.id)) ? '/api/pdf?id=' + encodeURIComponent(p.id) : '';
   }
-  function pdfDownloadLink(p) {
+  // One status description per paper for the whole page. The card, the DOI search view and the empty state all
+  // render it, so the same task never shows different words in two places (see docs/使用说明.md "全文状态").
+  const FT_STEPS = ['排队下载', '已收到，核验中', '可阅读'];
+  function ftMaintainerMode() { return typeof MAINTAINER !== 'undefined' && MAINTAINER === true; }
+  function fulltextView(p) {
+    const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
+    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '', eta: '', action: 'download', url };
+    if (!doi) return null;
+    const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
+    if (job && doiJobActive(job)) {
+      if (job.stage === 'verifying') {
+        const fast = job.verificationMode === 'immediate';
+        return { kind: 'verifying', step: 1, headline: received + '，正在核验', short: '已收到 PDF，核验中', action: 'refresh',
+          eta: fast ? '核验通常几分钟内完成' : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时' };
+      }
+      if (job.stage === 'queued' || job.state === 'queued') return { kind: 'queued', step: 0, headline: '已排入下载队列，等待下载端领取', short: '全文排队中', eta: '预计数小时内，不保证即时', action: 'refresh', upload: true };
+      return { kind: 'running', step: 0, headline: '下载端正在获取全文', short: '全文获取中', eta: '通常几十分钟内；取得后自动进入核验', action: 'refresh', upload: true };
+    }
+    if ((job && job.state === 'review') || (!job && record && record.fulltextStatus === 'review'))
+      return job ? { kind: 'review', step: 1, stopped: true, stopLabel: '核验未通过', short: '全文核验未通过', headline: '已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文', eta: '可以直接上传正确的 PDF，核验通常几分钟内完成', action: 'upload' }
+        : { kind: 'review', step: 1, stopped: true, stopLabel: '核验未通过', short: '全文来源核对中', headline: '这篇文献的全文来源还在核对中', eta: '暂时没有可下载的 PDF，可以先看官网原文', action: 'official' };
+    if ((job && ['failed', 'manual_needed'].includes(job.state)) || (record && record.fulltextStatus === 'manual_needed'))
+      return { kind: 'failed', step: 0, stopped: true, stopLabel: '未能获取', short: '全文未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
+    return { kind: 'none', step: -1, short: '待补全文', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
+  }
+  function fulltextStatusHtml(p, full) {
     const conflict = fulltextConflict(p);
-    if (conflict) return `<span class="fulltext-state fulltext-review" title="官方题名：${esc(conflict.title)}">题录对应待核实</span>`;
-    const job = p && DOI_JOBS.get(exactDoi(p.doi));
-    if (doiJobActive(job)) return '<span class="fulltext-state">' + (job.stage === 'verifying' ? '已回传，等待核验' : job.stage === 'uploading' ? 'Drive 已上传，正在回传' : job.state === 'queued' ? '全文排队中' : '全文获取中') + '</span><a href="' + esc(acquireDoiUrl(job.doi)) + '" target="_blank" rel="noopener" class="btn-sm">查看任务</a>';
-    const url = pdfDownloadUrl(p);
-    if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>`;
-    const doi = p && exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
-    const manual = record?.fulltextStatus === 'manual_needed';
-    if (job && ['failed','manual_needed','review'].includes(job.state)) return '<span class="fulltext-state" title="' + esc(job.message) + '">' + (job.state === 'review' ? '全文核验未通过' : '全文需人工处理') + '</span><a href="' + esc(acquireDoiUrl(doi)) + '" target="_blank" rel="noopener" class="btn-sm">查看处理状态</a>';
-    const label = manual ? '全文需人工处理' : record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';
-    const acquire = job ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi);
-    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquire)}" target="_blank" rel="noopener" class="btn-sm">${manual ? '查看处理状态' : record || job ? '再次获取全文' : '获取全文'}</a>` : '';
+    if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
+    const view = fulltextView(p), doi = p && exactDoi(p.doi);
+    if (!view) return '';
+    const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
+    const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
+    const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
+    const mode = job && job.stage ? 'muse' : 'legacy';
+    const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>'
+      : view.action === 'refresh' ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">刷新状态</button>'
+      : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
+      : view.action === 'official' ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>'
+      : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
+    const form = view.action === 'submit' || view.action === 'retry'
+      ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
+    const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
+    if (!full) {
+      if (view.action === 'download') return primary;
+      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="fulltext-state" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
+        + esc(view.short) + (view.step >= 0 && !view.stopped ? ' · 第 ' + (view.step + 1) + '/3 步' : '') + '</span>' + primary + '</span>' + form;
+    }
+    const steps = FT_STEPS.map((label, i) => {
+      const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
+      return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
+    }).join('');
+    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '"><ol class="ft-steps">' + steps + '</ol>'
+      + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
+      + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
+  }
+  function pdfDownloadLink(p) {
+    // In the DOI search view the card carries the full status block instead, so it is never repeated.
+    const doi = p && exactDoi(p.doi);
+    if (doi && exactDoi(state.search) === doi) return '';
+    return fulltextStatusHtml(p, false);
+  }
+  function doiStatusBlock(p) {
+    const doi = p && exactDoi(p.doi);
+    return doi && exactDoi(state.search) === doi ? fulltextStatusHtml(p, true) : '';
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;
@@ -1772,9 +1844,10 @@
 
           <div class="card-source-actions">
             ${pdfDownloadLink(p)}
-            ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="card-link" title="在期刊官网打开">官网原文 ↗</a>` : '<span class="text-muted">原文链接待补</span>'}
+            ${doiUrl!=='#' && !doiStatusBlock(p) ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="card-link" title="在期刊官网打开">官网原文 ↗</a>` : doiUrl==='#' ? '<span class="text-muted">原文链接待补</span>' : ''}
           </div>
         </div>
+        ${doiStatusBlock(p)}
       </article>
     `;
   }
@@ -1796,6 +1869,7 @@
           <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${title}</button>
           ${translatedTitle ? `<div class="compact-original-title" lang="en">${esc(p.title)}</div>` : ''}
           ${publicationStatusHtml(p)}
+          ${doiStatusBlock(p)}
           <div class="compact-meta">
             <span class="journal-badge ${pubClass}" title="${esc(journalName)}">${esc(journalName)}</span>
             ${journalMetricBadge(p)}
@@ -1846,16 +1920,17 @@
     const pendingLookup = !lookup || lookup.state === 'loading';
     const uncertain = lookup && ['error', 'unsupported'].includes(lookup.state);
     const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : '站内暂未收录这个 DOI。';
+    // The bibliography-conflict note is maintainer information; ordinary readers only see the one status block.
     let conflictNotice = '';
     const record = DOI_FULLTEXT.get(doi);
-    if (record) {
+    if (record && ftMaintainerMode()) {
       const conflicts = STATIC_DOI_PAPERS.filter(p => exactDoi(p.doi) === doi && !sameDoiTitle(p.title, record.title));
-      if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
+      if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>维护者：原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
-    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${doiJobNotice(doi)}<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}"${pendingLookup ? ' disabled' : ''}>刷新收录状态</button></div>`
+    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
-      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3><p>' + (activeJob ? '后台取得官方题录后会加入文献库，取得全文后可下载。' : '输入全文口令提交请求；取得并核验全文后，这里会出现“下载 PDF”。') + '</p><a href="' + esc(job && !activeJob ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi)) + '" target="_blank" rel="noopener" class="btn-sm btn-primary">' + (activeJob ? '查看任务状态' : job ? '重新提交全文任务' : '获取全文') + '</a></div>' : '');
+      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3>' + (pendingLookup ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
     if (!lookup) lookupSupplementalDoi(doi);
   }
@@ -3330,7 +3405,20 @@
   $('#resetTagBtn')?.addEventListener('click', e => changeSidebarFilter('tag', '', false, e.target));
 
   // Global Document Clicks Delegation
+  document.addEventListener('submit', e => {
+    const form = e.target.closest && e.target.closest('form[data-ft-form]');
+    if (form) { e.preventDefault(); submitFulltextForm(form); }
+  });
   document.addEventListener('click', e => {
+    const ft = e.target.closest('[data-ft-action]');
+    if (ft) {
+      const doi = exactDoi(ft.dataset.doi), box = ft.closest('[data-ft-doi]') || ft.parentElement;
+      if (ft.dataset.ftAction === 'open-form') {
+        const form = (box.querySelector('[data-ft-form]') || (box.parentElement && box.parentElement.querySelector('[data-ft-form]')));
+        if (form) { form.hidden = false; form.querySelector('input')?.focus(); }
+      } else if (ft.dataset.ftAction === 'refresh') { ft.disabled = true; lookupSupplementalDoi(doi, true).then(refreshSupplementalView); }
+      return;
+    }
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
     if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
     if (e.target.closest('[data-action="retry-radar-archive"]')) { RADAR_LOAD.state = 'idle'; renderStream(); return; }
