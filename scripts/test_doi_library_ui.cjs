@@ -27,7 +27,7 @@ async function helpers() {
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
   const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
-    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftClock', 'ftMaintainerMode', 'fulltextView', 'fulltextStatusHtml', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
+    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftMaintainerMode', 'fulltextView', 'fulltextStatusHtml', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
   vm.runInContext([constant('FT_STEPS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
@@ -85,10 +85,10 @@ async function helpers() {
   c.state.search = pending.doi;
   assert.equal(c.pdfDownloadLink(pending), '', 'the card does not repeat the status in the DOI view');
   const hourly = c.doiStatusBlock(pending);
-  assert.equal((hourly.match(/<li[ >]/g) || []).length, 3); assert(hourly.includes('aria-current="step"')); assert(hourly.includes('已收到 PDF，正在核验')); assert(hourly.includes('已排入每小时批次'));
+  assert.equal((hourly.match(/<li[ >]/g) || []).length, 3); assert(hourly.includes('aria-current="step"')); assert(hourly.includes('已收到 PDF，正在核验')); assert(!/下一批|计划|\d\d:\d\d/.test(hourly), 'no schedule-derived clock time'); assert(hourly.includes('等待下一轮核验'));
   assert.equal(primaryCount(hourly), 1); assert.equal((hourly.match(/role="status"/g) || []).length, 1);
   c.mergeDoiJob(pending.doi,{...job,state:'pending',stage:'verifying',verificationMode:'immediate',verificationExpectedAt:new Date(Date.now() + 180000).toISOString(),sourceKind:'reader_upload',reason:'identity_mismatch'});
-  const fast = c.doiStatusBlock(pending); assert(fast.includes('已收到你上传的 PDF，正在核验')); assert(fast.includes('预计几分钟内完成')); assert(!fast.includes('已排入每小时批次'));
+  const fast = c.doiStatusBlock(pending); assert(fast.includes('已收到你上传的 PDF，正在核验')); assert(fast.includes('核验通常几分钟内完成')); assert(!fast.includes('等待下一轮核验'));
   assert(!fast.includes('identity_mismatch'), 'the reason code is maintainer information'); c.MAINTAINER = true; assert(c.doiStatusBlock(pending).includes('identity_mismatch')); delete c.MAINTAINER;
   c.state.search = '';
   c.mergeDoiJob(pending.doi,{...job,state:'running',stage:'uploading',message:'<script>unsafe</script>'});

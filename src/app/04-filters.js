@@ -27,10 +27,6 @@
   // One status description per paper for the whole page. The card, the DOI search view and the empty state all
   // render it, so the same task never shows different words in two places (see docs/使用说明.md "全文状态").
   const FT_STEPS = ['排队下载', '已收到，核验中', '可阅读'];
-  function ftClock(iso) {
-    const t = Date.parse(iso);
-    return Number.isFinite(t) ? '北京时间 ' + new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(t)) : '';
-  }
   function ftMaintainerMode() { return typeof MAINTAINER !== 'undefined' && MAINTAINER === true; }
   function fulltextView(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
@@ -39,9 +35,9 @@
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
       if (job.stage === 'verifying') {
-        const fast = job.verificationMode === 'immediate' && ftClock(job.verificationExpectedAt);
+        const fast = job.verificationMode === 'immediate';
         return { kind: 'verifying', step: 1, headline: received + '，正在核验', short: '已收到 PDF，核验中', action: 'refresh',
-          eta: fast ? '预计几分钟内完成（' + fast + ' 前后）' : '即时核验没有赶上，已排入每小时批次' + (ftClock(job.nextVerificationAt) ? '（下一批计划' + ftClock(job.nextVerificationAt) + '）' : '') + '，GitHub 的定时任务常晚到数小时' };
+          eta: fast ? '核验通常几分钟内完成' : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时' };
       }
       if (job.stage === 'queued' || job.state === 'queued') return { kind: 'queued', step: 0, headline: '已排入下载队列，等待下载端领取', short: '全文排队中', eta: '预计数小时内，不保证即时', action: 'refresh', upload: true };
       return { kind: 'running', step: 0, headline: '下载端正在获取全文', short: '全文获取中', eta: '通常几十分钟内；取得后自动进入核验', action: 'refresh', upload: true };
