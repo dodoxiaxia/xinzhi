@@ -6,7 +6,9 @@ The daily ceiling (week_precompute_budget.MAX_ATTEMPTS, env XINZHI_WEEK_MAX_CALL
 runaway guard against loops, NOT account quota or a spending decision.
 Runtime requests reserve TWO attempts for the Worker's bounded internal retry.
 An uncertain in-flight attempt, authorization/rate error or transport failure pauses
-paid work; successful siblings remain readable. Never reads library/PDF/private indexes.
+only the tasks on that request. A legacy ledger ``paused`` string still pauses every
+task. A request the owner marked abandoned keeps its recorded charge and is not sent
+again. Successful siblings remain readable. Never reads library/PDF/private indexes.
 """
 import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess, sys, time, uuid
 import urllib.error, urllib.parse, urllib.request
@@ -24,6 +26,69 @@ ZONE=dt.timezone(dt.timedelta(hours=8))
 CATEGORIES=('心血管','综合医学','AI医疗','AI前沿')
 QUOTAS=(10,6,6,2)
 TASKS=('translate','study','quicklook')
+
+def row_tasks(row):
+ """Tasks named on a request. A row with no known task list blocks every task."""
+ if not isinstance(row, dict): return list(TASKS)
+ tasks, task = row.get('tasks'), row.get('task')
+ if isinstance(tasks, list) and tasks and all(isinstance(t, str) and t in TASKS for t in tasks) and len(set(tasks))==len(tasks):
+  return list(tasks)
+ if isinstance(task, str) and task in TASKS: return [task]
+ return list(TASKS)
+
+def pause_reasons_for(scope):
+ """Legacy paused/pauseReasons cover every task. pausedTasks covers only its keys."""
+ found={}
+ if not isinstance(scope, dict): return found
+ paused=scope.get('paused')
+ if isinstance(paused, str) and paused:
+  for t in TASKS: found.setdefault(t, paused)
+ reasons=scope.get('pauseReasons')
+ if isinstance(reasons, list):
+  for reason in reasons:
+   if isinstance(reason, str) and reason:
+    for t in TASKS: found.setdefault(t, reason)
+ tasks=scope.get('pausedTasks')
+ if isinstance(tasks, dict):
+  for t, reason in tasks.items():
+   if t in TASKS and isinstance(reason, str) and reason: found.setdefault(t, reason)
+ return found
+
+def blocked_task_reasons(ledger, daily):
+ reasons={}
+ for scope in (ledger, daily):
+  for t, reason in pause_reasons_for(scope).items(): reasons.setdefault(t, reason)
+ if isinstance(daily, dict):
+  for row in daily.get('requests') or []:
+   if not isinstance(row, dict) or row.get('status') not in ('started', 'failed_or_uncertain'): continue
+   if row.get('status')=='started' or not isinstance(row.get('failureCode'), str) or not row.get('failureCode'):
+    code='uncertain_prior_attempt'
+   else: code=row['failureCode']
+   for t in row_tasks(row): reasons.setdefault(t, code)
+ return reasons
+
+def fully_blocked_reason(ledger, daily):
+ """A blocker string when every task is paused or uncertain, otherwise None."""
+ reasons=blocked_task_reasons(ledger, daily)
+ if not all(t in reasons for t in TASKS): return None
+ for scope in (ledger, daily):
+  if isinstance(scope, dict) and isinstance(scope.get('paused'), str) and scope['paused']: return scope['paused']
+  listed=scope.get('pauseReasons') if isinstance(scope, dict) else None
+  if isinstance(listed, list):
+   for reason in listed:
+    if isinstance(reason, str) and reason: return reason
+ return reasons[TASKS[0]]
+
+def abandoned_task_keys(ledger):
+ """Tasks an owner closed without a saved answer. They are not sent to the model again."""
+ keys=set()
+ if not isinstance(ledger, dict): return keys
+ for daily in (ledger.get('days') or {}).values():
+  if not isinstance(daily, dict): continue
+  for row in daily.get('requests') or []:
+   if not isinstance(row, dict) or row.get('status')!='abandoned': continue
+   for task in row_tasks(row): keys.add((row.get('paperID'), row.get('sourceHash'), task))
+ return keys
 # Bump when the shared evidence checks change, so papers rejected under the old rules are retried once.
 EVIDENCE_CHECK_VERSION=3  # 2: spelled-out counts and space-grouped thousands; 3: study re-cite/trim and quicklook finding repair (2026-10-12)
 MAX_DAILY_OUTPUT_TOKENS=MAX_OUTPUT_TOKENS  # Reservation ceiling only (env XINZHI_WEEK_MAX_CALLS); not a provider billing cap.
@@ -183,7 +248,14 @@ class Halt(ValueError):
 
 def finish_failure(ledger,daily,item,exc,ledger_path,cache,checkpoint,report):
  code=str(exc) if re.fullmatch(r'[a-z_0-9:]{1,120}',str(exc)) else 'processing_failed'
- daily['paused']=code;ledger['paused']=code
+ # Pause only the tasks on this request. A legacy global ``paused`` string is left
+ # untouched, so an older all-task pause is never cleared by a new failure.
+ for scope in (daily, ledger):
+  current=scope.get('pausedTasks')
+  if not isinstance(current, dict):
+   current={};scope['pausedTasks']=current
+  for task in (row_tasks(item) if isinstance(item, dict) else TASKS):
+   current.setdefault(task, code)
  if item is not None and item.get('status')=='started':
   record_usage(item,exc);item['status']='failed_or_uncertain';item['failureCode']=code
  atomic(ledger_path,ledger);report.update(stopped=True,blocker=code)
@@ -282,8 +354,11 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
  report={'mode':'runtime' if run else 'read-only-cache','reservedModelAttempts':0,'paidRequests':0,'cacheReads':0,'imported':0,'confirmedPostCacheHits':0,'stopped':False,'blocker':None,'remainingBudget':max(0,limit-daily['reservedAttempts'])}
  if run and os.environ.get('GITHUB_ACTIONS')=='true' and checkpoint is None:
   report.update(stopped=True,blocker='paid_ci_requires_durable_checkpoint');return report
- if run and (ledger.get('paused') or daily.get('paused') or any(r['status']=='started' for r in daily['requests'])):
-  report.update(stopped=True,blocker=ledger.get('paused') or daily.get('paused') or 'uncertain_prior_attempt');return report
+ blocked=blocked_task_reasons(ledger, daily) if run else {}
+ if run:
+  reason=fully_blocked_reason(ledger, daily)
+  if reason:
+   report.update(stopped=True,blocker=reason);return report
  item=None
  try:
   # Complete the read-only reuse pass before attempting paid work.
@@ -295,9 +370,10 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
      try:store(cache,p,task,*hit,'runtime-cache');atomic(cache_path,cache);report['imported']+=1
      except ValueError:pass
   if not run:return report
+  closed=abandoned_task_keys(ledger)
   for p in selected:
    for task in TASKS:
-    if find(cache,p,task)[0]:continue
+    if find(cache,p,task)[0] or task in blocked or (p['paperID'],p['sourceHash'],task) in closed:continue
     if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');return report
     try:reservation=reserve_runtime(daily,task,limit,MAX_DAILY_OUTPUT_TOKENS)
     except BudgetError as exc:report.update(stopped=True,blocker=exc.code);return report
@@ -354,8 +430,10 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
  except ValueError:
   report.update(stopped=True,blocker='unsafe_existing_endpoint');return report
  day=now().date().isoformat();daily=ledger.setdefault('days',{}).setdefault(day,{'reservedAttempts':0,'reservedOutputTokens':0,'requests':[]})
- if ledger.get('paused') or daily.get('paused') or any(r['status']=='started' for r in daily['requests']):
-  report.update(stopped=True,blocker=ledger.get('paused') or daily.get('paused') or 'uncertain_prior_attempt');return report
+ blocked=blocked_task_reasons(ledger, daily)
+ reason=fully_blocked_reason(ledger, daily)
+ if reason:
+  report.update(stopped=True,blocker=reason);return report
  if type(daily.get('reservedOutputTokens')) is not int or daily['reservedOutputTokens']<0:
   report.update(stopped=True,blocker='output_budget_unreconciled');return report
  output_limit=5800
@@ -378,7 +456,7 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   except (ValueError,KeyError,IndexError,TypeError):raise Halt('model_output_invalid') from None
  def attempt_paper(p,missing,feedback):
   nonlocal item,output_limit
-  try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS)
+  try:reservation=reserve_configured(daily,5800,limit,MAX_DAILY_OUTPUT_TOKENS,tasks=missing)
   except BudgetError as exc:report.update(stopped=True,blocker=exc.code);return False
   output_limit=reservation['reservedOutputTokens']
   item={'paperID':p['paperID'],'sourceHash':p['sourceHash'],'tasks':missing,'maxOutputTokens':output_limit,'status':'started','at':stamp(),'requestId':str(uuid.uuid4()),**reservation}
@@ -412,12 +490,13 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   return True
  item=None
  rejected=task_rejections(ledger)
+ closed=abandoned_task_keys(ledger)
  try:
   for p in selected:
    feedback=None
    for attempt in range(2):  # one immediate retry, told why the first output failed
     item=None
-    missing=[task for task in TASKS if not find(cache,p,task)[0]]
+    missing=[task for task in TASKS if not find(cache,p,task)[0] and task not in blocked and (p['paperID'],p['sourceHash'],task) not in closed]
     if not missing:break
     # A task whose output already failed evidence validation twice is not paid for again;
     # the paper's other missing tasks still are.

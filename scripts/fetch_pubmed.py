@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-"""Public PubMed metadata fallback for watched journals. Never downloads PDFs."""
-import argparse, datetime, hashlib, http.client, json, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
+"""Public PubMed metadata fallback for watched journals. Never downloads PDFs.
+
+An error or partial E-utilities payload (HTTP 5xx, timeout, ERROR field, or an
+esearch result without idlist) is retried a bounded number of times. The previous
+data/pubmed.json is replaced only after a complete search and fetch succeed.
+"""
+import argparse, datetime, hashlib, http.client, json, os, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
 from pathlib import Path
 from build_data import clean, classify
 from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
@@ -23,8 +28,18 @@ JOURNALS = [
     'Nature Medicine', 'npj Digital Medicine', 'Cardiovascular Diabetology', 'BMJ Digital Health & AI'
 ]
 JOURNALS += list(ADDITIONAL_JOURNALS)
+TRANSIENT_HTTP = {429, 500, 502, 503, 504}
+REQUEST_ATTEMPTS = 3
+REQUEST_TIMEOUT = 30
 
-def request(action, params):
+class PubmedError(RuntimeError):
+    """A complete public metadata response was not obtained. The previous file stays."""
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+def request(action, params, attempts=REQUEST_ATTEMPTS):
     endpoint = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/' + action
     encoded = urllib.parse.urlencode(params)
     headers = {'User-Agent': 'XinZhiLearningPilot/0.1 (public journal metadata)'}
@@ -34,14 +49,15 @@ def request(action, params):
         req = urllib.request.Request(endpoint, data=encoded.encode('ascii'), headers=headers, method='POST')
     else:
         req = urllib.request.Request(endpoint + '?' + encoded, headers=headers)
-    for attempt in range(3):
+    last = None
+    for attempt in range(attempts):
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as r:
                 return r.read(10_000_000)
         except urllib.error.HTTPError as exc:
             # CI retains only the tail of stderr. Keep the failed public action
-            # identifiable there, without logging query/IDs/headers or changing
-            # the fail-closed behavior. Never retry an HTTP denial/error here.
+            # identifiable there, without logging query/IDs/headers. A client
+            # error is not retried. 429 and 5xx are bounded and then re-raised.
             detail = ''
             try:
                 body = exc.read(4096).decode('utf-8', 'replace')
@@ -59,13 +75,86 @@ def request(action, params):
                                      'method': req.get_method(),
                                      'httpStatus': exc.code,
                                      'upstreamError': detail}, ensure_ascii=False))
-            raise
-        except http.client.IncompleteRead:
-            # Discard partial bytes and retry the same public metadata request.
-            # HTTP access/rate-limit errors are not caught or retried here.
-            if attempt == 2:
+            last = exc
+            if exc.code not in TRANSIENT_HTTP or attempt == attempts - 1:
                 raise
-            time.sleep(0.5 * (attempt + 1))
+        except (http.client.IncompleteRead, TimeoutError, urllib.error.URLError, OSError) as exc:
+            # Discard partial bytes and retry the same public metadata request.
+            last = exc
+            if attempt == attempts - 1:
+                raise
+        time.sleep(0.5 * (attempt + 1))
+    raise last
+
+def _error_text(value):
+    if isinstance(value, str) and value.strip():
+        return True
+    return isinstance(value, list) and any(isinstance(item, str) and item.strip() for item in value)
+
+def parse_esearch(payload):
+    """Return the esearch result only when it has a real id list.
+
+    NCBI sometimes answers HTTP 200 with an ERROR field and no idlist. That is
+    not an empty search. An empty idlist with a count is a complete zero-hit result.
+    """
+    if not isinstance(payload, dict):
+        raise PubmedError('pubmed_response_invalid')
+    if _error_text(payload.get('ERROR')) or _error_text(payload.get('error')):
+        raise PubmedError('pubmed_upstream_error')
+    found = payload.get('esearchresult')
+    if not isinstance(found, dict):
+        raise PubmedError('pubmed_esearchresult_missing')
+    if _error_text(found.get('ERROR')) or _error_text(found.get('error')):
+        raise PubmedError('pubmed_upstream_error')
+    if 'idlist' not in found or not isinstance(found.get('idlist'), list):
+        raise PubmedError('pubmed_idlist_missing')
+    if any(type(item) is not str or not item.isdigit() for item in found['idlist']):
+        raise PubmedError('pubmed_idlist_invalid')
+    if not isinstance(found.get('count'), str) or not found['count'].isdigit():
+        raise PubmedError('pubmed_count_missing')
+    return found
+
+def load_esearch(params, attempts=REQUEST_ATTEMPTS):
+    """Search once per attempt. Transport and error payloads share one retry budget."""
+    last = None
+    for attempt in range(attempts):
+        try:
+            return parse_esearch(json.loads(request('esearch.fcgi', params, attempts=1)))
+        except PubmedError as exc:
+            last = exc
+        except (json.JSONDecodeError, UnicodeError):
+            last = PubmedError('pubmed_response_invalid')
+        except urllib.error.HTTPError as exc:
+            last = exc
+            if exc.code not in TRANSIENT_HTTP:
+                raise
+        except (http.client.IncompleteRead, TimeoutError, urllib.error.URLError, OSError) as exc:
+            last = exc
+        if attempt == attempts - 1:
+            raise last
+        time.sleep(0.5 * (attempt + 1))
+    raise last
+
+def parse_fetch(raw):
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise PubmedError('pubmed_efetch_invalid') from exc
+    if root.tag == 'ERROR' or root.find('.//ERROR') is not None:
+        raise PubmedError('pubmed_efetch_error')
+    return parse(root)
+
+def commit_output(path, data):
+    """Replace path only after the full JSON text exists. A failure leaves the previous file."""
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name('.' + path.name + '.tmp')
+    try:
+        tmp.write_text(text)
+        os.replace(tmp, path)
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
 
 def parse(root):
     items = []
@@ -157,24 +246,19 @@ def parse(root):
         })
     return items
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument('--days', type=int, default=30)
-    p.add_argument('--limit', type=int, default=1500)
-    a = p.parse_args()
-    if not 1 <= a.days <= 90 or not 1 <= a.limit <= 2500:
-        p.error('days 1..90; limit 1..2500')
-    now = datetime.datetime.now(datetime.timezone.utc)
-    start = (now - datetime.timedelta(days=a.days)).strftime('%Y/%m/%d')
+def refresh(path, days, limit, now=None):
+    """Fetch a complete PubMed snapshot. On any incomplete response, path is left unchanged."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    start = (now - datetime.timedelta(days=days)).strftime('%Y/%m/%d')
     end = now.strftime('%Y/%m/%d')
     term = '(' + ' OR '.join(journal_query(j) for j in JOURNALS) + ') AND ("' + start + '"[Date - Publication] : "' + end + '"[Date - Publication])'
-    found = json.loads(request('esearch.fcgi', {'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': a.limit, 'sort': 'pub date'}))['esearchresult']
+    found = load_esearch({'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': limit, 'sort': 'pub date'})
     ids = found['idlist']
     time.sleep(0.4)
     items = []
     for offset in range(0, len(ids), 150):
         time.sleep(0.4)
-        items.extend(parse(ET.fromstring(request('efetch.fcgi', {'db': 'pubmed', 'id': ','.join(ids[offset:offset+150]), 'retmode': 'xml'}))))
+        items.extend(parse_fetch(request('efetch.fcgi', {'db': 'pubmed', 'id': ','.join(ids[offset:offset+150]), 'retmode': 'xml'})))
     data = {
         'updatedAt': now.isoformat(),
         'query': term,
@@ -185,7 +269,17 @@ def main():
         'items': items,
         'note': 'Indexing may lag publisher publication; zero hits does not prove the journal has no new articles. Structured XML parsed.'
     }
-    (ROOT / 'data/pubmed.json').write_text(json.dumps(data, ensure_ascii=False, indent=2))
+    commit_output(path, data)
+    return data
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument('--days', type=int, default=30)
+    p.add_argument('--limit', type=int, default=1500)
+    a = p.parse_args()
+    if not 1 <= a.days <= 90 or not 1 <= a.limit <= 2500:
+        p.error('days 1..90; limit 1..2500')
+    data = refresh(ROOT / 'data/pubmed.json', a.days, a.limit)
     print(json.dumps({k: v for k, v in data.items() if k != 'items'}, ensure_ascii=False))
 
 if __name__ == '__main__':

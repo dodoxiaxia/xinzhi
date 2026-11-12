@@ -290,6 +290,36 @@ class Checkpoints(unittest.TestCase):
         with self.assertRaisesRegex(CheckpointError, 'pause_cannot_be_cleared'):
             backend.save(result.ledger, result.cache)
 
+    def test_task_pause_blocks_only_that_task_and_cannot_be_cleared(self):
+        remote = ledger()
+        remote['pausedTasks'] = {'study': 'provider_http_403'}
+        reserve(remote)
+        fixture = GitFixture(remote, cache())
+        backend = GitHubStateCheckpoint('example/site', fixture, merge_ledger)
+        restored = backend.restore(ledger(), cache())
+        self.assertEqual(restored.ledger['pausedTasks'], {'study': 'provider_http_403'})
+        daily = restored.ledger['days']['2026-10-07']
+        translate = {'requestId': 'translate-1', 'paperID': 'doi:10.1001/fixture',
+                     'sourceHash': 'b' * 64, 'at': '2026-10-07T12:05:00+00:00',
+                     'task': 'translate', 'status': 'started', 'reservedAttempts': 2,
+                     'reservedOutputTokens': 3800}
+        daily['requests'].append(translate)
+        daily['reservedAttempts'] += 2
+        daily['reservedOutputTokens'] += 3800
+        self.assertEqual(backend.run_reserved(restored.ledger, restored.cache, 'translate-1', lambda: 'translated'), 'translated')
+        study = {'requestId': 'study-2', 'paperID': 'doi:10.1001/fixture',
+                 'sourceHash': 'b' * 64, 'at': '2026-10-07T12:06:00+00:00',
+                 'task': 'study', 'status': 'started', 'reservedAttempts': 2,
+                 'reservedOutputTokens': 3800}
+        daily['requests'].append(study)
+        daily['reservedAttempts'] += 2
+        daily['reservedOutputTokens'] += 3800
+        with self.assertRaisesRegex(CheckpointError, 'paid_work_paused'):
+            backend.run_reserved(restored.ledger, restored.cache, 'study-2', lambda: self.fail('study is paused'))
+        restored.ledger['pausedTasks'] = {}
+        with self.assertRaisesRegex(CheckpointError, 'pause_cannot_be_cleared'):
+            backend.save(restored.ledger, restored.cache)
+
     def test_existing_cache_cannot_be_overwritten_or_removed(self):
         self.cache['entries']['a'] = entry()
         self.backend.save(self.ledger, self.cache)

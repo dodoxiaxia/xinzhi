@@ -66,7 +66,47 @@ def runtime_task_budget(task):
     return {"reservedAttempts": 2, "reservedOutputTokens": _OUTPUT_BY_TASK[task]}
 
 
-def _validate_daily(daily, attempt_limit, output_limit):
+_TASKS = ("translate", "study", "quicklook")
+
+
+def _request_tasks(row):
+    """Tasks a row covers. An unlabelled row blocks every task (fail closed)."""
+    tasks = row.get("tasks") if isinstance(row, dict) else None
+    task = row.get("task") if isinstance(row, dict) else None
+    if isinstance(tasks, list) and tasks and all(isinstance(item, str) and item in _TASKS for item in tasks):
+        return set(tasks)
+    if isinstance(task, str) and task in _TASKS:
+        return {task}
+    return set(_TASKS)
+
+
+def _pause_blocks(daily, tasks):
+    """A legacy ``paused`` string blocks every task. ``pausedTasks`` blocks only its keys.
+
+    ``tasks is None`` keeps the historical caller contract: any recorded pause blocks.
+    """
+    if daily.get("paused"):
+        return True
+    paused = daily.get("pausedTasks")
+    if paused is None:
+        return False
+    if type(paused) is not dict or any(
+            task not in _TASKS or not isinstance(reason, str) or not reason for task, reason in paused.items()):
+        raise BudgetError("invalid_pause")
+    if tasks is None:
+        return bool(paused)
+    return any(task in paused for task in tasks)
+
+
+def _uncertain_blocks(requests, tasks):
+    for row in requests:
+        if row.get("status") in ("started", "failed_or_uncertain") and (
+                tasks is None or _request_tasks(row) & set(tasks)):
+            return True
+    return False
+
+
+def _validate_daily(daily, attempt_limit, output_limit, tasks=None):
     """Shared preflight: no mutation or assumptions about missing history."""
     if not _integer(attempt_limit) or attempt_limit > MAX_ATTEMPTS:
         raise BudgetError("invalid_attempt_limit")
@@ -83,9 +123,9 @@ def _validate_daily(daily, attempt_limit, output_limit):
     requests = daily.get("requests")
     if type(requests) is not list or any(type(row) is not dict or not isinstance(row.get("status"), str) or not row["status"] for row in requests):
         raise BudgetError("invalid_request_accounting")
-    if daily.get("paused"):
+    if _pause_blocks(daily, tasks):
         raise BudgetError("paid_work_paused")
-    if any(row["status"] in ("started", "failed_or_uncertain") for row in requests):
+    if _uncertain_blocks(requests, tasks):
         raise BudgetError("uncertain_prior_attempt")
     if any(not _integer(row.get("reservedAttempts")) or not _integer(row.get("reservedOutputTokens")) for row in requests):
         raise BudgetError("invalid_request_accounting")
@@ -113,14 +153,15 @@ def reserve_runtime(daily, task, attempt_limit=MAX_ATTEMPTS, output_limit=MAX_OU
     an empty list. Missing old output accounting is never assumed to mean zero.
     Pauses and uncertain requests must be explicitly reconciled by the caller;
     this function never clears a pause, resolves a request, or refunds a call.
+    A pause or uncertain row for another task does not block this task.
     """
     reservation = runtime_task_budget(task)
-    _validate_daily(daily, attempt_limit, output_limit)
+    _validate_daily(daily, attempt_limit, output_limit, tasks=[task])
     return _apply_reservation(daily, reservation, attempt_limit, output_limit)
 
 
 def reserve_configured(daily, requested_output=MAX_CONFIGURED_OUTPUT_TOKENS,
-                       attempt_limit=MAX_ATTEMPTS, output_limit=MAX_OUTPUT_TOKENS):
+                       attempt_limit=MAX_ATTEMPTS, output_limit=MAX_OUTPUT_TOKENS, tasks=None):
     """Reserve one direct call and its output cap, reduced to known balance.
 
     The caller must use the returned reservedOutputTokens as max_tokens and
@@ -129,7 +170,7 @@ def reserve_configured(daily, requested_output=MAX_CONFIGURED_OUTPUT_TOKENS,
     """
     if not _integer(requested_output) or not 1 <= requested_output <= MAX_CONFIGURED_OUTPUT_TOKENS:
         raise BudgetError("invalid_requested_output")
-    _validate_daily(daily, attempt_limit, output_limit)
+    _validate_daily(daily, attempt_limit, output_limit, tasks=tasks)
     remaining = output_limit - daily["reservedOutputTokens"]
     if remaining <= 0:
         raise BudgetError("existing_daily_output_token_budget_exhausted")
