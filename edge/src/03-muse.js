@@ -189,12 +189,12 @@ async function handleMuseRetry(request, env) {
     if (!current) libraryFail('library_not_found',404);
     if (!museRecoverable(current)) return museResponse(request,current,paper);
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(),25000);
-    let open = null;
-    try { const context = {signal:controller.signal}; open = await museOpenAccess(await libraryMetadata(doi,context),context); }
+    let open = null; const oaRejected = [];
+    try { const context = {signal:controller.signal}; open = await museOpenAccess(await libraryMetadata(doi,context),context,oaRejected); }
     catch { open = null; } finally { clearTimeout(timer); }
     if (open) return museResponse(request,await museIntake(env,doi,open,'open_access',current),paper);
     const now = Date.now(), id = crypto.randomUUID();
-    const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id};
+    const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,...(oaRejected.length ? {oaRejected} : {})};
     // An orphan pointer is discarded by claim; it never resurrects the old lease.
     await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
     await musePut(env,job);

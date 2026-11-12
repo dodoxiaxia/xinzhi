@@ -4,10 +4,11 @@
 // Synthetic offline fixtures only.
 const assert = require('assert');
 const {setup,token} = require('./test_fulltext_auth_helpers.cjs');
+const fixtures = require('./machine_identity_fixtures.cjs');
 const {doi,title,hash,error} = require('./test_doi_library_worker.cjs');
 const base = 'https://learn.dryz.info',reviewUrl = base + '/api/muse/review',secret = 'synthetic_muse_key_0123456789_abcdef';
 const original = Buffer.from('%PDF-1.7\nSynthetic reader copy\n' + 'x'.repeat(52000) + '\n%%EOF\n');
-async function create(options = {}) {const h = await setup(options);h.env.MUSE_FULLTEXT_ENABLED = 'true';h.env.MUSE_FULLTEXT_KEY = secret;return h;}
+async function create(options = {}) {const h = await setup(options);h.context.DecompressionStream = DecompressionStream;h.env.MUSE_FULLTEXT_ENABLED = 'true';h.env.MUSE_FULLTEXT_KEY = secret;return h;}
 function form(fields) {const data = new FormData();for (const [k,v] of fields) data.append(k,v);return data;}
 function readerUpload(h,options = {}) {
   const body = options.body || form([['pdf',new Blob([options.bytes || original],{type:'application/pdf'}),'paper.pdf'],['passphrase',options.passphrase || 'synthetic-passphrase']]);
@@ -77,10 +78,12 @@ const job = h => JSON.parse(h.values.get('library:muse-job:' + doi));
   await error(await readerUpload(h),409,'muse_busy'); assert.equal(job(h).state,'running');
 
   // An open-access PDF registered for the DOI skips the Muse queue but still waits for verification.
-  h = await create({oa:true,pdfResponse:() => new Response(original,{headers:{'content-type':'application/pdf'}})});
+  // The open-access file must pass the first-page identity check (synthetic copy carrying this DOI and title).
+  const oaPdf = fixtures.flateEol({doi,title});
+  h = await create({oa:true,pdfResponse:() => new Response(oaPdf,{headers:{'content-type':'application/pdf'}})});
   const oa = await h.request(); assert.equal(oa.status,202); const oaJob = (await oa.json()).job;
   assert.equal(oaJob.stage,'verifying'); assert.equal(job(h).source,'open_access');
-  assert(!h.values.has('library:pdf:' + hash(original))); assert.equal((await (await claimMuse(h)).json()).task,null);
+  assert(!h.values.has('library:pdf:' + hash(oaPdf))); assert.equal((await (await claimMuse(h)).json()).task,null);
   assert(![...h.values.keys()].some(k => k.startsWith('library:muse-queue:')),'nothing is queued for Muse');
 
   // A blocked or too-small open-access copy falls back to the Muse queue.
@@ -99,4 +102,4 @@ const job = h => JSON.parse(h.values.get('library:muse-job:' + doi));
   assert.equal(dispatches(h).length,1,'a second candidate inside two minutes reuses the pending run');
   h = await create(); assert.equal((await readerUpload(h)).status,202); assert.equal(dispatches(h).length,0,'no token, no dispatch');
   console.log('Muse reader upload, open-access first and six-day queue window passed');
-})().catch(error => {console.error(error);process.exitCode = 1;});
+})().catch(error => {console.error(error);process.exitCode = 1;}).then(() => require('./test_oa_identity_guard.cjs')); // runs after this file
