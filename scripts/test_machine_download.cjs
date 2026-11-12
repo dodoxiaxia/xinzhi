@@ -448,4 +448,5 @@ async function review(h, body) {
   assert.equal((await retried.json()).job.state, 'queued');
 
   console.log('machine download tests passed');
+  await require('./test_machine_register.cjs').run();
 })().catch(error => { console.error(error); process.exitCode = 1; });
