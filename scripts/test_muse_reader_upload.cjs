@@ -6,6 +6,7 @@ const assert = require('assert');
 const {setup,token} = require('./test_fulltext_auth_helpers.cjs');
 const fixtures = require('./machine_identity_fixtures.cjs');
 const {doi,title,hash,error} = require('./test_doi_library_worker.cjs');
+const {runReview} = require('./muse_review_runner.cjs');
 const base = 'https://learn.dryz.info',reviewUrl = base + '/api/muse/review',secret = 'synthetic_muse_key_0123456789_abcdef';
 const original = Buffer.from('%PDF-1.7\nSynthetic reader copy\n' + 'x'.repeat(52000) + '\n%%EOF\n');
 async function create(options = {}) {const h = await setup(options);h.context.DecompressionStream = DecompressionStream;h.env.MUSE_FULLTEXT_ENABLED = 'true';h.env.MUSE_FULLTEXT_KEY = secret;return h;}
@@ -101,5 +102,32 @@ const job = h => JSON.parse(h.values.get('library:muse-job:' + doi));
   assert.equal((await readerUpload(h,{bytes:Buffer.concat([original.subarray(0,20),Buffer.from('y'),original.subarray(20)])})).status,202);
   assert.equal(dispatches(h).length,1,'a second candidate inside two minutes reuses the pending run');
   h = await create(); assert.equal((await readerUpload(h)).status,202); assert.equal(dispatches(h).length,0,'no token, no dispatch');
+  // The dedupe key uses KV's shortest TTL (60 s); the dispatched run itself covers the gap (below).
+  h = await create(); h.env.MUSE_REVIEW_DISPATCH_TOKEN = 'github_pat_synthetic_dispatch_0123456789';
+  assert.equal((await readerUpload(h)).status,202);
+  assert.equal(h.writes.find(w => w.key === 'library:muse-review-dispatch').opts.expirationTtl,60);
+
+  // Regression: a run dispatched the moment an upload lands can start before KV shows the candidate.
+  // It used to exit with processed:0 and leave the upload to the late hourly schedule. A dispatched run now
+  // keeps claiming (15 s apart); a scheduled run never waits.
+  const lagging = async (event, lagClaims) => {
+    const hh = await create(); assert.equal((await readerUpload(hh)).status,202);
+    let hidden = lagClaims; const waits = [];
+    const http = async (url,init) => {
+      if (new URL(url).hostname === 'unit.actions.githubusercontent.com') return Response.json({value:await token(hh,reviewUrl,'muse-review.yml',{event_name:event})});
+      if (init && init.body && JSON.parse(init.body).action === 'claim' && hidden-- > 0) return Response.json({ok:true,task:null});
+      return hh.context.worker.fetch(new Request(url,init),hh.env);
+    };
+    const env = {GITHUB_EVENT_NAME:event,ACTIONS_ID_TOKEN_REQUEST_URL:'https://unit.actions.githubusercontent.com/token',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'synthetic-runtime-token'};
+    const processed = await runReview(env,http,async (bytes,t) => ({verified:true,pages:3,method:'dual_parser_all_pages_title_doi',sha256:t.sha256,bytes:t.bytes}),() => {},async ms => { waits.push(ms); });
+    return {processed,waits,state:job(hh).state};
+  };
+  let lag = await lagging('workflow_dispatch',2);
+  assert.deepEqual([lag.processed,lag.state],[1,'available'],'a dispatched run finds the upload once KV catches up'); assert.equal(lag.waits.length,2 + 9,'two lagging polls, then it stays about two minutes after the last original for any follow-up upload'); assert(lag.waits.every(ms => ms === 15000));
+  lag = await lagging('workflow_dispatch',99);
+  assert.equal(lag.processed,0); assert.equal(lag.waits.length,9,'a dispatched run gives up after about two minutes of nothing');
+  lag = await lagging('schedule',1);
+  assert.deepEqual([lag.processed,lag.waits.length],[0,0],'the scheduled run exits at once; it must never hold a runner');
+
   console.log('Muse reader upload, open-access first and six-day queue window passed');
 })().catch(error => {console.error(error);process.exitCode = 1;}).then(() => require('./test_oa_identity_guard.cjs')); // runs after this file
