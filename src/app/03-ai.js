@@ -234,7 +234,7 @@
     // Before the first request the button sits in the toolbar; progress and the
     // result move below it so the sticky toolbar never grows.
     const idle = !BRIEFS[briefKey('digest', briefItems(top))];
-    const home = idle ? $('.stream-controls') : $('.stream-toolbar');
+    const home = idle ? $('#listHeadTools') : $('#listHead');
     if (home && idle && el.parentElement !== home) home.prepend(el);
     if (home && !idle && el.previousElementSibling !== home) home.after(el);
     el.classList.toggle('digest-idle', idle);

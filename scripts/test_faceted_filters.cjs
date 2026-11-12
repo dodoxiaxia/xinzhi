@@ -102,9 +102,9 @@ check(/data-filter-journal="JAMA"[^]*?class="filter-count">1<\/span>/.test(publi
 check(/data-filter-design="队列研究"[^]*?class="filter-count">1<\/span>/.test(elements.designFilterList.innerHTML), 'Design counts keep the source but ignore the current design');
 check(publishers.includes('data-pub-expand=') && publishers.includes('data-filter-publisher='), 'Expand and source selection are separate controls');
 context.renderActiveFilterChips(1);
-check(elements.activeFiltersBar.innerHTML.includes('当前筛选 · 同时满足'), 'Current combination explicitly states intersection');
+check(!elements.activeFiltersBar.innerHTML.includes('当前筛选'), 'Condition bar carries no explanatory label');
 check(elements.activeFiltersBar.innerHTML.includes('期刊：Circulation') && !elements.activeFiltersBar.innerHTML.includes('出版方：'), 'A journal and its parent appear as one source chip');
-check(elements.activeFiltersBar.innerHTML.includes('data-clear="sidebar"'), 'Condition bar provides a scoped clear action');
+check(elements.activeFiltersBar.innerHTML.includes('data-clear="journal"') && elements.activeFiltersBar.innerHTML.includes('data-clear="design"'), 'Every condition chip is removable on its own (the panel 重置 clears the rest)');
 select('tier', '综合医学与其他');
 check(context.matchesSidebarFilters({ cleanJournal: 'Circulation', publisher: 'AHA (Circulation)', studyDesign: 'RCT' }), 'Unclassified source group uses the same fallback as its displayed count');
 select('tier', '');

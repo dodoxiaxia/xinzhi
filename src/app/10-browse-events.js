@@ -1,38 +1,71 @@
   // ==== src/app/10-browse-events.js · Browse controls, event wiring and start-up ====
-  // 更多筛选: everything beyond lane, time and search. The panel is the left column on wide
-  // screens (folded away until a condition is active or the reader opens it) and a bottom sheet on phones.
-  const NARROW_FILTERS = '(max-width: 1024px)';
+  // 筛选 panel: a right-hand drawer on wide screens and a bottom sheet on phones. Its groups share state with the
+  // filter row (领域, 全文); picking an option applies at once and "查看 N 篇" only closes the panel.
   function moreFilterCount() {
-    return sidebarSelections().length + (state.reading ? 1 : 0) + (state.favoritesOnly ? 1 : 0) + (state.minor ? 1 : 0);
+    if (!usesLane()) return 0;
+    return sidebarSelections().length + (state.reading ? 1 : 0) + (state.favoritesOnly ? 1 : 0) + (state.minor ? 1 : 0)
+      + (state.lane !== 'core' ? 1 : 0) + (state.range !== defaultRange(state.mode) ? 1 : 0) + (state.mode === 'library' && state.ftFilter ? 1 : 0);
   }
-  function moreFiltersOpen() {
-    return typeof state.moreFiltersOpen === 'boolean' ? state.moreFiltersOpen : moreFilterCount() > 0;
+  const READING_OPTS = [['', '全部内容'], ['abstract', '有公开摘要'], ['guide', '已核对导读'], ['quicklook', 'AI 速览（未核对）']];
+  const PANEL_GROUPS = () => [
+    ['lane', '#panelOptLane', LANES.map(l => [l.id, l.short || l.name]), state.lane],
+    ['ft', '#panelOptFt', FT_FILTERS.map(([v, n]) => [v, v === '' ? '全部全文' : n]), state.ftFilter || ''],
+    ['reading', '#panelOptReading', READING_OPTS, state.reading || ''],
+    ['range', '#panelOptRange', RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library, state.range],
+    ['journal', '#panelOptJournal', [['all', '全部期刊'], ['mine', '我的期刊']], state.favoritesOnly ? 'mine' : 'all'],
+    ['type', '#panelOptType', [['orig', '不含更正/来信（默认）'], ['minor', '含更正/来信']], state.minor ? 'minor' : 'orig']
+  ];
+  function renderPanelGroups() {
+    const body = $('#panelBody');
+    if (!body) return;
+    const rebuild = body.dataset.mode !== state.mode;
+    body.dataset.mode = state.mode;
+    PANEL_GROUPS().forEach(([id, sel, options, current]) => {
+      const host = $(sel); if (!host) return;
+      if (rebuild) host.innerHTML = options.map(([v, n]) => `<button type="button" class="panel-opt" data-panel="${id}" data-value="${esc(v)}" aria-pressed="false">${esc(n)}</button>`).join('');
+      host.querySelectorAll('.panel-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === String(current))));
+    });
+    const ft = $('#pgFt'); if (ft) ft.hidden = state.mode !== 'library';
   }
   function renderMoreFilters() {
-    const toggle = $('#filterToggleBtn'), app = $('.app-container');
+    const toggle = $('#filterToggleBtn');
     const n = moreFilterCount(), lane = usesLane();
-    const narrow = !!(window.matchMedia && window.matchMedia(NARROW_FILTERS).matches);
-    if (app) app.classList.toggle('filters-collapsed', lane && !moreFiltersOpen());
     if (toggle) {
-      toggle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">筛选</span>' + (n ? `<b class="filter-count">${n}</b>` : '');
+      toggle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">' + (n ? `筛选 · ${n}` : '筛选') + '</span>';
       toggle.classList.toggle('active', n > 0);
-      toggle.setAttribute('aria-expanded', String(narrow ? !!$('#appSidebar.open') : lane && moreFiltersOpen()));
+      toggle.setAttribute('aria-expanded', String(!!$('#appSidebar.open')));
       toggle.setAttribute('aria-label', n ? `筛选，已生效 ${n} 项` : '筛选');
     }
     if (!lane) return;
-    const reading = $('#readingSelect'); if (reading) reading.value = state.reading;
+    renderPanelGroups();
     const followed = state.favoriteJournals.includes(state.journal);
     const star = $('#favoriteJournalBtn');
     if (star) { star.disabled = !state.journal; star.textContent = followed ? '★ 已关注' : '☆ 关注期刊'; star.setAttribute('aria-pressed', String(followed)); }
-    const fav = $('#favoritesOnlyBtn');
-    if (fav) { fav.textContent = '我的期刊 ' + state.favoriteJournals.length; fav.classList.toggle('active', state.favoritesOnly); fav.setAttribute('aria-pressed', String(state.favoritesOnly)); }
-    const minor = $('#minorToggleBtn');
-    if (minor) { minor.classList.toggle('active', state.minor); minor.setAttribute('aria-pressed', String(state.minor)); }
-    const period = $('#rangeExplanation');
-    if (period) period.textContent = state.range === 'all' ? '日期与研究类型均以来源信息为准；未知项明确保留。' : `发表时间：北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
   }
+  document.addEventListener('click', e => {
+    const opt = e.target.closest && e.target.closest('.panel-opt');
+    if (!opt) return;
+    const v = opt.dataset.value;
+    if (opt.dataset.panel === 'lane') state.lane = v;
+    else if (opt.dataset.panel === 'ft') state.ftFilter = v;
+    else if (opt.dataset.panel === 'reading') state.reading = v;
+    else if (opt.dataset.panel === 'range') state.range = v;
+    else if (opt.dataset.panel === 'journal') state.favoritesOnly = v === 'mine';
+    else if (opt.dataset.panel === 'type') state.minor = v === 'minor';
+    state.page = 1;
+    renderSidebarFilters();
+    renderStream();
+  });
+  // 重置: every filter in the row and the panel, including time; the search keyword stays.
+  function resetPanelFilters() {
+    clearSidebarFilters();
+    state.lane = 'core'; state.range = defaultRange(state.mode); state.ftFilter = ''; state.reading = ''; state.favoritesOnly = false; state.minor = false;
+    state.page = 1;
+    renderSidebarFilters();
+    renderStream();
+  }
+  $('#panelResetBtn')?.addEventListener('click', resetPanelFilters);
   $('#modeNote')?.addEventListener('click',e=>{const t=e.target.closest('.mode-note-toggle');if(!t)return;const open=e.currentTarget.classList.toggle('note-open');t.setAttribute('aria-expanded',String(open));});
-  $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
   $('#favoritesOnlyBtn')?.addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;renderSidebarFilters();renderStream();});
 
@@ -87,22 +120,20 @@
     });
   });
 
-  // 更多筛选: a bottom sheet on phones, a foldable left column on wide screens
-  $('#filterToggleBtn')?.addEventListener('click', () => {
-    const sb = $('#appSidebar');
-    if (!sb) return;
-    if (window.matchMedia && window.matchMedia(NARROW_FILTERS).matches) {
-      const open = sb.classList.toggle('open');
-      $('#filterToggleBtn').setAttribute('aria-expanded', String(open));
-      return;
-    }
-    state.moreFiltersOpen = !moreFiltersOpen();
-    renderMoreFilters();
-    if (state.moreFiltersOpen) sb.querySelector('button, select')?.focus({ preventScroll: true });
+  const openSheet = () => {
+    const sb = $('#appSidebar'); if (!sb) return;
+    sb.classList.add('open'); $('#filterToggleBtn')?.setAttribute('aria-expanded', 'true');
+    (sb.querySelector('.panel-opt[aria-pressed="true"]') || sb.querySelector('button'))?.focus({ preventScroll: true });
+  };
+  $('#filterToggleBtn')?.addEventListener('click', () => { if ($('#appSidebar')?.classList.contains('open')) closeSheet(); else openSheet(); });
+  $('#panelApplyBtn')?.addEventListener('click', e => {
+    if (e.currentTarget.dataset.empty === '1') { resetPanelFilters(); return; }
+    closeSheet();
+    ($('#listHead') || $('#streamSection'))?.scrollIntoView({ block: 'start' });
   });
 
   // Mobile filter sheet: close button, backdrop tap (via body::after), Esc
-  const closeSheet = () => { const sb = $('#appSidebar'); if (sb) sb.classList.remove('open'); const t = $('#filterToggleBtn'); if (t) t.setAttribute('aria-expanded', 'false'); };
+  function closeSheet() { const sb = $('#appSidebar'); const was = sb && sb.classList.contains('open'); if (sb) sb.classList.remove('open'); const t = $('#filterToggleBtn'); if (t) { t.setAttribute('aria-expanded', 'false'); if (was) t.focus({ preventScroll: true }); } }
   $('#sheetClose')?.addEventListener('click', closeSheet);
   document.addEventListener('click', e => { if (e.target === document.body && $('#appSidebar')?.classList.contains('open')) closeSheet(); });
 
@@ -382,6 +413,8 @@
       if (type === 'tier') state.clinicalTier = '';
       if (['pub', 'publisher', 'journal'].includes(type)) { state.publisher = ''; state.journal = ''; }
       if (type === 'range') state.range = defaultRange(state.mode);
+      if (type === 'lane') state.lane = 'core';
+      if (type === 'minor') state.minor = false;
       if (type === 'design') state.studyDesign = '';
       if (type === 'tag') state.tag = '';
       if (type === 'reading') state.reading = '';
@@ -615,3 +648,14 @@
   }
 
 })();
+
+  // 窄屏（<380px）列表头放不下视图切换：只留排序，详细/列表挪到页脚。
+  (() => {
+    const mq = window.matchMedia && window.matchMedia('(max-width: 379px)');
+    const toggle = document.querySelector('.list-head .view-toggle');
+    const footer = document.getElementById('appFooter'), tools = document.getElementById('listHeadTools');
+    if (!mq || !toggle || !footer || !tools) return;
+    const place = () => { if (mq.matches) footer.prepend(toggle); else tools.append(toggle); };
+    place();
+    (mq.addEventListener ? mq.addEventListener('change', place) : mq.addListener(place));
+  })();

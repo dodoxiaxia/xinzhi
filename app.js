@@ -873,7 +873,7 @@
     // Before the first request the button sits in the toolbar; progress and the
     // result move below it so the sticky toolbar never grows.
     const idle = !BRIEFS[briefKey('digest', briefItems(top))];
-    const home = idle ? $('.stream-controls') : $('.stream-toolbar');
+    const home = idle ? $('#listHeadTools') : $('#listHead');
     if (home && idle && el.parentElement !== home) home.prepend(el);
     if (home && !idle && el.previousElementSibling !== home) home.after(el);
     el.classList.toggle('digest-idle', idle);
@@ -1205,15 +1205,6 @@
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
     el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
-    placeRangeBar();
-  }
-  // On phones the time range lives in the 筛选 panel so the filter row stays one line.
-  function placeRangeBar() {
-    const el = $('#rangeBar'), slot = $('#panelRangeSlot'), row = $('#toolRowEnd');
-    if (!el || !slot || !row) return;
-    const phone = !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
-    if (phone && el.parentElement !== slot) slot.append(el);
-    else if (!phone && el.parentElement !== row.parentElement) row.parentElement.insertBefore(el, $('#ftBar') || row);
   }
   const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得'], ['none', '未申请']];
   function fulltextFilterBucket(p) {
@@ -1331,9 +1322,8 @@
     if (rail) rail.hidden = state.mode !== 'curated';
     const laneBar = $('#laneBar'), laneSlot = $(state.mode === 'curated' ? '#curatedTopicsSlot' : '#streamLaneSlot');
     if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
-    const note = MODE_NOTES[state.mode];
-    el.innerHTML = note || '';
-    el.hidden = !note;
+    el.innerHTML = '';
+    el.hidden = true;
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
@@ -1788,14 +1778,15 @@
     if (!container) return;
 
     const selections = sidebarSelections();
-    let chips = selections.length ? '<div class="sidebar-active-filters"><span class="active-filters-label">当前筛选 · 同时满足</span>'
-      + selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('')
-      + '<button type="button" class="sidebar-clear-btn" data-clear="sidebar">清空左侧筛选</button></div>' : '';
-    let hiddenMinor = 0;
-    if (usesLane() && !state.minor) for (const p of getCurrentDataset()) if (p.minor && matchesFilters({ ...p, minor: false }, true)) hiddenMinor++;
-    const minorNote = $('#minorNote');
-    if (minorNote) minorNote.textContent = !usesLane() ? '' : state.minor ? '已包含更正、来信、回复等非原创内容。' : hiddenMinor ? `默认隐藏更正和来信，当前另有 ${hiddenMinor} 篇。` : '默认隐藏更正和来信。';
+    let chips = '';
+    const defaults = usesLane();
+    const chip = (label, value, clear) => `<span class="filter-badge-active"><span class="filter-badge-label">${label}${value ? '：' + esc(value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${clear}" aria-label="清除${label}筛选">&times;</button></span>`;
+    // The tool row already shows 领域 and 全文; chips list only what the row cannot show.
+    if (defaults && state.range !== defaultRange(state.mode)) chips += chip('发表时间', state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天', 'range');
+    if (defaults && state.minor) chips += chip('文章类型', '含更正/来信', 'minor');
+    chips += selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('');
     streamTotal = totalCount;
+    if (typeof renderStreamTotal === 'function') renderStreamTotal();
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
@@ -1804,13 +1795,12 @@
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
     container.innerHTML = chips;
   }
-  // 共找到 N 篇: small grey text beside the first heading of the list, so it never takes a line of its own.
-  function renderStreamTotal(streamEl) {
-    if (!streamEl) return;
-    const text = `共 ${streamTotal} 篇`;
-    const first = streamEl.querySelector('.day-heading');
-    if (first) first.insertAdjacentHTML('beforeend', `<span class="heading-total" role="status">${text}</span>`);
-    else streamEl.insertAdjacentHTML('afterbegin', `<div class="stream-total heading-total" role="status">${text}</div>`);
+  // 共 N 篇 sits at the head of the list, with sort, view and the AI digest link beside it.
+  function renderStreamTotal() {
+    const total = $('#listTotal');
+    if (total) total.textContent = `共 ${streamTotal} 篇`;
+    const apply = $('#panelApplyBtn');
+    if (apply) { apply.textContent = streamTotal ? `查看 ${streamTotal} 篇` : '无结果，清除条件'; apply.dataset.empty = streamTotal ? '' : '1'; }
   }
   // Search opens above the filter row; it stays open while there is a keyword.
   function syncSearchPanel(forceOpen) {
@@ -1931,11 +1921,6 @@
   }
 
   // Main Render Stream
-  // Sort, view and the AI digest live in the 筛选 panel; where that panel is not offered they sit at the end of the filter row.
-  function placeStreamControls(noSidebar) {
-    const controls = $('.stream-controls'), target = noSidebar ? $('#toolRowEnd') : $('#panelControlsSlot');
-    if (controls && target && controls.parentElement !== target) target.append(controls);
-  }
   function applyDoiSearchLayout(doi) {
     const special = state.mode === 'weekly' || state.mode === 'sources';
     const stream = $('#streamSection'), weekly = $('#weeklySection'), sources = $('#sourcesSection');
@@ -1943,8 +1928,7 @@
     if (weekly) weekly.hidden = !!doi || state.mode !== 'weekly';
     if (sources) sources.hidden = !!doi || state.mode !== 'sources';
     const noSidebar = !!doi || special || state.mode === 'curated';
-    placeStreamControls(noSidebar);
-    { const sc = $('.stream-controls'); if (sc) sc.hidden = special && !doi; }
+    { const head = $('#listHead'); if (head) head.hidden = special || !!doi; }
     const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
     const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
     const app = $('.app-container');
@@ -2004,7 +1988,6 @@
     renderCuratedDayBar();
     renderRangeBar();
     renderFtBar();
-    placeStreamControls(state.mode === 'curated');
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
@@ -2012,8 +1995,7 @@
     if (filtered.length === 0) {
       streamEl.innerHTML = radarArchiveNotice() + renderEmptyFilters();
       if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
-      renderStreamTotal(streamEl);
-      if (loadMoreBtn) loadMoreBtn.hidden = true;
+        if (loadMoreBtn) loadMoreBtn.hidden = true;
       return;
     }
 
@@ -2063,7 +2045,6 @@
     }
 
     if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
-    renderStreamTotal(streamEl);
     { const note = radarArchiveNotice(); if (note) streamEl.insertAdjacentHTML('afterbegin', note); }
     if (loadMoreBtn) {
       loadMoreBtn.hidden = visibleItems.length >= filtered.length;
@@ -3172,40 +3153,73 @@
   }
 
   // ==== src/app/10-browse-events.js · Browse controls, event wiring and start-up ====
-  // 更多筛选: everything beyond lane, time and search. The panel is the left column on wide
-  // screens (folded away until a condition is active or the reader opens it) and a bottom sheet on phones.
-  const NARROW_FILTERS = '(max-width: 1024px)';
+  // 筛选 panel: a right-hand drawer on wide screens and a bottom sheet on phones. Its groups share state with the
+  // filter row (领域, 全文); picking an option applies at once and "查看 N 篇" only closes the panel.
   function moreFilterCount() {
-    return sidebarSelections().length + (state.reading ? 1 : 0) + (state.favoritesOnly ? 1 : 0) + (state.minor ? 1 : 0);
+    if (!usesLane()) return 0;
+    return sidebarSelections().length + (state.reading ? 1 : 0) + (state.favoritesOnly ? 1 : 0) + (state.minor ? 1 : 0)
+      + (state.lane !== 'core' ? 1 : 0) + (state.range !== defaultRange(state.mode) ? 1 : 0) + (state.mode === 'library' && state.ftFilter ? 1 : 0);
   }
-  function moreFiltersOpen() {
-    return typeof state.moreFiltersOpen === 'boolean' ? state.moreFiltersOpen : moreFilterCount() > 0;
+  const READING_OPTS = [['', '全部内容'], ['abstract', '有公开摘要'], ['guide', '已核对导读'], ['quicklook', 'AI 速览（未核对）']];
+  const PANEL_GROUPS = () => [
+    ['lane', '#panelOptLane', LANES.map(l => [l.id, l.short || l.name]), state.lane],
+    ['ft', '#panelOptFt', FT_FILTERS.map(([v, n]) => [v, v === '' ? '全部全文' : n]), state.ftFilter || ''],
+    ['reading', '#panelOptReading', READING_OPTS, state.reading || ''],
+    ['range', '#panelOptRange', RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library, state.range],
+    ['journal', '#panelOptJournal', [['all', '全部期刊'], ['mine', '我的期刊']], state.favoritesOnly ? 'mine' : 'all'],
+    ['type', '#panelOptType', [['orig', '不含更正/来信（默认）'], ['minor', '含更正/来信']], state.minor ? 'minor' : 'orig']
+  ];
+  function renderPanelGroups() {
+    const body = $('#panelBody');
+    if (!body) return;
+    const rebuild = body.dataset.mode !== state.mode;
+    body.dataset.mode = state.mode;
+    PANEL_GROUPS().forEach(([id, sel, options, current]) => {
+      const host = $(sel); if (!host) return;
+      if (rebuild) host.innerHTML = options.map(([v, n]) => `<button type="button" class="panel-opt" data-panel="${id}" data-value="${esc(v)}" aria-pressed="false">${esc(n)}</button>`).join('');
+      host.querySelectorAll('.panel-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === String(current))));
+    });
+    const ft = $('#pgFt'); if (ft) ft.hidden = state.mode !== 'library';
   }
   function renderMoreFilters() {
-    const toggle = $('#filterToggleBtn'), app = $('.app-container');
+    const toggle = $('#filterToggleBtn');
     const n = moreFilterCount(), lane = usesLane();
-    const narrow = !!(window.matchMedia && window.matchMedia(NARROW_FILTERS).matches);
-    if (app) app.classList.toggle('filters-collapsed', lane && !moreFiltersOpen());
     if (toggle) {
-      toggle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">筛选</span>' + (n ? `<b class="filter-count">${n}</b>` : '');
+      toggle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">' + (n ? `筛选 · ${n}` : '筛选') + '</span>';
       toggle.classList.toggle('active', n > 0);
-      toggle.setAttribute('aria-expanded', String(narrow ? !!$('#appSidebar.open') : lane && moreFiltersOpen()));
+      toggle.setAttribute('aria-expanded', String(!!$('#appSidebar.open')));
       toggle.setAttribute('aria-label', n ? `筛选，已生效 ${n} 项` : '筛选');
     }
     if (!lane) return;
-    const reading = $('#readingSelect'); if (reading) reading.value = state.reading;
+    renderPanelGroups();
     const followed = state.favoriteJournals.includes(state.journal);
     const star = $('#favoriteJournalBtn');
     if (star) { star.disabled = !state.journal; star.textContent = followed ? '★ 已关注' : '☆ 关注期刊'; star.setAttribute('aria-pressed', String(followed)); }
-    const fav = $('#favoritesOnlyBtn');
-    if (fav) { fav.textContent = '我的期刊 ' + state.favoriteJournals.length; fav.classList.toggle('active', state.favoritesOnly); fav.setAttribute('aria-pressed', String(state.favoritesOnly)); }
-    const minor = $('#minorToggleBtn');
-    if (minor) { minor.classList.toggle('active', state.minor); minor.setAttribute('aria-pressed', String(state.minor)); }
-    const period = $('#rangeExplanation');
-    if (period) period.textContent = state.range === 'all' ? '日期与研究类型均以来源信息为准；未知项明确保留。' : `发表时间：北京时间 ${rangeStart()} 至 ${beijingToday()}；不含日期未知及仅有刊期的条目。`;
   }
+  document.addEventListener('click', e => {
+    const opt = e.target.closest && e.target.closest('.panel-opt');
+    if (!opt) return;
+    const v = opt.dataset.value;
+    if (opt.dataset.panel === 'lane') state.lane = v;
+    else if (opt.dataset.panel === 'ft') state.ftFilter = v;
+    else if (opt.dataset.panel === 'reading') state.reading = v;
+    else if (opt.dataset.panel === 'range') state.range = v;
+    else if (opt.dataset.panel === 'journal') state.favoritesOnly = v === 'mine';
+    else if (opt.dataset.panel === 'type') state.minor = v === 'minor';
+    state.page = 1;
+    renderSidebarFilters();
+    renderStream();
+  });
+  // 重置: every filter in the row and the panel, including time; the search keyword stays.
+  function resetPanelFilters() {
+    clearSidebarFilters();
+    state.lane = 'core'; state.range = defaultRange(state.mode); state.ftFilter = ''; state.reading = ''; state.favoritesOnly = false; state.minor = false;
+    state.page = 1;
+    renderSidebarFilters();
+    renderStream();
+  }
+  $('#panelResetBtn')?.addEventListener('click', resetPanelFilters);
   $('#modeNote')?.addEventListener('click',e=>{const t=e.target.closest('.mode-note-toggle');if(!t)return;const open=e.currentTarget.classList.toggle('note-open');t.setAttribute('aria-expanded',String(open));});
-  $('#readingSelect')?.addEventListener('change',e=>{state.reading=e.target.value;state.page=1;renderSidebarFilters();renderStream();});
   $('#favoriteJournalBtn')?.addEventListener('click',()=>{if(!state.journal)return; const f=state.favoriteJournals;state.favoriteJournals=f.includes(state.journal)?f.filter(j=>j!==state.journal):[...f,state.journal];safeSet('xz_favorite_journals',JSON.stringify(state.favoriteJournals));renderSidebarFilters();renderStream();});
   $('#favoritesOnlyBtn')?.addEventListener('click',()=>{state.favoritesOnly=!state.favoritesOnly;state.page=1;renderSidebarFilters();renderStream();});
 
@@ -3260,22 +3274,20 @@
     });
   });
 
-  // 更多筛选: a bottom sheet on phones, a foldable left column on wide screens
-  $('#filterToggleBtn')?.addEventListener('click', () => {
-    const sb = $('#appSidebar');
-    if (!sb) return;
-    if (window.matchMedia && window.matchMedia(NARROW_FILTERS).matches) {
-      const open = sb.classList.toggle('open');
-      $('#filterToggleBtn').setAttribute('aria-expanded', String(open));
-      return;
-    }
-    state.moreFiltersOpen = !moreFiltersOpen();
-    renderMoreFilters();
-    if (state.moreFiltersOpen) sb.querySelector('button, select')?.focus({ preventScroll: true });
+  const openSheet = () => {
+    const sb = $('#appSidebar'); if (!sb) return;
+    sb.classList.add('open'); $('#filterToggleBtn')?.setAttribute('aria-expanded', 'true');
+    (sb.querySelector('.panel-opt[aria-pressed="true"]') || sb.querySelector('button'))?.focus({ preventScroll: true });
+  };
+  $('#filterToggleBtn')?.addEventListener('click', () => { if ($('#appSidebar')?.classList.contains('open')) closeSheet(); else openSheet(); });
+  $('#panelApplyBtn')?.addEventListener('click', e => {
+    if (e.currentTarget.dataset.empty === '1') { resetPanelFilters(); return; }
+    closeSheet();
+    ($('#listHead') || $('#streamSection'))?.scrollIntoView({ block: 'start' });
   });
 
   // Mobile filter sheet: close button, backdrop tap (via body::after), Esc
-  const closeSheet = () => { const sb = $('#appSidebar'); if (sb) sb.classList.remove('open'); const t = $('#filterToggleBtn'); if (t) t.setAttribute('aria-expanded', 'false'); };
+  function closeSheet() { const sb = $('#appSidebar'); const was = sb && sb.classList.contains('open'); if (sb) sb.classList.remove('open'); const t = $('#filterToggleBtn'); if (t) { t.setAttribute('aria-expanded', 'false'); if (was) t.focus({ preventScroll: true }); } }
   $('#sheetClose')?.addEventListener('click', closeSheet);
   document.addEventListener('click', e => { if (e.target === document.body && $('#appSidebar')?.classList.contains('open')) closeSheet(); });
 
@@ -3555,6 +3567,8 @@
       if (type === 'tier') state.clinicalTier = '';
       if (['pub', 'publisher', 'journal'].includes(type)) { state.publisher = ''; state.journal = ''; }
       if (type === 'range') state.range = defaultRange(state.mode);
+      if (type === 'lane') state.lane = 'core';
+      if (type === 'minor') state.minor = false;
       if (type === 'design') state.studyDesign = '';
       if (type === 'tag') state.tag = '';
       if (type === 'reading') state.reading = '';
@@ -3788,6 +3802,17 @@
   }
 
 })();
+
+  // 窄屏（<380px）列表头放不下视图切换：只留排序，详细/列表挪到页脚。
+  (() => {
+    const mq = window.matchMedia && window.matchMedia('(max-width: 379px)');
+    const toggle = document.querySelector('.list-head .view-toggle');
+    const footer = document.getElementById('appFooter'), tools = document.getElementById('listHeadTools');
+    if (!mq || !toggle || !footer || !tools) return;
+    const place = () => { if (mq.matches) footer.prepend(toggle); else tools.append(toggle); };
+    place();
+    (mq.addEventListener ? mq.addEventListener('change', place) : mq.addListener(place));
+  })();
 // ==== src/app/11-page-extras.js · Standalone page helpers outside the main app scope ====
 
 ;(function () {

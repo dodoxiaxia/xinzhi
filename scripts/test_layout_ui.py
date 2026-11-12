@@ -217,7 +217,7 @@ def main():
                     page.locator('[data-mode="candidates"]').click()
                     expect(page.locator('#streamRail')).to_be_hidden()
                     check(page.locator('#streamLaneSlot #laneBar').count() == 1, label + ': radar classification restored to main area')
-                    expect(page.locator('#modeNote')).not_to_be_empty()
+                    expect(page.locator('#modeNote')).to_be_hidden()
                     page.locator('[data-mode="curated"]').click()
                     expect(page.locator('#streamRail #laneBar')).to_be_visible()
                     check(page.locator('#laneBar').count() == 1, label + ': return without duplicate filters')

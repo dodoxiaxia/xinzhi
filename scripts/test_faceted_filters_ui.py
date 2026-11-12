@@ -52,11 +52,23 @@ def main():
         page.goto(base + '?' + urlencode(query), wait_until='networkidle')
 
     def pick_journal(page, journal):
-        # The publisher/journal tree in 更多筛选 is the only journal control.
+        # The publisher/journal tree under 更多条件 is the only journal control.
+        open_panel(page)
         expand = locator(page, 'data-pub-expand', publisher[journal])
         if expand.get_attribute('aria-expanded') != 'true':
             expand.click()
         locator(page, 'data-filter-journal', journal).click()
+
+    def open_panel(page):
+        if not page.locator('#appSidebar.open').count():
+            page.locator('#filterToggleBtn').click()
+        expect(page.locator('#appSidebar')).to_be_visible()
+        page.evaluate("document.querySelector('.panel-more').open = true")
+
+    def close_panel(page):
+        if page.locator('#appSidebar.open').count():
+            page.keyboard.press('Escape')
+        expect(page.locator('#appSidebar')).not_to_be_visible()
 
     def fits(page, label):
         check(page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), label + ': no horizontal page overflow')
@@ -101,9 +113,8 @@ def main():
             combined_count = sum(journal_name(paper) == journal_a and paper.get('studyDesign') == design for paper in pool)
             check(count(page) == len(pool), 'Initial count matches actual public library')
             expect(page.locator('#appSidebar')).not_to_be_visible()
-            check(page.locator('#filterToggleBtn').inner_text().strip() == '筛选', 'More filters start folded with no active condition')
-            page.locator('#filterToggleBtn').click()
-            expect(page.locator('#appSidebar')).to_be_visible()
+            check(''.join(page.locator('#filterToggleBtn').inner_text().split()) == '筛选·1', 'Only the explicit all-fields lane counts as a non-default condition')
+            open_panel(page)
 
             before = page.url
             locator(page, 'data-pub-expand', publisher[journal_a]).click()
@@ -120,7 +131,7 @@ def main():
             fits(page, 'desktop combination')
             page.screenshot(path=str(out / 'desktop-combination.png'))
 
-            check(''.join(page.locator('#filterToggleBtn').inner_text().split()) == '筛选2', 'More filters counts the active conditions')
+            check(''.join(page.locator('#filterToggleBtn').inner_text().split()) == '筛选·3', 'The filter button counts the active conditions')
             pick_journal(page, journal_b)
             check(params(page).get('pub') == publisher[journal_b] and params(page).get('design') == design, 'Another journal replaces the source family and retains design')
             check(count(page) == 0, 'Incompatible combination stays empty until an explicit action')
@@ -128,10 +139,12 @@ def main():
             check(locator(page, 'data-filter-journal', journal_a).count() == 1, 'Other journals remain available when a combination is empty')
             check(locator(page, 'data-browse-value', journal_b, '#publisherAccordion ').count() == 1, 'Zero-count journal keeps its only-browse action')
             page.screenshot(path=str(out / 'desktop-empty.png'))
+            close_panel(page)
             locator(page, 'data-browse-only', 'design', '#articlesStream ').click()
             check(count(page) == design_count and not params(page).get('journal') and not params(page).get('pub'), 'Empty-state action replaces the source with the selected design')
 
             pick_journal(page, journal_a)
+            close_panel(page)
             locator(page, 'data-clear', 'journal', '#activeFiltersBar ').click()
             check(count(page) == design_count and not params(page).get('pub'), 'Removing a journal chip also removes its hidden parent')
             pick_journal(page, journal_a)
@@ -142,7 +155,7 @@ def main():
             check(params(page).get('pub') == publisher[journal_a] and count(page) == combined_count, 'Legacy conflicting URL is normalized to the journal parent')
             page.reload(wait_until='networkidle')
             check(count(page) == combined_count, 'Refreshing a shared URL restores the same combination')
-            expect(page.locator('#appSidebar')).to_be_visible()
+            open_panel(page)
             expect(locator(page, 'data-filter-journal', journal_a)).to_have_attribute('aria-pressed', 'true')
             only = locator(page, 'data-browse-value', design, '#designFilterList ')
             only.focus()
@@ -152,11 +165,13 @@ def main():
 
             navigate(page, journal=journal_a, design=design, q='__faceted_missing_keyword__', range='30', reading='abstract', favorites='1')
             before = params(page)
+            open_panel(page)
             locator(page, 'data-browse-value', design, '#designFilterList ').click()
             check(all(params(page).get(key) == before.get(key) for key in ['q', 'range', 'lane', 'reading', 'favorites']), 'Only-browse preserves all base conditions in the real URL')
             # With no keyword match the tree lists no journals; the design stays as the sidebar condition.
             check(params(page).get('design') == design, 'Only-browse keeps the chosen design')
-            locator(page, 'data-clear', 'sidebar', '#activeFiltersBar ').click()
+            close_panel(page)
+            locator(page, 'data-clear', 'design', '#activeFiltersBar ').click()
             after = params(page)
             check(all(after.get(key) == before.get(key) for key in ['q', 'range', 'lane', 'reading', 'favorites']), 'Clear sidebar preserves all base conditions')
             check(not any(after.get(key) for key in ['pub', 'journal', 'design', 'tier', 'tag']), 'Clear sidebar removes exactly the left-side conditions')
@@ -171,8 +186,7 @@ def main():
                 check(count(page) == combined_count, f'{width}/{style}: shared combination matches')
                 fits(page, f'{width}/{style}')
                 if width < 500:
-                    page.locator('#filterToggleBtn').click()
-                    expect(page.locator('#appSidebar')).to_be_visible()
+                    open_panel(page)
                     only = locator(page, 'data-browse-value', design, '#designFilterList ')
                     only.scroll_into_view_if_needed()
                     check(only.bounding_box()['height'] >= 40, f'{width}/{style}: only-browse is a touch-sized target')
