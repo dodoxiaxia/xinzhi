@@ -156,7 +156,7 @@ function museResponse(request, job, paper) {
   const secondary = view.secondaryUpload ? '<p class="hint">手里已有这篇的 PDF？<a href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">直接上传</a>，不必等下载队列。</p>' : '';
   // Maintainer-only detail: hideInstitutionLinks removes this block unless the browser is in maintainer mode.
   const maintainer = HAN_BLOCK_START + '<p class="maint">维护者信息：状态 ' + pdfEscape(job.state) + (publicJob.reason ? '，原因 ' + pdfEscape(publicJob.reason) : '') + '，最近更新北京时间 '
-    + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + (publicJob.nextVerificationAt ? '，下一批定时核验北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(11,16) : '') + '。</p>' + HAN_BLOCK_END;
+    + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '。</p>' + HAN_BLOCK_END;
   return pdfHtml(check + (paper?.title ? '<p class="paper-title">' + pdfEscape(paper.title) + '</p>' : '') + '<ol class="steps">' + steps + '</ol>'
     + '<p role="status" class="status"><b>' + pdfEscape(view.headline) + '</b>' + (view.eta ? '<br>' + pdfEscape(view.eta) : '') + '</p>'
     + action + secondary + maintainer
@@ -164,7 +164,6 @@ function museResponse(request, job, paper) {
     + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'全文任务',job.doi);
 }
 const MUSE_TASK_STEPS = ['排队下载','已收到，核验中','可阅读'];
-function museBeijingClock(iso) { return new Date(Date.parse(iso) + 28800000).toISOString().slice(11,16); }
 // One status description per task, shared by the task page; the website script mirrors it so the card and this page never disagree.
 function museTaskView(job, publicJob) {
   const recoverable = museRecoverable(job);
@@ -175,8 +174,8 @@ function museTaskView(job, publicJob) {
   if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未能获取',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
   if (recoverable) return {step:0,stopped:true,stopLabel:'未能获取',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
-    eta:publicJob.verificationMode === 'immediate' ? '预计几分钟内完成（北京时间 ' + museBeijingClock(publicJob.verificationExpectedAt) + ' 前后）。'
-      : '即时核验没有赶上，已排入每小时批次（下一批计划北京时间 ' + museBeijingClock(publicJob.nextVerificationAt) + '），GitHub 的定时任务常晚到数小时。',action:'refresh'};
+    eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
+      : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};
   if (job.state === 'queued') return {step:0,stopped:false,headline:'已排入下载队列，等待下载端领取。',eta:'预计数小时内，不保证即时。',action:'refresh',secondaryUpload:true};
   return {step:0,stopped:false,headline:'下载端已领取，正在获取全文。',eta:'通常几十分钟内；取得后会自动进入核验。',action:'refresh',secondaryUpload:true};
 }
@@ -228,9 +227,11 @@ async function museRequestReview(env) {
   const token = env.MUSE_REVIEW_DISPATCH_TOKEN;
   if (typeof token !== 'string' || !/^[A-Za-z0-9_]{20,255}$/.test(token)) return false;
   try {
-    // One run verifies every waiting candidate, so a burst of uploads needs one dispatch.
+    // One run verifies every waiting candidate, so a burst of uploads needs one dispatch. KV's shortest TTL is
+    // 60 seconds; the dispatched run keeps claiming for about two minutes (scripts/muse_review_runner.cjs), so an
+    // upload inside this window is still picked up by the run that is already coming.
     if (await env.QL_KV.get('library:muse-review-dispatch')) return false;
-    await env.QL_KV.put('library:muse-review-dispatch','1',{expirationTtl:120});
+    await env.QL_KV.put('library:muse-review-dispatch','1',{expirationTtl:60});
   } catch { return false; }
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(),5000);
   try {

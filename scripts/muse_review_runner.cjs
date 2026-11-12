@@ -4,6 +4,7 @@ const {readJson,ready,serviceError,failureLog} = require('./fulltext_import_runn
 const fs = require('fs/promises'),path = require('path'),os = require('os'),crypto = require('crypto');
 const {promisify} = require('util'),execFile = promisify(require('child_process').execFile);
 const ENDPOINT = 'https://learn.dryz.info/api/muse/review';
+const CLAIM_IDLE_POLLS = 9, CLAIM_IDLE_MS = 15000;
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 async function verifyOriginal(bytes, task) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(),'xinzhi-muse-'));
@@ -36,10 +37,20 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     if (binary) throw new Error('invalid_candidate');
     return body;
   };
-  let processed = 0;
+  let processed = 0, idle = 0;
+  // A run the website dispatches right after an upload can start before Cloudflare KV shows the new
+  // candidate (list and read are eventually consistent), so it used to find nothing and exit while
+  // the upload waited for the late hourly schedule. A dispatched run therefore keeps asking for
+  // about two minutes after the last candidate; the website coalesces dispatches inside 60 seconds,
+  // so every upload falls inside some run's window. Scheduled and recheck runs never wait.
+  const patient = !recheckDoi && env.GITHUB_EVENT_NAME === 'workflow_dispatch';
   for (let n = 0; n < (recheckDoi ? 1 : 5); n++) {
     const claimed = await call(recheckDoi ? {action:'recheck',doi:recheckDoi} : {action:'claim'}), task = claimed.task;
-    if (task === null) break;
+    if (task === null) {
+      if (patient && idle < CLAIM_IDLE_POLLS) { idle++; n--; await wait(CLAIM_IDLE_MS); continue; }
+      break;
+    }
+    idle = 0;
     if (!task || typeof task.doi !== 'string' || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(task.doi) || /[<>?#@\\]/.test(task.doi)
         || task.doi !== task.doi.toLowerCase() || (recheckDoi && task.doi !== recheckDoi) || typeof task.title !== 'string' || !task.title || task.title.length > 800
         || !uuid.test(task.taskId || '') || !uuid.test(task.leaseId || '') || !/^[a-f0-9]{64}$/.test(task.sha256 || '')
