@@ -7,8 +7,9 @@ Required steps must succeed; optional steps may fail without blocking the day's 
 import datetime, hashlib, json, os, re, subprocess, sys, time
 from pathlib import Path
 
+from release_integrity import PUBLIC, is_published_file, published_files
+
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
 
 BUILD = ['scripts/build_public.py']
 WEEK_BOARD = ['scripts/week_precompute.py']
@@ -198,16 +199,43 @@ def record_precompute_pending(root):
         'runtimeCacheWrites': 0, 'ledgerWrites': 0}
 
 
+def public_file_sizes():
+    """Byte size of each file the build is allowed to publish. Missing or unreadable trees yield []."""
+    directory = ROOT / 'public'
+    if not directory.is_dir() or directory.is_symlink():
+        return []
+    try:
+        names = published_files(directory)
+    except (OSError, ValueError):
+        return []
+    rows = []
+    for name in names:
+        if not is_published_file(name):
+            continue
+        path = directory / name
+        if path.is_file() and not path.is_symlink():
+            rows.append({'path': name, 'bytes': path.stat().st_size})
+    return rows
+
+
 def content_hash():
     """Hash every public asset, ignoring only known bundle refresh timestamps."""
     if not (ROOT / 'public' / 'public.js').exists():
         return ''
     digest = hashlib.sha256()
-    for name in sorted(PUBLIC):
+    try:
+        present = published_files(ROOT / 'public')
+    except (OSError, ValueError):
+        present = []
+    names = sorted(set(PUBLIC) | {name for name in present if is_published_file(name)})
+    for name in names:
         path = ROOT / 'public' / name
-        payload = path.read_bytes() if path.exists() else b'<missing>'
-        if name in ('public.js', 'radar.js'):
-            payload = stable_bundle(payload.decode('utf-8')).encode('utf-8')
+        payload = path.read_bytes() if path.is_file() and not path.is_symlink() else b'<missing>'
+        if name in ('public.js', 'radar.js') or name.startswith('shards/'):
+            try:
+                payload = stable_bundle(payload.decode('utf-8')).encode('utf-8')
+            except UnicodeDecodeError:
+                pass
         digest.update(name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
     return digest.hexdigest()
 
@@ -271,6 +299,7 @@ def main():
         report['fullRefreshPolicy'] = full_policy
 
     def finish(status, problems=None):
+        report['publicFiles'] = public_file_sizes()
         report['status'] = status
         report['problems'] = problems or []
         report['finishedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -344,9 +373,15 @@ def main():
 
     # sanity gate
     problems = []
-    names = {p.name for p in (ROOT / 'public').iterdir()} if (ROOT / 'public').is_dir() else set()
-    if names != PUBLIC:
-        problems.append(f'public files differ: {sorted(names ^ PUBLIC)}')
+    try:
+        names = set(published_files(ROOT / 'public')) if (ROOT / 'public').is_dir() else set()
+    except ValueError as exc:
+        problems.append(str(exc))
+        names = set()
+    missing = PUBLIC - names
+    extra = {name for name in names if not is_published_file(name)}
+    if missing or extra:
+        problems.append(f'public files differ: {sorted(missing | extra)}')
     try:
         counts = json.loads((ROOT / 'docs/public-manifest.json').read_text()).get('counts', {})
         for k, v in MIN_COUNTS.items():

@@ -660,7 +660,7 @@ function libraryError(request, error, doi = '', route = '') {
     grok_disabled:'后台机构获取尚未启用。', grok_not_configured:'后台机构获取尚未完成配置，请联系维护者。',
     grok_owner_conflict:'后台执行流程需要维护者确认，任务未重复派发。',
     library_not_found:'尚无可下载的全文，请先获取并加入文献库。', library_busy:'这篇文献的获取请求正在处理。', library_retry_later:'当前获取频率受限，请等待下方时间后再试。', library_limit:'本日按需获取次数已达到限制，额度重置后可再试。',
-    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', muse_busy:'这篇已有 PDF 正在由 Muse 获取或等待网站核验，暂不接受重复上传。', muse_bad_pdf:'上传的文件不是完整的 PDF，或大小不在 50 KiB–10 MiB 之间。', muse_bad_request:'请通过网站页面提交。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
+    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', muse_busy:'这篇已有 PDF 正在下载或等待网站核验，暂不接受重复上传。', muse_bad_pdf:'上传的文件不是完整的 PDF，或大小不在 50 KiB–10 MiB 之间。', muse_bad_request:'请通过网站页面提交。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
     library_paused:'来源要求授权、验证或已限制请求，获取已暂停。请维护者确认后恢复，或由已授权机构浏览器处理。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
   const retryable = ['library_not_found','library_busy','library_retry_later','library_limit','library_timeout','library_upstream','library_sync_pending'].includes(code);
   const retryHint = code === 'library_paused' && retryAfter ? '<p>上游返回 Retry-After，限制期限为北京时间 ' + new Date(retryAfter + 28800000).toISOString().slice(0,19).replace('T',' ') + '。到期不会自动恢复，仍需维护者确认。</p>' : retryAfter ? libraryRetryHint(retryAfter) : '';
@@ -1431,12 +1431,26 @@ const MUSE_JOB_PREFIX = 'library:muse-job:';
 const MUSE_QUEUE_PREFIX = 'library:muse-queue:';
 const MUSE_REVIEW_PREFIX = 'library:muse-review:';
 const MUSE_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
-const MUSE_STATES = ['queued','running','uploading','verifying','login_required','available','review','failed'];
+const MUSE_STATES = ['queued','running','uploading','verifying','login_required','available','review','failed','abandoned'];
 const MUSE_LEASE_MS = 1200000;
 // Muse has no fixed polling schedule, so an unclaimed request waits almost the whole job lifetime
 // (KV TTL 7 days) instead of dying after one day nobody ran Muse.
+// Terminal records (available, abandoned) are written without a TTL; see musePut.
 const MUSE_QUEUE_MS = 6 * 86400000;
-const MUSE_SOURCES = ['reader_upload','open_access'];
+// 2026-11-12 plus the agreed 30-day transition. MUSE_DOWNLOAD_RETIRE_ON overrides the displayed date only.
+const MUSE_DOWNLOAD_RETIRE_ON_DEFAULT = '2026-12-12';
+const MACHINE_CALLER_ID = /^[a-z][a-z0-9_-]{0,31}$/;
+const MACHINE_FIXED_SOURCES = ['reader_upload','open_access','machine'];
+function museRetireOn(env) {
+  const configured = env && env.MUSE_DOWNLOAD_RETIRE_ON;
+  return typeof configured === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(configured) ? configured : MUSE_DOWNLOAD_RETIRE_ON_DEFAULT;
+}
+function museSourceOk(source) {
+  return MACHINE_FIXED_SOURCES.includes(source) || MACHINE_CALLER_ID.test(source);
+}
+function machineCallerSource(source) {
+  return MACHINE_CALLER_ID.test(source || '') && !MACHINE_FIXED_SOURCES.includes(source);
+}
 function handleMuseProtocol(request, env) {
   if (request.method !== 'GET' || new URL(request.url).search) return json({ok:false,error:'muse_bad_request'},405);
   const protocol = {schemaVersion:1,website:'https://learn.dryz.info',
@@ -1448,6 +1462,8 @@ function handleMuseProtocol(request, env) {
     receipt:{url:'https://learn.dryz.info/api/muse/receipt',method:'POST',contentType:'application/json',identityFields:['taskId','doi','leaseId'],states:['running','login_required','failed','uploaded'],uploadedFields:['sha256','bytes','driveFileId']},
     upload:{url:'https://learn.dryz.info/api/muse/upload',method:'PUT',contentType:'application/pdf',body:'original_pdf_bytes',headers:{'X-Muse-Doi':'task.doi','X-Muse-Task-Id':'task.taskId','X-Muse-Lease-Id':'task.leaseId'}},
     limits:{minBytes:51200,maxBytes:LIBRARY_MAX_PDF_BYTES,maxPages:200,leaseMinutes:20,renewEveryMinutes:5,maxAcquisitionMinutes:120},
+    deprecation:{downloadRole:'retired',retireOn:museRetireOn(env),autoDisable:false,endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry'],
+      note:'Muse 已退出下载角色。过渡期内上述接口保持可用，日期可用 MUSE_DOWNLOAD_RETIRE_ON 调整；到点不会自动关闭，关闭需另一次变更。新的下载队列见 /api/machine/protocol。'},
     instructions:['使用现有 Muse 下载流程与领取账本，已有原件直接复用；只使用 sources 列出的来源。',
       '上传私有 Drive 文献收件箱后，回传同一 PDF 的 SHA256、字节数及 Drive 文件 ID，再上传原二进制；不改动 PDF。',
       'uploaded 回执不是网站核验成功；网站独立双解析器核验任务每小时第 23 分钟处理，实际排队可能延迟。',
@@ -1456,7 +1472,7 @@ function handleMuseProtocol(request, env) {
       '无变化的轮询保持静默。密钥、密码、Cookie 和临时 URL 不写入回执、文件或日志。',
       'Drive 上传仅记为报告；网站缓存可用与正式三端归档分别确认，archive.complete 始终为 false。']};
   if (!(request.headers.get('accept') || '').includes('text/html')) return json(protocol);
-  return pdfHtml('<p>Muse 可以按下方协议建立一个定时任务，每 10 分钟领取一次，最多三篇、串行处理。当前接入：' + (protocol.enabled ? '已启用' : '尚未启用') + '。</p>'
+  return pdfHtml('<p>Muse 的下载角色已停止。领取、回执、上传和读者恢复入口在过渡期仍可用，计划日期 ' + pdfEscape(protocol.deprecation.retireOn) + '（可用 MUSE_DOWNLOAD_RETIRE_ON 调整）。到这一天不会自动关闭。</p><p>当前接入：' + (protocol.enabled ? '已启用' : '尚未启用') + '。</p>'
     + '<p>维护者需在 Cloudflare Pages 的 Production 私密配置中设置 MUSE_FULLTEXT_ENABLED=true 和独立随机 Secret MUSE_FULLTEXT_KEY，并在 Muse 私密配置保存同一个密钥。GROK_FULLTEXT_ENABLED 与 FULLTEXT_ASYNC_ENABLED 保持关闭。保存后重新部署 Production，确认本页显示“已启用”。密钥不要发到聊天中。</p>'
     + '<p>把本页链接交给 Muse：先读取协议，使用已有下载流程，上传 Drive 后回传原件，等待网站核验。</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' + pdfEscape(JSON.stringify(protocol,null,2)) + '</pre>',200,'Muse 网站接入说明');
 }
@@ -1482,7 +1498,12 @@ function museRecord(value, doi = '') {
       || (Object.hasOwn(value,'receivedAt') && (!Number.isSafeInteger(value.receivedAt) || value.receivedAt < 1 || value.receivedAt >= 8640000000000000 - 28800000))
       || value.queueKey !== MUSE_QUEUE_PREFIX + String(value.createdAt).padStart(13,'0') + ':' + value.id
       || (['running','uploading','verifying'].includes(value.state) && (!MUSE_UUID.test(value.leaseId || '') || !Number.isSafeInteger(value.leaseUntil) || value.leaseUntil < 1))
-      || (Object.hasOwn(value,'source') && !MUSE_SOURCES.includes(value.source)) || (value.source && Object.hasOwn(value,'driveFileId'))
+      || (Object.hasOwn(value,'source') && !museSourceOk(value.source))
+      || (Object.hasOwn(value,'driveFileId') && (typeof value.driveFileId !== 'string' || !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId)))
+      || (Object.hasOwn(value,'caller') && !MACHINE_CALLER_ID.test(value.caller))
+      || (Object.hasOwn(value,'claimant') && !/^(?:muse|[a-z][a-z0-9_-]{0,31})$/.test(value.claimant))
+      || (Object.hasOwn(value,'stage') && !['han','yiigle'].includes(value.stage))
+      || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'].includes(value.verificationReason))
       || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || (!value.source && !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || ''))))
       || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
   return value;
@@ -1495,17 +1516,19 @@ function museNextVerificationAt(now = Date.now()) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
+  const kept = ['lease_expired','queue_expired','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
-    : job.state === 'login_required' ? 'login_required' : job.state === 'review' ? 'verification_rejected'
-    : job.state === 'failed' ? ['lease_expired','queue_expired','agent_failed'].includes(job.reason) ? job.reason : job.leaseUntil <= Date.now() ? 'lease_expired' : 'agent_failed' : '';
+    : job.state === 'login_required' ? 'login_required'
+    : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
+    : job.state === 'failed' ? (kept.includes(job.reason) ? job.reason : job.leaseUntil <= Date.now() ? 'lease_expired' : 'agent_failed') : '';
   const state = expired || job.state === 'login_required' ? 'manual_needed' : job.state === 'uploading' ? 'running' : job.state === 'verifying' ? 'pending' : job.state;
   const stage = expired ? 'failed' : job.state;
   const planned = job.state === 'verifying' ? museNextVerificationAt(job.receivedAt || job.updatedAt) : '';
   const verificationDelayed = !!planned && Date.parse(planned) <= Date.now();
-  const messages = {queued:'已加入 Muse 待办，等待 Muse 领取；领取时间取决于 Muse 的运行安排，不保证即时。手里已有 PDF 可以直接上传，不必等 Muse。',running:'Muse 已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:job.source === 'reader_upload' ? '已收到你上传的 PDF，等待网站核验 DOI、题名与全部页面。' : job.source === 'open_access' ? '已从开放获取来源取得 PDF，等待网站核验 DOI、题名与全部页面。' : 'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
-    login_required:'汉堡会话需要重新登录，请维护者在 Muse 的授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'Muse 报告任务失败，需维护者核查。'};
-  const reasons = {lease_expired:'Muse 领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
-    queue_expired:'任务排队过久仍未被 Muse 领取，已停止。可以直接上传 PDF，或用全文口令重新排队。'};
+  const messages = {queued:'已在下载队列中，等待领取；领取时间取决于下载端的运行安排，不保证即时。手里已有 PDF 可以直接上传。',running:'已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:job.source === 'reader_upload' ? '已收到你上传的 PDF，等待网站核验 DOI、题名与全部页面。' : job.source === 'open_access' ? '已从开放获取来源取得 PDF，等待网站核验 DOI、题名与全部页面。' : 'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
+    login_required:'汉堡会话需要重新登录，请维护者在原授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'下载未完成，任务已停止，等待维护者确认。',abandoned:'已确认不再获取这篇全文。'};
+  const reasons = {lease_expired:'领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
+    queue_expired:'任务排队过久仍未被领取，已停止。可以直接上传 PDF，或用全文口令重新排队。'};
   return {id:job.id,doi:job.doi,state,stage,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
     message:reasons[reason] || (verificationDelayed ? 'PDF 已收到，计划核验时间已到，核验尚未完成；实际执行以 GitHub 队列为准。' : messages[job.state]), ...(reason ? {reason} : {}),
     ...(job.state === 'verifying' ? {nextVerificationAt:planned,verificationDelayed,verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。'} : {}),
@@ -1514,8 +1537,12 @@ function musePublicJob(value, doi = '') {
 async function musePublicJobValue(env, doi) {
   return musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
 }
+function museTerminalRecord(job) {
+  return job.state === 'available' || job.state === 'abandoned';
+}
 async function musePut(env, job) {
-  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),{expirationTtl:604800});
+  // Done and confirmed-abandoned stay in KV until deleted. Other states keep the 7-day TTL.
+  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),museTerminalRecord(job) ? undefined : {expirationTtl:604800});
   libraryCatalogCache.clear();
 }
 function museExpired(job) {
@@ -1534,31 +1561,32 @@ function museResponse(request, job, paper) {
     ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},job.state === 'available' ? 200 : 202);
   const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60"><p>本页每 60 秒只更新状态，不会重新下载。</p>' : '';
   // Reader uploads and open-access copies skip Muse entirely, so they show the shorter path they actually took.
-  const stages = job.source ? [['queued','提交请求'],['verifying',(job.source === 'reader_upload' ? '已收到上传的 PDF' : '已取得开放获取 PDF') + '，等待网站核验'],['available','核验通过，可下载']]
-    : [['queued','待 Muse 领取'],['running','Muse 已领取，正在获取全文'],['uploading','原件已上传私有收件箱'],['verifying','网站已收到 PDF，等待核验'],['available','核验通过，可下载']];
+  const stages = job.source ? [['queued','提交请求'],['verifying',(job.source === 'reader_upload' ? '已收到上传的 PDF' : job.source === 'open_access' ? '已取得开放获取 PDF' : '已收到 PDF') + '，等待网站核验'],['available','核验通过，可下载']]
+    : [['queued','待下载队列领取'],['running','已领取，正在获取全文'],['uploading','原件已上传私有收件箱'],['verifying','网站已收到 PDF，等待核验'],['available','核验通过，可下载']];
   // Infer how far a stopped task got from the evidence it carries, so the list never shows no step at all.
   const reached = job.source ? job.state === 'available' ? 2 : job.state === 'review' || job.candidateKey ? 1 : 0
     : job.state === 'available' ? 4 : job.state === 'review' || job.candidateKey ? 3 : job.driveFileId ? 2 : job.leaseId ? 1 : 0;
   const index = stages.findIndex(([stage]) => stage === publicJob.stage);
   const stopped = index < 0 || publicJob.stage === 'failed';
-  const stopLabels = {review:'PDF 核验未通过，等待维护者核查',login_required:'汉堡会话需重新登录（维护者处理）',failed:'任务已停止，等待维护者确认'};
+  const stopLabels = {review:'PDF 核验未通过，等待维护者核查',login_required:'汉堡会话需重新登录（维护者处理）',failed:'任务已停止，等待维护者确认',abandoned:'已确认不再获取'};
   const current = stopped ? reached : index;
   const progress = '<ol class="steps">' + stages.map(([,label],i) => {
-    if (stopped && i === current) return '<li class="stop" aria-current="step">' + pdfEscape(stopLabels[job.state === 'login_required' ? 'login_required' : job.state === 'review' ? 'review' : 'failed']) + '（当前）</li>';
+    if (stopped && i === current) return '<li class="stop" aria-current="step">' + pdfEscape(stopLabels[job.state === 'login_required' ? 'login_required' : job.state === 'review' ? 'review' : job.state === 'abandoned' ? 'abandoned' : 'failed']) + '（当前）</li>';
     return '<li' + (i < current || (i === current && job.state === 'available') ? ' class="done"' : '') + (!stopped && i === current ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i < current || (i === current && job.state === 'available') ? '（已完成）' : i === current ? '（当前）' : '') + '</li>';
   }).join('') + '</ol>';
   const planned = publicJob.nextVerificationAt ? '<p>本批原件计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
   const next = job.state === 'available' ? ''
-    : museRecoverable(job) ? '<p class="next">无需重复提交。确认 Muse 没有仍在运行的下载后，可用全文口令<a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">恢复这个任务</a>；会优先复用已下载文件。</p>'
+    : job.state === 'abandoned' ? '<p class="next">已确认不再获取。不会自动回到下载队列。</p>'
+    : museRecoverable(job) ? '<p class="next">无需重复提交。确认没有仍在进行的下载后，可用全文口令<a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">把任务放回下载队列</a>；会优先复用已下载文件。</p>'
     : ['review','login_required'].includes(job.state) ? '<p class="next">无需重复提交。维护者处理后，本页和网站上的状态会更新。</p>'
     : '<p class="next">可以关闭本页。之后回到网站搜索这个 DOI 即可看到最新状态；可下载时，文献卡片会出现“下载 PDF”。</p>';
   const upload = ['queued','review','login_required'].includes(job.state) || museRecoverable(job) ? museUploadLink(job.doi) : '';
   return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + (paper?.title ? '<p>' + pdfEscape(paper.title) + '</p>' : '') + progress + '<p>最近更新：北京时间 ' + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '</p>' + planned + next + upload
     + (job.state === 'available' ? libraryDownloadForm(job.doi) : '')
-    + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'Muse 全文任务',job.doi);
+    + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'全文任务',job.doi);
 }
 function museUploadLink(doi) {
-  return '<p>已经拿到这篇的 PDF（开放获取，或汉堡登录后下载）？<a href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '">直接上传 PDF</a>，不必等 Muse；网站核验 DOI、题名与全部页面后即可下载。</p>';
+  return '<p>已经拿到这篇的 PDF（开放获取，或汉堡登录后下载）？<a href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '">直接上传 PDF</a>，不必等下载队列；网站核验 DOI、题名与全部页面后即可下载。</p>';
 }
 async function museOwnerGuard(env, doi) {
   const previous = fulltextJobRecord(await libraryGet(env.QL_KV,FULLTEXT_JOB_PREFIX + doi),doi);
@@ -1577,7 +1605,7 @@ async function handleMuseRetry(request, env) {
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (!existing || !paper) libraryFail('library_not_found',404);
     if (!museRecoverable(existing)) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>原任务已停止。确认 Muse 没有仍在运行的下载，再重新入队；请优先复用已下载 PDF，不会自动发起新的下载。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">确认重新入队</button></form>' + pdfOfficialLink(doi),200,'恢复 Muse 全文任务',doi);
+    if (request.method === 'GET') return pdfHtml('<p>原任务已停止。确认没有仍在进行的下载后，把任务放回下载队列；请优先复用已下载 PDF，不会自动发起新的下载。</p><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">确认重新入队</button></form>' + pdfOfficialLink(doi),200,'放回下载队列',doi);
     if (paper.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);
@@ -1631,9 +1659,9 @@ async function museIntake(env, doi, bytes, source, previous) {
   let stored; try { stored = await env.QL_KV.get(candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
   if (!stored) libraryFail('muse_sync_pending',503);
   if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== sha256) libraryFail('library_integrity',502);
-  const now = Date.now(), id = crypto.randomUUID();
+  const now = Date.now(), id = crypto.randomUUID(), callerName = machineCallerSource(source) ? source : '';
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
-    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey};
+    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {})};
   await musePut(env,job);
   await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
   if (previous) await museDelete(env,previous.queueKey);
@@ -1652,7 +1680,7 @@ async function museOpenAccess(paper, context) {
 const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
-    + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等 Muse。</p>'
+    + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
     + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（每小时第 23 分钟计划执行，GitHub 队列可能延迟）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
@@ -1726,7 +1754,7 @@ async function handleMuseRequest(request, env) {
     const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (existing) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后，由 Muse 获取原件，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>Muse 领取并下载原件（时间取决于 Muse 运行安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
+    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后进入下载队列，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>下载队列领取并获取原件（时间取决于下载端安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
     if (paper?.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);
@@ -1770,7 +1798,7 @@ async function handleMuseClaim(request, env) {
       const pointer = await libraryGet(env.QL_KV,entry.name);
       const job = pointer?.doi && museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + pointer.doi),pointer.doi);
       if (!job || job.id !== pointer.id || job.queueKey !== entry.name) continue;
-      if (['available','review','failed','login_required','verifying'].includes(job.state)) { await museDelete(env,entry.name); continue; }
+      if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env,entry.name); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) { await musePut(env,{...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
       if (job.state !== 'queued') continue; // Never reclaim an expired acquisition automatically.
       if (museExpired(job)) { await musePut(env,{...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
@@ -1778,7 +1806,7 @@ async function handleMuseClaim(request, env) {
       const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
       if (paper?.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV,record); await musePut(env,{...job,state:'available',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
       if (!paper || paper.fulltextStatus === 'review') libraryFail('library_identity',409);
-      const claimed = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseId:crypto.randomUUID(),leaseUntil:Date.now() + MUSE_LEASE_MS,updatedAt:Date.now()};
+      const claimed = {...job,state:'running',claimant:'muse',acquisitionStartedAt:Date.now(),leaseId:crypto.randomUUID(),leaseUntil:Date.now() + MUSE_LEASE_MS,updatedAt:Date.now()};
       await musePut(env,claimed);
       const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
       if (observed?.leaseId !== claimed.leaseId) libraryFail('muse_sync_pending',503);
@@ -1916,8 +1944,9 @@ async function handleMuseReview(request, env) {
       }
       return json({ok:true,task:null});
     }
-    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method']);
+    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method','reason']);
     if (!['bytes','complete'].includes(input.action) || (input.action === 'bytes' && Object.keys(input).some(k => !['action','taskId','doi','leaseId'].includes(k)))) libraryFail('muse_bad_request',400);
+    if (input.action === 'complete' && Object.hasOwn(input,'reason') && (input.result !== 'rejected' || !['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason))) libraryFail('muse_bad_request',400);
     const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
     if (!job || job.id !== input.taskId || job.reviewOwner !== owner || job.reviewLeaseId !== input.leaseId || job.reviewLeaseUntil < Date.now()) libraryFail('muse_stale',409);
     if (input.action === 'complete' && (!['verified','rejected'].includes(input.result) || input.sha256 !== job.sha256 || input.bytes !== job.bytes
@@ -1925,8 +1954,11 @@ async function handleMuseReview(request, env) {
     if (input.action === 'complete' && ['available','review'].includes(job.state)) return json({ok:true,job:musePublicJob(job),archive:libraryArchiveStatus()});
     if (job.state !== 'verifying') libraryFail('muse_stale',409);
     if (input.action === 'complete' && input.result === 'rejected') {
-      await musePut(env,{...job,state:'review',updatedAt:Date.now()}); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
-      return json({ok:true,job:musePublicJob({...job,state:'review'}),archive:libraryArchiveStatus()});
+      // The Actions log is not the ledger. Keep the mismatch on the task so callers can list it.
+      const verificationReason = ['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason) ? input.reason : 'verification_rejected';
+      const rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
+      await musePut(env,rejected); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
+      return json({ok:true,job:musePublicJob(rejected),archive:libraryArchiveStatus()});
     }
     let stored; try { stored = await env.QL_KV.get(job.candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
     if (!stored) libraryFail('muse_sync_pending',503);
@@ -2142,6 +2174,590 @@ const parseKey = k => {
   return normKey(m[1] === 'pmid' ? m[2] : '', m[1] === 'doi' ? m[2] : '') ? { type: m[1], id: m[2] } : null;
 };
 
+// ==== edge/src/04b-machine-download.js · Per-caller download queue ====
+// Machine callers (a downloader, a fallback bot, a read-only caller) use their own tokens.
+// They never enter the human daily gate. Legacy Muse claim/receipt/upload/retry stay as they are.
+const MACHINE_FAILURE_REASONS = ['not_oa','han_login','han_quota','source_blocked','wrong_paper','other'];
+const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
+const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
+const MACHINE_STAGE_TAGS = ['han','yiigle'];
+const MACHINE_ROLE_CAPS = {
+  downloader:['upload','status','claim','list','requeue','abandoned','protocol'],
+  fallback:['upload','status','abandon','claim','list','abandoned','protocol'],
+  reader:['list','abandoned','protocol']
+};
+const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
+const MACHINE_REQUEUE_DAILY_DEFAULT = 200;
+function machineError(error) {
+  const known = error instanceof LibraryFailure || error instanceof PdfFailure;
+  const body = {ok:false,error:known ? error.code : 'machine_server'};
+  if (known && error.retryAfter) Object.assign(body, libraryRetryInfo(error.retryAfter));
+  return json(body, known ? error.status : 500);
+}
+function machineLimit(env, name, fallback) {
+  const raw = env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > 500) libraryFail('machine_not_configured', 503);
+  return value;
+}
+function machineTokenTable(env) {
+  if (env.MACHINE_TOKENS === undefined || env.MACHINE_TOKENS === '') return [];
+  if (typeof env.MACHINE_TOKENS !== 'string' || env.MACHINE_TOKENS.length > 20000) libraryFail('machine_not_configured', 503);
+  let parsed;
+  try { parsed = JSON.parse(env.MACHINE_TOKENS); } catch { libraryFail('machine_not_configured', 503); }
+  if (!Array.isArray(parsed) || parsed.length > 20) libraryFail('machine_not_configured', 503);
+  const ids = new Set(), secrets = new Set(), rows = [];
+  for (const item of parsed) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) libraryFail('machine_not_configured', 503);
+    if (Object.keys(item).some(key => !['id','role','token','revoked'].includes(key))) libraryFail('machine_not_configured', 503);
+    if (!MACHINE_CALLER_ID.test(item.id || '') || !MACHINE_ROLE_CAPS[item.role]) libraryFail('machine_not_configured', 503);
+    if (typeof item.token !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(item.token)) libraryFail('machine_not_configured', 503);
+    if (Object.hasOwn(item,'revoked') && typeof item.revoked !== 'boolean') libraryFail('machine_not_configured', 503);
+    if (ids.has(item.id) || secrets.has(item.token)) libraryFail('machine_not_configured', 503);
+    ids.add(item.id); secrets.add(item.token);
+    rows.push({id:item.id,role:item.role,token:item.token,revoked:item.revoked === true});
+  }
+  return rows;
+}
+function machineLegacyCaller(env) {
+  if (env.MACHINE_LEGACY_REVOKED === 'true') return null;
+  if (typeof env.MUSE_FULLTEXT_KEY !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(env.MUSE_FULLTEXT_KEY)) return null;
+  return {id:'muse',role:'downloader',token:env.MUSE_FULLTEXT_KEY,revoked:false,legacy:true};
+}
+async function machineAuthorize(request, env, capability) {
+  libraryConfig(env);
+  const header = request.headers.get('authorization') || '';
+  if (header.length > 180 || !header.startsWith('Bearer ')) libraryFail('machine_unauthorized', 401);
+  const actual = await pdfDigest('SHA-256', new TextEncoder().encode(header));
+  const rows = machineTokenTable(env);
+  let matched = null;
+  for (const row of rows) {
+    const expected = await pdfDigest('SHA-256', new TextEncoder().encode('Bearer ' + row.token));
+    let difference = 0;
+    for (let n = 0; n < 64; n++) difference |= expected.charCodeAt(n) ^ actual.charCodeAt(n);
+    if (!difference) matched = row;
+  }
+  const legacy = machineLegacyCaller(env);
+  let legacyMatch = false;
+  if (legacy) {
+    const expected = await pdfDigest('SHA-256', new TextEncoder().encode('Bearer ' + legacy.token));
+    let difference = 0;
+    for (let n = 0; n < 64; n++) difference |= expected.charCodeAt(n) ^ actual.charCodeAt(n);
+    legacyMatch = !difference;
+  }
+  const caller = matched || (legacyMatch ? legacy : null);
+  if (!caller) libraryFail('machine_unauthorized', 401);
+  if (caller.revoked) libraryFail('machine_revoked', 401);
+  if (!MACHINE_ROLE_CAPS[caller.role].includes(capability)) libraryFail('machine_forbidden', 403);
+  return caller;
+}
+function machineRateKey(caller, bucket) {
+  return 'library:machine-rate:' + bucket + ':' + caller.id + ':' + new Date().toISOString().slice(0, 10);
+}
+async function machineRemaining(env, caller, bucket, limit) {
+  const count = await libraryGet(env.QL_KV, machineRateKey(caller, bucket));
+  const used = Number.isInteger(count) && count >= 0 ? count : 0;
+  if (used >= limit) libraryFail('machine_rate_limit', 429, Date.parse(new Date().toISOString().slice(0, 10)) + 86400000);
+  return limit - used;
+}
+async function machineConsume(env, caller, bucket, amount) {
+  if (!amount) return;
+  const key = machineRateKey(caller, bucket);
+  const count = await libraryGet(env.QL_KV, key);
+  const used = Number.isInteger(count) && count >= 0 ? count : 0;
+  await libraryPut(env.QL_KV, key, JSON.stringify(used + amount), {expirationTtl:172800});
+}
+function machineNormalize(value) {
+  const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
+  let out = '';
+  for (const char of stripped) {
+    const code = char.codePointAt(0);
+    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || code > 127) out += char;
+  }
+  return out;
+}
+function machineLatin1(bytes) {
+  let out = '';
+  for (let offset = 0; offset < bytes.length; offset += 4096) {
+    out += String.fromCharCode(...bytes.subarray(offset, offset + 4096));
+  }
+  return out;
+}
+function machinePdfObject(text, id) {
+  const needle = id + ' 0 obj';
+  let from = 0;
+  while (from < text.length) {
+    const start = text.indexOf(needle, from);
+    if (start < 0) return '';
+    const before = start ? text[start - 1] : '';
+    if (!/[0-9]/.test(before)) {
+      const end = text.indexOf('endobj', start);
+      return end < 0 ? '' : text.slice(start, end);
+    }
+    from = start + needle.length;
+  }
+  return '';
+}
+function machinePdfStrings(content) {
+  let out = '';
+  for (let index = 0; index < content.length; index++) {
+    if (content[index] !== '(') continue;
+    let text = '', depth = 1;
+    for (index++; index < content.length && depth; index++) {
+      const char = content[index];
+      if (char === '\\') { text += content[index + 1] || ''; index++; continue; }
+      if (char === '(') { depth++; text += '('; continue; }
+      if (char === ')') { depth--; if (depth) text += ')'; continue; }
+      text += char;
+    }
+    index--;
+    out += text + '\n';
+  }
+  return out;
+}
+async function machineInflate(bytes) {
+  if (typeof DecompressionStream !== 'function') return '';
+  try {
+    const stream = new DecompressionStream('deflate');
+    const writer = stream.writable.getWriter();
+    await writer.write(bytes);
+    await writer.close();
+    const reader = stream.readable.getReader();
+    const chunks = [];
+    let size = 0;
+    while (true) {
+      const item = await reader.read();
+      if (item.done) break;
+      size += item.value.byteLength;
+      if (size > LIBRARY_MAX_PDF_BYTES) return '';
+      chunks.push(item.value);
+    }
+    const inflated = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { inflated.set(chunk, offset); offset += chunk.byteLength; }
+    return machineLatin1(inflated);
+  } catch { return ''; }
+}
+async function machineStreamText(object) {
+  const marker = /stream\r?\n/.exec(object);
+  if (!marker) return '';
+  const start = marker.index + marker[0].length;
+  const end = object.indexOf('endstream', start);
+  if (end < 0) return '';
+  const raw = object.slice(start, end);
+  if (/\/FlateDecode\b/.test(object.slice(0, marker.index))) {
+    const bytes = new Uint8Array(raw.length);
+    for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index) & 255;
+    const inflated = await machineInflate(bytes);
+    return inflated ? machinePdfStrings(inflated) + '\n' + inflated : '';
+  }
+  return machinePdfStrings(raw) + '\n' + raw;
+}
+async function machineFirstPageText(bytes) {
+  const text = machineLatin1(bytes);
+  const pages = /\/Type\s*\/Pages\b[\s\S]*?\/Kids\s*\[([^\]]*)\]/.exec(text);
+  const kid = pages && /(\d+)\s+\d+\s+R/.exec(pages[1]);
+  const page = kid ? machinePdfObject(text, kid[1]) : '';
+  const contents = /\/Contents\s*\[([^\]]*)\]/.exec(page) || /\/Contents\s+(\d+)\s+\d+\s+R/.exec(page);
+  const ids = contents
+    ? (/\[/.test(contents[0]) ? [...contents[1].matchAll(/(\d+)\s+\d+\s+R/g)].map(match => match[1]) : [contents[1]])
+    : [];
+  let combined = '';
+  for (const id of ids) combined += await machineStreamText(machinePdfObject(text, id));
+  return combined;
+}
+function machineDoiPresent(text, doi) {
+  const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
+  return new RegExp('(?<![A-Za-z0-9])' + escaped + '(?![A-Za-z0-9])', 'i').test(text);
+}
+async function machineIdentity(bytes, doi, title) {
+  const expected = machineNormalize(title);
+  if (!libraryDoi(doi) || expected.length < 5) return 'invalid';
+  const page = await machineFirstPageText(bytes);
+  if (!page || !machineDoiPresent(page, doi) || !machineNormalize(page).includes(expected)) return 'mismatch';
+  return 'ok';
+}
+async function machineReadBody(request, max) {
+  const declared = request.headers.get('content-length');
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > max)) libraryFail('muse_bad_pdf', 413);
+  const reader = request.body && request.body.getReader();
+  if (!reader) libraryFail('machine_bad_request', 400);
+  const chunks = [];
+  let size = 0;
+  while (true) {
+    let item;
+    try { item = await reader.read(); } catch { libraryFail('machine_bad_request', 400); }
+    if (item.done) break;
+    size += item.value.byteLength;
+    if (size > max) { pdfCancel(reader); libraryFail('muse_bad_pdf', 413); }
+    chunks.push(item.value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
+}
+async function machineReadUpload(request) {
+  const type = request.headers.get('content-type') || '';
+  if (request.method === 'PUT' && type === 'application/pdf') {
+    const doi = libraryDoi(request.headers.get('x-machine-doi') || '');
+    if (!doi) libraryFail('machine_bad_request', 400);
+    return {doi, bytes:await machineReadBody(request, LIBRARY_MAX_PDF_BYTES)};
+  }
+  if (request.method === 'POST' && /^multipart\/form-data;/i.test(type)) {
+    const declared = request.headers.get('content-length');
+    if (declared && (!/^\d+$/.test(declared) || Number(declared) > LIBRARY_MAX_PDF_BYTES + 65536)) libraryFail('muse_bad_pdf', 413);
+    const body = await machineReadBody(request, LIBRARY_MAX_PDF_BYTES + 65536);
+    let form;
+    try { form = await new Response(body, {headers:{'content-type':type}}).formData(); } catch { libraryFail('machine_bad_request', 400); }
+    if ([...form.keys()].length !== 2 || form.getAll('doi').length !== 1 || form.getAll('pdf').length !== 1) libraryFail('machine_bad_request', 400);
+    const doiText = form.get('doi'), file = form.get('pdf');
+    const doi = typeof doiText === 'string' ? libraryDoi(doiText) : '';
+    if (!doi || !file || typeof file === 'string') libraryFail('machine_bad_request', 400);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+    return {doi, bytes};
+  }
+  libraryFail('machine_bad_request', 415);
+}
+function machinePublicState(job) {
+  if (!job) return '';
+  if (job.state === 'abandoned') return 'confirmed-abandoned';
+  if (job.state === 'available') return 'done';
+  if (job.state === 'verifying') return 'uploaded-awaiting-verification';
+  if (['queued','running','uploading'].includes(job.state) && museExpired(job)) return 'failed-awaiting-fallback';
+  if (job.state === 'queued') return 'to-download';
+  if (job.state === 'running' || job.state === 'uploading') return 'downloading';
+  return 'failed-awaiting-fallback';
+}
+function machineReason(job) {
+  if (MACHINE_FAILURE_REASONS.includes(job.reason)) return job.reason;
+  if (MACHINE_VERIFICATION_REASONS.includes(job.verificationReason)) return job.verificationReason;
+  if (MACHINE_VERIFICATION_REASONS.includes(job.reason)) return job.reason;
+  if (job.state === 'login_required') return 'han_login';
+  if (['lease_expired','queue_expired','agent_failed'].includes(job.reason)) return job.reason;
+  return '';
+}
+function machineStage(job) {
+  if (MACHINE_STAGE_TAGS.includes(job.stage)) return job.stage;
+  if (job.state === 'login_required' || job.reason === 'han_login' || job.reason === 'han_quota') return 'han';
+  return '';
+}
+function machineListItem(job) {
+  return {doi:job.doi,state:machinePublicState(job),reason:machineReason(job),stage:machineStage(job),
+    claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id};
+}
+function machineUploadDecision(job, paper, sha256, caller) {
+  if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
+  if (job && job.state === 'abandoned') return {type:'closed'};
+  if (job && job.state === 'verifying') return job.sha256 === sha256 ? {type:'replay',job} : {type:'conflict'};
+  if (job && ['running','uploading'].includes(job.state) && !museExpired(job) && job.claimant && job.claimant !== caller.id) return {type:'busy'};
+  return {type:'accept'};
+}
+function handleMachineProtocol(request, env) {
+  if (request.method !== 'GET' || new URL(request.url).search) return json({ok:false,error:'machine_bad_request'}, 405);
+  let configured = false;
+  try {
+    const legacy = machineLegacyCaller(env);
+    configured = machineTokenTable(env).some(row => !row.revoked) || !!legacy;
+  } catch { configured = false; }
+  return json({ok:true,schemaVersion:1,configured,website:'https://learn.dryz.info',
+    auth:{header:'Authorization',scheme:'Bearer',secret:'MACHINE_TOKENS',legacySecret:'MUSE_FULLTEXT_KEY',legacyRevoke:'MACHINE_LEGACY_REVOKED'},
+    humanGate:'exempt',
+    states:MACHINE_PUBLIC_STATES,
+    stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
+    failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
+    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50},
+    legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
+    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue'}});
+}
+async function handleMachineUpload(request, env) {
+  // Exempt from librarySoftGate (30/day site-wide and 20/IP). Only the per-token counter applies.
+  try {
+    if (!['PUT','POST'].includes(request.method) || new URL(request.url).search) libraryFail('machine_bad_request', request.method === 'PUT' || request.method === 'POST' ? 400 : 405);
+    const caller = await machineAuthorize(request, env, 'upload');
+    const {doi, bytes} = await machineReadUpload(request);
+    if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+    try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf', 415); }
+    const sha256 = await pdfDigest('SHA-256', bytes);
+    let paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+    let fresh = null;
+    if (!paper) {
+      const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
+      try { fresh = {...await libraryMetadata(doi, {signal:controller.signal}), fulltextStatus:'manual_needed'}; }
+      finally { clearTimeout(timer); }
+      paper = fresh;
+    }
+    if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
+    const verdict = await machineIdentity(bytes, paper.doi, paper.title);
+    if (verdict !== 'ok') libraryFail(verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', 409);
+    const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+    if (attempt && attempt.paused) libraryFail('library_paused', 423);
+    await museOwnerGuard(env, doi);
+    const existing = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    const decision = machineUploadDecision(existing, paper, sha256, caller);
+    if (decision.type === 'replay') return json({ok:true,idempotent:true,task:{...machineListItem(decision.job),caller:decision.job.caller || '',sha256:decision.job.sha256}});
+    if (decision.type === 'done') libraryFail('machine_done', 409);
+    if (decision.type === 'conflict') libraryFail('machine_conflict', 409);
+    if (decision.type === 'busy') libraryFail('machine_busy', 409);
+    if (decision.type === 'closed') libraryFail('machine_closed', 409);
+    await machineRemaining(env, caller, 'upload', machineLimit(env, 'MACHINE_UPLOAD_DAILY_LIMIT', MACHINE_UPLOAD_DAILY_DEFAULT));
+    if (fresh) await librarySave(env.QL_KV, fresh, null, 'library_manual_needed');
+    await machineConsume(env, caller, 'upload', 1);
+    const job = await museIntake(env, doi, bytes, caller.id, existing || null);
+    return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256}}, 202);
+  } catch (error) { return machineError(error); }
+}
+async function handleMachineStatus(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    const caller = await machineAuthorize(request, env, 'status');
+    const input = await fulltextReadJson(request, 2048, 'machine_bad_request');
+    if (Object.keys(input).some(key => !['doi','state','reason','stage','driveFileId'].includes(key))) libraryFail('machine_bad_request', 400);
+    const doi = libraryDoi(input.doi);
+    if (!doi || doi !== input.doi) libraryFail('machine_bad_request', 400);
+    const abandoning = input.state === 'confirmed-abandoned';
+    const failing = input.state === 'failed-awaiting-fallback';
+    const backfill = !Object.hasOwn(input,'state') && Object.hasOwn(input,'driveFileId');
+    if (!abandoning && !failing && !backfill) libraryFail('machine_bad_request', 400);
+    if (abandoning && caller.role !== 'fallback') libraryFail('machine_forbidden', 403);
+    if (failing && !MACHINE_FAILURE_REASONS.includes(input.reason)) libraryFail('machine_bad_reason', 400);
+    if (abandoning && Object.hasOwn(input,'reason') && !MACHINE_FAILURE_REASONS.includes(input.reason)) libraryFail('machine_bad_reason', 400);
+    if (Object.hasOwn(input,'stage') && !MACHINE_STAGE_TAGS.includes(input.stage)) libraryFail('machine_bad_request', 400);
+    if (backfill && (Object.hasOwn(input,'reason') || Object.hasOwn(input,'stage'))) libraryFail('machine_bad_request', 400);
+    if (Object.hasOwn(input,'driveFileId') && (typeof input.driveFileId !== 'string' || !/^[A-Za-z0-9_-]{10,200}$/.test(input.driveFileId))) libraryFail('machine_bad_request', 400);
+    const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    if (!job) libraryFail('machine_not_found', 404);
+    if (abandoning && job.state === 'abandoned') return json({ok:true,idempotent:true,task:{...machineListItem(job),abandonedBy:job.abandonedBy || ''}});
+    if ((failing || abandoning) && job.state === 'available') libraryFail('machine_done', 409);
+    if ((failing || abandoning) && job.state === 'verifying') libraryFail('machine_conflict', 409);
+    if (!abandoning && job.state === 'abandoned') libraryFail('machine_closed', 409);
+    const now = Date.now();
+    let next = job;
+    if (failing) {
+      const stage = MACHINE_STAGE_TAGS.includes(input.stage) ? input.stage : (input.reason === 'han_login' || input.reason === 'han_quota' ? 'han' : '');
+      next = {...job,state:input.reason === 'han_login' ? 'login_required' : 'failed',reason:input.reason,updatedAt:now,
+        ...(stage ? {stage} : {}),...(input.driveFileId ? {driveFileId:input.driveFileId} : {})};
+    } else if (abandoning) {
+      next = {...job,state:'abandoned',updatedAt:now,abandonedBy:caller.id,
+        ...(input.reason ? {reason:input.reason} : {}),...(input.stage ? {stage:input.stage} : {}),...(input.driveFileId ? {driveFileId:input.driveFileId} : {})};
+    } else {
+      next = {...job,driveFileId:input.driveFileId,updatedAt:now};
+    }
+    await musePut(env, next);
+    if ((failing || abandoning) && job.queueKey) await museDelete(env, job.queueKey);
+    if (next.state === 'available' && next.sha256 && input.driveFileId && !await libraryGet(env.QL_KV, DRIVE_ARCHIVE_PREFIX + next.sha256)) {
+      await libraryPut(env.QL_KV, DRIVE_ARCHIVE_PREFIX + next.sha256, JSON.stringify({version:1,doi,sha256:next.sha256,driveFileId:input.driveFileId,source:'machine',archivedAt:now}));
+    }
+    return json({ok:true,idempotent:false,task:{...machineListItem(next),...(next.driveFileId ? {driveFileId:next.driveFileId} : {}),...(next.abandonedBy ? {abandonedBy:next.abandonedBy} : {})}});
+  } catch (error) { return machineError(error); }
+}
+function machineCursorEncode(cursor) {
+  return btoa(JSON.stringify({c:cursor.c,skip:cursor.skip})).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function machineCursorDecode(value) {
+  if (!value) return {c:'',skip:0};
+  try {
+    const pad = value.length % 4 ? '='.repeat(4 - (value.length % 4)) : '';
+    const parsed = JSON.parse(atob(value.replace(/-/g, '+').replace(/_/g, '/') + pad));
+    if (!parsed || typeof parsed.c !== 'string' || parsed.c.length > 1800 || !Number.isInteger(parsed.skip) || parsed.skip < 0 || parsed.skip > 1000) libraryFail('machine_bad_request', 400);
+    return {c:parsed.c,skip:parsed.skip};
+  } catch (error) {
+    if (error instanceof LibraryFailure) throw error;
+    libraryFail('machine_bad_request', 400);
+  }
+}
+async function machineListKeys(env, prefix, cursor, limit) {
+  let listing;
+  try { listing = await env.QL_KV.list({prefix,limit,...(cursor ? {cursor} : {})}); } catch { libraryFail('library_storage', 503); }
+  if (!listing || !Array.isArray(listing.keys) || listing.keys.length > limit) libraryFail('library_storage', 503);
+  return listing;
+}
+async function machineCollect(env, state, cursorText, limit) {
+  let position = machineCursorDecode(cursorText);
+  const tasks = [];
+  for (let page = 0; page < 50 && tasks.length < limit; page++) {
+    const listing = await machineListKeys(env, MUSE_JOB_PREFIX, position.c, 100);
+    const keys = listing.keys.filter(entry => typeof entry.name === 'string' && entry.name.startsWith(MUSE_JOB_PREFIX));
+    if (position.skip > keys.length) libraryFail('machine_bad_request', 400);
+    let index = position.skip;
+    for (; index < keys.length && tasks.length < limit; index++) {
+      const doi = keys[index].name.slice(MUSE_JOB_PREFIX.length);
+      const job = museRecord(await libraryGet(env.QL_KV, keys[index].name), doi);
+      if (!job) continue;
+      const item = machineListItem(job);
+      if (state && item.state !== state) continue;
+      tasks.push(item);
+    }
+    if (tasks.length >= limit && index < keys.length) return {tasks,cursor:machineCursorEncode({c:position.c,skip:index})};
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) return {tasks,cursor:null};
+    position = {c:listing.cursor,skip:0};
+    if (tasks.length >= limit) return {tasks,cursor:machineCursorEncode(position)};
+  }
+  return {tasks,cursor:position.c ? machineCursorEncode(position) : null};
+}
+function machineQuery(request, allowed) {
+  const url = new URL(request.url);
+  if (request.method !== 'GET') libraryFail('machine_bad_request', 405);
+  if ([...url.searchParams.keys()].some(key => !allowed.includes(key))) libraryFail('machine_bad_request', 400);
+  const limitText = url.searchParams.get('limit');
+  const limit = limitText === null ? 20 : Number(limitText);
+  if (!Number.isInteger(limit) || String(limit) !== String(limitText === null ? 20 : limitText) || limit < 1 || limit > 50) libraryFail('machine_bad_request', 400);
+  const cursor = url.searchParams.get('cursor') || '';
+  if (cursor.length > 2048) libraryFail('machine_bad_request', 400);
+  return {url,limit,cursor};
+}
+async function handleMachineTasks(request, env) {
+  try {
+    await machineAuthorize(request, env, 'list');
+    const query = machineQuery(request, ['state','cursor','limit']);
+    const state = query.url.searchParams.get('state') || '';
+    if (state && !MACHINE_PUBLIC_STATES.includes(state)) libraryFail('machine_bad_request', 400);
+    const page = await machineCollect(env, state, query.cursor, query.limit);
+    return json({ok:true,tasks:page.tasks,cursor:page.cursor});
+  } catch (error) { return machineError(error); }
+}
+async function handleMachineAbandoned(request, env) {
+  try {
+    await machineAuthorize(request, env, 'abandoned');
+    const query = machineQuery(request, ['cursor','limit']);
+    const page = await machineCollect(env, 'confirmed-abandoned', query.cursor, query.limit);
+    return json({ok:true,tasks:page.tasks.map(task => task),cursor:page.cursor});
+  } catch (error) { return machineError(error); }
+}
+async function machineWalk(env, prefix, visit) {
+  let cursor = '';
+  for (let page = 0; page < 50; page++) {
+    const listing = await machineListKeys(env, prefix, cursor, 100);
+    for (const entry of listing.keys) {
+      if (await visit(entry)) return {stopped:true};
+    }
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) return {stopped:false};
+    cursor = listing.cursor;
+  }
+  return {stopped:false,cursor};
+}
+function machineClaimPayload(job, paper) {
+  return {...machineListItem(job),state:'downloading',title:paper && paper.title || '',leaseId:job.leaseId,
+    leaseUntil:new Date(job.leaseUntil).toISOString(),sources:['open_access','authorized_hamburg'],
+    institutionLoginUrl:HAN_LOGIN_URL,institutionUrl:hanDoiUrl(job.doi)};
+}
+async function machineClaimQueued(env, caller) {
+  let task = null;
+  // QL_KV is not atomic. The lease id is checked after the write; a lost race is machine_sync_pending.
+  await machineWalk(env, MUSE_QUEUE_PREFIX, async entry => {
+    if (typeof entry.name !== 'string' || !entry.name.startsWith(MUSE_QUEUE_PREFIX)) return false;
+    const pointer = await libraryGet(env.QL_KV, entry.name);
+    const job = pointer && pointer.doi && museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + pointer.doi), pointer.doi);
+    if (!job || job.id !== pointer.id || job.queueKey !== entry.name) return false;
+    if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, entry.name); return false; }
+    if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
+      await musePut(env, {...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()});
+      await museDelete(env, entry.name);
+      return false;
+    }
+    if (job.state !== 'queued') return false;
+    if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}); await museDelete(env, entry.name); return false; }
+    const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + job.doi);
+    if (attempt && attempt.paused) return false;
+    await museOwnerGuard(env, job.doi);
+    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
+    if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}); await museDelete(env, entry.name); return false; }
+    if (!paper || paper.fulltextStatus === 'review') return false;
+    const now = Date.now();
+    const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
+    await musePut(env, claimed);
+    const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + job.doi), job.doi);
+    if (!observed || observed.leaseId !== claimed.leaseId || observed.claimant !== caller.id) libraryFail('machine_sync_pending', 503);
+    task = machineClaimPayload(claimed, paper);
+    return true;
+  });
+  return task;
+}
+async function machineClaimFailed(env, caller) {
+  let task = null;
+  await machineWalk(env, MUSE_JOB_PREFIX, async entry => {
+    if (typeof entry.name !== 'string' || !entry.name.startsWith(MUSE_JOB_PREFIX)) return false;
+    const doi = entry.name.slice(MUSE_JOB_PREFIX.length);
+    const job = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
+    if (!job || machinePublicState(job) !== 'failed-awaiting-fallback') return false;
+    const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+    if (attempt && attempt.paused) return false;
+    if (['running','uploading'].includes(job.state) && job.leaseUntil > Date.now()) return false;
+    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
+    if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}); return false; }
+    if (paper && paper.fulltextStatus === 'review') return false;
+    await museOwnerGuard(env, doi);
+    const now = Date.now();
+    const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
+    await musePut(env, claimed);
+    const observed = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
+    if (!observed || observed.leaseId !== claimed.leaseId) libraryFail('machine_sync_pending', 503);
+    if (job.queueKey) await museDelete(env, job.queueKey);
+    task = machineClaimPayload(claimed, paper);
+    return true;
+  });
+  return task;
+}
+async function handleMachineClaim(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    const caller = await machineAuthorize(request, env, 'claim');
+    const input = await fulltextReadJson(request, 256, 'machine_bad_request');
+    if (Object.keys(input).some(key => key !== 'state') || !['to-download','failed-awaiting-fallback'].includes(input.state)) libraryFail('machine_bad_request', 400);
+    if (caller.role === 'downloader' && input.state !== 'to-download') libraryFail('machine_forbidden', 403);
+    if (caller.role === 'fallback' && input.state !== 'failed-awaiting-fallback') libraryFail('machine_forbidden', 403);
+    const task = input.state === 'to-download' ? await machineClaimQueued(env, caller) : await machineClaimFailed(env, caller);
+    return json({ok:true,task});
+  } catch (error) { return machineError(error); }
+}
+function machineRequeueCandidate(job) {
+  if (!job || ['review','available','abandoned','verifying'].includes(job.state)) return false;
+  if (job.state === 'failed' || job.state === 'login_required') return true;
+  return ['queued','running','uploading'].includes(job.state) && museExpired(job);
+}
+async function machineRequeueOne(env, job) {
+  const now = Date.now(), id = crypto.randomUUID();
+  const next = {version:1,id,doi:job.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id};
+  await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:job.doi,id}), {expirationTtl:604800});
+  await musePut(env, next);
+  if (job.queueKey && job.queueKey !== next.queueKey) await museDelete(env, job.queueKey);
+  return next;
+}
+async function handleMachineRequeue(request, env) {
+  // Exempt from librarySoftGate. A per-token daily budget limits how many tasks one apply can put back.
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    const caller = await machineAuthorize(request, env, 'requeue');
+    const input = await fulltextReadJson(request, 256, 'machine_bad_request');
+    if (Object.keys(input).some(key => !['dryRun','limit'].includes(key))) libraryFail('machine_bad_request', 400);
+    if (Object.hasOwn(input,'dryRun') && typeof input.dryRun !== 'boolean') libraryFail('machine_bad_request', 400);
+    const dryRun = input.dryRun === true;
+    const limit = Object.hasOwn(input,'limit') ? input.limit : 20;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) libraryFail('machine_bad_request', 400);
+    const room = dryRun ? limit : Math.min(limit, await machineRemaining(env, caller, 'requeue', machineLimit(env, 'MACHINE_REQUEUE_DAILY_LIMIT', MACHINE_REQUEUE_DAILY_DEFAULT)));
+    const requeued = [], skippedPaused = [];
+    let truncated = false;
+    const walk = await machineWalk(env, MUSE_JOB_PREFIX, async entry => {
+      if (requeued.length >= room) { truncated = true; return true; }
+      if (typeof entry.name !== 'string' || !entry.name.startsWith(MUSE_JOB_PREFIX)) return false;
+      const doi = entry.name.slice(MUSE_JOB_PREFIX.length);
+      const job = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
+      if (!machineRequeueCandidate(job)) return false;
+      const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+      if (attempt && attempt.paused) { skippedPaused.push({doi}); return false; }
+      const paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+      if (paper && paper.fulltextStatus === 'available') return false;
+      requeued.push({doi,from:job.state});
+      if (!dryRun) await machineRequeueOne(env, job);
+      return false;
+    });
+    if (walk.cursor) truncated = true;
+    if (!dryRun) await machineConsume(env, caller, 'requeue', requeued.length);
+    return json({ok:true,dryRun,limit,requeued,skippedPaused,truncated});
+  } catch (error) { return machineError(error); }
+}
 // ==== edge/src/05-abstracts.js · Public abstract lookup and validation helpers ====
 // Only remove actual markup: <4 mm2 ... >315 is scientific text, not a tag.
 const stripTags = s => String(s || '').replace(/<\/?(?:sup|sub)\s*>/gi, '').replace(/<\/?[A-Za-z][\w:.-]*(?:\s[^<>]*?)?\s*\/?>/g, ' ')
@@ -3197,6 +3813,13 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/muse/upload') return handleMuseUpload(request, env);
     if (url.pathname === '/api/muse/reader-upload') return handleMuseReaderUpload(request, env);
     if (url.pathname === '/api/muse/review') return handleMuseReview(request, env);
+    if (url.pathname === '/api/machine/protocol') return handleMachineProtocol(request, env);
+    if (url.pathname === '/api/machine/upload') return handleMachineUpload(request, env);
+    if (url.pathname === '/api/machine/status') return handleMachineStatus(request, env);
+    if (url.pathname === '/api/machine/tasks') return handleMachineTasks(request, env);
+    if (url.pathname === '/api/machine/abandoned') return handleMachineAbandoned(request, env);
+    if (url.pathname === '/api/machine/claim') return handleMachineClaim(request, env);
+    if (url.pathname === '/api/machine/requeue') return handleMachineRequeue(request, env);
     if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);

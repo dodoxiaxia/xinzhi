@@ -2755,6 +2755,73 @@
     if (id) u.searchParams.set('read', id); else u.searchParams.delete('read');
     return u.pathname + u.search + u.hash;
   }
+  const READING_LOAD = {};
+  function readingMonth(p) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(p && p.publishedOn || '') ? p.publishedOn.slice(0, 7) : 'undated';
+  }
+  function readingBodyReady(p) {
+    return !!(p && p.sections && typeof p.sections === 'object');
+  }
+  function readingShardSrc(month) {
+    const src = window.DEEP_READINGS && window.DEEP_READINGS.shards && window.DEEP_READINGS.shards[month];
+    return typeof src === 'string' && /^shards\/readings-(?:\d{4}-\d{2}|undated)\.[0-9a-f]{12}\.js$/.test(src) ? src : '';
+  }
+  function mergeReadingShard(month) {
+    const payload = window.XINZHI_READING_SHARDS && window.XINZHI_READING_SHARDS[month];
+    const bodies = payload && payload.items;
+    if (!bodies || typeof bodies !== 'object') return false;
+    let applied = false;
+    ((window.DEEP_READINGS && window.DEEP_READINGS.items) || []).forEach(p => {
+      const sections = bodies[p && p.pmcid];
+      if (p && readingMonth(p) === month && sections && typeof sections === 'object') { p.sections = sections; applied = true; }
+    });
+    return applied;
+  }
+  function ensureReadingReadyHook() {
+    if (window.XINZHI_READING_READY && window.XINZHI_READING_READY._xinzhiShard) return;
+    function ready(month) {
+      const slot = READING_LOAD[month];
+      if (!slot || slot.state !== 'loading') return;
+      const ok = mergeReadingShard(month);
+      slot.state = ok ? 'loaded' : 'error';
+      if (!ok && READING_LOAD[month] === slot) delete READING_LOAD[month];
+      if (slot.done) slot.done(ok);
+    }
+    ready._xinzhiShard = true;
+    window.XINZHI_READING_READY = ready;
+  }
+  // The index in the first script lists every reading. The month file is fetched only when one is opened.
+  function loadReadingShard(month) {
+    const src = readingShardSrc(month);
+    if (!src) return Promise.resolve(false);
+    const existing = READING_LOAD[month];
+    if (existing && existing.state === 'loaded') return Promise.resolve(true);
+    if (existing && existing.state === 'loading' && existing.promise) return existing.promise;
+    ensureReadingReadyHook();
+    const slot = { state: 'loading', promise: null, done: null };
+    READING_LOAD[month] = slot;
+    slot.promise = new Promise(resolve => {
+      slot.done = ok => { slot.done = null; resolve(ok); };
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onerror = () => {
+        slot.state = 'error';
+        script.remove();
+        if (READING_LOAD[month] === slot) delete READING_LOAD[month];
+        if (slot.done) slot.done(false);
+      };
+      script.onload = () => {
+        if (slot.state !== 'loading') return;
+        const ok = mergeReadingShard(month);
+        slot.state = ok ? 'loaded' : 'error';
+        if (!ok && READING_LOAD[month] === slot) delete READING_LOAD[month];
+        if (slot.done) slot.done(ok);
+      };
+      document.head.appendChild(script);
+    });
+    return slot.promise;
+  }
   function openDeepReading(id, { push = true } = {}) {
     const reader = $('#deepReader'), body = $('#deepReaderBody'); if (!reader || !body) return false;
     const list = dailyReadingList(), demo = id === DEMO_READING_ID;
@@ -2781,8 +2848,19 @@
       $('#deepReaderLabel').textContent = 'AI 全文精读 · 未经人工审核';
       $('#deepReaderTitle').textContent = item.titleZh || item.title;
       $('#deepReaderMeta').textContent = [item.journal, '论文 ' + item.date, '更新 ' + item.publishedOn].filter(Boolean).join(' · ');
-      body.innerHTML = deepReadingBody(item);
       $('#deepReaderLinks').innerHTML = deepReadingLinks(item);
+      const paintBody = current => {
+        if (activeDeepReadingId !== id) return;
+        if (current && readingBodyReady(current)) body.innerHTML = deepReadingBody(current);
+        else body.innerHTML = '<p class="deep-reading-empty" role="status">这篇精读暂时载入失败，请重试。</p><p><button type="button" class="btn-sm" data-action="retry-reading-shard" data-reading-id="' + esc(id) + '">重试</button></p>';
+        renderDeepReaderToc(body);
+      };
+      if (readingBodyReady(item)) paintBody(item);
+      else {
+        body.innerHTML = '<p class="deep-reading-empty" role="status">正在载入这篇精读…</p>';
+        renderDeepReaderToc(body);
+        loadReadingShard(readingMonth(item)).then(ok => paintBody(ok ? (dailyReadingList().find(p => p.pmcid === id) || item) : null));
+      }
     }
     const index = demo ? -1 : list.indexOf(item);
     const prev = $('#deepReaderPrev'), next = $('#deepReaderNext'), pos = $('#deepReaderPos');
@@ -3127,6 +3205,8 @@
   });
 
   document.addEventListener('click', e => {
+    const retryShard = e.target.closest('[data-action="retry-reading-shard"]');
+    if (retryShard) { openDeepReading(retryShard.dataset.readingId, { push: false }); return; }
     const deepOpen = e.target.closest('[data-action="open-deep-reading"]');
     if (deepOpen) { openDeepReading(deepOpen.dataset.readingId); return; }
     if (e.target.closest('[data-action="more-daily-readings"]')) {

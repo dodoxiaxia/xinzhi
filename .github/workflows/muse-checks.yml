@@ -20,7 +20,8 @@ permissions:
   contents: read
 jobs:
   verify-muse:
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 无法在 Ubuntu 26.04 上安装 Chromium，而 ubuntu-latest 已经是 26.04。
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +40,7 @@ jobs:
           node scripts/test_muse_fulltext.cjs
           node scripts/test_muse_status_pages.cjs
           node scripts/test_muse_reader_upload.cjs
+          node scripts/test_machine_download.cjs
           node scripts/test_drive_archive.cjs
           node scripts/test_doi_manual_needed.cjs
           node scripts/test_doi_library_ui.cjs --helpers-only

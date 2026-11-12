@@ -4,6 +4,17 @@
 
 可直接转发给 Muse 的在线协议：https://learn.dryz.info/api/muse/protocol 。网页同时显示实际是否已启用；机器 GET 返回 JSON 协议，不读取任务或原件。
 
+## 下载角色已退出（过渡期）
+
+Muse 不再承担下载。新的下载队列见 [机器下载接口](机器下载接口.md)（`/api/machine/protocol`）。
+
+下面这些旧接口在过渡期保持原样可用，不删除、到点也不自动关闭：
+
+- `POST /api/muse/claim`、`POST /api/muse/receipt`、`PUT /api/muse/upload`
+- 读者把已停止的任务放回下载队列：`/api/muse/retry`（页面按钮仍是「确认重新入队」；文案不再写由 Muse 领取）
+
+计划收口日期默认 **2026-12-12**。Pages 环境变量 `MUSE_DOWNLOAD_RETIRE_ON`（`YYYY-MM-DD`）只改变协议页和机器协议里显示的日期。真正关闭需要另一次变更。旧领取接口仍然只扫描队列的前 10 条，新的机器领取接口不受这 10 条限制。
+
 ## 2026-10-10 实际对接与恢复
 
 当前收件箱是私有 [Muse 文献收件箱](https://drive.google.com/drive/folders/128WvPnTcp3jOqlOjtsrgKjv3ihVGEOQO)。对话已核对文件夹和样本只有所有者访问，本次未重复检查 Drive ACL；原“文献”文件夹及正式三端归档保持不动。后续上传须核实没有 anyone/domain 权限。

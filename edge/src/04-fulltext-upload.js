@@ -10,7 +10,7 @@ async function museOpenAccess(paper, context) {
 const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
-    + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等 Muse。</p>'
+    + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
     + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（每小时第 23 分钟计划执行，GitHub 队列可能延迟）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
@@ -84,7 +84,7 @@ async function handleMuseRequest(request, env) {
     const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (existing) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后，由 Muse 获取原件，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>Muse 领取并下载原件（时间取决于 Muse 运行安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
+    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后进入下载队列，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>下载队列领取并获取原件（时间取决于下载端安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
     if (paper?.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);
@@ -128,7 +128,7 @@ async function handleMuseClaim(request, env) {
       const pointer = await libraryGet(env.QL_KV,entry.name);
       const job = pointer?.doi && museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + pointer.doi),pointer.doi);
       if (!job || job.id !== pointer.id || job.queueKey !== entry.name) continue;
-      if (['available','review','failed','login_required','verifying'].includes(job.state)) { await museDelete(env,entry.name); continue; }
+      if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env,entry.name); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) { await musePut(env,{...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
       if (job.state !== 'queued') continue; // Never reclaim an expired acquisition automatically.
       if (museExpired(job)) { await musePut(env,{...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
@@ -136,7 +136,7 @@ async function handleMuseClaim(request, env) {
       const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
       if (paper?.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV,record); await musePut(env,{...job,state:'available',updatedAt:Date.now()}); await museDelete(env,entry.name); continue; }
       if (!paper || paper.fulltextStatus === 'review') libraryFail('library_identity',409);
-      const claimed = {...job,state:'running',acquisitionStartedAt:Date.now(),leaseId:crypto.randomUUID(),leaseUntil:Date.now() + MUSE_LEASE_MS,updatedAt:Date.now()};
+      const claimed = {...job,state:'running',claimant:'muse',acquisitionStartedAt:Date.now(),leaseId:crypto.randomUUID(),leaseUntil:Date.now() + MUSE_LEASE_MS,updatedAt:Date.now()};
       await musePut(env,claimed);
       const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
       if (observed?.leaseId !== claimed.leaseId) libraryFail('muse_sync_pending',503);
@@ -274,8 +274,9 @@ async function handleMuseReview(request, env) {
       }
       return json({ok:true,task:null});
     }
-    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method']);
+    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method','reason']);
     if (!['bytes','complete'].includes(input.action) || (input.action === 'bytes' && Object.keys(input).some(k => !['action','taskId','doi','leaseId'].includes(k)))) libraryFail('muse_bad_request',400);
+    if (input.action === 'complete' && Object.hasOwn(input,'reason') && (input.result !== 'rejected' || !['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason))) libraryFail('muse_bad_request',400);
     const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
     if (!job || job.id !== input.taskId || job.reviewOwner !== owner || job.reviewLeaseId !== input.leaseId || job.reviewLeaseUntil < Date.now()) libraryFail('muse_stale',409);
     if (input.action === 'complete' && (!['verified','rejected'].includes(input.result) || input.sha256 !== job.sha256 || input.bytes !== job.bytes
@@ -283,8 +284,11 @@ async function handleMuseReview(request, env) {
     if (input.action === 'complete' && ['available','review'].includes(job.state)) return json({ok:true,job:musePublicJob(job),archive:libraryArchiveStatus()});
     if (job.state !== 'verifying') libraryFail('muse_stale',409);
     if (input.action === 'complete' && input.result === 'rejected') {
-      await musePut(env,{...job,state:'review',updatedAt:Date.now()}); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
-      return json({ok:true,job:musePublicJob({...job,state:'review'}),archive:libraryArchiveStatus()});
+      // The Actions log is not the ledger. Keep the mismatch on the task so callers can list it.
+      const verificationReason = ['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason) ? input.reason : 'verification_rejected';
+      const rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
+      await musePut(env,rejected); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
+      return json({ok:true,job:musePublicJob(rejected),archive:libraryArchiveStatus()});
     }
     let stored; try { stored = await env.QL_KV.get(job.candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
     if (!stored) libraryFail('muse_sync_pending',503);

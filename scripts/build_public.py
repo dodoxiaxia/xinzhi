@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 """Reproducible, allowlisted public build. No credentials, PDFs or private paths."""
-import datetime, hashlib, json, re, shutil
+import datetime, hashlib, json, os, re, shutil, sys
 from pathlib import Path
 from apply_public_library import require_snapshot
-from release_integrity import input_hashes, ordinary_file, provenance, replace_unchanged_input
+from release_integrity import (PUBLIC, input_hashes, is_reading_shard, ordinary_file,
+                               provenance, published_files, replace_unchanged_input)
 from daily_fulltext import public_readings
 from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
@@ -18,9 +19,12 @@ from public_content_corrections import (load_corrections, corrected_title,
                                         corrected_quicklook_map)
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
-PUBLIC = {'index.html','public.js','radar.js','feed.xml','style.css','icon.png','demo-reading.html','_headers','_worker.js'}
 # Outputs of earlier releases that a restored public/ may still hold; removed before building.
 OBSOLETE_PUBLIC = {'icon.svg'}
+# Cloudflare Pages rejects a single asset at 25 MiB. Warn at 70% and stop the build at 90%.
+ASSET_LIMIT_BYTES = 25 * 1024 * 1024
+ASSET_WARN_RATIO = 0.70
+ASSET_FAIL_RATIO = 0.90
 PAPER_FIELDS = {'id','title','doi','url','journal','cleanJournal','date','dateBasis','dateConfidence','datePrecision','basis','publisher','clinicalTier','studyDesign','tags','authors','affiliations','pmid','pubTypes','summary','abstractSections','localAvailable','quantitativeMetrics','titleZh','ingestedAt','metadataStatus','fulltextStatus'}
 PAPER_FIELDS |= QUALITY_FIELDS
 DRAFT_FIELDS = {'title_zh','summary','limitations','learning_question','study_type','evidence_basis','source_checked','source_url','source_date','attribution','published','fulltext_status'}
@@ -31,6 +35,113 @@ RELEASE = 'v14.4.0'
 
 def load(name): return json.loads((ROOT/name).read_text(encoding='utf-8'))
 def js(name,data): return 'window.'+name+'='+json.dumps(data,ensure_ascii=False,separators=(',',':'))+';'
+
+def asset_thresholds(env=None):
+    """Single-file size guard. Ratios are fractions of the byte limit, not of the previous build."""
+    env = os.environ if env is None else env
+    def parse(name, default, cast):
+        raw = env.get(name, '')
+        if raw is None or str(raw).strip() == '':
+            return default
+        try:
+            return cast(str(raw).strip())
+        except (TypeError, ValueError):
+            raise ValueError('体积阈值无法读取：' + name) from None
+    limit = parse('XINZHI_ASSET_LIMIT_BYTES', ASSET_LIMIT_BYTES, int)
+    warn = parse('XINZHI_ASSET_WARN_RATIO', ASSET_WARN_RATIO, float)
+    fail = parse('XINZHI_ASSET_FAIL_RATIO', ASSET_FAIL_RATIO, float)
+    if type(limit) is not int or limit <= 0 or not (0 < warn < fail <= 1):
+        raise ValueError('体积阈值无效：上限须为正整数，警告比例须小于失败比例，且失败比例不超过 1')
+    return {'limitBytes': limit, 'warnRatio': warn, 'failRatio': fail}
+
+def _ratio_reached(size, limit, ratio):
+    return size * 10000 >= round(ratio * 10000) * limit
+
+def asset_size_findings(payloads, thresholds=None):
+    """Check every published file. Warnings continue the build; the fail ratio stops it before any write."""
+    thresholds = thresholds or asset_thresholds()
+    limit, warn, fail = thresholds['limitBytes'], thresholds['warnRatio'], thresholds['failRatio']
+    warnings, blocked = [], []
+    for name in sorted(payloads):
+        size = len(payloads[name])
+        ratio = size / limit
+        if _ratio_reached(size, limit, fail):
+            blocked.append((name, size, ratio))
+        elif _ratio_reached(size, limit, warn):
+            warnings.append('公开文件 {name} 为 {size} 字节，占单文件上限 {limit} 字节的 {pct:.1%}，已达到 {mark:.0%} 警告线。'.format(
+                name=name, size=size, limit=limit, pct=ratio, mark=warn))
+    if blocked:
+        detail = '；'.join('{name} {size} 字节（{pct:.1%}）'.format(name=name, size=size, pct=ratio) for name, size, ratio in blocked)
+        raise ValueError('公开文件达到单文件上限的 {mark:.0%}，构建停止：{detail}。上限 {limit} 字节。'.format(
+            mark=fail, detail=detail, limit=limit))
+    return warnings
+
+def reading_month(item):
+    published = item.get('publishedOn') if isinstance(item, dict) else ''
+    if not isinstance(published, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', published):
+        return 'undated'
+    try:
+        datetime.date.fromisoformat(published)
+    except ValueError:
+        raise ValueError('AI 全文精读的发布日期无效') from None
+    return published[:7]
+
+def split_deep_readings(readings):
+    """Keep a light index in public.js. Section text ships in one content-hashed file per month."""
+    if not isinstance(readings, dict) or not isinstance(readings.get('items', []), list):
+        raise ValueError('AI 全文精读索引无效')
+    index_items, grouped, seen = [], {}, set()
+    for item in readings.get('items', []):
+        if not isinstance(item, dict):
+            raise ValueError('AI 全文精读条目无效')
+        pmcid = item.get('pmcid')
+        if not isinstance(pmcid, str) or not re.fullmatch(r'[A-Za-z0-9._:-]{1,40}', pmcid):
+            raise ValueError('AI 全文精读缺少可用标识')
+        if pmcid in seen:
+            raise ValueError('AI 全文精读标识重复')
+        seen.add(pmcid)
+        month = reading_month(item)
+        index_items.append({k: v for k, v in item.items() if k != 'sections'})
+        sections = item.get('sections')
+        if sections is None:
+            continue
+        if not isinstance(sections, dict):
+            raise ValueError('AI 全文精读正文无效')
+        grouped.setdefault(month, {})[pmcid] = sections
+    payloads, shards = {}, {}
+    for month in sorted(grouped):
+        encoded = json.dumps({'month': month, 'items': grouped[month]}, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+        digest = hashlib.sha256(b'readings-v1\0' + encoded).hexdigest()[:12]
+        name = 'shards/readings-%s.%s.js' % (month, digest)
+        if not is_reading_shard(name):
+            raise ValueError('AI 全文精读分片文件名无效')
+        script = ('window.XINZHI_READING_SHARDS=window.XINZHI_READING_SHARDS||{};'
+                  'window.XINZHI_READING_SHARDS[' + json.dumps(month) + ']=' + encoded.decode('utf-8') + ';\n'
+                  'window.XINZHI_READING_READY&&window.XINZHI_READING_READY(' + json.dumps(month) + ');\n')
+        payloads[name] = script.encode('utf-8')
+        shards[month] = name
+    index = {k: v for k, v in readings.items() if k != 'items'}
+    index['items'] = index_items
+    index['shards'] = shards
+    return index, payloads
+
+def remove_stale_shards(dest, payloads):
+    """Drop month files from the previous build whose content hash is no longer current."""
+    shard_dir = dest / 'shards'
+    if not shard_dir.exists():
+        return
+    if shard_dir.is_symlink() or not shard_dir.is_dir():
+        raise ValueError('Unexpected public files: shards')
+    keep = {Path(name).name for name in payloads if is_reading_shard(name)}
+    for path in list(shard_dir.iterdir()):
+        rel = 'shards/' + path.name
+        if path.is_symlink() or not path.is_file():
+            raise ValueError('Unexpected public files: ' + rel)
+        if path.name not in keep:
+            path.unlink()
+    if not any(shard_dir.iterdir()):
+        shard_dir.rmdir()
+
 def safe_url(v):
     return v if isinstance(v,str) and re.match(r'^https?://',v,re.I) else ''
 def legacy_guides():
@@ -394,8 +505,8 @@ def main():
     legacy_guides()  # Required publication registry, even when article lists are empty.
     checked_records(str(ROOT))  # Missing official-status evidence blocks a complete release.
     DEST.mkdir(exist_ok=True)
-    extra={p.name for p in DEST.iterdir()}-PUBLIC-OBSOLETE_PUBLIC
-    if extra:raise ValueError('Unexpected public files: '+','.join(sorted(extra)))
+    extra=[rel for rel in published_files(DEST) if rel not in PUBLIC and rel not in OBSOLETE_PUBLIC and not is_reading_shard(rel)]
+    if extra:raise ValueError('Unexpected public files: '+','.join(extra))
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
     require_snapshot(l, ROOT)
     # Old state may predate the reviewed publisher correction. Correct before
@@ -488,11 +599,11 @@ def main():
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
-    readings=public_readings(load('data/deep-readings.json') if (ROOT/'data/deep-readings.json').exists() else None)
+    readings,reading_shards=split_deep_readings(public_readings(load('data/deep-readings.json') if (ROOT/'data/deep-readings.json').exists() else None))
     radar_recent,radar_archive=split_radar(radar)
     radar_js=js('RADAR_ARCHIVE',radar_archive if radar else {'rows':[]})+'\n;window.XINZHI_RADAR_READY&&window.XINZHI_RADAR_READY();\n'
     bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics),js('DEEP_READINGS',readings)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar_recent),js('RADAR_SRC','radar.js')] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'app.js').read_text()])
-    headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n/icon.png\n  Cache-Control: public, max-age=86400\n"
+    headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n/icon.png\n  Cache-Control: public, max-age=86400\n/shards/*\n  Cache-Control: public, max-age=31536000, immutable\n"
     worker=(ROOT/'edge/_worker.js').read_text()
     from github_oidc_keys import build_keys
     key_placeholder='const FULLTEXT_OIDC_BUILD_KEYS = {};'
@@ -513,14 +624,24 @@ def main():
     files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'feed.xml':make_feed(candidates['items'],ql,built_at),'style.css':(ROOT/'style.css').read_text(),'demo-reading.html':(ROOT/'demo-reading.html').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
+    for name,content in reading_shards.items():
+        validate_public(content.decode('utf-8'))
+        payloads[name]=content
     icon=(ROOT/'icon.png').read_bytes()
     if not icon.startswith(b'\x89PNG\r\n\x1a\n') or len(icon)>65536:raise ValueError('icon.png must be a small PNG')
     payloads['icon.png']=icon
+    thresholds=asset_thresholds()
+    size_warnings=asset_size_findings(payloads,thresholds)
+    for line in size_warnings:print(line,file=sys.stderr)
     if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')
     for name in OBSOLETE_PUBLIC:
         old=ordinary_file(ROOT,'public/'+name)
         if old.exists():old.unlink()
-    for name,value in payloads.items():(DEST/name).write_bytes(value)
+    for name,value in payloads.items():
+        path=DEST/name
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(value)
+    remove_stale_shards(DEST,payloads)
     # Local generated assets use the same sanitized archive/quicklooks as the public build.
     archive_text=json.dumps({'papers':archive},ensure_ascii=False,indent=2)
     replace_unchanged_input(ROOT,'data/curated-archive.json',archive_text.encode('utf-8'),inputs_before['data/curated-archive.json'])
@@ -528,15 +649,15 @@ def main():
     (ROOT/'data/quicklooks.js').write_text(js('QUICKLOOKS',ql))
     # The receipt describes the bytes we constructed and validated, never replacements.
     manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
-    assert {p['path'] for p in manifest}==PUBLIC
-    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {},'deep_readings':len(readings['items']),'deep_readings_today':sum(p['publishedOn']==datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date().isoformat() for p in readings['items'])},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    assert PUBLIC<={p['path'] for p in manifest}==set(payloads)
+    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'assetLimit':{**thresholds,'warnings':size_warnings},'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {},'deep_readings':len(readings['items']),'deep_readings_today':sum(p.get('publishedOn')==datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date().isoformat() for p in readings['items'])},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     # curated-archive is both input and sanitized output; record its final bytes.
     build_after=provenance(ROOT)
     expected_inputs=dict(inputs_before)
     expected_inputs['data/curated-archive.json']=hashlib.sha256(archive_text.encode('utf-8')).hexdigest()
     if build_after['inputs']!=expected_inputs or build_after['codeSha']!=build_before['codeSha']:
         raise ValueError('Build inputs or checkout changed before completion; rebuild public')
-    if {p.name for p in DEST.iterdir()}!=PUBLIC:
+    if set(published_files(DEST))!=set(payloads):
         raise ValueError('Public outputs changed before completion; rebuild public')
     for name,content in payloads.items():
         if ordinary_file(ROOT,'public/'+name).read_bytes()!=content:
