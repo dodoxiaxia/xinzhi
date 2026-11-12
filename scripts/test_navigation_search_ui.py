@@ -77,7 +77,7 @@ if __name__ == '__main__':
                     expect(page.locator('.source-item')).to_have_count(failed)
                     doi = page.evaluate('FEEDS.items.find(p=>p.doi).doi')
                     page.locator('#globalSearch').fill(doi)
-                    expect(page.locator('.doi-search-notice:visible')).to_contain_text('按 DOI 全站检索')
+                    expect(page.locator('#activeFiltersBar .results-meta:visible')).to_contain_text('按 DOI 全站检索')
                     assert not page.locator('#sourcesSection').is_visible()
                     page.locator('[data-clear="search"]:visible').click(no_wait_after=True)
                     expect(page.locator('.source-item')).to_have_count(82)

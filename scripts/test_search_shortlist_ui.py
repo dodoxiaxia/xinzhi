@@ -204,7 +204,7 @@ def main():
                 expect(page.locator('.search-scope')).to_contain_text('检索范围：文献雷达')
                 doi = author_paper['doi']
                 page.goto(base + '?' + urlencode({'mode': 'curated', 'q': doi, 'journal': 'No matching journal', 'view': 'compact'}), wait_until='load')
-                expect(page.locator('.doi-search-notice')).to_contain_text('按 DOI 全站检索')
+                expect(page.locator('#activeFiltersBar .results-meta')).to_contain_text('按 DOI 全站检索')
                 check(count(page) > 0, f'{width}: exact DOI keeps its existing explicit global scope')
                 check(parse_qs(urlsplit(page.url).query)['q'] == [doi], f'{width}: DOI query survives URL synchronization')
 
