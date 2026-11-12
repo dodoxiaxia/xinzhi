@@ -84,7 +84,7 @@ function pdfBackLinks(doi) {
   return exact ? '<p><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a> · <a href="/?mode=library">返回文献库</a></p>' : '<p><a href="/?mode=library">返回文献库</a></p>';
 }
 function pdfHtml(body, status = 200, heading = 'PDF 下载', doi = '') {
-  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}</style><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
+  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}.paper-title{font-weight:600}.status{border-left:3px solid #1d4f91;padding:.2rem .8rem;background:#f1f5f9}.hint,.maint{color:#475569;font-size:.9rem}a.primary,button.primary,form>button[type=submit]{display:inline-block;padding:.55rem 1.2rem;border:0;border-radius:8px;background:#1d4f91;color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}</style><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
     status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
   });
 }
@@ -1528,6 +1528,12 @@ function museNextVerificationAt(now = Date.now()) {
   const hour = 3600000, scheduled = Math.floor(now / hour) * hour + 23 * 60000;
   return new Date(scheduled > now ? scheduled : scheduled + hour).toISOString();
 }
+// An immediate dispatch normally verifies within a few minutes; after ten minutes the candidate is treated as
+// waiting for the hourly schedule, which GitHub often runs hours late.
+const MUSE_INSTANT_REVIEW_MS = 180000, MUSE_INSTANT_GIVE_UP_MS = 600000;
+function museVerificationInstant(job) {
+  return museReviewInstant && Date.now() - (job.receivedAt || job.updatedAt) < MUSE_INSTANT_GIVE_UP_MS;
+}
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
@@ -1546,7 +1552,10 @@ function musePublicJob(value, doi = '') {
     queue_expired:'任务排队过久仍未被领取，已停止。可以直接上传 PDF，或用全文口令重新排队。'};
   return {id:job.id,doi:job.doi,state,stage,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
     message:reasons[reason] || (verificationDelayed ? 'PDF 已收到，计划核验时间已到，核验尚未完成；实际执行以 GitHub 队列为准。' : messages[job.state]), ...(reason ? {reason} : {}),
-    ...(job.state === 'verifying' ? {nextVerificationAt:planned,verificationDelayed,verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。'} : {}),
+    ...(job.state === 'verifying' ? {nextVerificationAt:planned,verificationDelayed,verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。',
+      verificationMode:museVerificationInstant(job) ? 'immediate' : 'hourly',
+      ...(museVerificationInstant(job) ? {verificationExpectedAt:new Date((job.receivedAt || job.updatedAt) + MUSE_INSTANT_REVIEW_MS).toISOString()} : {})} : {}),
+    sourceKind:job.source === 'reader_upload' ? 'reader_upload' : job.source === 'open_access' ? 'open_access' : 'download',
     ...(['queued','running','pending'].includes(state) ? {nextCheckSeconds:60} : {})};
 }
 async function musePublicJobValue(env, doi) {
@@ -1574,34 +1583,42 @@ function museResponse(request, job, paper) {
   const archive = {...libraryArchiveStatus(),executionClaimed:job.state !== 'queued',sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}};
   if (!(request.headers.get('accept') || '').includes('text/html')) return json({ok:true,status:publicJob.state,job:publicJob,...(paper ? {paper:libraryObservedPaper(paper,null,publicJob)} : {}),archive,statusUrl,
     ...(job.state === 'available' ? {downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi)} : {})},job.state === 'available' ? 200 : 202);
-  const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60"><p>本页每 60 秒只更新状态，不会重新下载。</p>' : '';
-  // Reader uploads and open-access copies skip Muse entirely, so they show the shorter path they actually took.
-  const stages = job.source ? [['queued','提交请求'],['verifying',(job.source === 'reader_upload' ? '已收到上传的 PDF' : job.source === 'open_access' ? '已取得开放获取 PDF' : '已收到 PDF') + '，等待网站核验'],['available','核验通过，可下载']]
-    : [['queued','待下载队列领取'],['running','已领取，正在获取全文'],['uploading','原件已上传私有收件箱'],['verifying','网站已收到 PDF，等待核验'],['available','核验通过，可下载']];
-  // Infer how far a stopped task got from the evidence it carries, so the list never shows no step at all.
-  const reached = job.source ? job.state === 'available' ? 2 : job.state === 'review' || job.candidateKey ? 1 : 0
-    : job.state === 'available' ? 4 : job.state === 'review' || job.candidateKey ? 3 : job.driveFileId ? 2 : job.leaseId ? 1 : 0;
-  const index = stages.findIndex(([stage]) => stage === publicJob.stage);
-  const stopped = index < 0 || publicJob.stage === 'failed';
-  const stopLabels = {review:'PDF 核验未通过，等待维护者核查',login_required:'汉堡会话需重新登录（维护者处理）',failed:'任务已停止，等待维护者确认',abandoned:'已确认不再获取'};
-  const current = stopped ? reached : index;
-  const progress = '<ol class="steps">' + stages.map(([,label],i) => {
-    if (stopped && i === current) return '<li class="stop" aria-current="step">' + pdfEscape(stopLabels[job.state === 'login_required' ? 'login_required' : job.state === 'review' ? 'review' : job.state === 'abandoned' ? 'abandoned' : 'failed']) + '（当前）</li>';
-    return '<li' + (i < current || (i === current && job.state === 'available') ? ' class="done"' : '') + (!stopped && i === current ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + (i < current || (i === current && job.state === 'available') ? '（已完成）' : i === current ? '（当前）' : '') + '</li>';
-  }).join('') + '</ol>';
-  const planned = publicJob.nextVerificationAt ? '<p>本批原件计划核验：北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(0,19).replace('T',' ') + '。GitHub 队列可能延迟；等待期间不会重复下载。</p>' : '';
-  const next = job.state === 'available' ? ''
-    : job.state === 'abandoned' ? '<p class="next">已确认不再获取。不会自动回到下载队列。</p>'
-    : museRecoverable(job) ? '<p class="next">无需重复提交。确认没有仍在进行的下载后，可用全文口令<a href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">把任务放回下载队列</a>；会优先复用已下载文件。</p>'
-    : ['review','login_required'].includes(job.state) ? '<p class="next">无需重复提交。维护者处理后，本页和网站上的状态会更新。</p>'
-    : '<p class="next">可以关闭本页。之后回到网站搜索这个 DOI 即可看到最新状态；可下载时，文献卡片会出现“下载 PDF”。</p>';
-  const upload = ['queued','review','login_required'].includes(job.state) || museRecoverable(job) ? museUploadLink(job.doi) : '';
-  return pdfHtml(check + '<p role="status">' + pdfEscape(publicJob.message) + '</p>' + (paper?.title ? '<p>' + pdfEscape(paper.title) + '</p>' : '') + progress + '<p>最近更新：北京时间 ' + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '</p>' + planned + next + upload
-    + (job.state === 'available' ? libraryDownloadForm(job.doi) : '')
+  const view = museTaskView(job,publicJob), refreshUrl = statusUrl;
+  const check = publicJob.nextCheckSeconds ? '<meta http-equiv="refresh" content="60">' : '';
+  const steps = MUSE_TASK_STEPS.map((label,i) => {
+    if (view.stopped && i === view.step) return '<li class="stop" aria-current="step">' + pdfEscape(view.stopLabel) + '</li>';
+    const done = i < view.step || (i === view.step && job.state === 'available');
+    return '<li' + (done ? ' class="done"' : '') + (!view.stopped && i === view.step ? ' aria-current="step"' : '') + '>' + pdfEscape(label) + '</li>';
+  }).join('');
+  const action = view.action === 'download' ? libraryDownloadForm(job.doi)
+    : view.action === 'refresh' ? '<p><a class="primary" href="' + pdfEscape(refreshUrl) + '">刷新状态</a></p>'
+    : view.action === 'retry' ? '<p><a class="primary" href="/api/muse/retry?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">重新获取全文</a></p>'
+    : view.action === 'upload' ? '<p><a class="primary" href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">直接上传 PDF</a></p>' : '';
+  const secondary = view.secondaryUpload ? '<p class="hint">手里已有这篇的 PDF？<a href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">直接上传</a>，不必等下载队列。</p>' : '';
+  // Maintainer-only detail: hideInstitutionLinks removes this block unless the browser is in maintainer mode.
+  const maintainer = HAN_BLOCK_START + '<p class="maint">维护者信息：状态 ' + pdfEscape(job.state) + (publicJob.reason ? '，原因 ' + pdfEscape(publicJob.reason) : '') + '，最近更新北京时间 '
+    + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '。</p>' + HAN_BLOCK_END;
+  return pdfHtml(check + (paper?.title ? '<p class="paper-title">' + pdfEscape(paper.title) + '</p>' : '') + '<ol class="steps">' + steps + '</ol>'
+    + '<p role="status" class="status"><b>' + pdfEscape(view.headline) + '</b>' + (view.eta ? '<br>' + pdfEscape(view.eta) : '') + '</p>'
+    + action + secondary + maintainer
+    + (job.state === 'abandoned' || job.state === 'available' ? '' : '<p class="hint">可以关闭本页，状态会保留；网页上的这篇文献显示同样的进度。' + (publicJob.nextCheckSeconds ? '本页每 60 秒只更新状态，不会重新下载。' : '') + '</p>')
     + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'全文任务',job.doi);
 }
-function museUploadLink(doi) {
-  return '<p>已经拿到这篇的 PDF（开放获取，或汉堡登录后下载）？<a href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '">直接上传 PDF</a>，不必等下载队列；网站核验 DOI、题名与全部页面后即可下载。</p>';
+const MUSE_TASK_STEPS = ['排队下载','已收到，核验中','可阅读'];
+// One status description per task, shared by the task page; the website script mirrors it so the card and this page never disagree.
+function museTaskView(job, publicJob) {
+  const recoverable = museRecoverable(job);
+  const received = job.source === 'reader_upload' ? '你上传的 PDF' : job.source === 'open_access' ? '开放获取的 PDF' : ' PDF';
+  if (job.state === 'available') return {step:2,stopped:false,headline:'全文已核验，可以阅读和下载。',eta:'',action:'download'};
+  if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未能获取',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
+  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'核验未通过',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未能获取',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
+  if (recoverable) return {step:0,stopped:true,stopLabel:'未能获取',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
+  if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
+    eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
+      : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};
+  if (job.state === 'queued') return {step:0,stopped:false,headline:'已排入下载队列，等待下载端领取。',eta:'预计数小时内，不保证即时。',action:'refresh',secondaryUpload:true};
+  return {step:0,stopped:false,headline:'下载端已领取，正在获取全文。',eta:'通常几十分钟内；取得后会自动进入核验。',action:'refresh',secondaryUpload:true};
 }
 async function museOwnerGuard(env, doi) {
   const previous = fulltextJobRecord(await libraryGet(env.QL_KV,FULLTEXT_JOB_PREFIX + doi),doi);
@@ -1666,6 +1683,14 @@ async function museRequestReview(env) {
   } catch { return false; }
   finally { clearTimeout(timer); }
 }
+
+// True when the Worker can ask GitHub for an immediate verification run. Set once per request by the
+// router so task pages and job JSON can promise "minutes" only when that path exists.
+let museReviewInstant = false;
+function museReviewConfigured(env) {
+  const token = env && env.MUSE_REVIEW_DISPATCH_TOKEN;
+  return typeof token === 'string' && /^[A-Za-z0-9_]{20,255}$/.test(token);
+}
 // Bytes that did not come through Muse (reader upload, open access) enter the same private candidate
 // area; the GitHub dual-parser verifier still has to confirm DOI, title and every page before download.
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
@@ -1701,7 +1726,7 @@ const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
     + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
-    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（每小时第 23 分钟计划执行，GitHub 队列可能延迟）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
+    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
     + pdfOfficialLink(doi),notice ? 403 : 200,'上传全文 PDF',doi);
@@ -1774,7 +1799,7 @@ async function handleMuseRequest(request, env) {
     const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (existing) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后进入下载队列，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>下载队列领取并获取原件（时间取决于下载端安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
+    if (request.method === 'GET') return pdfHtml('<ol class="steps"><li aria-current="step">提交请求（本页）</li><li>下载端领取并取得原件（可能需要数小时）</li><li>网站核验后即可阅读与下载</li></ol><p class="status"><b>站内还没有这篇的全文。</b><br>输入全文口令提交请求，进度会显示在这篇文献的卡片上。</p><form method="post"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit" class="primary">提交全文请求</button></form><p class="hint">同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
     if (paper?.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);
@@ -4361,6 +4386,7 @@ export default {
 
 async function routeRequest(request, env) {
     const url = new URL(request.url);
+    museReviewInstant = museReviewConfigured(env);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
