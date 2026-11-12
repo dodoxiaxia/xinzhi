@@ -6,20 +6,26 @@ const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 const MACHINE_ROLE_CAPS = {
-  downloader:['upload','status','claim','list','requeue','register','abandoned','protocol'],
-  fallback:['upload','status','abandon','claim','list','abandoned','protocol'],
+  downloader:['upload','replace','status','claim','list','requeue','register','abandoned','protocol'],
+  fallback:['upload','replace','status','abandon','claim','list','abandoned','protocol'],
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
+const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
 const MACHINE_REQUEUE_DAILY_DEFAULT = 200;
 const MACHINE_REGISTER_DAILY_DEFAULT = 200;
 const MACHINE_REGISTER_MAX_ITEMS = 50;
 const MACHINE_REGISTER_SECTIONS = ['MAIN','CARDIO'];
 const MACHINE_REGISTER_PREFIX = 'library:machine-register:';
 const MACHINE_REGISTER_SOURCE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+// A 409 from the first-page check carries an internal reason code and which checks passed. Never PDF text.
+class MachineIdentityFailure extends LibraryFailure {
+  constructor(code, reason, checks) { super(code, 409); this.reason = reason; this.checks = checks || null; }
+}
 function machineError(error) {
   const known = error instanceof LibraryFailure || error instanceof PdfFailure;
   const body = {ok:false,error:known ? error.code : 'machine_server'};
+  if (error instanceof MachineIdentityFailure) { body.reason = error.reason; if (error.checks) body.checks = error.checks; }
   if (known && error.retryAfter) Object.assign(body, libraryRetryInfo(error.retryAfter));
   return json(body, known ? error.status : 500);
 }
@@ -97,116 +103,6 @@ async function machineConsume(env, caller, bucket, amount) {
   const used = Number.isInteger(count) && count >= 0 ? count : 0;
   await libraryPut(env.QL_KV, key, JSON.stringify(used + amount), {expirationTtl:172800});
 }
-function machineNormalize(value) {
-  const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
-  let out = '';
-  for (const char of stripped) {
-    const code = char.codePointAt(0);
-    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || code > 127) out += char;
-  }
-  return out;
-}
-function machineLatin1(bytes) {
-  let out = '';
-  for (let offset = 0; offset < bytes.length; offset += 4096) {
-    out += String.fromCharCode(...bytes.subarray(offset, offset + 4096));
-  }
-  return out;
-}
-function machinePdfObject(text, id) {
-  const needle = id + ' 0 obj';
-  let from = 0;
-  while (from < text.length) {
-    const start = text.indexOf(needle, from);
-    if (start < 0) return '';
-    const before = start ? text[start - 1] : '';
-    if (!/[0-9]/.test(before)) {
-      const end = text.indexOf('endobj', start);
-      return end < 0 ? '' : text.slice(start, end);
-    }
-    from = start + needle.length;
-  }
-  return '';
-}
-function machinePdfStrings(content) {
-  let out = '';
-  for (let index = 0; index < content.length; index++) {
-    if (content[index] !== '(') continue;
-    let text = '', depth = 1;
-    for (index++; index < content.length && depth; index++) {
-      const char = content[index];
-      if (char === '\\') { text += content[index + 1] || ''; index++; continue; }
-      if (char === '(') { depth++; text += '('; continue; }
-      if (char === ')') { depth--; if (depth) text += ')'; continue; }
-      text += char;
-    }
-    index--;
-    out += text + '\n';
-  }
-  return out;
-}
-async function machineInflate(bytes) {
-  if (typeof DecompressionStream !== 'function') return '';
-  try {
-    const stream = new DecompressionStream('deflate');
-    const writer = stream.writable.getWriter();
-    await writer.write(bytes);
-    await writer.close();
-    const reader = stream.readable.getReader();
-    const chunks = [];
-    let size = 0;
-    while (true) {
-      const item = await reader.read();
-      if (item.done) break;
-      size += item.value.byteLength;
-      if (size > LIBRARY_MAX_PDF_BYTES) return '';
-      chunks.push(item.value);
-    }
-    const inflated = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) { inflated.set(chunk, offset); offset += chunk.byteLength; }
-    return machineLatin1(inflated);
-  } catch { return ''; }
-}
-async function machineStreamText(object) {
-  const marker = /stream\r?\n/.exec(object);
-  if (!marker) return '';
-  const start = marker.index + marker[0].length;
-  const end = object.indexOf('endstream', start);
-  if (end < 0) return '';
-  const raw = object.slice(start, end);
-  if (/\/FlateDecode\b/.test(object.slice(0, marker.index))) {
-    const bytes = new Uint8Array(raw.length);
-    for (let index = 0; index < raw.length; index++) bytes[index] = raw.charCodeAt(index) & 255;
-    const inflated = await machineInflate(bytes);
-    return inflated ? machinePdfStrings(inflated) + '\n' + inflated : '';
-  }
-  return machinePdfStrings(raw) + '\n' + raw;
-}
-async function machineFirstPageText(bytes) {
-  const text = machineLatin1(bytes);
-  const pages = /\/Type\s*\/Pages\b[\s\S]*?\/Kids\s*\[([^\]]*)\]/.exec(text);
-  const kid = pages && /(\d+)\s+\d+\s+R/.exec(pages[1]);
-  const page = kid ? machinePdfObject(text, kid[1]) : '';
-  const contents = /\/Contents\s*\[([^\]]*)\]/.exec(page) || /\/Contents\s+(\d+)\s+\d+\s+R/.exec(page);
-  const ids = contents
-    ? (/\[/.test(contents[0]) ? [...contents[1].matchAll(/(\d+)\s+\d+\s+R/g)].map(match => match[1]) : [contents[1]])
-    : [];
-  let combined = '';
-  for (const id of ids) combined += await machineStreamText(machinePdfObject(text, id));
-  return combined;
-}
-function machineDoiPresent(text, doi) {
-  const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
-  return new RegExp('(?<![A-Za-z0-9])' + escaped + '(?![A-Za-z0-9])', 'i').test(text);
-}
-async function machineIdentity(bytes, doi, title) {
-  const expected = machineNormalize(title);
-  if (!libraryDoi(doi) || expected.length < 5) return 'invalid';
-  const page = await machineFirstPageText(bytes);
-  if (!page || !machineDoiPresent(page, doi) || !machineNormalize(page).includes(expected)) return 'mismatch';
-  return 'ok';
-}
 async function machineReadBody(request, max) {
   const declared = request.headers.get('content-length');
   if (declared && (!/^\d+$/.test(declared) || Number(declared) > max)) libraryFail('muse_bad_pdf', 413);
@@ -266,6 +162,7 @@ function machineReason(job) {
   if (MACHINE_VERIFICATION_REASONS.includes(job.reason)) return job.reason;
   if (job.state === 'login_required') return 'han_login';
   if (['lease_expired','queue_expired','agent_failed'].includes(job.reason)) return job.reason;
+  if (museExpired(job)) return job.state === 'queued' ? 'queue_expired' : 'lease_expired';
   return '';
 }
 function machineStage(job) {
@@ -275,7 +172,9 @@ function machineStage(job) {
 }
 function machineListItem(job) {
   const registration = job.registration && typeof job.registration === 'object' ? job.registration : null;
-  return {doi:job.doi,state:machinePublicState(job),reason:machineReason(job),stage:machineStage(job),
+  const state = machinePublicState(job);
+  // A failure reason belongs to failed states only. A claimed or queued task must not show the failure it came from.
+  return {doi:job.doi,state,reason:state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned' ? machineReason(job) : '',stage:machineStage(job),
     claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
@@ -286,6 +185,31 @@ function machineUploadDecision(job, paper, sha256, caller) {
   if (job && job.state === 'verifying') return job.sha256 === sha256 ? {type:'replay',job} : {type:'conflict'};
   if (job && ['running','uploading'].includes(job.state) && !museExpired(job) && job.claimant && job.claimant !== caller.id) return {type:'busy'};
   return {type:'accept'};
+}
+function machineReplacePublic(replace) {
+  return {by:replace.by,at:new Date(replace.at).toISOString(),oldSha256:replace.oldSha256,newSha256:replace.newSha256};
+}
+function machineMayReplace(caller) {
+  // New path: only a MACHINE_TOKENS caller of role downloader or fallback, never the legacy shared Muse key.
+  return !caller.legacy && ['downloader','fallback'].includes(caller.role) && MACHINE_ROLE_CAPS[caller.role].includes('replace');
+}
+function machineReplaceDecision(job, paper, record, sha256, caller) {
+  if (job && job.state === 'verifying' && job.replace && job.sha256 === sha256) return {type:'replay',job};
+  if (!paper || paper.fulltextStatus !== 'available' || !record || !record.pdf || !/^[a-f0-9]{64}$/.test(record.pdf.sha256 || '')) return {type:'unneeded'};
+  if (record.pdf.sha256 === sha256) return {type:'same'};
+  if (job && job.state === 'abandoned') return {type:'closed'};
+  if (job && job.state === 'verifying') return {type:'conflict'};
+  const now = Date.now();
+  if (job && ((['running','uploading'].includes(job.state) && !museExpired(job) && job.claimant !== caller.id) || job.reviewLeaseUntil > now)) return {type:'busy'};
+  return {type:'accept',oldSha:record.pdf.sha256};
+}
+// A verified replacement overwrites the stored original; the old blob key stays in KV and the Drive archive keeps the old sha.
+async function machineReplacePdf(kv, record, bytes, source) {
+  const paper = libraryPaper(record, record.paper.doi), checksum = await pdfDigest('SHA-256', bytes), blobKey = 'library:pdf:' + checksum;
+  await libraryPut(kv, blobKey, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  await libraryPut(kv, DRIVE_PENDING_PREFIX + checksum, JSON.stringify({doi:paper.doi}));
+  await libraryPut(kv, LIBRARY_PREFIX + paper.doi, JSON.stringify({version:1, paper:{...paper,fulltextStatus:'available'}, pdf:{key:blobKey,sha256:checksum,size:bytes.length,source,replacedSha256:record.pdf.sha256}}));
+  libraryCatalogCache.clear();
 }
 function handleMachineProtocol(request, env) {
   if (request.method !== 'GET' || new URL(request.url).search) return json({ok:false,error:'machine_bad_request'}, 405);
@@ -304,6 +228,8 @@ function handleMachineProtocol(request, env) {
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
+    replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
+    identityReasons:MACHINE_IDENTITY_REASONS,
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
@@ -311,11 +237,16 @@ async function handleMachineUpload(request, env) {
   try {
     if (!['PUT','POST'].includes(request.method) || new URL(request.url).search) libraryFail('machine_bad_request', request.method === 'PUT' || request.method === 'POST' ? 400 : 405);
     const caller = await machineAuthorize(request, env, 'upload');
+    const replaceHeader = request.headers.get('x-machine-replace');
+    if (replaceHeader !== null && replaceHeader !== '1') libraryFail('machine_bad_request', 400);
+    const replacing = replaceHeader === '1';
+    if (replacing && !machineMayReplace(caller)) libraryFail('machine_forbidden', 403);
     const {doi, bytes} = await machineReadUpload(request);
     if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
     try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf', 415); }
     const sha256 = await pdfDigest('SHA-256', bytes);
-    let paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
+    let paper = libraryPaper(record, doi);
     let fresh = null;
     if (!paper) {
       const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
@@ -324,14 +255,16 @@ async function handleMachineUpload(request, env) {
       paper = fresh;
     }
     if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
-    const verdict = await machineIdentity(bytes, paper.doi, paper.title);
-    if (verdict !== 'ok') libraryFail(verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', 409);
+    const identity = await machineIdentity(bytes, paper.doi, paper.title);
+    if (identity.verdict !== 'ok') throw new MachineIdentityFailure(identity.verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', identity.reason, identity.checks);
     const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (attempt && attempt.paused) libraryFail('library_paused', 423);
     await museOwnerGuard(env, doi);
     const existing = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-    const decision = machineUploadDecision(existing, paper, sha256, caller);
-    if (decision.type === 'replay') return json({ok:true,idempotent:true,task:{...machineListItem(decision.job),caller:decision.job.caller || '',sha256:decision.job.sha256}});
+    const decision = replacing ? machineReplaceDecision(existing, paper, record, sha256, caller) : machineUploadDecision(existing, paper, sha256, caller);
+    if (decision.type === 'replay') return json({ok:true,idempotent:true,task:{...machineListItem(decision.job),caller:decision.job.caller || '',sha256:decision.job.sha256,...(decision.job.identityLevel ? {identity:decision.job.identityLevel} : {}),...(decision.job.replace ? {replace:machineReplacePublic(decision.job.replace)} : {})}});
+    if (decision.type === 'unneeded') libraryFail('machine_replace_unneeded', 409);
+    if (decision.type === 'same') libraryFail('machine_replace_same', 409);
     if (decision.type === 'done') libraryFail('machine_done', 409);
     if (decision.type === 'conflict') libraryFail('machine_conflict', 409);
     if (decision.type === 'busy') libraryFail('machine_busy', 409);
@@ -339,8 +272,9 @@ async function handleMachineUpload(request, env) {
     await machineRemaining(env, caller, 'upload', machineLimit(env, 'MACHINE_UPLOAD_DAILY_LIMIT', MACHINE_UPLOAD_DAILY_DEFAULT));
     if (fresh) await librarySave(env.QL_KV, fresh, null, 'library_manual_needed');
     await machineConsume(env, caller, 'upload', 1);
-    const job = await museIntake(env, doi, bytes, caller.id, existing || null);
-    return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256}}, 202);
+    const replace = replacing ? {by:caller.id,at:Date.now(),oldSha256:decision.oldSha,newSha256:sha256,previous:existing && existing.state === 'available' ? existing : null} : null;
+    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(replace ? {replace} : {})});
+    return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256,identity:identity.level,...(replace ? {replace:machineReplacePublic(replace)} : {})}}, 202);
   } catch (error) { return machineError(error); }
 }
 async function handleMachineStatus(request, env) {
@@ -524,7 +458,9 @@ async function machineClaimFailed(env, caller) {
     if (paper && paper.fulltextStatus === 'review') return false;
     await museOwnerGuard(env, doi);
     const now = Date.now();
-    const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
+    // The failure that made this task claimable is history, not the state of the new lease.
+    const {reason:previousReason, ...rest} = job;
+    const claimed = {...rest,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now,...(previousReason ? {previousReason} : {})};
     await musePut(env, claimed);
     const observed = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
     if (!observed || observed.leaseId !== claimed.leaseId) libraryFail('machine_sync_pending', 503);

@@ -286,7 +286,10 @@ async function handleMuseReview(request, env) {
     if (input.action === 'complete' && input.result === 'rejected') {
       // The Actions log is not the ledger. Keep the mismatch on the task so callers can list it.
       const verificationReason = ['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason) ? input.reason : 'verification_rejected';
-      const rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
+      // A rejected replacement leaves the verified original in place: the task goes back to 'available' and keeps the refusal.
+      const restored = job.replace && job.replace.oldSha256 ? {...(job.replace.previous || {version:1,id:job.id,doi:job.doi,state:'available',createdAt:job.createdAt,queueKey:job.queueKey}),updatedAt:Date.now(),
+        replaceRejected:{by:job.replace.by,at:job.replace.at,oldSha256:job.replace.oldSha256,newSha256:job.replace.newSha256,reason:verificationReason,rejectedAt:Date.now()}} : null;
+      const rejected = restored || {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
       await musePut(env,rejected); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
       return json({ok:true,job:musePublicJob(rejected),archive:libraryArchiveStatus()});
     }
@@ -298,14 +301,19 @@ async function handleMuseReview(request, env) {
     if (input.action === 'bytes') return new Response(bytes,{headers:{'content-type':'application/pdf','content-length':String(bytes.length),'cache-control':'private, no-store','x-content-type-options':'nosniff'}});
     await museOwnerGuard(env,job.doi);
     const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
-    if (!paper || paper.fulltextStatus === 'review' || (record.pdf && record.pdf.sha256 !== job.sha256)) libraryFail('library_identity',409);
-    await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},{bytes,source:'muse_verified'},'');
+    // Only a replacement queued by machineReplaceDecision may overwrite the original that is stored now, and only that exact one.
+    const replacing = !!(job.replace && paper && record.pdf && record.pdf.sha256 === job.replace.oldSha256 && paper.fulltextStatus === 'available');
+    if (!paper || paper.fulltextStatus === 'review' || (record.pdf && record.pdf.sha256 !== job.sha256 && !replacing)) libraryFail('library_identity',409);
+    if (replacing) await machineReplacePdf(env.QL_KV,record,bytes,'muse_verified');
+    else await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},{bytes,source:'muse_verified'},'');
     const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi);
     if (!libraryPaper(saved,job.doi) || saved.pdf?.sha256 !== job.sha256) libraryFail('muse_sync_pending',503);
     await libraryStoredPdf(env.QL_KV,saved);
     // Muse already stored this original in its Drive inbox; record it so the archive workflow does not upload it twice.
     if (job.driveFileId) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + job.sha256,JSON.stringify({version:1,doi:job.doi,sha256:job.sha256,driveFileId:job.driveFileId,source:'muse',archivedAt:Date.now()}));
-    const done = {...job,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes}};
+    const {replace:replaced, ...kept} = job;
+    const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes},
+      ...(replaced ? {replacedFrom:{by:replaced.by,at:replaced.at,oldSha256:replaced.oldSha256,newSha256:replaced.newSha256,verifiedAt:Date.now()}} : {})};
     await musePut(env,done); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
     return json({ok:true,job:musePublicJob(done),downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi),archive:{...libraryArchiveStatus(),sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}}});
   } catch (error) { return museError(error); }

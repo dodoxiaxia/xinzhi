@@ -182,4 +182,4 @@ const proof = task => ({action:'complete',...identity(task),sha256:task.sha256,b
   h = await create(); const immutableClaim = await review(h,{action:'claim'},{claims:{sub:'repo:dodoxiaxia@214921265/xinzhi@1397425558:ref:refs/heads/main'}});
   assert.equal(immutableClaim.status,200); assert.equal((await immutableClaim.json()).task,null);
   console.log('Muse: protected polling, ownership, bounded original upload, independent OIDC verification, quarantine and cache passed');
-})().catch(error => {console.error(error);process.exitCode = 1;});
+})().catch(error => {console.error(error);process.exitCode = 1;}).then(() => require('./test_machine_identity.cjs')); // runs after this file: both share one OIDC test key pair
