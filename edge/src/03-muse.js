@@ -225,7 +225,7 @@ async function museRequestReview(env) {
 }
 // Bytes that did not come through Muse (reader upload, open access) enter the same private candidate
 // area; the GitHub dual-parser verifier still has to confirm DOI, title and every page before download.
-async function museIntake(env, doi, bytes, source, previous) {
+async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
   const sha256 = await pdfDigest('SHA-256',bytes), candidateKey = 'library:muse-candidate:' + sha256;
@@ -235,7 +235,7 @@ async function museIntake(env, doi, bytes, source, previous) {
   if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== sha256) libraryFail('library_integrity',502);
   const now = Date.now(), id = crypto.randomUUID(), callerName = machineCallerSource(source) ? source : '';
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
-    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {})};
+    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...extra};
   await musePut(env,job);
   await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
   if (previous) await museDelete(env,previous.queueKey);
