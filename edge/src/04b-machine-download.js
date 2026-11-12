@@ -170,12 +170,18 @@ function machineStage(job) {
   if (job.state === 'login_required' || job.reason === 'han_login' || job.reason === 'han_quota') return 'han';
   return '';
 }
+// Open-access sources the site dropped because the file was the wrong paper: only a public URL without query, and a reason code.
+function machineOaRejected(job) {
+  if (!Array.isArray(job.oaRejected)) return [];
+  return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch'}));
+}
 function machineListItem(job) {
   const registration = job.registration && typeof job.registration === 'object' ? job.registration : null;
   const state = machinePublicState(job);
   // A failure reason belongs to failed states only. A claimed or queued task must not show the failure it came from.
   return {doi:job.doi,state,reason:state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned' ? machineReason(job) : '',stage:machineStage(job),
     claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,
+    ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
 }
@@ -456,6 +462,8 @@ async function machineClaimFailed(env, caller) {
     const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
     if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}); return false; }
     if (paper && paper.fulltextStatus === 'review') return false;
+    // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
+    if (job.state === 'review') return false;
     await museOwnerGuard(env, doi);
     const now = Date.now();
     // The failure that made this task claimable is history, not the state of the new lease.

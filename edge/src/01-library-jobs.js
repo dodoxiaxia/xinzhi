@@ -321,6 +321,20 @@ async function libraryGithub(paper, env, context) {
   return { bytes, source:incremental ? 'github_delta' : 'github', commit };
   } catch (error) { throw pdfAttachDiagnostic(error,diagnostic); }
 }
+// Open-access bytes that will enter the Muse quarantine are checked against the expected DOI and title first.
+// A wrong paper (for example a preprint of the same work) drops that source; the caller falls back to the queue.
+async function libraryOaIdentityOk(paper, bytes, candidate, context) {
+  const guard = context.oaIdentity;
+  if (!guard) return true;
+  let result;
+  try { result = await machineIdentity(bytes, paper.doi, paper.title); }
+  catch { result = { verdict:'invalid', reason:'identity_check_error' }; }
+  if (result.verdict === 'ok') { guard.level = result.level; return true; }
+  let label = '';
+  try { const url = new URL(candidate); label = (url.origin + url.pathname).slice(0, 200); } catch { label = ''; }
+  if (guard.rejected.length < 3) guard.rejected.push({ source:label, reason:typeof result.reason === 'string' ? result.reason : result.verdict, at:Date.now() });
+  return false;
+}
 async function libraryOa(paper, context) {
   let review = false, unavailable = false, retryAfter = 0, diagnostic = null;
   if (context.metadataOnly) return { review, unavailable, retryAfter, diagnostic };
@@ -338,6 +352,7 @@ async function libraryOa(paper, context) {
         const bytes = await libraryRead(candidate, context, true);
         if (bytes.length < 50 * 1024) libraryFail('library_identity', 409);
         libraryValidatePdf(bytes);
+        if (!(await libraryOaIdentityOk(paper, bytes, candidate, context))) continue;
         return { bytes, source:'crossref' };
       } catch (error) {
         diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic;
@@ -365,7 +380,7 @@ async function libraryOa(paper, context) {
       } catch (error) { diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic; if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
     }
     for (const candidate of candidates.splice(0)) {
-      try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); return { bytes, source:'oa' }; }
+      try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); if (!(await libraryOaIdentityOk(paper, bytes, candidate, context))) continue; return { bytes, source:'oa' }; }
       catch (error) { diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic; if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
     }
   }
