@@ -122,7 +122,7 @@ async function museDelete(env, key) {
   try { await env.QL_KV.delete(key); } catch { libraryFail('library_storage',503); }
 }
 async function handleMuseClaim(request, env) {
-  const legacy = museLegacyResponse(env, 'claim'); if (legacy) return legacy; // before any authentication, secret or KV access
+  if (museLegacyClosed(env)) return museRetiredResponse(); // before any authentication, secret or KV access
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
     await museAuthorize(request,env);
@@ -164,7 +164,7 @@ function museError(error) {
   return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'muse_server'},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
 }
 async function handleMuseReceipt(request, env) {
-  const legacy = museLegacyResponse(env, 'receipt'); if (legacy) return legacy; // before any authentication, secret or KV access
+  if (museLegacyClosed(env)) return museRetiredResponse(); // before any authentication, secret or KV access
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
     await museAuthorize(request,env);
@@ -194,7 +194,7 @@ async function handleMuseReceipt(request, env) {
   } catch (error) { return museError(error); }
 }
 async function handleMuseUpload(request, env) {
-  const legacy = museLegacyResponse(env, 'upload'); if (legacy) return legacy; // before any authentication, secret or KV access
+  if (museLegacyClosed(env)) return museRetiredResponse(); // before any authentication, secret or KV access
   try {
     if (request.method !== 'PUT' || new URL(request.url).search) libraryFail('muse_bad_request',405);
     await museAuthorize(request,env);

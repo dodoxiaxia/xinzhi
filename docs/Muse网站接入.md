@@ -13,10 +13,7 @@ Muse 不再承担下载。新的下载队列见 [机器下载接口](机器下�
 - `POST /api/muse/claim`、`POST /api/muse/receipt`、`PUT /api/muse/upload`
 - 读者把已停止的任务放回下载队列：`/api/muse/retry`（页面按钮仍是「确认重新入队」；文案不再写由 Muse 领取）
 
-计划收口日期默认 **2026-12-12**。Pages 环境变量 `MUSE_DOWNLOAD_RETIRE_ON`（`YYYY-MM-DD`）只改变协议页和机器协议里显示的日期。真正关闭靠环境变量 `MUSE_LEGACY_ENDPOINTS_DISABLED`（普通变量，不是 Secret；默认关，未设置或其他值都等同于关），分两档：
-
-- `idle`（静默停用）：`POST /api/muse/claim` 固定返回 200 `{"ok":true,"task":null}`，旧轮询照常认为「没有任务」；`POST /api/muse/receipt`、`PUT /api/muse/upload` 返回 409 `muse_idle`，不写入。选 409 的理由：旧协议明确写「401/403/409/413/415 停止并通知维护者」，409 在停止清单里，对方会停下并通知一次；401/403 会被当成密钥问题，410 不在清单上，对方可能一直重试。两者都在认证之前返回，不读密钥、不访问 KV。
-- `true`（关闭）：打开后 `POST /api/muse/claim`、`POST /api/muse/receipt`、`PUT /api/muse/upload` 在认证之前直接返回 410 `muse_retired`（不读 `MUSE_FULLTEXT_KEY`、不访问 KV、任何方法和凭据都一样），`/api/muse/protocol` 的 `deprecation.closed` 变为 true、`closedEndpoints` 列出这三个。`/api/muse/request`、`/api/muse/retry`、`/api/muse/reader-upload`、`/api/muse/review`（每小时核验用）、`/api/acquire` 和 `/api/machine/*` 完全不变。**不要**删除或轮换 `MUSE_FULLTEXT_KEY`、也不要把 `MUSE_FULLTEXT_ENABLED` 设为 false：站内「获取全文」和重试依赖它们。该变量只对新部署生效；回滚是删除或改成 false 后再发布一次。旧共享密钥在机器接口里的角色另由 `MACHINE_LEGACY_REVOKED` 控制，与此开关互不影响。旧领取接口仍然只扫描队列的前 10 条，新的机器领取接口不受这 10 条限制。
+计划收口日期默认 **2026-12-12**。Pages 环境变量 `MUSE_DOWNLOAD_RETIRE_ON`（`YYYY-MM-DD`）只改变协议页和机器协议里显示的日期。真正关闭靠环境变量 `MUSE_LEGACY_ENDPOINTS_DISABLED`（普通变量，不是 Secret；默认关，只认字符串 `true`）：打开后 `POST /api/muse/claim`、`POST /api/muse/receipt`、`PUT /api/muse/upload` 在认证之前直接返回 410 `muse_retired`（不读 `MUSE_FULLTEXT_KEY`、不访问 KV、任何方法和凭据都一样），`/api/muse/protocol` 的 `deprecation.closed` 变为 true、`closedEndpoints` 列出这三个。`/api/muse/request`、`/api/muse/retry`、`/api/muse/reader-upload`、`/api/muse/review`（每小时核验用）、`/api/acquire` 和 `/api/machine/*` 完全不变。**不要**删除或轮换 `MUSE_FULLTEXT_KEY`、也不要把 `MUSE_FULLTEXT_ENABLED` 设为 false：站内「获取全文」和重试依赖它们。该变量只对新部署生效；回滚是删除或改成 false 后再发布一次。旧共享密钥在机器接口里的角色另由 `MACHINE_LEGACY_REVOKED` 控制，与此开关互不影响。旧领取接口仍然只扫描队列的前 10 条，新的机器领取接口不受这 10 条限制。
 
 ## 2026-10-10 实际对接与恢复
 

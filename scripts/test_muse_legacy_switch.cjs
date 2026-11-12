@@ -1,7 +1,6 @@
 'use strict';
-// Offline: MUSE_LEGACY_ENDPOINTS_DISABLED has three states for /api/muse/claim, receipt and upload only:
-// off (unset or any other value: unchanged), 'idle' (claim 200 task:null, receipt/upload 409 muse_idle) and 'true' (410 muse_retired).
-// Both active states answer before authentication, secret or KV access. Everything else behaves as before. Hooked in at the end of test_muse_reader_upload.cjs.
+// Offline: MUSE_LEGACY_ENDPOINTS_DISABLED closes only /api/muse/claim, receipt and upload (410 muse_retired, before any
+// authentication, secret or KV access). Everything else behaves as before. Hooked in at the end of test_muse_reader_upload.cjs.
 const assert = require('assert');
 const {setup, token} = require('./test_fulltext_auth_helpers.cjs');
 const {doi} = require('./test_doi_library_worker.cjs');
@@ -26,51 +25,20 @@ const legacyCalls = h => [
   () => send(h, 'POST', '/api/muse/upload?x=1', {}, 'x')
 ];
 (async () => {
-  let h;
   // Switch off, unset, or anything other than the exact string 'true': legacy behaviour is unchanged.
-  for (const flag of [undefined, 'false', '', 'TRUE', 'IDLE', ' idle', '1', 'yes', ' true']) {
+  for (const flag of [undefined, 'false', '', 'TRUE', '1', 'yes', ' true']) {
     const h = await create(flag);
     const claim = await send(h, 'POST', '/api/muse/claim', museAuth, '{}');
     assert.equal(claim.status, 200, 'flag ' + JSON.stringify(flag)); assert.equal((await claim.json()).task, null);
     assert.equal((await send(h, 'POST', '/api/muse/claim', {authorization:'Bearer wrong', 'content-type':'application/json'}, '{}')).status, 401);
     const protocol = await (await send(h, 'GET', '/api/muse/protocol', {})).json();
-    assert.equal(protocol.deprecation.mode, 'open'); assert.equal(protocol.deprecation.closed, false); assert.deepEqual(protocol.deprecation.closedEndpoints, []); assert.deepEqual(protocol.deprecation.idleEndpoints, []); assert.equal(protocol.deprecation.autoDisable, false);
+    assert.equal(protocol.deprecation.closed, false); assert.deepEqual(protocol.deprecation.closedEndpoints, []); assert.equal(protocol.deprecation.autoDisable, false);
     const machine = await (await send(h, 'GET', '/api/machine/protocol', {})).json();
-    assert.equal(machine.legacyMuse.mode, 'open'); assert.equal(machine.legacyMuse.closed, false); assert.deepEqual(machine.legacyMuse.closedEndpoints, []);
+    assert.equal(machine.legacyMuse.closed, false); assert.deepEqual(machine.legacyMuse.closedEndpoints, []);
   }
 
-  // 'idle': claim is a fixed empty answer, receipt and upload are refused without writing. Never 410. Before auth, no secret, no KV.
-  h = await create('idle');
-  const legacyIdle = legacyCalls(h);
-  for (const [index, call] of legacyIdle.entries()) {
-    const reads = h.reads.length, writes = h.writes.length, lists = h.lists.length, calls = h.calls.length;
-    const response = await call();
-    const isClaim = index === 0 || index === 3 || index === 4;
-    assert.equal(response.status, isClaim ? 200 : 409, 'call ' + index);
-    assert.deepEqual(await response.json(), isClaim ? {ok:true, task:null} : {ok:false, error:'muse_idle', replacement:'/api/machine/protocol'});
-    assert.equal(h.reads.length, reads, 'no KV read'); assert.equal(h.writes.length, writes, 'no KV write'); assert.equal(h.lists.length, lists, 'no KV list'); assert.equal(h.calls.length, calls, 'no outbound call');
-  }
-  // A task that is waiting in the queue is not handed to the legacy poller, and a refused upload writes nothing.
-  assert.equal((await h.request()).status, 202);
-  const queuedBefore = [...h.values.keys()].sort().join('|'), writesBefore = h.writes.length;
-  assert.deepEqual(await (await send(h, 'POST', '/api/muse/claim', museAuth, '{}')).json(), {ok:true, task:null});
-  assert.equal((await legacyIdle[2]()).status, 409);
-  assert.equal(h.writes.length, writesBefore); assert.equal([...h.values.keys()].sort().join('|'), queuedBefore);
-  const idleProtocol = await (await send(h, 'GET', '/api/muse/protocol', {})).json();
-  assert.equal(idleProtocol.deprecation.mode, 'idle'); assert.equal(idleProtocol.deprecation.closed, false); assert.deepEqual(idleProtocol.deprecation.closedEndpoints, []);
-  assert.deepEqual(idleProtocol.deprecation.idleEndpoints, ['/api/muse/claim', '/api/muse/receipt', '/api/muse/upload']); assert(idleProtocol.deprecation.note.includes('409'));
-  assert((await (await send(h, 'GET', '/api/muse/protocol', {accept:'text/html'})).text()).includes('静默停用'));
-  const idleMachine = await (await send(h, 'GET', '/api/machine/protocol', {})).json();
-  assert.equal(idleMachine.legacyMuse.mode, 'idle'); assert.equal(idleMachine.legacyMuse.closed, false); assert.deepEqual(idleMachine.legacyMuse.idleEndpoints, ['/api/muse/claim', '/api/muse/receipt', '/api/muse/upload']);
-  // The other entry points are unchanged in idle too.
-  assert.equal((await send(h, 'GET', '/api/muse/reader-upload?doi=' + encodeURIComponent(doi), {accept:'text/html'})).status, 200);
-  assert.equal((await send(h, 'GET', '/api/muse/request?doi=' + encodeURIComponent(doi), {accept:'application/json'})).status, 202);
-  const idleAuth = await token(h, base + '/api/muse/review', 'muse-review.yml');
-  assert.equal((await send(h, 'POST', '/api/muse/review', {authorization:'Bearer ' + idleAuth, 'content-type':'application/json'}, JSON.stringify({action:'claim'}))).status, 200);
-  assert.equal((await send(h, 'GET', '/api/machine/tasks?state=to-download', {authorization:'Bearer ' + fallbackToken})).status, 200);
-
-  // Switch 'true': claim, receipt and upload answer 410 before authentication, and touch neither the secret nor KV.
-  h = await create('true');
+  // Switch on: claim, receipt and upload answer 410 before authentication, and touch neither the secret nor KV.
+  let h = await create('true');
   for (const call of legacyCalls(h)) {
     const reads = h.reads.length, writes = h.writes.length, lists = h.lists.length, calls = h.calls.length;
     const response = await call();
@@ -86,13 +54,13 @@ const legacyCalls = h => [
   // Protocols reflect the switch; the status page says it is closed and everything else stays.
   h = await create('true');
   const protocol = await (await send(h, 'GET', '/api/muse/protocol', {})).json();
-  assert.equal(protocol.deprecation.mode, 'closed'); assert.equal(protocol.deprecation.closed, true); assert.deepEqual(protocol.deprecation.idleEndpoints, []); assert.deepEqual(protocol.deprecation.closedEndpoints, ['/api/muse/claim', '/api/muse/receipt', '/api/muse/upload']);
+  assert.equal(protocol.deprecation.closed, true); assert.deepEqual(protocol.deprecation.closedEndpoints, ['/api/muse/claim', '/api/muse/receipt', '/api/muse/upload']);
   assert(protocol.deprecation.note.includes('410')); assert.equal(protocol.deprecation.autoDisable, false);
   assert(protocol.deprecation.endpoints.includes('/api/muse/retry'), 'retry stays listed and stays open');
   const page = await (await send(h, 'GET', '/api/muse/protocol', {accept:'text/html'})).text();
   assert(page.includes('已关闭')); assert(!page.includes('过渡期仍可用'));
   const machine = await (await send(h, 'GET', '/api/machine/protocol', {})).json();
-  assert.equal(machine.legacyMuse.mode, 'closed'); assert.equal(machine.legacyMuse.closed, true); assert.deepEqual(machine.legacyMuse.closedEndpoints, ['/api/muse/claim', '/api/muse/receipt', '/api/muse/upload']);
+  assert.equal(machine.legacyMuse.closed, true); assert.deepEqual(machine.legacyMuse.closedEndpoints, ['/api/muse/claim', '/api/muse/receipt', '/api/muse/upload']);
   assert.equal(machine.legacyMuse.autoDisable, false);
 
   // Unchanged with the switch on: site request/acquire, retry page, reader-upload page, review, machine API.
@@ -108,5 +76,5 @@ const legacyCalls = h => [
   assert.equal(list.status, 200); assert.equal((await list.json()).tasks.length, 1);
   const claimed = await send(h, 'POST', '/api/machine/claim', {authorization:'Bearer ' + fallbackToken, 'content-type':'application/json'}, JSON.stringify({state:'failed-awaiting-fallback'}));
   assert.equal(claimed.status, 200);
-  console.log('Muse legacy switch: off leaves behaviour unchanged; idle answers quietly (claim empty, receipt/upload 409); true closes claim/receipt/upload with 410 before auth and KV, everything else unchanged passed');
+  console.log('Muse legacy switch: off leaves behaviour unchanged; on closes claim/receipt/upload with 410 before auth and KV, everything else unchanged passed');
 })().catch(error => {console.error(error); process.exitCode = 1;});

@@ -233,7 +233,7 @@ function handleMachineProtocol(request, env) {
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
-    legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,...museLegacyStatus(env),endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
+    legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
     identityReasons:MACHINE_IDENTITY_REASONS,
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
