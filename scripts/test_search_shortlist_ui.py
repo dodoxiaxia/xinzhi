@@ -233,7 +233,7 @@ def main():
                 page.locator('#drawerCloseBtn').click()
 
                 page.goto(base + '?mode=library&lane=all', wait_until='load')
-                total = int(page.locator('#libCountBadge').inner_text())
+                total = int(page.locator('#libCountBadge').text_content())
                 hidden = page.evaluate('window.LIBRARY.papers.filter(p=>p.minor).length')
                 check(count(page) == total - hidden and hidden > 0, f'{width}: count difference is minor filter')
                 expect(page.locator('#minorNote')).to_contain_text('默认隐藏更正和来信')

@@ -34,7 +34,6 @@ if __name__ == '__main__':
             context = browser.new_context(viewport={'width': 390, 'height': 950}); context.route('**/*', route)
             page = context.new_page(); page.on('pageerror', lambda e: errors.append(str(e)))
             page.goto(base+'?mode=candidates&lane=all&view=compact', wait_until='networkidle')
-            page.locator('#filterToggleBtn').click()
             button = page.locator('#aiDigest [data-action="ai-brief"]'); expect(button).to_be_visible()
             label = button.inner_text(); button.click(no_wait_after=True)
             expect(page.locator('#aiDigest')).to_contain_text('离线测试主题')
@@ -45,7 +44,6 @@ if __name__ == '__main__':
             else: assert '实际纳入' not in partial
             controls['hold'] = True
             page.reload(wait_until='networkidle'); page.clock.install()
-            page.locator('#filterToggleBtn').click()
             page.locator('#aiDigest [data-action="ai-brief"]').click(no_wait_after=True)
             expect(page.locator('#aiDigest')).to_contain_text('正在读取摘要')
             page.clock.fast_forward(45001)

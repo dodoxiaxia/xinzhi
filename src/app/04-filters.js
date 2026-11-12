@@ -111,15 +111,6 @@
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
     el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
-    placeRangeBar();
-  }
-  // On phones the time range lives in the 筛选 panel so the filter row stays one line.
-  function placeRangeBar() {
-    const el = $('#rangeBar'), slot = $('#panelRangeSlot'), row = $('#toolRowEnd');
-    if (!el || !slot || !row) return;
-    const phone = !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
-    if (phone && el.parentElement !== slot) slot.append(el);
-    else if (!phone && el.parentElement !== row.parentElement) row.parentElement.insertBefore(el, $('#ftBar') || row);
   }
   const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得'], ['none', '未申请']];
   function fulltextFilterBucket(p) {
@@ -237,9 +228,8 @@
     if (rail) rail.hidden = state.mode !== 'curated';
     const laneBar = $('#laneBar'), laneSlot = $(state.mode === 'curated' ? '#curatedTopicsSlot' : '#streamLaneSlot');
     if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
-    const note = MODE_NOTES[state.mode];
-    el.innerHTML = note || '';
-    el.hidden = !note;
+    el.innerHTML = '';
+    el.hidden = true;
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
@@ -524,13 +514,7 @@
         const count = isAll ? dataset.length : (tierCounts[t.id] || 0);
         const isActive = isAll ? !state.clinicalTier : state.clinicalTier === t.id;
 
-        return `<li class="facet-option-row">
-          <button type="button" class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-tier="${esc(t.id)}" aria-pressed="${isActive}">
-            <span style="display:flex; align-items:center;"><span class="tier-dot ${t.dotClass}"></span>${esc(t.name)}</span>
-            <span class="filter-count">${count}</span>
-          </button>
-          ${browseOnlyButton('tier', t.id, t.name)}
-        </li>`;
+        return `<button type="button" class="panel-opt${isActive ? ' active' : ''}" data-filter-tier="${esc(t.id)}" aria-pressed="${isActive}">${esc(isAll ? '全部信源' : t.name)}</button>`;
       }).join('');
     }
 
@@ -596,26 +580,16 @@
         let jHtml = '';
         for (const [jName, jCount] of sortedJournals) {
           const isJActive = state.journal === jName;
-          jHtml += `<div class="journal-filter-item facet-option-row"><button type="button" class="accordion-journal-btn ${isJActive ? 'active' : ''}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">
-            <span class="journal-filter-label"><span>${state.favoriteJournals?.includes(jName) ? '<span class="journal-followed" title="我的期刊">★</span> ' : ''}${esc(jName)}</span></span>
-            <span class="filter-count">${jCount}</span>
-          </button>${browseOnlyButton('journal', jName, jName)}</div>`;
+          jHtml += `<button type="button" class="panel-opt accordion-journal-btn${isJActive ? ' active' : ''}${jCount ? '' : ' is-empty'}" data-filter-journal="${esc(jName)}" aria-pressed="${isJActive}">${state.favoriteJournals?.includes(jName) ? '★ ' : ''}<span class="journal-filter-label">${esc(jName)}</span></button>`;
         }
 
-        accHtml += `
-          <div class="accordion-group ${isOpen ? 'open' : ''}">
-            <div class="accordion-heading">
-              <button type="button" class="accordion-header ${isPubActive && !state.journal ? 'active' : ''}" data-filter-publisher="${esc(pubName)}" aria-pressed="${isPubActive && !state.journal}">
-                <span>${esc(pubName)} <span class="filter-count">(${pubTotal})</span></span>
-              </button>
-              ${browseOnlyButton('pub', pubName, pubName)}
-              <button type="button" class="accordion-expand-btn" data-pub-expand="${esc(pubName)}" aria-expanded="${isOpen}" aria-controls="${contentId}" aria-label="展开或收起${esc(pubName)}旗下期刊"><span class="accordion-arrow" aria-hidden="true">▶</span></button>
+        accHtml += `<div class="accordion-group ${isOpen ? 'open' : ''}">
+            <div class="accordion-heading panel-opt${isPubActive && !state.journal ? ' active' : ''}${pubTotal ? '' : ' is-empty'}">
+              <button type="button" class="accordion-header ${isPubActive && !state.journal ? 'active' : ''}" data-filter-publisher="${esc(pubName)}" aria-pressed="${isPubActive && !state.journal}">${esc(pubName)}</button>
+              <button type="button" class="accordion-expand-btn" data-pub-expand="${esc(pubName)}" aria-expanded="${isOpen}" aria-controls="${contentId}" aria-label="展开或收起${esc(pubName)}旗下期刊"><span class="accordion-arrow" aria-hidden="true">▸</span></button>
             </div>
-            <div class="accordion-content" id="${contentId}">
-              ${jHtml}
-            </div>
-          </div>
-        `;
+            <div class="accordion-content panel-options" id="${contentId}">${jHtml}</div>
+          </div>`;
       }
       pubAccEl.innerHTML = accHtml || '<p class="text-muted" style="padding:10px; font-size:12px;">暂无匹配期刊</p>';
     }
@@ -655,13 +629,7 @@
         const count = isAll ? facet('design').length : (designCounts[d.key] || 0);
         const isActive = isAll ? !state.studyDesign : state.studyDesign === d.key;
 
-        return `<li class="facet-option-row">
-          <button type="button" class="filter-item-btn ${isActive ? 'active' : ''}" data-filter-design="${esc(d.key)}" aria-pressed="${isActive}">
-            <span>${d.name}</span>
-            <span class="filter-count">${count}</span>
-          </button>
-          ${browseOnlyButton('design', d.key, d.name)}
-        </li>`;
+        return `<button type="button" class="panel-opt${isActive ? ' active' : ''}${isAll || designCounts[d.key] ? '' : ' is-empty'}" data-filter-design="${esc(d.key)}" aria-pressed="${isActive}">${esc(isAll ? '全部设计' : d.name)}</button>`;
       }).join('');
     }
 
@@ -680,9 +648,7 @@
       const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
         const isActive = state.tag === tag;
-        return `<span class="facet-option-row tag-option"><button type="button" class="tag-chip ${isActive ? 'active' : ''}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">
-          ${esc(tag)} (${count})
-        </button>${browseOnlyButton('tag', tag, tag)}</span>`;
+        return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)}</button>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
   }
@@ -694,14 +660,15 @@
     if (!container) return;
 
     const selections = sidebarSelections();
-    let chips = selections.length ? '<div class="sidebar-active-filters"><span class="active-filters-label">当前筛选 · 同时满足</span>'
-      + selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('')
-      + '<button type="button" class="sidebar-clear-btn" data-clear="sidebar">清空左侧筛选</button></div>' : '';
-    let hiddenMinor = 0;
-    if (usesLane() && !state.minor) for (const p of getCurrentDataset()) if (p.minor && matchesFilters({ ...p, minor: false }, true)) hiddenMinor++;
-    const minorNote = $('#minorNote');
-    if (minorNote) minorNote.textContent = !usesLane() ? '' : state.minor ? '已包含更正、来信、回复等非原创内容。' : hiddenMinor ? `默认隐藏更正和来信，当前另有 ${hiddenMinor} 篇。` : '默认隐藏更正和来信。';
+    let chips = '';
+    const defaults = usesLane();
+    const chip = (label, value, clear) => `<span class="filter-badge-active"><span class="filter-badge-label">${label}${value ? '：' + esc(value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${clear}" aria-label="清除${label}筛选">&times;</button></span>`;
+    // The tool row already shows 领域 and 全文; chips list only what the row cannot show.
+    if (defaults && state.range !== defaultRange(state.mode)) chips += chip('发表时间', state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天', 'range');
+    if (defaults && state.minor) chips += chip('文章类型', '含更正/来信', 'minor');
+    chips += selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('');
     streamTotal = totalCount;
+    if (typeof renderStreamTotal === 'function') renderStreamTotal();
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
@@ -710,13 +677,12 @@
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
     container.innerHTML = chips;
   }
-  // 共找到 N 篇: small grey text beside the first heading of the list, so it never takes a line of its own.
-  function renderStreamTotal(streamEl) {
-    if (!streamEl) return;
-    const text = `共 ${streamTotal} 篇`;
-    const first = streamEl.querySelector('.day-heading');
-    if (first) first.insertAdjacentHTML('beforeend', `<span class="heading-total" role="status">${text}</span>`);
-    else streamEl.insertAdjacentHTML('afterbegin', `<div class="stream-total heading-total" role="status">${text}</div>`);
+  // 共 N 篇 sits at the head of the list, with sort, view and the AI digest link beside it.
+  function renderStreamTotal() {
+    const total = $('#listTotal');
+    if (total) total.textContent = `共 ${streamTotal} 篇`;
+    const apply = $('#panelApplyBtn');
+    if (apply) { apply.textContent = streamTotal ? `查看 ${streamTotal} 篇` : '无结果，清除条件'; apply.dataset.empty = streamTotal ? '' : '1'; }
   }
   // Search opens above the filter row; it stays open while there is a keyword.
   function syncSearchPanel(forceOpen) {

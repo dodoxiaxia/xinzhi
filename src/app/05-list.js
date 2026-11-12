@@ -86,11 +86,6 @@
   }
 
   // Main Render Stream
-  // Sort, view and the AI digest live in the 筛选 panel; where that panel is not offered they sit at the end of the filter row.
-  function placeStreamControls(noSidebar) {
-    const controls = $('.stream-controls'), target = noSidebar ? $('#toolRowEnd') : $('#panelControlsSlot');
-    if (controls && target && controls.parentElement !== target) target.append(controls);
-  }
   function applyDoiSearchLayout(doi) {
     const special = state.mode === 'weekly' || state.mode === 'sources';
     const stream = $('#streamSection'), weekly = $('#weeklySection'), sources = $('#sourcesSection');
@@ -98,8 +93,7 @@
     if (weekly) weekly.hidden = !!doi || state.mode !== 'weekly';
     if (sources) sources.hidden = !!doi || state.mode !== 'sources';
     const noSidebar = !!doi || special || state.mode === 'curated';
-    placeStreamControls(noSidebar);
-    { const sc = $('.stream-controls'); if (sc) sc.hidden = special && !doi; }
+    { const head = $('#listHead'); if (head) head.hidden = special || !!doi; }
     const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
     const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
     const app = $('.app-container');
@@ -159,7 +153,6 @@
     renderCuratedDayBar();
     renderRangeBar();
     renderFtBar();
-    placeStreamControls(state.mode === 'curated');
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
@@ -167,8 +160,7 @@
     if (filtered.length === 0) {
       streamEl.innerHTML = radarArchiveNotice() + renderEmptyFilters();
       if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
-      renderStreamTotal(streamEl);
-      if (loadMoreBtn) loadMoreBtn.hidden = true;
+        if (loadMoreBtn) loadMoreBtn.hidden = true;
       return;
     }
 
@@ -218,7 +210,6 @@
     }
 
     if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
-    renderStreamTotal(streamEl);
     { const note = radarArchiveNotice(); if (note) streamEl.insertAdjacentHTML('afterbegin', note); }
     if (loadMoreBtn) {
       loadMoreBtn.hidden = visibleItems.length >= filtered.length;

@@ -165,13 +165,14 @@ def main():
                 button = page.locator('.accordion-group.open [data-filter-journal]').first
                 sidebar_journal = button.get_attribute('data-filter-journal')
                 expect(button.locator('.journal-filter-label')).to_have_text(sidebar_journal)
-                check(int(button.locator('.filter-count').inner_text()) > 0, f'{width}: sidebar journal count retained')
+                check(button.locator('.filter-count').count() == 0, f'{width}: sidebar journal chips carry no numbers')
                 button.focus()
                 button.press('Enter')
                 check(parse_qs(urlsplit(page.url).query).get('journal') == [sidebar_journal], f'{width}: sidebar keyboard filter retained')
                 overflow(page, f'{width}/sidebar')
-                if width <= 1000:
+                if page.locator('#sheetClose').is_visible():
                     page.locator('#sheetClose').click()
+                    expect(page.locator('#appSidebar')).not_to_be_visible()
                 page.locator('[data-clear="journal"]').click()
                 # Clearing the journal chip also clears its publisher; no separate publisher chip remains.
                 expect(page.locator('[data-clear="pub"], [data-clear="journal"]')).to_have_count(0)
@@ -192,16 +193,19 @@ def main():
                 expect(page.locator('#favoriteJournalBtn')).to_have_attribute('aria-pressed', 'true')
                 check(parse_qs(urlsplit(page.url).query).get('journal') == [journal], f'{width}: canonical journal filter retained after favorite')
                 check('★' in page.locator(f'[data-filter-journal="{journal}"]').first.inner_text(), f'{width}: followed journal is starred in the tree')
-                if width <= 1000 and page.locator('#sheetClose').is_visible():
+                if page.locator('#sheetClose').is_visible():
                     page.locator('#sheetClose').click()
+                    expect(page.locator('#appSidebar')).not_to_be_visible()
                 if not page.locator('#viewCompactBtn').is_visible(): page.locator('#filterToggleBtn').click()
                 page.locator('#viewCompactBtn').click()
-                if page.locator('#sheetClose').is_visible(): page.locator('#sheetClose').click()
+                if page.locator('#sheetClose').is_visible():
+                    page.locator('#sheetClose').click(); expect(page.locator('#appSidebar')).not_to_be_visible()
                 expect(page.locator('#articlesStream .compact-row').first).to_be_visible()
                 check_badges('#articlesStream .compact-row', f'{width}: compact rows')
                 if not page.locator('#sortSelector').is_visible(): page.locator('#filterToggleBtn').click()
                 page.locator('#sortSelector').select_option('journal-date')
-                if page.locator('#sheetClose').is_visible(): page.locator('#sheetClose').click()
+                if page.locator('#sheetClose').is_visible():
+                    page.locator('#sheetClose').click(); expect(page.locator('#appSidebar')).not_to_be_visible()
                 expect(page.locator('.day-heading')).to_be_visible()
                 overflow(page, f'{width}/filters-compact-group')
                 page.goto(base + '?mode=library&style=a&view=cards&range=all&reading=guide', wait_until='networkidle')
