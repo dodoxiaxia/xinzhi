@@ -81,10 +81,10 @@ function hanDoiUrl(value) {
 }
 function pdfBackLinks(doi) {
   const exact = libraryDoi(doi);
-  return exact ? '<p><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a> · <a href="/?mode=library">返回文献库</a></p>' : '<p><a href="/?mode=library">返回文献库</a></p>';
+  return exact ? '<p class="back"><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a></p>' : '<p class="back"><a href="/?mode=library">返回文献库</a></p>';
 }
 function pdfHtml(body, status = 200, heading = 'PDF 下载', doi = '') {
-  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}.paper-title{font-weight:600}.status{border-left:3px solid #1d4f91;padding:.2rem .8rem;background:#f1f5f9}.hint,.maint{color:#475569;font-size:.9rem}a.primary,button.primary,form>button[type=submit]{display:inline-block;padding:.55rem 1.2rem;border:0;border-radius:8px;background:#1d4f91;color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}</style><body><main style="max-width:42rem;margin:12vh auto;padding:1.5rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
+  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>body{margin:0}main{box-sizing:border-box}h1{font-size:1.5rem;line-height:1.3;margin:0 0 1rem}main p,main li{overflow-wrap:anywhere}main a{color:#1d4f91}p.back a,main>p>a:only-child:not(.primary){display:inline-block;padding:.65rem .15rem;min-height:1.5rem}input[type=password]{box-sizing:border-box;width:100%;min-height:44px;padding:0 .75rem;font:inherit;border:1px solid #94a3b8;border-radius:8px}a.primary,button.primary,form>button[type=submit]{min-height:44px;box-sizing:border-box}ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}.paper-title{font-weight:600}.status{border-left:3px solid #1d4f91;padding:.2rem .8rem;background:#f1f5f9}.hint,.maint{color:#475569;font-size:.9rem}a.primary,button.primary,form>button[type=submit]{display:inline-block;padding:.55rem 1.2rem;border:0;border-radius:8px;background:#1d4f91;color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}</style><body><main style="max-width:42rem;margin:clamp(1rem,8vh,6rem) auto;padding:0 1.25rem 2rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
     status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
   });
 }
@@ -1614,16 +1614,16 @@ function museResponse(request, job, paper) {
     + (job.state === 'abandoned' || job.state === 'available' ? '' : '<p class="hint">可以关闭本页，状态会保留；网页上的这篇文献显示同样的进度。' + (publicJob.nextCheckSeconds ? '本页每 60 秒只更新状态，不会重新下载。' : '') + '</p>')
     + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'全文任务',job.doi);
 }
-const MUSE_TASK_STEPS = ['排队下载','已收到，核验中','可阅读'];
+const MUSE_TASK_STEPS = ['排队下载','核验中','可阅读'];
 // One status description per task, shared by the task page; the website script mirrors it so the card and this page never disagree.
 function museTaskView(job, publicJob) {
   const recoverable = museRecoverable(job);
   const received = job.source === 'reader_upload' ? '你上传的 PDF' : job.source === 'open_access' ? '开放获取的 PDF' : ' PDF';
   if (job.state === 'available') return {step:2,stopped:false,headline:'全文已核验，可以阅读和下载。',eta:'',action:'download'};
-  if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未能获取',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
-  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'核验未通过',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
-  if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未能获取',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
-  if (recoverable) return {step:0,stopped:true,stopLabel:'未能获取',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
+  if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未取得',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
+  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未取得',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
+  if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
     eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
       : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};

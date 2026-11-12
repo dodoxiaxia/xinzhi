@@ -173,16 +173,16 @@ function museResponse(request, job, paper) {
     + (job.state === 'abandoned' || job.state === 'available' ? '' : '<p class="hint">可以关闭本页，状态会保留；网页上的这篇文献显示同样的进度。' + (publicJob.nextCheckSeconds ? '本页每 60 秒只更新状态，不会重新下载。' : '') + '</p>')
     + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'全文任务',job.doi);
 }
-const MUSE_TASK_STEPS = ['排队下载','已收到，核验中','可阅读'];
+const MUSE_TASK_STEPS = ['排队下载','核验中','可阅读'];
 // One status description per task, shared by the task page; the website script mirrors it so the card and this page never disagree.
 function museTaskView(job, publicJob) {
   const recoverable = museRecoverable(job);
   const received = job.source === 'reader_upload' ? '你上传的 PDF' : job.source === 'open_access' ? '开放获取的 PDF' : ' PDF';
   if (job.state === 'available') return {step:2,stopped:false,headline:'全文已核验，可以阅读和下载。',eta:'',action:'download'};
-  if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未能获取',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
-  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'核验未通过',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
-  if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未能获取',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
-  if (recoverable) return {step:0,stopped:true,stopLabel:'未能获取',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
+  if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未取得',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
+  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未取得',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
+  if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
     eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
       : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};

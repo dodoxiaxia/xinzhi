@@ -26,7 +26,7 @@
   }
   // One status description per paper for the whole page. The card, the DOI search view and the empty state all
   // render it, so the same task never shows different words in two places (see docs/使用说明.md "全文状态").
-  const FT_STEPS = ['排队下载', '已收到，核验中', '可阅读'];
+  const FT_STEPS = ['排队下载', '核验中', '可阅读'];
   function ftMaintainerMode() { return typeof MAINTAINER !== 'undefined' && MAINTAINER === true; }
   function fulltextView(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
@@ -36,18 +36,18 @@
     if (job && doiJobActive(job)) {
       if (job.stage === 'verifying') {
         const fast = job.verificationMode === 'immediate';
-        return { kind: 'verifying', step: 1, headline: received + '，正在核验', short: '已收到 PDF，核验中', action: 'refresh',
+        return { kind: 'verifying', step: 1, headline: received + '，正在核验', short: '核验中', action: 'refresh',
           eta: fast ? '核验通常几分钟内完成' : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时' };
       }
-      if (job.stage === 'queued' || job.state === 'queued') return { kind: 'queued', step: 0, headline: '已排入下载队列，等待下载端领取', short: '全文排队中', eta: '预计数小时内，不保证即时', action: 'refresh', upload: true };
-      return { kind: 'running', step: 0, headline: '下载端正在获取全文', short: '全文获取中', eta: '通常几十分钟内；取得后自动进入核验', action: 'refresh', upload: true };
+      if (job.stage === 'queued' || job.state === 'queued') return { kind: 'queued', step: 0, headline: '已排入下载队列，等待下载端领取', short: '排队下载', eta: '预计数小时内，不保证即时', action: 'refresh', upload: true };
+      return { kind: 'running', step: 0, headline: '下载端正在获取全文', short: '排队下载', eta: '通常几十分钟内；取得后自动进入核验', action: 'refresh', upload: true };
     }
     if ((job && job.state === 'review') || (!job && record && record.fulltextStatus === 'review'))
-      return job ? { kind: 'review', step: 1, stopped: true, stopLabel: '核验未通过', short: '全文核验未通过', headline: '已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文', eta: '可以直接上传正确的 PDF，核验通常几分钟内完成', action: 'upload' }
-        : { kind: 'review', step: 1, stopped: true, stopLabel: '核验未通过', short: '全文来源核对中', headline: '这篇文献的全文来源还在核对中', eta: '暂时没有可下载的 PDF，可以先看官网原文', action: 'official' };
+      return job ? { kind: 'review', step: 1, stopped: true, stopLabel: '未取得', short: '未取得 · 核验未通过', headline: '已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文', eta: '可以直接上传正确的 PDF，核验通常几分钟内完成', action: 'upload' }
+        : { kind: 'review', step: 1, stopped: true, stopLabel: '未取得', short: '未取得 · 来源核对中', headline: '这篇文献的全文来源还在核对中', eta: '暂时没有可下载的 PDF，可以先看官网原文', action: 'official' };
     if ((job && ['failed', 'manual_needed'].includes(job.state)) || (record && record.fulltextStatus === 'manual_needed'))
-      return { kind: 'failed', step: 0, stopped: true, stopLabel: '未能获取', short: '全文未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
-    return { kind: 'none', step: -1, short: '待补全文', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
+      return { kind: 'failed', step: 0, stopped: true, stopLabel: '未取得', short: '未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
+    return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
   }
   function fulltextStatusHtml(p, full) {
     const conflict = fulltextConflict(p);
@@ -59,23 +59,26 @@
     const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
     const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>'
-      : view.action === 'refresh' ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">刷新状态</button>'
+      : view.action === 'refresh' ? (full ? '' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
-      : view.action === 'official' ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>'
+      : view.action === 'official' ? (full ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
     const form = view.action === 'submit' || view.action === 'retry'
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
       if (view.action === 'download') return primary;
+      // Only the two actions that move a paper towards a PDF (apply, apply again) stand out; refresh and upload are plain links.
+      const strong = view.action === 'submit' || view.action === 'retry' || view.action === 'refresh';
+      const lead = strong ? primary : primary.replace('btn-sm btn-primary', 'ft-link').replace(/ class="btn-sm btn-primary"/, ' class="ft-link"');
       return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="fulltext-state" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
-        + esc(view.short) + (view.step >= 0 && !view.stopped ? ' · 第 ' + (view.step + 1) + '/3 步' : '') + '</span>' + primary + '</span>' + form;
+        + esc(view.short) + '</span>' + lead + '</span>' + form;
     }
     const steps = FT_STEPS.map((label, i) => {
       const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
       return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
     }).join('');
-    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '"><ol class="ft-steps">' + steps + '</ol>'
+    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
       + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
   }
@@ -106,8 +109,17 @@
     if (!el) return;
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
-      `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
+    const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
+    el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
+    placeRangeBar();
+  }
+  // On phones the time range lives in the 筛选 panel so the filter row stays one line.
+  function placeRangeBar() {
+    const el = $('#rangeBar'), slot = $('#panelRangeSlot'), row = $('#toolRowEnd');
+    if (!el || !slot || !row) return;
+    const phone = !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
+    if (phone && el.parentElement !== slot) slot.append(el);
+    else if (!phone && el.parentElement !== row.parentElement) row.parentElement.insertBefore(el, $('#ftBar') || row);
   }
   const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得'], ['none', '未申请']];
   function fulltextFilterBucket(p) {
@@ -130,8 +142,8 @@
     }
     const active = state.ftFilter || '';
     el.hidden = false;
-    el.innerHTML = '<span class="range-label">全文</span>' + FT_FILTERS.map(([v, n]) =>
-      `<button type="button" class="lane-chip${active === v ? ' active' : ''}" data-ft-filter="${v}" aria-pressed="${active === v}">${n} <small>${counts[v]}</small></button>`).join('');
+    el.innerHTML = '<select class="range-select ft-select" data-ft-select aria-label="全文状态（各档篇数按当前领域、时间与搜索统计）">' + FT_FILTERS.map(([v, n]) =>
+      `<option value="${v}" data-count="${counts[v]}"${active === v ? ' selected' : ''}>${v === '' ? '全部全文' : n}</option>`).join('') + '</select>';
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -157,7 +169,7 @@
       if (paperCrossAI(p)) counts.crossai++;
     }
     el.hidden = false;
-    el.innerHTML = LANES.map(l => `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}">${esc(l.name)} <small>${counts[l.id]}</small></button>`).join('');
+    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}" data-count="${counts[l.id]}"${state.lane === l.id ? ' selected' : ''}>${esc(l.short || l.name)}</option>`).join('') + '</select>';
   }
 
   // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.
@@ -215,7 +227,7 @@
   }
   const MODE_NOTES = {
     candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
-    library: '既往题录档案，按期刊与时间检索。<span class="mode-note-more">输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。</span><button type="button" class="mode-note-toggle" aria-expanded="false">使用说明</button>'
+    library: '既往题录档案，按期刊与时间检索。<span class="mode-note-more">输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。</span><button type="button" class="mode-note-toggle" aria-expanded="false">说明</button>'
   };
 
   function renderModeNote() {
@@ -232,6 +244,7 @@
 
   // URL <-> state sync so filtered views are shareable / survive refresh
   function syncUrl() {
+    if (typeof syncSearchPanel === 'function') syncSearchPanel();
     try {
       const u = new URL(window.location.href);
       const set = (k, v, def) => { if (v && v !== def) u.searchParams.set(k, v); else u.searchParams.delete(k); };
@@ -675,6 +688,7 @@
   }
 
   // Render Active Filter Chips
+  let streamTotal = 0;
   function renderActiveFilterChips(totalCount) {
     const container = $('#activeFiltersBar');
     if (!container) return;
@@ -683,24 +697,35 @@
     let chips = selections.length ? '<div class="sidebar-active-filters"><span class="active-filters-label">当前筛选 · 同时满足</span>'
       + selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('')
       + '<button type="button" class="sidebar-clear-btn" data-clear="sidebar">清空左侧筛选</button></div>' : '';
-    chips += `<span class="results-meta" role="status">共找到 <b>${totalCount}</b> 篇文献${usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
-
+    let hiddenMinor = 0;
+    if (usesLane() && !state.minor) for (const p of getCurrentDataset()) if (p.minor && matchesFilters({ ...p, minor: false }, true)) hiddenMinor++;
+    const minorNote = $('#minorNote');
+    if (minorNote) minorNote.textContent = !usesLane() ? '' : state.minor ? '已包含更正、来信、回复等非原创内容。' : hiddenMinor ? `默认隐藏更正和来信，当前另有 ${hiddenMinor} 篇。` : '默认隐藏更正和来信。';
+    streamTotal = totalCount;
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
-      chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button type="button" class="filter-badge-remove" data-clear="search" aria-label="清除检索关键词">&times;</button></span>`;
-    }
-    if (state.range !== defaultRange(state.mode) && usesLane()) {
-      chips += `<span class="filter-badge-active">发表时间: ${state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天'} <button type="button" class="filter-badge-remove" data-clear="range" aria-label="恢复默认时间范围">&times;</button></span>`;
     }
     if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
-    if (state.mode === 'library' && state.ftFilter) {
-      const label = { ready: '可阅读', verifying: '核验中', queued: '排队下载', failed: '未取得', none: '未申请' }[state.ftFilter];
-      chips += '<span class="filter-badge-active">全文: ' + label + ' <button type="button" class="filter-badge-remove" data-clear="ft" aria-label="清除全文状态筛选">&times;</button></span>';
-    }
-
     container.innerHTML = chips;
+  }
+  // 共找到 N 篇: small grey text beside the first heading of the list, so it never takes a line of its own.
+  function renderStreamTotal(streamEl) {
+    if (!streamEl) return;
+    const text = `共 ${streamTotal} 篇`;
+    const first = streamEl.querySelector('.day-heading');
+    if (first) first.insertAdjacentHTML('beforeend', `<span class="heading-total" role="status">${text}</span>`);
+    else streamEl.insertAdjacentHTML('afterbegin', `<div class="stream-total heading-total" role="status">${text}</div>`);
+  }
+  // Search opens above the filter row; it stays open while there is a keyword.
+  function syncSearchPanel(forceOpen) {
+    const panel = $('#searchPanel'), btn = $('#searchToggleBtn'), input = $('#globalSearch');
+    if (!panel || !btn) return;
+    const open = !!forceOpen || !!(input && input.value) || !!state.search || (!panel.hidden && document.activeElement === input);
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    btn.classList.toggle('active', open);
   }
 
   function renderEmptyFilters() {

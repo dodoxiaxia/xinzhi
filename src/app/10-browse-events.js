@@ -14,10 +14,10 @@
     const narrow = !!(window.matchMedia && window.matchMedia(NARROW_FILTERS).matches);
     if (app) app.classList.toggle('filters-collapsed', lane && !moreFiltersOpen());
     if (toggle) {
-      toggle.textContent = '更多筛选' + (n ? ` · ${n}` : '');
+      toggle.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">筛选</span>' + (n ? `<b class="filter-count">${n}</b>` : '');
       toggle.classList.toggle('active', n > 0);
       toggle.setAttribute('aria-expanded', String(narrow ? !!$('#appSidebar.open') : lane && moreFiltersOpen()));
-      toggle.setAttribute('aria-label', n ? `更多筛选，已生效 ${n} 项` : '更多筛选');
+      toggle.setAttribute('aria-label', n ? `筛选，已生效 ${n} 项` : '筛选');
     }
     if (!lane) return;
     const reading = $('#readingSelect'); if (reading) reading.value = state.reading;
@@ -66,26 +66,7 @@
     [header, $('.stream-toolbar'), $('.weekly-toc')].filter(Boolean).forEach(element => observer.observe(element));
   }
   window.addEventListener('resize', measureStickyHeader);
-  // Phones: the three-row header (about a fifth of the screen) hides while reading down and
-  // returns on any upward scroll, near the top, or while something inside it has focus.
-  {
-    const root = document.documentElement, narrow = window.matchMedia('(max-width: 720px)');
-    let lastY = window.scrollY;
-    const setTucked = tucked => {
-      if (root.classList.contains('header-tucked') === tucked) return;
-      root.classList.toggle('header-tucked', tucked);
-      measureStickyHeader();
-    };
-    window.addEventListener('scroll', () => {
-      const y = window.scrollY, delta = y - lastY;
-      if (!narrow.matches || y < 160 || (header && header.contains(document.activeElement)) || $('#appSidebar.open')) setTucked(false);
-      else if (delta > 6) setTucked(true);
-      else if (delta < -6) setTucked(false);
-      if (Math.abs(delta) > 6 || y < 160) lastY = y;
-    }, { passive: true });
-    header?.addEventListener('focusin', () => setTucked(false));
-    narrow.addEventListener?.('change', () => setTucked(false));
-  }
+  // The header is one row of four sections now, so it stays put instead of tucking away.
   // Backward tabbing must reveal the focused control below sticky surfaces.
   document.addEventListener('focusin', event => {
     const target = event.target;
@@ -134,12 +115,21 @@
       searchTimer = setTimeout(() => {
         state.search = e.target.value.trim();
         state.page = 1;
+        syncSearchPanel();
         if (!exactDoi(state.search) && state.mode !== 'weekly' && state.mode !== 'sources') renderSidebarFilters();
         renderStream();
       }, 180);
     });
   }
 
+  $('#searchToggleBtn')?.addEventListener('click', () => {
+    const panel = $('#searchPanel');
+    if (!panel) return;
+    if (!panel.hidden && !state.search && !searchInput?.value) { syncSearchPanel(false); panel.hidden = true; $('#searchToggleBtn').setAttribute('aria-expanded', 'false'); $('#searchToggleBtn').classList.remove('active'); return; }
+    syncSearchPanel(true);
+    searchInput?.focus();
+  });
+  searchInput?.addEventListener('blur', () => { if (!searchInput.value && !state.search) { const p = $('#searchPanel'); if (p) p.hidden = true; $('#searchToggleBtn')?.setAttribute('aria-expanded', 'false'); $('#searchToggleBtn')?.classList.remove('active'); } });
   // Hotkey '/' for search
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
@@ -147,6 +137,7 @@
         || $('#huddleModalBackdrop.open') || $('#readerDrawer.open') || $('#deepReader.open')
         || document.activeElement?.matches('input,textarea,select') || document.activeElement?.isContentEditable) return;
       e.preventDefault();
+      syncSearchPanel(true);
       searchInput?.focus();
     } else if (e.key === 'Tab') {
       const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open');
@@ -237,6 +228,17 @@
     const b = e.target.closest('[data-range]');
     if (!b) return;
     state.range = b.dataset.range;
+    state.page = 1;
+    renderSidebarFilters();
+    renderStream();
+  });
+
+  // Lane, time range and full-text status are native selects in the filter row.
+  document.addEventListener('change', e => {
+    const q = sel => e.target.closest && e.target.closest(sel);
+    const lane = q('select[data-lane-select]'), range = q('select[data-range-select]'), ft = q('select[data-ft-select]');
+    if (!lane && !range && !ft) return;
+    if (lane) state.lane = lane.value; else if (range) state.range = range.value; else state.ftFilter = ft.value;
     state.page = 1;
     renderSidebarFilters();
     renderStream();
@@ -547,7 +549,19 @@
   });
   $('#exportHuddleMdBtn')?.addEventListener('click', exportHuddleMarkdown);
   $('#copyHuddleSummaryBtn')?.addEventListener('click', copyHuddleSummary);
-  $('#clearHuddleBtn')?.addEventListener('click', () => {
+  // Clearing the whole shortlist asks once more: the first tap arms the button, the second one clears.
+  let clearArmTimer = null;
+  $('#clearHuddleBtn')?.addEventListener('click', e => {
+    const btn = e.currentTarget;
+    if (!btn.dataset.armed) {
+      btn.dataset.armed = '1';
+      btn.textContent = `再点一次，确认清空 ${state.huddle.length} 篇`;
+      clearTimeout(clearArmTimer);
+      clearArmTimer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = '清空清单'; }, 4000);
+      return;
+    }
+    clearTimeout(clearArmTimer);
+    delete btn.dataset.armed; btn.textContent = '清空清单';
     state.huddle = [];
     state.huddleCompare = [];
     updateHuddleCounter();
@@ -555,6 +569,16 @@
     renderStream();
     showToast('已清空精选清单');
   });
+  // Cards follow their full-text task by themselves: a gentle poll, only while the page is visible.
+  let autoSince = 0;
+  setInterval(() => {
+    if (document.hidden) return;
+    const active = [...DOI_JOBS.entries()].filter(([, job]) => doiJobActive(job)).slice(0, 5);
+    if (!active.length) { autoSince = 0; return; }
+    if (!autoSince) autoSince = Date.now();
+    if (Date.now() - autoSince > 3600000) return;
+    active.forEach(([doi]) => { if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi); lookupSupplementalDoi(doi, true); });
+  }, 60000);
 
   // Initialize
   // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.

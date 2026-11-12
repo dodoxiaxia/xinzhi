@@ -65,7 +65,7 @@ def main():
                     button.press('Enter')
                     page.wait_for_function('window.scrollY < 2')
                     expect(button).to_be_hidden()
-                    check(page.locator('#brandLogo').evaluate('(e)=>e===document.activeElement'), f'{width}/{reduced}: keyboard focus restored')
+                    check(page.locator('.header-nav .nav-tab-btn.active').evaluate('(e)=>e===document.activeElement'), f'{width}/{reduced}: keyboard focus restored')
                     check(page.evaluate('window.__scrollBehavior.at(-1)') == ('instant' if reduced else 'smooth'), f'{width}/{reduced}: respects motion preference')
                     page.evaluate("window.scrollTo({top: 900, behavior: 'instant'})")
                     expect(button).to_be_visible()

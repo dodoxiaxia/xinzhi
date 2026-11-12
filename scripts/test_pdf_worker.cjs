@@ -74,7 +74,7 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
   const initial = await h.get({ PDF_DOWNLOAD_ENABLED:undefined, GITHUB_LIBRARY_TOKEN:undefined });
   assert.equal(initial.status, 200); assert.equal(h.calls.length, 0);
   const initialPage = await initial.text();
-  assert(initialPage.includes('method="post"')); assert(initialPage.includes('action="/api/pdf?id=article"')); assert(initialPage.includes('type="password"')); assert(initialPage.includes('autocomplete="current-password"')); assert(initialPage.includes('href="/?mode=library"'));
+  assert(initialPage.includes('method="post"')); assert(initialPage.includes('action="/api/pdf?id=article"')); assert(initialPage.includes('type="password"')); assert(initialPage.includes('autocomplete="current-password"')); assert(initialPage.includes('href="/?mode=library&amp;q='));
   assert(initialPage.includes('https://doi.org/10.1000/exact')); assert(!initialPage.includes(valid)); assert(!initialPage.includes(defaultPassphrase));
   assert.equal(initial.headers.get('cache-control'), 'no-store'); assert(initial.headers.get('content-security-policy').includes("form-action 'self'"));
   assert.equal(initial.headers.get('referrer-policy'), 'same-origin', 'normal browser form submissions must retain the same-origin Origin header');

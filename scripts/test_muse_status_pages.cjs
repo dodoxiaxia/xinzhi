@@ -25,7 +25,7 @@ const html = async response => { assert(response.headers.get('content-type').sta
   assert(queued.includes('href="/?mode=library&amp;q=' + encodeURIComponent(doi) + '"'), 'footer navigation reopens this DOI on the site');
 
   const review = await html(ctx.museResponse(request,job({state:'review',leaseId:lease,leaseUntil:now - 1,driveFileId:'syntheticDriveFile01',verificationReason:'identity_mismatch'}),paper));
-  assert(review.includes('核验未通过') && review.includes('aria-current="step"'), 'a rejected task marks the step where it stopped');
+  assert(review.includes('>未取得<') && review.includes('核验没有通过') && review.includes('aria-current="step"'), 'a rejected task marks the step where it stopped');
   assert(review.includes('<li class="done">排队下载</li>'), 'the download step is done: the file arrived and then failed verification');
   assert.equal(primaries(review),1); assert(review.includes('>直接上传 PDF<')); noLoop(review,'review');
   assert(!review.includes('<form'), 'no download or resubmit form while under review');
@@ -33,7 +33,7 @@ const html = async response => { assert(response.headers.get('content-type').sta
   assert(!review.replace(/<!--han-->[\s\S]*?<!--\/han-->/g,'').includes('identity_mismatch'));
 
   const expired = await html(ctx.museResponse(request,job({state:'running',leaseId:lease,leaseUntil:now - 1}),paper));
-  assert(expired.includes('未能获取'));
+  assert(expired.includes('>未取得<'));
   assert(expired.includes('href="/api/muse/retry?doi=')); assert.equal(primaries(expired),1); assert(expired.includes('>重新获取全文<')); noLoop(expired,'expired');
 
   const verifying = job({state:'verifying',source:'reader_upload',leaseId:lease,leaseUntil:now,receivedAt:now - 30000,sha256:'a'.repeat(64),bytes:60000,candidateKey:'library:muse-candidate:' + 'a'.repeat(64)});

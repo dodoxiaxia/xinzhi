@@ -3,59 +3,48 @@
   function renderArticleCard(p) {
     const isHuddled = state.huddle.includes(p.id);
     const pubClass = getPublisherClass(p.publisher);
-    const designClass = getDesignClass(p.studyDesign);
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
-    const doiUrl = safeSourceUrl(p) || '#';
 
     const titleEn = esc(p.title);
     const titleZh = p.draftData?.title_zh ? esc(p.draftData.title_zh) : '';
 
-    const tagsHtml = (p.tags || []).map(t => `<span class="tag-pill">${esc(t)}</span>`).join('');
     const qlc = quicklookOf(p);
-    const summaryText = esc(p.draftData?.summary || p.summary || (qlc ? 'AI 速览（未核对）：' + qlc.one_line : ('暂无随附摘要，可尝试获取 Europe PMC / PubMed 公开摘要。')));
-    // A Chinese one-line takeaway (when one exists) leads the card; the English abstract stays in the reader.
-    const leadHtml = !p.hasDraft && qlc?.one_line && p.summary
-      ? `<p class="card-lead"><span class="content-label" title="模型依据公开摘要生成，未经人工核对">AI 速览 · 未核对</span>${esc(qlc.one_line)}</p>${qlc.why_read ? `<p class="card-why"><b>为什么读：</b>${esc(qlc.why_read)}</p>` : ''}`
-      : '';
+    // One calm card: journal and date, one title (the Chinese title when there is one), one status, the actions.
+    // Everything else (impact factor, study type, tags, abstract, evidence limits, second links) lives in the reader.
+    const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
+    const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
+    const titleBlock = zhHtml
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
+      : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
+
+    // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
+    const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
+    // The English title comes back when an English search hit it.
+    const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
+    const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
+    const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
 
     return `
       <article class="article-card" data-paper-id="${esc(p.id)}">
         <div class="card-top">
-          <div class="meta-badges">
-            <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
-            ${journalMetricBadge(p)}
-            ${designBadgeHtml(p)}
-            ${p.kind ? `<span class="tag-pill kind-pill">${esc(p.kind)}</span>` : ''}
-            ${p.autoPick && !p.hasDraft ? `<span class="tag-pill auto-pick-pill" title="由规则从当日新文献中自动选出，AI 速览未经人工核验">自动精选</span>` : ''}
-            ${p.clinicalTier ? `<span class="tag-pill" style="border:none; background:transparent; font-weight:500;">${esc(p.clinicalTier)}</span>` : ''}
-            ${p.media && p.media.length ? p.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('') : ''}
-          </div>
+          <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
           <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
         </div>
 
         ${publicationStatusHtml(p)}
-        ${!p.hasDraft && qlc?.title_zh ? `<div class="article-title-zh ql-title"><span class="content-label">机器翻译</span>${esc(qlc.title_zh)}</div>` : ''}
-        ${!p.hasDraft && !qlc?.title_zh && p.titleZh ? `<div class="article-title-zh ql-title"><span class="content-label">机器翻译</span>${esc(p.titleZh)}</div>` : ''}
-        ${titleZh ? `<div class="article-title-zh"><span class="verified-badge" title="已对照期刊公开摘要核对；非全文精读，未经医生终审">摘要核对</span>${titleZh}</div>` : ''}
-        <h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>
-
-        ${leadHtml || `<p class="article-abstract">${summaryText}</p>`}
-        ${p.draftData?.limitations ? `<p class="card-limit"><b>证据边界：</b>${esc(p.draftData.limitations)}</p>` : ''}
-        ${p.draftData?.learning_question ? `<p class="card-question"><b>共读问题：</b>${esc(p.draftData.learning_question)}</p>` : ''}
-
-        ${tagsHtml ? `<div class="article-card-tags">${tagsHtml}</div>` : ''}
+        ${titleBlock}
+        ${enLine}
+        ${gistHtml}
 
         <div class="card-actions">
-          <div class="action-buttons-group">
-            <button class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="${esc(p.id)}">${p.hasDraft ? '阅读导读与摘要' : qlc ? '阅读 AI 速览' : '阅读摘要'}</button>
-            ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}">微信群文案</button>` : ''}
-            <button type="button" class="btn-sm card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已入清单' : '精选清单'}</button>
-          </div>
-
           <div class="card-source-actions">
             ${pdfDownloadLink(p)}
-            ${doiUrl!=='#' && !doiStatusBlock(p) ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="card-link" title="在期刊官网打开">官网原文 ↗</a>` : doiUrl==='#' ? '<span class="text-muted">原文链接待补</span>' : ''}
+          </div>
+          <div class="action-buttons-group">
+            <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
+            ${safeSourceUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(safeSourceUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
         ${doiStatusBlock(p)}
@@ -78,29 +67,30 @@
       <div class="compact-row" data-paper-id="${esc(p.id)}">
         <div class="compact-main">
           <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${title}</button>
-          ${translatedTitle ? `<div class="compact-original-title" lang="en">${esc(p.title)}</div>` : ''}
           ${publicationStatusHtml(p)}
           ${doiStatusBlock(p)}
           <div class="compact-meta">
             <span class="journal-badge ${pubClass}" title="${esc(journalName)}">${esc(journalName)}</span>
-            ${journalMetricBadge(p)}
-            ${designBadgeHtml(p)}
-            ${p.kind ? `<span class="tag-pill kind-pill">${esc(p.kind)}</span>` : ''}
             <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
           </div>
         </div>
         <div class="compact-actions">
-          <button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="速读">速读</button>
+          <button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">阅读摘要</button>
           ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}" title="复制微信文案">文案</button>` : ''}
           <button class="btn-sm ${isHuddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" title="精选清单">${isHuddled ? '已入' : '精选'}</button>
           ${pdfDownloadLink(p)}
-          ${doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm" title="官网原文">↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
+          ${doiStatusBlock(p) ? '' : doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm" title="官网原文">↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
         </div>
       </div>
     `;
   }
 
   // Main Render Stream
+  // Sort, view and the AI digest live in the 筛选 panel; where that panel is not offered they sit at the end of the filter row.
+  function placeStreamControls(noSidebar) {
+    const controls = $('.stream-controls'), target = noSidebar ? $('#toolRowEnd') : $('#panelControlsSlot');
+    if (controls && target && controls.parentElement !== target) target.append(controls);
+  }
   function applyDoiSearchLayout(doi) {
     const special = state.mode === 'weekly' || state.mode === 'sources';
     const stream = $('#streamSection'), weekly = $('#weeklySection'), sources = $('#sourcesSection');
@@ -108,6 +98,8 @@
     if (weekly) weekly.hidden = !!doi || state.mode !== 'weekly';
     if (sources) sources.hidden = !!doi || state.mode !== 'sources';
     const noSidebar = !!doi || special || state.mode === 'curated';
+    placeStreamControls(noSidebar);
+    { const sc = $('.stream-controls'); if (sc) sc.hidden = special && !doi; }
     const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
     const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
     const app = $('.app-container');
@@ -139,7 +131,8 @@
       if (conflicts.length) conflictNotice = `<div class="doi-identity-notice"><b>维护者：原有题录对应待核实</b><p>原有题名：${esc(conflicts[0].title)}</p><p>本次官方题名：${esc(record.title)}。新全文仅与下方相符题名关联；原有导读保留。</p></div>`;
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
-    streamEl.innerHTML = `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`
+    const plainMatch = papers.length && !pendingLookup && !uncertain;
+    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`)
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
       + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3>' + (pendingLookup ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
@@ -166,6 +159,7 @@
     renderCuratedDayBar();
     renderRangeBar();
     renderFtBar();
+    placeStreamControls(state.mode === 'curated');
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
@@ -173,6 +167,7 @@
     if (filtered.length === 0) {
       streamEl.innerHTML = radarArchiveNotice() + renderEmptyFilters();
       if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
+      renderStreamTotal(streamEl);
       if (loadMoreBtn) loadMoreBtn.hidden = true;
       return;
     }
@@ -223,6 +218,7 @@
     }
 
     if (state.mode === 'library') streamEl.innerHTML += supplementalLibraryNotice();
+    renderStreamTotal(streamEl);
     { const note = radarArchiveNotice(); if (note) streamEl.insertAdjacentHTML('afterbegin', note); }
     if (loadMoreBtn) {
       loadMoreBtn.hidden = visibleItems.length >= filtered.length;

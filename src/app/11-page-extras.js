@@ -7,7 +7,7 @@
   window.addEventListener('scroll', update, { passive: true });
   button.addEventListener('click', () => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    document.getElementById('brandLogo')?.focus({ preventScroll: true });
+    (document.querySelector('.header-nav .nav-tab-btn.active') || document.querySelector('.header-nav .nav-tab-btn'))?.focus({ preventScroll: true });
     window.scrollTo({ top: 0, behavior: reduced ? 'instant' : 'smooth' });
   });
   update();
@@ -36,3 +36,13 @@
   setInterval(probe, 10 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) probe(); });
 })();
+
+  // 阅读台底部固定栏的实测高度，供正文底部留白使用（栏高 + 安全区），内容再短也不会盖住最后一个按钮。
+  (() => {
+    const foot = document.querySelector('.drawer-footer');
+    if (!foot) return;
+    const sync = () => document.documentElement.style.setProperty('--drawer-foot-h', Math.ceil(foot.getBoundingClientRect().height) + 'px');
+    sync();
+    if (window.ResizeObserver) new ResizeObserver(sync).observe(foot);
+    window.addEventListener('resize', sync);
+  })();
