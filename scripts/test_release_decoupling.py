@@ -1,6 +1,5 @@
 """Verify actual release workflow boundaries without external actions."""
 import ast
-import hashlib
 import re
 import unittest
 from pathlib import Path
@@ -52,14 +51,20 @@ class ReleaseDecouplingTests(unittest.TestCase):
         self.assertIn('node scripts/test_fulltext_activation.cjs', workflow)
         self.assertIn("-p 'test_release_decoupling.py'", workflow)
 
-    def test_existing_schedules_and_dispatcher_source_are_preserved(self):
+    def test_existing_schedules_and_dispatcher_source_match_the_live_timer(self):
         workflow = (ROOT / '.github/workflows/daily.yml').read_text()
         self.assertEqual(re.findall(r"cron: '([^']+)'", workflow), ['47 20 * * *', '37 */4 * * *'])  # fast fallback every 4h (owner, 2026-10-11)
-        for name, digest in (
-            ('workers/cron-dispatch/index.js', '7494fbfa472973a8702bdad4112b97235edc5cffda15b23100d751d741c120ee'),
-            ('workers/cron-dispatch/wrangler.toml', 'ffa75e90aa34c09fc9d0b5f1fda033113df65c68adc6218c4720f7ea2bc6cf30'),
-        ):
-            self.assertEqual(hashlib.sha256((ROOT / name).read_bytes()).hexdigest(), digest)
+        source = (ROOT / 'workers/cron-dispatch/index.js').read_text()
+        config = (ROOT / 'workers/cron-dispatch/wrangler.toml').read_text()
+        self.assertIn("const WORKFLOW = 'daily.yml';", source)
+        self.assertIn("inputs:{ mode:'fast', source:'external' }", source)
+        self.assertNotIn('fulltext.yml', source)
+        self.assertIn('crons = ["7 */2 * * *"]', config)
+        self.assertNotIn('*/5', config)
+        self.assertNotRegex(workflow, r'wrangler[^\n]*deploy(?! public)')
+        self.assertFalse((ROOT / '.github/workflows/drive-archive.yml').exists())
+        for path in (ROOT / '.github/workflows').glob('*.yml'):
+            self.assertNotIn("cron: '41 * * * *'", path.read_text(), path.name)
 
 
 if __name__ == '__main__':

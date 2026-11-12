@@ -446,5 +446,71 @@ class FullRefreshOncePerDayTests(unittest.TestCase):
             self.assertFalse((Path(tmp) / ci_daily.FULL_MARKER).exists())
 
 
+class PrecomputePauseReportTests(PipelineFixture):
+    def ledger(self, started, status='failed_or_uncertain'):
+        (self.root / 'data/week-precompute-ledger.json').write_text(json.dumps({
+            'paused': 'checkpoint_transport_uncertain',
+            'days': {'2026-10-24': {'requests': [{
+                'status': status, 'at': started, 'failureCode': 'checkpoint_transport_uncertain',
+            }]}},
+        }))
+
+    def test_pause_over_24h_warns_and_the_refresh_still_succeeds(self):
+        started = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=3, hours=2)).isoformat()
+        self.ledger(started)
+        result, report, _, _ = self.invoke()
+        self.assertEqual(result, 0)
+        self.assertEqual(report['status'], 'success')
+        self.assertGreaterEqual(report['precomputePause']['days'], 3)
+        self.assertEqual(report['precomputePause']['reason'], 'checkpoint_transport_uncertain')
+        self.assertIn('selected', report['precomputePause']['coverage'])
+        self.assertIn('precompute_paused_over_24h', report['warnings'])
+        self.assertEqual(report['problems'], [])
+
+    def test_pause_under_24h_is_recorded_without_that_warning(self):
+        started = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)).isoformat()
+        self.ledger(started)
+        result, report, _, _ = self.invoke()
+        self.assertEqual(result, 0)
+        self.assertEqual(report['precomputePause']['days'], 0)
+        self.assertNotIn('precompute_paused_over_24h', report.get('warnings') or [])
+
+    def test_missing_or_broken_ledger_does_not_fail_the_refresh(self):
+        result, report, _, _ = self.invoke()
+        self.assertEqual(result, 0)
+        self.assertNotIn('precomputePause', report)
+        (self.root / 'data/week-precompute-ledger.json').write_text('{')
+        result, report, _, _ = self.invoke()
+        self.assertEqual(result, 0)
+        self.assertNotIn('precomputePause', report)
+
+    def test_trigger_source_is_copied_into_the_refresh_report(self):
+        with patch.dict(os.environ, {'XINZHI_TRIGGER': 'external'}):
+            result, report, _, _ = self.invoke()
+        self.assertEqual(result, 0)
+        self.assertEqual(report['trigger'], 'external')
+
+    def test_pause_days_and_coverage_follow_the_supplied_clock(self):
+        now = datetime.datetime(2026, 11, 12, 2, 0, tzinfo=datetime.timezone.utc)
+        ledger = {'pausedTasks': {'translate': 'checkpoint_transport_uncertain'}, 'days': {'2026-10-24': {'requests': [{
+            'status': 'failed_or_uncertain', 'at': '2026-10-24T02:12:58+00:00', 'failureCode': 'checkpoint_transport_uncertain',
+        }]}}}
+        weekly = {'selected': 24, 'coverage': {'title': 24, 'translate': 0, 'study': 0, 'quicklook': 0}}
+        pause = ci_daily.describe_precompute_pause(ledger, now, weekly)
+        self.assertEqual(pause['days'], 18)
+        self.assertTrue(pause['over24h'])
+        self.assertEqual(pause['coverage'], {'selected': 24, 'title': 24, 'translate': 0, 'study': 0, 'quicklook': 0})
+        self.assertEqual(pause['startedAt'], '2026-10-24T02:12:58+00:00')
+        exactly = ci_daily.describe_precompute_pause(
+            {'paused': 'checkpoint_transport_uncertain', 'days': {'2026-11-11': {'requests': [{
+                'status': 'started', 'at': '2026-11-11T02:00:00+00:00'}]}}},
+            datetime.datetime(2026, 11, 12, 2, 0, tzinfo=datetime.timezone.utc), weekly)
+        self.assertEqual(exactly['days'], 1)
+        self.assertFalse(exactly['over24h'])
+        self.assertIsNone(ci_daily.describe_precompute_pause(
+            {'days': {'2026-10-24': {'requests': [{'status': 'abandoned', 'at': '2026-10-24T02:12:58+00:00'}]}}},
+            now, weekly))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -3,6 +3,7 @@
 import argparse, datetime, hashlib, http.client, json, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
 from pathlib import Path
 from build_data import clean, classify
+from publication_window import publication_bounds
 from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -165,8 +166,7 @@ def main():
     if not 1 <= a.days <= 90 or not 1 <= a.limit <= 2500:
         p.error('days 1..90; limit 1..2500')
     now = datetime.datetime.now(datetime.timezone.utc)
-    start = (now - datetime.timedelta(days=a.days)).strftime('%Y/%m/%d')
-    end = now.strftime('%Y/%m/%d')
+    start, end = publication_bounds(now, a.days)
     term = '(' + ' OR '.join(journal_query(j) for j in JOURNALS) + ') AND ("' + start + '"[Date - Publication] : "' + end + '"[Date - Publication])'
     found = json.loads(request('esearch.fcgi', {'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': a.limit, 'sort': 'pub date'}))['esearchresult']
     ids = found['idlist']

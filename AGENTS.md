@@ -29,7 +29,7 @@ wrangler pages deploy public → Cloudflare Pages（dryz-xinzhi）
 scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ 下三个状态 JSON；不保留历史）
 ```
 
-- **调度**：daily.yml 每天北京时间 04:47 完整刷新，另有每 4 小时的轻量刷新兜底；`workers/cron-dispatch/` 是每 2 小时触发一次的外部定时器，`scripts/fast_refresh_gate.py` 限制轻量刷新间隔。推送到 main 且改动前端、`edge/`、`scripts/`、`editorial/` 等路径时也会运行（推送触发的运行不调用模型）。
+- **调度**：daily.yml 每天北京时间 04:47 完整刷新，另有每 4 小时的轻量刷新兜底。`workers/cron-dispatch/` 是仓库里的外部定时器源码，与线上一致：`7 */2 * * *`，约每 2 小时派发 `daily.yml` 的轻量刷新（`mode=fast`，`source=external`）。Actions 不部署这个 Worker。`scripts/fast_refresh_gate.py` 限制轻量刷新间隔，外部派发和未勾选 force 的手动 fast 都受它约束。推送到 main 且改动前端、`edge/`、`scripts/`、`editorial/` 等路径时也会运行（推送触发的运行不调用模型）。
 - **其他工作流**：`fulltext.yml`（全文队列，仓库变量 `FULLTEXT_ASYNC_ENABLED` 为 true 时才运行）、`fulltext-import.yml`（`editorial/fulltext-imports.json` 导入）、`muse-review.yml`（每小时核验 Muse 送来的原件）、`muse-checks.yml` 与 `daily-reading-checks.yml`（PR 检查）。
 - **state 分支**：保存运行时数据 `data/`、上次构建的 `public/`，以及 `docs/public-manifest.json`、`docs/last-refresh.json`、`docs/deployment-status.json`。工作流恢复 state 后再构建，state 从不覆盖 main 的代码。
   - **位置**：仓库变量 `XINZHI_STATE_REPO`（如 `dodoxiaxia/xinzhi-state`，私有）加 Secret `XINZHI_STATE_TOKEN`（只授权该私有仓库的 Contents 读写）时，所有读写都去那个私有仓库的 `state` 分支；两者都没配置时退回本仓库的 `state` 分支（公开）。`daily.yml`、`daily-reading-checks.yml` 与全文/周榜检查点（`week_precompute_ci.state_repository()`/`state_token()`）用同一位置。

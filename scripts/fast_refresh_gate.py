@@ -16,6 +16,33 @@ from ci_daily import FULL_EARLIEST_HOUR  # noqa: E402
 
 BEIJING = datetime.timezone(datetime.timedelta(hours=8))
 DEFAULT_MINUTES = 170  # with the 2-hourly dispatcher this gives a 4-hour cadence
+TRIGGERS = ('push', 'schedule', 'external', 'manual', 'local')
+
+
+def interval_applies(event_name, mode=None, force=False, source=None):
+    """Scheduled runs, the external dispatcher, and a manual fast run share one interval.
+
+    A push, a manual full refresh, and a manual fast run with force stay outside it.
+    force does not exempt an external dispatch.
+    """
+    if event_name == 'schedule':
+        return True
+    if event_name != 'workflow_dispatch':
+        return False
+    if source == 'external':
+        return True
+    return mode == 'fast' and not force
+
+
+def trigger_source(event_name, source=None):
+    """Stable name written into the refresh report: push, schedule, external, manual, local."""
+    if event_name == 'push':
+        return 'push'
+    if event_name == 'schedule':
+        return 'schedule'
+    if event_name == 'workflow_dispatch':
+        return 'external' if source == 'external' else 'manual'
+    return 'local'
 
 
 def read(path):

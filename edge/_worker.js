@@ -1980,8 +1980,9 @@ async function handleMuseReview(request, env) {
     return json({ok:true,job:musePublicJob(done),downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi),archive:{...libraryArchiveStatus(),sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}}});
   } catch (error) { return museError(error); }
 }
-// Every verified original in QL_KV is copied to the private Drive inbox by drive-archive.yml.
-// The site never holds Drive credentials: it only hands the workflow bytes and records the file ID it reports.
+// /api/drive-archive can copy one verified original into the private Drive inbox.
+// The hourly workflow that called this route has been removed; nothing schedules it.
+// The site never holds Drive credentials.
 async function driveArchiveRecord(env, doi, sha256) {
   const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
   return paper && paper.fulltextStatus === 'available' && record.pdf.sha256 === sha256 ? {record,paper} : null;
