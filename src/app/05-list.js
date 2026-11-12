@@ -154,9 +154,9 @@
     const doi = exactDoi(state.search);
     if (radarArchiveNeeded()) loadRadarArchive();
     applyDoiSearchLayout(doi);
-    if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
-    if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
-    if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
+    if (doi) { renderFtBar(); renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
+    if (state.mode === 'weekly') { renderFtBar(); renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
+    if (state.mode === 'sources') { renderFtBar(); renderSourcesHealth(); syncUrl(); return; }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
@@ -165,6 +165,7 @@
     renderLaneBar();
     renderCuratedDayBar();
     renderRangeBar();
+    renderFtBar();
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();

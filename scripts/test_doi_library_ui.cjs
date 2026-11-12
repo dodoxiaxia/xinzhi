@@ -27,9 +27,9 @@ async function helpers() {
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
   const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
-    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftMaintainerMode', 'fulltextView', 'fulltextStatusHtml', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
+    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftMaintainerMode', 'fulltextView', 'fulltextStatusHtml', 'fulltextFilterBucket', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
-  vm.runInContext([constant('FT_STEPS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
+  vm.runInContext([constant('FT_STEPS'), constant('FT_FILTERS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
   for (const value of ['Kept clinical title', 'article 10.1234/keep', '10.1234', 'https://example.org/10.1234/keep', 'https://doi.org/10.1234/keep?token=x', '10.1234/x script']) assert.equal(c.exactDoi(value), '');
   assert.equal(c.hamburgFulltextUrl('https://doi.org/10.1056/AIe2600236'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1056/aie2600236');
@@ -78,6 +78,19 @@ async function helpers() {
   c.mergeDoiJob(pending.doi, { ...job, state: 'running' }); assert(c.pdfDownloadLink(pending).includes('全文获取中'));
   assert.throws(() => c.mergeDoiJob(pending.doi, { ...job, doi: '10.1234/wrong' }));
   c.mergeDoiJob(pending.doi, { ...job, state: 'pending' }); assert(c.pdfDownloadLink(pending).includes('data-mode="legacy-retry"'), 'an old-style finished job re-submits through the legacy retry route');
+  c.mergeDoiJob(pending.doi, null);
+  assert.equal(c.fulltextFilterBucket(kept), 'ready');
+  assert.equal(c.fulltextFilterBucket(pending), '');
+  assert.equal(c.fulltextFilterBucket(manual), 'failed');
+  c.mergeDoiJob(pending.doi, { ...job, state: 'queued', stage: 'queued' });
+  assert.equal(c.fulltextFilterBucket(pending), 'queued');
+  c.mergeDoiJob(pending.doi, { ...job, state: 'running', stage: 'running' });
+  assert.equal(c.fulltextFilterBucket(pending), 'queued', 'an in-progress download stays in the queued-download filter');
+  c.mergeDoiJob(pending.doi, { ...job, state: 'pending', stage: 'verifying', verificationMode: 'hourly' });
+  assert.equal(c.fulltextFilterBucket(pending), 'verifying');
+  c.mergeDoiJob(pending.doi, { ...job, state: 'review', stage: 'review' });
+  assert.equal(c.fulltextFilterBucket(pending), 'failed', 'a failed review is listed under 未取得');
+  c.mergeDoiJob(pending.doi, { ...job, state: 'pending' });
   c.mergeDoiJob(pending.doi,{...job,state:'pending',stage:'verifying',message:'PDF 已收到，等待网站核验。',nextCheckSeconds:60});
   assert(c.doiJobActive(c.DOI_JOBS.get(pending.doi))); assert(c.pdfDownloadLink(pending).includes('已收到 PDF，核验中')); assert(c.pdfDownloadLink(pending).includes('第 2/3 步'));
   assert(!c.pdfDownloadLink(pending).includes('/api/acquire/retry')); assert(!c.pdfDownloadLink(pending).includes('查看任务'));
@@ -157,7 +170,7 @@ async function browserChecks() {
     if (u.pathname === '/api/library') {
       if (unsupported) return route.fulfill({ status: 404, json: { error: 'not_found' } });
       if (u.searchParams.has('doi')) { const key = u.searchParams.get('doi'), p = records.get(key), job = jobs.get(key); return route.fulfill({ json: { ok: true, found: !!p, ...(p ? { paper: p, status: p.fulltextStatus } : {}), ...(job ? { job } : {}) } }); }
-      return route.fulfill({ json: { ok: true, papers: [...records.values()] } });
+      return route.fulfill({ json: { ok: true, papers: [...records.values()], jobs: [...jobs.values()] } });
     }
     if (u.pathname.startsWith('/api/')) return route.fulfill({ json: { ok: true, found: false, canGenerate: false } });
     const assets = {
@@ -268,6 +281,46 @@ async function browserChecks() {
     await page.locator('#drawerCloseBtn').click();
     assert.equal(requests.filter(request => request.method === 'POST').length, 2, 'Polling never submits again; only the two typed-passphrase submits were sent');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Background status fits mobile screen');
+    records.set('10.1001/proto.ready', apiPaper('10.1001/proto.ready', 'Ready filter title', 'available'));
+    records.set('10.1001/proto.queued', apiPaper('10.1001/proto.queued', 'Queued filter title', 'pending'));
+    records.set('10.1001/proto.vhour', apiPaper('10.1001/proto.vhour', 'Verifying filter title', 'pending'));
+    records.set('10.1001/proto.failed', apiPaper('10.1001/proto.failed', 'Failed filter title', 'manual_needed'));
+    jobs.set('10.1001/proto.queued', { id: '00000000-0000-4000-8000-000000000011', doi: '10.1001/proto.queued', state: 'queued', stage: 'queued' });
+    jobs.set('10.1001/proto.vhour', { id: '00000000-0000-4000-8000-000000000012', doi: '10.1001/proto.vhour', state: 'pending', stage: 'verifying', verificationMode: 'hourly' });
+    jobs.set('10.1001/proto.failed', { id: '00000000-0000-4000-8000-000000000013', doi: '10.1001/proto.failed', state: 'failed', stage: 'failed' });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(origin + '/?mode=library&lane=all&range=all&maintainer=0');
+    await page.locator('#ftBar').waitFor();
+    const chipText = await page.locator('#ftBar').innerText();
+    for (const label of ['全部', '可阅读', '核验中', '排队下载', '未取得']) assert(chipText.includes(label), 'filter chip ' + label);
+    const countOf = value => page.locator('#ftBar [data-ft-filter="' + value + '"] small').innerText().then(Number);
+    assert(await countOf('') >= 4, '全部 counts every paper in the current list');
+    assert(await countOf('ready') >= 1);
+    assert.equal(await countOf('verifying'), 1);
+    assert.equal(await countOf('queued'), 1);
+    assert(await countOf('failed') >= 1);
+    const libraryGets = () => requests.filter(request => request.pathname === '/api/library' && request.method === 'GET' && !String(request.query || '').includes('doi=')).length;
+    const getsBeforeClick = libraryGets();
+    await page.locator('#ftBar [data-ft-filter="verifying"]').click();
+    assert.equal(new URL(page.url()).searchParams.get('ft'), 'verifying');
+    assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 1);
+    assert((await page.locator('#articlesStream').innerText()).includes('Verifying filter title'));
+    assert((await page.locator('#activeFiltersBar').innerText()).includes('全文: 核验中'));
+    await page.locator('#ftBar [data-ft-filter="queued"]').click();
+    assert.equal(new URL(page.url()).searchParams.get('ft'), 'queued');
+    assert((await page.locator('#articlesStream').innerText()).includes('Queued filter title'));
+    await page.locator('#ftBar [data-ft-filter="failed"]').click();
+    assert((await page.locator('#articlesStream').innerText()).includes('Failed filter title'));
+    await page.locator('#activeFiltersBar [data-clear="ft"]').click();
+    assert.equal(new URL(page.url()).searchParams.get('ft'), null);
+    assert.equal(libraryGets(), getsBeforeClick, 'choosing a fulltext filter does not send another /api/library request');
+    await page.goto(origin + '/?mode=library&lane=all&range=all&ft=ready&maintainer=0');
+    await page.locator('#ftBar [data-ft-filter="ready"]').waitFor();
+    assert.equal(await page.locator('#ftBar [data-ft-filter="ready"]').getAttribute('aria-pressed'), 'true');
+    assert(await page.locator('#articlesStream article[data-paper-id]').count() >= 1);
+    await page.goto(origin + '/?mode=library&lane=all&q=10.1001%2Fproto.ready');
+    await page.locator('[data-ft-doi]').waitFor();
+    assert.equal(await page.locator('#ftBar').isVisible(), false, 'the filter row hides during an exact DOI search');
     unsupported = true; await page.goto(origin + '/?mode=library&lane=all&q=Static%20official');
     await page.locator('#articlesStream article[data-paper-id="2222222222222222"]').waitFor();
     assert.equal(await page.locator('a[href="/api/pdf?id=2222222222222222"]').count(), 1, 'Old API 404 keeps static downloads');
