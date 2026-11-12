@@ -15,6 +15,7 @@ Output: data/radar-archive.json (private working file; build_public.py turns it 
 import argparse, datetime, json, re, sys, time, urllib.parse, urllib.request
 from pathlib import Path
 from build_data import clean
+from publication_window import beijing_date, publication_bounds
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/radar-archive.json'
@@ -150,14 +151,15 @@ def main():
     a = ap.parse_args()
     if not 1 <= a.days <= 400:
         ap.error('--days 1..400')
-    today = datetime.datetime.now(datetime.timezone.utc).date()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    today = beijing_date(now)
     old = json.loads(OUT.read_text()).get('rows', []) if OUT.exists() else []
     if a.seed:
         new = ingest(json.loads(a.seed.read_text()))
         source = 'seed:' + a.seed.name
     else:
         days = 7 if a.incremental and old else a.days
-        summaries = live((today - datetime.timedelta(days=days)).strftime('%Y/%m/%d'), today.strftime('%Y/%m/%d'))
+        summaries = live(*publication_bounds(now, days))
         new = ingest(summaries)
         source = 'pubmed-live'
     rows = merge(old if (a.incremental or a.seed) else [], new, today)

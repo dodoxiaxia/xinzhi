@@ -240,6 +240,108 @@ def beijing_now():
     return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
 
 
+def refresh_trigger():
+    value = os.environ.get('XINZHI_TRIGGER') or 'local'
+    return value if value in ('push', 'schedule', 'external', 'manual', 'local') else 'local'
+
+
+def _pause_reason(scope):
+    if not isinstance(scope, dict):
+        return None
+    paused = scope.get('paused')
+    if isinstance(paused, str) and paused:
+        return paused
+    listed = scope.get('pauseReasons')
+    if isinstance(listed, list):
+        for reason in listed:
+            if isinstance(reason, str) and reason:
+                return reason
+    tasks = scope.get('pausedTasks')
+    if isinstance(tasks, dict):
+        for reason in tasks.values():
+            if isinstance(reason, str) and reason:
+                return reason
+    return None
+
+
+def _count(value):
+    return value if type(value) is int and value >= 0 else 0
+
+
+def describe_precompute_pause(ledger, now, weekly=None):
+    """Pause start, whole days, reason and coverage. None when precompute is not paused.
+
+    ``over24h`` is true only when the pause has lasted more than 24 hours. A caller
+    records that as a warning and still publishes.
+    """
+    if not isinstance(ledger, dict) or now.tzinfo is None:
+        return None
+    reason = _pause_reason(ledger)
+    earliest = None
+    uncertain = False
+    days = ledger.get('days')
+    if isinstance(days, dict):
+        for daily in days.values():
+            if not isinstance(daily, dict):
+                continue
+            if reason is None:
+                reason = _pause_reason(daily)
+            for row in daily.get('requests') or []:
+                if not isinstance(row, dict) or row.get('status') not in ('started', 'failed_or_uncertain'):
+                    continue
+                uncertain = True
+                if reason is None:
+                    code = row.get('failureCode')
+                    reason = code if isinstance(code, str) and code else 'uncertain_prior_attempt'
+                stamp = row.get('at')
+                if not isinstance(stamp, str):
+                    continue
+                try:
+                    parsed = datetime.datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+                except ValueError:
+                    continue
+                if parsed.tzinfo is None:
+                    continue
+                if earliest is None or parsed < earliest:
+                    earliest = parsed
+    if reason is None and not uncertain:
+        return None
+    elapsed = (now - earliest).total_seconds() if earliest is not None else None
+    if elapsed is not None and elapsed < 0:
+        elapsed = None
+    weekly = weekly if isinstance(weekly, dict) else {}
+    counts = weekly.get('coverage') if isinstance(weekly.get('coverage'), dict) else {}
+    return {
+        'startedAt': earliest.astimezone(datetime.timezone.utc).isoformat() if earliest is not None else None,
+        'days': int(elapsed // 86400) if elapsed is not None else None,
+        'reason': reason or 'uncertain_prior_attempt',
+        'coverage': {
+            'selected': _count(weekly.get('selected')),
+            'title': _count(counts.get('title')),
+            'translate': _count(counts.get('translate')),
+            'study': _count(counts.get('study')),
+            'quicklook': _count(counts.get('quicklook')),
+        },
+        'over24h': elapsed is not None and elapsed > 86400,
+    }
+
+
+def load_precompute_ledger(root):
+    try:
+        value = json.loads((root / 'data/week-precompute-ledger.json').read_text())
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def note_step_summary(line):
+    path = os.environ.get('GITHUB_STEP_SUMMARY')
+    if not path:
+        return
+    with open(path, 'a', encoding='utf-8') as handle:
+        handle.write(line + '\n')
+
+
 def full_refresh_decision(fast, root=ROOT, now=None):
     """Timed runs (XINZHI_DAILY_FULL_ONCE=1) do the paid full refresh exactly once per Beijing day.
 
@@ -266,7 +368,7 @@ def main():
     before = content_hash()
     budget = (FAST_BUDGET_MINUTES if fast else FULL_BUDGET_MINUTES) * 60
     deadline = time.monotonic() + budget
-    report = {'startedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'runId': os.environ.get('GITHUB_RUN_ID'), 'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'codeSha': os.environ.get('GITHUB_SHA'), 'fast': fast, 'changed': None, 'status': 'running', 'deploymentRequested': False, 'budgetSeconds': budget, 'beforeContentHash': before, 'steps': []}
+    report = {'startedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'runId': os.environ.get('GITHUB_RUN_ID'), 'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'), 'codeSha': os.environ.get('GITHUB_SHA'), 'trigger': refresh_trigger(), 'fast': fast, 'changed': None, 'status': 'running', 'deploymentRequested': False, 'budgetSeconds': budget, 'beforeContentHash': before, 'steps': []}
     if full_policy:
         report['fullRefreshPolicy'] = full_policy
 
@@ -274,6 +376,16 @@ def main():
         report['status'] = status
         report['problems'] = problems or []
         report['finishedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        report['trigger'] = refresh_trigger()
+        pause = describe_precompute_pause(load_precompute_ledger(ROOT), datetime.datetime.fromisoformat(report['finishedAt']), report.get('weeklyContent'))
+        if pause:
+            report['precomputePause'] = {key: pause[key] for key in ('startedAt', 'days', 'reason', 'coverage')}
+            if pause['over24h']:
+                report.setdefault('warnings', [])
+                if 'precompute_paused_over_24h' not in report['warnings']:
+                    report['warnings'].append('precompute_paused_over_24h')
+                days = pause['days'] if pause['days'] is not None else '未知'
+                note_step_summary('近7天榜预生成已暂停超过 24 小时（%s 天）。这次发布不因此失败。' % days)
         report['deploymentRequested'] = status == 'success' and (report['changed'] or not fast)
         if status == 'success' and not fast:
             # Saved with data/ in state only when the run deploys; a failed run stays retryable today.

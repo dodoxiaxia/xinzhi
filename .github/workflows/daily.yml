@@ -39,9 +39,14 @@ on:
         default: false
         type: boolean
       force:
-        description: 'fast 时跳过约 3 小时最短间隔(人工临时刷新用)'
+        description: 'fast 时跳过约 3 小时最短间隔(人工临时刷新用；外部定时器不受此影响)'
         default: false
         type: boolean
+      source:
+        description: 'external=外部定时器；manual=在 Actions 页面手动运行'
+        default: 'manual'
+        type: choice
+        options: [manual, external]
 
 concurrency:
   group: daily-refresh
@@ -55,7 +60,8 @@ jobs:
     # Owner choice (2026-10-11): timed fast refreshes every 3-4 hours. The external dispatcher
     # (:07, every 2 hours) is the only punctual timer observed, so it stays; this small job skips
     # a timed fast run when the last successful refresh started under 170 minutes ago, unless
-    # today's full refresh is still missing. Pushes, full runs and forced runs always pass.
+    # today's full refresh is still missing. External dispatches are always interval-gated.
+    # Manual fast runs are too, unless force is set. Pushes and manual full runs always pass.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -68,13 +74,30 @@ jobs:
       - name: 轻量刷新最短间隔
         id: gate
         env:
-          TIMED_FAST: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && !inputs.force)) && '1' || '' }}
+          TIMED_FAST: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.source == 'external' || (inputs.mode == 'fast' && !inputs.force)))) && '1' || '' }}
+          XINZHI_TRIGGER: ${{ github.event_name == 'schedule' && 'schedule' || github.event_name == 'push' && 'push' || github.event_name == 'workflow_dispatch' && inputs.source == 'external' && 'external' || github.event_name == 'workflow_dispatch' && 'manual' || 'local' }}
           # The full cron always runs while today's full refresh is missing; a late one after it is held to the interval.
           XINZHI_FULL_CRON: ${{ (github.event_name == 'schedule' && github.event.schedule == '47 20 * * *') && '1' || '' }}
           XINZHI_FAST_MIN_INTERVAL_MINUTES: ${{ vars.XINZHI_FAST_MIN_INTERVAL_MINUTES || '170' }}
           STATE_URL: https://x-access-token:${{ secrets.XINZHI_STATE_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.XINZHI_STATE_REPO || github.repository }}.git
         run: |
-          if [ "$TIMED_FAST" != 1 ]; then echo run=true >> "$GITHUB_OUTPUT"; exit 0; fi
+          SOURCE="${XINZHI_TRIGGER:-local}"
+          echo "source=${SOURCE}" >> "$GITHUB_OUTPUT"
+          summarize() {
+            if [ -z "${GITHUB_STEP_SUMMARY:-}" ]; then return 0; fi
+            {
+              echo "### 刷新门禁"
+              echo "触发来源：${SOURCE}。"
+              echo "是否执行刷新：${1}。"
+              echo "原因：${2}。"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          if [ "$TIMED_FAST" != 1 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "reason=interval_not_applied" >> "$GITHUB_OUTPUT"
+            summarize true interval_not_applied
+            exit 0
+          fi
           mkdir -p .gate
           # actions/checkout adds this repository's token as an http.extraheader for github.com, which
           # would override the token in STATE_URL; reset it for state requests only.
@@ -83,8 +106,13 @@ jobs:
             git show FETCH_HEAD:data/full-refresh-marker.json > .gate/marker.json 2>/dev/null || true
             git show FETCH_HEAD:data/timed-refresh-marker.json > .gate/timed.json 2>/dev/null || true
           fi
-          python3 scripts/fast_refresh_gate.py .gate/last.json .gate/marker.json .gate/timed.json | tee -a "$GITHUB_OUTPUT" \
-            || echo run=true >> "$GITHUB_OUTPUT"
+          gate_out=$(python3 scripts/fast_refresh_gate.py .gate/last.json .gate/marker.json .gate/timed.json || true)
+          if ! printf '%s\n' "$gate_out" | grep -q '^run='; then
+            gate_out=$(printf 'run=true\nreason=gate_unreadable')
+          fi
+          printf '%s\n' "$gate_out"
+          printf '%s\n' "$gate_out" >> "$GITHUB_OUTPUT"
+          summarize "$(printf '%s\n' "$gate_out" | sed -n 's/^run=//p' | head -n 1)" "$(printf '%s\n' "$gate_out" | sed -n 's/^reason=//p' | head -n 1)"
 
   refresh:
     # The concurrency group serialises overlapping runs, and an unchanged fast run does not deploy.
@@ -162,9 +190,10 @@ jobs:
           XINZHI_RESTORED_STATE_SHA: ${{ steps.restore_state.outputs.sha }}
           # Scheduled and manually dispatched fast runs add title, quicklook, weekly and reading top-ups; pushes stay model-free.
           XINZHI_FAST_TITLE_BATCH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '' }}
+          XINZHI_TRIGGER: ${{ github.event_name == 'schedule' && 'schedule' || github.event_name == 'push' && 'push' || github.event_name == 'workflow_dispatch' && inputs.source == 'external' && 'external' || github.event_name == 'workflow_dispatch' && 'manual' || 'local' }}
           # Timed runs (cron or the external fast dispatch) run the paid full refresh once per Beijing day.
-          XINZHI_DAILY_FULL_ONCE: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '1' || '' }}
-        run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '47 20 * * *') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast')) && '--fast' || '' }}
+          XINZHI_DAILY_FULL_ONCE: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'fast' || inputs.source == 'external'))) && '1' || '' }}
+        run: python3 scripts/ci_daily.py ${{ (github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule != '47 20 * * *') || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'fast' || inputs.source == 'external'))) && '--fast' || '' }}
 
       - uses: actions/setup-node@v4
         if: steps.refresh.outputs.deploy == 'true'
@@ -248,6 +277,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_feed_health.py'
           python3 -m unittest discover -s scripts -p 'test_source_fallbacks.py'
           python3 -m unittest discover -s scripts -p 'test_pubmed_request.py'
+          python3 -m unittest discover -s scripts -p 'test_publication_window.py'
           python3 -m unittest discover -s scripts -p 'test_sync_public_library.py'
           python3 -m unittest discover -s scripts -p 'test_apply_public_library.py'
           python3 -m unittest discover -s scripts -p 'test_publication_dates.py'

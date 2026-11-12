@@ -39,6 +39,8 @@ def refresh_argument(context):
                     return value
                 value = evaluate(child)
             return value
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            return not evaluate(node.operand)
         if isinstance(node, ast.Compare) and len(node.ops) == 1:
             left, right = evaluate(node.left), evaluate(node.comparators[0])
             if isinstance(left, str) and isinstance(right, str):
@@ -53,8 +55,8 @@ def refresh_argument(context):
 
 
 class RefreshModeTests(unittest.TestCase):
-    def select(self, event, *, schedule=None, mode=None):
-        return refresh_argument({'github': {'event_name': event, 'ref': 'refs/heads/main', 'event': {'schedule': schedule}}, 'inputs': {'mode': mode}})
+    def select(self, event, *, schedule=None, mode=None, source=None):
+        return refresh_argument({'github': {'event_name': event, 'ref': 'refs/heads/main', 'event': {'schedule': schedule}}, 'inputs': {'mode': mode, 'source': source}})
 
     def test_main_source_push_is_fast(self):
         self.assertEqual(self.select('push'), '--fast')
@@ -73,6 +75,80 @@ class RefreshModeTests(unittest.TestCase):
 
     def test_manual_default_remains_full(self):
         self.assertEqual(self.select('workflow_dispatch'), '')
+
+    def test_external_dispatch_stays_fast_even_if_mode_is_omitted(self):
+        self.assertEqual(self.select('workflow_dispatch', source='external'), '--fast')
+        self.assertEqual(self.select('workflow_dispatch', mode='full', source='external'), '--fast')
+
+
+def workflow_value(name, context):
+    """Evaluate one ``${{ ... }}`` env expression from daily.yml."""
+    match = re.search(r'^\s*' + re.escape(name) + r':\s*\$\{\{\s*(.*?)\s*\}\}\s*$', WORKFLOW.read_text(), re.MULTILINE)
+    if not match:
+        raise AssertionError(name + ' expression not found')
+    expression = ast.parse(match[1].strip().replace('&&', ' and ').replace('||', ' or ').replace('!', ' not '), mode='eval').body
+    # Reuse the refresh evaluator by evaluating through refresh_argument's nested function is not exported.
+    # The replacement above is parsed here with the same node types.
+    def evaluate(node):
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Name):
+            return context[node.id]
+        if isinstance(node, ast.Attribute):
+            target = evaluate(node.value)
+            return target.get(node.attr) if isinstance(target, dict) else None
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+            return not evaluate(node.operand)
+        if isinstance(node, ast.BoolOp):
+            value = evaluate(node.values[0])
+            for child in node.values[1:]:
+                if isinstance(node.op, ast.And) and not value:
+                    return value
+                if isinstance(node.op, ast.Or) and value:
+                    return value
+                value = evaluate(child)
+            return value
+        if isinstance(node, ast.Compare) and len(node.ops) == 1:
+            left, right = evaluate(node.left), evaluate(node.comparators[0])
+            if isinstance(node.ops[0], ast.Eq):
+                return left == right
+            if isinstance(node.ops[0], ast.NotEq):
+                return left != right
+        raise AssertionError('unsupported workflow expression: ' + type(node).__name__)
+    return evaluate(expression)
+
+
+class IntervalGateWorkflowTests(unittest.TestCase):
+    def gate(self, event, *, mode='full', force=False, source='manual'):
+        context = {'github': {'event_name': event}, 'inputs': {'mode': mode, 'force': force, 'source': source}}
+        return workflow_value('TIMED_FAST', context) == '1'
+
+    def trigger(self, event, *, source='manual'):
+        context = {'github': {'event_name': event}, 'inputs': {'source': source}}
+        return workflow_value('XINZHI_TRIGGER', context)
+
+    def test_external_and_manual_fast_share_the_interval(self):
+        import fast_refresh_gate as gate
+        cases = [
+            ('schedule', 'full', False, 'manual', True, 'schedule'),
+            ('workflow_dispatch', 'fast', False, 'manual', True, 'manual'),
+            ('workflow_dispatch', 'fast', True, 'manual', False, 'manual'),
+            ('workflow_dispatch', 'full', False, 'manual', False, 'manual'),
+            ('workflow_dispatch', 'full', True, 'external', True, 'external'),
+            ('workflow_dispatch', 'fast', False, 'external', True, 'external'),
+            ('push', 'fast', False, 'manual', False, 'push'),
+        ]
+        for event, mode, force, source, applied, trigger in cases:
+            with self.subTest(event=event, mode=mode, force=force, source=source):
+                self.assertEqual(self.gate(event, mode=mode, force=force, source=source), applied)
+                self.assertEqual(gate.interval_applies(event, mode, force, source), applied)
+                self.assertEqual(self.trigger(event, source=source), trigger)
+                self.assertEqual(gate.trigger_source(event, source), trigger)
+
+    def test_gate_step_records_the_trigger_source(self):
+        text = WORKFLOW.read_text()
+        self.assertIn('echo "source=${SOURCE}" >> "$GITHUB_OUTPUT"', text)
+        self.assertIn('触发来源：${SOURCE}。', text)
 
 
 def restore_commands():

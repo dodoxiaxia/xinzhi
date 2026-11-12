@@ -1,4 +1,9 @@
-"""Check public dispatcher readiness without reading protected credentials."""
+"""Check a deployed dispatcher URL without reading protected credentials.
+
+This is not run by site publish. The repository source in workers/cron-dispatch
+is the 2-hour daily.yml dispatcher and is not deployed by Actions. A URL that
+still answers with the previously deployed worker keeps its own version string.
+"""
 import json
 import re
 import sys
