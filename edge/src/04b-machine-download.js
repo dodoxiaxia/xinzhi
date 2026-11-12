@@ -6,13 +6,18 @@ const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 const MACHINE_ROLE_CAPS = {
-  downloader:['upload','replace','status','claim','list','requeue','abandoned','protocol'],
+  downloader:['upload','replace','status','claim','list','requeue','register','abandoned','protocol'],
   fallback:['upload','replace','status','abandon','claim','list','abandoned','protocol'],
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
 const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
 const MACHINE_REQUEUE_DAILY_DEFAULT = 200;
+const MACHINE_REGISTER_DAILY_DEFAULT = 200;
+const MACHINE_REGISTER_MAX_ITEMS = 50;
+const MACHINE_REGISTER_SECTIONS = ['MAIN','CARDIO'];
+const MACHINE_REGISTER_PREFIX = 'library:machine-register:';
+const MACHINE_REGISTER_SOURCE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 // A 409 from the first-page check carries an internal reason code and which checks passed. Never PDF text.
 class MachineIdentityFailure extends LibraryFailure {
   constructor(code, reason, checks) { super(code, 409); this.reason = reason; this.checks = checks || null; }
@@ -166,10 +171,13 @@ function machineStage(job) {
   return '';
 }
 function machineListItem(job) {
+  const registration = job.registration && typeof job.registration === 'object' ? job.registration : null;
   const state = machinePublicState(job);
   // A failure reason belongs to failed states only. A claimed or queued task must not show the failure it came from.
   return {doi:job.doi,state,reason:state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned' ? machineReason(job) : '',stage:machineStage(job),
-    claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id};
+    claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,
+    ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
+      ? {registeredSource:registration.source,section:registration.section} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
@@ -216,11 +224,13 @@ function handleMachineProtocol(request, env) {
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
-    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50},
+    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,
+      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
+    registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
     identityReasons:MACHINE_IDENTITY_REASONS,
-    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue'}});
+    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
   // Exempt from librarySoftGate (30/day site-wide and 20/IP). Only the per-token counter applies.
@@ -479,7 +489,8 @@ function machineRequeueCandidate(job) {
 }
 async function machineRequeueOne(env, job) {
   const now = Date.now(), id = crypto.randomUUID();
-  const next = {version:1,id,doi:job.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id};
+  const next = {version:1,id,doi:job.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,
+    ...(job.registration ? {registration:job.registration} : {})};
   await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:job.doi,id}), {expirationTtl:604800});
   await musePut(env, next);
   if (job.queueKey && job.queueKey !== next.queueKey) await museDelete(env, job.queueKey);
@@ -516,5 +527,88 @@ async function handleMachineRequeue(request, env) {
     if (walk.cursor) truncated = true;
     if (!dryRun) await machineConsume(env, caller, 'requeue', requeued.length);
     return json({ok:true,dryRun,limit,requeued,skippedPaused,truncated});
+  } catch (error) { return machineError(error); }
+}
+
+function machineRegisterItem(raw) {
+  // Returns {doi,title,source,section} or {error}. Never throws: a bad item is reported, the rest of the batch continues.
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {error:'bad_item'};
+  if (Object.keys(raw).some(key => !['doi','title','source','section'].includes(key))) return {error:'bad_item'};
+  const doi = libraryDoi(raw.doi);
+  if (!doi) return {error:'bad_doi'};
+  const title = typeof raw.title === 'string' ? libraryText(raw.title) : '';
+  // Upload identity check needs at least five normalized characters of title, otherwise the paper could never be uploaded.
+  if (!title || machineNormalize(title).length < 5) return {doi,error:'bad_title'};
+  if (typeof raw.source !== 'string' || !MACHINE_REGISTER_SOURCE.test(raw.source)) return {doi,error:'bad_source'};
+  if (typeof raw.section !== 'string' || !MACHINE_REGISTER_SECTIONS.includes(raw.section)) return {doi,error:'bad_section'};
+  return {doi,title,source:raw.source,section:raw.section};
+}
+async function machineRegisterExisting(env, doi) {
+  // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
+  const raw = await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi);
+  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown'}; }
+  const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
+  if (record) { const paper = libraryPaper(record, doi); return {where:'paper',state:paper && paper.fulltextStatus === 'available' ? 'done' : 'no-task'}; }
+  if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
+  return null;
+}
+async function machineRegisterOne(env, caller, item) {
+  const now = Date.now(), id = crypto.randomUUID();
+  const registration = {source:item.source,section:item.section};
+  const job = {version:1,id,doi:item.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,registration};
+  const paper = {id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),doi:item.doi,title:item.title,journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',
+    ingestedAt:new Date(now).toISOString(),metadataStatus:'external_bibliography_checked',fulltextStatus:'manual_needed'};
+  // Same order as a site-owner selection: paper record, job, queue pointer. A half-written DOI would later look
+  // like "already exists" and never enter the queue, so a failure removes what this call wrote.
+  try {
+    await librarySave(env.QL_KV, paper, null, 'library_manual_needed');
+    await musePut(env, job);
+    await libraryPut(env.QL_KV, job.queueKey, JSON.stringify({doi:item.doi,id}), {expirationTtl:604800});
+    await libraryPut(env.QL_KV, MACHINE_REGISTER_PREFIX + item.doi, JSON.stringify({version:1,doi:item.doi,title:item.title,source:item.source,section:item.section,registeredBy:caller.id,registeredAt:now,taskId:id}));
+  } catch (error) {
+    for (const key of [MUSE_JOB_PREFIX + item.doi, job.queueKey, MACHINE_REGISTER_PREFIX + item.doi, LIBRARY_PREFIX + item.doi, 'library:attempt:' + item.doi]) {
+      try { await env.QL_KV.delete(key); } catch {}
+    }
+    libraryCatalogCache.clear();
+    throw error;
+  }
+  // KV is not atomic: if another writer created the ledger entry first, report skipped and leave their record alone.
+  const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + item.doi), item.doi);
+  return observed && observed.id === id;
+}
+async function handleMachineRegister(request, env) {
+  // Exempt from librarySoftGate. Only a downloader may register; the daily budget counts newly registered DOIs per caller.
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    const caller = await machineAuthorize(request, env, 'register');
+    // Another full-text owner (Grok bot or the GitHub queue) must not get a second queue that nobody would work off.
+    if (env.GROK_FULLTEXT_ENABLED === 'true' || env.FULLTEXT_ASYNC_ENABLED === 'true') libraryFail('muse_owner_conflict', 409);
+    const input = await fulltextReadJson(request, 262144, 'machine_bad_request');
+    if (Object.keys(input).some(key => key !== 'items') || !Array.isArray(input.items) || !input.items.length) libraryFail('machine_bad_request', 400);
+    if (input.items.length > MACHINE_REGISTER_MAX_ITEMS) libraryFail('machine_batch_too_large', 400);
+    const limit = machineLimit(env, 'MACHINE_REGISTER_DAILY_LIMIT', MACHINE_REGISTER_DAILY_DEFAULT);
+    const usedBefore = await libraryGet(env.QL_KV, machineRateKey(caller, 'register'));
+    const used = Number.isInteger(usedBefore) && usedBefore >= 0 ? usedBefore : 0;
+    const results = [], seen = new Set();
+    let registered = 0, failure = null;
+    try {
+      for (const raw of input.items) {
+        const item = machineRegisterItem(raw);
+        if (item.error) { results.push({doi:item.doi || null,result:'rejected',error:item.error}); continue; }
+        if (seen.has(item.doi)) { results.push({doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}); continue; }
+        seen.add(item.doi);
+        const existing = await machineRegisterExisting(env, item.doi);
+        if (existing) { results.push({doi:item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where}); continue; }
+        if (used + registered >= limit) { results.push({doi:item.doi,result:'over_quota'}); continue; }
+        if (await machineRegisterOne(env, caller, item)) { registered++; results.push({doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}); }
+        else results.push({doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'});
+      }
+    } catch (error) { failure = error; }
+    // Count what really got written, even when a later item failed; a retry then sees those DOIs as skipped.
+    await machineConsume(env, caller, 'register', registered);
+    if (failure) throw failure;
+    const count = name => results.filter(entry => entry.result === name).length;
+    return json({ok:true,counts:{registered,skipped:count('skipped'),overQuota:count('over_quota'),rejected:count('rejected')},results,
+      quota:{limit,used:used + registered,remaining:Math.max(0, limit - used - registered),resetsAt:new Date(Date.parse(new Date().toISOString().slice(0, 10)) + 86400000).toISOString()}});
   } catch (error) { return machineError(error); }
 }
