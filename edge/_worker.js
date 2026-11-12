@@ -812,6 +812,20 @@ async function libraryGithub(paper, env, context) {
   return { bytes, source:incremental ? 'github_delta' : 'github', commit };
   } catch (error) { throw pdfAttachDiagnostic(error,diagnostic); }
 }
+// Open-access bytes that will enter the Muse quarantine are checked against the expected DOI and title first.
+// A wrong paper (for example a preprint of the same work) drops that source; the caller falls back to the queue.
+async function libraryOaIdentityOk(paper, bytes, candidate, context) {
+  const guard = context.oaIdentity;
+  if (!guard) return true;
+  let result;
+  try { result = await machineIdentity(bytes, paper.doi, paper.title); }
+  catch { result = { verdict:'invalid', reason:'identity_check_error' }; }
+  if (result.verdict === 'ok') { guard.level = result.level; return true; }
+  let label = '';
+  try { const url = new URL(candidate); label = (url.origin + url.pathname).slice(0, 200); } catch { label = ''; }
+  if (guard.rejected.length < 3) guard.rejected.push({ source:label, reason:typeof result.reason === 'string' ? result.reason : result.verdict, at:Date.now() });
+  return false;
+}
 async function libraryOa(paper, context) {
   let review = false, unavailable = false, retryAfter = 0, diagnostic = null;
   if (context.metadataOnly) return { review, unavailable, retryAfter, diagnostic };
@@ -829,6 +843,7 @@ async function libraryOa(paper, context) {
         const bytes = await libraryRead(candidate, context, true);
         if (bytes.length < 50 * 1024) libraryFail('library_identity', 409);
         libraryValidatePdf(bytes);
+        if (!(await libraryOaIdentityOk(paper, bytes, candidate, context))) continue;
         return { bytes, source:'crossref' };
       } catch (error) {
         diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic;
@@ -856,7 +871,7 @@ async function libraryOa(paper, context) {
       } catch (error) { diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic; if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
     }
     for (const candidate of candidates.splice(0)) {
-      try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); return { bytes, source:'oa' }; }
+      try { const bytes = await libraryRead(candidate, context, true); libraryValidatePdf(bytes); if (!(await libraryOaIdentityOk(paper, bytes, candidate, context))) continue; return { bytes, source:'oa' }; }
       catch (error) { diagnostic = sanitizePdfDiagnostic(pdfAttachDiagnostic(error,context.diagnostic).diagnostic) || diagnostic; if (context.signal.aborted || error.code === 'library_paused') throw error; review = review || error.code === 'library_identity'; unavailable = unavailable || ['library_upstream','library_timeout'].includes(error.code); retryAfter = Math.max(retryAfter, error.retryAfter || 0); }
     }
   }
@@ -1615,12 +1630,12 @@ async function handleMuseRetry(request, env) {
     if (!current) libraryFail('library_not_found',404);
     if (!museRecoverable(current)) return museResponse(request,current,paper);
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(),25000);
-    let open = null;
-    try { const context = {signal:controller.signal}; open = await museOpenAccess(await libraryMetadata(doi,context),context); }
+    let open = null; const oaRejected = [];
+    try { const context = {signal:controller.signal}; open = await museOpenAccess(await libraryMetadata(doi,context),context,oaRejected); }
     catch { open = null; } finally { clearTimeout(timer); }
     if (open) return museResponse(request,await museIntake(env,doi,open,'open_access',current),paper);
     const now = Date.now(), id = crypto.randomUUID();
-    const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id};
+    const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,...(oaRejected.length ? {oaRejected} : {})};
     // An orphan pointer is discarded by claim; it never resurrects the old lease.
     await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
     await musePut(env,job);
@@ -1673,9 +1688,12 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
 // ==== edge/src/04-fulltext-upload.js · Open-access copy, reader/Muse uploads, /api/fulltext ====
 // An open-access copy registered for this DOI needs no institutional login, so try it before
 // waiting on Muse. Any failure (blocked source, timeout, wrong file) just falls back to the queue.
-async function museOpenAccess(paper, context) {
+async function museOpenAccess(paper, context, rejected = []) {
+  // Wrong-paper copies (a preprint, another article) are dropped here and listed in `rejected`; the caller queues for download instead.
   try {
-    const found = await libraryOa(paper,context);
+    const guard = { rejected:[], level:'' };
+    const found = await libraryOa(paper,{...context,oaIdentity:guard});
+    rejected.push(...guard.rejected);
     return found.bytes && found.bytes.length >= 51200 ? found.bytes : null;
   } catch { return null; }
 }
@@ -1768,13 +1786,13 @@ async function handleMuseRequest(request, env) {
       const current = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
       if (current) return museResponse(request,current,metadata);
       await museOwnerGuard(env,doi);
-      const open = await museOpenAccess(metadata,context);
+      const oaRejected = [], open = await museOpenAccess(metadata,context,oaRejected);
       if (open) {
         await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
         return museResponse(request,await museIntake(env,doi,open,'open_access',null),metadata);
       }
       const now = Date.now(), id = crypto.randomUUID();
-      const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id};
+      const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,...(oaRejected.length ? {oaRejected} : {})};
       await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
       await musePut(env,job);
       await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
@@ -2849,12 +2867,18 @@ function machineStage(job) {
   if (job.state === 'login_required' || job.reason === 'han_login' || job.reason === 'han_quota') return 'han';
   return '';
 }
+// Open-access sources the site dropped because the file was the wrong paper: only a public URL without query, and a reason code.
+function machineOaRejected(job) {
+  if (!Array.isArray(job.oaRejected)) return [];
+  return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch'}));
+}
 function machineListItem(job) {
   const registration = job.registration && typeof job.registration === 'object' ? job.registration : null;
   const state = machinePublicState(job);
   // A failure reason belongs to failed states only. A claimed or queued task must not show the failure it came from.
   return {doi:job.doi,state,reason:state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned' ? machineReason(job) : '',stage:machineStage(job),
     claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,
+    ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
 }
@@ -3135,6 +3159,8 @@ async function machineClaimFailed(env, caller) {
     const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
     if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}); return false; }
     if (paper && paper.fulltextStatus === 'review') return false;
+    // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
+    if (job.state === 'review') return false;
     await museOwnerGuard(env, doi);
     const now = Date.now();
     // The failure that made this task claimable is history, not the state of the new lease.

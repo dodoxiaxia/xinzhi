@@ -396,10 +396,12 @@ async function review(h, body) {
   assert.equal(failedList.tasks[0].doi, doi);
   assert.equal(failedList.tasks[0].reason, 'identity_mismatch');
   assert.equal(failedList.tasks[0].state, 'failed-awaiting-fallback');
+  // A task whose PDF failed verification keeps its candidate and reason: a fallback claim must not take it or overwrite it.
+  const before = h.values.get('library:muse-job:' + doi);
   const picked = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
-  assert.equal(picked.task.doi, doi);
-  assert.equal(picked.task.claimant, 'fallback');
-  assert.equal(stored(h, 'library:muse-job:' + doi).state, 'running');
+  assert.equal(picked.task, null);
+  assert.equal(h.values.get('library:muse-job:' + doi), before);
+  assert.equal(stored(h, 'library:muse-job:' + doi).state, 'review');
 
   const doneDoi = '10.1000/done';
   seedPaper(h, doneDoi);

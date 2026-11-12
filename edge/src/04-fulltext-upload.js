@@ -1,9 +1,12 @@
 // ==== edge/src/04-fulltext-upload.js · Open-access copy, reader/Muse uploads, /api/fulltext ====
 // An open-access copy registered for this DOI needs no institutional login, so try it before
 // waiting on Muse. Any failure (blocked source, timeout, wrong file) just falls back to the queue.
-async function museOpenAccess(paper, context) {
+async function museOpenAccess(paper, context, rejected = []) {
+  // Wrong-paper copies (a preprint, another article) are dropped here and listed in `rejected`; the caller queues for download instead.
   try {
-    const found = await libraryOa(paper,context);
+    const guard = { rejected:[], level:'' };
+    const found = await libraryOa(paper,{...context,oaIdentity:guard});
+    rejected.push(...guard.rejected);
     return found.bytes && found.bytes.length >= 51200 ? found.bytes : null;
   } catch { return null; }
 }
@@ -96,13 +99,13 @@ async function handleMuseRequest(request, env) {
       const current = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi);
       if (current) return museResponse(request,current,metadata);
       await museOwnerGuard(env,doi);
-      const open = await museOpenAccess(metadata,context);
+      const oaRejected = [], open = await museOpenAccess(metadata,context,oaRejected);
       if (open) {
         await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
         return museResponse(request,await museIntake(env,doi,open,'open_access',null),metadata);
       }
       const now = Date.now(), id = crypto.randomUUID();
-      const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id};
+      const job = {version:1,id,doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,...(oaRejected.length ? {oaRejected} : {})};
       await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
       await musePut(env,job);
       await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
