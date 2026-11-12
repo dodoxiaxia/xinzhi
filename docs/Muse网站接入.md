@@ -173,3 +173,15 @@ Cloudflare Workers 只接受 `redirect:"manual"` 或 `"follow"`。请求使用 `
 `editorial/fulltext-imports.json` 固定原 GitHub commit、DOI、校验值；独立导入工作流重新读取该 commit 母索引和真实 PDF/LFS 对象，并在网站缓存回读成功后确认。不会调 Muse、OA、出版社或 GitHub/Drive 写接口。
 
 Muse「Muse 文献收件箱」是私有收件箱，不是正式 Drive「mac文献-三端同步」。网站可下载只说明网站缓存核验成功；不等于原 20 列母索引、Macmini、GitHub、正式 Drive 全部归档。所有 API 保持 `archive.complete:false`；Muse 的 Drive 上传仅记为 `reported`。正式三端工作继续按原归档所有者与核验流程执行，本接入不删除文件、不切换归档所有者、不新增原库下载消费者。
+
+## 2026-11-12 任务页与任务 JSON 的状态字段
+
+读者看到的全文任务只有三步：**排队下载 → 已收到，核验中 → 可阅读**；出错时停在失败那一步（未能获取 / 核验未通过）。任务页（`/api/muse/request?doi=…` 的 HTML）每个状态只有一句话、一个预计时间和一个主按钮；失败原因代码、状态机内部值和「最近更新」包在 `<!--han-->` 块里，非维护者模式的响应里由 Worker 剥掉。页面不再让读者「回到网站搜索」。
+
+任务 JSON（`/api/library?doi=`、`/api/muse/request` 的 `job`）新增三个字段，原有字段不变：
+
+- `verificationMode`：核验中才有。`immediate` 表示 Worker 配置了 `MUSE_REVIEW_DISPATCH_TOKEN` 且收到不足 10 分钟，预计几分钟内；`hourly` 表示即时触发没有配置或没赶上，要等每小时批次（GitHub 定时任务实测常晚到 5–9 小时）。
+- `verificationExpectedAt`：仅 `immediate` 时有，收到时间加 3 分钟的 ISO 时间。
+- `sourceKind`：`reader_upload`、`open_access` 或 `download`（下载端或机器上传），不暴露具体调用方名称。
+
+页面上的「预计」不是承诺：超过 10 分钟没核验完，就改成「已排入每小时批次」的说法。

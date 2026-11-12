@@ -435,7 +435,7 @@ async function review(h, body) {
   const stopped = await h.context.worker.fetch(new Request(base + '/api/muse/receipt', {method:'POST',headers:authHeaders(museKey),body:JSON.stringify({doi:claimed.doi,taskId:claimed.taskId,leaseId:claimed.leaseId,state:'failed'})}), h.env);
   assert.equal(stopped.status, 200);
   const statusHtml = await (await h.request('/api/muse/request', {method:'GET',headers:{accept:'text/html'}})).text();
-  assert(statusHtml.includes('把任务放回下载队列'));
+  assert(statusHtml.includes('重新获取全文') && statusHtml.includes('/api/muse/retry?doi='), 'a stopped task offers the one re-queue action');
   assert(!statusHtml.includes('恢复这个任务'));
   const retryHtml = await (await h.request('/api/muse/retry', {method:'GET',headers:{accept:'text/html'}})).text();
   assert(retryHtml.includes('放回下载队列'));

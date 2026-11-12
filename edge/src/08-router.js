@@ -8,6 +8,7 @@ export default {
 
 async function routeRequest(request, env) {
     const url = new URL(request.url);
+    museReviewInstant = museReviewConfigured(env);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
