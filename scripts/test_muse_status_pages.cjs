@@ -38,10 +38,10 @@ const html = async response => { assert(response.headers.get('content-type').sta
 
   const verifying = job({state:'verifying',source:'reader_upload',leaseId:lease,leaseUntil:now,receivedAt:now - 30000,sha256:'a'.repeat(64),bytes:60000,candidateKey:'library:muse-candidate:' + 'a'.repeat(64)});
   const hourly = await html(ctx.museResponse(request,verifying,paper));
-  assert(hourly.includes('已收到你上传的 PDF，正在核验') && hourly.includes('已排入每小时批次')); assert.equal(primaries(hourly),1); assert.equal((hourly.match(/role="status"/g) || []).length,1); noLoop(hourly,'verifying hourly');
+  assert(hourly.includes('已收到你上传的 PDF，正在核验') && hourly.includes('等待下一轮核验')); assert.equal(primaries(hourly),1); assert.equal((hourly.match(/role="status"/g) || []).length,1); noLoop(hourly,'verifying hourly');
   require('vm').runInContext('museReviewInstant = true',ctx);
   const instant = await html(ctx.museResponse(request,verifying,paper));
-  assert(instant.includes('预计几分钟内完成')); assert(!instant.includes('已排入每小时批次')); assert.equal(primaries(instant),1);
+  assert(instant.includes('核验通常几分钟内完成')); assert(!instant.includes('等待下一轮核验')); assert.equal(primaries(instant),1);
   assert.equal(ctx.musePublicJob(verifying).verificationMode,'immediate');
   const late = {...verifying,receivedAt:now - 700000};
   assert.equal(ctx.musePublicJob(late).verificationMode,'hourly','after ten minutes the task is honestly described as waiting for the hourly batch');

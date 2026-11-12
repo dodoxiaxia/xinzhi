@@ -11,7 +11,7 @@ const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
     + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
-    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等每小时批次，GitHub 常晚到数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
+    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
     + pdfOfficialLink(doi),notice ? 403 : 200,'上传全文 PDF',doi);

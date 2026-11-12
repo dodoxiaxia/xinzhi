@@ -1582,7 +1582,7 @@ function museResponse(request, job, paper) {
   const secondary = view.secondaryUpload ? '<p class="hint">手里已有这篇的 PDF？<a href="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(job.doi)) + '">直接上传</a>，不必等下载队列。</p>' : '';
   // Maintainer-only detail: hideInstitutionLinks removes this block unless the browser is in maintainer mode.
   const maintainer = HAN_BLOCK_START + '<p class="maint">维护者信息：状态 ' + pdfEscape(job.state) + (publicJob.reason ? '，原因 ' + pdfEscape(publicJob.reason) : '') + '，最近更新北京时间 '
-    + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + (publicJob.nextVerificationAt ? '，下一批定时核验北京时间 ' + new Date(Date.parse(publicJob.nextVerificationAt) + 28800000).toISOString().slice(11,16) : '') + '。</p>' + HAN_BLOCK_END;
+    + new Date(job.updatedAt + 28800000).toISOString().slice(0,19).replace('T',' ') + '。</p>' + HAN_BLOCK_END;
   return pdfHtml(check + (paper?.title ? '<p class="paper-title">' + pdfEscape(paper.title) + '</p>' : '') + '<ol class="steps">' + steps + '</ol>'
     + '<p role="status" class="status"><b>' + pdfEscape(view.headline) + '</b>' + (view.eta ? '<br>' + pdfEscape(view.eta) : '') + '</p>'
     + action + secondary + maintainer
@@ -1590,7 +1590,6 @@ function museResponse(request, job, paper) {
     + pdfOfficialLink(job.doi),job.state === 'available' ? 200 : 202,'全文任务',job.doi);
 }
 const MUSE_TASK_STEPS = ['排队下载','已收到，核验中','可阅读'];
-function museBeijingClock(iso) { return new Date(Date.parse(iso) + 28800000).toISOString().slice(11,16); }
 // One status description per task, shared by the task page; the website script mirrors it so the card and this page never disagree.
 function museTaskView(job, publicJob) {
   const recoverable = museRecoverable(job);
@@ -1601,8 +1600,8 @@ function museTaskView(job, publicJob) {
   if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未能获取',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
   if (recoverable) return {step:0,stopped:true,stopLabel:'未能获取',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
-    eta:publicJob.verificationMode === 'immediate' ? '预计几分钟内完成（北京时间 ' + museBeijingClock(publicJob.verificationExpectedAt) + ' 前后）。'
-      : '即时核验没有赶上，已排入每小时批次（下一批计划北京时间 ' + museBeijingClock(publicJob.nextVerificationAt) + '），GitHub 的定时任务常晚到数小时。',action:'refresh'};
+    eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
+      : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};
   if (job.state === 'queued') return {step:0,stopped:false,headline:'已排入下载队列，等待下载端领取。',eta:'预计数小时内，不保证即时。',action:'refresh',secondaryUpload:true};
   return {step:0,stopped:false,headline:'下载端已领取，正在获取全文。',eta:'通常几十分钟内；取得后会自动进入核验。',action:'refresh',secondaryUpload:true};
 }
@@ -1709,7 +1708,7 @@ const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
     + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
-    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等每小时批次，GitHub 常晚到数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
+    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
     + pdfOfficialLink(doi),notice ? 403 : 200,'上传全文 PDF',doi);
