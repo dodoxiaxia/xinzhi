@@ -42,6 +42,7 @@
     weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
     weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
     sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
+    ftFilter: ['ready', 'verifying', 'queued', 'failed'].includes(urlParams.get('ft')) ? urlParams.get('ft') : '',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,

@@ -41,7 +41,7 @@
     state.search = '';
     clearSidebarFilters();
     state.range = defaultRange(state.mode);
-    state.lane = 'core'; state.reading=''; state.favoritesOnly=false; state.minor=false;
+    state.lane = 'core'; state.reading=''; state.favoritesOnly=false; state.minor=false; state.ftFilter='';
     state.page = 1;
     const sInput = $('#globalSearch');
     if (sInput) sInput.value = '';
@@ -226,6 +226,14 @@
     }
     const mb = e.target.closest('[data-minor]');
     if (mb) { state.minor = !state.minor; state.page = 1; renderSidebarFilters(); renderStream(); return; }
+    const ftBtn = e.target.closest('[data-ft-filter]');
+    if (ftBtn) {
+      state.ftFilter = ftBtn.dataset.ftFilter || '';
+      state.page = 1;
+      renderSidebarFilters();
+      renderStream();
+      return;
+    }
     const b = e.target.closest('[data-range]');
     if (!b) return;
     state.range = b.dataset.range;
@@ -376,6 +384,7 @@
       if (type === 'tag') state.tag = '';
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
+      if (type === 'ft') state.ftFilter = '';
       state.page = 1;
       refreshFilterResults(clearBtn);
       return;

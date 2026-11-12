@@ -109,6 +109,31 @@
     el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
       `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
   }
+  const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得']];
+  function fulltextFilterBucket(p) {
+    const view = fulltextView(p);
+    if (!view || view.kind === 'none') return '';
+    if (view.kind === 'ready') return 'ready';
+    if (view.kind === 'verifying') return 'verifying';
+    if (view.kind === 'queued' || view.kind === 'running') return 'queued';
+    return 'failed';
+  }
+  function renderFtBar() {
+    const el = $('#ftBar');
+    if (!el) return;
+    if (state.mode !== 'library' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
+    const counts = { '': 0, ready: 0, verifying: 0, queued: 0, failed: 0 };
+    for (const p of getCurrentDataset()) {
+      if (!matchesFilters(p, false, 'ft')) continue;
+      counts['']++;
+      const bucket = fulltextFilterBucket(p);
+      if (bucket) counts[bucket]++;
+    }
+    const active = state.ftFilter || '';
+    el.hidden = false;
+    el.innerHTML = '<span class="range-label">全文</span>' + FT_FILTERS.map(([v, n]) =>
+      `<button type="button" class="lane-chip${active === v ? ' active' : ''}" data-ft-filter="${v}" aria-pressed="${active === v}">${n} <small>${counts[v]}</small></button>`).join('');
+  }
   function renderLaneBar() {
     const el = $('#laneBar');
     if (!el) return;
@@ -229,9 +254,10 @@
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
       set('sf', state.mode === 'sources' ? state.sourceFilter : '', '');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
+      set('ft', state.mode === 'library' ? state.ftFilter : '', '');
       u.searchParams.delete('maintainer');
       const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
-        || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
+        || state.ftFilter || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
       history.replaceState(history.state, '', u.pathname + (u.search || '') + u.hash);
@@ -360,6 +386,7 @@
     if (!matchesSidebarFilters(p, skip)) return false;
     if (lane && state.reading==='abstract' && !hasAbstract(p)) return false;
     if (lane && state.reading==='quicklook' && (!quicklookOf(p) || p.hasDraft)) return false;
+    if (state.mode === 'library' && skip !== 'ft' && state.ftFilter && fulltextFilterBucket(p) !== state.ftFilter) return false;
     return matchesQuery(p);
   }
   // Bit set of the sidebar groups a paper fails, so facet counts need one pass, not one per group.
@@ -669,6 +696,10 @@
     }
     if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
+    if (state.mode === 'library' && state.ftFilter) {
+      const label = { ready: '可阅读', verifying: '核验中', queued: '排队下载', failed: '未取得' }[state.ftFilter];
+      chips += '<span class="filter-badge-active">全文: ' + label + ' <button type="button" class="filter-badge-remove" data-clear="ft" aria-label="清除全文状态筛选">&times;</button></span>';
+    }
 
     container.innerHTML = chips;
   }
