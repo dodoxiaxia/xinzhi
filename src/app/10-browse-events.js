@@ -161,6 +161,8 @@
   });
 
   document.addEventListener('click', e => {
+    const retryShard = e.target.closest('[data-action="retry-reading-shard"]');
+    if (retryShard) { openDeepReading(retryShard.dataset.readingId, { push: false }); return; }
     const deepOpen = e.target.closest('[data-action="open-deep-reading"]');
     if (deepOpen) { openDeepReading(deepOpen.dataset.readingId); return; }
     if (e.target.closest('[data-action="more-daily-readings"]')) {

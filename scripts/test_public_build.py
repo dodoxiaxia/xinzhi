@@ -1,4 +1,4 @@
-import contextlib,io,json,tempfile,unittest
+import contextlib,io,json,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 import build_public as b
@@ -184,4 +184,73 @@ class PublicBuildTests(unittest.TestCase):
      (r/'editorial/legacy_published_guides.json').write_text(text)
      with patch.object(b,'ROOT',r),self.assertRaisesRegex(ValueError,'registry is missing or invalid'):
       b.make_archive([{'doi':draft['doi'],'title':'Old paper'}],[])
+ def test_asset_size_guard_warns_at_70_percent_and_stops_at_90(self):
+  limit=1000
+  thresholds={'limitBytes':limit,'warnRatio':0.70,'failRatio':0.90}
+  self.assertEqual(b.asset_size_findings({'a.js':b'x'*699},thresholds),[])
+  warned=b.asset_size_findings({'a.js':b'x'*700},thresholds)
+  self.assertEqual(len(warned),1)
+  self.assertIn('700',warned[0]);self.assertIn('70%',warned[0])
+  self.assertEqual(len(b.asset_size_findings({'a.js':b'x'*899},thresholds)),1)
+  with self.assertRaisesRegex(ValueError,'构建停止'):
+   b.asset_size_findings({'public.js':b'x'*900,'ok.js':b'x'},thresholds)
+  with self.assertRaisesRegex(ValueError,'体积阈值无效'):
+   b.asset_thresholds({'XINZHI_ASSET_LIMIT_BYTES':'0','XINZHI_ASSET_WARN_RATIO':'0.7','XINZHI_ASSET_FAIL_RATIO':'0.9'})
+  with self.assertRaisesRegex(ValueError,'体积阈值无效'):
+   b.asset_thresholds({'XINZHI_ASSET_WARN_RATIO':'0.95','XINZHI_ASSET_FAIL_RATIO':'0.9'})
+  custom=b.asset_thresholds({'XINZHI_ASSET_LIMIT_BYTES':'500','XINZHI_ASSET_WARN_RATIO':'0.5','XINZHI_ASSET_FAIL_RATIO':'0.8'})
+  self.assertEqual(custom,{'limitBytes':500,'warnRatio':0.5,'failRatio':0.8})
+ def test_reading_shards_keep_a_stable_hash_until_that_month_changes(self):
+  def item(pmcid,month,text):
+   return {'pmcid':pmcid,'publishedOn':month+'-02','title':'T','titleZh':'题','sections':{'question':{'text':text,'evidence':[]}}}
+  base={'schemaVersion':1,'status':{'state':'complete'},'items':[item('PMC1','2026-11','十一月正文'),item('PMC2','2026-10','十月正文')]}
+  index,shards=b.split_deep_readings(base)
+  self.assertTrue(all('sections' not in row for row in index['items']))
+  self.assertEqual(set(index['shards']),{'2026-10','2026-11'})
+  self.assertEqual(b.split_deep_readings(base)[1],shards)
+  changed=json.loads(json.dumps(base));changed['items'][0]['sections']['question']['text']='十一月正文已改'
+  index2,shards2=b.split_deep_readings(changed)
+  self.assertEqual(index2['shards']['2026-10'],index['shards']['2026-10'])
+  self.assertNotEqual(index2['shards']['2026-11'],index['shards']['2026-11'])
+  self.assertIn('十月正文',shards[index['shards']['2026-10']].decode())
+  self.assertNotIn('十月正文',json.dumps(index,ensure_ascii=False))
+  with self.assertRaisesRegex(ValueError,'重复'):
+   b.split_deep_readings({'items':[item('PMC1','2026-11','a'),item('PMC1','2026-10','b')]})
+ def test_build_publishes_hashed_reading_shards_and_drops_stale_ones(self):
+  with tempfile.TemporaryDirectory() as d:
+   from test_release_build import synthetic_root
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir();(dest/'shards').mkdir()
+   stale=dest/'shards'/'readings-2026-09.aaaaaaaaaaaa.js';stale.write_text('old')
+   readings={'schemaVersion':1,'status':{'state':'complete'},'items':[
+    {'pmcid':'PMC111','publishedOn':'2026-11-12','title':'November','titleZh':'十一月题名','humanReviewed':False,'scope':'public-fulltext-body','sections':{'question':{'text':'十一月正文只在分片里','evidence':[]}}},
+    {'pmcid':'PMC222','publishedOn':'2026-10-03','title':'October','titleZh':'十月题名','humanReviewed':False,'scope':'public-fulltext-body','sections':{'question':{'text':'十月正文只在分片里','evidence':[]}}}]}
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),patch.object(b,'public_readings',return_value=readings),contextlib.redirect_stdout(io.StringIO()):
+    b.main()
+   self.assertFalse(stale.exists())
+   text=(dest/'public.js').read_text()
+   self.assertNotIn('只在分片',text)
+   shard_files=list((dest/'shards').glob('readings-*.js'))
+   self.assertEqual(len(shard_files),2)
+   manifest=json.loads((root/'docs'/'public-manifest.json').read_text())
+   paths={row['path']:row['bytes'] for row in manifest['files']}
+   self.assertEqual(paths['public.js'],(dest/'public.js').stat().st_size)
+   for shard in shard_files:
+    rel='shards/'+shard.name
+    self.assertEqual(paths[rel],shard.stat().st_size)
+    self.assertIn(rel,text)
+    self.assertIn('只在分片',shard.read_text())
+   self.assertEqual(manifest['assetLimit']['limitBytes'],b.ASSET_LIMIT_BYTES)
+   self.assertEqual(manifest['assetLimit']['warnRatio'],0.70)
+   self.assertEqual(manifest['assetLimit']['failRatio'],0.90)
+   self.assertEqual(manifest['assetLimit']['warnings'],[])
+   self.assertIn('/shards/*',(dest/'_headers').read_text())
+ def test_oversized_asset_stops_before_replacing_public_files(self):
+  with tempfile.TemporaryDirectory() as d:
+   from test_release_build import synthetic_root
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir()
+   (dest/'public.js').write_text('// previous published bytes')
+   env={'XINZHI_ASSET_LIMIT_BYTES':'100','XINZHI_ASSET_WARN_RATIO':'0.70','XINZHI_ASSET_FAIL_RATIO':'0.90'}
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),patch.dict(os.environ,env),self.assertRaisesRegex(ValueError,'构建停止'):
+    b.main()
+   self.assertEqual((dest/'public.js').read_text(),'// previous published bytes')
 if __name__=='__main__':unittest.main()

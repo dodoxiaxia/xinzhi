@@ -18,8 +18,9 @@ scripts/ci_daily.py 依次运行：
   generate_quicklooks.py（AI 速览）、week_precompute.py（近7天榜预生成）、daily_fulltext.py（AI 全文精读）
         │
         ▼
-scripts/build_public.py  →  public/ 9 个公开文件
+scripts/build_public.py  →  public/ 9 个固定文件，外加按月的全文精读分片
   index.html  public.js  radar.js  feed.xml  style.css  icon.png  demo-reading.html  _headers  _worker.js
+  shards/readings-年-月.内容哈希.js   （打开某月精读时才加载）
         │  发布前离线测试（daily.yml 中的 node/unittest 列表）
         ▼
 wrangler pages deploy public → Cloudflare Pages（dryz-xinzhi）
@@ -35,7 +36,8 @@ scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ �
   - **一次性迁移**：私有仓库还没有 `state` 时，`daily.yml` 的恢复步骤会先把本仓库的 `state` 复制过去；首次成功运行后可删除本仓库的 `state` 分支。
   - 本仓库仍是公开的：不要往 `data/` 以外的地方写不能公开的内容；在完成迁移前，`data/` 也要按公开对待。
 - **API**：`edge/_worker.js` 由构建复制为 `public/_worker.js`，在 Pages 上提供 `/api/*`：AI 速览/翻译/综述/研究结构（`/api/ql`、`/api/ai`）、DOI 查重与补录、PDF 下载、全文任务、Muse/Grok 回传。存储用 KV `QL_KV`。配置项名称（不含值）见 [docs/AI解读部署说明.md](docs/AI解读部署说明.md)、[docs/PDF下载接入.md](docs/PDF下载接入.md)、[docs/网站配置与外部状态清单.md](docs/网站配置与外部状态清单.md)。
-- **前端**：`index.html` + `app.js` + `citation-export.js` + `journal-metrics.js` + `style.css`；构建时把数据和脚本打包进 `public.js`。365 天雷达题录单独放在 `radar.js`，按需加载。
+- **前端**：`index.html` + `app.js` + `citation-export.js` + `journal-metrics.js` + `style.css`；构建时把数据和脚本打包进 `public.js`。365 天雷达题录单独放在 `radar.js`，按需加载。AI 全文精读的目录留在 `public.js`，正文按发表月份放到 `shards/readings-年-月.内容哈希.js`，打开该月精读时才请求。分片文件名带内容哈希，某月正文没变就不会换地址。
+- **体积**：构建检查每个公开文件。单文件上限 25 MiB（26,214,400 字节，可用 `XINZHI_ASSET_LIMIT_BYTES` 改）。达到 70% 在构建日志里警告（`XINZHI_ASSET_WARN_RATIO`），达到 90% 停止构建且不替换已有公开文件（`XINZHI_ASSET_FAIL_RATIO`）。各文件字节数写入 `docs/public-manifest.json` 的 `files`，并在 `docs/last-refresh.json` 的 `publicFiles` 里再记一份。
 - **四个栏目**（URL 参数 `mode`）：
 
   | 栏目 | `mode` | 内容 |
@@ -93,7 +95,7 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 - **PDF 下载口令**只存在于 Cloudflare Secret `PDF_DOWNLOAD_PASSPHRASE`。代码、测试、文档、提交信息里都不写口令值；测试用明显的假值。其他凭据（`LLM_API_KEY`、`GITHUB_LIBRARY_TOKEN`、GitHub Actions 的 `XINZHI_LLM_API_KEY`、`CLOUDFLARE_API_TOKEN` 等）同理，只在 Cloudflare/GitHub 的 Secret 中配置。
 - **AI 内容必须标注“未经人工核对”**（或同义的“未经人工审核”“未经人工医学终审”）。AI 速览、机器翻译、AI 综述、AI 全文精读都要带标注；不要把 AI 结果显示成“已核对导读”。
 - **不要用旧导入脚本覆盖公开题录**：`scripts/build_data.py`、`service/import_data.py` 等早期导入工具不能用来重建文献库。文献库只能通过审核后的快照（`editorial/public_library_snapshot.json` + manifest，由 `apply_public_library.py` 应用）更新，构建守卫会阻止旧状态覆盖已批准条目。也不要恢复旧前端模板。
-- **公开文件白名单**：只发布第 1 节列出的 9 个文件。不上传 PDF、数据库、`.local/`、凭据或内部记录。
+- **公开文件白名单**：只发布第 1 节列出的 9 个固定文件，以及 `shards/readings-年-月.内容哈希.js` 这种全文精读分片。不上传 PDF、数据库、`.local/`、凭据或内部记录。
 - **`app.js` 与 `edge/_worker.js` 是拼接产物**：源码在 `src/app/*.js` 与 `edge/src/*.js`（按文件名顺序逐字拼接）。改源文件后运行 `python3 scripts/build_sources.py`，并把拼接结果一起提交；不要直接编辑 `app.js` 或 `_worker.js`（`build_public.py` 与测试会检查两者是否一致）。
 - **界面只有一套风格 + 深浅色**：「临床期刊」风格（`data-style="a"` 固定），旧链接里的 `?style=` 会被忽略。筛选区为「领域 + 时间 + 搜索」常显，其余在「更多筛选」里；期刊只有出版方/期刊树一个入口。
 - **改界面要同步更新 UI 测试**：改 `index.html`、`src/app/`、`style.css` 时，运行浏览器测试，并在同一提交里更新失效的断言（保持断言原意）。

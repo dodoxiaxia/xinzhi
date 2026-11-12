@@ -147,6 +147,15 @@ class ContentHashTests(PipelineFixture):
         write(dict(status, counts={'guides': 13}))
         self.assertNotEqual(before, ci_daily.content_hash())
 
+    def test_reading_shard_bytes_change_the_content_hash(self):
+        shard_dir = self.root / 'public' / 'shards'
+        shard_dir.mkdir()
+        path = shard_dir / 'readings-2026-11.0123456789ab.js'
+        path.write_text('window.XINZHI_READING_SHARDS={};')
+        before = ci_daily.content_hash()
+        path.write_text('window.XINZHI_READING_SHARDS={"month":"2026-11"};')
+        self.assertNotEqual(before, ci_daily.content_hash())
+
 
 class RefreshExecutionTests(PipelineFixture):
     def test_fast_skips_heavy_steps_and_reports_unchanged(self):
@@ -162,7 +171,26 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertFalse(report['deploymentRequested'])
         self.assertEqual(report['status'], 'success')
         self.assertIn('finishedAt', report)
+        sizes = {row['path']: row['bytes'] for row in report['publicFiles']}
+        self.assertTrue(ci_daily.PUBLIC <= set(sizes))
+        self.assertEqual(sizes['public.js'], (self.root / 'public' / 'public.js').stat().st_size)
         self.assertEqual(outputs, [False])
+
+    def test_refresh_report_includes_reading_shard_bytes(self):
+        shard_dir = self.root / 'public' / 'shards'
+        shard_dir.mkdir()
+        payload = b'window.XINZHI_READING_SHARDS={};'
+        (shard_dir / 'readings-2026-11.0123456789ab.js').write_bytes(payload)
+        result, report, _, _ = self.invoke()
+        self.assertEqual(result, 0)
+        sizes = {row['path']: row['bytes'] for row in report['publicFiles']}
+        self.assertEqual(sizes['shards/readings-2026-11.0123456789ab.js'], len(payload))
+
+    def test_unexpected_public_file_fails_the_refresh(self):
+        (self.root / 'public' / 'notes.txt').write_text('no')
+        result, report, _, _ = self.invoke()
+        self.assertEqual(result, 1)
+        self.assertTrue(any('notes.txt' in item for item in report['problems']))
 
     def test_scheduled_fast_translates_one_bounded_title_batch(self):
         with patch.dict(os.environ, {'XINZHI_FAST_TITLE_BATCH': '1'}):
