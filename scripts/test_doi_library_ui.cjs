@@ -80,7 +80,7 @@ async function helpers() {
   c.mergeDoiJob(pending.doi, { ...job, state: 'pending' }); assert(c.pdfDownloadLink(pending).includes('data-mode="legacy-retry"'), 'an old-style finished job re-submits through the legacy retry route');
   c.mergeDoiJob(pending.doi, null);
   assert.equal(c.fulltextFilterBucket(kept), 'ready');
-  assert.equal(c.fulltextFilterBucket(pending), '');
+  assert.equal(c.fulltextFilterBucket(pending), 'none');
   assert.equal(c.fulltextFilterBucket(manual), 'failed');
   c.mergeDoiJob(pending.doi, { ...job, state: 'queued', stage: 'queued' });
   assert.equal(c.fulltextFilterBucket(pending), 'queued');
@@ -90,6 +90,14 @@ async function helpers() {
   assert.equal(c.fulltextFilterBucket(pending), 'verifying');
   c.mergeDoiJob(pending.doi, { ...job, state: 'review', stage: 'review' });
   assert.equal(c.fulltextFilterBucket(pending), 'failed', 'a failed review is listed under 未取得');
+  c.mergeDoiJob(pending.doi, null);
+  assert.equal(c.fulltextFilterBucket({ doi: '10.1234/plain', title: 'No request yet' }), 'none');
+  assert.equal(c.fulltextFilterBucket({ title: 'No DOI' }), 'none', 'a record without a DOI is still counted under 未申请 so the buckets sum to 全部');
+  const bucketPapers = [kept, pending, manual, { doi: '10.1234/plain', title: 'No request yet' }, { title: 'No DOI' }];
+  const bucketCounts = { ready: 0, verifying: 0, queued: 0, failed: 0, none: 0 };
+  bucketPapers.forEach(p => bucketCounts[c.fulltextFilterBucket(p)]++);
+  assert.equal(Object.values(bucketCounts).reduce((a, b) => a + b, 0), bucketPapers.length, '各项之和 = 全部');
+  assert.equal(bucketCounts.ready, 1); assert.equal(bucketCounts.failed, 1); assert.equal(bucketCounts.none, 3);
   c.mergeDoiJob(pending.doi, { ...job, state: 'pending' });
   c.mergeDoiJob(pending.doi,{...job,state:'pending',stage:'verifying',message:'PDF 已收到，等待网站核验。',nextCheckSeconds:60});
   assert(c.doiJobActive(c.DOI_JOBS.get(pending.doi))); assert(c.pdfDownloadLink(pending).includes('已收到 PDF，核验中')); assert(c.pdfDownloadLink(pending).includes('第 2/3 步'));
@@ -285,6 +293,7 @@ async function browserChecks() {
     records.set('10.1001/proto.queued', apiPaper('10.1001/proto.queued', 'Queued filter title', 'pending'));
     records.set('10.1001/proto.vhour', apiPaper('10.1001/proto.vhour', 'Verifying filter title', 'pending'));
     records.set('10.1001/proto.failed', apiPaper('10.1001/proto.failed', 'Failed filter title', 'manual_needed'));
+    records.set('10.1001/proto.none', apiPaper('10.1001/proto.none', 'Unrequested filter title', 'pending'));
     jobs.set('10.1001/proto.queued', { id: '00000000-0000-4000-8000-000000000011', doi: '10.1001/proto.queued', state: 'queued', stage: 'queued' });
     jobs.set('10.1001/proto.vhour', { id: '00000000-0000-4000-8000-000000000012', doi: '10.1001/proto.vhour', state: 'pending', stage: 'verifying', verificationMode: 'hourly' });
     jobs.set('10.1001/proto.failed', { id: '00000000-0000-4000-8000-000000000013', doi: '10.1001/proto.failed', state: 'failed', stage: 'failed' });
@@ -292,13 +301,19 @@ async function browserChecks() {
     await page.goto(origin + '/?mode=library&lane=all&range=all&maintainer=0');
     await page.locator('#ftBar').waitFor();
     const chipText = await page.locator('#ftBar').innerText();
-    for (const label of ['全部', '可阅读', '核验中', '排队下载', '未取得']) assert(chipText.includes(label), 'filter chip ' + label);
+    for (const label of ['全部', '可阅读', '核验中', '排队下载', '未取得', '未申请']) assert(chipText.includes(label), 'filter chip ' + label);
     const countOf = value => page.locator('#ftBar [data-ft-filter="' + value + '"] small').innerText().then(Number);
     assert(await countOf('') >= 4, '全部 counts every paper in the current list');
     assert(await countOf('ready') >= 1);
     assert.equal(await countOf('verifying'), 1);
     assert.equal(await countOf('queued'), 1);
     assert(await countOf('failed') >= 1);
+    assert(await countOf('none') >= 1, '未申请 counts papers that never started a task');
+    assert.equal(
+      (await countOf('ready')) + (await countOf('verifying')) + (await countOf('queued')) + (await countOf('failed')) + (await countOf('none')),
+      await countOf(''),
+      '各项之和 = 全部'
+    );
     const libraryGets = () => requests.filter(request => request.pathname === '/api/library' && request.method === 'GET' && !String(request.query || '').includes('doi=')).length;
     const getsBeforeClick = libraryGets();
     await page.locator('#ftBar [data-ft-filter="verifying"]').click();
@@ -311,6 +326,13 @@ async function browserChecks() {
     assert((await page.locator('#articlesStream').innerText()).includes('Queued filter title'));
     await page.locator('#ftBar [data-ft-filter="failed"]').click();
     assert((await page.locator('#articlesStream').innerText()).includes('Failed filter title'));
+    await page.locator('#ftBar [data-ft-filter="none"]').click();
+    assert.equal(new URL(page.url()).searchParams.get('ft'), 'none');
+    const noneText = await page.locator('#articlesStream').innerText();
+    assert(noneText.includes('Unrequested filter title'));
+    assert(noneText.includes('待补全文'));
+    assert(!noneText.includes('Failed filter title'));
+    assert((await page.locator('#activeFiltersBar').innerText()).includes('全文: 未申请'));
     await page.locator('#activeFiltersBar [data-clear="ft"]').click();
     assert.equal(new URL(page.url()).searchParams.get('ft'), null);
     assert.equal(libraryGets(), getsBeforeClick, 'choosing a fulltext filter does not send another /api/library request');

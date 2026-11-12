@@ -421,7 +421,7 @@
     weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
     weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
     sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
-    ftFilter: ['ready', 'verifying', 'queued', 'failed'].includes(urlParams.get('ft')) ? urlParams.get('ft') : '',
+    ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(urlParams.get('ft')) ? urlParams.get('ft') : '',
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
@@ -1203,25 +1203,24 @@
     el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
       `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
   }
-  const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得']];
+  const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得'], ['none', '未申请']];
   function fulltextFilterBucket(p) {
     const view = fulltextView(p);
-    if (!view || view.kind === 'none') return '';
-    if (view.kind === 'ready') return 'ready';
-    if (view.kind === 'verifying') return 'verifying';
-    if (view.kind === 'queued' || view.kind === 'running') return 'queued';
-    return 'failed';
+    if (view && view.kind === 'ready') return 'ready';
+    if (view && view.kind === 'verifying') return 'verifying';
+    if (view && (view.kind === 'queued' || view.kind === 'running')) return 'queued';
+    if (view && (view.kind === 'failed' || view.kind === 'review')) return 'failed';
+    return 'none';
   }
   function renderFtBar() {
     const el = $('#ftBar');
     if (!el) return;
     if (state.mode !== 'library' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
-    const counts = { '': 0, ready: 0, verifying: 0, queued: 0, failed: 0 };
+    const counts = { '': 0, ready: 0, verifying: 0, queued: 0, failed: 0, none: 0 };
     for (const p of getCurrentDataset()) {
       if (!matchesFilters(p, false, 'ft')) continue;
       counts['']++;
-      const bucket = fulltextFilterBucket(p);
-      if (bucket) counts[bucket]++;
+      counts[fulltextFilterBucket(p)]++;
     }
     const active = state.ftFilter || '';
     el.hidden = false;
@@ -1791,7 +1790,7 @@
     if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
     if (state.mode === 'library' && state.ftFilter) {
-      const label = { ready: '可阅读', verifying: '核验中', queued: '排队下载', failed: '未取得' }[state.ftFilter];
+      const label = { ready: '可阅读', verifying: '核验中', queued: '排队下载', failed: '未取得', none: '未申请' }[state.ftFilter];
       chips += '<span class="filter-badge-active">全文: ' + label + ' <button type="button" class="filter-badge-remove" data-clear="ft" aria-label="清除全文状态筛选">&times;</button></span>';
     }
 
