@@ -37,7 +37,9 @@ _SHA = re.compile(r'[a-f0-9]{40}')
 MAX_BLOB_BYTES = 8 * 1024 * 1024
 UNCERTAIN = {'started', 'failed_or_uncertain'}
 # 'rejected': the provider answered and the output failed evidence validation; known, accounted, not retried.
-STATUSES = UNCERTAIN | {'validated', 'recovered_existing_cache', 'rejected'}
+# 'abandoned': the owner closed a billed request whose answer was not stored. The charge stands.
+# It is not a recovered answer, and the generator must not send those tasks again.
+STATUSES = UNCERTAIN | {'validated', 'recovered_existing_cache', 'rejected', 'abandoned'}
 
 
 class CheckpointError(ValueError):

@@ -7,7 +7,8 @@ runaway guard against loops, NOT account quota or a spending decision.
 Runtime requests reserve TWO attempts for the Worker's bounded internal retry.
 An uncertain in-flight attempt, authorization/rate error or transport failure pauses
 only the tasks on that request. A legacy ledger ``paused`` string still pauses every
-task. Successful siblings remain readable. Never reads library/PDF/private indexes.
+task. A request the owner marked abandoned keeps its recorded charge and is not sent
+again. Successful siblings remain readable. Never reads library/PDF/private indexes.
 """
 import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess, sys, time, uuid
 import urllib.error, urllib.parse, urllib.request
@@ -77,6 +78,17 @@ def fully_blocked_reason(ledger, daily):
    for reason in listed:
     if isinstance(reason, str) and reason: return reason
  return reasons[TASKS[0]]
+
+def abandoned_task_keys(ledger):
+ """Tasks an owner closed without a saved answer. They are not sent to the model again."""
+ keys=set()
+ if not isinstance(ledger, dict): return keys
+ for daily in (ledger.get('days') or {}).values():
+  if not isinstance(daily, dict): continue
+  for row in daily.get('requests') or []:
+   if not isinstance(row, dict) or row.get('status')!='abandoned': continue
+   for task in row_tasks(row): keys.add((row.get('paperID'), row.get('sourceHash'), task))
+ return keys
 # Bump when the shared evidence checks change, so papers rejected under the old rules are retried once.
 EVIDENCE_CHECK_VERSION=3  # 2: spelled-out counts and space-grouped thousands; 3: study re-cite/trim and quicklook finding repair (2026-10-12)
 MAX_DAILY_OUTPUT_TOKENS=MAX_OUTPUT_TOKENS  # Reservation ceiling only (env XINZHI_WEEK_MAX_CALLS); not a provider billing cap.
@@ -358,9 +370,10 @@ def acquire_runtime(selected,cache,cache_path,ledger,ledger_path,limit,run,trans
      try:store(cache,p,task,*hit,'runtime-cache');atomic(cache_path,cache);report['imported']+=1
      except ValueError:pass
   if not run:return report
+  closed=abandoned_task_keys(ledger)
   for p in selected:
    for task in TASKS:
-    if find(cache,p,task)[0] or task in blocked:continue
+    if find(cache,p,task)[0] or task in blocked or (p['paperID'],p['sourceHash'],task) in closed:continue
     if now().date().isoformat()!=day:report.update(stopped=True,blocker='utc_day_changed');return report
     try:reservation=reserve_runtime(daily,task,limit,MAX_DAILY_OUTPUT_TOKENS)
     except BudgetError as exc:report.update(stopped=True,blocker=exc.code);return report
@@ -477,12 +490,13 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   return True
  item=None
  rejected=task_rejections(ledger)
+ closed=abandoned_task_keys(ledger)
  try:
   for p in selected:
    feedback=None
    for attempt in range(2):  # one immediate retry, told why the first output failed
     item=None
-    missing=[task for task in TASKS if not find(cache,p,task)[0] and task not in blocked]
+    missing=[task for task in TASKS if not find(cache,p,task)[0] and task not in blocked and (p['paperID'],p['sourceHash'],task) not in closed]
     if not missing:break
     # A task whose output already failed evidence validation twice is not paid for again;
     # the paper's other missing tasks still are.
