@@ -1456,14 +1456,27 @@ const MUSE_QUEUE_MS = 6 * 86400000;
 const MUSE_DOWNLOAD_RETIRE_ON_DEFAULT = '2026-12-12';
 const MACHINE_CALLER_ID = /^[a-z][a-z0-9_-]{0,31}$/;
 const MACHINE_FIXED_SOURCES = ['reader_upload','open_access','machine'];
-// Early shutdown of the legacy Muse download endpoints (claim, receipt, upload). Only the exact string 'true' closes them.
+// Early shutdown of the legacy Muse download endpoints (claim, receipt, upload), in two steps.
+// MUSE_LEGACY_ENDPOINTS_DISABLED: unset or any other value = 'open' (unchanged), 'idle' = quiet stop, exact 'true' = closed (410).
 // It never touches request, retry, reader-upload, review, /api/acquire or /api/machine/*.
 const MUSE_LEGACY_ENDPOINTS = ['/api/muse/claim','/api/muse/receipt','/api/muse/upload'];
-function museLegacyClosed(env) {
-  return !!env && env.MUSE_LEGACY_ENDPOINTS_DISABLED === 'true';
+function museLegacyMode(env) {
+  const value = env && env.MUSE_LEGACY_ENDPOINTS_DISABLED;
+  return value === 'true' ? 'closed' : value === 'idle' ? 'idle' : 'open';
 }
-function museRetiredResponse() {
-  return json({ok:false,error:'muse_retired',replacement:'/api/machine/protocol'},410);
+// Both answers come before authentication and never read the secret or KV.
+// idle: claim says "nothing to do" (the poller stays quiet); receipt/upload are refused with 409, which the protocol lists as
+// "stop and tell the maintainer" (not 401/403: those suggest a key problem; not 410: not on the stop list, the caller may retry).
+function museLegacyResponse(env, endpoint) {
+  const mode = museLegacyMode(env);
+  if (mode === 'open') return null;
+  if (mode === 'closed') return json({ok:false,error:'muse_retired',replacement:'/api/machine/protocol'},410);
+  if (endpoint === 'claim') return json({ok:true,task:null});
+  return json({ok:false,error:'muse_idle',replacement:'/api/machine/protocol'},409);
+}
+function museLegacyStatus(env) {
+  const mode = museLegacyMode(env);
+  return {mode,closed:mode === 'closed',closedEndpoints:mode === 'closed' ? MUSE_LEGACY_ENDPOINTS : [],idleEndpoints:mode === 'idle' ? MUSE_LEGACY_ENDPOINTS : []};
 }
 function museRetireOn(env) {
   const configured = env && env.MUSE_DOWNLOAD_RETIRE_ON;
@@ -1486,8 +1499,9 @@ function handleMuseProtocol(request, env) {
     receipt:{url:'https://learn.dryz.info/api/muse/receipt',method:'POST',contentType:'application/json',identityFields:['taskId','doi','leaseId'],states:['running','login_required','failed','uploaded'],uploadedFields:['sha256','bytes','driveFileId']},
     upload:{url:'https://learn.dryz.info/api/muse/upload',method:'PUT',contentType:'application/pdf',body:'original_pdf_bytes',headers:{'X-Muse-Doi':'task.doi','X-Muse-Task-Id':'task.taskId','X-Muse-Lease-Id':'task.leaseId'}},
     limits:{minBytes:51200,maxBytes:LIBRARY_MAX_PDF_BYTES,maxPages:200,leaseMinutes:20,renewEveryMinutes:5,maxAcquisitionMinutes:120},
-    deprecation:{downloadRole:'retired',retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry'],
-      note:museLegacyClosed(env) ? 'Muse 已退出下载角色，领取、回执、上传接口已关闭（返回 410 muse_retired）；读者入口（request、retry、reader-upload）不受影响。新的下载队列见 /api/machine/protocol。'
+    deprecation:{downloadRole:'retired',retireOn:museRetireOn(env),autoDisable:false,...museLegacyStatus(env),endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry'],
+      note:museLegacyMode(env) === 'closed' ? 'Muse 已退出下载角色，领取、回执、上传接口已关闭（返回 410 muse_retired）；读者入口（request、retry、reader-upload）不受影响。新的下载队列见 /api/machine/protocol。'
+        : museLegacyMode(env) === 'idle' ? 'Muse 已退出下载角色，领取、回执、上传接口处于静默停用：领取固定返回 task:null，回执和上传返回 409 muse_idle 不写入；读者入口（request、retry、reader-upload）不受影响。新的下载队列见 /api/machine/protocol。'
         : 'Muse 已退出下载角色。过渡期内上述接口保持可用，日期可用 MUSE_DOWNLOAD_RETIRE_ON 调整；到点不会自动关闭，关闭需另一次变更。新的下载队列见 /api/machine/protocol。'},
     instructions:['使用现有 Muse 下载流程与领取账本，已有原件直接复用；只使用 sources 列出的来源。',
       '上传私有 Drive 文献收件箱后，回传同一 PDF 的 SHA256、字节数及 Drive 文件 ID，再上传原二进制；不改动 PDF。',
@@ -1497,7 +1511,7 @@ function handleMuseProtocol(request, env) {
       '无变化的轮询保持静默。密钥、密码、Cookie 和临时 URL 不写入回执、文件或日志。',
       'Drive 上传仅记为报告；网站缓存可用与正式三端归档分别确认，archive.complete 始终为 false。']};
   if (!(request.headers.get('accept') || '').includes('text/html')) return json(protocol);
-  return pdfHtml((museLegacyClosed(env) ? '<p>Muse 的下载角色已停止，领取、回执、上传接口已关闭（410 muse_retired）；读者请求、重试和上传入口不受影响。</p>' : '<p>Muse 的下载角色已停止。领取、回执、上传和读者恢复入口在过渡期仍可用，计划日期 ' + pdfEscape(protocol.deprecation.retireOn) + '（可用 MUSE_DOWNLOAD_RETIRE_ON 调整）。到这一天不会自动关闭。</p>') + '<p>当前接入：' + (protocol.enabled ? '已启用' : '尚未启用') + '。</p>'
+  return pdfHtml((museLegacyMode(env) === 'closed' ? '<p>Muse 的下载角色已停止，领取、回执、上传接口已关闭（410 muse_retired）；读者请求、重试和上传入口不受影响。</p>' : museLegacyMode(env) === 'idle' ? '<p>Muse 的下载角色已停止，领取、回执、上传接口已静默停用（领取返回空任务，回执和上传返回 409）；读者请求、重试和上传入口不受影响。</p>' : '<p>Muse 的下载角色已停止。领取、回执、上传和读者恢复入口在过渡期仍可用，计划日期 ' + pdfEscape(protocol.deprecation.retireOn) + '（可用 MUSE_DOWNLOAD_RETIRE_ON 调整）。到这一天不会自动关闭。</p>') + '<p>当前接入：' + (protocol.enabled ? '已启用' : '尚未启用') + '。</p>'
     + '<p>维护者需在 Cloudflare Pages 的 Production 私密配置中设置 MUSE_FULLTEXT_ENABLED=true 和独立随机 Secret MUSE_FULLTEXT_KEY，并在 Muse 私密配置保存同一个密钥。GROK_FULLTEXT_ENABLED 与 FULLTEXT_ASYNC_ENABLED 保持关闭。保存后重新部署 Production，确认本页显示“已启用”。密钥不要发到聊天中。</p>'
     + '<p>把本页链接交给 Muse：先读取协议，使用已有下载流程，上传 Drive 后回传原件，等待网站核验。</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' + pdfEscape(JSON.stringify(protocol,null,2)) + '</pre>',200,'Muse 网站接入说明');
 }
@@ -1819,7 +1833,7 @@ async function museDelete(env, key) {
   try { await env.QL_KV.delete(key); } catch { libraryFail('library_storage',503); }
 }
 async function handleMuseClaim(request, env) {
-  if (museLegacyClosed(env)) return museRetiredResponse(); // before any authentication, secret or KV access
+  const legacy = museLegacyResponse(env, 'claim'); if (legacy) return legacy; // before any authentication, secret or KV access
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
     await museAuthorize(request,env);
@@ -1861,7 +1875,7 @@ function museError(error) {
   return json({ok:false,error:error instanceof LibraryFailure || error instanceof PdfFailure ? error.code : 'muse_server'},error instanceof LibraryFailure || error instanceof PdfFailure ? error.status : 500);
 }
 async function handleMuseReceipt(request, env) {
-  if (museLegacyClosed(env)) return museRetiredResponse(); // before any authentication, secret or KV access
+  const legacy = museLegacyResponse(env, 'receipt'); if (legacy) return legacy; // before any authentication, secret or KV access
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('muse_bad_request',405);
     await museAuthorize(request,env);
@@ -1891,7 +1905,7 @@ async function handleMuseReceipt(request, env) {
   } catch (error) { return museError(error); }
 }
 async function handleMuseUpload(request, env) {
-  if (museLegacyClosed(env)) return museRetiredResponse(); // before any authentication, secret or KV access
+  const legacy = museLegacyResponse(env, 'upload'); if (legacy) return legacy; // before any authentication, secret or KV access
   try {
     if (request.method !== 'PUT' || new URL(request.url).search) libraryFail('muse_bad_request',405);
     await museAuthorize(request,env);
@@ -2943,7 +2957,7 @@ function handleMachineProtocol(request, env) {
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
-    legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
+    legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,...museLegacyStatus(env),endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
     identityReasons:MACHINE_IDENTITY_REASONS,
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
