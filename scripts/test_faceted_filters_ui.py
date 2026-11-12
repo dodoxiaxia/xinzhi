@@ -39,7 +39,7 @@ def main():
         return request.continue_()
 
     def count(page):
-        return int(page.locator('#activeFiltersBar .results-meta b').inner_text())
+        return int(page.locator('.heading-total').first.inner_text().split()[1])
 
     def locator(page, attribute, value, scope=''):
         return page.locator(scope + '[' + attribute + '=' + json.dumps(value, ensure_ascii=False) + ']')
@@ -101,7 +101,7 @@ def main():
             combined_count = sum(journal_name(paper) == journal_a and paper.get('studyDesign') == design for paper in pool)
             check(count(page) == len(pool), 'Initial count matches actual public library')
             expect(page.locator('#appSidebar')).not_to_be_visible()
-            check(page.locator('#filterToggleBtn').inner_text() == '更多筛选', 'More filters start folded with no active condition')
+            check(page.locator('#filterToggleBtn').inner_text().strip() == '筛选', 'More filters start folded with no active condition')
             page.locator('#filterToggleBtn').click()
             expect(page.locator('#appSidebar')).to_be_visible()
 
@@ -120,7 +120,7 @@ def main():
             fits(page, 'desktop combination')
             page.screenshot(path=str(out / 'desktop-combination.png'))
 
-            check(page.locator('#filterToggleBtn').inner_text() == '更多筛选 · 2', 'More filters counts the active conditions')
+            check(''.join(page.locator('#filterToggleBtn').inner_text().split()) == '筛选2', 'More filters counts the active conditions')
             pick_journal(page, journal_b)
             check(params(page).get('pub') == publisher[journal_b] and params(page).get('design') == design, 'Another journal replaces the source family and retains design')
             check(count(page) == 0, 'Incompatible combination stays empty until an explicit action')

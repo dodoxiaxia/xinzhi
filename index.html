@@ -41,12 +41,6 @@
   <!-- App Header -->
   <header class="app-header">
     <div class="header-container">
-      <div class="brand-section">
-        <a href="./" class="brand-logo" id="brandLogo" aria-label="心知 AIHOT-Med 首页">
-          <img class="brand-mark brand-image" src="icon.png" width="44" height="44" alt="" decoding="async">
-        </a>
-      </div>
-
       <nav class="header-nav" aria-label="核心视角导航">
         <button class="nav-tab-btn active" data-mode="curated">每日精选 <span class="badge" id="curatedCountBadge">0</span></button>
         <button class="nav-tab-btn" data-mode="weekly">近7天榜</button>
@@ -54,31 +48,55 @@
         <button class="nav-tab-btn" data-mode="library">文献库 <span class="badge" id="libCountBadge">0</span></button>
       </nav>
 
-      <div class="header-actions">
-        <div class="search-wrapper">
-          <input type="search" id="globalSearch" class="search-input" placeholder="搜索题名、DOI…" aria-label="搜索文献（支持中文关键词）" autocomplete="off">
-          <kbd class="search-shortcut">/</kbd>
-        </div>
-
-        <button class="icon-btn" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
-        </button>
-
-        <button class="huddle-btn" id="openHuddleBtn" aria-label="打开精选清单（仅此浏览器）" title="精选清单（仅此浏览器）">
-          <span class="huddle-label">精选清单</span><span class="huddle-icon" aria-hidden="true">☆</span>
-          <span class="huddle-counter" id="huddleCounter">0</span>
-        </button>
-        <button class="source-status-btn" id="sourceStatusBtn" type="button" data-mode="sources" aria-controls="sourcesSection" aria-pressed="false">信源状态</button>
-      </div>
     </div>
   </header>
+
+  <!-- Tool bar: search (opens above the filters), filters, 筛选 -->
+  <div class="tool-bar" id="toolBar">
+    <div class="search-panel" id="searchPanel" hidden>
+      <div class="search-wrapper">
+        <input type="search" id="globalSearch" class="search-input" placeholder="搜索题名、DOI…" aria-label="搜索文献（支持中文关键词）" autocomplete="off">
+        <button type="button" class="search-clear" data-clear="search" aria-label="清除搜索">&times;</button>
+      </div>
+    </div>
+    <div class="tool-row" id="toolRow">
+      <button type="button" class="tool-btn search-toggle" id="searchToggleBtn" aria-label="搜索" aria-expanded="false" aria-controls="searchPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+      <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
+      <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
+      <div class="lane-bar range-bar" id="ftBar" role="group" aria-label="全文状态" hidden></div>
+      <span class="tool-row-end" id="toolRowEnd"></span>
+      <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">筛选</span></button>
+    </div>
+  </div>
 
   <!-- App Main Layout -->
   <div class="app-container">
 
     <!-- Left Faceted Filter Sidebar -->
-    <aside class="sidebar" id="appSidebar" aria-label="更多筛选">
-      <div class="sheet-head"><b>更多筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
+    <aside class="sidebar" id="appSidebar" aria-label="筛选">
+      <div class="sheet-head"><b>筛选</b><button class="sheet-close" id="sheetClose" type="button">完成</button></div>
+      <div class="sidebar-card panel-controls" id="panelControls">
+        <div class="sidebar-title"><span>排序与视图</span></div>
+        <div id="panelControlsSlot">
+          <div class="stream-controls">
+            <div class="ai-digest" id="aiDigest" hidden></div>
+            <label for="sortSelector" class="sr-only">排序方式</label>
+            <select id="sortSelector" class="sort-select">
+              <option value="date-desc">最新在前</option>
+              <option value="date-asc">最早在前</option>
+              <option value="journal-date">按期刊分组</option>
+              <option value="smart">导读与摘要优先</option>
+            </select>
+
+            <div class="view-toggle">
+              <button class="view-toggle-btn active" id="viewCardsBtn" title="卡片视图">详细</button>
+              <button class="view-toggle-btn" id="viewCompactBtn" title="紧凑列表">列表</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-card panel-range" id="panelRangeSlot"></div>
+      <div class="mode-note" id="modeNote" role="note"></div>
       <p class="sidebar-filter-help" role="note">各组条件同时满足；“只看”只保留该项，领域、时间与搜索不变。</p>
       <!-- Readable content, followed journals and minor items -->
       <div class="sidebar-card more-filters-basic">
@@ -88,8 +106,8 @@
           <button class="btn-sm" id="favoritesOnlyBtn" aria-pressed="false" title="关注清单仅保存在此浏览器，不会同步给同事">我的期刊</button>
           <button class="btn-sm" id="favoriteJournalBtn" aria-pressed="false" title="先在下方“出版方 / 期刊”中选一本期刊">☆ 关注期刊</button>
           <button type="button" class="btn-sm" id="minorToggleBtn" data-minor="1" aria-pressed="false" title="更正、来信、回复等非原创内容默认隐藏">含更正 / 来信</button>
+          <p class="minor-note" id="minorNote" role="note"></p>
         </div>
-        <p id="rangeExplanation" class="browse-help"></p>
       </div>
       <!-- Clinical Tier Matrix -->
       <div class="sidebar-card">
@@ -143,31 +161,8 @@
         <div class="stream-reading-layout">
         <div class="stream-content">
         <!-- Stream Toolbar -->
-        <div class="mode-note" id="modeNote" role="note"></div>
-        <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
-        <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间范围" hidden></div>
-        <div class="lane-bar range-bar" id="ftBar" role="group" aria-label="全文状态" hidden></div>
         <div class="stream-toolbar">
-          <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar">更多筛选</button>
-          <div class="active-filters-bar" id="activeFiltersBar" tabindex="-1" aria-label="当前筛选与结果数量">
-            <span class="results-meta">共找到 <b id="resultsTotalCount">0</b> 篇文献</span>
-          </div>
-
-          <div class="stream-controls">
-            <div class="ai-digest" id="aiDigest" hidden></div>
-            <label for="sortSelector" class="sr-only">排序方式</label>
-            <select id="sortSelector" class="sort-select">
-              <option value="date-desc">最新在前</option>
-              <option value="date-asc">最早在前</option>
-              <option value="journal-date">按期刊分组</option>
-              <option value="smart">导读与摘要优先</option>
-            </select>
-
-            <div class="view-toggle">
-              <button class="view-toggle-btn active" id="viewCardsBtn" title="卡片视图">详细</button>
-              <button class="view-toggle-btn" id="viewCompactBtn" title="紧凑列表">列表</button>
-            </div>
-          </div>
+          <div class="active-filters-bar" id="activeFiltersBar" tabindex="-1" aria-label="当前筛选与结果数量"></div>
         </div>
 
         <!-- Articles Stream -->
@@ -215,7 +210,17 @@
 
     </main>
   </div>
-  <footer class="app-footer" id="appFooter"></footer>
+
+  <footer class="app-footer" id="appFooter">
+    <button class="huddle-btn" id="openHuddleBtn" aria-label="打开精选清单（仅此浏览器）" title="精选清单（仅此浏览器）">
+      <span class="huddle-label">精选清单</span><span class="huddle-icon" aria-hidden="true">☆</span>
+      <span class="huddle-counter" id="huddleCounter">0</span>
+    </button>
+    <button class="icon-btn" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    </button>
+    <button class="source-status-btn" id="sourceStatusBtn" type="button" data-mode="sources" aria-controls="sourcesSection" aria-pressed="false">信源状态</button>
+  </footer>
 
   <!-- Slide-over Reader Drawer -->
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
@@ -230,9 +235,9 @@
     </div>
 
     <div class="drawer-footer">
-      <button class="btn-sm btn-share" id="drawerCopyShareBtn">复制微信群文案</button>
-      <button class="btn-sm" id="drawerHuddleToggleBtn">加入精选清单</button>
       <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" hidden>下载 PDF</a>
+      <button class="btn-sm btn-share" id="drawerCopyShareBtn">微信群文案</button>
+      <button class="btn-sm" id="drawerHuddleToggleBtn">加入精选清单</button>
       <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerExternalLink">官网原文 ↗</a>
       <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开" hidden>汉堡登录入口 ↗</a>
       <a href="#" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>

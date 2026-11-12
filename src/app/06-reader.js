@@ -22,6 +22,7 @@
         <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
         ${journalMetricBadge(paper)}
         ${designBadgeHtml(paper)}
+        ${paper.kind ? `<span class="tag-pill kind-pill">${esc(paper.kind)}</span>` : ''}
         <span class="date-badge">${esc(dateStr)}</span>
       `;
     }
@@ -168,16 +169,18 @@
       // Citation helpers (built from real fields only; no invented authors)
       const cites = buildCitations(paper);
       const citationSection = `
-        <div class="drawer-section" style="border-top:1px dashed var(--border); padding-top:16px;">
-          <div class="drawer-section-title">题录引用草稿与原文入口</div>
+        <div class="drawer-section cite-section">
           <div class="citation-actions-bar">
-            <button class="btn-cite copy-cite-btn" data-cite="${esc(cites.gb)}">复制 GB/T 引用草稿</button>
-            <button class="btn-cite copy-cite-btn" data-cite="${esc(cites.ama)}">复制 AMA 引用草稿</button>
-            <button class="btn-cite copy-cite-btn" data-cite="${esc(cites.bibtex)}">复制 BibTeX 题录</button>
-            ${paper.doi ? `<a href="https://doi.org/${esc(paper.doi)}" target="_blank" rel="noopener" class="btn-cite" style="text-decoration:none;">DOI ↗</a>` : ''}
+            <details class="cite-menu"><summary class="btn-cite">复制引用</summary>
+              <div class="cite-menu-list">
+                <button type="button" class="btn-cite copy-cite-btn" data-cite="${esc(cites.gb)}">GB/T 7714</button>
+                <button type="button" class="btn-cite copy-cite-btn" data-cite="${esc(cites.ama)}">AMA</button>
+                <button type="button" class="btn-cite copy-cite-btn" data-cite="${esc(cites.bibtex)}">BibTeX</button>
+              </div>
+            </details>
             ${paper.pmid ? `<a href="https://pubmed.ncbi.nlm.nih.gov/${esc(paper.pmid)}/" target="_blank" rel="noopener" class="btn-cite" style="text-decoration:none;">PubMed ↗</a>` : ''}
           </div>
-          ${paper.authors && paper.authors.length ? '' : '<p class="text-muted" style="font-size:11.5px;margin-top:6px;">本条目未抓取到作者信息，引用文本不含作者，使用前请对照原文补全。</p>'}
+          ${paper.authors && paper.authors.length ? '' : '<p class="text-muted" style="font-size:11.5px;margin-top:6px;">未抓取到作者信息，引用不含作者，使用前请对照原文补全。</p>'}
         </div>
       `;
 
@@ -185,10 +188,7 @@
 
       const head = `
         ${publicationStatusHtml(paper)}
-        <div class="drawer-meta-line">
-          <span style="font-size:12px; color:var(--text-muted);">${esc(paper.publisher || '')} · ${esc(paper.clinicalTier || '')}</span>
-          ${paper.doi ? `<span class="doi-link" style="margin-left:auto;">DOI: ${esc(paper.doi)}</span>` : ''}
-        </div>
+        ${paper.media && paper.media.length ? `<div class="drawer-media">${paper.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('')}</div>` : ''}
 
         ${!draft && ql?.title_zh ? `<div class="drawer-title-zh"><small class="content-label">机器翻译</small>${esc(ql.title_zh)}</div>` : ''}
         ${!draft && !ql?.title_zh && paper.titleZh ? `<div class="drawer-title-zh"><small class="content-label">机器翻译</small>${esc(paper.titleZh)}</div>` : ''}
@@ -215,7 +215,8 @@
           ${absSource}
         </section>
       `;
-      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['editorial', editorialSection], ['abstract', abstractSection],
+      const ftView = fulltextView(paper), ftProgress = ftView && ['verifying', 'queued', 'running', 'failed', 'review'].includes(ftView.kind) ? fulltextStatusHtml(paper, true).replace(/<a class="ft-link" href="https:\/\/doi\.org[^>]*>官网原文 ↗<\/a>/, '') : '';
+      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ftProgress], ['editorial', editorialSection], ['abstract', abstractSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
     }
 

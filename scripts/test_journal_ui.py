@@ -62,7 +62,7 @@ def main():
           const journal=e.querySelector('.journal-badge,.source-item-name,.huddle-item-meta span,small')?.textContent;
           const expected=window.JournalMetrics.badgeText(p || journal);
           const badges=[...e.querySelectorAll('.journal-metrics-badge')];
-          return expected ? badges.length===1 && [...badges[0].children].map(x=>x.textContent).join(' · ')===expected : badges.length===0;
+          return (e.classList.contains('article-card')||e.classList.contains('compact-row')) ? badges.length===0 : expected ? badges.length===1 && [...badges[0].children].map(x=>x.textContent).join(' · ')===expected : badges.length===0;
         })''')
         check(valid, label + ': only verified card values, with exact data year')
 
@@ -194,16 +194,22 @@ def main():
                 check('★' in page.locator(f'[data-filter-journal="{journal}"]').first.inner_text(), f'{width}: followed journal is starred in the tree')
                 if width <= 1000 and page.locator('#sheetClose').is_visible():
                     page.locator('#sheetClose').click()
+                if not page.locator('#viewCompactBtn').is_visible(): page.locator('#filterToggleBtn').click()
                 page.locator('#viewCompactBtn').click()
+                if page.locator('#sheetClose').is_visible(): page.locator('#sheetClose').click()
                 expect(page.locator('#articlesStream .compact-row').first).to_be_visible()
                 check_badges('#articlesStream .compact-row', f'{width}: compact rows')
+                if not page.locator('#sortSelector').is_visible(): page.locator('#filterToggleBtn').click()
                 page.locator('#sortSelector').select_option('journal-date')
+                if page.locator('#sheetClose').is_visible(): page.locator('#sheetClose').click()
                 expect(page.locator('.day-heading')).to_be_visible()
                 overflow(page, f'{width}/filters-compact-group')
                 page.goto(base + '?mode=library&style=a&view=cards&range=all&reading=guide', wait_until='networkidle')
-                share = page.locator('[data-action="share-wechat"]').first
-                expected_share = badge_text(share.locator('xpath=ancestor::article').locator('.journal-metrics-badge').first)
+                page.locator('#articlesStream [data-action="open-drawer"]').first.click()
+                share = page.locator('#drawerCopyShareBtn')
+                expected_share = badge_text(page.locator('#readerDrawer .journal-metrics-badge').first)
                 share.click()
+                page.locator('#drawerCloseBtn').click()
                 check('期刊指标：' + expected_share in page.evaluate('window.__copied'), f'{width}: article share has separate metric note')
                 page.locator('#sourceStatusBtn').click()
                 check_badges('.source-item', f'{width}: source cards')

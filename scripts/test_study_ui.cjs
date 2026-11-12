@@ -85,7 +85,7 @@ async function run() {
   check(html.includes('Original source quote &lt;4'), 'Source quote remains text');
   check(html.includes('全文核对清单（待查事项）'));
   check(html.includes('并非已发现论文存在这些缺陷'));
-  check(html.includes('生成时间（北京时间）'));
+  check(!html.includes('生成时间'), 'no machine timestamp in the reader');
   check(!html.includes('data-action="ai-study"'), 'Disabled generation cache has no paid button');
   const before = calls.length; c.aiStudy(papers[0]);
   same(calls.length, before, 'Generation requires capability obtained from cache endpoint');

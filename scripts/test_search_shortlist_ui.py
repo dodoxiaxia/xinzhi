@@ -40,7 +40,7 @@ def main():
         checks.append(label)
 
     def count(page):
-        return int(page.locator('#activeFiltersBar .results-meta b').inner_text())
+        return int(page.locator('.heading-total').first.inner_text().split()[1])
 
     def no_overflow(page, label):
         check(page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), label + ': page fits viewport')
@@ -94,7 +94,7 @@ def main():
                     check(baseline > 0, label + ': public data loaded')
                     first_before = page.locator('.article-title').first.inner_text()
                     search = page.locator('#globalSearch')
-                    search.fill('AI-ECG')
+                    sfill(page, 'AI-ECG')
                     expect(page.locator('[data-clear="search"]')).to_be_visible()
                     matched = count(page)
                     check(0 < matched < baseline, label + ': AI-ECG reduces results')
@@ -130,7 +130,7 @@ def main():
                         check(count(page) == filtered_count, label + ': URL filter survives reload')
                         page.locator('[data-clear="tier"]').click()
                         check('tier' not in parse_qs(urlsplit(page.url).query), label + ': filter chip clears URL')
-                    search.fill('AI-ECG')
+                    sfill(page, 'AI-ECG')
                     expect(page.locator('[data-clear="search"]')).to_be_visible()
                     saved_url, saved_count = page.url, count(page)
                     page.goto(base + '?mode=sources', wait_until='load')
@@ -149,7 +149,7 @@ def main():
                     check(parse_qs(urlsplit(page.url).query).get('mode') == ['sources'], label + ': tab switch reflected in URL')
                     page.go_back()
                     page.wait_for_url(saved_url)
-                    expect(page.locator('#activeFiltersBar .results-meta b')).to_have_text(str(saved_count))
+                    expect(page.locator('.heading-total').first).to_have_text('共 ' + str(saved_count) + ' 篇')
                     check(page.url == saved_url, label + ': browser Back after tab switch restores previous tab and query')
                     expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
                     next_mode = {'curated': 'candidates', 'candidates': 'library', 'library': 'curated'}[mode]
@@ -197,7 +197,7 @@ def main():
                     const p = visible[0];
                     return {id:p.id, author:p.authors[0], doi:p.doi};
                 }''')
-                page.locator('#globalSearch').fill(author_paper['author'])
+                sfill(page, author_paper['author'])
                 expect(page.locator('[data-clear="search"]')).to_be_visible()
                 check(count(page) > 0, f'{width}: public author search returns results')
                 check(page.locator('#articlesStream [data-paper-id="' + author_paper['id'] + '"]').count() > 0, f'{width}: author search renders the matching public paper')
@@ -236,7 +236,7 @@ def main():
                 total = int(page.locator('#libCountBadge').inner_text())
                 hidden = page.evaluate('window.LIBRARY.papers.filter(p=>p.minor).length')
                 check(count(page) == total - hidden and hidden > 0, f'{width}: count difference is minor filter')
-                expect(page.locator('.results-meta')).to_contain_text('默认隐藏更正 / 来信')
+                expect(page.locator('#minorNote')).to_contain_text('默认隐藏更正和来信')
                 expect(page.locator('#libCountBadge')).to_have_attribute('title', '已收录题录总数，含更正 / 来信；列表按当前筛选计数')
                 if not page.locator('[data-minor]').is_visible():  # lives in 更多筛选
                     page.locator('#filterToggleBtn').click()
@@ -244,7 +244,7 @@ def main():
                 if page.locator('#sheetClose').is_visible():
                     page.locator('#sheetClose').click()
                 check(count(page) == total, f'{width}: including minor equals total badge')
-                check('默认隐藏' not in page.locator('.results-meta').inner_text(), f'{width}: explanation follows toggle')
+                check('默认隐藏' not in page.locator('#minorNote').text_content(), f'{width}: explanation follows toggle')
                 page.locator('#openHuddleBtn').click()
                 empty_actions(page, f'initial/{width}')
                 no_overflow(page, f'empty/{width}')
@@ -297,6 +297,14 @@ def main():
         print(f'{len(checks)} checks passed; 0 model calls; evidence: {out}')
     finally:
         server.shutdown()
+
+
+def sfill(page, text):
+    """Open the search panel when it is closed, then type."""
+    if not page.locator('#searchPanel').is_visible():
+        page.locator('#searchToggleBtn').click()
+    page.locator('#globalSearch').fill(text)
+    page.wait_for_timeout(450)
 
 
 if __name__ == '__main__':

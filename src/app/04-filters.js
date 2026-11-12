@@ -59,7 +59,7 @@
     const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
     const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>'
-      : view.action === 'refresh' ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">刷新状态</button>'
+      : view.action === 'refresh' ? (full ? '' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
       : view.action === 'official' ? (full ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
@@ -68,8 +68,11 @@
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
       if (view.action === 'download') return primary;
+      // Only the two actions that move a paper towards a PDF (apply, apply again) stand out; refresh and upload are plain links.
+      const strong = view.action === 'submit' || view.action === 'retry' || view.action === 'refresh';
+      const lead = strong ? primary : primary.replace('btn-sm btn-primary', 'ft-link').replace(/ class="btn-sm btn-primary"/, ' class="ft-link"');
       return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="fulltext-state" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
-        + esc(view.short) + '</span>' + primary + '</span>' + form;
+        + esc(view.short) + '</span>' + lead + '</span>' + form;
     }
     const steps = FT_STEPS.map((label, i) => {
       const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
@@ -107,8 +110,16 @@
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
-    el.innerHTML = '<span class="range-label">发表时间</span>' + '<select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>' + ranges.map(([v, n]) =>
-      `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
+    el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
+    placeRangeBar();
+  }
+  // On phones the time range lives in the 筛选 panel so the filter row stays one line.
+  function placeRangeBar() {
+    const el = $('#rangeBar'), slot = $('#panelRangeSlot'), row = $('#toolRowEnd');
+    if (!el || !slot || !row) return;
+    const phone = !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches);
+    if (phone && el.parentElement !== slot) slot.append(el);
+    else if (!phone && el.parentElement !== row.parentElement) row.parentElement.insertBefore(el, $('#ftBar') || row);
   }
   const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得'], ['none', '未申请']];
   function fulltextFilterBucket(p) {
@@ -131,8 +142,8 @@
     }
     const active = state.ftFilter || '';
     el.hidden = false;
-    el.innerHTML = '<span class="range-label" title="各档篇数按当前领域、时间与搜索统计">全文（当前领域内）</span>' + FT_FILTERS.map(([v, n]) =>
-      `<button type="button" class="lane-chip${active === v ? ' active' : ''}" data-ft-filter="${v}" aria-pressed="${active === v}">${n} <small>${counts[v]}</small></button>`).join('');
+    el.innerHTML = '<select class="range-select ft-select" data-ft-select aria-label="全文状态（各档篇数按当前领域、时间与搜索统计）">' + FT_FILTERS.map(([v, n]) =>
+      `<option value="${v}"${active === v ? ' selected' : ''}>全文：${n} ${counts[v]}</option>`).join('') + '</select>';
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -158,7 +169,7 @@
       if (paperCrossAI(p)) counts.crossai++;
     }
     el.hidden = false;
-    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}"${state.lane === l.id ? ' selected' : ''}>${esc(l.name)} ${counts[l.id]}</option>`).join('') + '</select>' + LANES.map(l => `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}" title="当前时间与筛选条件下，该领域的篇数（不含更正 / 来信）">${esc(l.name)} <small>${counts[l.id]}</small></button>`).join('');
+    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}"${state.lane === l.id ? ' selected' : ''}>${esc(l.name)} ${counts[l.id]}</option>`).join('') + '</select>';
   }
 
   // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.
@@ -233,6 +244,7 @@
 
   // URL <-> state sync so filtered views are shareable / survive refresh
   function syncUrl() {
+    if (typeof syncSearchPanel === 'function') syncSearchPanel();
     try {
       const u = new URL(window.location.href);
       const set = (k, v, def) => { if (v && v !== def) u.searchParams.set(k, v); else u.searchParams.delete(k); };
@@ -676,6 +688,7 @@
   }
 
   // Render Active Filter Chips
+  let streamTotal = 0;
   function renderActiveFilterChips(totalCount) {
     const container = $('#activeFiltersBar');
     if (!container) return;
@@ -686,24 +699,33 @@
       + '<button type="button" class="sidebar-clear-btn" data-clear="sidebar">清空左侧筛选</button></div>' : '';
     let hiddenMinor = 0;
     if (usesLane() && !state.minor) for (const p of getCurrentDataset()) if (p.minor && matchesFilters({ ...p, minor: false }, true)) hiddenMinor++;
-    chips += `<span class="results-meta" role="status">共找到 <b>${totalCount}</b> 篇文献${hiddenMinor ? ' · 另有 ' + hiddenMinor + ' 篇更正 / 来信默认隐藏' : usesLane() && !state.minor ? ' · 默认隐藏更正 / 来信' : ''}</span>`;
-
+    const minorNote = $('#minorNote');
+    if (minorNote) minorNote.textContent = !usesLane() ? '' : state.minor ? '已包含更正、来信、回复等非原创内容。' : hiddenMinor ? `默认隐藏更正和来信，当前另有 ${hiddenMinor} 篇。` : '默认隐藏更正和来信。';
+    streamTotal = totalCount;
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
-      chips += `<span class="filter-badge-active">搜索: "${esc(state.search)}" <button type="button" class="filter-badge-remove" data-clear="search" aria-label="清除检索关键词">&times;</button></span>`;
-    }
-    if (state.range !== defaultRange(state.mode) && usesLane()) {
-      chips += `<span class="filter-badge-active">发表时间: ${state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天'} <button type="button" class="filter-badge-remove" data-clear="range" aria-label="恢复默认时间范围">&times;</button></span>`;
     }
     if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
-    if (state.mode === 'library' && state.ftFilter) {
-      const label = { ready: '可阅读', verifying: '核验中', queued: '排队下载', failed: '未取得', none: '未申请' }[state.ftFilter];
-      chips += '<span class="filter-badge-active">全文: ' + label + ' <button type="button" class="filter-badge-remove" data-clear="ft" aria-label="清除全文状态筛选">&times;</button></span>';
-    }
-
     container.innerHTML = chips;
+  }
+  // 共找到 N 篇: small grey text beside the first heading of the list, so it never takes a line of its own.
+  function renderStreamTotal(streamEl) {
+    if (!streamEl) return;
+    const text = `共 ${streamTotal} 篇`;
+    const first = streamEl.querySelector('.day-heading');
+    if (first) first.insertAdjacentHTML('beforeend', `<span class="heading-total" role="status">${text}</span>`);
+    else streamEl.insertAdjacentHTML('afterbegin', `<div class="stream-total heading-total" role="status">${text}</div>`);
+  }
+  // Search opens above the filter row; it stays open while there is a keyword.
+  function syncSearchPanel(forceOpen) {
+    const panel = $('#searchPanel'), btn = $('#searchToggleBtn'), input = $('#globalSearch');
+    if (!panel || !btn) return;
+    const open = !!forceOpen || !!(input && input.value) || !!state.search || (!panel.hidden && document.activeElement === input);
+    panel.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    btn.classList.toggle('active', open);
   }
 
   function renderEmptyFilters() {
