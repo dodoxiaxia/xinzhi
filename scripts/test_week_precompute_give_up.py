@@ -127,22 +127,29 @@ class GiveUpTests(unittest.TestCase):
             seen.append(public['title'])
             return {'translate': tr(), 'study': model_structure(), 'quicklook': ql()}
 
+        # Actions sets GITHUB_ACTIONS and refuses a paid call that has no checkpoint.
+        # Clear it here so this case reaches the abandoned-task skip. The clock is fixed
+        # so the day bucket does not follow the runner's date, and both calls use only
+        # the ledger object above plus temp files.
         with tempfile.TemporaryDirectory() as directory, patch.dict(w.os.environ, {
                 'GITHUB_ACTIONS': '', 'XINZHI_LLM_ENDPOINT': 'https://model.fixture/api',
-                'XINZHI_LLM_MODEL': 'existing', 'XINZHI_LLM_API_KEY': 'fixture-secret'}):
+                'XINZHI_LLM_MODEL': 'existing', 'XINZHI_LLM_API_KEY': 'fixture-secret'}), \
+                patch.object(w, 'now', lambda: CLOCK):
             report = w.configured_batch(selected, {'entries': {}}, Path(directory) / 'cache', ledger,
                                         Path(directory) / 'ledger', 8, model)
-        self.assertFalse(report.get('stopped'))
-        self.assertEqual(seen, [other['title']])
-        self.assertEqual(report['paidRequests'], 1)
-        with tempfile.TemporaryDirectory() as directory:
+            self.assertFalse(report.get('stopped'))
+            self.assertIsNone(report.get('blocker'))
+            self.assertEqual(seen, [other['title']])
+            self.assertEqual(report['paidRequests'], 1)
+
             def transport(url, payload=None):
                 if payload is not None:
                     self.fail('abandoned task was sent')
                 return {'found': False}
-            runtime = w.acquire_runtime([closed], {'entries': {}}, Path(directory) / 'cache', ledger,
-                                        Path(directory) / 'ledger', 8, True, transport)
+            runtime = w.acquire_runtime([closed], {'entries': {}}, Path(directory) / 'runtime-cache', ledger,
+                                        Path(directory) / 'runtime-ledger', 8, True, transport)
         self.assertFalse(runtime.get('stopped'))
+        self.assertIsNone(runtime.get('blocker'))
         self.assertEqual(runtime['paidRequests'], 0)
 
 
