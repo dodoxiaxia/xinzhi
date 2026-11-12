@@ -4,9 +4,8 @@ from pathlib import Path
 import os
 import tempfile
 import zipfile
-from release_integrity import validate_release
+from release_integrity import PUBLIC, is_published_file, published_files, validate_release
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT.parent
-PUBLIC={'index.html','style.css','public.js','radar.js','feed.xml','icon.png','demo-reading.html','_headers','_worker.js'}
 ROOTS={'data','scripts','service','editor','public','editorial','docs'}
 FILES={'index.html','style.css','app.js','citation-export.js','icon.png','demo-reading.html','README.md','start.command'}
 
@@ -14,14 +13,16 @@ def public_payloads(root=ROOT):
  public=root/'public'
  if public.is_symlink() or not public.is_dir() or public.resolve().parent!=root.resolve():
   raise ValueError('Public directory must be an ordinary project directory')
- if {p.name for p in public.iterdir()}!=PUBLIC:
-  raise ValueError('Public directory must contain exactly the six allowlisted files')
- for name in PUBLIC:
+ names=published_files(public)
+ if not PUBLIC<=set(names) or any(not is_published_file(name) for name in names):
+  raise ValueError('Public directory must contain exactly the published files')
+ for name in names:
   path=public/name
-  if path.is_symlink() or not path.is_file() or path.resolve().parent!=public.resolve():
+  parent=path.resolve().parent
+  if parent!=public.resolve() and parent!=(public/'shards').resolve():
    raise ValueError('Public files must be ordinary files inside the public directory')
  payloads={}
- for name in sorted(PUBLIC):
+ for name in sorted(names):
   fd=os.open(public/name,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0))
   with os.fdopen(fd,'rb') as stream:payloads[name]=stream.read()
  validate_release(root,payloads)

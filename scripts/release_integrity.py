@@ -4,11 +4,42 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
 
 PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
+# Month shards are content-addressed. The fixed nine files stay; only these extra names are publishable.
+READING_SHARD_RE = re.compile(r'^shards/readings-(?:\d{4}-\d{2}|undated)\.[0-9a-f]{12}\.js$')
+
+
+def is_reading_shard(rel):
+    return isinstance(rel, str) and READING_SHARD_RE.fullmatch(rel) is not None
+
+
+def is_published_file(rel):
+    return rel in PUBLIC or is_reading_shard(rel)
+
+
+def published_files(directory):
+    """Relative paths of ordinary files under public/. Symlinks are rejected."""
+    directory = Path(directory)
+    found = []
+    if not directory.exists():
+        return found
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError('Public directory must be an ordinary directory')
+    for path in sorted(directory.rglob('*')):
+        rel = path.relative_to(directory).as_posix()
+        if path.is_symlink():
+            raise ValueError('Public file must not be a symlink: ' + rel)
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise ValueError('Public path must be an ordinary file: ' + rel)
+        found.append(rel)
+    return found
 MAX_BUILD_AGE = datetime.timedelta(hours=6)
 INPUTS = (
     'scripts/ci_daily.py', 'scripts/daily_fulltext.py',
@@ -153,10 +184,12 @@ def validate_release(root, payloads, now=None):
         for field in ('radarUpdatedAt', 'healthCheckedAt'):
             require_fresh_timestamp(status[field], field, now)
         rows = manifest['files']
-        if not isinstance(rows, list) or len(rows) != len(PUBLIC) or {r['path'] for r in rows} != PUBLIC:
-            raise ValueError('Manifest must identify exactly the six public files')
-        if set(payloads) != PUBLIC:
-            raise ValueError('Payload must contain exactly the six public files')
+        if not isinstance(rows, list):
+            raise ValueError('Manifest must identify exactly the published files')
+        row_names = [r.get('path') if isinstance(r, dict) else None for r in rows]
+        names = set(payloads)
+        if len(row_names) != len(set(row_names)) or set(row_names) != names or not PUBLIC <= names or any(not is_published_file(n) for n in names):
+            raise ValueError('Manifest must identify exactly the published files')
         for row in rows:
             content = payloads[row['path']]
             if type(row['bytes']) is not int or row['bytes'] != len(content) or row['sha256'] != hashlib.sha256(content).hexdigest():

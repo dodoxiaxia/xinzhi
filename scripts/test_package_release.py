@@ -65,7 +65,7 @@ class TestPublicPackaging(unittest.TestCase):
   with self.assertRaisesRegex(ValueError,'differ from manifest'):public_payloads(self.root)
  def test_missing_or_duplicate_manifest_files_are_rejected(self):
   self.change_manifest(lambda d:d['files'].__setitem__(0,dict(d['files'][1])))
-  with self.assertRaisesRegex(ValueError,'exactly the six'):public_payloads(self.root)
+  with self.assertRaisesRegex(ValueError,'exactly the published files'):public_payloads(self.root)
  def test_mismatched_release_is_rejected(self):
   self.write_manifest(release='vold')
   with self.assertRaisesRegex(ValueError,'release differs'):public_payloads(self.root)

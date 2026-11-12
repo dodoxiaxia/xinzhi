@@ -47,7 +47,7 @@ python3 scripts/package_release.py
 
 构建使用公开字段白名单，精选独立归档，若旧精选消失、缺元数据、存在私有路径或多余公开文件则停止。模型流程及小批量预算见交接和 [AI速览说明](docs/AI速览方案B.md)。GLM初稿成功不等于来源核对或公网发布。
 
-完整恢复 state 后可预览公开六文件：
+完整恢复 state 后可预览公开文件（含按月加载的全文精读分片）：
 
 ```sh
 python3 -m http.server 8765 --bind 127.0.0.1 --directory public
@@ -59,6 +59,6 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory public
 
 v13.6 在阅读抽屉增加“研究结构与全文核对”，晨会清单增加明确选择 2–4 篇的“逐篇证据对照”。仅处理服务器取得的公开摘要，展示逐字引文及缺项；打开页面和选择只读缓存，点击生成才调用模型。模型生成与中文语义仍需回查原文，不能当作全文精读或质量评审。运行配置、缓存、次数限制与连接诊断见 [AI 服务说明](docs/AI解读部署说明.md)。
 
-GitHub Actions 构建后将九个公开文件发布到 Cloudflare Pages 现有 `dryz-xinzhi` 项目 Production：index.html、public.js、radar.js（365 天雷达存档，按需加载）、feed.xml（近 7 天每日精选 RSS）、style.css、icon.png、demo-reading.html（示范精读，按需加载）、_headers、_worker.js。手动发布也必须用同一白名单包。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。Pages 发布成功和公网页面核验分别记录；失败保留上次有效站点与 state。缺完整摘要缓存时构建停止，不能用题录版覆盖已有摘要。
+GitHub Actions 构建后将九个固定公开文件，以及按月的全文精读分片，发布到 Cloudflare Pages 现有 `dryz-xinzhi` 项目 Production：index.html、public.js、radar.js（365 天雷达存档，按需加载）、feed.xml（近 7 天每日精选 RSS）、style.css、icon.png、demo-reading.html（示范精读，按需加载）、_headers、_worker.js，外加 `shards/readings-年-月.内容哈希.js`（打开该月精读时才加载）。手动发布也必须用同一白名单包。构建会按单文件 25 MiB 上限检查体积，70% 警告、90% 停止。不上传项目根目录、PDF、数据库、.local、凭据、原私人索引或内部记录。Pages 发布成功和公网页面核验分别记录；失败保留上次有效站点与 state。缺完整摘要缓存时构建停止，不能用题录版覆盖已有摘要。
 
 界面及聚合思路参考 https://github.com/KKKKhazix/AIHOT ，原参考快照589f79eff09470b31ba8a7f1d9eb62d36ff2be6c；未复制其品牌与后端代码。原文版权归各来源所有。

@@ -80,6 +80,8 @@ for f in scripts/test_*.cjs; do
 done
 
 if [ "$BROWSER" = 1 ]; then
+  echo "== Reading shard loading"
+  run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
   echo "== Browser tests (Python + Playwright)"
   if [ ! -f public/public.js ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"
