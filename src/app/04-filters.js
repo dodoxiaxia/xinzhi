@@ -106,7 +106,8 @@
     if (!el) return;
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
+    const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
+    el.innerHTML = '<span class="range-label">发表时间</span>' + '<select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>' + ranges.map(([v, n]) =>
       `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
   }
   const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得'], ['none', '未申请']];
@@ -157,7 +158,7 @@
       if (paperCrossAI(p)) counts.crossai++;
     }
     el.hidden = false;
-    el.innerHTML = '<span class="lane-label">领域</span>' + LANES.map(l => `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}" title="当前时间与筛选条件下，该领域的篇数（不含更正 / 来信）">${esc(l.name)} <small>${counts[l.id]}</small></button>`).join('');
+    el.innerHTML = '<span class="lane-label">领域</span>' + '<select class="lane-select" data-lane-select aria-label="领域">' + LANES.map(l => `<option value="${l.id}"${state.lane === l.id ? ' selected' : ''}>${esc(l.name)} ${counts[l.id]}</option>`).join('') + '</select>' + LANES.map(l => `<button class="lane-chip ${state.lane === l.id ? 'active' : ''}" data-lane="${l.id}" title="当前时间与筛选条件下，该领域的篇数（不含更正 / 来信）">${esc(l.name)} <small>${counts[l.id]}</small></button>`).join('');
   }
 
   // 每日精选 opens on the newest day; earlier days are one tap away instead of a long scroll.

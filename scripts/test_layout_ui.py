@@ -149,7 +149,8 @@ def main():
                         overflow(page, label)
                         check(page.locator('#contentStatus').count() == 0, label + ': no top timestamp strip')
                         huddle, source = page.locator('#openHuddleBtn').bounding_box(), page.locator('#sourceStatusBtn').bounding_box()
-                        check(source['x'] >= huddle['x'] + huddle['width'] - 1, label + ': source entry right of huddle')
+                        if width > 720: check(source['x'] >= huddle['x'] + huddle['width'] - 1, label + ': source entry right of huddle')
+                        else: check(page.locator('#appFooter #sourceStatusBtn').count() == 1, label + ': phone moves the source status entry to the footer')
                         if mode == 'weekly':
                             expect(page.locator('.weekly-auto-item')).to_have_count(expected_weekly(page))
                             cards = page.locator('.weekly-group').filter(has=page.locator('.weekly-auto-item')).first.locator('.weekly-auto-item')

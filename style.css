@@ -1301,3 +1301,57 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover { background: var(-
   .source-item-foot { flex-direction: row; justify-content: space-between; text-align: left; }
   .source-group-title { padding: 8px 16px; }
 }
+
+/* ---- 手机适配 2026-11-12：筛选全部可见、顶栏压低、触控区 ≥44px、阅读台页脚不挡正文 ---- */
+.lane-select, .range-select { display: none; }
+.app-footer { display: none; }
+@media (max-width: 720px) {
+  /* 顶栏：标识 + 搜索 + 精选清单 + 明暗，第二行四个栏目；「信源状态」移到页脚 */
+  html[data-style] .header-container { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "brand search huddle theme" "nav nav nav nav"; gap: 6px 6px; padding: 8px 12px 0; }
+  html[data-style] .search-wrapper { margin-bottom: 0; }
+  html[data-style] .search-input { padding-left: 12px; padding-right: 12px; }
+  .search-shortcut { display: none; }
+  html[data-style] .header-nav { margin: 0 -12px; }
+  .app-footer:not(:empty) { display: block; padding: 8px 16px calc(24px + env(safe-area-inset-bottom)); text-align: center; border-top: 1px solid var(--border); }
+  .app-footer .source-status-btn { min-height: 44px; padding: 0 16px; font-size: 14px; color: var(--text-secondary); }
+
+  /* 领域、发表时间：手机上用原生下拉并排一行；全文六档自动折行，全部可见 */
+  #laneBar:has(.lane-select) .lane-chip, #laneBar:has(.lane-select) .lane-label, #rangeBar .lane-chip, #rangeBar .range-label { display: none; }
+  .lane-select, .range-select { display: block; width: 100%; min-height: 44px; padding: 0 28px 0 12px; font: inherit; font-size: 14px; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+  .stream-content { display: flex; flex-wrap: wrap; column-gap: 8px; }
+  .stream-content > * { flex: 1 1 100%; min-width: 0; }
+  .stream-content > #streamLaneSlot { flex: 1 1 calc(60% - 4px); }
+  .stream-content > #rangeBar { flex: 1 1 calc(40% - 4px); }
+  #laneBar:has(.lane-select), #rangeBar { margin-bottom: 8px; overflow: visible; margin-right: 0; padding-right: 0; }
+  #ftBar { flex-wrap: wrap; overflow: visible; margin-right: 0; padding-right: 0; gap: 6px; }
+  #ftBar .range-label { flex: 1 1 100%; margin: 0; }
+  #ftBar .lane-chip { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-color: var(--border); }
+
+  /* 触控区 ≥44px */
+  .btn-sm, .action-buttons-group .btn-sm, .compact-actions .btn-sm { min-height: 44px; }
+  .stream-controls .sort-select, .sort-select, .more-filters-basic select { min-height: 44px; }
+  .view-toggle-btn { min-height: 40px; padding: 0 14px; }
+  .ai-digest .brief-box .btn-sm, .stream-toolbar .ai-digest.digest-idle .btn-sm { min-height: 44px; }
+  .card-source-actions .btn-sm:not(.btn-primary), .card-link, .ft-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
+  .ft-status.ft-compact { flex: 1 1 100%; justify-content: space-between; gap: 6px 10px; }
+  .card-source-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; }
+  .ft-form input, .ft-form .btn-sm { min-height: 44px; font-size: 16px; }
+  .ft-actions { gap: 4px 14px; }
+  .filter-badge-remove { min-width: 44px; min-height: 44px; margin: -14px -12px -14px -6px; padding: 0; }
+  .sidebar-reset-btn, .browse-only-btn, .sidebar-clear-btn, .accordion-expand-btn { min-height: 44px; min-width: 44px; padding: 0 10px; }
+  .mode-note-toggle { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; }
+  .drawer-close-btn { width: 44px; height: 44px; margin: -10px -12px 0 0; }
+  .stream-toolbar, html[data-style] .stream-toolbar { position: static; }
+
+  /* 「更多筛选」底部抽屉：遮罩更实，抽屉更高 */
+  body:has(aside.sidebar.open)::after { background: rgba(20, 18, 15, .78); }
+  aside.sidebar.open { max-height: 90vh; }
+
+  /* 阅读台：页脚压成一行，正文留底部间距 */
+  .drawer-body { padding-bottom: 28px; }
+  .drawer-footer { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); }
+  .drawer-footer .btn-sm { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 6px; font-size: 14px; }
+  .drawer-footer #drawerPdfLink:not([hidden]) { grid-column: auto; flex: 1.2 1 0; }
+  .drawer-footer #drawerExternalLink { flex: 1 1 0; margin-left: 0; }
+  .drawer-footer #drawerCopyShareBtn { flex: 1 1 100%; order: 9; min-height: 40px; }
+}

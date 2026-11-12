@@ -13,6 +13,15 @@
   update();
 })();
 
+;(function () { /* 手机上「信源状态」不占顶栏：移到页脚；宽屏仍在顶栏 */
+  const button = document.getElementById('sourceStatusBtn'), footer = document.getElementById('appFooter'), actions = document.querySelector('.header-actions');
+  if (!button || !footer || !actions || !window.matchMedia) return;
+  const phone = window.matchMedia('(max-width: 720px)');
+  const place = () => { (phone.matches ? footer : actions).appendChild(button); };
+  if (phone.addEventListener) phone.addEventListener('change', place); else phone.addListener(place);
+  place();
+})();
+
 ;(function () { /* 页面开着时发现新版本就提示刷新；后台计划每 2 小时查新 */
   let tag = null, shown = false;
   async function probe() {

@@ -242,6 +242,16 @@
     renderStream();
   });
 
+  // Phone layout: lane and time range are native selects (same state as the chips on wide screens).
+  document.addEventListener('change', e => {
+    const lane = e.target.closest && e.target.closest('select[data-lane-select]'), range = e.target.closest && e.target.closest('select[data-range-select]');
+    if (!lane && !range) return;
+    if (lane) state.lane = lane.value; else state.range = range.value;
+    state.page = 1;
+    renderSidebarFilters();
+    renderStream();
+  });
+
   // Sort Selector
   const sortSelect = $('#sortSelector');
   if (sortSelect) {
