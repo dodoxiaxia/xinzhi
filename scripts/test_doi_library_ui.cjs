@@ -27,9 +27,9 @@ async function helpers() {
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
   const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
-    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'doiJobNotice', 'pdfDownloadUrl', 'pdfDownloadLink',
+    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftClock', 'ftMaintainerMode', 'fulltextView', 'fulltextStatusHtml', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
-  vm.runInContext([constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
+  vm.runInContext([constant('FT_STEPS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
   for (const value of ['Kept clinical title', 'article 10.1234/keep', '10.1234', 'https://example.org/10.1234/keep', 'https://doi.org/10.1234/keep?token=x', '10.1234/x script']) assert.equal(c.exactDoi(value), '');
   assert.equal(c.hamburgFulltextUrl('https://doi.org/10.1056/AIe2600236'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1056/aie2600236');
@@ -52,7 +52,10 @@ async function helpers() {
   assert.equal(c.pdfDownloadUrl(kept), '/api/fulltext?doi=10.1234%2Fkeep');
   c.mergeSupplementalPaper(apiPaper('10.1234/hold', 'Correct official title'));
   assert.equal(c.pdfDownloadUrl(held), '', 'A new PDF cannot bind to the wrong static title');
-  assert(c.pdfDownloadLink(held).includes('题录对应待核实'));
+  assert.equal(c.pdfDownloadLink(held), '', 'Ordinary readers never see the bibliography-conflict wording');
+  c.MAINTAINER = true; assert(c.pdfDownloadLink(held).includes('题录对应待核实'), 'maintainer mode still shows it'); delete c.MAINTAINER;
+  assert(c.sameDoiTitle('What Is Needed to Make Routine.', 'What is needed to make routine'), 'a trailing full stop is not a different title');
+  assert(!c.sameDoiTitle('Correct official title', 'Correct official title II'));
   assert.equal(c.exactDoiPapers('10.1234/hold')[0].title, 'Correct official title');
   assert(c.LIBRARY.papers.some(p => p.title === 'Correct official title'), 'Canonical record is visible in normal library');
   assert.equal(JSON.stringify([held, kept, radar]), snapshot, 'No static bibliography, HOLD or doctor fields are written');
@@ -62,22 +65,40 @@ async function helpers() {
   c.mergeSupplementalPaper({ ...apiPaper('10.1234/new', 'New clinical title', 'pending'), doi: 'DOI: 10.1234/NEW' });
   assert.equal(c.LIBRARY.papers.filter(p => p.doi === '10.1234/new').length, 1, 'Aliases and repeated pages deduplicate');
   const pending = c.LIBRARY.papers.find(p => p.doi === '10.1234/new');
-  assert(c.pdfDownloadLink(pending).includes('待补全文')); assert(c.pdfDownloadLink(pending).includes('/api/acquire?doi=')); assert.equal(c.pdfDownloadUrl(pending), '');
+  const none = c.pdfDownloadLink(pending);
+  assert(none.includes('待补全文')); assert(none.includes('data-ft-action="open-form"') && none.includes('>获取全文<')); assert(none.includes('data-mode="submit"') && none.includes('type="password"'));
+  assert(!none.includes('/api/acquire?doi='), 'the request is made in place; the card no longer links to another page'); assert.equal(c.pdfDownloadUrl(pending), '');
   c.mergeSupplementalPaper(apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
   const manual = c.LIBRARY.papers.find(p => p.doi === '10.1234/manual');
-  assert.equal(manual.fulltextStatus, 'manual_needed');assert(c.pdfDownloadLink(manual).includes('全文需人工处理'));assert(c.pdfDownloadLink(manual).includes('查看处理状态'));assert(!c.pdfDownloadLink(manual).includes('再次获取全文'));assert.equal(c.pdfDownloadUrl(manual), '');
+  assert.equal(manual.fulltextStatus, 'manual_needed'); assert(c.pdfDownloadLink(manual).includes('全文未取得')); assert(c.pdfDownloadLink(manual).includes('>重新获取全文<')); assert(!c.pdfDownloadLink(manual).includes('/api/fulltext'));
+  for (const gone of ['查看处理状态', '查看任务', '再次获取全文']) assert(!c.pdfDownloadLink(manual).includes(gone), gone + ' is replaced by one in-place action');
   const job = { id: '00000000-0000-4000-8000-000000000001', doi: pending.doi, state: 'queued' };
-  c.mergeDoiJob(pending.doi, job); assert(c.pdfDownloadLink(pending).includes('全文排队中')); assert(c.pdfDownloadLink(pending).includes('查看任务'));
+  const primaryCount = html => (html.match(/class="btn-sm btn-primary"/g) || []).length - (html.match(/<form[\s\S]*?<\/form>/g) || []).reduce((n, f) => n + (f.match(/class="btn-sm btn-primary"/g) || []).length, 0);
+  c.mergeDoiJob(pending.doi, job); assert(c.pdfDownloadLink(pending).includes('全文排队中')); assert(c.pdfDownloadLink(pending).includes('data-ft-action="refresh"')); assert(!c.pdfDownloadLink(pending).includes('查看任务'));
   c.mergeDoiJob(pending.doi, { ...job, state: 'running' }); assert(c.pdfDownloadLink(pending).includes('全文获取中'));
   assert.throws(() => c.mergeDoiJob(pending.doi, { ...job, doi: '10.1234/wrong' }));
-  c.mergeDoiJob(pending.doi, { ...job, state: 'pending' }); assert(c.pdfDownloadLink(pending).includes('/api/acquire/retry?doi='));
+  c.mergeDoiJob(pending.doi, { ...job, state: 'pending' }); assert(c.pdfDownloadLink(pending).includes('data-mode="legacy-retry"'), 'an old-style finished job re-submits through the legacy retry route');
   c.mergeDoiJob(pending.doi,{...job,state:'pending',stage:'verifying',message:'PDF 已收到，等待网站核验。',nextCheckSeconds:60});
-  assert(c.doiJobActive(c.DOI_JOBS.get(pending.doi))); assert(c.pdfDownloadLink(pending).includes('已回传，等待核验'));
-  assert(!c.pdfDownloadLink(pending).includes('/api/acquire/retry')); assert(c.doiJobNotice(pending.doi).includes('PDF 已收到'));
+  assert(c.doiJobActive(c.DOI_JOBS.get(pending.doi))); assert(c.pdfDownloadLink(pending).includes('已收到 PDF，核验中')); assert(c.pdfDownloadLink(pending).includes('第 2/3 步'));
+  assert(!c.pdfDownloadLink(pending).includes('/api/acquire/retry')); assert(!c.pdfDownloadLink(pending).includes('查看任务'));
+  // The DOI search view renders ONE full block (three steps, one sentence with an estimate, one primary button); the card row stays empty.
+  c.state.search = pending.doi;
+  assert.equal(c.pdfDownloadLink(pending), '', 'the card does not repeat the status in the DOI view');
+  const hourly = c.doiStatusBlock(pending);
+  assert.equal((hourly.match(/<li[ >]/g) || []).length, 3); assert(hourly.includes('aria-current="step"')); assert(hourly.includes('已收到 PDF，正在核验')); assert(hourly.includes('已排入每小时批次'));
+  assert.equal(primaryCount(hourly), 1); assert.equal((hourly.match(/role="status"/g) || []).length, 1);
+  c.mergeDoiJob(pending.doi,{...job,state:'pending',stage:'verifying',verificationMode:'immediate',verificationExpectedAt:new Date(Date.now() + 180000).toISOString(),sourceKind:'reader_upload',reason:'identity_mismatch'});
+  const fast = c.doiStatusBlock(pending); assert(fast.includes('已收到你上传的 PDF，正在核验')); assert(fast.includes('预计几分钟内完成')); assert(!fast.includes('已排入每小时批次'));
+  assert(!fast.includes('identity_mismatch'), 'the reason code is maintainer information'); c.MAINTAINER = true; assert(c.doiStatusBlock(pending).includes('identity_mismatch')); delete c.MAINTAINER;
+  c.state.search = '';
   c.mergeDoiJob(pending.doi,{...job,state:'running',stage:'uploading',message:'<script>unsafe</script>'});
-  assert(c.pdfDownloadLink(pending).includes('Drive 已上传，正在回传')); assert(!c.doiJobNotice(pending.doi).includes('<script>'));
+  assert(c.pdfDownloadLink(pending).includes('全文获取中')); assert(!c.pdfDownloadLink(pending).includes('<script>')); assert(!c.pdfDownloadLink(pending).includes('Drive'));
   c.mergeDoiJob(pending.doi,{...job,state:'failed',stage:'failed',message:'领取凭据已过期'});
-  assert(c.pdfDownloadLink(pending).includes('领取凭据已过期')); assert(c.pdfDownloadLink(pending).includes('查看处理状态')); assert(!c.doiJobActive(c.DOI_JOBS.get(pending.doi)));
+  assert(c.pdfDownloadLink(pending).includes('全文未取得')); assert(c.pdfDownloadLink(pending).includes('data-mode="muse-retry"'), 'Muse tasks retry through /api/muse/retry'); assert(!c.pdfDownloadLink(pending).includes('领取凭据已过期')); assert(!c.doiJobActive(c.DOI_JOBS.get(pending.doi)));
+  c.mergeDoiJob(pending.doi,{...job,state:'review',stage:'review'});
+  assert(c.pdfDownloadLink(pending).includes('全文核验未通过')); assert(c.pdfDownloadLink(pending).includes('/api/muse/reader-upload?doi=10.1234%2Fnew'));
+  c.state.search = pending.doi; const review = c.doiStatusBlock(pending); assert(review.includes('核验未通过') && review.includes('class="stop"')); assert.equal(primaryCount(review), 1); c.state.search = '';
+  for (const bad of [{ verificationMode: 'x' }, { reason: 'Bad Reason!' }]) { c.mergeDoiJob(pending.doi, { ...job, state: 'pending', stage: 'verifying', ...bad }); const j = c.DOI_JOBS.get(pending.doi); assert.equal(j.verificationMode, ''); assert.equal(j.reason, ''); }
   c.mergeDoiJob(pending.doi); assert.equal(c.DOI_JOBS.size, 0);
   const collision = { id: id('10.1234/collision'), doi: '10.1234/collision', title: 'Held collision title', metadataStatus: 'hold_bibliography_review' };
   c.LIBRARY.papers.push(collision); c.collision = collision;
@@ -115,12 +136,19 @@ async function browserChecks() {
     ['10.1234/new', apiPaper('10.1234/new', 'New clinical title')],
     ['10.1234/pending', apiPaper('10.1234/pending', 'Pending clinical title', 'pending')]
   ]);
-  const jobs = new Map();
+  const jobs = new Map(), posts = [];
   let unsupported = false;
   const context = await browser.newContext(), page = await context.newPage();
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', async route => {
     const req = route.request(), u = new URL(req.url()); requests.push({ pathname: u.pathname, method: req.method(), query: u.search });
+    if (req.method() === 'POST') {
+      // The only writes the page may make are the two in-place submit routes, and only after the reader typed a passphrase.
+      assert(['/api/acquire', '/api/muse/retry'].includes(u.pathname) && u.pathname !== '', 'Unexpected POST ' + u.pathname);
+      const key = u.searchParams.get('doi'); posts.push({ pathname: u.pathname, doi: key, body: req.postData() });
+      const job = { id: '00000000-0000-4000-8000-0000000000aa', doi: key, state: 'queued', stage: 'queued' }; jobs.set(key, job);
+      return route.fulfill({ status: 202, json: { ok: true, job } });
+    }
     assert(['GET', 'HEAD'].includes(req.method()), 'Typing/searching/loading never sends POST');
     // Opening the drawer also performs its existing public-abstract lookup.
     // Fulfill that request locally; never contact a real abstract provider.
@@ -164,17 +192,35 @@ async function browserChecks() {
     assert.equal(await hanLink.getAttribute('target'), '_blank');
     assert((await hanLink.getAttribute('rel')).includes('noreferrer'));
     await page.locator('#drawerCloseBtn').click();
-    await page.locator('#globalSearch').fill('10.1234/pending'); await page.getByText('待补全文', { exact: true }).waitFor();
-    assert.equal(await page.locator('a[href="/api/fulltext?doi=10.1234%2Fpending"]').count(), 0);
+    await page.locator('#globalSearch').fill('10.1234/pending'); await page.locator('.ft-status.ft-none').waitFor();
+    assert.equal(await page.locator('.ft-status').count(), 1, 'one status block per paper');
+    assert.equal(await page.locator('.ft-steps li').count(), 3); assert((await page.locator('.ft-line').innerText()).includes('站内还没有这篇的全文'));
+    assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(), 0);
+    assert.equal(await page.locator('#articlesStream a[href*="/api/acquire"]').count(), 0, 'no link leaves the page to request the full text');
+    assert.equal(await page.locator('.ft-actions .btn-primary:visible').count(), 1, 'exactly one primary button');
+    assert.equal(posts.length, 0, 'nothing is sent before the reader submits the passphrase');
+    await page.getByRole('button', { name: '获取全文', exact: true }).click();
+    await page.locator('.ft-form input[type="password"]').fill('test-pass'); await page.locator('.ft-form button[type="submit"]').click();
+    await page.locator('.ft-status.ft-queued').waitFor();
+    assert.equal(posts.length, 1); assert.deepEqual(posts[0], { pathname: '/api/acquire', doi: '10.1234/pending', body: 'passphrase=test-pass' });
+    assert.equal(new URL(page.url()).searchParams.get('q'), '10.1234/pending', 'submitting happens in place, with no navigation');
+    jobs.delete('10.1234/pending');
     records.set('10.1234/pending', apiPaper('10.1234/pending', 'Pending clinical title'));
-    await page.locator('[data-action="refresh-doi-status"]').click(); await page.locator('a[href="/api/fulltext?doi=10.1234%2Fpending"]').waitFor();
+    await page.locator('[data-ft-action="refresh"]').click(); await page.locator('a[href="/api/fulltext?doi=10.1234%2Fpending"]').waitFor();
     records.set('10.1234/manual', apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
-    await page.locator('#globalSearch').fill('10.1234/manual');await page.getByText('全文需人工处理', {exact:true}).waitFor();
-    assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(),0);
-    assert.equal(await page.getByRole('link', {name:'再次获取全文',exact:true}).count(),0);
-    await page.getByRole('link', {name:'查看处理状态',exact:true}).waitFor();
+    await page.locator('#globalSearch').fill('10.1234/manual'); await page.locator('.ft-status.ft-failed').waitFor();
+    assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(), 0);
+    for (const gone of ['再次获取全文', '查看处理状态', '查看任务状态']) assert.equal(await page.getByText(gone, { exact: true }).count(), 0, gone);
+    await page.getByRole('button', { name: '重新获取全文', exact: true }).waitFor();
+    jobs.set('10.1234/mfail', { id: '00000000-0000-4000-8000-000000000002', doi: '10.1234/mfail', state: 'failed', stage: 'failed' });
+    await page.locator('#globalSearch').fill('10.1234/mfail'); await page.locator('.doi-empty .ft-status.ft-failed').waitFor();
+    await page.getByRole('button', { name: '重新获取全文', exact: true }).click();
+    await page.locator('.ft-form input[type="password"]').fill('test-pass'); await page.locator('.ft-form button[type="submit"]').click();
+    await page.locator('.ft-status.ft-queued').waitFor();
+    assert.deepEqual(posts[1], { pathname: '/api/muse/retry', doi: '10.1234/mfail', body: 'passphrase=test-pass' }, 'a Muse-mode retry goes to /api/muse/retry');
+    jobs.delete('10.1234/mfail');
     await page.locator('#globalSearch').fill('10.1234/unknown'); await page.locator('.doi-empty').waitFor();
-    assert.equal(await page.locator('.doi-empty a').getAttribute('href'), '/api/acquire?doi=10.1234%2Funknown');
+    await page.locator('.doi-empty .ft-status.ft-none').waitFor(); assert.equal(await page.locator('.doi-empty a[href^="/api/acquire"]').count(), 0); await page.getByRole('button', { name: '获取全文', exact: true }).waitFor();
     await page.locator('#globalSearch').fill('10.1234/hold'); await page.locator('.doi-identity-notice').waitFor();
     assert((await page.locator('#articlesStream').innerText()).includes('Correct official title'));
     assert.equal(await page.locator('#articlesStream [data-paper-id="1111111111111111"]').count(), 0);
@@ -183,6 +229,9 @@ async function browserChecks() {
     await page.locator('#globalSearch').fill('Legacy wrong'); await page.locator('.fulltext-review').waitFor();
     assert.equal(await page.locator('#articlesStream a[href*="/api/fulltext"]').count(), 0);
     assert((await page.locator('#articlesStream').innerText()).includes('旧导读保留'));
+    // Ordinary readers (maintainer mode switched off) never see the bibliography-conflict wording.
+    await page.goto(origin + '/?mode=library&lane=all&maintainer=0&q=10.1234%2Fhold'); await page.locator('#articlesStream article[data-paper-id]').first().waitFor();
+    assert.equal(await page.locator('.doi-identity-notice').count(), 0); assert(!(await page.locator('body').innerText()).includes('题录对应待核实'));
     for (const mode of ['sources', 'weekly']) {
       await page.goto(origin + '/?mode=' + mode + '&q=10.1234%2Farchive'); await page.locator('.doi-search-notice').waitFor();
       await page.getByRole('button', {name:'清除 DOI 检索',exact:true}).click();
@@ -195,35 +244,35 @@ async function browserChecks() {
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Long DOI does not widen a phone screen');
     jobs.set('10.1234/job', { id:'00000000-0000-4000-8000-000000000001', doi:'10.1234/job', state:'queued' });
     await page.clock.install();
-    await page.goto(origin + '/?mode=library&lane=all&q=10.1234%2Fjob');
-    await page.getByText('后台任务已提交', { exact:true }).waitFor();
-    assert((await page.locator('.doi-job-notice').innerText()).includes('已排队'));
-    assert.equal(await page.getByRole('link', { name:'查看任务状态', exact:true }).count(), 1);
+    await page.goto(origin + '/?mode=library&lane=all&maintainer=1&q=10.1234%2Fjob');
+    await page.locator('.doi-empty .ft-status.ft-queued').waitFor();
+    assert((await page.locator('.ft-line').innerText()).includes('已排入下载队列')); assert.equal(await page.locator('.ft-steps li.current').innerText(), '排队下载');
     jobs.get('10.1234/job').state = 'running';
     await page.clock.runFor(16000);
-    await page.getByText('后台正在获取全文，完成后会显示下载入口。', { exact:false }).waitFor();
+    await page.locator('.ft-status.ft-running').waitFor(); assert((await page.locator('.ft-line').innerText()).includes('下载端正在获取全文'));
     records.set('10.1234/job', apiPaper('10.1234/job', 'Background cardiovascular fulltext result','pending'));
     jobs.set('10.1234/job',{...jobs.get('10.1234/job'),state:'pending',stage:'verifying',message:'PDF 已收到，等待网站核验。',nextCheckSeconds:60});
     await page.clock.runFor(16000);
-    await page.getByText('已回传，等待核验', {exact:true}).waitFor();
+    await page.locator('.ft-status.ft-verifying').waitFor();
+    assert.equal(await page.locator('.ft-status').count(), 1, 'the card and the task share one block'); assert.equal(await page.locator('.ft-steps li.current').innerText(), '已收到，核验中');
     assert.equal(await page.locator('a[href="/api/fulltext?doi=10.1234%2Fjob"]').count(),0,'Unverified PDF has no download entry');
     records.set('10.1234/job', apiPaper('10.1234/job', 'Background cardiovascular fulltext result'));
     jobs.delete('10.1234/job');
     await page.clock.runFor(61000);
     await page.locator('a[href="/api/fulltext?doi=10.1234%2Fjob"]').waitFor();
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(),1);
-    assert.equal(await page.locator('.doi-job-notice').count(),0,'Completion stops pending status and adds verified record without reload');
+    assert.equal(await page.locator('.ft-verifying').count(),0,'Completion replaces the pending block with the download button without reload');
     await page.locator('#articlesStream [data-action="open-drawer"]').first().click();
     assert.equal(await hanLink.getAttribute('href'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1234/job', 'The drawer uses the current paper, not the previous DOI');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Institution and download buttons fit the mobile drawer');
     await page.locator('#drawerCloseBtn').click();
-    assert(requests.every(request => ['GET','HEAD'].includes(request.method)), 'Polling never submits or acquires again');
+    assert.equal(requests.filter(request => request.method === 'POST').length, 2, 'Polling never submits again; only the two typed-passphrase submits were sent');
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= 322), 'Background status fits mobile screen');
     unsupported = true; await page.goto(origin + '/?mode=library&lane=all&q=Static%20official');
     await page.locator('#articlesStream article[data-paper-id="2222222222222222"]').waitFor();
     assert.equal(await page.locator('a[href="/api/pdf?id=2222222222222222"]').count(), 1, 'Old API 404 keeps static downloads');
     assert.deepEqual(errors, []);
-    assert(requests.every(request => ['GET', 'HEAD'].includes(request.method)));
+    assert(requests.every(request => ['GET', 'HEAD'].includes(request.method) || (request.method === 'POST' && ['/api/acquire', '/api/muse/retry'].includes(request.pathname))));
   } finally { await context.close(); await browser.close(); }
 }
 
