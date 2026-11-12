@@ -75,6 +75,7 @@ def main():
                     foot = page.locator('#readerDrawer .drawer-footer').bounding_box()
                     check(foot['height'] <= 130, label + f': drawer footer stays compact ({foot["height"]:.0f}px)')
                     check(page.evaluate("parseFloat(getComputedStyle(document.querySelector('#drawerBody')).paddingBottom) >= 24"), label + ': drawer body keeps bottom spacing')
+                    check(page.evaluate("(() => { const d = document.querySelector('#drawerBody'); const f = document.querySelector('.drawer-footer').getBoundingClientRect().height; return parseFloat(getComputedStyle(d).paddingBottom) >= f - 1; })()"), label + ': drawer body bottom padding covers the fixed footer height')
                 context.close()
             browser.close()
         print('mobile library checks passed:', len(checks))

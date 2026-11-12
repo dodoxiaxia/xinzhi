@@ -1454,3 +1454,7 @@ html[data-style] .day-heading { margin: 14px 0 4px; }
 #panelRangeSlot .range-select { width: 100%; }
 .drawer-region:empty { display: none; }
 .ft-status.ft-full { margin-bottom: 16px; }
+
+/* 阅读台：正文底部留白 = 底栏实测高度 + 安全区 + 16px，滚到底最后一个按钮完整可见 */
+.drawer-body { padding-bottom: calc(var(--drawer-foot-h, 64px) + env(safe-area-inset-bottom) + 16px); scroll-padding-bottom: calc(var(--drawer-foot-h, 64px) + env(safe-area-inset-bottom) + 16px); }
+@media (max-width: 720px) { @supports (height: 100dvh) { .reader-drawer { bottom: auto; height: 100dvh; } } }
