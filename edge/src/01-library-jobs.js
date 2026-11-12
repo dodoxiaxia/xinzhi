@@ -169,7 +169,7 @@ function libraryError(request, error, doi = '', route = '') {
     grok_disabled:'后台机构获取尚未启用。', grok_not_configured:'后台机构获取尚未完成配置，请联系维护者。',
     grok_owner_conflict:'后台执行流程需要维护者确认，任务未重复派发。',
     library_not_found:'尚无可下载的全文，请先获取并加入文献库。', library_busy:'这篇文献的获取请求正在处理。', library_retry_later:'当前获取频率受限，请等待下方时间后再试。', library_limit:'本日按需获取次数已达到限制，额度重置后可再试。',
-    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', muse_busy:'这篇已有 PDF 正在由 Muse 获取或等待网站核验，暂不接受重复上传。', muse_bad_pdf:'上传的文件不是完整的 PDF，或大小不在 50 KiB–10 MiB 之间。', muse_bad_request:'请通过网站页面提交。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
+    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', muse_busy:'这篇已有 PDF 正在下载或等待网站核验，暂不接受重复上传。', muse_bad_pdf:'上传的文件不是完整的 PDF，或大小不在 50 KiB–10 MiB 之间。', muse_bad_request:'请通过网站页面提交。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
     library_paused:'来源要求授权、验证或已限制请求，获取已暂停。请维护者确认后恢复，或由已授权机构浏览器处理。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
   const retryable = ['library_not_found','library_busy','library_retry_later','library_limit','library_timeout','library_upstream','library_sync_pending'].includes(code);
   const retryHint = code === 'library_paused' && retryAfter ? '<p>上游返回 Retry-After，限制期限为北京时间 ' + new Date(retryAfter + 28800000).toISOString().slice(0,19).replace('T',' ') + '。到期不会自动恢复，仍需维护者确认。</p>' : retryAfter ? libraryRetryHint(retryAfter) : '';

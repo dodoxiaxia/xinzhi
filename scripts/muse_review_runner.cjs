@@ -52,7 +52,8 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     catch { proof = {verified:false,pages:0,sha256:task.sha256,bytes:task.bytes,method:'dual_parser_all_pages_title_doi'}; }
     if (!proof || proof.sha256 !== task.sha256 || proof.bytes !== task.bytes || proof.method !== 'dual_parser_all_pages_title_doi'
         || typeof proof.verified !== 'boolean' || !Number.isInteger(proof.pages) || proof.pages < 0 || proof.pages > 200 || (proof.verified && proof.pages < 1)) throw new Error('invalid_verification');
-    const input = {action:'complete',...identity,result:proof.verified ? 'verified' : 'rejected',sha256:proof.sha256,bytes:proof.bytes,pages:proof.pages,method:proof.method};
+    const reason = !proof.verified && ['invalid_pdf','invalid_identity','identity_mismatch'].includes(proof.reason) ? proof.reason : '';
+    const input = {action:'complete',...identity,result:proof.verified ? 'verified' : 'rejected',sha256:proof.sha256,bytes:proof.bytes,pages:proof.pages,method:proof.method,...(reason ? {reason} : {})};
     let done;
     for (let retry = 0; retry < 3; retry++) {
       try { done = await call(input); break; }
@@ -60,7 +61,6 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     }
     if (done.job?.doi !== task.doi || done.job.id !== task.taskId || done.job.state !== (proof.verified ? 'available' : 'review') || done.archive?.complete !== false) throw new Error('invalid_verification');
     processed++;
-    const reason = !proof.verified && ['invalid_pdf','invalid_identity','identity_mismatch'].includes(proof.reason) ? proof.reason : '';
     log(JSON.stringify({doi:task.doi,status:done.job.state,pages:proof.pages,archiveComplete:false,...(reason ? {reason} : {})}));
   }
   log(JSON.stringify({processed,scope:'uploaded_originals_only'}));
