@@ -14,7 +14,7 @@ const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
     + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
-    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（每小时第 23 分钟计划执行，GitHub 队列可能延迟）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
+    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
     + pdfOfficialLink(doi),notice ? 403 : 200,'上传全文 PDF',doi);
@@ -87,7 +87,7 @@ async function handleMuseRequest(request, env) {
     const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi), paper = libraryPaper(record,doi);
     if (paper?.fulltextStatus === 'available') return request.method === 'POST' ? libraryAcquireResult(request,env,paper,parsed.download,'',true) : libraryResult(request,paper,'',true);
     if (existing) return museResponse(request,existing,paper);
-    if (request.method === 'GET') return pdfHtml('<p>站内还没有这篇的全文。输入全文口令提交请求后进入下载队列，网站核验 DOI、题名与页面后开放下载。</p><ol class="steps"><li>提交请求（本页）</li><li>下载队列领取并获取原件（时间取决于下载端安排，可能需要数小时）</li><li>网站核验（每小时第 23 分钟计划执行，可能延迟）</li><li>回到网站搜索此 DOI，点“下载 PDF”并再次输入口令</li></ol><form method="post"><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit">提交全文请求</button></form><p>同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
+    if (request.method === 'GET') return pdfHtml('<ol class="steps"><li aria-current="step">提交请求（本页）</li><li>下载端领取并取得原件（可能需要数小时）</li><li>网站核验后即可阅读与下载</li></ol><p class="status"><b>站内还没有这篇的全文。</b><br>输入全文口令提交请求，进度会显示在这篇文献的卡片上。</p><form method="post"><p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required autofocus></p><button type="submit" class="primary">提交全文请求</button></form><p class="hint">同一 DOI 只会建立一个任务，重复提交不会重复下载。</p>' + pdfOfficialLink(doi),200,'获取全文',doi);
     if (paper?.fulltextStatus === 'review') libraryFail('library_identity',409);
     const attempt = await libraryGet(env.QL_KV,'library:attempt:' + doi);
     if (attempt?.paused) libraryFail('library_paused',423);

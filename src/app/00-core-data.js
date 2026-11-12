@@ -186,7 +186,7 @@
     return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
   }
   function doiTitleKey(value) {
-    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim();
+    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim().replace(/[\s.。!?;:,，；：]+$/u, '');
   }
   function sameDoiTitle(left, right) {
     return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
@@ -273,8 +273,13 @@
     if (typeof raw.id !== 'string' || !/^[a-f0-9-]{36}$/.test(raw.id) || raw.doi !== doi
         || !['queued', 'running', 'available', 'pending', 'review', 'failed', 'manual_needed'].includes(raw.state)) throw new Error('library_unavailable');
     const stage = ['queued','running','uploading','verifying','available','login_required','review','failed'].includes(raw.stage) ? raw.stage : '';
+    const iso = value => typeof value === 'string' && value.length <= 40 && Number.isFinite(Date.parse(value)) ? value : '';
     DOI_JOBS.set(doi, { id: raw.id, doi, state: raw.state, stage,
       message: typeof raw.message === 'string' ? raw.message.slice(0, 500) : '',
+      verificationMode: ['immediate', 'hourly'].includes(raw.verificationMode) ? raw.verificationMode : '',
+      verificationExpectedAt: iso(raw.verificationExpectedAt), nextVerificationAt: iso(raw.nextVerificationAt),
+      sourceKind: ['reader_upload', 'open_access', 'download'].includes(raw.sourceKind) ? raw.sourceKind : '',
+      reason: typeof raw.reason === 'string' && /^[a-z_]{1,40}$/.test(raw.reason) ? raw.reason : '',
       nextCheckSeconds: Number.isInteger(raw.nextCheckSeconds) && raw.nextCheckSeconds >= 15 && raw.nextCheckSeconds <= 120 ? raw.nextCheckSeconds : 15 });
   }
   function watchDoiJob(doi) {
@@ -285,14 +290,6 @@
     if (typeof document === 'undefined' || document.hidden || Date.now() - DOI_JOB_WATCH.startedAt > 3600000) return;
     DOI_JOB_WATCH.timer = setTimeout(() => lookupSupplementalDoi(doi, true), DOI_JOBS.get(doi).nextCheckSeconds * 1000);
   }
-  function doiJobNotice(doi) {
-    const job = DOI_JOBS.get(doi);
-    if (!job) return '';
-    const labels = { queued: '全文任务已排队，页面会自动更新状态。', running: '后台正在获取全文，完成后会显示下载入口。',
-      manual_needed: '题录已保存，全文需人工处理；等待不会自动获取。', available: '全文已取得，题录与文件正在同步，可刷新状态。', pending: '后台查询已结束，目前未找到可获取的全文。',
-      review: '后台查询已结束，全文来源对应需要核验。', failed: '后台未能完成获取，可重新提交任务。' };
-    return '<p class="doi-job-notice" role="status">' + esc(job.message || labels[job.state]) + ' <a href="' + esc(acquireDoiUrl(doi)) + '" target="_blank" rel="noopener">查看任务</a></p>';
-  }
   async function libraryJson(url) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
     try {
@@ -301,6 +298,30 @@
       const result = await response.json();
       if (!result || result.ok !== true) throw new Error('library_unavailable');
       return result;
+    } finally { clearTimeout(timer); }
+  }
+  // Submitting a request, retrying and refreshing all happen inside the status block, so there is no second page
+  // to visit and come back from. The passphrase goes in the POST body of a same-origin request, never in a URL.
+  async function submitFulltextForm(form) {
+    const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
+    if (!doi || !input || !input.value) return;
+    const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
+    const messages = { pdf_passphrase_invalid: '全文口令不正确，请重新输入。', pdf_rate_limited: '口令错误次数过多，请一小时后再试。', library_paused: '这篇暂时停止获取，请稍后再试。', library_identity: '这篇的全文来源还在核对中，暂时不能重新提交。', muse_owner_conflict: '这篇已有任务在进行，请刷新状态。' };
+    if (error) error.textContent = ''; if (button) button.disabled = true;
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(route + '?doi=' + encodeURIComponent(doi), { method: 'POST', cache: 'no-store', signal: controller.signal,
+        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ passphrase: input.value }).toString() });
+      let result = null; try { result = await response.json(); } catch (e) { result = null; }
+      if (!response.ok && response.status !== 202) { const code = result && result.error; throw Object.assign(new Error(code || 'submit_failed'), { code }); }
+      input.value = '';
+      if (result && result.job) mergeDoiJob(doi, result.job);
+      if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
+      await lookupSupplementalDoi(doi, true);
+      refreshSupplementalView();
+    } catch (e) {
+      if (error) error.textContent = messages[e.code] || (e.name === 'AbortError' ? '请求超时，请稍后刷新状态确认是否已提交。' : '提交没有成功，请稍后再试。');
+      if (button) button.disabled = false;
     } finally { clearTimeout(timer); }
   }
   function refreshSupplementalView() {

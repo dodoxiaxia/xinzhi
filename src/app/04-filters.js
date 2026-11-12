@@ -24,19 +24,70 @@
     }
     return p && PDF_LIBRARY_IDS.has(String(p.id)) ? '/api/pdf?id=' + encodeURIComponent(p.id) : '';
   }
-  function pdfDownloadLink(p) {
+  // One status description per paper for the whole page. The card, the DOI search view and the empty state all
+  // render it, so the same task never shows different words in two places (see docs/使用说明.md "全文状态").
+  const FT_STEPS = ['排队下载', '已收到，核验中', '可阅读'];
+  function ftMaintainerMode() { return typeof MAINTAINER !== 'undefined' && MAINTAINER === true; }
+  function fulltextView(p) {
+    const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
+    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '', eta: '', action: 'download', url };
+    if (!doi) return null;
+    const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
+    if (job && doiJobActive(job)) {
+      if (job.stage === 'verifying') {
+        const fast = job.verificationMode === 'immediate';
+        return { kind: 'verifying', step: 1, headline: received + '，正在核验', short: '已收到 PDF，核验中', action: 'refresh',
+          eta: fast ? '核验通常几分钟内完成' : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时' };
+      }
+      if (job.stage === 'queued' || job.state === 'queued') return { kind: 'queued', step: 0, headline: '已排入下载队列，等待下载端领取', short: '全文排队中', eta: '预计数小时内，不保证即时', action: 'refresh', upload: true };
+      return { kind: 'running', step: 0, headline: '下载端正在获取全文', short: '全文获取中', eta: '通常几十分钟内；取得后自动进入核验', action: 'refresh', upload: true };
+    }
+    if ((job && job.state === 'review') || (!job && record && record.fulltextStatus === 'review'))
+      return job ? { kind: 'review', step: 1, stopped: true, stopLabel: '核验未通过', short: '全文核验未通过', headline: '已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文', eta: '可以直接上传正确的 PDF，核验通常几分钟内完成', action: 'upload' }
+        : { kind: 'review', step: 1, stopped: true, stopLabel: '核验未通过', short: '全文来源核对中', headline: '这篇文献的全文来源还在核对中', eta: '暂时没有可下载的 PDF，可以先看官网原文', action: 'official' };
+    if ((job && ['failed', 'manual_needed'].includes(job.state)) || (record && record.fulltextStatus === 'manual_needed'))
+      return { kind: 'failed', step: 0, stopped: true, stopLabel: '未能获取', short: '全文未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
+    return { kind: 'none', step: -1, short: '待补全文', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
+  }
+  function fulltextStatusHtml(p, full) {
     const conflict = fulltextConflict(p);
-    if (conflict) return `<span class="fulltext-state fulltext-review" title="官方题名：${esc(conflict.title)}">题录对应待核实</span>`;
-    const job = p && DOI_JOBS.get(exactDoi(p.doi));
-    if (doiJobActive(job)) return '<span class="fulltext-state">' + (job.stage === 'verifying' ? '已回传，等待核验' : job.stage === 'uploading' ? 'Drive 已上传，正在回传' : job.state === 'queued' ? '全文排队中' : '全文获取中') + '</span><a href="' + esc(acquireDoiUrl(job.doi)) + '" target="_blank" rel="noopener" class="btn-sm">查看任务</a>';
-    const url = pdfDownloadUrl(p);
-    if (url) return `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>`;
-    const doi = p && exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
-    const manual = record?.fulltextStatus === 'manual_needed';
-    if (job && ['failed','manual_needed','review'].includes(job.state)) return '<span class="fulltext-state" title="' + esc(job.message) + '">' + (job.state === 'review' ? '全文核验未通过' : '全文需人工处理') + '</span><a href="' + esc(acquireDoiUrl(doi)) + '" target="_blank" rel="noopener" class="btn-sm">查看处理状态</a>';
-    const label = manual ? '全文需人工处理' : record?.fulltextStatus === 'review' ? '全文对应待核实' : '待补全文';
-    const acquire = job ? '/api/acquire/retry?doi=' + encodeURIComponent(doi) : acquireDoiUrl(doi);
-    return doi ? `<span class="fulltext-state">${label}</span><a href="${esc(acquire)}" target="_blank" rel="noopener" class="btn-sm">${manual ? '查看处理状态' : record || job ? '再次获取全文' : '获取全文'}</a>` : '';
+    if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
+    const view = fulltextView(p), doi = p && exactDoi(p.doi);
+    if (!view) return '';
+    const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
+    const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
+    const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
+    const mode = job && job.stage ? 'muse' : 'legacy';
+    const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>'
+      : view.action === 'refresh' ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">刷新状态</button>'
+      : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
+      : view.action === 'official' ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>'
+      : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
+    const form = view.action === 'submit' || view.action === 'retry'
+      ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
+    const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
+    if (!full) {
+      if (view.action === 'download') return primary;
+      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="fulltext-state" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
+        + esc(view.short) + (view.step >= 0 && !view.stopped ? ' · 第 ' + (view.step + 1) + '/3 步' : '') + '</span>' + primary + '</span>' + form;
+    }
+    const steps = FT_STEPS.map((label, i) => {
+      const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
+      return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
+    }).join('');
+    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '"><ol class="ft-steps">' + steps + '</ol>'
+      + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
+      + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
+  }
+  function pdfDownloadLink(p) {
+    // In the DOI search view the card carries the full status block instead, so it is never repeated.
+    const doi = p && exactDoi(p.doi);
+    if (doi && exactDoi(state.search) === doi) return '';
+    return fulltextStatusHtml(p, false);
+  }
+  function doiStatusBlock(p) {
+    const doi = p && exactDoi(p.doi);
+    return doi && exactDoi(state.search) === doi ? fulltextStatusHtml(p, true) : '';
   }
   function inLane(p, lane) {
     if (lane === 'all') return true;
@@ -57,6 +108,31 @@
     el.hidden = false;
     el.innerHTML = '<span class="range-label">发表时间</span>' + (RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library).map(([v, n]) =>
       `<button type="button" class="lane-chip${state.range === v ? ' active' : ''}" data-range="${v}" aria-pressed="${state.range === v}">${n}</button>`).join('');
+  }
+  const FT_FILTERS = [['', '全部'], ['ready', '可阅读'], ['verifying', '核验中'], ['queued', '排队下载'], ['failed', '未取得']];
+  function fulltextFilterBucket(p) {
+    const view = fulltextView(p);
+    if (!view || view.kind === 'none') return '';
+    if (view.kind === 'ready') return 'ready';
+    if (view.kind === 'verifying') return 'verifying';
+    if (view.kind === 'queued' || view.kind === 'running') return 'queued';
+    return 'failed';
+  }
+  function renderFtBar() {
+    const el = $('#ftBar');
+    if (!el) return;
+    if (state.mode !== 'library' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
+    const counts = { '': 0, ready: 0, verifying: 0, queued: 0, failed: 0 };
+    for (const p of getCurrentDataset()) {
+      if (!matchesFilters(p, false, 'ft')) continue;
+      counts['']++;
+      const bucket = fulltextFilterBucket(p);
+      if (bucket) counts[bucket]++;
+    }
+    const active = state.ftFilter || '';
+    el.hidden = false;
+    el.innerHTML = '<span class="range-label">全文</span>' + FT_FILTERS.map(([v, n]) =>
+      `<button type="button" class="lane-chip${active === v ? ' active' : ''}" data-ft-filter="${v}" aria-pressed="${active === v}">${n} <small>${counts[v]}</small></button>`).join('');
   }
   function renderLaneBar() {
     const el = $('#laneBar');
@@ -178,9 +254,10 @@
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
       set('sf', state.mode === 'sources' ? state.sourceFilter : '', '');
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
+      set('ft', state.mode === 'library' ? state.ftFilter : '', '');
       u.searchParams.delete('maintainer');
       const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
-        || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
+        || state.ftFilter || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
       history.replaceState(history.state, '', u.pathname + (u.search || '') + u.hash);
@@ -309,6 +386,7 @@
     if (!matchesSidebarFilters(p, skip)) return false;
     if (lane && state.reading==='abstract' && !hasAbstract(p)) return false;
     if (lane && state.reading==='quicklook' && (!quicklookOf(p) || p.hasDraft)) return false;
+    if (state.mode === 'library' && skip !== 'ft' && state.ftFilter && fulltextFilterBucket(p) !== state.ftFilter) return false;
     return matchesQuery(p);
   }
   // Bit set of the sidebar groups a paper fails, so facet counts need one pass, not one per group.
@@ -618,6 +696,10 @@
     }
     if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
     if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
+    if (state.mode === 'library' && state.ftFilter) {
+      const label = { ready: '可阅读', verifying: '核验中', queued: '排队下载', failed: '未取得' }[state.ftFilter];
+      chips += '<span class="filter-badge-active">全文: ' + label + ' <button type="button" class="filter-badge-remove" data-clear="ft" aria-label="清除全文状态筛选">&times;</button></span>';
+    }
 
     container.innerHTML = chips;
   }

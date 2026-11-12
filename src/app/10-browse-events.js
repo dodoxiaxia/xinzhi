@@ -41,7 +41,7 @@
     state.search = '';
     clearSidebarFilters();
     state.range = defaultRange(state.mode);
-    state.lane = 'core'; state.reading=''; state.favoritesOnly=false; state.minor=false;
+    state.lane = 'core'; state.reading=''; state.favoritesOnly=false; state.minor=false; state.ftFilter='';
     state.page = 1;
     const sInput = $('#globalSearch');
     if (sInput) sInput.value = '';
@@ -226,6 +226,14 @@
     }
     const mb = e.target.closest('[data-minor]');
     if (mb) { state.minor = !state.minor; state.page = 1; renderSidebarFilters(); renderStream(); return; }
+    const ftBtn = e.target.closest('[data-ft-filter]');
+    if (ftBtn) {
+      state.ftFilter = ftBtn.dataset.ftFilter || '';
+      state.page = 1;
+      renderSidebarFilters();
+      renderStream();
+      return;
+    }
     const b = e.target.closest('[data-range]');
     if (!b) return;
     state.range = b.dataset.range;
@@ -286,7 +294,20 @@
   $('#resetTagBtn')?.addEventListener('click', e => changeSidebarFilter('tag', '', false, e.target));
 
   // Global Document Clicks Delegation
+  document.addEventListener('submit', e => {
+    const form = e.target.closest && e.target.closest('form[data-ft-form]');
+    if (form) { e.preventDefault(); submitFulltextForm(form); }
+  });
   document.addEventListener('click', e => {
+    const ft = e.target.closest('[data-ft-action]');
+    if (ft) {
+      const doi = exactDoi(ft.dataset.doi), box = ft.closest('[data-ft-doi]') || ft.parentElement;
+      if (ft.dataset.ftAction === 'open-form') {
+        const form = (box.querySelector('[data-ft-form]') || (box.parentElement && box.parentElement.querySelector('[data-ft-form]')));
+        if (form) { form.hidden = false; form.querySelector('input')?.focus(); }
+      } else if (ft.dataset.ftAction === 'refresh') { ft.disabled = true; lookupSupplementalDoi(doi, true).then(refreshSupplementalView); }
+      return;
+    }
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
     if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
     if (e.target.closest('[data-action="retry-radar-archive"]')) { RADAR_LOAD.state = 'idle'; renderStream(); return; }
@@ -363,6 +384,7 @@
       if (type === 'tag') state.tag = '';
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
+      if (type === 'ft') state.ftFilter = '';
       state.page = 1;
       refreshFilterResults(clearBtn);
       return;
