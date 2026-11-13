@@ -201,8 +201,10 @@
     </div>
 
     <div class="drawer-body" id="drawerBody">
-      <section id="drawerFulltext" class="drawer-fulltext" aria-label="全文状态">
+      <section id="drawerFulltext" class="drawer-fulltext" aria-label="全文下载">
         <div data-drawer-ft-status></div>
+      <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" data-ft-download hidden>下载 PDF</a>
+      <form class="ft-form ft-dl-form" id="drawerPdfForm" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>
       </section>
     </div>
 
@@ -210,11 +212,6 @@
       <button class="text-btn" id="drawerCopyShareBtn">微信群文案</button>
       <button type="button" class="card-icon-btn card-star" id="drawerHuddleToggleBtn" aria-pressed="false" aria-label="加入精选" title="加入精选"></button>
       <a href="#" target="_blank" rel="noopener" class="text-btn card-source" id="drawerExternalLink" title="在期刊官网打开原文">官网<span aria-hidden="true">&thinsp;↗</span></a>
-      <span id="drawerFtSlot" class="drawer-ft-slot">
-        <span id="drawerFtAction"></span>
-        <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerPdfLink" data-ft-download hidden>下载 PDF</a>
-        <form class="ft-form ft-dl-form" id="drawerPdfForm" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>
-      </span>
       <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="text-btn" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开" hidden>汉堡登录入口 ↗</a>
       <a href="#" target="_blank" rel="noopener noreferrer" class="text-btn" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>
     </div>

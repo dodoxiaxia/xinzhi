@@ -510,8 +510,9 @@
     ).join('');
     let ft = '';
     if (state.mode === 'library' && typeof FT_FILTERS !== 'undefined') {
+      const counts = typeof fulltextFilterCounts === 'function' ? fulltextFilterCounts() : {};
       ft = '<h4>全文状态</h4><div class="qf-opt-list">' + FT_FILTERS.map(([v, n]) =>
-        `<button type="button" class="qf-opt${(state.ftFilter || '') === v ? ' is-on' : ''}" data-qf-ft="${esc(v)}" aria-pressed="${(state.ftFilter || '') === v}">${esc(v === '' ? '全部全文' : n)}</button>`
+        `<button type="button" class="qf-opt${(state.ftFilter || '') === v ? ' is-on' : ''}" data-qf-ft="${esc(v)}" data-count="${counts[v] || 0}" aria-pressed="${(state.ftFilter || '') === v}">${esc(v === '' ? '全部全文' : n)} <small>${counts[v] || 0}</small></button>`
       ).join('') + '</div>';
     }
     return `<div class="qf-pop-head"><strong>领域与时间</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>

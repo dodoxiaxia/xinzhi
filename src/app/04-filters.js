@@ -124,29 +124,20 @@
     }).join('');
     const fullBadge = view.kind === 'none' ? '' : '<span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>';
     if (drawer) {
-      if (view.kind === 'ready') return '';
-      const hint = view.headline + (view.eta ? ' · ' + view.eta.replace(/^下一步：/, '') : '');
-      return '<p class="ft-hint ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + esc(hint) + (official ? ' ' + official : '') + (upload ? ' ' + upload : '') + (maint ? ' ' + maint : '') + '</p>';
+      const secondary = (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '')
+        + ((view.action !== 'official' && official) || upload ? '<span class="ft-actions">' + (view.action === 'official' ? '' : official) + upload + '</span>' : '');
+      return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">'
+        + '<div class="ft-head">' + fullBadge
+        + '<p class="ft-line" role="status"><b title="' + esc(view.headline) + '">' + esc(view.headline) + '</b></p>'
+        + '<span class="ft-head-action" data-drawer-ft-primary>' + (view.action === 'download' ? '' : primary) + '</span></div>'
+        + (view.action === 'download' ? '<div class="ft-dl-slot" data-drawer-ft-form-slot></div>' : form)
+        + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+        + (secondary ? '<div class="ft-sub">' + secondary + '</div>' : '')
+        + maint + '</div>';
     }
     return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + fullBadge + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
       + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
-  }
-  // Primary action + passphrase form for the reader footer. Download uses the persistent #drawerPdfLink / #drawerPdfForm.
-  function fulltextFooterActionHtml(p) {
-    const conflict = fulltextConflict(p);
-    if (conflict) return '';
-    const view = fulltextView(p), doi = p && exactDoi(p.doi);
-    if (!view) return '';
-    const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
-    const officialUrl = officialArticleUrl(p);
-    const mode = job && job.stage ? 'muse' : 'legacy';
-    if (view.action === 'download') return '';
-    if (view.action === 'refresh') return '<button type="button" class="btn-sm" data-ft-action="refresh" data-doi="' + safeDoi + '">查看进度</button>';
-    if (view.action === 'upload') return '<a class="btn-sm" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>';
-    if (view.action === 'official') return officialUrl ? '<a class="btn-sm" href="' + esc(officialUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
-    const form = '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>';
-    return '<button type="button" class="btn-sm" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>' + form;
   }
   function pdfDownloadLink(p) {
     // In the DOI search view the card carries the full status block instead, so it is never repeated.
@@ -187,16 +178,20 @@
     if (view && (view.kind === 'failed' || view.kind === 'review')) return 'failed';
     return 'none';
   }
-  function renderFtBar() {
-    const el = $('#ftBar');
-    if (!el) return;
-    if (state.mode !== 'library' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
+  function fulltextFilterCounts() {
     const counts = { '': 0, ready: 0, verifying: 0, queued: 0, failed: 0, none: 0 };
     for (const p of getCurrentDataset()) {
       if (!matchesFilters(p, false, 'ft')) continue;
       counts['']++;
       counts[fulltextFilterBucket(p)]++;
     }
+    return counts;
+  }
+  function renderFtBar() {
+    const el = $('#ftBar');
+    if (!el) return;
+    if (state.mode !== 'library' || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
+    const counts = fulltextFilterCounts();
     const active = state.ftFilter || '';
     el.hidden = false;
     el.innerHTML = '<select class="range-select ft-select" data-ft-select aria-label="全文状态（各档篇数按当前领域、时间与搜索统计）">' + FT_FILTERS.map(([v, n]) =>

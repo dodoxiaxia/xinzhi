@@ -191,9 +191,11 @@
         ${tagsHtml ? `<div class="drawer-tags">${tagsHtml}</div>` : ''}
       `;
       // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
-      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFtSlot input[name="passphrase"], .drawer-footer input[name="passphrase"]') ? document.activeElement : null;
+      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
       var typingSel = typingEl ? [typingEl.selectionStart, typingEl.selectionEnd] : null;
       const ftSection = $('#drawerFulltext');
+      const pdfLinkEl = $('#drawerPdfLink');
+      const pdfFormEl = $('#drawerPdfForm');
       ftSection.remove();
       renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
@@ -201,12 +203,15 @@
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
       if (ftStatus && ftStatus.dataset.ftHtml !== ftHtml) {
+        // 先把挂载在状态块里的持久节点挪回 #drawerFulltext，避免被 innerHTML 覆盖销毁。
+        if (pdfLinkEl && pdfLinkEl.parentElement !== ftSection) ftSection.appendChild(pdfLinkEl);
+        if (pdfFormEl && pdfFormEl.parentElement !== ftSection) ftSection.appendChild(pdfFormEl);
         ftStatus.innerHTML = ftHtml;
         ftStatus.dataset.ftHtml = ftHtml;
       }
     }
 
-    // Footer buttons: ☆, 官网, 获取全文 / 下载 PDF
+    // Footer buttons: ☆, 官网, 微信群文案。下载 PDF 留在 #drawerFulltext 固定下载区。
     const huddleBtn = $('#drawerHuddleToggleBtn');
     if (huddleBtn) {
       huddleBtn.innerHTML = huddleStarSvg(isHuddled);
@@ -229,21 +234,22 @@
     }
     const institutionLogin = $('#drawerInstitutionLoginLink');
     if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
-    const ftSlot = $('#drawerFtSlot');
-    const ftAction = $('#drawerFtAction');
+    const ftSectionNow = $('#drawerFulltext');
     const pdfLink = $('#drawerPdfLink');
     const pdfForm = $('#drawerPdfForm');
-    const footerAction = fulltextFooterActionHtml(paper);
-    if (ftAction && ftAction.dataset.ftHtml !== footerAction) {
-      ftAction.innerHTML = footerAction;
-      ftAction.dataset.ftHtml = footerAction;
-    }
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
+      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
       if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
-      if (ftSlot && pdfLink.parentElement !== ftSlot) ftSlot.appendChild(pdfLink);
-      if (ftSlot && pdfForm && pdfForm.parentElement !== ftSlot) ftSlot.appendChild(pdfForm);
+      if (ftSectionNow) {
+        const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
+        const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
+        const linkTarget = primarySlot || ftSectionNow;
+        const formTarget = formSlot || ftSectionNow;
+        if (pdfLink.parentElement !== linkTarget) linkTarget.appendChild(pdfLink);
+        if (pdfForm && pdfForm.parentElement !== formTarget) formTarget.appendChild(pdfForm);
+      }
     }
 
     if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {

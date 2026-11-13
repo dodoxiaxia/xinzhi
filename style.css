@@ -1721,9 +1721,9 @@ html[data-style] .article-card.has-side-actions .article-gist {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
 }
 .article-card.has-side-actions .content-label,
-.article-card.has-side-actions .ft-summary,
-.article-card.has-side-actions .fulltext-state,
-.article-card.has-side-actions .ft-badge { display: none !important; }
+.article-card.has-side-actions .card-side-actions .ft-summary,
+.article-card.has-side-actions .card-side-actions .fulltext-state:not(.fulltext-review),
+.article-card.has-side-actions .card-side-actions .ft-badge { display: none !important; }
 
 .article-card.has-side-actions .card-side-actions {
   display: flex; flex-direction: row !important; align-items: center; justify-content: flex-end;
