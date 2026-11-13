@@ -94,11 +94,13 @@
     if (sources) sources.hidden = !!doi || state.mode !== 'sources';
     const noSidebar = !!doi || special || state.mode === 'curated';
     { const head = $('#listHead'); if (head) head.hidden = special || !!doi; }
+    const rail = $('#streamRail'); if (rail) rail.hidden = !!doi || state.mode !== 'curated';
     const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
     const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
     const app = $('.app-container');
     if (app) {
       app.classList.toggle('full-width-layout', noSidebar);
+      app.classList.toggle('curated-layout', !doi && state.mode === 'curated');
       app.classList.toggle('weekly-layout', !doi && state.mode === 'weekly');
       app.classList.toggle('sources-layout', !doi && state.mode === 'sources');
     }
