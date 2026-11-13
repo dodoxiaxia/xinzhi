@@ -176,12 +176,19 @@ function machineOaRejected(job) {
   if (!Array.isArray(job.oaRejected)) return [];
   return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch'}));
 }
+function machineClaimable(job) {
+  // Only the task record already in hand: review (verification failed) cannot be claimed or requeued.
+  // Do not read the paper record here; that would add a KV get on every list item.
+  return !job || job.state !== 'review';
+}
 function machineListItem(job) {
   const registration = job.registration && typeof job.registration === 'object' ? job.registration : null;
   const state = machinePublicState(job);
+  const claimable = machineClaimable(job);
   // A failure reason belongs to failed states only. A claimed or queued task must not show the failure it came from.
   return {doi:job.doi,state,reason:state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned' ? machineReason(job) : '',stage:machineStage(job),
-    claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,
+    claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,claimable,
+    ...(claimable ? {} : {unclaimableReason:'verification_failed'}),
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
@@ -237,6 +244,8 @@ function handleMachineProtocol(request, env) {
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
     identityReasons:MACHINE_IDENTITY_REASONS,
+    claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
+      note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
