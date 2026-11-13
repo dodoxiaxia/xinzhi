@@ -1613,3 +1613,15 @@ body:has(aside.sidebar.open) { overflow: hidden; }
 @media (max-width: 480px) {
   html[data-style] .search-panel .search-input, .search-input { min-height: 44px; height: 44px; font-size: 16px; }
 }
+
+/* 列表改版（前端）：机器内容标签、近7天榜说明行、「未申请」灰标、AI 综述入口不再显示；☆精选 / 官网原文 / 获取全文并到右侧操作列 */
+.content-label, .ql-flag, .deep-reading-label, .weekly-meta, .ft-badge-none, #aiDigest, .ai-digest { display: none !important; }
+.article-card.has-side-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: start; }
+.article-card.has-side-actions > .card-main { grid-column: 1; min-width: 0; }
+.article-card.has-side-actions > .doi-status, .article-card.has-side-actions > .ft-status.ft-full { grid-column: 1 / -1; }
+.card-side-actions { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
+.card-side-actions .ft-status.ft-compact { display: contents; }
+.card-side-actions > .btn-sm, .card-side-actions > .ft-status > .btn-sm { margin: 0; }
+.card-side-actions > .ft-form { flex-basis: auto; width: min(320px, 70vw); }
+.card-side-actions .text-btn { justify-content: flex-end; white-space: nowrap; }
+@media (max-width: 720px) { .article-card.has-side-actions { column-gap: 10px; } .card-side-actions .btn-sm, .card-side-actions .text-btn { min-height: 44px; } }
