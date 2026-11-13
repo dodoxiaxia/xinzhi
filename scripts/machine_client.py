@@ -22,6 +22,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unicodedata
 from urllib.parse import quote
 
@@ -58,6 +59,8 @@ EXIT_REJECTED = 7
 EXIT_OVER_QUOTA_AND_REJECTED = 8
 MIN_PDF_BYTES = 51200
 CURL_TIMEOUT = 60
+# register 遇到 5xx、503 library_sync_pending、超时或连不上时，按这个间隔（秒）原样重发同一批，共 3 次；登记接口是幂等的。
+REGISTER_RETRY_DELAYS = (30, 60, 120)
 UPLOAD_TIMEOUT = 180
 
 
@@ -65,6 +68,14 @@ class ClientError(Exception):
     def __init__(self, message, exit_code=5):
         Exception.__init__(self, message)
         self.exit_code = exit_code
+
+
+class TransientError(ClientError):
+    """curl 没拿到 HTTP 状态码（超时、连不上、连接被断开）。对幂等请求可以重试。"""
+
+
+def pause(seconds):
+    time.sleep(seconds)
 
 
 def eprint(*args):
@@ -155,7 +166,7 @@ def run_curl(args, header_lines, timeout):
         except ValueError:
             code = 0
         if proc.returncode != 0 and code == 0:
-            raise ClientError("curl 调用失败（未拿到 HTTP 状态码）", 5)
+            raise TransientError("curl 调用失败（未拿到 HTTP 状态码）", 5)
         return code, body
     finally:
         for name in os.listdir(tmpdir):
@@ -497,18 +508,59 @@ def read_register_input(path, fmt):
         raise ClientError("输入不是合法的 %s" % fmt.upper(), 5)
 
 
+# 只有 register 自动重试，claim 绝不能重试。register 幂等：同一批重发，已存在的 DOI 只会被跳过。
+# claim 不幂等：一次请求可能已在服务端领走任务而响应丢了，重试会一次领走多条，
+# 或让同一个任务被领两次（领走的任务有租约，别的下载端领不到，直到租约过期）。
+# 所以 claim 的任何失败都直接报出，由调用方决定怎么办，不在这里重试。
+def register_retryable(code):
+    return code >= 500
+
+
+def register_with_retry(token, items):
+    """POST /api/machine/register。5xx（含 503 library_sync_pending）和超时、连不上时，等 30、60、120 秒后把同一批原样重发。
+
+    登记接口是幂等的：已经写成功的 DOI 重发时只会 skipped，并顺手补上漏掉的索引。
+    返回 (HTTP 状态码, 解析后的响应, 共发了几次, 最后一次的网络错误或 None)。
+    """
+    delays = REGISTER_RETRY_DELAYS
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            code, data, _body = request("POST", "/api/machine/register", token=token, json_body={"items": items})
+            failure = None
+        except TransientError as exc:
+            code, data, failure = 0, None, str(exc)
+        if failure is None and not register_retryable(code):
+            return code, data, attempt, None
+        if attempt > len(delays):
+            return code, data, attempt, failure
+        reason = failure or "HTTP %d %s" % (code, (data.get("error") if isinstance(data, dict) else None) or "-")
+        eprint("登记请求没有成功（%s），%d 秒后原样重发同一批（第 %d/%d 次重试）。" % (reason, delays[attempt - 1], attempt, len(delays)))
+        pause(delays[attempt - 1])
+
+
 def cmd_register(args):
     token = load_token(require_env=True)
     items = validate_register_items(read_register_input(args.file, args.format))
     if args.dry_run:
         eprint("仅本地校验，未发送请求：%d 条通过。" % len(items))
         return emit({"ok": True, "dryRun": True, "items": items}, 0)
-    code, data, _body = request("POST", "/api/machine/register", token=token, json_body={"items": items})
+    code, data, attempts, transient = register_with_retry(token, items)
     payload = dict(data) if isinstance(data, dict) else {"ok": False}
     payload["http"] = code
+    if attempts > 1:
+        payload["attempts"] = attempts
+    if transient is not None:
+        eprint("::warning::登记失败：连续 %d 次没有拿到结果（%s）。同一批没有登记完整，请稍后原样重发（幂等）。" % (attempts, transient))
+        emit(payload, 0)
+        return 5
     if not 200 <= code < 300:
         err = payload.get("error") or "-"
-        eprint("登记失败：HTTP %d  错误码 %s。已停止。" % (code, err))
+        if code >= 500:
+            eprint("::warning::登记失败：HTTP %d  错误码 %s，已重试 %d 次仍失败。同一批可能只写了一部分，请稍后原样重发（幂等）。" % (code, err, attempts - 1))
+        else:
+            eprint("登记失败：HTTP %d  错误码 %s。已停止。" % (code, err))
         emit(payload, 0)
         return 3 if 400 <= code < 500 else 4 if code >= 500 else 5
     results = payload.get("results")

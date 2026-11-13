@@ -13,7 +13,7 @@ const c = vm.createContext({Date: Clock, URL, window: {JournalMetrics: journalMe
   state: {search: ''}, queryMatches: (text, q) => text.includes(q),
   $: selector => nodes[selector.slice(1)],
   esc: text => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]))});
-vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'sourceHealthDetails', 'specialSearchStatus', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
+vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'pubmedFetchNotice', 'sourceHealthDetails', 'specialSearchStatus', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
 const details = s => c.sourceHealthDetails(s);
 assert(details({status:'filtered_empty'}).includes('不代表期刊没有新文章'));
 const excluded = details({excludedItems: {undated:2, olderThan14Days:28, future:1, unclassifiedOrInvalid:3}});
@@ -93,3 +93,23 @@ for(const stamp of [undefined,'invalid','2026-10-08T07:00:00Z'])assert(details({
 assert(!details({status:'empty_feed'}).includes('最近订阅成功记录'));
 assert(!details({status:'filtered_empty'}).includes('最近订阅成功记录'));
 console.log('8 RSS success-provenance assertions passed; valid empty/filtered feeds remain successful.');
+
+const failedFetch = {status:'failed', errorCategory:'pubmed_upstream_timeout', httpStatus:400, reusedPrevious:true, checkedAt:'2026-10-07T07:50:00Z'};
+assert(c.pubmedFetchNotice(failedFetch).includes('pubmed_upstream_timeout'));
+assert(c.pubmedFetchNotice(failedFetch).includes('HTTP 400'));
+assert(c.pubmedFetchNotice(failedFetch).includes('已沿用上一轮条目'));
+assert(c.pubmedFetchNotice({status:'ok'}).length === 0);
+const failedDetails = details({pubmedFallback:{...backup, stale:true, fetchStatus:'failed', errorCategory:'pubmed_upstream_timeout', httpStatus:400, reusedPrevious:true}});
+assert(failedDetails.includes('pubmed_upstream_timeout'));
+assert(failedDetails.includes('HTTP 400'));
+assert(failedDetails.includes('已沿用上一轮条目'));
+assert(failedDetails.includes('已过期'));
+c.HEALTH.pubmedFetch = failedFetch;
+c.HEALTH.sources = [{name:'Nature Medicine', url:'https://example.org/rss', status:'ok', pubmedFallback:{...backup, stale:true, fetchStatus:'failed', errorCategory:'pubmed_upstream_timeout', httpStatus:400, reusedPrevious:true}}];
+c.state.search = '';
+c.renderSourcesHealth();
+assert(nodes.sourcesHealthMeta.textContent.includes('pubmed_upstream_timeout'));
+assert(nodes.sourcesHealthMeta.textContent.includes('HTTP 400'));
+assert(nodes.sourcesHealthGrid.innerHTML.includes('pubmed_upstream_timeout'));
+assert(nodes.sourcesHealthGrid.innerHTML.includes('HTTP 400'));
+console.log('PubMed fetch failure is visible in source-health with status code and fixed category.');
