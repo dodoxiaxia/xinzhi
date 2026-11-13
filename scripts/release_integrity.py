@@ -69,6 +69,7 @@ INPUTS = (
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
     'scripts/source_fallbacks.py', 'editorial/legacy_published_guides.json', 'data/pubmed.json',
     'scripts/sync_public_library.py', 'config/public_library_adjudications.json',
+    'config/public_library_topic_hides.json',
     'data/candidates.json', 'data/library.json', 'data/source-health.json',
     'data/curated-archive.json', 'editorial/source_checked_drafts.json',
     'data/translations.json', 'data/media.json', 'data/picks.json',

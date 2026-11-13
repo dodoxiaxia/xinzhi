@@ -31,6 +31,8 @@ def synthetic_root(root):
                     root / 'editorial/legacy_published_guides.json')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'config/public_library_adjudications.json',
                     root / 'config/public_library_adjudications.json')
+    shutil.copyfile(Path(builder.__file__).parents[1] / 'config/public_library_topic_hides.json',
+                    root / 'config/public_library_topic_hides.json')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'config/journal-metrics.json',
                     root / 'config/journal-metrics.json')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'config/publication-status.json',
@@ -73,6 +75,7 @@ class ReleaseBuildTests(unittest.TestCase):
             self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
             for name in ('app.js', 'citation-export.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
                          'config/public_library_adjudications.json',
+                         'config/public_library_topic_hides.json',
                          'scripts/publication_status.py', 'config/publication-status.json',
                          'editorial/public_library_snapshot.json',
                          'editorial/public_library_snapshot_manifest.json'):
