@@ -149,7 +149,7 @@
     const script = document.createElement('script');
     script.src = window.RADAR_SRC;
     script.async = true;
-    script.onerror = () => { RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates') renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
+    script.onerror = () => { window.XINZHI_RADAR_READY = null; RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates' || exactDoi(state.search)) renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
     document.head.appendChild(script);
   }
   function radarArchiveNeeded() {
@@ -157,7 +157,13 @@
     return !!exactDoi(state.search) || (state.mode === 'candidates' && !['7', '14'].includes(state.range));
   }
   function radarArchiveNotice() {
-    if (state.mode !== 'candidates' || !radarArchiveNeeded()) return '';
+    const forDoi = !!exactDoi(state.search);
+    if (!forDoi && (state.mode !== 'candidates' || !radarArchiveNeeded())) return '';
+    if (forDoi) {
+      if (RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle') return '<p class="radar-archive-note" role="status">正在检索旧雷达存档…</p>';
+      if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">旧雷达存档加载失败，暂时无法确认站内是否收录这个 DOI。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
+      return '';
+    }
     if (RADAR_LOAD.state === 'loading') return '<p class="radar-archive-note" role="status">正在载入 365 天题录存档，结果将自动补全…</p>';
     if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">365 天题录存档载入失败，当前仅显示近 3 周内容。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
     return '';
@@ -1960,7 +1966,10 @@
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
     const uncertain = lookup && ['error', 'unsupported'].includes(lookup.state);
-    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : '站内暂未收录这个 DOI。';
+    const radarNote = papers.length ? '' : radarArchiveNotice();
+    const radarPending = !papers.length && (RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle');
+    const radarError = !papers.length && RADAR_LOAD.state === 'error';
+    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : radarNote ? '' : '站内暂未收录这个 DOI。';
     // The bibliography-conflict note is maintainer information; ordinary readers only see the one status block.
     let conflictNotice = '';
     const record = DOI_FULLTEXT.get(doi);
@@ -1970,9 +1979,9 @@
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
     const plainMatch = papers.length && !pendingLookup && !uncertain;
-    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`)
+    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3>${message ? `<p>${message}</p>` : ''}${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}${radarNote}</div>`)
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
-      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3>' + (pendingLookup ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
+      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : (pendingLookup || radarPending) ? '正在核对收录状态' : (uncertain || radarError) ? '现有题录未命中' : '未找到站内文献') + '</h3>' + ((pendingLookup || (radarPending && !activeJob)) ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
     if (!lookup) lookupSupplementalDoi(doi);
   }
