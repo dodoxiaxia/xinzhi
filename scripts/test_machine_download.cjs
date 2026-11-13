@@ -46,8 +46,8 @@ function upload(h, bytes, paperDoi, secret = dsh, headers = {}) {
     body:bytes
   }), h.env);
 }
-function seedPaper(h, paperDoi, paperTitle = title, status = 'manual_needed') {
-  const paper = {id:'doi-' + hash(paperDoi).slice(0, 16),doi:paperDoi,title:paperTitle,journal:'Heart',authors:['Jane Doe'],date:'2026-10-07',datePrecision:'day',dateBasis:'Crossref published-online',ingestedAt:'2026-10-07T04:00:00.000Z',metadataStatus:'external_bibliography_checked',fulltextStatus:status};
+function seedPaper(h, paperDoi, paperTitle = title, status = 'manual_needed', journal = 'Heart') {
+  const paper = {id:'doi-' + hash(paperDoi).slice(0, 16),doi:paperDoi,title:paperTitle,journal,authors:['Jane Doe'],date:'2026-10-07',datePrecision:'day',dateBasis:'Crossref published-online',ingestedAt:'2026-10-07T04:00:00.000Z',metadataStatus:'external_bibliography_checked',fulltextStatus:status};
   h.values.set('library:paper:' + paperDoi, JSON.stringify({version:1,paper}));
 }
 function putJob(h, paperDoi, state, createdAt, extra = {}) {
@@ -1112,6 +1112,72 @@ async function review(h, body) {
   assert.equal(emptyBody.retryAfter, 300);
   assert.equal(emptyBody.reason, undefined);
   assert.equal(stored(h, 'library:machine-rate:stats:dsh:' + dayOf(h)).emptyClaim, 1);
+
+  // ---- scope_filter parity with shared JSON fixtures
+  const fs = require('fs');
+  const path = require('path');
+  const scopeCases = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'scope_filter_cases.json'), 'utf8'));
+  for (const item of scopeCases) {
+    const got = h.context.scopeDecision(item.paper);
+    assert.equal(got.action, item.action, item.id + ': ' + item.note);
+    assert.equal(got.reason, item.reason, item.id + ': ' + item.note);
+    assert.equal(typeof got.detail, 'string');
+    if (item.action === 'exclude') assert(got.detail.trim().length > 0, item.id + ' detail must be non-empty');
+  }
+
+  // ---- claim to-download skips basic research and removes it from index without consuming a lease
+  h = await create();
+  const scopeBase = Date.now();
+  const basicDoi = '10.1000/scope-basic-mi';
+  const cvDoi = '10.1000/scope-cv-hfref';
+  const basicJob = putJob(h, basicDoi, 'queued', scopeBase);
+  seedPaper(h, basicDoi, 'Therapeutic angiogenesis in a mouse model of myocardial infarction', 'manual_needed', 'Circulation Research');
+  putJob(h, cvDoi, 'queued', scopeBase + 10);
+  seedPaper(h, cvDoi, 'Empagliflozin in patients with HFrEF: a randomized trial', 'manual_needed', 'Heart');
+  await reindex(h);
+  const scopeClaimed = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  assert.equal(scopeClaimed.task.doi, cvDoi);
+  const basicAfter = stored(h, 'library:muse-job:' + basicDoi);
+  assert.equal(basicAfter.state, 'failed');
+  assert.equal(basicAfter.reason, 'out_of_scope');
+  assert.equal(basicAfter.scopeExcluded, true);
+  assert.equal(basicAfter.scopeReason, 'basic_research');
+  assert(basicAfter.scopeDetail);
+  assert.equal(basicAfter.leaseId, undefined);
+  assert.equal(h.values.has(basicJob.queueKey), false);
+  const scopeIdx = stored(h, 'library:machine-index:v1');
+  assert.equal(scopeIdx.entries[basicDoi], undefined);
+  const scopeToDownloadList = await (await call(h, '/api/machine/tasks?state=to-download', reader, null, {method:'GET'})).json();
+  assert(!scopeToDownloadList.tasks.some(t => t.doi === basicDoi));
+  const scopeFailedList = await (await call(h, '/api/machine/tasks?state=failed-awaiting-fallback', reader, null, {method:'GET'})).json();
+  assert(!scopeFailedList.tasks.some(t => t.doi === basicDoi));
+  const emptyScopeClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  assert.equal(emptyScopeClaim.task, null);
+
+  // ---- claim failed-awaiting-fallback skips unrelated oncology and gives CV clinical job to fallback
+  h = await create();
+  const fbScopeBase = Date.now();
+  const oncDoi = '10.1000/scope-onc-chemo';
+  const fbCvDoi = '10.1000/scope-fb-cv';
+  const oncJob = putJob(h, oncDoi, 'failed', fbScopeBase, {reason:'not_oa'});
+  seedPaper(h, oncDoi, 'Adjuvant chemotherapy in early-stage breast cancer', 'manual_needed', 'JAMA Oncology');
+  putJob(h, fbCvDoi, 'failed', fbScopeBase + 10, {reason:'not_oa'});
+  seedPaper(h, fbCvDoi, 'Pulsed field ablation for atrial fibrillation: a randomized trial', 'manual_needed', 'New England Journal of Medicine');
+  await reindex(h);
+  const fbScopeClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+  assert.equal(fbScopeClaim.task.doi, fbCvDoi);
+  const oncAfter = stored(h, 'library:muse-job:' + oncDoi);
+  assert.equal(oncAfter.state, 'failed');
+  assert.equal(oncAfter.reason, 'out_of_scope');
+  assert.equal(oncAfter.scopeExcluded, true);
+  assert.equal(oncAfter.scopeReason, 'unrelated_to_cv_or_medical_ai');
+  assert(oncAfter.scopeDetail);
+  assert.equal(oncAfter.leaseId, undefined);
+  assert.equal(h.values.has(oncJob.queueKey), false);
+  const fbScopeIdx = stored(h, 'library:machine-index:v1');
+  assert.equal(fbScopeIdx.entries[oncDoi], undefined);
+  const fbEmpty = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+  assert.equal(fbEmpty.task, null);
 
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();

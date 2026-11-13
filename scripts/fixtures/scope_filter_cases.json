@@ -1,0 +1,250 @@
+[
+  {
+    "id": "basic_mouse_mi_model",
+    "paper": {
+      "title": "Therapeutic angiogenesis in a mouse model of myocardial infarction",
+      "journal": "Circulation Research",
+      "summary": "We induced myocardial infarction in C57BL/6 mice and assessed infarct size and angiogenesis.",
+      "category": "心血管",
+      "clinicalTier": "心血管综合与其他"
+    },
+    "action": "exclude",
+    "reason": "basic_research",
+    "note": "Explicit mouse MI model must be excluded even with cardiovascular topic and tier"
+  },
+  {
+    "id": "basic_crispr_murine_myocytes",
+    "paper": {
+      "title": "CRISPR-Cas9 knockout of RBM20 in murine cardiomyocytes alters sarcomere splicing",
+      "journal": "Cardiovascular Research",
+      "summary": "Isolated murine cardiomyocytes were edited with CRISPR-Cas9 to investigate titin splicing."
+    },
+    "action": "exclude",
+    "reason": "basic_research",
+    "note": "CRISPR knockout in murine myocytes is explicit basic research"
+  },
+  {
+    "id": "basic_in_vitro_endothelial_mesh",
+    "paper": {
+      "title": "In vitro shear stress modulates KLF2 expression in cultured endothelial cells",
+      "journal": "Arteriosclerosis, Thrombosis, and Vascular Biology",
+      "summary": "Cultured endothelial cells were exposed to laminar shear stress in vitro.",
+      "meshTerms": ["Animals", "Mice", "Endothelial Cells"]
+    },
+    "action": "exclude",
+    "reason": "basic_research",
+    "note": "In-vitro cultured endothelial cell experiment with MeSH Animals/Mice and no Humans"
+  },
+  {
+    "id": "basic_mesh_animals_without_humans",
+    "paper": {
+      "title": "Atrial electrical remodeling after autonomic nerve stimulation",
+      "journal": "Heart Rhythm",
+      "summary": "Electrophysiological parameters were recorded during vagal stimulation.",
+      "meshTerms": ["Animals", "Rats", "Atrial Fibrillation"]
+    },
+    "action": "exclude",
+    "reason": "basic_research",
+    "note": "MeSH animal terms without Humans is a strong basic-research signal"
+  },
+  {
+    "id": "unrelated_melanoma_nejm",
+    "paper": {
+      "title": "Adjuvant nivolumab plus relatlimab in resected stage III-IV melanoma: a phase 3 randomized trial",
+      "journal": "New England Journal of Medicine",
+      "summary": "Patients with resected melanoma were randomly assigned to nivolumab plus relatlimab or nivolumab alone.",
+      "category": "综合医学",
+      "clinicalTier": "顶级综合与科学",
+      "studyDesign": "RCT"
+    },
+    "action": "exclude",
+    "reason": "unrelated_to_cv_or_medical_ai",
+    "note": "Phase-3 melanoma trial in NEJM has no cardiovascular or medical-AI signal"
+  },
+  {
+    "id": "unrelated_breast_chemo_jama_oncology",
+    "paper": {
+      "title": "Dose-dense adjuvant chemotherapy in early-stage triple-negative breast cancer",
+      "journal": "JAMA Oncology",
+      "summary": "Patients received adjuvant chemotherapy and aromatase inhibitor (AI) endocrine therapy for early breast cancer."
+    },
+    "action": "exclude",
+    "reason": "unrelated_to_cv_or_medical_ai",
+    "note": "Breast-cancer adjuvant chemo in JAMA Oncology; aromatase inhibitor (AI) must not be mistaken for artificial intelligence"
+  },
+  {
+    "id": "unrelated_glioblastoma_surgery",
+    "paper": {
+      "title": "Supramaximal resection versus standard resection for newly diagnosed glioblastoma",
+      "journal": "The Lancet Oncology",
+      "summary": "Overall survival was compared between supramaximal and standard surgical resection in patients with glioblastoma."
+    },
+    "action": "exclude",
+    "reason": "unrelated_to_cv_or_medical_ai",
+    "note": "Glioblastoma surgery without AI or cardiovascular focus"
+  },
+  {
+    "id": "uncertain_hf_signaling_review",
+    "paper": {
+      "title": "TGF-beta signaling pathways and translational mechanisms in heart failure: a narrative review",
+      "journal": "Nature Reviews Cardiology",
+      "summary": "This review summarizes translational signaling mechanisms and therapeutic targets in clinical heart failure.",
+      "category": "心血管",
+      "clinicalTier": "心血管旗舰顶刊",
+      "studyDesign": "叙述综述"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Signaling/pathway/mechanism/translational alone must not be excluded"
+  },
+  {
+    "id": "uncertain_pneumonia_cohort_jama",
+    "paper": {
+      "title": "Antibiotic duration and 30-day readmission in hospitalized adults with community-acquired pneumonia: a cohort study",
+      "journal": "JAMA",
+      "summary": "In this multicenter cohort of 4200 adults with pneumonia, 5-day versus 8-day therapy was evaluated.",
+      "category": "综合医学",
+      "clinicalTier": "顶级综合与科学",
+      "studyDesign": "队列研究"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "General-medicine pneumonia cohort in JAMA is uncertain and must be kept"
+  },
+  {
+    "id": "uncertain_ai_protein_paper",
+    "paper": {
+      "title": "De novo protein structure generation with diffusion language models",
+      "journal": "Nature Machine Intelligence",
+      "summary": "We introduce a generative model for protein backbone design evaluated on benchmark structural datasets.",
+      "category": "AI前沿",
+      "clinicalTier": "前沿大模型与科技"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Non-clinical AI protein paper is uncertain rather than out-of-scope oncology and must be kept"
+  },
+  {
+    "id": "uncertain_translational_mesh_humans_and_mice",
+    "paper": {
+      "title": "Circulating biomarkers of myocardial fibrosis in patients and mice",
+      "journal": "Circulation",
+      "summary": "We analyzed plasma samples from 320 heart failure patients and validated mechanisms in mice.",
+      "meshTerms": ["Humans", "Animals", "Mice", "Heart Failure"]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Both Humans and animal MeSH terms present means translational/uncertain -> keep"
+  },
+  {
+    "id": "cv_hfref_sglt2_rct",
+    "paper": {
+      "title": "Empagliflozin in patients with heart failure with reduced ejection fraction: a randomized controlled trial",
+      "journal": "New England Journal of Medicine",
+      "summary": "Patients with HFrEF were randomized to empagliflozin or placebo for cardiovascular death or heart failure hospitalization.",
+      "category": "心血管",
+      "clinicalTier": "心衰与重症心肌",
+      "studyDesign": "RCT",
+      "tags": ["#心衰/心肌"]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "HFrEF SGLT2 randomized trial is core cardiovascular clinical research"
+  },
+  {
+    "id": "cv_af_ablation_rct",
+    "paper": {
+      "title": "Pulsed field ablation versus thermal ablation for paroxysmal atrial fibrillation",
+      "journal": "Circulation",
+      "summary": "In this randomized trial of 607 patients with atrial fibrillation, catheter ablation freedom from arrhythmia was assessed.",
+      "clinicalTier": "心律失常与电生理",
+      "tags": ["#房颤/电生理"]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Atrial fibrillation ablation trial must be kept"
+  },
+  {
+    "id": "cv_bp_lowering_rct",
+    "paper": {
+      "title": "Intensive blood-pressure lowering in older patients with hypertension: a randomized trial",
+      "journal": "The Lancet",
+      "summary": "Intensive systolic blood pressure target reduced major cardiovascular events compared with standard care.",
+      "clinicalTier": "脑血管与高血压",
+      "tags": ["#高血压/血管"]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Blood-pressure lowering clinical trial must be kept"
+  },
+  {
+    "id": "ai_ecg_af_screening_rct",
+    "paper": {
+      "title": "Artificial intelligence-enabled electrocardiography for atrial fibrillation screening: a randomized trial",
+      "journal": "Nature Medicine",
+      "summary": "An AI-ECG algorithm guided targeted screening for paroxysmal atrial fibrillation in primary care.",
+      "category": "交叉研究",
+      "clinicalTier": "AI医疗与数字医学",
+      "tags": ["#AI-ECG", "#房颤/电生理"]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "ECG-AI AF screening RCT must be kept"
+  },
+  {
+    "id": "ai_llm_hospital_docs",
+    "paper": {
+      "title": "Large language model assistance for inpatient clinical documentation in hospital medicine",
+      "journal": "NEJM AI",
+      "summary": "In a pragmatic evaluation, an LLM drafted discharge summaries across inpatient medical wards.",
+      "category": "AI医疗",
+      "clinicalTier": "AI医疗与数字医学",
+      "tags": ["#大模型/NLP"]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "LLM for hospital documentation is clinical medical AI"
+  },
+  {
+    "id": "ai_ml_breast_cancer_screening",
+    "paper": {
+      "title": "ML for breast-cancer screening in a prospective multicenter cohort",
+      "journal": "The Lancet Oncology",
+      "summary": "A machine learning mammography triage model was prospectively evaluated in 45,000 screening participants."
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Medical-AI clinical paper about cancer screening must be kept even in an oncology journal"
+  },
+  {
+    "id": "cv_cardio_oncology_anthracycline",
+    "paper": {
+      "title": "Anthracycline-induced cardiotoxicity and left ventricular dysfunction in breast cancer survivors: a prospective cohort",
+      "journal": "JAMA Oncology",
+      "summary": "Patients receiving anthracycline chemotherapy underwent serial echocardiography and troponin monitoring."
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Cardio-oncology / cardiotoxicity cohort must be kept even when published in an oncology journal"
+  },
+  {
+    "id": "claim_minimal_cv_title_journal_only",
+    "paper": {
+      "title": "Long-term outcomes after transcatheter aortic valve replacement",
+      "journal": "Heart"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Claim-time minimal fields for a CV clinical paper must be kept"
+  },
+  {
+    "id": "claim_minimal_ambiguous_title_only",
+    "paper": {
+      "title": "Clinical perspectives on modern healthcare delivery",
+      "journal": "JAMA"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Claim-time ambiguous paper with only title and journal must be conservatively kept"
+  }
+]

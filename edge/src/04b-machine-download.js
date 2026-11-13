@@ -614,6 +614,12 @@ async function machineClaimQueued(env, caller) {
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
       if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       if (!paper || paper.fulltextStatus === 'review') continue;
+      const scope = scopeDecision(paper);
+      if (scope.action === 'exclude') {
+        await musePut(env, {...job,state:'failed',reason:'out_of_scope',scopeExcluded:true,scopeReason:scope.reason,scopeDetail:scope.detail,updatedAt:Date.now()}, {indexChanges:changes});
+        if (job.queueKey) await museDelete(env, job.queueKey);
+        continue;
+      }
       const now = Date.now();
       const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
       await musePut(env, claimed, {indexChanges:changes});
@@ -656,6 +662,12 @@ async function machineClaimFailed(env, caller) {
       if (paper && paper.fulltextStatus === 'review') continue;
       // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
       if (job.state === 'review') continue;
+      const scope = paper ? scopeDecision(paper) : null;
+      if (scope && scope.action === 'exclude') {
+        await musePut(env, {...job,state:'failed',reason:'out_of_scope',scopeExcluded:true,scopeReason:scope.reason,scopeDetail:scope.detail,updatedAt:Date.now()}, {indexChanges:changes});
+        if (job.queueKey) await museDelete(env, job.queueKey);
+        continue;
+      }
       await museOwnerGuard(env, doi);
       const now = Date.now();
       // The failure that made this task claimable is history, not the state of the new lease.
@@ -763,7 +775,7 @@ async function handleMachineReturn(request, env) {
   } catch (error) { return machineError(error); }
 }
 function machineRequeueCandidate(job) {
-  if (!job || ['review','available','abandoned','verifying'].includes(job.state)) return false;
+  if (!job || job.scopeExcluded === true || job.reason === 'out_of_scope' || ['review','available','abandoned','verifying'].includes(job.state)) return false;
   if (job.state === 'failed' || job.state === 'login_required') return true;
   return ['queued','running','uploading'].includes(job.state) && museExpired(job);
 }
