@@ -47,6 +47,12 @@ DUPLICATES = {
     'f8345cffb3130085': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327',
                          'Supplemental Online Content: Nonauthor Collaborators *First name, last name, and '
                          'suffix (if applicable) are required and will appear in PubMed.'),
+    # Reviewed 2026-11-13: this public record is a JAMA supplement (PETRUSHKA tool),
+    # not a standalone article. Same publisher file family as the canonical paper
+    # (joi260005supp1 vs already-catalogued joi260005supp2/supp4).
+    'aac74a7aaeeff6ef': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327',
+                         'An evidence-based decision-support system (PETRUSHKA tool) to personalise '
+                         'antidepressant treatment in major depressive disorder'),
 }
 ONLINE_CORRECTIONS = {
     'a76a3fd5e0e70fd7': ('10.3760/cma.j.cn112139-20260730-00329', '42765414', '2026-09-21'),
