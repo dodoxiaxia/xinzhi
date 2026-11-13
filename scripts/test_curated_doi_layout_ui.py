@@ -72,6 +72,29 @@ def browser_path():
     return '/usr/bin/chromium' if os.path.exists('/usr/bin/chromium') else '/usr/bin/google-chrome'
 
 
+def occupies_right_rail(layout, expected_width=260):
+    """True when the date rail is a visible column to the right of the article stream."""
+    rail, content = layout.get('railBox'), layout.get('contentBox')
+    if layout.get('railHidden') or not rail or not content:
+        return False
+    if rail['width'] <= 1 or rail['height'] <= 1:
+        return False
+    return abs(rail['width'] - expected_width) <= 1 and rail['x'] >= content['x'] + content['width'] - 1
+
+
+def is_single_column(layout):
+    """DOI search should drop the 260px right rail and let the card fill the main column."""
+    return (
+        layout.get('hasFullWidthClass')
+        and not layout.get('hasCuratedClass')
+        and layout.get('layoutCols') == 'none'
+        and not occupies_right_rail(layout)
+        and abs(layout['contentBox']['width'] - layout['mainBox']['width']) <= 1
+        and abs(layout['cardBox']['width'] - layout['contentBox']['width']) <= 1
+        and not layout.get('overflow')
+    )
+
+
 def measure_layout(page):
     return page.evaluate('''() => {
         const app = document.querySelector('.app-container');
@@ -131,13 +154,9 @@ def main():
         expect(page.locator('#articlesStream .article-card')).to_have_count(1)
         library_doi = measure_layout(page)
 
-        assert curated_doi['hasFullWidthClass'] and not curated_doi['hasCuratedClass'], curated_doi
-        assert curated_doi['railHidden'] is True and curated_doi['railBox']['width'] == 0, curated_doi
-        assert curated_doi['layoutCols'] == 'none', curated_doi
-        assert abs(curated_doi['contentBox']['width'] - curated_doi['mainBox']['width']) <= 1, curated_doi
-        assert abs(curated_doi['cardBox']['width'] - curated_doi['contentBox']['width']) <= 1, curated_doi
+        assert is_single_column(curated_doi), curated_doi
+        assert is_single_column(library_doi), library_doi
         assert abs(curated_doi['mainBox']['width'] - library_doi['mainBox']['width']) <= 1, (curated_doi, library_doi)
-        assert not curated_doi['overflow'], curated_doi
 
         # 2. Normal curated two-column -> type DOI -> clear DOI restores two-column
         page.goto(f'{ORIGIN}/?mode=curated', wait_until='load')
@@ -151,10 +170,7 @@ def main():
         page.locator('#globalSearch').fill(DOI)
         expect(page.locator('#activeFiltersBar .doi-filter-badge')).to_be_visible()
         typed = measure_layout(page)
-        assert not typed['hasCuratedClass'] and typed['railHidden'] is True, typed
-        assert typed['layoutCols'] == 'none', typed
-        assert abs(typed['contentBox']['width'] - typed['mainBox']['width']) <= 1, typed
-        assert abs(typed['cardBox']['width'] - typed['contentBox']['width']) <= 1, typed
+        assert is_single_column(typed), typed
 
         page.locator('#activeFiltersBar [data-clear="search"]').click()
         expect(page.locator('#streamRail')).to_be_visible()
