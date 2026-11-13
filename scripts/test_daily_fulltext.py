@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import tempfile
 import unittest
+import urllib.parse as urllib_parse
 from unittest.mock import patch
 from pathlib import Path
 import daily_fulltext as d
@@ -114,6 +115,201 @@ class SourceTests(unittest.TestCase):
             self.assertNotIn(field, serialized)
         self.assertFalse(result['items'][0]['humanReviewed'])
         self.assertEqual(result['items'][0]['scope'], 'public-fulltext-body')
+
+class ScopeTests(unittest.TestCase):
+    """Deep-reading column scope (owner decision 2026-11-13): cardiovascular, or general LLM/medical-AI methodology."""
+    OUT = (
+        ('10.1111/cas.70548', 'Multimodal Integration Identifies C16orf74 as an EMT Regulator With Prognostic Relevance in HNSCC.'),
+        ('10.1186/s40798-026-01137-3', 'Sex-Equitable Machine Learning Prediction of Ankle Reinjury in Individuals with Chronic Ankle Instability: A 2-Year Prospective Cohort Study with Fairness Audit.'),
+        ('10.1002/jsp2.70227', 'Development of a Multimodal Model Combining Imaging and Clinical Data to Predict Bone Cement Leakage During Vertebroplasty for Fresh Thoracolumbar Compression Fractures.'),
+        ('bladder', 'Biparametric MRI with deep learning for the preoperative prediction of muscle invasion in patients with bladder cancer: a multicenter study.'),
+        ('dental', 'Artificial Intelligence Applications in Pediatric Dentistry: A Systematic Scoping Review With Visual Evidence Mapping.'),
+        ('breast', 'Magnetic resonance imaging radiomics for predicting pathologic complete response to neoadjuvant chemotherapy in breast cancer.'),
+        ('triage', 'Explainable Machine Learning for Predicting Hospital Admission at Emergency Department Triage: Retrospective Cohort Study.'),
+        ('delirium', 'External Validation of a Machine Learning Model for Delirium Risk.'),
+        ('skin', 'Deep learning for skin lesion classification in dermatology clinics.'),
+        ('lymphovascular', 'Machine learning to predict lymphovascular invasion in gastric cancer.'),
+        ('astronomy', 'Deep learning for astronomy'),
+        ('lung-cancer', 'Deep learning for early detection of lung cancer on chest CT'),
+        ('lung-nodule', 'Machine learning classification of pulmonary nodules in screening CT'),
+        ('lung-cancer-zh', '肺癌筛查中的深度学习'),
+        ('heat-stroke', 'Heat stroke risk prediction with machine learning'),
+    )
+    IN_CARDIO = (
+        ('ecg-af', 'Deep learning electrocardiogram analysis for atrial fibrillation detection'),
+        ('acs-triage', 'Machine learning triage of chest pain and acute coronary syndrome in the emergency department'),
+        ('10.1177/1753495x261499121', 'Evaluation of a postpartum cardiovascular risk clinic after hypertensive disorder of pregnancy: First-year experience.'),
+        ('hf', 'Artificial intelligence for heart failure risk prediction'),
+        ('pert', 'Real-world implementation of an AI-assisted PERT workflow for pulmonary embolism response teams'),
+        ('pe', 'Machine learning for risk stratification in acute pulmonary embolism'),
+        ('pah-ct', 'Deep learning CT measurement of pulmonary arterial hypertension severity'),
+        ('pulm-vascular', 'Absolute and lung volume-normalized deep learning-derived pulmonary vascular measures'),
+        ('aorta', 'Automated aorta segmentation and aortic dissection detection with deep learning'),
+        ('pad', 'Machine learning for peripheral artery disease detection'),
+        ('stroke', 'Deep learning prediction of outcomes after acute ischemic stroke'),
+        ('zh', '肺栓塞应急团队流程；肺动脉高压CT测量；主动脉夹层；外周动脉疾病；脑卒中'),
+        ('cardio-onc', 'Cardiotoxicity prediction in breast cancer patients treated with anthracyclines'),
+    )
+    IN_GENERAL = (
+        ('reasoning', 'A benchmark for clinical reasoning in large language models'),
+        ('llm-diagnosis', 'Evaluating large language models for diagnosis from clinical vignettes'),
+        ('trial-method', 'Methodological standards for randomized clinical trials of artificial intelligence interventions'),
+    )
+
+    def test_off_scope_applications_are_rejected(self):
+        for key, title in self.OUT:
+            self.assertEqual(d.deep_reading_scope(title), '', key)
+            self.assertEqual(d.topic_of(title, 'machine learning clinical patient health'), '', key)
+
+    def test_cardiovascular_and_general_ai_methodology_are_accepted(self):
+        for key, title in self.IN_CARDIO:
+            self.assertEqual(d.deep_reading_scope(title), 'cardio', key)
+        for key, title in self.IN_GENERAL:
+            self.assertEqual(d.deep_reading_scope(title), 'general', key)
+            self.assertEqual(d.topic_of(title), 'AI 医疗', key)
+        self.assertEqual(d.topic_of('Deep learning electrocardiogram analysis for atrial fibrillation detection'), '心血管 × AI')
+        self.assertEqual(d.topic_of('Evaluation of a postpartum cardiovascular risk clinic'), '心血管')
+
+    def test_broad_cardio_words_do_not_mislabel_other_specialties(self):
+        for title in ('Vascular endothelial growth factor expression in hepatocellular carcinoma',
+                      'Portal hypertension and machine learning in cirrhosis', 'Heat stroke prediction with deep learning',
+                      'Transarterial chemoembolization response prediction with machine learning'):
+            self.assertEqual(d.deep_reading_scope(title), '', title)
+
+    def test_the_title_alone_decides_so_export_matches_selection(self):
+        row = {'isOpenAccess': 'Y', 'pmcid': 'PMC9', 'source': 'MED', 'id': '9', 'firstPublicationDate': '2026-10-08',
+               'doi': '10.1234/x', 'title': 'Machine learning prediction of ankle reinjury',
+               'abstractText': 'A clinical machine learning study of patients; cardiovascular and vascular risk noted.'}
+        self.assertIsNone(d.candidate(row, WHEN.date()))
+        row['title'] = 'Evaluating large language models for clinical reasoning: a benchmark'
+        self.assertEqual(d.candidate(row, WHEN.date())['topic'], 'AI 医疗')
+
+    def test_discovery_limits_the_ai_query_and_adds_a_narrow_general_query(self):
+        urls = []
+        def fetch(url, maximum):
+            urls.append(urllib_parse.unquote(url))
+            return b'{"resultList": {"result": []}}'
+        papers, errors = d.discover(WHEN.date(), fetch=fetch)
+        self.assertEqual((papers, errors, len(urls)), ([], [], 3))
+        ai_cardio, general = urls[1], urls[2]
+        self.assertIn('TITLE:cardiovascular', ai_cardio)
+        self.assertNotIn('TITLE_ABS:health', ai_cardio)
+        self.assertIn('TITLE:benchmark', general)
+        self.assertNotIn('TITLE_ABS:patient', general)
+
+    def test_public_column_drops_off_scope_items_but_keeps_the_private_store(self):
+        raw = d.empty_data()
+        keep, drop = item(1), item(2)
+        drop['title'] = 'Machine learning prediction of ankle reinjury in chronic ankle instability'
+        raw['items'] += [keep, drop]
+        before = copy.deepcopy(raw)
+        result = d.public_readings(raw)
+        self.assertEqual([r['pmcid'] for r in result['items']], [keep['pmcid']])
+        self.assertEqual(raw, before)
+
+    def test_published_count_equals_the_items_the_column_shows(self):
+        raw = d.empty_data()
+        day = '2026-10-09'
+        keep, drop, other_day = item(1), item(2), item(3)
+        drop['title'] = 'Machine learning prediction of ankle reinjury in chronic ankle instability'
+        other_day['publishedOn'] = '2026-10-08'
+        raw['items'] += [keep, drop, other_day]
+        raw['status'] = {'day': day, 'target': 12, 'completed': 2, 'state': 'complete', 'reason': ''}
+        result = d.public_readings(raw)
+        shown = [r for r in result['items'] if r['publishedOn'] == result['status']['day']]
+        self.assertEqual(result['status']['completed'], len(shown))
+        self.assertEqual(result['status']['completed'], 1)
+        self.assertEqual(raw['status']['completed'], 2)  # private store keeps its own generation count
+
+    def _status_for(self, status, titles):
+        raw = d.empty_data()
+        for n, title in enumerate(titles, 1):
+            row = item(n)
+            row['title'] = title
+            raw['items'].append(row)
+        raw['status'] = status
+        return d.public_readings(raw)['status']
+
+    def test_status_is_complete_when_anything_in_scope_is_shown_without_a_minimum(self):
+        # Private store says "partial" with a shortfall reason; one exported reading is enough.
+        status = self._status_for({'day': '2026-10-09', 'target': 12, 'completed': 7, 'state': 'partial',
+                                   'reason': 'validation_or_fulltext_shortfall'},
+                                  ['Heart outcomes study', 'Machine learning prediction of ankle reinjury'])
+        self.assertEqual((status['state'], status['reason'], status['completed']), ('complete', '', 1))
+
+    def test_status_with_nothing_in_scope_is_complete_not_a_failure(self):
+        for reason in ('', 'validation_or_fulltext_shortfall'):
+            status = self._status_for({'day': '2026-10-09', 'target': 12, 'completed': 3, 'state': 'waiting', 'reason': reason},
+                                      ['Machine learning prediction of ankle reinjury', 'Deep learning for skin lesion classification in dermatology'])
+            self.assertEqual((status['state'], status['reason'], status['completed']), ('complete', '', 0), reason)
+
+    def test_status_keeps_a_real_generation_failure_when_nothing_is_shown(self):
+        for reason in ('model_unavailable', 'provider_failed_today', 'prior_attempt_uncertain', 'checkpoint_write_failed'):
+            status = self._status_for({'day': '2026-10-09', 'target': 12, 'completed': 0, 'state': 'waiting', 'reason': reason}, [])
+            self.assertEqual((status['state'], status['reason'], status['completed']), ('waiting', reason, 0), reason)
+        # No batch yet stays pending.
+        self.assertEqual(self._status_for({'state': 'pending', 'target': 4}, []), {'state': 'pending', 'target': 4})
+
+    def test_generation_never_pays_for_off_scope_papers(self):
+        bad = dict(paper(1, 'AI 医疗'), title='Machine learning prediction of ankle reinjury')
+        good = dict(paper(2, '心血管'))
+        fetched = []
+        def fetch(url):
+            fetched.append(url)
+            return xml(good)
+        data, ledger = d.empty_data(), d.empty_ledger()
+        d.generate(data, ledger, [bad, good], WHEN, lambda *_: None, {}, fetch=fetch,
+                   model=lambda *args: output(args[-1][0]['id']))
+        self.assertEqual([i['pmcid'] for i in data['items']], ['PMC2'])
+        self.assertTrue(all('PMC1' not in u for u in fetched))
+
+class RunExitCodeTests(unittest.TestCase):
+    """`--run` has no minimum count: few or no readings exit 0; only a real generation error exits non-zero."""
+    def run_main(self, papers, model=None, model_config=None):
+        import contextlib, io, sys
+        real_generate = d.generate
+        class Writer:
+            def save(self, data, ledger):
+                d.atomic(d.ROOT / d.DATA_PATH, data)
+                d.atomic(d.ROOT / d.LEDGER_PATH, ledger)
+        by_pmc = {p['pmcid']: p for p in papers}
+        generate = lambda *a, **k: real_generate(*a, fetch=lambda url: xml(by_pmc[url.split('/')[-2]]),
+                                                 model=model or (lambda *args: output(args[-1][0]['id'])), **k)
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(d, 'ROOT', Path(tmp)), patch.object(d, 'now', return_value=WHEN), \
+                patch.object(d, 'checkpoint', return_value=Writer()), \
+                patch.object(d, 'model_config', model_config or (lambda: {})), \
+                patch.object(d, 'discover', return_value=(papers, [])), \
+                patch.object(d, 'generate', generate), patch.object(sys, 'argv', ['daily_fulltext.py', '--run']), \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = d.main()
+            return code, json.loads((Path(tmp) / d.DATA_PATH).read_text())['status']
+
+    def test_too_few_candidates_exit_zero(self):
+        for papers in ([], [paper(1, '心血管')], [dict(paper(2, 'AI 医疗'), title='Machine learning prediction of ankle reinjury')]):
+            code, status = self.run_main(papers)
+            self.assertEqual(code, 0, len(papers))
+            self.assertEqual(status['state'], 'complete')
+            self.assertEqual(status['completed'], 1 if papers and papers[0]['title'] == 'Heart outcomes study' else 0)
+
+    def test_real_generation_errors_still_exit_non_zero(self):
+        def unavailable(*_):
+            raise d.ReadingError('model_unavailable')
+        code, status = self.run_main([paper(1, '心血管')], model=unavailable)
+        self.assertEqual((code, status['state'], status['reason']), (1, 'waiting', 'model_unavailable'))
+        def not_configured():
+            raise d.ReadingError('model_not_configured')
+        code, status = self.run_main([paper(1, '心血管')], model_config=not_configured)
+        self.assertEqual((code, status['reason']), (1, 'model_not_configured'))
+
+    def test_the_run_exit_code_and_the_public_status_share_one_judgement(self):
+        for reason in ('', 'validation_or_fulltext_shortfall'):
+            self.assertFalse(d.generation_failed(reason))
+        for reason in ('model_unavailable', 'provider_failed_today', 'prior_attempt_uncertain', 'checkpoint_write_failed', 'time_budget'):
+            self.assertTrue(d.generation_failed(reason))
+            self.assertEqual(d.generation_state(0, reason), 'waiting')
+            self.assertEqual(d.generation_state(2, reason), 'partial')
+        self.assertEqual(d.generation_state(0, 'validation_or_fulltext_shortfall'), 'complete')
 
 class GenerationTests(unittest.TestCase):
     def generate(self, data=None, ledger=None, model=None, save=None):
