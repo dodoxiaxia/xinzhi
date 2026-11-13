@@ -95,8 +95,45 @@ function pdfBackLinks(doi) {
   const exact = libraryDoi(doi);
   return exact ? '<p class="back"><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a></p>' : '<p class="back"><a href="/?mode=library">返回文献库</a></p>';
 }
+// Fallback pages must stay self-contained (CSP: default-src 'none'; style-src 'unsafe-inline'),
+// so the main site's style.css tokens (:root and [data-theme="dark"]) are copied here as literals.
+const PDF_PAGE_CSS = [
+  ':root{color-scheme:light dark;--bg-primary:#f5f2ea;--bg-secondary:#ece8dd;--bg-card:#fffdf8;--border:#ddd6c6;--border-subtle:#c9c1ae;',
+  '--text-primary:#1f1c17;--text-secondary:#4d483f;--text-muted:#7a7466;--accent:#9b2335;--accent-hover:#7e1a29;--accent-light:#f3e2df;--on-accent:#fffdf8;',
+  '--emerald:#2f6b57;--amber:#8a5a12;--shadow-md:0 8px 24px -12px rgba(31,28,23,.25);',
+  '--font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans SC","Source Han Sans SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei",sans-serif}',
+  '@media (prefers-color-scheme:dark){:root{--bg-primary:#14120f;--bg-secondary:#1c1a16;--bg-card:#1a1814;--border:#2f2b24;--border-subtle:#443f34;',
+  '--text-primary:#ece6d8;--text-secondary:#c2bba9;--text-muted:#908977;--accent:#e0707a;--accent-hover:#f08c94;--accent-light:rgba(224,112,122,.14);--on-accent:#14120f;',
+  '--emerald:#6fb59a;--amber:#d9a84c;--shadow-md:0 8px 24px -12px rgba(0,0,0,.7)}}',
+  'html{-webkit-text-size-adjust:100%}',
+  'body{margin:0;padding:0 16px;background:var(--bg-primary);color:var(--text-primary);font:16px/1.7 var(--font-sans);-webkit-font-smoothing:antialiased}',
+  '.topbar{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:.75rem;max-width:42rem;margin:0 auto;padding:.75rem 0}',
+  '.topbar .site{font-size:1.4rem;font-weight:700;letter-spacing:.02em;line-height:1.2;color:var(--accent)}',
+  'a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hover);text-decoration:underline;text-underline-offset:3px}',
+  'a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}',
+  '.topbar a.topback{display:inline-flex;align-items:center;box-sizing:border-box;min-height:44px;padding:0 .9rem;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);font-weight:600;white-space:nowrap}',
+  '.topbar a.topback:hover{border-color:var(--accent);text-decoration:none}',
+  'main{box-sizing:border-box;max-width:42rem;margin:0 auto 2rem;padding:1.5rem 1.5rem 1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-md);overflow-wrap:anywhere}',
+  'h1{font-size:1.5rem;line-height:1.3;margin:0 0 1rem;color:var(--text-primary)}',
+  'main p,main li{overflow-wrap:anywhere;color:var(--text-primary)}',
+  'label{display:inline-block;margin-bottom:.25rem;font-weight:600;color:var(--text-secondary)}',
+  'p.back a,main>p>a:only-child:not(.primary),main p>a[target=_blank]{display:inline-block;box-sizing:border-box;min-height:44px;padding:.6rem .15rem;line-height:1.7}',
+  'input[type=password],input[type=text],input[type=search],input[type=email],input[type=url],select,textarea{box-sizing:border-box;width:100%;min-height:44px;padding:.55rem .75rem;font:inherit;font-size:16px;line-height:1.4;color:var(--text-primary);background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:8px}',
+  'input[type=password]:focus,input[type=text]:focus,input[type=search]:focus,input[type=email]:focus,input[type=url]:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}',
+  'a.primary,button.primary,form>button[type=submit]{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;padding:.55rem 1.2rem;border:0;border-radius:8px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:16px;font-weight:600;line-height:1.4;text-decoration:none;cursor:pointer}',
+  'a.primary:hover,button.primary:hover,form>button[type=submit]:hover{background:var(--accent-hover);color:var(--on-accent);text-decoration:none}',
+  'ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:var(--emerald)}ol.steps .stop{color:var(--amber)}',
+  '.next{border-left:3px solid var(--border-subtle);padding:.2rem .8rem;color:var(--text-secondary)}',
+  '.paper-title{font-weight:600;color:var(--text-primary)}',
+  '.status{border-left:3px solid var(--accent);padding:.2rem .8rem;background:var(--bg-secondary);border-radius:0 8px 8px 0}',
+  '.hint,.maint{color:var(--text-muted);font-size:.9rem}',
+  'main [role=alert]{color:var(--accent);font-weight:600}',
+  'main div[role=status]{padding:.2rem .8rem;background:var(--bg-secondary);border-radius:8px;color:var(--text-secondary);font-size:.9rem}',
+  '@media (max-width:480px){body{padding:0 12px}.topbar{padding:.5rem 0}main{padding:1rem 1rem .5rem}h1{font-size:1.35rem}',
+  'a.primary,button.primary,form>button[type=submit]{display:flex;width:100%}}'
+].join('');
 function pdfHtml(body, status = 200, heading = 'PDF 下载', doi = '') {
-  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>body{margin:0}main{box-sizing:border-box}h1{font-size:1.5rem;line-height:1.3;margin:0 0 1rem}main p,main li{overflow-wrap:anywhere}main a{color:#1d4f91}p.back a,main>p>a:only-child:not(.primary){display:inline-block;padding:.65rem .15rem;min-height:1.5rem}input[type=password]{box-sizing:border-box;width:100%;min-height:44px;padding:0 .75rem;font:inherit;border:1px solid #94a3b8;border-radius:8px}a.primary,button.primary,form>button[type=submit]{min-height:44px;box-sizing:border-box}ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}.paper-title{font-weight:600}.status{border-left:3px solid #1d4f91;padding:.2rem .8rem;background:#f1f5f9}.hint,.maint{color:#475569;font-size:.9rem}a.primary,button.primary,form>button[type=submit]{display:inline-block;padding:.55rem 1.2rem;border:0;border-radius:8px;background:#1d4f91;color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}</style><body><main style="max-width:42rem;margin:clamp(1rem,8vh,6rem) auto;padding:0 1.25rem 2rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
+  return new Response('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>心知 · ' + pdfEscape(heading) + '</title><style>' + PDF_PAGE_CSS + '</style></head><body><header class="topbar"><span class="site">心知</span><a class="topback" href="/?mode=library">← 返回文献库</a></header><main><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
     status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
   });
 }
