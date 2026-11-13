@@ -27,7 +27,7 @@ async function helpers() {
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
   const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
-    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftMaintainerMode', 'fulltextState', 'safeSourceUrl', 'fulltextView', 'fulltextStatusHtml', 'fulltextFilterBucket', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
+    'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftMaintainerMode', 'fulltextState', 'safeSourceUrl', 'officialArticleUrl', 'fulltextView', 'fulltextStatusHtml', 'fulltextFilterBucket', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
   vm.runInContext([constant('FT_STEPS'), constant('FT_FILTERS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
@@ -107,6 +107,17 @@ async function helpers() {
   assert(noDoi.includes('这篇没有 DOI，无法向站内申请全文') && noDoi.includes('下一步：到官网原文查看'));
   assert(noDoi.includes('href="https://example.org/paper"'));
   assert(!c.fulltextStatusHtml({ title: 'No DOI' }, true, true).includes('href='));
+  const bmj = { id: 'bmjopen-121799', doi: '10.1136/bmjopen-2026-121799', title: 'BMJ Open sample', url: 'https://pubmed.ncbi.nlm.nih.gov/41012179/' };
+  const want = 'https://doi.org/10.1136/bmjopen-2026-121799';
+  const prevSearch = c.state.search;
+  c.state.search = bmj.doi;
+  const doiCardHtml = c.doiStatusBlock(bmj);
+  assert(doiCardHtml.includes('href="' + want + '"') && doiCardHtml.includes('>官网原文 ↗</a>'), 'DOI search card official link points to doi.org');
+  assert(!doiCardHtml.includes('pubmed.ncbi.nlm.nih.gov'), 'DOI search card official link does not point to PubMed');
+  c.state.search = prevSearch;
+  const drawerFtHtml = c.fulltextStatusHtml(bmj, true, true);
+  assert(drawerFtHtml.includes('href="' + want + '"') && drawerFtHtml.includes('>官网原文 ↗</a>'), 'Reader drawer fulltext status official link points to doi.org');
+  assert(!drawerFtHtml.includes('pubmed.ncbi.nlm.nih.gov'), 'Reader drawer fulltext status official link does not point to PubMed');
   c.mergeDoiJob(pending.doi, null);
   const bucketPapers = [kept, pending, manual, { doi: '10.1234/plain', title: 'No request yet' }, { title: 'No DOI' }];
   const bucketCounts = { ready: 0, verifying: 0, queued: 0, failed: 0, none: 0 };

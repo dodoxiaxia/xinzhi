@@ -98,13 +98,13 @@
     if (!view) return '';
     const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
-    const sourceUrl = safeSourceUrl(p);
-    const official = sourceUrl ? '<a class="ft-link" href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
+    const officialUrl = officialArticleUrl(p);
+    const official = officialUrl ? '<a class="ft-link" href="' + esc(officialUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
     const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download title="输入全文口令即可下载">下载 PDF</a>'
       : view.action === 'refresh' ? (full ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">查看进度</button>' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
-      : view.action === 'official' ? (sourceUrl ? '<a class="btn-sm btn-primary" href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
+      : view.action === 'official' ? (officialUrl ? '<a class="btn-sm btn-primary" href="' + esc(officialUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
     // 已可下载：口令框默认隐藏；仅当服务端开关 pdfSignedLink 打开时，点「下载 PDF」才会原位展开（见 10-browse-events.js）。
     const form = view.action === 'download' ? '<form class="ft-form ft-dl-form" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>' : view.action === 'submit' || view.action === 'retry'
