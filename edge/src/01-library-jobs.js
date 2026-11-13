@@ -308,8 +308,11 @@ async function libraryGithub(paper, env, context) {
     }
   }
   if (!rows.length) return context.metadataOnly ? {...inspection,candidateFound:false} : null; // An index miss is not evidence that no file exists elsewhere.
-  if (rows.length !== 1) libraryFail('library_identity', 409);
-  const row = rows[0], title = pdfTitle(row['题名']);
+  // Same rules as /api/pdf: once any row carries a file category only main-text rows count (a lone supplement or
+  // translation is never the article); rows with the same valid SHA-256 are one file; no category column keeps the old rules.
+  const selected = pdfSelectRows(rows), firstSha = selected.length ? String(selected[0].SHA256 || '').trim().toLowerCase() : '';
+  if (!selected.length || (selected.length !== 1 && (!/^[a-f0-9]{64}$/.test(firstSha) || selected.some(candidate => String(candidate.SHA256 || '').trim().toLowerCase() !== firstSha)))) libraryFail('library_identity', 409);
+  const row = selected[0], title = pdfTitle(row['题名']);
   const accepted = decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit ? decision.acceptedTitles : [paper.title];
   if (!Array.isArray(accepted) || !accepted.some(value => pdfTitle(value) === title) || (decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit && pdfTitle(decision.metadata && decision.metadata.title) !== pdfTitle(paper.title))) libraryFail('library_identity', 409);
   const path = pdfSafePath(row['当前路径']), checksum = row.SHA256.trim().toLowerCase();

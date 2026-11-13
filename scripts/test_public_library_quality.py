@@ -35,8 +35,8 @@ class QualityTests(unittest.TestCase):
                 self.assertTrue(set(entry['record']) <= quality.AUDIT_FIELDS)
         no_identity_before = {p['id'] for p in raw if not p['doi'] and not p['url']}
         no_identity_after = {p['id'] for p in projected if not p['doi'] and not p['url']}
-        self.assertEqual(len(no_identity_before), 231)  # 245 before 14 DOI-less records received verified DOIs
-        self.assertEqual(len(no_identity_after), 228)  # two DOI-less duplicates (4fe78ed5, 891a0ca9) are no longer listed
+        self.assertEqual(len(no_identity_before), 220)  # 245 before 25 DOI-less records received verified DOIs
+        self.assertEqual(len(no_identity_after), 217)  # two DOI-less duplicates (4fe78ed5, 891a0ca9) are no longer listed
         self.assertEqual(no_identity_after, (no_identity_before - quality.NAVIGATION.keys() - quality.DUPLICATES.keys()) |
                          {'a97bbb0a11844693', '814b860e19382e2f'})
         self.assertEqual(raw, before)
