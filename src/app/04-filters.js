@@ -17,6 +17,11 @@
     const val=p.url || (p.doi?'https://doi.org/'+p.doi:'');
     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
   }
+  function officialArticleUrl(p) {
+    const doi = p && exactDoi(p.doi);
+    if (doi) return 'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/');
+    return p && p.url ? safeSourceUrl({ url: p.url }) : '';
+  }
   function pdfDownloadUrl(p) {
     if (p && typeof DOI_FULLTEXT !== 'undefined') {
       const doi = exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);

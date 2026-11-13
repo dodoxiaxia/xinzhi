@@ -1112,6 +1112,11 @@
     const val=p.url || (p.doi?'https://doi.org/'+p.doi:'');
     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
   }
+  function officialArticleUrl(p) {
+    const doi = p && exactDoi(p.doi);
+    if (doi) return 'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/');
+    return p && p.url ? safeSourceUrl({ url: p.url }) : '';
+  }
   function pdfDownloadUrl(p) {
     if (p && typeof DOI_FULLTEXT !== 'undefined') {
       const doi = exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
@@ -1888,7 +1893,7 @@
           </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${safeSourceUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(safeSourceUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${officialArticleUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(officialArticleUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
         ${doiStatusBlock(p)}
@@ -1903,7 +1908,7 @@
     const designClass = getDesignClass(p.studyDesign);
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
-    const doiUrl = safeSourceUrl(p) || '#';
+    const doiUrl = officialArticleUrl(p) || '#';
     const translatedTitle = p.draftData?.title_zh || quicklookOf(p)?.title_zh || p.titleZh;
     const title = esc(p.draftData?.title_zh ? `[导读] ${p.draftData.title_zh}` : translatedTitle || p.title);
 
@@ -2091,7 +2096,7 @@
     const designClass = getDesignClass(paper.studyDesign);
     const journalName = paper.cleanJournal || paper.journal || '期刊';
     const dateStr = dateLabel(paper);
-    const doiUrl = safeSourceUrl(paper) || '#';
+    const doiUrl = officialArticleUrl(paper) || '#';
     const isHuddled = state.huddle.includes(paper.id);
 
     // Header Badges
