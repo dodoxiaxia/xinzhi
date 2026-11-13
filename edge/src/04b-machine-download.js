@@ -306,8 +306,9 @@ function handleMachineProtocol(request, env) {
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
-    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimExamineMax:MACHINE_CLAIM_EXAMINE_MAX,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
+    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
+    emptyClaimRetry:{bodyField:'retryAfter',legacyBodyField:'retryAfterSeconds',header:'Retry-After',emptyQueueSeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,scanLimitSeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,indexBuildingSeconds:MACHINE_INDEX_BUILDING_RETRY_SECONDS,note:'空领取（task 为 null）时，响应体同时带 retryAfter 与 retryAfterSeconds，单位都是秒，与 Retry-After 响应头相同。现有客户端若读不到响应头，请读 retryAfter。队列真空 300 秒，claim_scan_limit 与索引回填中各 60 秒。'},
     stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
       note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
@@ -558,7 +559,7 @@ async function machineClaimQueued(env, caller) {
   let task = null, scanLimited = false;
   try {
     const candidates = museIndexQueuedCandidates(doc, Date.now());
-    let scanned = 0, considered = 0;
+    let scanned = 0;
     for (let i = 0; i < candidates.length && !task; i++) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
@@ -579,8 +580,6 @@ async function machineClaimQueued(env, caller) {
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
       if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       if (!paper || paper.fulltextStatus === 'review') continue;
-      considered++;
-      if (considered > MACHINE_CLAIM_EXAMINE_MAX) { scanLimited = true; break; }
       const now = Date.now();
       const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
       await musePut(env, claimed, {indexChanges:changes});
@@ -597,7 +596,7 @@ async function machineClaimFailed(env, caller) {
   let task = null, scanLimited = false;
   try {
     const candidates = museIndexFailedCandidates(doc, Date.now());
-    let scanned = 0, considered = 0;
+    let scanned = 0;
     for (let i = 0; i < candidates.length && !task; i++) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
@@ -623,8 +622,6 @@ async function machineClaimFailed(env, caller) {
       if (paper && paper.fulltextStatus === 'review') continue;
       // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
       if (job.state === 'review') continue;
-      considered++;
-      if (considered > MACHINE_CLAIM_EXAMINE_MAX) { scanLimited = true; break; }
       await museOwnerGuard(env, doi);
       const now = Date.now();
       // The failure that made this task claimable is history, not the state of the new lease.
@@ -658,10 +655,13 @@ async function handleMachineClaim(request, env) {
       return json({ok:true,task:result.task});
     }
     // Nothing to claim: tell the caller how long to wait before asking again (the same value in the Retry-After header).
-    try { await machineStatsBump(env, caller, 'emptyClaim'); } catch {}
     const scanLimited = !!result.scanLimited;
     const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : scanLimited ? MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
-    return json({ok:true,task:null,retryAfterSeconds:wait,...(scanLimited ? {reason:'claim_scan_limit'} : {})}, 200, {'retry-after':String(wait)});
+    // claim_scan_limit is a short retry, not a true empty queue, so it does not bump the daily emptyClaim counter.
+    if (!scanLimited) {
+      try { await machineStatsBump(env, caller, 'emptyClaim'); } catch {}
+    }
+    return json({ok:true,task:null,retryAfterSeconds:wait,retryAfter:wait,...(scanLimited ? {reason:'claim_scan_limit'} : {})}, 200, {'retry-after':String(wait)});
   } catch (error) { return machineError(error); }
 }
 

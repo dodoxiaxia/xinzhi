@@ -506,6 +506,7 @@ async function review(h, body) {
   const emptyStat = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
   assert.equal(emptyStat.task, null);
   assert.equal(emptyStat.retryAfterSeconds, 300);
+  assert.equal(emptyStat.retryAfter, 300);
   assert.equal(stored(h, 'library:machine-rate:stats:dsh:' + dayOf(h)).emptyClaim, 1);
   const durUp = await upload(h, paperPdf(claimDoi), claimDoi);
   assert.equal(durUp.status, 202);
@@ -921,16 +922,20 @@ async function review(h, body) {
   await reindex(h);
   const scanCapped = await call(h, '/api/machine/claim', dsh, {state:'to-download'});
   assert.equal(scanCapped.status, 200);
-  assert.equal(scanCapped.headers.get('retry-after'), '15');
+  assert.equal(scanCapped.headers.get('retry-after'), '60');
   const limitedBody = await scanCapped.json();
   assert.equal(limitedBody.task, null);
-  assert.equal(limitedBody.retryAfterSeconds, 15);
+  assert.equal(limitedBody.retryAfterSeconds, 60);
+  assert.equal(limitedBody.retryAfter, 60);
   assert.equal(limitedBody.reason, 'claim_scan_limit');
   assert.equal(stored(h, 'library:muse-job:' + afterCap).state, 'queued');
-  const trueEmpty = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  assert.equal(h.values.has('library:machine-rate:stats:dsh:' + dayOf(h)), false);
+  const stillCapped = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
   // Still scan-limited: the open paper sits past the cap, so this is also not a true empty queue.
-  assert.equal(trueEmpty.reason, 'claim_scan_limit');
-  assert.equal(trueEmpty.retryAfterSeconds, 15);
+  assert.equal(stillCapped.reason, 'claim_scan_limit');
+  assert.equal(stillCapped.retryAfterSeconds, 60);
+  assert.equal(stillCapped.retryAfter, 60);
+  assert.equal(h.values.has('library:machine-rate:stats:dsh:' + dayOf(h)), false);
 
   h = await create();
   await reindex(h);
@@ -939,7 +944,9 @@ async function review(h, body) {
   const emptyBody = await emptyNow.json();
   assert.equal(emptyBody.task, null);
   assert.equal(emptyBody.retryAfterSeconds, 300);
+  assert.equal(emptyBody.retryAfter, 300);
   assert.equal(emptyBody.reason, undefined);
+  assert.equal(stored(h, 'library:machine-rate:stats:dsh:' + dayOf(h)).emptyClaim, 1);
 
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
