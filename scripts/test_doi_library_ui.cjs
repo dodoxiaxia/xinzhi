@@ -366,7 +366,8 @@ async function searchFill(page, text) {
     assert.equal(new URL(page.url()).searchParams.get('ft'), 'none');
     const noneText = await page.locator('#articlesStream').innerText();
     assert(noneText.includes('Unrequested filter title'));
-    assert(noneText.includes('未申请'));
+    assert(!noneText.includes('未申请'), '「未申请」灰标不再显示（筛选仍可用）');
+    assert(noneText.includes('获取全文'), '申请全文的入口仍是「获取全文」');
     assert(!noneText.includes('Failed filter title'));
     assert.equal(await page.locator('#ftBar select').inputValue(), 'none');
     await page.locator('#ftBar select').selectOption('');
