@@ -5,6 +5,7 @@
 const METRICS_SWITCH_KEY = 'cfg:metrics_enabled', METRICS_SWITCH_TTL_MS = 60000, METRICS_ERROR_CODE = /^[a-z0-9_]{1,48}$/;
 const METRICS_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS']);
 const METRICS_ROUTES = new Set([
+  '/api/machine/d1-backfill',
   '/api/library', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
   '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
   '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/scope-uncertain', '/api/machine/abandoned',
