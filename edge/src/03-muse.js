@@ -319,6 +319,8 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && Number.isInteger(previous.softFailCount) && previous.softFailCount > 0) inherited.softFailCount = previous.softFailCount;
   if (previous && previous.lastSoftFailReason) inherited.lastSoftFailReason = previous.lastSoftFailReason;
   if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
+  if (previous && Number.isInteger(previous.oaVerificationFails) && previous.oaVerificationFails > 0) inherited.oaVerificationFails = previous.oaVerificationFails;
+  if (previous && Array.isArray(previous.oaRejected) && previous.oaRejected.length) inherited.oaRejected = previous.oaRejected;
   if (previous && museShouldSupersedePrevious(previous)) inherited.supersedes = museSupersedeSnapshot(previous);
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
     leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};

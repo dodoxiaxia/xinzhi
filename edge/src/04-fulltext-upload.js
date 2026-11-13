@@ -295,8 +295,23 @@ async function handleMuseReview(request, env) {
       // A rejected replacement leaves the verified original in place: the task goes back to 'available' and keeps the refusal.
       const restored = job.replace && job.replace.oldSha256 ? {...(job.replace.previous || {version:1,id:job.id,doi:job.doi,state:'available',createdAt:job.createdAt,queueKey:job.queueKey}),updatedAt:Date.now(),
         replaceRejected:{by:job.replace.by,at:job.replace.at,oldSha256:job.replace.oldSha256,newSha256:job.replace.newSha256,reason:verificationReason,rejectedAt:Date.now()}} : null;
-      const rejected = restored || {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
-      await musePut(env,rejected); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
+      let rejected = restored;
+      if (!rejected && job.source === 'open_access') {
+        const fails = (Number.isInteger(job.oaVerificationFails) && job.oaVerificationFails > 0 ? job.oaVerificationFails : 0) + 1;
+        const record = {source:job.source,reason:verificationReason,sha256:job.sha256,at:Date.now()};
+        const oaRejected = [...(Array.isArray(job.oaRejected) ? job.oaRejected : []), record].slice(-5);
+        if (fails < 2) {
+          // First OA verification failure: back to the download queue. Keep the candidate object as a record; do not delete it.
+          const {leaseId:_l,leaseUntil:_u,reviewOwner:_o,reviewLeaseId:_rl,reviewLeaseUntil:_ru,verificationReason:_vr,reason:_r, ...rest} = job;
+          rejected = {...rest,state:'queued',updatedAt:Date.now(),oaVerificationFails:fails,oaRejected,lastOaVerificationReason:verificationReason};
+        } else {
+          rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason,oaVerificationFails:fails,oaRejected};
+        }
+      }
+      if (!rejected) rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
+      await musePut(env,rejected);
+      if (rejected.state === 'queued' && rejected.queueKey) await libraryPut(env.QL_KV, rejected.queueKey, JSON.stringify({doi:rejected.doi,id:rejected.id}), {expirationTtl:604800});
+      await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
       return json({ok:true,job:musePublicJob(rejected),archive:libraryArchiveStatus()});
     }
     let stored; try { stored = await env.QL_KV.get(job.candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
