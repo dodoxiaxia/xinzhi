@@ -23,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import unicodedata
+from urllib.parse import quote
 
 WEBSITE = os.environ.get("XINZHI_MACHINE_BASE", "https://learn.dryz.info")
 DEFAULT_TOKEN_PATH = os.path.expanduser("~/.config/xinzhi/dsh-downloader.token")
@@ -244,18 +245,39 @@ def cmd_protocol(_args):
 def cmd_tasks(args):
     token = load_token()
     limit = args.limit
-    if limit < 1 or limit > 50:
+    if limit > 50:
+        raise ClientError("limit 超过上限 50", 5)
+    if limit < 1:
         raise ClientError("limit 必须在 1–50", 5)
-    q = "?limit=%d" % limit
-    if args.state:
-        if args.state not in PUBLIC_STATES:
-            raise ClientError("未知状态：%s" % args.state, 5)
-        q += "&state=" + args.state
-    if args.cursor:
-        q += "&cursor=" + args.cursor
-    code, data, _body = request("GET", "/api/machine/tasks" + q, token=token)
-    payload, rc = classify_http(code, data)
-    return emit(payload, 0 if rc == 0 else rc)
+    if args.state and args.state not in PUBLIC_STATES:
+        raise ClientError("未知状态：%s" % args.state, 5)
+    tasks = []
+    cursor = args.cursor or None
+    last = None
+    for _page in range(10000):
+        q = "?limit=%d" % limit
+        if args.state:
+            q += "&state=" + quote(args.state, safe="")
+        if cursor:
+            q += "&cursor=" + quote(str(cursor), safe="")
+        code, data, _body = request("GET", "/api/machine/tasks" + q, token=token)
+        payload, rc = classify_http(code, data)
+        if rc != 0:
+            err = payload.get("error") if isinstance(payload, dict) else "-"
+            eprint("列表请求失败：HTTP %d  错误码 %s。已停止。" % (code, err or "-"))
+            return emit(payload, rc)
+        if not isinstance(data, dict) or not isinstance(data.get("tasks"), list):
+            raise ClientError("列表响应缺少 tasks，无法继续翻页", 5)
+        tasks.extend(data["tasks"])
+        last = payload
+        cursor = data.get("cursor")
+        if cursor is None or cursor == "":
+            out = dict(last) if isinstance(last, dict) else {"ok": True}
+            out["tasks"] = tasks
+            out["cursor"] = None
+            out["http"] = code
+            return emit(out, 0)
+    raise ClientError("列表翻页次数过多，已停止", 5)
 
 
 def cmd_claim(_args):

@@ -2992,6 +2992,10 @@ const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
 const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
 const MACHINE_REQUEUE_DAILY_DEFAULT = 200;
 const MACHINE_REGISTER_DAILY_DEFAULT = 200;
+const MACHINE_LIST_LIMIT_DEFAULT = 20;
+const MACHINE_LIST_LIMIT_MAX = 50;
+const MACHINE_LIST_SCAN_PAGES_MAX = 50;
+const MACHINE_LIST_SCAN_PAGE_KEYS = 100;
 const MACHINE_REGISTER_MAX_ITEMS = 50;
 const MACHINE_REGISTER_SECTIONS = ['MAIN','CARDIO'];
 const MACHINE_REGISTER_PREFIX = 'library:machine-register:';
@@ -3289,7 +3293,7 @@ function handleMachineProtocol(request, env) {
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
-      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
+      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS},
     emptyClaimRetry:{bodyField:'retryAfter',legacyBodyField:'retryAfterSeconds',header:'Retry-After',emptyQueueSeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,scanLimitSeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,indexBuildingSeconds:MACHINE_INDEX_BUILDING_RETRY_SECONDS,note:'空领取（task 为 null）时，响应体同时带 retryAfter 与 retryAfterSeconds，单位都是秒，与 Retry-After 响应头相同。现有客户端若读不到响应头，请读 retryAfter。队列真空 300 秒，claim_scan_limit 与索引回填中各 60 秒。'},
     stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
       note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
@@ -3452,8 +3456,8 @@ async function machineListKeys(env, prefix, cursor, limit) {
 async function machineCollectScan(env, state, cursorText, limit) {
   let position = machineCursorDecode(cursorText);
   const tasks = [];
-  for (let page = 0; page < 50 && tasks.length < limit; page++) {
-    const listing = await machineListKeys(env, MUSE_JOB_PREFIX, position.c, 100);
+  for (let page = 0; page < MACHINE_LIST_SCAN_PAGES_MAX && tasks.length < limit; page++) {
+    const listing = await machineListKeys(env, MUSE_JOB_PREFIX, position.c, MACHINE_LIST_SCAN_PAGE_KEYS);
     const keys = listing.keys.filter(entry => typeof entry.name === 'string' && entry.name.startsWith(MUSE_JOB_PREFIX));
     if (position.skip > keys.length) libraryFail('machine_bad_request', 400);
     let index = position.skip;
@@ -3470,7 +3474,7 @@ async function machineCollectScan(env, state, cursorText, limit) {
     position = {c:listing.cursor,skip:0};
     if (tasks.length >= limit) return {tasks,cursor:machineCursorEncode(position)};
   }
-  return {tasks,cursor:position.c ? machineCursorEncode(position) : null};
+  return {tasks,cursor:position.c ? machineCursorEncode(position) : null,truncated:true};
 }
 // The index is not complete until its one-time backfill has finished; a list or requeue then waits instead of answering from part of the table.
 function machineIndexReadyOrWait(doc) {
@@ -3518,8 +3522,11 @@ function machineQuery(request, allowed) {
   if (request.method !== 'GET') libraryFail('machine_bad_request', 405);
   if ([...url.searchParams.keys()].some(key => !allowed.includes(key))) libraryFail('machine_bad_request', 400);
   const limitText = url.searchParams.get('limit');
-  const limit = limitText === null ? 20 : Number(limitText);
-  if (!Number.isInteger(limit) || String(limit) !== String(limitText === null ? 20 : limitText) || limit < 1 || limit > 50) libraryFail('machine_bad_request', 400);
+  const limit = limitText === null ? MACHINE_LIST_LIMIT_DEFAULT : Number(limitText);
+  if (Number.isInteger(limit) && String(limit) === String(limitText) && limit > MACHINE_LIST_LIMIT_MAX) {
+    machineFail('machine_bad_request', 400, 'limit 超过上限 ' + MACHINE_LIST_LIMIT_MAX, {listLimitMax:MACHINE_LIST_LIMIT_MAX});
+  }
+  if (!Number.isInteger(limit) || String(limit) !== String(limitText === null ? MACHINE_LIST_LIMIT_DEFAULT : limitText) || limit < 1) libraryFail('machine_bad_request', 400);
   const cursor = url.searchParams.get('cursor') || '';
   if (cursor.length > 2048) libraryFail('machine_bad_request', 400);
   return {url,limit,cursor};
@@ -3531,7 +3538,7 @@ async function handleMachineTasks(request, env) {
     const state = query.url.searchParams.get('state') || '';
     if (state && !MACHINE_PUBLIC_STATES.includes(state)) libraryFail('machine_bad_request', 400);
     const page = await machineCollect(env, state, query.cursor, query.limit);
-    return json({ok:true,tasks:page.tasks,cursor:page.cursor});
+    return json({ok:true,tasks:page.tasks,cursor:page.cursor,...(page.truncated ? {truncated:true} : {})});
   } catch (error) { return machineError(error); }
 }
 async function handleMachineAbandoned(request, env) {
@@ -3539,7 +3546,7 @@ async function handleMachineAbandoned(request, env) {
     await machineAuthorize(request, env, 'abandoned');
     const query = machineQuery(request, ['cursor','limit']);
     const page = await machineCollect(env, 'confirmed-abandoned', query.cursor, query.limit);
-    return json({ok:true,tasks:page.tasks.map(task => task),cursor:page.cursor});
+    return json({ok:true,tasks:page.tasks.map(task => task),cursor:page.cursor,...(page.truncated ? {truncated:true} : {})});
   } catch (error) { return machineError(error); }
 }
 function machineClaimPayload(job, paper) {
