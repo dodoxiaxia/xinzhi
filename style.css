@@ -1428,9 +1428,9 @@ html[data-style] .article-card .btn-sm.btn-primary:hover { background: var(--acc
   .tool-btn, .tool-row .filter-toggle-btn, .tool-row .lane-select, .tool-row .range-select { min-height: 44px; height: 44px; }
   .tool-btn { width: 44px; margin-left: -10px; }
   .tool-row { gap: 6px; }
-  .tool-row #streamLaneSlot { flex: 1.25 1 0; }
-  .tool-row #ftBar { flex: 1 1 0; min-width: 0; }
-  .tool-row .lane-select, .tool-row .range-select { width: 100%; font-size: 12.5px; padding: 0 16px 0 8px; }
+  .tool-row #streamLaneSlot { flex: 1.12 1 0; }
+  .tool-row #rangeBar, .tool-row #ftBar { flex: 1 1 0; min-width: 0; }
+  .tool-row .lane-select, .tool-row .range-select { width: 100%; font-size: 12.5px; padding: 0 14px 0 6px; }
   .tool-row .filter-toggle-btn { padding: 0 4px; margin-right: -4px; }
   .search-panel { max-width: none; }
   .card-actions .card-source-actions .btn-sm { min-height: 40px; }

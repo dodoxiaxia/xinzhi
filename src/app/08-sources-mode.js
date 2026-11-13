@@ -134,9 +134,11 @@
       if (newMode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); }
       renderStream();
     } else if (newMode === 'sources') {
+      syncToolRowVisibility();
       renderSourcesHealth();
       syncUrl();
     } else if (newMode === 'weekly') {
+      syncToolRowVisibility();
       renderWeeklyHeader();
       renderNextCandidates();
       syncUrl();
