@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "reviewedOn": "2026-11-13",
+  "decision": "First batch hidden from the public list only (snapshot records are kept). 84 rows from the 2026-11-13 topic list where Hydrogen said remove, both models agreed, and the category is not general AI/tech; plus 5 issue tables of contents; plus 2 added by ddx from the 158-item re-review (basic engineering Bioiontronics, and a Nature Machine Intelligence supplement filename).",
+  "records": [
+    {
+      "id": "02812acb29e11998",
+      "doi": "10.1056/nejmp2515506",
+      "title": "Doctor’s Dirty Little Secret — The Cost of Silence",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "032e380c11efd6f6",
+      "doi": "10.1038/s43856-026-01923-w",
+      "title": "Clinical characteristics of asymmetric hearing loss in children from a large pediatric cohort",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "0568c9b011c1a4a9",
+      "doi": "",
+      "title": "News & Analysis Medical News",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "0642c28298ccaab3",
+      "doi": "10.1136/bmj.r2303",
+      "title": "The relentless rise of China’s medical science",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "0af6bbf2bd3686e5",
+      "doi": "",
+      "title": "changes in these capacities have led to P OLICY FORUM dramatic social transformations. Spoken",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "0d92a55155ffe7e9",
+      "doi": "10.1038/s41598-025-90656-2",
+      "title": "Undergraduate medical students’ perceptions and perspectives on their clinical reasoning learning experiences",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "1308e370850f22a1",
+      "doi": "",
+      "title": "Building on Experience — The Development of Clinical Reasoning",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "14a763d43868b673",
+      "doi": "",
+      "title": "NEWS 14 March 2026 China intensifies push to become",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "1f8ec3ad4b84cc1e",
+      "doi": "",
+      "title": "When AI Shows Its Work, Is It Actually Working? Step-level evaluation reveals that frontier language models",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "22eb9b2b14417285",
+      "doi": "",
+      "title": "家  消息  所有新闻  我们如何才能知道人工智能是否足够智能，能够进行科学研究？ 我们如何才能知道人工智能是否足够智能，能够进行科学研究？",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "296f22719a91e01e",
+      "doi": "10.31222/osf.io/9sm4x",
+      "title": "Towards minimum reporting standards for life scientists",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "2a0bfbfc9ad6b35f",
+      "doi": "10.1093/med/",
+      "title": "Opinion Viewpoint cation requirement in Michigan resulted in a one-third reduction in continued protection of the educational rights of unvaccinated stu-",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "2a35965a7b8f41d1",
+      "doi": "10.1038/s43588-026-00985-z",
+      "title": "AI and the democratization of knowledge work",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "2aa1133801e54b7f",
+      "doi": "10.1038/s42256-026-01253-5",
+      "title": "Stop ‘tokenmaxxing’ and deploy AI sensibly instead",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "2caa52203b56615a",
+      "doi": "10.1038/s42256-026-01248-2",
+      "title": "Human–AI interactions reshape the self and our social networks",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "2cd7c95dd8131c52",
+      "doi": "10.1038/s43856-026-01793-2",
+      "title": "Plasma multi-omics signatures of the EAT-Lancet diet and associations with health outcomes",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "2dc4ebebea383cc1",
+      "doi": "10.1001/jama.2025.15738",
+      "title": "The Purpose of an Internship",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "3827c47fff3d25f4",
+      "doi": "10.1038/s42256-026-01217-9",
+      "title": "Competing Biases underlie Overconfidence and Underconfidence in LLMs",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "393446e2af8a9669",
+      "doi": "10.1038/s42256-026-01274-0",
+      "title": "A neural network model of free recall learns multiple memory strategies",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "3dd43329669b5bd8",
+      "doi": "10.1038/s41591-026-04205-z",
+      "title": "Practical solutions to weight management in primary care",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "44bac29e97455300",
+      "doi": "",
+      "title": "Readers respond Statistical No, funding calls are Why scientists Smartphones are a",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "4a2edc0270c8e6fa",
+      "doi": "10.1038/s43856-026-01900-3",
+      "title": "Allostatic load and epigenetic age acceleration in adults born preterm from the RHODE Study",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "4ca6a1c1822484a5",
+      "doi": "10.1001/jamanetworkopen.2025.45617",
+      "title": "Antenatal Corticosteroids for Bronchopulmonary Dysplasia—Mediation Analysis and Causal Reasoning",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "4e27ea8322165cf3",
+      "doi": "",
+      "title": "gas light is more deleterious than a gas fire. That the tributed by Dr. A. Graham Bell, Miss A. M. Sullivan worst atmosphere exists a t the top of a room where the and other instructors, and herself.",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "52dd82d75381f280",
+      "doi": "10.1038/s41467-026-76456-w",
+      "title": "Push until it breaks: engineering is stronger when we know its limits",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "54e4c5e0931391c2",
+      "doi": "10.1038/s44159-026-00554-1",
+      "title": "A Consensus Statement on self-knowledge conceptualization, measurement, outcomes and changeability",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "5707e7a80cb608e8",
+      "doi": "10.1038/s44159-026-00584-9",
+      "title": "The costs of incremental research in cognitive psychology",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "57e29c9a943f851d",
+      "doi": "10.1186/s12909-025-07134-6",
+      "title": "Quantify difference between physicians and medical students in clinical reasoning: evidence from eye-tracking",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "5c8de43bcb54a7ff",
+      "doi": "10.1056/nejmcpc2412539",
+      "title": "Case 28-2025: A 36-Year-Old Man with Abdominal Pain, Fever, and Hypoxemia",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "5e045fc2e28f9154",
+      "doi": "",
+      "title": "SCIENTIFIC CORRESPONDENCE = stretch(pref(X)) on which his values the prior for most reasonable prior dis- When the lensing galaxy has an ellip-",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "5e5d71fe40839cb7",
+      "doi": "",
+      "title": "Setting the agenda in research JENS KALAENE/DPA/ALAMY",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "5e6948d370306f65",
+      "doi": "",
+      "title": "Readers respond Assess artificial Can open-access Precarious research One Health to",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "61d68ef1130e73c2",
+      "doi": "10.1038/s44159-026-00562-1",
+      "title": "Principles for understanding trust in artificial intelligence",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "66603cd7158c18dd",
+      "doi": "10.1038/s44401-025-00065-w",
+      "title": "The independent legal entity reform of emergency medical centers in China: opportunities and challenges",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "6e0dda72eca19e4a",
+      "doi": "",
+      "title": "S4. Study characteristics Author, Country, Age",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "6e3becdd4f72c4be",
+      "doi": "10.1136/bmjopen-2019-035168",
+      "title": "Definitions of blinding in randomised controlled trials of interventions published in high-impact anaesthesiology journals: a methodological study and survey of authors",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "6e7ec87b4f710335",
+      "doi": "10.1038/s41591-025-04194-5",
+      "title": "The science of psychedelic medicine",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "6eceec7b845c2e42",
+      "doi": "10.1038/s42256-026-01271-3",
+      "title": "Realigning AI technology towards the Sustainable Development Goals",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "72a607c610693d74",
+      "doi": "10.1038/s43856-026-01912-z",
+      "title": "Prevalence of female genital mutilation in the United States between 2016 and 2022",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "744358c27df118cb",
+      "doi": "",
+      "title": "News & views is still unproven — it is thought to involve neuropsychiatric disorders10. Apart from the This will probably improve its safety profile",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "7532a3aa5d706ba2",
+      "doi": "",
+      "title": "A clinical decision tool including a decision tree, point-of- care testing of CRP, and safety-netting advice to guide",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "79f56b3523d3447a",
+      "doi": "10.1001/jama.2021.25181",
+      "title": "The Quintuple Aim for Health Care Improvement",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "80144e9f698c386c",
+      "doi": "10.1038/d41586-026-00274-9",
+      "title": "NEWS 30 January 2026 China is betting on ‘optical’ computer chips –",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "864310970029c43b",
+      "doi": "10.7326/annals-24-03951",
+      "title": "Gout",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "872bd7cc90a5ecdd",
+      "doi": "",
+      "title": "ARTIFICIAL INTELLIGENCE in AI risk evaluations",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "9151ae4d93aa898a",
+      "doi": "10.1038/s44159-026-00599-2",
+      "title": "Prediction in language comprehension across the lifespan",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "93c0ea3564b42d4f",
+      "doi": "",
+      "title": "News in focus systems — particularly in hospitals and care REDUCTIONS IN GDP DUE TO EXTREME the temperature anomaly was greater,” says",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "96e6163fd6a903be",
+      "doi": "10.1038/s42256-025-01109-4",
+      "title": "Aligning generalization between humans and machines",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "98468533d6b37be1",
+      "doi": "10.1016/j.chom.2022.04.005",
+      "title": "Supplementation with a probiotic mixture accelerates gut microbiome maturation and reduces intestinal inflammation in extremely preterm infants",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "a4aa25a81aa4d106",
+      "doi": "10.1038/s42256-026-01179-y",
+      "title": "Visual language models show widespread visual deficits on neuropsychological tests",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "a59d93b0615dac9b",
+      "doi": "10.1038/s42256-026-01273-1",
+      "title": "The brain is a diverse place, why not computing?",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "a73d2efded55aa65",
+      "doi": "10.1038/s44159-026-00570-1",
+      "title": "The explicit-Bayes hypothesis for cognition",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "ad0c047dde4156f4",
+      "doi": "10.1038/s42256-026-01255-3",
+      "title": "Algorithm–hardware co-design of neuromorphic networks with dual memory pathways",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "bc613d2bbbcf3dd2",
+      "doi": "10.1038/s42256-026-01259-z",
+      "title": "A unifying framework from neural superposition to sparse interpretable codes",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "c353b525073bf029",
+      "doi": "10.3760/cma.j.cn112138-20250422-00231",
+      "title": "国家基层肥胖症综合管理技术指南（2025） 中华医学会糖尿病学分会 国家基本公共卫生服务项目基层糖尿病防治管理办公室",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "c70d294d247f067e",
+      "doi": "10.1161/circulationaha.126.081053",
+      "title": "Farewell With Gratitude and Looking Ahead",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "c759155ffcc3990c",
+      "doi": "10.1001/jama.2025.18210",
+      "title": "Timing Is Everything—Temporal Medicine for Episodic Illness",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "c8635561c23e723a",
+      "doi": "10.1001/jama.2026.4179",
+      "title": "Embracing Bayesian Methods in Clinical Trials FDA’s Long-Awaited Draft Guidance",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "c96cba8e1fc59d57",
+      "doi": "10.1126/science.adn4935",
+      "title": "Illusions of AI consciousness",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "cae71611eb00baeb",
+      "doi": "10.1038/s42256-026-01211-1",
+      "title": "Fluid thinking about collective intelligence",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "cc1f3e879f0b395b",
+      "doi": "10.1038/s41591-026-04683-1",
+      "title": "Does expansion of clinical trial capacity improve healthcare access?",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "d15c35e6e9af6df1",
+      "doi": "10.1001/jama.2026.0816",
+      "title": "Picking Antidepressants—Patient Preferences Beat Biomarkers",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "d79e8ecf699fdae8",
+      "doi": "10.1038/s42256-026-01188-x",
+      "title": "A large-scale randomized study of large language model feedback in peer review",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "d9ba33b417118521",
+      "doi": "",
+      "title": "The rise of China’s research: a global opportunity China has established itself as a global research Research integrity has become a pressing challenge in",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "e15293e95b34e421",
+      "doi": "",
+      "title": "abstract index notation rather than tradi- ential topology to prove singularity tional tensor notation. The formal treat- theorems are all developed in detail. Each Round the mechanics",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "e6b0de0a95023628",
+      "doi": "10.1111/tct.13843",
+      "title": "Evaluating a novel clinical reasoning tool for physical therapy students: A pilot study",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "e8317c67ca71ede8",
+      "doi": "10.1038/s44222-026-00469-9",
+      "title": "Bioengineering needs systems thinking",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "ec00d97580025d11",
+      "doi": "10.1038/s44271-026-00486-9",
+      "title": "Why sycophantic LLMs may imperil interactive norms between humans",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "efea0453a8c787fc",
+      "doi": "10.1001/jama.2026.5552",
+      "title": "After the Diagnosis",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "fa7c507a9a2b12e0",
+      "doi": "",
+      "title": "calving, has been observed before, Institution of Oceanography. In the ARTIFICIAL INTELLIGENCE when a glacier slides into deeper wa- aftermath of Larsen-B’s crackup, it’s",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "fb974f803ff1fbce",
+      "doi": "10.1038/s41591-026-04681-3",
+      "title": "The next phase of translational medicine must bridge the gap between innovation to impact",
+      "category": "其他非心血管、非AI临床"
+    },
+    {
+      "id": "129f4eb9abded145",
+      "doi": "10.1038/nature05852",
+      "title": "Probabilistic reasoning by neurons",
+      "category": "基础研究"
+    },
+    {
+      "id": "2888c37dde80a9ca",
+      "doi": "10.1038/s42256-025-01069-9",
+      "title": "Unifying multi-sample network inference from prior knowledge and omics data with CORNETO",
+      "category": "基础研究"
+    },
+    {
+      "id": "32ef72bdde4fab65",
+      "doi": "10.1126/science.adu3433",
+      "title": "Mechanism of DNA targeting by human LINE-1",
+      "category": "基础研究"
+    },
+    {
+      "id": "45ebd6721d118b1f",
+      "doi": "10.1038/s42256-025-01075-x",
+      "title": "Data meets prior knowledge for interpretable mechanistic inference in biology",
+      "category": "基础研究"
+    },
+    {
+      "id": "4affd6200947e7ad",
+      "doi": "10.1038/s42256-025-01176-7",
+      "title": "A flaw in using pretrained protein language models in protein–protein interaction inference models",
+      "category": "基础研究"
+    },
+    {
+      "id": "565d516aa9100146",
+      "doi": "10.18502/jthc.v21i1.21282",
+      "title": "Systems-Level in Silico Bioinformatic Profiling Identifies Key Hub Genes and Potential Therapeutic Targets in Atrial Fibrillation Without Overt Comorbidity",
+      "category": "基础研究"
+    },
+    {
+      "id": "6d6bfa1a5e17ecb3",
+      "doi": "10.1038/s43856-026-01871-5",
+      "title": "Aryl-hydrocarbon receptor in smooth muscle cells protects against dioxin-induced atherosclerosis",
+      "category": "基础研究"
+    },
+    {
+      "id": "b8a6fe34e495e3a8",
+      "doi": "10.1038/s41587-026-03064-w",
+      "title": "Generalist biological artificial intelligence in modeling the language of life",
+      "category": "基础研究"
+    },
+    {
+      "id": "da2f8e6dab146d88",
+      "doi": "10.1038/s42256-025-00991-2",
+      "title": "Data-driven federated learning in drug discovery with knowledge distillation",
+      "category": "基础研究"
+    },
+    {
+      "id": "f7ed58577bf352dd",
+      "doi": "10.1126/science.adw8151",
+      "title": "Neural basis of cooperative behavior in biological and artificial intelligence systems",
+      "category": "基础研究"
+    },
+    {
+      "id": "94b63083f9291b95",
+      "doi": "",
+      "title": "diverged twice from the typical analysis of tumour heterogeneity and for advancing of hallmark processes is organized in specific pipelines that are used to identify intertumour precision medicine. Moreover, the research locations. Future scRNA-seq experiments,",
+      "category": "肿瘤"
+    },
+    {
+      "id": "ca945318eb58f36b",
+      "doi": "10.1038/s44159-026-00533-6",
+      "title": "Patterns of healthcare access after cancer",
+      "category": "肿瘤"
+    },
+    {
+      "id": "e6c97ca026976d2b",
+      "doi": "10.1038/s41591-026-04634-w",
+      "title": "The Value Cube: translating clinical benefit into realizable value in global oncology",
+      "category": "肿瘤"
+    },
+    {
+      "id": "164a51af9a2ff42e",
+      "doi": "10.1038/s41591-026-04215x",
+      "title": "卷⼀ · 器官与疾病的边界条件",
+      "category": "期刊目录/非文献"
+    },
+    {
+      "id": "61d7937cd97568ee",
+      "doi": "10.3760/cma.j.cn112137-20250509-01141",
+      "title": "中华医学杂志 2025 年 7 月 15 日第 105 卷第 26 期",
+      "category": "期刊目录/非文献"
+    },
+    {
+      "id": "aca12a490d96f945",
+      "doi": "10.3760/cma.j.cn112148-20240107-00014",
+      "title": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "category": "期刊目录/非文献"
+    },
+    {
+      "id": "ad08646e5e51765d",
+      "doi": "10.3760/cma.j.cn112148-20240321-00160",
+      "title": "中华心血管病杂志 2024 年 5 月第 52 卷第 5 期",
+      "category": "期刊目录/非文献"
+    },
+    {
+      "id": "bfbe651b166397c8",
+      "doi": "10.3760/cma.j.cn112148-20240325-00168",
+      "title": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "category": "期刊目录/非文献"
+    },
+    {
+      "id": "0fe528d72fd56af2",
+      "doi": "10.1038/s44222-026-00471-1",
+      "title": "Bioiontronics",
+      "category": "基础工程"
+    },
+    {
+      "id": "92c33d10a3cfd92f",
+      "doi": "",
+      "title": "42256_2026_1266_MOESM2_ESM",
+      "category": "补充材料"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "mirrored": [
+    "library:paper:",
+    "library:job:",
+    "library:queue:",
+    "library:grok-job:",
+    "library:muse-job:",
+    "library:muse-queue:",
+    "library:muse-review:",
+    "library:muse-superseded:",
+    "library:machine-register:",
+    "library:attempt:",
+    "library:drive-pending:",
+    "library:drive:",
+    "library:machine-index:v1"
+  ],
+  "excluded": [
+    {
+      "prefix": "library:pdf:",
+      "reason": "PDF 二进制，已有 R2 备份，文献记录里有 sha256。"
+    },
+    {
+      "prefix": "library:muse-candidate:",
+      "reason": "待核验 PDF 二进制。"
+    },
+    {
+      "prefix": "library:lock:",
+      "reason": "锁与读者限流计数。"
+    },
+    {
+      "prefix": "library:cap:",
+      "reason": "锁与读者限流计数。"
+    },
+    {
+      "prefix": "library:ip:",
+      "reason": "锁与读者限流计数。"
+    },
+    {
+      "prefix": "library:machine-rate:",
+      "reason": "机器调用方每日配额与观察计数，2 天 TTL，属于限流计数，不影子写。"
+    },
+    {
+      "prefix": "library:diagnostic:",
+      "reason": "缓存和短期标记。"
+    },
+    {
+      "prefix": "library:muse-review-dispatch",
+      "reason": "缓存和短期标记。"
+    },
+    {
+      "prefix": "ai:",
+      "reason": "AI 缓存、任务回执、AI 锁与额度。"
+    },
+    {
+      "prefix": "lock:",
+      "reason": "AI 缓存、任务回执、AI 锁与额度。"
+    },
+    {
+      "prefix": "cfg:",
+      "reason": "配置开关。"
+    }
+  ]
+}

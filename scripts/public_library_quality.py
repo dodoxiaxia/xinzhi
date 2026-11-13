@@ -4,9 +4,45 @@ Raw approved snapshots and their ID-retention guards stay intact. Public omissio
 and aliases are explicit in a local audit, never inferred from missing identifiers.
 """
 import copy
+import json
+from pathlib import Path
 
 from apply_public_library import DERIVED_FIELDS
 from sync_public_library import PUBLIC_FIELDS, normalize_doi, normalize_pmid, public_text
+
+TOPIC_HIDES_PATH = Path(__file__).resolve().parents[1] / 'config/public_library_topic_hides.json'
+EXPECTED_TOPIC_HIDE_COUNT = 91
+
+
+def _load_topic_hides(path=TOPIC_HIDES_PATH):
+    try:
+        data = json.loads(Path(path).read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f'Failed to load topic hides config {path}: {exc}') from exc
+    if not isinstance(data, dict) or not isinstance(data.get('records'), list):
+        raise ValueError(f'Malformed topic hides config {path}: expected object with records list')
+    hides = {}
+    for index, record in enumerate(data['records']):
+        if not isinstance(record, dict):
+            raise ValueError(f'Malformed topic hide record at index {index}: expected object')
+        identifier = record.get('id')
+        doi = record.get('doi')
+        title = record.get('title')
+        category = record.get('category')
+        if (not isinstance(identifier, str) or not identifier
+                or not isinstance(title, str) or not title
+                or not isinstance(category, str) or not category
+                or not isinstance(doi, str)):
+            raise ValueError(f'Malformed topic hide record at index {index}: invalid id/doi/title/category')
+        if identifier in hides:
+            raise ValueError(f'Duplicate topic hide id: {identifier}')
+        hides[identifier] = (normalize_doi(doi), title, category)
+    if len(hides) != EXPECTED_TOPIC_HIDE_COUNT:
+        raise ValueError(f'Expected {EXPECTED_TOPIC_HIDE_COUNT} unique topic hides, got {len(hides)}')
+    return hides
+
+
+TOPIC_HIDES = _load_topic_hides()
 
 QUALITY_FIELDS = {'onlineDate', 'issueDate', 'issueDateBasis', 'issueDatePrecision',
                   'volume', 'issue', 'publicationStatus', 'bibliographicEvidenceUrl'}
@@ -191,7 +227,7 @@ def project_public_library(papers):
             _hold('duplicate_or_invalid_id')
         by_id[paper['id']] = copy.deepcopy({k: v for k, v in paper.items() if k in PROJECT_FIELDS})
     audit = {'schemaVersion': 1, 'checkedOn': '2026-10-07', 'inputCount': len(papers),
-             'quarantined': [], 'aliases': [], 'corrections': [], 'pdfBindingHoldIds': [],
+             'quarantined': [], 'aliases': [], 'topicHides': [], 'corrections': [], 'pdfBindingHoldIds': [],
              'scope': 'public_bibliography_only', 'privatePdfBodiesRead': 0}
     for identifier, (title, journal) in NAVIGATION.items():
         paper = by_id.get(identifier)
@@ -249,6 +285,18 @@ def project_public_library(papers):
         audit['aliases'].append({'record': _audit(duplicate), 'canonicalId': canonical_id,
                                  'status': 'public_bibliographic_duplicate',
                                  'evidenceUrl': 'https://doi.org/' + canonical_doi})
+        del by_id[identifier]
+    for identifier, (pinned_doi, pinned_title, category) in TOPIC_HIDES.items():
+        paper = by_id.get(identifier)
+        if paper is None:
+            continue
+        if paper.get('title') != pinned_title or normalize_doi(paper.get('doi') or '') != pinned_doi:
+            _hold('topic_hide_identity_changed')
+        audit['topicHides'].append({
+            'record': _audit(paper),
+            'status': 'public_topic_hidden',
+            'category': category,
+        })
         del by_id[identifier]
     for identifier, (doi, pmid, date) in ONLINE_CORRECTIONS.items():
         paper = by_id.get(identifier)

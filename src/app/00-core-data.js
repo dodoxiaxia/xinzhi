@@ -149,7 +149,7 @@
     const script = document.createElement('script');
     script.src = window.RADAR_SRC;
     script.async = true;
-    script.onerror = () => { RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates') renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
+    script.onerror = () => { window.XINZHI_RADAR_READY = null; RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates' || exactDoi(state.search)) renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
     document.head.appendChild(script);
   }
   function radarArchiveNeeded() {
@@ -157,7 +157,13 @@
     return !!exactDoi(state.search) || (state.mode === 'candidates' && !['7', '14'].includes(state.range));
   }
   function radarArchiveNotice() {
-    if (state.mode !== 'candidates' || !radarArchiveNeeded()) return '';
+    const forDoi = !!exactDoi(state.search);
+    if (!forDoi && (state.mode !== 'candidates' || !radarArchiveNeeded())) return '';
+    if (forDoi) {
+      if (RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle') return '<p class="radar-archive-note" role="status">正在检索旧雷达存档…</p>';
+      if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">旧雷达存档加载失败，暂时无法确认站内是否收录这个 DOI。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
+      return '';
+    }
     if (RADAR_LOAD.state === 'loading') return '<p class="radar-archive-note" role="status">正在载入 365 天题录存档，结果将自动补全…</p>';
     if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">365 天题录存档载入失败，当前仅显示近 3 周内容。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
     return '';

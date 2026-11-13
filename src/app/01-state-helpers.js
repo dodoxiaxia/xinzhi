@@ -18,31 +18,66 @@
   } catch (e) { /* cookies blocked */ }
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
+  const VALID_MODES = ['curated', 'weekly', 'candidates', 'library', 'sources'];
+  function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
+  function readStateFromUrl(search = window.location.search) {
+    const params = new URLSearchParams(search);
+    const rawMode = params.get('mode') || 'curated';
+    const mode = VALID_MODES.includes(rawMode) ? rawMode : 'curated';
+    const nextViewInUrl = validView(params.get('view'));
+    return {
+      mode,
+      viewInUrl: nextViewInUrl,
+      viewMode: nextViewInUrl ? params.get('view') : validView(safeGet('xinzhi_view_mode')) ? safeGet('xinzhi_view_mode') : 'cards',
+      search: params.get('q') || '',
+      clinicalTier: params.get('tier') || '',
+      publisher: params.get('pub') || '',
+      journal: params.get('journal') || '',
+      studyDesign: params.get('design') || '',
+      tag: params.get('tag') || '',
+      lane: params.get('lane') || 'core',
+      sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
+      range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
+      minor: params.get('minor') === '1',
+      reading: ['abstract', 'guide', 'quicklook'].includes(params.get('reading')) ? params.get('reading') : '',
+      favoritesOnly: params.get('favorites') === '1',
+      day: params.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') || '') ? params.get('day') : '',
+      weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(params.get('wcat')) ? params.get('wcat') : '',
+      weeklyPane: params.get('pane') === 'reading' ? 'reading' : 'board',
+      sourceFilter: ['ok', 'attention'].includes(params.get('sf')) ? params.get('sf') : '',
+      ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(params.get('ft')) ? params.get('ft') : ''
+    };
+  }
+  const URL_STATE_KEYS = [
+    'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
+    'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
+    'favoritesOnly', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
+  ];
   // Saved view preferences affect rendering without adding a URL parameter.
-  let viewInUrl = validView(urlParams.get('view'));
-  const savedView = safeGet('xinzhi_view_mode');
+  const initialUrlState = readStateFromUrl(window.location.search);
+  let viewInUrl = initialUrlState.viewInUrl;
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
-    mode: urlParams.get('mode') || 'curated', // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
-    viewMode: viewInUrl ? urlParams.get('view') : validView(savedView) ? savedView : 'cards', // 'cards' | 'compact'
+    mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
+    viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
-    search: urlParams.get('q') || '',
-    clinicalTier: urlParams.get('tier') || '',
-    publisher: urlParams.get('pub') || '',
-    journal: urlParams.get('journal') || '',
-    studyDesign: urlParams.get('design') || '',
-    tag: urlParams.get('tag') || '',
-    lane: urlParams.get('lane') || 'core',
-    sort: (['smart','date-desc','date-asc','journal-date'].includes(urlParams.get('sort'))) ? urlParams.get('sort') : 'date-desc',
-    range: ['7','14','30','90','365','all'].includes(urlParams.get('range')) ? urlParams.get('range') : '',
-    minor: urlParams.get('minor') === '1',
-    reading: ['abstract','guide','quicklook'].includes(urlParams.get('reading')) ? urlParams.get('reading') : '',
-    favoritesOnly: urlParams.get('favorites') === '1',
-    day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
-    weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
-    weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
-    sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
-    ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(urlParams.get('ft')) ? urlParams.get('ft') : '',
+    search: initialUrlState.search,
+    clinicalTier: initialUrlState.clinicalTier,
+    publisher: initialUrlState.publisher,
+    journal: initialUrlState.journal,
+    studyDesign: initialUrlState.studyDesign,
+    tag: initialUrlState.tag,
+    lane: initialUrlState.lane,
+    sort: initialUrlState.sort,
+    range: initialUrlState.range,
+    minor: initialUrlState.minor,
+    reading: initialUrlState.reading,
+    favoritesOnly: initialUrlState.favoritesOnly,
+    day: initialUrlState.day,
+    weeklyCat: initialUrlState.weeklyCat,
+    weeklyPane: initialUrlState.weeklyPane,
+    sourceFilter: initialUrlState.sourceFilter,
+    ftFilter: initialUrlState.ftFilter,
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
@@ -52,9 +87,6 @@
     activeDrawerPaper: null,
     huddleCompare: [] // Explicit selection, kept only in this browser session.
   };
-
-  function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
-  if (!state.range) state.range = defaultRange(state.mode);
 
   // Helper DOM selectors
   const $ = selector => document.querySelector(selector);
@@ -131,15 +163,17 @@
     return `<span class="design-pill ${checked ? getDesignClass(type) + ' design-checked' : 'design-unverified'}" title="${checked ? '已根据公开摘要核对研究类型；不是全文终审' : '来源或规则标注；尚未逐篇核对研究类型'}">${esc(type)}</span>`;
   }
   function publicationStatusHtml(paper) {
-    const status = paper.publicationStatus;
+    const status = paper?.publicationStatus;
     if (!status) return '';
+    const label = String(status.label ?? '').trim();
     const pubmedUrl = url => /^https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/[1-9]\d*\/$/.test(url || '');
     const links = [];
     if (pubmedUrl(status.sourceUrl)) links.push(`<a href="${esc(status.sourceUrl)}" target="_blank" rel="noopener noreferrer">PubMed 状态来源 ↗</a>`);
     (status.related || []).forEach(r => {
-      if (pubmedUrl(r.url)) links.push(`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}（PMID ${esc(r.pmid)}）↗</a>`);
+      if (r && pubmedUrl(r.url)) links.push(`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}（PMID ${esc(r.pmid)}）↗</a>`);
     });
-    return `<div class="publication-status" role="note"><strong>${esc(status.label)}</strong>${links.join(' · ')}</div>`;
+    if (!label && !links.length) return '';
+    return `<div class="publication-status" role="note">${label ? `<strong>${esc(label)}</strong>` : ''}${links.join(' · ')}</div>`;
   }
   function publicationStatusText(paper) {
     const s = paper.publicationStatus;
@@ -174,17 +208,32 @@
   // Clipboard copy helper
   async function copyToClipboard(text, successMsg = '已复制到剪贴板') {
     try {
-      await navigator.clipboard.writeText(text);
-      showToast(successMsg);
-    } catch (e) {
-      const ta = document.createElement('textarea');
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        showToast(successMsg);
+        return true;
+      }
+    } catch (e) {}
+    let ta = null;
+    let ok = false;
+    try {
+      ta = document.createElement('textarea');
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showToast(successMsg);
+      ok = document.execCommand('copy') === true;
+    } catch (e) {
+      ok = false;
+    } finally {
+      if (ta) {
+        try {
+          if (ta.parentNode) ta.parentNode.removeChild(ta);
+          else document.body.removeChild(ta);
+        } catch (e) {}
+      }
     }
+    showToast(ok ? successMsg : '复制失败，请手动复制');
+    return ok;
   }
 
   // Setup Theme

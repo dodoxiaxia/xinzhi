@@ -17,6 +17,11 @@
     const val=p.url || (p.doi?'https://doi.org/'+p.doi:'');
     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
   }
+  function officialArticleUrl(p) {
+    const doi = p && exactDoi(p.doi);
+    if (doi) return 'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/');
+    return p && p.url ? safeSourceUrl({ url: p.url }) : '';
+  }
   function pdfDownloadUrl(p) {
     if (p && typeof DOI_FULLTEXT !== 'undefined') {
       const doi = exactDoi(p.doi), record = DOI_FULLTEXT.get(doi);
@@ -157,7 +162,7 @@
   function renderRangeBar() {
     const el = $('#rangeBar');
     if (!el) return;
-    if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!usesLane() || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
     el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
@@ -189,6 +194,7 @@
   function renderLaneBar() {
     const el = $('#laneBar');
     if (!el) return;
+    if (exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     if (state.mode === 'curated') {
       // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
       const counts = {}, day = curatedDay();
@@ -267,7 +273,7 @@
     return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
   }
   const MODE_NOTES = {
-    candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
+    candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点题名打开阅读面板再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
     library: '既往题录档案，按期刊与时间检索。<span class="mode-note-more">输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。</span><button type="button" class="mode-note-toggle" aria-expanded="false">说明</button>'
   };
 
@@ -280,6 +286,12 @@
     if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
     el.innerHTML = '';
     el.hidden = true;
+  }
+  function syncToolRowVisibility() {
+    renderModeNote();
+    renderLaneBar();
+    renderRangeBar();
+    renderFtBar();
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
@@ -373,10 +385,18 @@
     if (!['tier', 'pub', 'journal', 'design', 'tag'].includes(group) || typeof value !== 'string') return false;
     if (only) clearSidebarFilters();
     if (group === 'tier') state.clinicalTier = value;
-    if (group === 'pub') { state.publisher = value; state.journal = ''; }
-    if (group === 'journal') { state.journal = value; state.publisher = publisherForJournal(value); }
+    if (group === 'pub') {
+      const clear = !only && value && state.publisher === value && !state.journal;
+      state.publisher = clear ? '' : value;
+      state.journal = '';
+    }
+    if (group === 'journal') {
+      const clear = !only && value && state.journal === value;
+      state.journal = clear ? '' : value;
+      state.publisher = clear ? '' : publisherForJournal(value);
+    }
     if (group === 'design') state.studyDesign = value;
-    if (group === 'tag') state.tag = value;
+    if (group === 'tag') state.tag = !only && value && state.tag === value ? '' : value;
     if (state.publisher) expandedPublishers.add(state.publisher);
     state.page = 1;
     return true;
