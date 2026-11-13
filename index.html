@@ -195,17 +195,20 @@
     </div>
 
     <div class="drawer-body" id="drawerBody">
-      <!-- Populated dynamically -->
+      <section id="drawerFulltext" class="drawer-fulltext" aria-label="全文下载">
+        <div data-drawer-ft-status></div>
+      <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" data-ft-download hidden>下载 PDF</a>
+      <form class="ft-form ft-dl-form" id="drawerPdfForm" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>
+      </section>
     </div>
 
     <div class="drawer-footer">
-      <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" data-ft-download hidden>下载 PDF</a>
-      <form class="ft-form ft-dl-form" id="drawerPdfForm" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>
-      <button class="btn-sm btn-share" id="drawerCopyShareBtn">微信群文案</button>
-      <button class="btn-sm" id="drawerHuddleToggleBtn">加入精选清单</button>
-      <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerExternalLink">官网原文 ↗</a>
-      <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开" hidden>汉堡登录入口 ↗</a>
-      <a href="#" target="_blank" rel="noopener noreferrer" class="btn-sm" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>
+
+      <button class="text-btn" id="drawerCopyShareBtn">微信群文案</button>
+      <button class="text-btn" id="drawerHuddleToggleBtn">加入精选清单</button>
+      <a href="#" target="_blank" rel="noopener" class="text-btn" id="drawerExternalLink">官网原文 ↗</a>
+      <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="text-btn" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开" hidden>汉堡登录入口 ↗</a>
+      <a href="#" target="_blank" rel="noopener noreferrer" class="text-btn" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>
     </div>
   </aside>
 

@@ -1,4 +1,8 @@
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
+  function machineContentLabel(kind = 'AI 速览') {
+    return `<span class="content-label">${esc(kind)} · 未经人工核对</span>`;
+  }
+
   // Render Article Card
   function renderArticleCard(p) {
     const isHuddled = state.huddle.includes(p.id);
@@ -15,22 +19,25 @@
     const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
     const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
     const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${!titleZh && machineZh ? machineContentLabel('机器翻译') : ''}${zhHtml}</button></h3>`
       : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
 
     // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
-    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(gist)}</p>` : '';
     // The English title comes back when an English search hit it.
     const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
     const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
 
+    const sourceUrl = officialArticleUrl(p);
+    const doiBlock = doiStatusBlock(p);
     return `
       <article class="article-card" data-paper-id="${esc(p.id)}">
         <div class="card-top">
           <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
           <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+          ${pdfDownloadLink(p)}
         </div>
 
         ${publicationStatusHtml(p)}
@@ -39,15 +46,12 @@
         ${gistHtml}
 
         <div class="card-actions">
-          <div class="card-source-actions">
-            ${pdfDownloadLink(p)}
-          </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${officialArticleUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(officialArticleUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${sourceUrl && !doiBlock ? `<a class="text-btn" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
-        ${doiStatusBlock(p)}
+        ${doiBlock}
       </article>
     `;
   }
@@ -60,8 +64,13 @@
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
     const doiUrl = officialArticleUrl(p) || '#';
-    const translatedTitle = p.draftData?.title_zh || quicklookOf(p)?.title_zh || p.titleZh;
-    const title = esc(p.draftData?.title_zh ? `[导读] ${p.draftData.title_zh}` : translatedTitle || p.title);
+    const draftTitle = p.draftData?.title_zh || '';
+    const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
+    const title = draftTitle
+      ? `[导读] ${esc(draftTitle)}`
+      : machineZh
+        ? `${machineContentLabel('机器翻译')}${esc(machineZh)}`
+        : esc(p.title);
 
     return `
       <div class="compact-row" data-paper-id="${esc(p.id)}">

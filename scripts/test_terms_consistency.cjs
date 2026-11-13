@@ -40,6 +40,8 @@ const listCtx = vm.createContext({
   safeSourceUrl: () => 'https://example.org/paper',
   exactDoi: () => false
 });
+vm.runInContext(fn('officialArticleUrl'), listCtx);
+vm.runInContext(fn('machineContentLabel'), listCtx);
 vm.runInContext(fn('renderArticleCard'), listCtx);
 const cardHtml = listCtx.renderArticleCard({ id: 'p1', title: 'Test Paper', journal: 'Circulation' });
 ok(cardHtml.includes('class="title-open" data-action="open-drawer"'), 'card title button opens reader drawer');
@@ -57,13 +59,18 @@ const makeNode = () => ({
   innerHTML: '',
   dataset: {},
   disabled: false,
+  hidden: false,
+  href: '',
+  parentElement: null,
   classList: { contains: () => false, add: () => {}, remove: () => {} },
   contains: () => false,
   querySelector: () => null,
   querySelectorAll: () => [],
   setAttribute: () => {},
   removeAttribute: () => {},
-  focus: () => {}
+  focus: () => {},
+  remove: () => {},
+  appendChild: () => {}
 });
 const huddleBody = makeNode();
 const huddleNodes = {
@@ -104,6 +111,11 @@ ok(!huddleBody.innerHTML.includes('点击“加入精选清单”'), 'empty shor
 
 // 4. Reader drawer uses "已核对导读" only for source_checked drafts and "AI 速览" for unverified / on-demand entries.
 const drawerBody = makeNode();
+const ftStatus = makeNode();
+const ftRegion = makeNode();
+const ftSection = makeNode();
+ftSection.querySelector = sel => String(sel).includes('data-drawer-ft-status') ? ftStatus : null;
+drawerBody.querySelector = sel => (String(sel).includes('fulltext') || String(sel).includes('data-drawer-region')) ? ftRegion : null;
 const drawerNodes = {
   '#readerDrawer': makeNode(),
   '#drawerBackdrop': makeNode(),
@@ -116,7 +128,8 @@ const drawerNodes = {
   '#drawerInstitutionLoginLink': makeNode(),
   '#drawerPdfLink': makeNode(),
   '#drawerPdfForm': makeNode(),
-  '#drawerCloseBtn': makeNode()
+  '#drawerCloseBtn': makeNode(),
+  '#drawerFulltext': ftSection
 };
 const readerCtx = vm.createContext({
   $: sel => drawerNodes[sel] || null,
@@ -127,6 +140,7 @@ const readerCtx = vm.createContext({
   getDesignClass: () => '',
   dateLabel: () => '2026-10-01',
   safeSourceUrl: () => 'https://example.org/paper',
+  exactDoi: () => false,
   journalMetricBadge: () => '',
   designBadgeHtml: () => '',
   esc,
@@ -154,7 +168,7 @@ const readerCtx = vm.createContext({
   studyCheck: () => {},
   aiWaitingMessage: () => '等待确认'
 });
-vm.runInContext('let lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
+vm.runInContext(fn('officialArticleUrl') + '\nlet lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
 
 const renderDrawer = paper => {
   readerCtx.state.activeDrawerPaper = null;
