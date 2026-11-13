@@ -8,7 +8,7 @@ const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const blob=bytes=>createHash('sha1').update('blob '+bytes.length+'\0').update(bytes).digest('hex');
 const baseEnv={PDF_DOWNLOAD_ENABLED:'true',PDF_DOWNLOAD_PASSPHRASE:'synthetic-passphrase',GITHUB_LIBRARY_TOKEN:'synthetic-private-token',PDF_GITHUB_COMMIT:commit,FULLTEXT_ASYNC_ENABLED:'false'};
 const key='library:paper:'+doi;
-function csv(rows){const cell=s=>/[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;return [['题名','DOI','期刊','实际出版日期','日期来源','当前路径','SHA256'],...rows].map(r=>r.map(cell).join(',')).join('\r\n')+'\r\n';}
+function csv(rows,category=false){const cell=s=>/[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;return [['题名','DOI','期刊','实际出版日期','日期来源','当前路径','SHA256',...(category?['文件类别']:[])],...rows].map(r=>r.map(cell).join(',')).join('\r\n')+'\r\n';}
 const row=[title,doi,'Heart','2026-10-07','publisher',file,hash(pdf)];
 function crossref(changes={}){return {message:{DOI:doi,title:[title],'container-title':['Heart'],author:[{given:'Jane',family:'Doe'}],'published-online':{'date-parts':[[2026,10,7]]},...changes}};}
 function harness(options={}){
@@ -36,7 +36,7 @@ function harness(options={}){
   if(u.hostname==='api.github.com'){assert.equal(init.headers.authorization,'Bearer synthetic-private-token');const decoded=decodeURIComponent(u.pathname);if(decoded.endsWith('/commits/main'))return Response.json({sha:options.commit||commit});
    if(decoded.endsWith('/contents/文献索引/文献索引.csv')&&options.indexes){assert(Object.hasOwn(options.indexes,u.searchParams.get('ref')));return new Response(csv(options.indexes[u.searchParams.get('ref')]));}
    assert.equal(u.searchParams.get('ref'),options.commit||commit);
-   if(decoded.endsWith('/contents/文献索引/文献索引.csv'))return new Response(csv(options.rows||[row]));
+   if(decoded.endsWith('/contents/文献索引/文献索引.csv'))return new Response(csv(options.rows||[row],options.category));
    if(decoded.endsWith('/contents/文献索引/按需全文增量.json'))return options.delta?Response.json(options.delta):new Response('missing',{status:404});
    assert(decoded.endsWith('/contents/'+file));if(init.headers.accept==='application/vnd.github+json')return Response.json(options.metadata||{type:'file',path:file,size:(options.pointer||fixturePdf).length,sha:blob(options.pointer||fixturePdf)});
    return options.githubPdfResponse?options.githubPdfResponse(u,init):new Response(options.pointer||fixturePdf,{headers:{'content-type':'application/pdf'}});}
@@ -94,7 +94,34 @@ if(require.main===module)(async()=>{
  h=harness({crossrefResponse:()=>new Response('not found',{status:404}),policy:{sourceCommit:commit,decisions:{[doi]:{action:'hold',acceptedTitles:[],metadata:null}}}});await error(await h.request(),404,'library_metadata_unavailable');assert.equal(h.calls.length,1);assert(!h.values.has(key));
  h=harness({policy:{sourceCommit:commit,decisions:{[doi]:{action:'hold',acceptedTitles:[],metadata:null}}},oa:true});assert.equal((await h.request()).status,200);assert(!h.calls.some(c=>c.url.hostname==='api.github.com'));
  h=harness({rows:[[...row.slice(0,1),'10.1000/other',...row.slice(2)]]});assert.equal((await h.request()).status,202);
- for(const rows of [[row,row],[[ 'Wrong title',...row.slice(1)]],[[...row.slice(0,6),'invalid-sha']]]){h=harness({rows});const res=await h.request();assert.equal(res.status,202);assert.equal((await res.json()).status,'review');assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));}
+ for(const rows of [[[ 'Wrong title',...row.slice(1)]],[[...row.slice(0,6),'invalid-sha']]]){h=harness({rows});const res=await h.request();assert.equal(res.status,202);assert.equal((await res.json()).status,'review');assert(!h.writes.some(w=>w.key.startsWith('library:pdf:')));}
+ // Successful row selection must store exactly one paper and PDF, then download without further writes.
+ const selected = async (rows,category=false) => {
+  const fixture=harness({rows,category});const res=await fixture.request();assert.equal(res.status,200);
+  const result=await res.json();assert.equal(result.paper.fulltextStatus,'available');assert.equal(result.paper.metadataStatus,'external_bibliography_checked');assert(result.downloadUrl.startsWith('/api/fulltext?doi='));
+  const stored=JSON.parse(fixture.values.get(key));assert.equal(stored.pdf.source,'github');assert.equal(stored.pdf.key,'library:pdf:'+hash(pdf));
+  assert.equal(fixture.writes.filter(w=>w.key===key).length,1);assert.equal(fixture.writes.filter(w=>w.key.startsWith('library:pdf:')).length,1);
+  assert.deepEqual(fixture.writes.map(w=>w.key).sort(),harnessSuccessKeys);
+  const writesBefore=fixture.writes.length,callsBefore=fixture.calls.length;
+  const download=await fixture.request('/api/fulltext');assert.equal(download.status,200);assert.equal(download.headers.get('content-type'),'application/pdf');assert(download.headers.get('content-disposition').startsWith('attachment;'));assert.deepEqual(Buffer.from(await download.arrayBuffer()),pdf);
+  assert.equal(fixture.writes.length,writesBefore);assert.equal(fixture.calls.length,callsBefore);
+ };
+ const baseline=harness();assert.equal((await baseline.request()).status,200);
+ const harnessSuccessKeys=baseline.writes.map(w=>w.key).sort();
+ const otherRow=[...row.slice(0,6),hash(Buffer.from('Synthetic other file'))];
+ const review = async (rows,category=false) => {
+  const fixture=harness({rows,category});const res=await fixture.request();assert.equal(res.status,202);assert.equal((await res.json()).status,'review');assert(!fixture.writes.some(w=>w.key.startsWith('library:pdf:')));
+ };
+ await selected([row,row]);
+ await review([row,otherRow]); // Missing category column preserves the old ambiguity rule.
+ // Put the supplement first with a distinct path/hash: the harness only serves the main-text path.
+ const supplement=[...row.slice(0,5),'期刊/synthetic-supplement.pdf',otherRow[6],'补充材料'];
+ await selected([supplement,[...row,'正文']],true);
+ await review([[...row,'正文'],[...otherRow,'正文']],true);
+ await selected([[...row,'正文'],[...row,'正文']],true);
+ await review([[...row,'补充材料']],true);
+ await review([[...row,'译本']],true);
+ await selected([[...row,'']],true);
  h=harness({rows:[['Accepted variant',...row.slice(1)]],policy:{sourceCommit:commit,decisions:{[doi]:{action:'official',acceptedTitles:['Accepted variant'],metadata:{title}}}}});assert.equal((await h.request()).status,200);
  h=harness({rows:[['Accepted variant',...row.slice(1)]],commit:'b'.repeat(40),policy:{sourceCommit:commit,decisions:{[doi]:{action:'official',acceptedTitles:['Accepted variant'],metadata:{title}}}}});const changed=await h.request('/api/acquire',{env:{PDF_GITHUB_COMMIT:'b'.repeat(40)}});assert.equal((await changed.json()).status,'review');
  h=harness({rows:[],unpaywallResponse:()=>Response.json({doi:'10.1000/other',title,is_oa:true,best_oa_location:{url_for_pdf:'https://journals.plos.org/article/fixture.pdf'}})});const wrongOa=await h.request();assert.equal((await wrongOa.json()).status,'review');assert(!h.calls.some(c=>c.url.hostname==='journals.plos.org'));
