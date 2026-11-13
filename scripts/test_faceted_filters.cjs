@@ -135,4 +135,11 @@ context.renderSidebarFilters();
 context.renderActiveFilterChips(0);
 const panelHtml = [elements.tierFilterList, elements.publisherAccordion, elements.designFilterList, elements.tagsCloud, elements.activeFiltersBar].map(el => el.innerHTML).join('\n');
 check(!panelHtml.includes('<script>'), 'Sidebar and condition bar do not interpolate unsanitized markup');
+
+reset();
+Object.assign(context.state, { favoritesOnly: true, favoriteJournals: [], search: '', mode: 'candidates' });
+const followEmpty = context.renderEmptyFilters();
+check(followEmpty.includes('还没有关注期刊，点期刊名旁的 ☆ 关注'), 'Zero followed journals explains how to follow, rather than a generic empty list');
+check(!followEmpty.includes('当前领域、时间、关键词与筛选条件下暂无匹配'), 'Zero-follow empty state does not use the generic no-match copy');
+
 console.log('faceted filters: ' + checks + ' assertions passed');

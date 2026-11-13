@@ -804,9 +804,12 @@
       }).length;
       return count ? `<button type="button" class="btn-sm" data-browse-only="${selection.group}" data-browse-value="${esc(selection.value)}">只看${esc(selection.value)} · ${count} 篇</button>` : '';
     }).join('') : '';
-    const message = selections.length > 1 ? '这些条件需要同时满足，目前没有交集。可保留其中一项切换浏览。'
+    const noFollowed = !!(state.favoritesOnly && !(state.favoriteJournals || []).length);
+    const message = noFollowed ? '还没有关注期刊，点期刊名旁的 ☆ 关注。关注后可在这里只看这些期刊。'
+      : selections.length > 1 ? '这些条件需要同时满足，目前没有交集。可保留其中一项切换浏览。'
       : state.mode === 'curated' ? '当前条件下没有精选，可清除筛选或查看文献雷达。' : '当前领域、时间、关键词与筛选条件下暂无匹配。';
-    return `<div class="empty-state"><h3>没有找到匹配的文献</h3><p>${message}</p><div class="empty-filter-actions">${suggestions}
+    const heading = noFollowed ? '还没有关注期刊' : '没有找到匹配的文献';
+    return `<div class="empty-state"><h3>${heading}</h3><p>${message}</p><div class="empty-filter-actions">${suggestions}
       ${selections.length ? '<button type="button" class="btn-sm" data-clear="sidebar">清空左侧筛选</button>' : ''}
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;

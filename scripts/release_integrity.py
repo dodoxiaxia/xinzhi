@@ -63,7 +63,7 @@ INPUTS = (
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.png', 'demo-reading.html', 'edge/_worker.js',
-    'journal-metrics.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
+    'journal-metrics.js', 'journal-tiers.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
     'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/publication_status.py', 'config/publication-status.json',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',

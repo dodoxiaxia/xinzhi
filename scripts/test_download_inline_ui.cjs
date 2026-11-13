@@ -62,7 +62,7 @@ const CARD_LINK = '#articlesStream [data-paper-id="' + paperId + '"] a[data-ft-d
     };
     if (assets[u.pathname]) return route.fulfill({ body: assets[u.pathname], contentType: 'application/javascript' });
     const file = u.pathname === '/' ? 'index.html' : u.pathname.slice(1);
-    if (['index.html', 'app.js', 'style.css', 'icon.png'].includes(file)) {
+    if (['index.html', 'app.js', 'journal-tiers.js', 'style.css', 'icon.png'].includes(file)) {
       return route.fulfill({ body: fs.readFileSync(path.join(root, file)), contentType: file.endsWith('.js') ? 'application/javascript' : file.endsWith('.css') ? 'text/css' : file.endsWith('.png') ? 'image/png' : 'text/html' });
     }
     return route.fulfill({ status: 404, body: '' });
