@@ -104,7 +104,7 @@ async function helpers() {
   assert(c.fulltextStatusHtml(kept, true).includes('ft-badge-ready'));
   assert(!c.fulltextStatusHtml(kept, true, true).includes('data-ft-download'), 'drawer uses its static download link');
   const noDoi = c.fulltextStatusHtml({ title: 'No DOI', url: 'https://example.org/paper' }, true, true);
-  assert(noDoi.includes('这篇没有 DOI，无法向站内申请全文') && noDoi.includes('下一步：到官网原文查看'));
+  assert(noDoi.includes('这篇没有 DOI，无法向站内申请全文') && noDoi.includes('到官网原文查看'));
   assert(noDoi.includes('href="https://example.org/paper"'));
   assert(!c.fulltextStatusHtml({ title: 'No DOI' }, true, true).includes('href='));
   const bmj = { id: 'bmjopen-121799', doi: '10.1136/bmjopen-2026-121799', title: 'BMJ Open sample', url: 'https://pubmed.ncbi.nlm.nih.gov/41012179/' };

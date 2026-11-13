@@ -1583,7 +1583,7 @@
     if (drawer) {
       if (view.kind === 'ready') return '';
       const hint = view.headline + (view.eta ? ' · ' + view.eta.replace(/^下一步：/, '') : '');
-      return '<p class="ft-hint ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + esc(hint) + (upload ? ' ' + upload : '') + (maint ? ' ' + maint : '') + '</p>';
+      return '<p class="ft-hint ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + esc(hint) + (official ? ' ' + official : '') + (upload ? ' ' + upload : '') + (maint ? ' ' + maint : '') + '</p>';
     }
     return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + fullBadge + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
@@ -1868,10 +1868,15 @@
     }
     if (group === 'journal') {
       const list = selectedJournals();
-      const clear = !only && value && list.includes(value);
-      state.journals = clear ? list.filter(j => j !== value) : (only ? [value] : list.concat(value).filter((j, i, a) => a.indexOf(j) === i));
-      state.journal = state.journals[0] || '';
-      if (state.journals.length) state.publisher = '';
+      if (!value) {
+        state.journals = [];
+        state.journal = '';
+      } else {
+        const clear = !only && list.includes(value);
+        state.journals = clear ? list.filter(j => j !== value) : (only ? [value] : list.concat(value).filter((j, i, a) => a.indexOf(j) === i));
+        state.journal = state.journals[0] || '';
+        if (state.journals.length) state.publisher = '';
+      }
     }
     if (group === 'design') {
       state.studyDesign = value;
