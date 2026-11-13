@@ -171,6 +171,7 @@ class SourceFallbackTests(unittest.TestCase):
         self.assertNotIn('upstreamError', out)
         self.assertIsNone(public_pubmed_fetch({'status': 'mystery', 'errorCategory': 'pubmed_upstream_timeout'}))
         self.assertEqual(public_pubmed_fetch({'status': 'ok', 'checkedAt': '2026-11-05T02:00:00+00:00', 'api_key': 'x'})['status'], 'ok')
+        self.assertEqual(public_pubmed_fetch({'status': 'failed', 'errorCategory': 'pubmed_time_budget_exceeded'})['errorCategory'], 'pubmed_time_budget_exceeded')
 
     def test_failed_fetch_marks_reused_fallback_stale_and_survives_public_health(self):
         fetch = {'status': 'failed', 'httpStatus': 503, 'errorCategory': 'pubmed_http_5xx',

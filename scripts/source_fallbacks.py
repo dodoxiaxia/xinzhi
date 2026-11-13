@@ -111,6 +111,7 @@ PUBMED_FETCH_ERROR_CATEGORIES = {
     'pubmed_network_error',
     'pubmed_upstream_error',
     'pubmed_client_error',
+    'pubmed_time_budget_exceeded',
 }
 
 

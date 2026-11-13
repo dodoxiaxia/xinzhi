@@ -11,8 +11,26 @@ from unittest.mock import MagicMock, call, patch
 import fetch_pubmed
 from source_fallbacks import journal_query
 
+ZERO_JITTER = lambda: 0.0
+
+
+class FakeClock:
+    def __init__(self, start=0.0):
+        self.t = start
+
+    def __call__(self):
+        return self.t
+
 
 class PubmedRequestTests(unittest.TestCase):
+    def record_wait(self, clock=None):
+        clock = clock or FakeClock()
+        waits = []
+        def wait(seconds):
+            waits.append(seconds)
+            clock.t += seconds
+        return clock, waits, wait
+
     def call(self, action, params):
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'public metadata'
@@ -59,32 +77,38 @@ class PubmedRequestTests(unittest.TestCase):
                 first.__exit__.assert_called_once()
             return response
 
+        waits = []
         def backoff(seconds):
             first.__exit__.assert_called_once()
+            waits.append(seconds)
 
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=reopen) as opener, \
-                patch.object(fetch_pubmed.time, 'sleep', side_effect=backoff) as sleep:
-            result = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'})
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            result = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'},
+                                          wait=backoff, rng=ZERO_JITTER)
         self.assertEqual(result, b'<PubmedArticleSet/>')
         self.assertEqual(opener.call_count, 2)
         self.assertIs(opener.call_args_list[0].args[0], opener.call_args_list[1].args[0])
-        sleep.assert_called_once_with(0.5)
+        self.assertEqual(waits, [5.0])
+        sleep.assert_not_called()
         for response in (first, second):
             response.__enter__.return_value.read.assert_called_once_with(10_000_000)
             response.__exit__.assert_called_once()
 
     def test_incomplete_read_retries_are_bounded_and_last_error_propagates(self):
-        responses = [MagicMock() for _ in range(3)]
-        errors = [http.client.IncompleteRead(('partial %d' % i).encode()) for i in range(3)]
+        responses = [MagicMock() for _ in range(4)]
+        errors = [http.client.IncompleteRead(('partial %d' % i).encode()) for i in range(4)]
         for response, error in zip(responses, errors):
             response.__enter__.return_value.read.side_effect = error
+        waits = []
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=responses) as opener, \
                 patch.object(fetch_pubmed.time, 'sleep') as sleep:
             with self.assertRaises(http.client.IncompleteRead) as caught:
-                fetch_pubmed.request('esearch.fcgi', {'term': 'public query ' * 500})
+                fetch_pubmed.request('esearch.fcgi', {'term': 'public query ' * 500}, wait=waits.append, rng=ZERO_JITTER)
         self.assertIs(caught.exception, errors[-1])
-        self.assertEqual(opener.call_count, 3)
-        self.assertEqual(sleep.call_args_list, [call(0.5), call(1.0)])
+        self.assertEqual(opener.call_count, 4)
+        self.assertEqual(waits, [5.0, 15.0, 45.0])
+        sleep.assert_not_called()
         for response in responses:
             response.__enter__.return_value.read.assert_called_once_with(10_000_000)
             response.__exit__.assert_called_once()
@@ -114,9 +138,10 @@ class PubmedRequestTests(unittest.TestCase):
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=TimeoutError('timed out')) as opener, \
                 patch.object(fetch_pubmed.time, 'sleep') as sleep:
             with self.assertRaises(TimeoutError):
-                fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'})
-        self.assertEqual(opener.call_count, 3)
-        self.assertEqual(sleep.call_args_list, [call(0.5), call(1.0)])
+                fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'},
+                                     wait=lambda _: None, rng=ZERO_JITTER)
+        self.assertEqual(opener.call_count, 4)
+        self.assertEqual(sleep.call_count, 0)
         self.assertEqual(opener.call_args.kwargs, {'timeout': 30})
 
     def test_server_error_retries_then_returns_the_completed_body(self):
@@ -125,10 +150,11 @@ class PubmedRequestTests(unittest.TestCase):
         success.__enter__.return_value.read.return_value = b'{"esearchresult":{"count":"0","idlist":[]}}'
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[failure, success]) as opener, \
                 patch.object(fetch_pubmed.time, 'sleep') as sleep:
-            body = fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'})
+            body = fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'},
+                                       wait=lambda _: None, rng=ZERO_JITTER)
         self.assertEqual(body, b'{"esearchresult":{"count":"0","idlist":[]}}')
         self.assertEqual(opener.call_count, 2)
-        sleep.assert_called_once_with(0.5)
+        sleep.assert_not_called()
 
     def test_missing_idlist_and_error_payloads_do_not_replace_the_previous_file(self):
         import tempfile
@@ -147,15 +173,17 @@ class PubmedRequestTests(unittest.TestCase):
                     path = Path(tmp) / 'pubmed.json'
                     path.write_text(previous)
                     raw = json.dumps(payload).encode()
+                    waits = []
                     with patch.object(fetch_pubmed, 'request', return_value=raw) as opener, \
                             patch.object(fetch_pubmed.time, 'sleep') as sleep:
                         with self.assertRaises(fetch_pubmed.PubmedError) as caught:
-                            fetch_pubmed.refresh(path, 30, 1500, now=clock)
+                            fetch_pubmed.refresh(path, 30, 1500, now=clock, wait=waits.append, rng=ZERO_JITTER)
                     self.assertEqual(caught.exception.code, code)
                     self.assertEqual(path.read_text(), previous)
                     self.assertFalse(path.with_name('.pubmed.json.tmp').exists())
-                    self.assertEqual(opener.call_count, 3)
-                    self.assertEqual(sleep.call_args_list, [call(0.5), call(1.0)])
+                    self.assertEqual(opener.call_count, 4)
+                    self.assertEqual(waits, [5.0, 15.0, 45.0])
+                    sleep.assert_not_called()
 
     def test_empty_idlist_is_a_complete_result_and_efetch_error_keeps_previous(self):
         import json as jsonlib
@@ -177,7 +205,7 @@ class PubmedRequestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'pubmed.json'
             path.write_text(previous)
-            def fake(action, params, attempts=3, wait=None):
+            def fake(action, params, attempts=3, wait=None, **kwargs):
                 if action == 'esearch.fcgi':
                     return jsonlib.dumps({'esearchresult': {'count': '1', 'idlist': ['12345678']}}).encode()
                 return b'<ERROR>Unable to obtain query</ERROR>'
@@ -187,8 +215,8 @@ class PubmedRequestTests(unittest.TestCase):
             self.assertEqual(caught.exception.code, 'pubmed_efetch_error')
             self.assertEqual(path.read_text(), previous)
 
-    def _http_error(self, code, reason, body, url='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi'):
-        return urllib.error.HTTPError(url, code, reason, {}, io.BytesIO(body))
+    def _http_error(self, code, reason, body, url='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi', headers=None):
+        return urllib.error.HTTPError(url, code, reason, headers or {}, io.BytesIO(body))
 
     def _success(self, payload=b'<PubmedArticleSet/>'):
         response = MagicMock()
@@ -200,23 +228,25 @@ class PubmedRequestTests(unittest.TestCase):
         success = self._success(b'{"esearchresult":{"count":"0","idlist":[]}}')
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[TimeoutError('timed out'), success]) as opener, \
                 patch.object(fetch_pubmed.time, 'sleep') as sleep:
-            body = fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'}, wait=waits.append)
+            body = fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'},
+                                       wait=waits.append, rng=ZERO_JITTER)
         self.assertEqual(body, b'{"esearchresult":{"count":"0","idlist":[]}}')
         self.assertEqual(opener.call_count, 2)
-        self.assertEqual(waits, [0.5])
+        self.assertEqual(waits, [5.0])
         sleep.assert_not_called()
         self.assertEqual(opener.call_args.kwargs, {'timeout': 30})
 
     def test_persistent_timeout_is_retried_then_raised_without_sleep(self):
         waits = []
-        errors = [TimeoutError('timed out') for _ in range(3)]
+        errors = [TimeoutError('timed out') for _ in range(4)]
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=errors) as opener, \
                 patch.object(fetch_pubmed.time, 'sleep') as sleep:
             with self.assertRaises(TimeoutError) as caught:
-                fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'}, wait=waits.append)
+                fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'},
+                                     wait=waits.append, rng=ZERO_JITTER)
         self.assertIs(caught.exception, errors[-1])
-        self.assertEqual(opener.call_count, 3)
-        self.assertEqual(waits, [0.5, 1.0])
+        self.assertEqual(opener.call_count, 4)
+        self.assertEqual(waits, [5.0, 15.0, 45.0])
         self.assertTrue(all(delay >= fetch_pubmed.NCBI_MIN_INTERVAL for delay in waits))
         sleep.assert_not_called()
 
@@ -244,10 +274,11 @@ class PubmedRequestTests(unittest.TestCase):
         success = self._success(b'<PubmedArticleSet/>')
         with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=failures + [success]) as opener, \
                 patch.object(fetch_pubmed.time, 'sleep') as sleep:
-            body = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'}, wait=waits.append)
+            body = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'},
+                                       wait=waits.append, rng=ZERO_JITTER)
         self.assertEqual(body, b'<PubmedArticleSet/>')
         self.assertEqual(opener.call_count, 3)
-        self.assertEqual(waits, [0.5, 1.0])
+        self.assertEqual(waits, [5.0, 15.0])
         sleep.assert_not_called()
         self.assertIn('External viewer error', failures[0].__notes__[0])
         self.assertIn('"httpStatus": 400', failures[0].__notes__[0])
@@ -261,7 +292,7 @@ class PubmedRequestTests(unittest.TestCase):
         waits = []
         errors = [
             self._http_error(400, 'Bad Request', b'Error: External viewer error: Empty Response. Bytes read: 0 Status: Timeout')
-            for _ in range(3)
+            for _ in range(4)
         ]
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'pubmed.json'
@@ -270,13 +301,13 @@ class PubmedRequestTests(unittest.TestCase):
                     patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=errors) as opener, \
                     patch.object(fetch_pubmed.time, 'sleep') as sleep:
                 with self.assertRaises(urllib.error.HTTPError) as caught:
-                    fetch_pubmed.refresh(path, 30, 1500, now=clock, wait=waits.append)
+                    fetch_pubmed.refresh(path, 30, 1500, now=clock, wait=waits.append, rng=ZERO_JITTER)
             self.assertIs(caught.exception, errors[-1])
             self.assertEqual(path.read_text(), previous)
             self.assertFalse(path.with_name('.pubmed.json.tmp').exists())
-            self.assertEqual(opener.call_count, 3)
-            # NCBI pacing after search and before the first batch, plus two retry backoffs.
-            self.assertEqual(waits, [0.4, 0.4, 0.5, 1.0])
+            self.assertEqual(opener.call_count, 4)
+            # NCBI pacing after search and before the first batch, plus three retry backoffs.
+            self.assertEqual(waits, [0.4, 0.4, 5.0, 15.0, 45.0])
             sleep.assert_not_called()
 
     def _health(self, root, **extra):
@@ -294,7 +325,7 @@ class PubmedRequestTests(unittest.TestCase):
         waits = []
         errors = [
             self._http_error(400, 'Bad Request', b'Error: External viewer error: Empty Response. Bytes read: 0 Status: Timeout')
-            for _ in range(3)
+            for _ in range(4)
         ]
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'pubmed.json'
@@ -303,11 +334,11 @@ class PubmedRequestTests(unittest.TestCase):
             with patch.object(fetch_pubmed, 'load_esearch', return_value={'count': '1', 'idlist': ['12345678']}), \
                     patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=errors) as opener, \
                     patch.object(fetch_pubmed.time, 'sleep') as sleep:
-                result = fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health)
+                result = fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health, rng=ZERO_JITTER)
             self.assertTrue(result['degraded'])
             self.assertEqual(path.read_text(), previous)
-            self.assertEqual(opener.call_count, 3)
-            self.assertEqual(waits, [0.4, 0.4, 0.5, 1.0])
+            self.assertEqual(opener.call_count, 4)
+            self.assertEqual(waits, [0.4, 0.4, 5.0, 15.0, 45.0])
             sleep.assert_not_called()
             saved = json.loads(health.read_text())
             fetch = saved['pubmedFetch']
@@ -329,21 +360,19 @@ class PubmedRequestTests(unittest.TestCase):
         from pathlib import Path
         clock = datetime.datetime(2026, 11, 5, 2, tzinfo=datetime.timezone.utc)
         waits = []
-        errors = [TimeoutError('timed out') for _ in range(3)]
+        errors = [TimeoutError('timed out') for _ in range(4)]
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'pubmed.json'
             health = self._health(tmp)
             with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=errors) as opener, \
                     patch.object(fetch_pubmed.time, 'sleep') as sleep:
                 with self.assertRaises(TimeoutError):
-                    fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health)
+                    fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health, rng=ZERO_JITTER)
             opener.assert_called()
             sleep.assert_not_called()
             self.assertFalse(path.exists())
             self.assertNotIn('pubmedFetch', json.loads(health.read_text()) or {})
-            # load_esearch retries 3 times with request attempts=1, so 3 waits of 0.5 then 1.0 between attempts, no 3rd wait
-            # Actually: load_esearch loop 3 times, request attempts=1 so each TimeoutError raises immediately, wait between attempts 0.5, 1.0
-            self.assertEqual(waits, [0.5, 1.0])
+            self.assertEqual(waits, [5.0, 15.0, 45.0])
 
     def test_run_does_not_degrade_a_genuine_bad_request_even_with_cache(self):
         import tempfile
@@ -360,7 +389,7 @@ class PubmedRequestTests(unittest.TestCase):
                     patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=error) as opener, \
                     patch.object(fetch_pubmed.time, 'sleep') as sleep:
                 with self.assertRaises(urllib.error.HTTPError) as caught:
-                    fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health)
+                    fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health, rng=ZERO_JITTER)
             self.assertIs(caught.exception, error)
             opener.assert_called_once()
             self.assertEqual(waits, [0.4, 0.4])  # pacing only, no retry
@@ -379,7 +408,7 @@ class PubmedRequestTests(unittest.TestCase):
             health = self._health(tmp, pubmedFetch={'status': 'failed', 'errorCategory': 'pubmed_upstream_timeout', 'httpStatus': 400, 'checkedAt': '2026-11-05T01:00:00+00:00'})
             with patch.object(fetch_pubmed, 'request', return_value=raw) as opener, \
                     patch.object(fetch_pubmed.time, 'sleep') as sleep:
-                data = fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health)
+                data = fetch_pubmed.run(path, 30, 1500, now=clock, wait=waits.append, health_path=health, rng=ZERO_JITTER)
             self.assertFalse(data.get('degraded'))
             self.assertEqual(data['fetched'], 0)
             self.assertEqual(json.loads(path.read_text())['items'], [])
@@ -388,6 +417,123 @@ class PubmedRequestTests(unittest.TestCase):
             self.assertNotIn('errorCategory', saved)
             self.assertNotIn('httpStatus', saved)
             opener.assert_called()
+            sleep.assert_not_called()
+
+    def test_retry_jitter_stays_within_20_percent(self):
+        for attempt, base in enumerate((5.0, 15.0, 45.0)):
+            with self.subTest(attempt=attempt):
+                self.assertEqual(fetch_pubmed.retry_delay(attempt, rng=lambda: 0.0), base)
+                self.assertEqual(fetch_pubmed.retry_delay(attempt, rng=lambda: 1.0), base * 1.2)
+                self.assertEqual(fetch_pubmed.retry_delay(attempt, rng=lambda: 0.5), base * 1.1)
+        waits = []
+        success = self._success(b'{"esearchresult":{"count":"0","idlist":[]}}')
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[TimeoutError('timed out'), success]), \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            fetch_pubmed.request('esearch.fcgi', {'db': 'pubmed', 'term': 'public', 'retmode': 'json'},
+                                 wait=waits.append, rng=lambda: 0.25)
+        self.assertEqual(waits, [5.0 * 1.05])
+        self.assertGreaterEqual(waits[0], 5.0)
+        self.assertLessEqual(waits[0], 5.0 * 1.2)
+        sleep.assert_not_called()
+
+    def test_429_with_retry_after_waits_that_header_value(self):
+        waits = []
+        failure = self._http_error(429, 'Too Many Requests', b'', headers={'Retry-After': '12'})
+        success = self._success(b'<PubmedArticleSet/>')
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[failure, success]) as opener, \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            body = fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'},
+                                       wait=waits.append, rng=ZERO_JITTER)
+        self.assertEqual(body, b'<PubmedArticleSet/>')
+        self.assertEqual(opener.call_count, 2)
+        self.assertEqual(waits, [12.0])
+        sleep.assert_not_called()
+
+    def test_429_without_retry_after_uses_standard_backoff(self):
+        waits = []
+        failure = self._http_error(429, 'Too Many Requests', b'')
+        success = self._success(b'<PubmedArticleSet/>')
+        with patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=[failure, success]), \
+                patch.object(fetch_pubmed.time, 'sleep') as sleep:
+            fetch_pubmed.request('efetch.fcgi', {'db': 'pubmed', 'id': '123', 'retmode': 'xml'},
+                                 wait=waits.append, rng=ZERO_JITTER)
+        self.assertEqual(waits, [5.0])
+        sleep.assert_not_called()
+
+    def test_time_budget_degrades_without_sleeping_past_the_limit(self):
+        import tempfile
+        from pathlib import Path
+        previous = json.dumps({'updatedAt': '2026-11-05T01:00:00+00:00', 'items': [{'id': 'pmid-previous'}]})
+        stamp = datetime.datetime(2026, 11, 5, 2, tzinfo=datetime.timezone.utc)
+        mono, waits, wait = self.record_wait()
+        errors = [
+            self._http_error(400, 'Bad Request', b'Error: External viewer error: Empty Response. Bytes read: 0 Status: Timeout')
+            for _ in range(4)
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'pubmed.json'
+            path.write_text(previous)
+            health = self._health(tmp)
+            with patch.object(fetch_pubmed, 'load_esearch', return_value={'count': '1', 'idlist': ['12345678']}), \
+                    patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=errors) as opener, \
+                    patch.object(fetch_pubmed.time, 'sleep') as sleep:
+                result = fetch_pubmed.run(path, 30, 1500, now=stamp, wait=wait, health_path=health,
+                                          clock=mono, rng=ZERO_JITTER, time_budget=4)
+            self.assertTrue(result['degraded'])
+            self.assertEqual(result['pubmedFetch']['errorCategory'], 'pubmed_time_budget_exceeded')
+            self.assertNotIn('httpStatus', result['pubmedFetch'])
+            self.assertTrue(result['pubmedFetch']['reusedPrevious'])
+            self.assertEqual(path.read_text(), previous)
+            # Two NCBI pacing waits fit; the 5s retry would exceed the 4s budget, so it is skipped.
+            self.assertEqual(waits, [0.4, 0.4])
+            self.assertEqual(opener.call_count, 1)
+            sleep.assert_not_called()
+            self.assertEqual(json.loads(health.read_text())['pubmedFetch']['errorCategory'], 'pubmed_time_budget_exceeded')
+
+    def test_time_budget_without_snapshot_still_fails_the_step(self):
+        import tempfile
+        from pathlib import Path
+        stamp = datetime.datetime(2026, 11, 5, 2, tzinfo=datetime.timezone.utc)
+        mono, waits, wait = self.record_wait()
+        errors = [
+            self._http_error(400, 'Bad Request', b'Error: External viewer error: Empty Response. Bytes read: 0 Status: Timeout')
+            for _ in range(4)
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'pubmed.json'
+            health = self._health(tmp)
+            with patch.object(fetch_pubmed, 'load_esearch', return_value={'count': '1', 'idlist': ['12345678']}), \
+                    patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=errors), \
+                    patch.object(fetch_pubmed.time, 'sleep') as sleep:
+                with self.assertRaises(fetch_pubmed.PubmedBudgetExceeded) as caught:
+                    fetch_pubmed.run(path, 30, 1500, now=stamp, wait=wait, health_path=health,
+                                     clock=mono, rng=ZERO_JITTER, time_budget=4)
+            self.assertEqual(caught.exception.code, 'pubmed_time_budget_exceeded')
+            self.assertFalse(path.exists())
+            self.assertNotIn('pubmedFetch', json.loads(health.read_text()))
+            self.assertEqual(waits, [0.4, 0.4])
+            sleep.assert_not_called()
+
+    def test_429_retry_after_beyond_budget_degrades_without_waiting(self):
+        import tempfile
+        from pathlib import Path
+        previous = json.dumps({'updatedAt': '2026-11-05T01:00:00+00:00', 'items': [{'id': 'pmid-previous'}]})
+        stamp = datetime.datetime(2026, 11, 5, 2, tzinfo=datetime.timezone.utc)
+        mono, waits, wait = self.record_wait()
+        failure = self._http_error(429, 'Too Many Requests', b'', headers={'Retry-After': '30'})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'pubmed.json'
+            path.write_text(previous)
+            health = self._health(tmp)
+            with patch.object(fetch_pubmed, 'load_esearch', return_value={'count': '1', 'idlist': ['12345678']}), \
+                    patch.object(fetch_pubmed.urllib.request, 'urlopen', side_effect=failure) as opener, \
+                    patch.object(fetch_pubmed.time, 'sleep') as sleep:
+                result = fetch_pubmed.run(path, 30, 1500, now=stamp, wait=wait, health_path=health,
+                                          clock=mono, rng=ZERO_JITTER, time_budget=10)
+            self.assertTrue(result['degraded'])
+            self.assertEqual(result['pubmedFetch']['errorCategory'], 'pubmed_time_budget_exceeded')
+            self.assertEqual(waits, [0.4, 0.4])
+            opener.assert_called_once()
             sleep.assert_not_called()
 
 
