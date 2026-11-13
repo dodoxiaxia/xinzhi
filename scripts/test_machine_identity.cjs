@@ -98,6 +98,17 @@ async function verifyNext(h, doi, result, reason) {
   assert.equal(otherXmp.level, 'doi_only'); // metadata that disagrees adds nothing; the dual-parser still decides
   assert.equal((await identity(h, fixtures.customEncoding({...custom, toUnicode:false}), '10.9999/synthetic.other', custom.title)).verdict, 'mismatch');
   assert.equal((await identity(h, fixtures.customEncoding({...custom, toUnicode:false, xmpTitle:custom.title}), '10.9999/synthetic.other', custom.title)).reason, 'doi_not_found');
+  // Simple font + ToUnicode with a 2-byte codespace around 1-byte entries (title with an "ff" ligature glyph): decoded one byte at a time.
+  const {wide} = fixtures.samples, wideBytes = fixtures.simpleFontWideCodespace(wide);
+  const wideVerdict = await identity(h, wideBytes, wide.doi, wide.title);
+  assert.equal(wideVerdict.verdict, 'ok'); assert.equal(wideVerdict.level, 'full'); assert.equal(wideVerdict.checks.title, 'page');
+  const wideWrong = await identity(h, wideBytes, wide.doi, 'Synthetic unrelated study of imaginary tides and moons');
+  assert.equal(wideWrong.verdict, 'mismatch'); assert.equal(wideWrong.reason, 'title_not_found'); // still no free pass for another title
+  assert.equal((await identity(h, wideBytes, '10.9999/synthetic.other', wide.title)).reason, 'doi_not_found');
+  assert.equal((await identity(h, wideBytes, '10.9999/synthetic.other', 'Synthetic unrelated study of imaginary tides and moons')).reason, 'identity_mismatch');
+  // A Type0 font keeps the width its codespace declares (the custom-encoding sample above is 2-byte Identity-H).
+  const wideType0 = mutate(wideBytes, '/Subtype /Type1 /BaseFont /ABCDEF+SyntheticHeadline', '/Subtype /Type0 /BaseFont /ABCDEF+SyntheticHeadline');
+  assert.equal((await identity(h, wideType0, wide.doi, wide.title)).reason, 'title_not_found');
   // Readable page text with a different title is never rescued by metadata.
   const readableWrong = fixtures.flateEol({...flate});
   assert.equal((await identity(h, readableWrong, flate.doi, 'Synthetic unrelated study of imaginary tides and moons')).reason, 'title_not_found');

@@ -2680,7 +2680,10 @@ function machineParseCmap(text, type0) {
       }
     }
   }
-  return {width:width || (type0 ? 2 : 1), map};
+  // Only a Type0 (composite) font reads codes as wide as its codespace. A simple font (Type1/TrueType/Type3) always shows one byte
+  // per glyph, even when its ToUnicode CMap declares a 2-byte <0000> <FFFF> codespace around 1-byte entries (some InDesign exports
+  // do): reading such a string in pairs maps nothing and silently drops the whole run, e.g. a title set in a ligature-bearing font.
+  return {width:type0 ? (width || 2) : 1, map};
 }
 async function machinePageFonts(ctx, page) {
   const fonts = new Map();

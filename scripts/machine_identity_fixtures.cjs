@@ -112,10 +112,34 @@ function customEncoding({doi, title, toUnicode = true, xmpTitle = '', infoTitle 
   if (infoTitle) parts.push({id:10, head:'<< /Title (' + escapeText(infoTitle) + ') >>\n'});
   return finish(assemble(parts), '', 'trailer\n<< /Size 11 /Root 1 0 R' + (infoTitle ? ' /Info 10 0 R' : '') + ' >>\n');
 }
+// D: simple (Type1) font whose ToUnicode CMap declares a 2-byte <0000> <FFFF> codespace around 1-byte entries, as some InDesign
+// exports do. The title is set in that font with kerning arrays and an "ff" ligature glyph at code 31 (octal \037), so the literal
+// strings read "E\037ect" and only the ToUnicode map says the glyph is "ff". Built in memory for the regression test only; it is not
+// one of files(), so no extra binary is committed.
+function simpleFontWideCodespace({doi, title}) {
+  const alphabet = [...new Set([...title.replace(/ff/g, '\u0001')])].sort();
+  const code = ch => ch === '\u0001' ? 31 : ch.charCodeAt(0);
+  const hex = value => value.toString(16).toUpperCase().padStart(2, '0');
+  const shown = title.replace(/ff/g, '\u0001').split(' ').map(word => '(' + [...word].map(ch => ch === '\u0001' ? '\\037' : escapeText(ch)).join('') + ')10').join(' ( )5 ');
+  let cmap = '/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Adobe-Identity-UCS def /CMapType 2 def\n1 begincodespacerange <0000> <FFFF> endcodespacerange\n';
+  cmap += alphabet.length + ' beginbfchar\n' + alphabet.map(ch => '<' + hex(code(ch)) + '> <' + (ch === '\u0001' ? '00660066' : ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')) + '>').join('\n') + '\nendbfchar\nendcmap end end\n';
+  const content = zlib.deflateSync(latin1('BT /F1 9 Tf 1 0 0 1 72 760 Tm (doi:' + escapeText(doi) + ') Tj /F2 17 Tf 1 0 0 1 72 700 Tm [' + shown + '] TJ ET\n'));
+  const parts = [
+    {id:1, head:'<< /Type /Catalog /Pages 2 0 R >>\n'},
+    {id:2, head:'<< /Type /Pages /Count 1 /Kids [3 0 R] >>\n'},
+    {id:3, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>\n'},
+    {id:4, ...stream('/Filter /FlateDecode', content)},
+    {id:5, head:'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'},
+    {id:6, head:'<< /Type /Font /Subtype /Type1 /BaseFont /ABCDEF+SyntheticHeadline /FirstChar 31 /LastChar 122 /Encoding << /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [31 /uniFB00] >> /ToUnicode 7 0 R >>\n'},
+    {id:7, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(cmap)))}
+  ];
+  return finish(assemble(parts), '', 'trailer\n<< /Size 8 /Root 1 0 R >>\n');
+}
 const samples = {
   flate: {doi:'10.9999/synthetic.flate', title:'Synthetic trailing newline after compressed page content in an imaginary cohort'},
   objstm: {doi:'10.9999/synthetic.objstm', title:'Synthetic page tree stored inside an object stream of an imaginary registry'},
-  custom: {doi:'10.9999/synthetic.enc', title:'Synthetic custom glyph encoding recovered through a unicode map'}
+  custom: {doi:'10.9999/synthetic.enc', title:'Synthetic custom glyph encoding recovered through a unicode map'},
+  wide: {doi:'10.9999/synthetic.wide', title:'Effect of synthetic offsets on imaginary staff: a ligature headline, set in a simple font'}
 };
 function files() {
   return {
@@ -124,7 +148,7 @@ function files() {
     'custom-encoding-tounicode.pdf':customEncoding(samples.custom)
   };
 }
-module.exports = {flateEol, objStm, customEncoding, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
+module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
 if (require.main === module) {
   fs.mkdirSync(module.exports.directory, {recursive:true});
   for (const [name, bytes] of Object.entries(files())) fs.writeFileSync(path.join(module.exports.directory, name), bytes);
