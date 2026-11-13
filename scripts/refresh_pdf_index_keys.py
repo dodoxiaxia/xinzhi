@@ -5,6 +5,11 @@ Run by a maintainer whose `gh` login can read dodoxiaxia/AI- (the build itself h
 access to that repository and gets no new secret). Only hashed DOI and title keys are
 written, so the public repository learns no titles, paths or checksums.
 
+The snapshot is schema 3: each row is [doi_hash, title_hash, file_key, category], where
+category comes from the optional index column 文件类别 (pdf_identity.CATEGORY_COLUMN):
+'' when the cell is blank or the column is absent, 'm' for 正文 (the article itself) and
+'x' for any other category such as 补充材料 or 译本. Indexes without the column still work.
+
   python3 scripts/refresh_pdf_index_keys.py                 # fetch the index through gh
   python3 scripts/refresh_pdf_index_keys.py --csv index.csv # use a local copy of the CSV
 
@@ -42,7 +47,8 @@ def main(argv=None):
     snapshot = identity.build_snapshot(identity.read_index_csv(data))
     Path(args.out).write_text(json.dumps(snapshot, separators=(',', ':')) + '\n', encoding='utf-8')
     usable = sum(1 for row in snapshot['rows'] if row[2])
-    print('rows', snapshot['rowCount'], 'usable', usable, 'generatedOn', snapshot['generatedOn'])
+    categorised = sum(1 for row in snapshot['rows'] if row[3])  # rows whose 文件类别 is not blank
+    print('rows', snapshot['rowCount'], 'usable', usable, '有类别的行数', categorised, 'generatedOn', snapshot['generatedOn'])
     return 0
 
 

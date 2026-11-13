@@ -156,6 +156,39 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
       h = harness({ csv:csv(rows) }); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=' + id), 409, 'pdf_ambiguous'); assert.equal(githubCalls(h).length, 1);
     }
   }
+  {
+    // Optional 文件类别 column: once any matched row has a category, only 正文 rows count. The harness only
+    // serves pdfPath, so a 200 with the fixture bytes proves the main-text row (listed after the others) was chosen.
+    const categoryCsv = rows => '\uFEFF' + [[...columns, '文件类别'], ...rows].map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
+    const file = (row, name, label) => [...row.slice(0, 5), '期刊/2026/' + name + '.pdf', sha256(Buffer.from('%PDF-1.7\n' + name + '\n%%EOF\n')), label];
+    const main = row => [...row, '正文'];
+    const supplement = (row, n = 1) => file(row, '补充' + n, '补充材料'), translation = row => file(row, '译本', '译本');
+    const ok = async (id, rows, message, build = categoryCsv) => {
+      h = harness({ csv:build(rows) }); const result = await h.request(valid, {}, 'https://site.test/api/pdf?id=' + id);
+      assert.equal(result.status, 200, message); assert.deepEqual(Buffer.from(await result.arrayBuffer()), pdf, message); assert.equal(githubCalls(h).length, 3, message);
+    };
+    const refused = async (id, rows, message, build = categoryCsv) => {
+      h = harness({ csv:build(rows) }); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=' + id), 409, 'pdf_ambiguous'); assert.equal(githubCalls(h).length, 1, message);
+    };
+    await ok('article', [supplement(normalRow), main(normalRow)], '1 main text + supplement');
+    await ok('article', [translation(normalRow), main(normalRow)], '2 main text + translation');
+    await ok('article', [supplement(normalRow, 1), main(normalRow), supplement(normalRow, 2)], '3 two supplements + main text');
+    await refused('article', [file(normalRow, '未判定', ''), [...normalRow, '']], '4 all categories blank keeps the old ambiguity');
+    await refused('article', [supplement(normalRow), translation(normalRow)], '5 categories but no main text');
+    await refused('article', [main(normalRow), main(file(normalRow, '另一正文', '').slice(0, 7))], '6 two main texts with different SHA-256');
+    await ok('article', [main(normalRow), main([...normalRow.slice(0, 6), normalRow[6].toUpperCase()])], '7 two main texts, one SHA-256');
+    await refused('article', [[...normalRow, '补充材料']], '8 a single supplement is never sent as the article');
+    await ok('article', [main(normalRow)], '9 a single main text');
+    await ok('article', [file(normalRow, '未判定', ''), main(normalRow)], '10 main text + undecided blank row');
+    await ok('article', [file(normalRow, '待定', '待定'), main(normalRow)], 'unknown category values are ignored');
+    await ok('article', [supplement(normalRow), [...normalRow, ' 正文 ']], 'category cells are trimmed');
+    await ok('titled', [supplement(noDoiRow), main(noDoiRow)], 'title matches follow the same category rule');
+    await ok('article', [[...normalRow, '']], 'a single uncategorised row is unchanged');
+    // 11 no 文件类别 column at all: exactly the old behaviour.
+    await ok('article', [normalRow], '11 old index, one row', csv);
+    await ok('article', [normalRow, normalRow], '11 old index, one file twice', csv);
+    await refused('article', [normalRow, file(normalRow, '其他', '').slice(0, 7)], '11 old index, two files', csv);
+  }
   for (const invalidCsv of ['"unclosed', csv([normalRow]).replace('SHA256', 'DOI'), csv([[...normalRow, 'extra']])]) {
     h = harness({ csv:invalidCsv }); await error(await h.request(valid), 502, 'pdf_index_invalid'); assert.equal(githubCalls(h).length, 1);
   }
