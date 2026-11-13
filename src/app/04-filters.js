@@ -139,7 +139,7 @@
   function renderRangeBar() {
     const el = $('#rangeBar');
     if (!el) return;
-    if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!usesLane() || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
     el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
@@ -171,6 +171,7 @@
   function renderLaneBar() {
     const el = $('#laneBar');
     if (!el) return;
+    if (exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     if (state.mode === 'curated') {
       // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
       const counts = {}, day = curatedDay();
@@ -262,6 +263,12 @@
     if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
     el.innerHTML = '';
     el.hidden = true;
+  }
+  function syncToolRowVisibility() {
+    renderModeNote();
+    renderLaneBar();
+    renderRangeBar();
+    renderFtBar();
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh

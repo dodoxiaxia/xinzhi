@@ -617,9 +617,18 @@
     const id = entry.deepReader;
     if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
     else closeDeepReading({ fromHistory: true });
-    // Back after switching tabs returns to the previous tab.
-    const mode = new URLSearchParams(location.search).get('mode') || 'curated';
-    if (!entry.overlay && !entry.deepReader && mode !== state.mode && ['curated', 'weekly', 'candidates', 'library', 'sources'].includes(mode)) switchMode(mode);
+    if (entry.overlay || entry.deepReader) return;
+    const next = readStateFromUrl();
+    if (!URL_STATE_KEYS.some(k => state[k] !== next[k])) return;
+    clearTimeout(searchTimer);
+    viewInUrl = next.viewInUrl;
+    URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
+    if (searchInput) searchInput.value = state.search;
+    if (sortSelect) sortSelect.value = state.sort;
+    $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
+    $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
+    syncSearchPanel();
+    switchMode(next.mode, true);
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {

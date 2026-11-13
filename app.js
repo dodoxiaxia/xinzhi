@@ -398,31 +398,66 @@
   } catch (e) { /* cookies blocked */ }
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
+  const VALID_MODES = ['curated', 'weekly', 'candidates', 'library', 'sources'];
+  function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
+  function readStateFromUrl(search = window.location.search) {
+    const params = new URLSearchParams(search);
+    const rawMode = params.get('mode') || 'curated';
+    const mode = VALID_MODES.includes(rawMode) ? rawMode : 'curated';
+    const nextViewInUrl = validView(params.get('view'));
+    return {
+      mode,
+      viewInUrl: nextViewInUrl,
+      viewMode: nextViewInUrl ? params.get('view') : validView(safeGet('xinzhi_view_mode')) ? safeGet('xinzhi_view_mode') : 'cards',
+      search: params.get('q') || '',
+      clinicalTier: params.get('tier') || '',
+      publisher: params.get('pub') || '',
+      journal: params.get('journal') || '',
+      studyDesign: params.get('design') || '',
+      tag: params.get('tag') || '',
+      lane: params.get('lane') || 'core',
+      sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
+      range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
+      minor: params.get('minor') === '1',
+      reading: ['abstract', 'guide', 'quicklook'].includes(params.get('reading')) ? params.get('reading') : '',
+      favoritesOnly: params.get('favorites') === '1',
+      day: params.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') || '') ? params.get('day') : '',
+      weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(params.get('wcat')) ? params.get('wcat') : '',
+      weeklyPane: params.get('pane') === 'reading' ? 'reading' : 'board',
+      sourceFilter: ['ok', 'attention'].includes(params.get('sf')) ? params.get('sf') : '',
+      ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(params.get('ft')) ? params.get('ft') : ''
+    };
+  }
+  const URL_STATE_KEYS = [
+    'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
+    'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
+    'favoritesOnly', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
+  ];
   // Saved view preferences affect rendering without adding a URL parameter.
-  let viewInUrl = validView(urlParams.get('view'));
-  const savedView = safeGet('xinzhi_view_mode');
+  const initialUrlState = readStateFromUrl(window.location.search);
+  let viewInUrl = initialUrlState.viewInUrl;
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
-    mode: urlParams.get('mode') || 'curated', // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
-    viewMode: viewInUrl ? urlParams.get('view') : validView(savedView) ? savedView : 'cards', // 'cards' | 'compact'
+    mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
+    viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
-    search: urlParams.get('q') || '',
-    clinicalTier: urlParams.get('tier') || '',
-    publisher: urlParams.get('pub') || '',
-    journal: urlParams.get('journal') || '',
-    studyDesign: urlParams.get('design') || '',
-    tag: urlParams.get('tag') || '',
-    lane: urlParams.get('lane') || 'core',
-    sort: (['smart','date-desc','date-asc','journal-date'].includes(urlParams.get('sort'))) ? urlParams.get('sort') : 'date-desc',
-    range: ['7','14','30','90','365','all'].includes(urlParams.get('range')) ? urlParams.get('range') : '',
-    minor: urlParams.get('minor') === '1',
-    reading: ['abstract','guide','quicklook'].includes(urlParams.get('reading')) ? urlParams.get('reading') : '',
-    favoritesOnly: urlParams.get('favorites') === '1',
-    day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
-    weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
-    weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
-    sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
-    ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(urlParams.get('ft')) ? urlParams.get('ft') : '',
+    search: initialUrlState.search,
+    clinicalTier: initialUrlState.clinicalTier,
+    publisher: initialUrlState.publisher,
+    journal: initialUrlState.journal,
+    studyDesign: initialUrlState.studyDesign,
+    tag: initialUrlState.tag,
+    lane: initialUrlState.lane,
+    sort: initialUrlState.sort,
+    range: initialUrlState.range,
+    minor: initialUrlState.minor,
+    reading: initialUrlState.reading,
+    favoritesOnly: initialUrlState.favoritesOnly,
+    day: initialUrlState.day,
+    weeklyCat: initialUrlState.weeklyCat,
+    weeklyPane: initialUrlState.weeklyPane,
+    sourceFilter: initialUrlState.sourceFilter,
+    ftFilter: initialUrlState.ftFilter,
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
@@ -432,9 +467,6 @@
     activeDrawerPaper: null,
     huddleCompare: [] // Explicit selection, kept only in this browser session.
   };
-
-  function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
-  if (!state.range) state.range = defaultRange(state.mode);
 
   // Helper DOM selectors
   const $ = selector => document.querySelector(selector);
@@ -1234,7 +1266,7 @@
   function renderRangeBar() {
     const el = $('#rangeBar');
     if (!el) return;
-    if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!usesLane() || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
     el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
@@ -1266,6 +1298,7 @@
   function renderLaneBar() {
     const el = $('#laneBar');
     if (!el) return;
+    if (exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     if (state.mode === 'curated') {
       // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
       const counts = {}, day = curatedDay();
@@ -1357,6 +1390,12 @@
     if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
     el.innerHTML = '';
     el.hidden = true;
+  }
+  function syncToolRowVisibility() {
+    renderModeNote();
+    renderLaneBar();
+    renderRangeBar();
+    renderFtBar();
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
@@ -1946,6 +1985,7 @@
       app.classList.toggle('weekly-layout', !doi && state.mode === 'weekly');
       app.classList.toggle('sources-layout', !doi && state.mode === 'sources');
     }
+    if (doi || special) syncToolRowVisibility();
   }
   function supplementalLibraryNotice() {
     if (SUPPLEMENTAL_LIBRARY.state === 'error') return '<div class="doi-library-notice">补录文献暂未加载，已保留现有文献。<button class="btn-sm" data-action="refresh-doi-library">重试加载</button></div>';
@@ -1985,18 +2025,15 @@
     const doi = exactDoi(state.search);
     if (radarArchiveNeeded()) loadRadarArchive();
     applyDoiSearchLayout(doi);
-    if (doi) { renderFtBar(); renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
-    if (state.mode === 'weekly') { renderFtBar(); renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
-    if (state.mode === 'sources') { renderFtBar(); renderSourcesHealth(); syncUrl(); return; }
+    if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
+    if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
+    if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
     renderActiveFilterChips(filtered.length);
-    renderModeNote();
-    renderLaneBar();
+    syncToolRowVisibility();
     renderCuratedDayBar();
-    renderRangeBar();
-    renderFtBar();
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
@@ -2776,9 +2813,11 @@
       if (newMode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); }
       renderStream();
     } else if (newMode === 'sources') {
+      syncToolRowVisibility();
       renderSourcesHealth();
       syncUrl();
     } else if (newMode === 'weekly') {
+      syncToolRowVisibility();
       renderWeeklyHeader();
       renderNextCandidates();
       syncUrl();
@@ -3782,9 +3821,18 @@
     const id = entry.deepReader;
     if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
     else closeDeepReading({ fromHistory: true });
-    // Back after switching tabs returns to the previous tab.
-    const mode = new URLSearchParams(location.search).get('mode') || 'curated';
-    if (!entry.overlay && !entry.deepReader && mode !== state.mode && ['curated', 'weekly', 'candidates', 'library', 'sources'].includes(mode)) switchMode(mode);
+    if (entry.overlay || entry.deepReader) return;
+    const next = readStateFromUrl();
+    if (!URL_STATE_KEYS.some(k => state[k] !== next[k])) return;
+    clearTimeout(searchTimer);
+    viewInUrl = next.viewInUrl;
+    URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
+    if (searchInput) searchInput.value = state.search;
+    if (sortSelect) sortSelect.value = state.sort;
+    $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
+    $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
+    syncSearchPanel();
+    switchMode(next.mode, true);
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
