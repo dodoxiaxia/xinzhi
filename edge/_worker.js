@@ -1784,8 +1784,12 @@ const MACHINE_INDEX_ENTRY_MAX_AGE_MS = 604800000 + 3600000;
 // One backfill request spends at most about this many KV operations (list pages plus record reads)
 // before it saves its progress; the platform allows 1000 KV operations per request.
 const MACHINE_INDEX_CHUNK_OPS = 400;
-// A claim or requeue reads at most this many task records looking for a usable one.
+// A claim may consider at most this many usable (non-skipped) candidates. Skipped entries — paused,
+// stale index, already available, review, a soft-retried expiry, and other unusable records — do not
+// count toward this number. A separate scan cap bounds how many task records one request may read.
 const MACHINE_CLAIM_EXAMINE_MAX = 20;
+const MACHINE_CLAIM_SCAN_MAX = 80;
+const MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS = 15;
 const MACHINE_REQUEUE_EXAMINE_MAX = 150;
 const MACHINE_EMPTY_CLAIM_RETRY_SECONDS = 300;
 const MACHINE_INDEX_BUILDING_RETRY_SECONDS = 60;
@@ -3255,7 +3259,7 @@ function handleMachineProtocol(request, env) {
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
-    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,
+    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimExamineMax:MACHINE_CLAIM_EXAMINE_MAX,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
     stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
       note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
@@ -3504,11 +3508,14 @@ function machineClaimPayload(job, paper) {
 async function machineClaimQueued(env, caller) {
   const doc = await museIndexOpen(env);
   const changes = [];
-  let task = null;
+  let task = null, scanLimited = false;
   try {
     const candidates = museIndexQueuedCandidates(doc, Date.now());
-    for (let examined = 0; examined < candidates.length && examined < MACHINE_CLAIM_EXAMINE_MAX && !task; examined++) {
-      const [doi, entry] = candidates[examined];
+    let scanned = 0, considered = 0;
+    for (let i = 0; i < candidates.length && !task; i++) {
+      if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
+      scanned++;
+      const [doi, entry] = candidates[i];
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
       if (!job) continue;
@@ -3525,6 +3532,8 @@ async function machineClaimQueued(env, caller) {
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
       if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       if (!paper || paper.fulltextStatus === 'review') continue;
+      considered++;
+      if (considered > MACHINE_CLAIM_EXAMINE_MAX) { scanLimited = true; break; }
       const now = Date.now();
       const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
       await musePut(env, claimed, {indexChanges:changes});
@@ -3533,16 +3542,19 @@ async function machineClaimQueued(env, caller) {
       task = machineClaimPayload(claimed, paper);
     }
   } finally { await machineIndexFlush(env, changes); }
-  return {task,building:!doc.ready};
+  return {task,building:!doc.ready,scanLimited};
 }
 async function machineClaimFailed(env, caller) {
   const doc = await museIndexOpen(env);
   const changes = [];
-  let task = null;
+  let task = null, scanLimited = false;
   try {
     const candidates = museIndexFailedCandidates(doc, Date.now());
-    for (let examined = 0; examined < candidates.length && examined < MACHINE_CLAIM_EXAMINE_MAX && !task; examined++) {
-      const [doi, entry] = candidates[examined];
+    let scanned = 0, considered = 0;
+    for (let i = 0; i < candidates.length && !task; i++) {
+      if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
+      scanned++;
+      const [doi, entry] = candidates[i];
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
       if (!job) continue;
@@ -3564,6 +3576,8 @@ async function machineClaimFailed(env, caller) {
       if (paper && paper.fulltextStatus === 'review') continue;
       // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
       if (job.state === 'review') continue;
+      considered++;
+      if (considered > MACHINE_CLAIM_EXAMINE_MAX) { scanLimited = true; break; }
       await museOwnerGuard(env, doi);
       const now = Date.now();
       // The failure that made this task claimable is history, not the state of the new lease.
@@ -3576,7 +3590,7 @@ async function machineClaimFailed(env, caller) {
       task = machineClaimPayload(claimed, paper);
     }
   } finally { await machineIndexFlush(env, changes); }
-  return {task,building:!doc.ready};
+  return {task,building:!doc.ready,scanLimited};
 }
 // Applies the collected index changes. Never hides the error that ended the request: a failed flush only leaves
 // stale entries behind, which the next claim corrects from the records.
@@ -3598,8 +3612,9 @@ async function handleMachineClaim(request, env) {
     }
     // Nothing to claim: tell the caller how long to wait before asking again (the same value in the Retry-After header).
     try { await machineStatsBump(env, caller, 'emptyClaim'); } catch {}
-    const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
-    return json({ok:true,task:null,retryAfterSeconds:wait}, 200, {'retry-after':String(wait)});
+    const scanLimited = !!result.scanLimited;
+    const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : scanLimited ? MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
+    return json({ok:true,task:null,retryAfterSeconds:wait,...(scanLimited ? {reason:'claim_scan_limit'} : {})}, 200, {'retry-after':String(wait)});
   } catch (error) { return machineError(error); }
 }
 

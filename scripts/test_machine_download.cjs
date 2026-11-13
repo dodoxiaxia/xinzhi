@@ -765,6 +765,53 @@ async function review(h, body) {
   const oaClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
   assert.equal(oaClaim.task, null);
 
+  h = await create();
+  const skipBase = Date.now();
+  for (let index = 0; index < 25; index++) {
+    const pausedDoi = '10.1000/skip-' + String(index).padStart(2, '0');
+    putJob(h, pausedDoi, 'queued', skipBase + index);
+    h.values.set('library:attempt:' + pausedDoi, JSON.stringify({paused:true}));
+  }
+  const skipOpen = '10.1000/skip-open';
+  putJob(h, skipOpen, 'queued', skipBase + 25);
+  seedPaper(h, skipOpen);
+  await reindex(h);
+  const skipClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  assert.equal(skipClaim.task.doi, skipOpen);
+
+  h = await create();
+  const capBase = Date.now();
+  for (let index = 0; index < 80; index++) {
+    const pausedDoi = '10.1000/scan-' + String(index).padStart(3, '0');
+    putJob(h, pausedDoi, 'queued', capBase + index);
+    h.values.set('library:attempt:' + pausedDoi, JSON.stringify({paused:true}));
+  }
+  const afterCap = '10.1000/scan-open';
+  putJob(h, afterCap, 'queued', capBase + 80);
+  seedPaper(h, afterCap);
+  await reindex(h);
+  const scanCapped = await call(h, '/api/machine/claim', dsh, {state:'to-download'});
+  assert.equal(scanCapped.status, 200);
+  assert.equal(scanCapped.headers.get('retry-after'), '15');
+  const limitedBody = await scanCapped.json();
+  assert.equal(limitedBody.task, null);
+  assert.equal(limitedBody.retryAfterSeconds, 15);
+  assert.equal(limitedBody.reason, 'claim_scan_limit');
+  assert.equal(stored(h, 'library:muse-job:' + afterCap).state, 'queued');
+  const trueEmpty = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  // Still scan-limited: the open paper sits past the cap, so this is also not a true empty queue.
+  assert.equal(trueEmpty.reason, 'claim_scan_limit');
+  assert.equal(trueEmpty.retryAfterSeconds, 15);
+
+  h = await create();
+  await reindex(h);
+  const emptyNow = await call(h, '/api/machine/claim', dsh, {state:'to-download'});
+  assert.equal(emptyNow.headers.get('retry-after'), '300');
+  const emptyBody = await emptyNow.json();
+  assert.equal(emptyBody.task, null);
+  assert.equal(emptyBody.retryAfterSeconds, 300);
+  assert.equal(emptyBody.reason, undefined);
+
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_machine_index.cjs').run();
