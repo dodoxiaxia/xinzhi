@@ -192,6 +192,67 @@ async function run() {
   calls = 0;
   const lastOne = async url => new URL(url).hostname === 'unit.actions.githubusercontent.com' ? Response.json({value:'a.b.c'}) : (calls++, Response.json(body(calls === 40)));
   assert.equal((await runIndexAudit(runEnv, lastOne, () => {})).requests, 40, 'finishing on the last allowed request is a pass');
+  // ---- 6. a change never rolls back an entry that is newer than the record it was based on (upsert and removal), and the audit agrees
+  h = await create();
+  assert.equal((await register(h, items('nw', 0, 3))).status, 200);
+  const [older, newer, same] = ['10.1000/nw.0','10.1000/nw.1','10.1000/nw.2'];
+  doc = stored(h, INDEX);
+  const recordU = doi => stored(h, 'library:muse-job:' + doi).updatedAt;
+  const newState = doi => ({...doc.entries[doi],s:'running',u:recordU(doi) + 500});
+  doc.entries[older] = {...doc.entries[older],u:recordU(older) - 500};   // older than the record: stale, the record wins
+  doc.entries[newer] = newState(newer);                                  // newer than the record: a later write, kept
+  h.values.set(INDEX, JSON.stringify(doc));
+  const newerEntry = JSON.stringify(doc.entries[newer]);
+  result = await auditJobs(h);
+  assert.deepEqual(result, {missing:0,stale:1,extra:0,repaired:1}, 'only the older entry is a mismatch; the newer one is not reported and not touched');
+  assert.equal(JSON.stringify(stored(h, INDEX).entries[newer]), newerEntry);
+  assert.equal(stored(h, INDEX).entries[older].u, recordU(older));
+  assert.deepEqual(await auditJobs(h), {missing:0,stale:0,extra:0,repaired:0}, 'a second audit agrees');
+  // a replayed registration puts the record's entry back, but not over a newer one
+  const replay = await register(h, items('nw', 0, 3));
+  assert.equal(replay.status, 200, 'a newer stored entry counts as settled: no 503');
+  assert.equal(JSON.stringify(stored(h, INDEX).entries[newer]), newerEntry);
+  assert.equal(stored(h, INDEX).entries[same].u, recordU(same));
+  // removal: the audit finds an entry for a finished task; an entry newer than that record is a later write and stays
+  const done1 = seedDone(h, 11), done2 = seedDone(h, 12);
+  doc = stored(h, INDEX);
+  const doneU = doi => stored(h, 'library:muse-job:' + doi).updatedAt;
+  doc.entries[done1] = {i:crypto.randomUUID(),s:'queued',c:1,u:doneU(done1) - 1,e:0,w:h.clock.now};
+  doc.entries[done2] = {i:crypto.randomUUID(),s:'queued',c:1,u:doneU(done2) + 1,e:0,w:h.clock.now};
+  h.values.set(INDEX, JSON.stringify(doc));
+  result = await auditJobs(h);
+  assert.deepEqual(result, {missing:0,stale:0,extra:1,repaired:1});
+  assert(!indexed(h).includes(done1) && indexed(h).includes(done2));
+  assert.deepEqual(await auditJobs(h), {missing:0,stale:0,extra:0,repaired:0});
+  // removal racing a newer write: a list reads the record (finished), then another request stores a newer entry before the removal is applied
+  h = await create();
+  const gone = seedDone(h, 21);
+  doc = stored(h, INDEX);
+  const goneU = stored(h, 'library:muse-job:' + gone).updatedAt;
+  const raced = {i:crypto.randomUUID(),s:'queued',c:1,u:goneU,e:0,w:h.clock.now};
+  doc.entries[gone] = raced;
+  h.values.set(INDEX, JSON.stringify(doc));
+  const getRecord = h.kv.get.bind(h.kv);
+  let hook = true;
+  h.kv.get = async (key, ...rest) => {
+    const value = await getRecord(key, ...rest);
+    if (hook && key === 'library:muse-job:' + gone) {
+      hook = false;
+      const latest = stored(h, INDEX);
+      latest.entries[gone] = {...raced,s:'running',u:goneU + 9999};   // the concurrent writer
+      h.values.set(INDEX, JSON.stringify(latest));
+    }
+    return value;
+  };
+  assert.equal((await toDownload(h)).status, 200);
+  assert.equal(stored(h, INDEX).entries[gone].u, goneU + 9999, 'the removal based on the older record did not delete the newer entry');
+  // without the race the same removal goes through
+  h.kv.get = getRecord;
+  doc = stored(h, INDEX);
+  doc.entries[gone] = raced;
+  h.values.set(INDEX, JSON.stringify(doc));
+  assert.equal((await toDownload(h)).status, 200);
+  assert(!indexed(h).includes(gone), 'an entry that is not newer than the record is removed');
   console.log('machine index review tests passed');
 }
 module.exports = {run};

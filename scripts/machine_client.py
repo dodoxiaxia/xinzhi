@@ -508,6 +508,10 @@ def read_register_input(path, fmt):
         raise ClientError("输入不是合法的 %s" % fmt.upper(), 5)
 
 
+# 只有 register 自动重试，claim 绝不能重试。register 幂等：同一批重发，已存在的 DOI 只会被跳过。
+# claim 不幂等：一次请求可能已在服务端领走任务而响应丢了，重试会一次领走多条，
+# 或让同一个任务被领两次（领走的任务有租约，别的下载端领不到，直到租约过期）。
+# 所以 claim 的任何失败都直接报出，由调用方决定怎么办，不在这里重试。
 def register_retryable(code):
     return code >= 500
 

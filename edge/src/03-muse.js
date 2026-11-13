@@ -140,7 +140,7 @@ async function musePut(env, job, options = {}) {
   libraryCatalogCache.clear();
   // Keep the machine candidate index in step with every state change. A caller that writes many tasks passes
   // indexChanges and applies them once with museIndexApply.
-  const change = {doi:job.doi,entry:museIndexEntry(job)};
+  const change = museIndexChange(job.doi, job);
   if (Array.isArray(options.indexChanges)) options.indexChanges.push(change);
   else await museIndexApply(env,[change]);
 }

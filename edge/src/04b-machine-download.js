@@ -341,7 +341,7 @@ async function machineStaleQueuedSweep(env, doc, changes) {
         const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
         const actual = museIndexEntry(job);
         if (!museIndexSame(actual, entry)) {
-          changes.push({doi,entry:actual});
+          changes.push(museIndexChange(doi, job, entry));
           if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
         }
         // The record wins: re-check everything on the record itself before touching it.
@@ -658,7 +658,7 @@ async function machineCollectIndexed(env, state, cursorText, limit) {
     last = machineIndexSortKey(doi, entry);
     const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
     const actual = museIndexEntry(job);
-    if (!museIndexSame(actual, entry)) fixes.push({doi,entry:actual});
+    if (!museIndexSame(actual, entry)) fixes.push(museIndexChange(doi, job, entry));
     if (!job) continue;
     const item = machineListItem(job);
     if (item.state === state) tasks.push(item);
@@ -750,11 +750,11 @@ async function machineClaimQueued(env, caller) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
       const [doi, entry] = candidates[i];
-      if (!libraryDoi(doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(doi)) { changes.push({doi,entry:null,u:entry.u}); continue; }
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-      if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+      if (!museIndexSame(museIndexEntry(job), entry)) changes.push(museIndexChange(doi, job, entry));
       if (!job) continue;
-      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, job.queueKey); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
         await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
@@ -769,7 +769,7 @@ async function machineClaimQueued(env, caller) {
       if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, job.doi);
       const now = Date.now();
@@ -794,11 +794,11 @@ async function machineClaimFailed(env, caller) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
       const [doi, entry] = candidates[i];
-      if (!libraryDoi(doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(doi)) { changes.push({doi,entry:null,u:entry.u}); continue; }
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-      if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+      if (!museIndexSame(museIndexEntry(job), entry)) changes.push(museIndexChange(doi, job, entry));
       if (!job) continue;
-      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
         await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
         continue;
@@ -819,7 +819,7 @@ async function machineClaimFailed(env, caller) {
         continue;
       }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, doi);
       const now = Date.now();
@@ -972,7 +972,7 @@ async function handleMachineRequeue(request, env) {
         if (requeued.length >= room || n >= MACHINE_REQUEUE_EXAMINE_MAX) { truncated = true; break; }
         const [doi, entry] = candidates[n];
         const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-        if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+        if (!museIndexSame(museIndexEntry(job), entry)) changes.push(museIndexChange(doi, job, entry));
         if (!machineRequeueCandidate(job)) continue;
         const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
         if (attempt && attempt.paused) { skippedPaused.push({doi}); continue; }
@@ -1100,7 +1100,7 @@ async function handleMachineRegister(request, env) {
           if (existing) {
             results[entry.n] = {doi:entry.item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where};
             // A replay after a cut-off batch must also put the task back into the index: the record wins, nothing else is written.
-            if (existing.job) changes.push({doi:entry.item.doi,entry:museIndexEntry(existing.job)});
+            if (existing.job) changes.push(museIndexChange(entry.item.doi, existing.job));
           } else if (used + registered + fresh.length >= limit) results[entry.n] = {doi:entry.item.doi,result:'over_quota'};
           else fresh.push(entry);
         });

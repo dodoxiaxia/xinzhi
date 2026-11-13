@@ -186,7 +186,7 @@ async function run() {
   const queuedDois = Object.keys(auditDoc.entries).sort();
   assert.equal(queuedDois.length, 60);
   for (const doi of queuedDois.slice(0, 45)) delete auditDoc.entries[doi];                   // 45 missing
-  auditDoc.entries[queuedDois[50]] = {...auditDoc.entries[queuedDois[50]], u: auditDoc.entries[queuedDois[50]].u + 5};  // 1 stale
+  auditDoc.entries[queuedDois[50]] = {...auditDoc.entries[queuedDois[50]], u: auditDoc.entries[queuedDois[50]].u - 5};  // 1 stale
   auditDoc.entries[ghost] = {i:crypto.randomUUID(),s:'queued',c:1,u:1,e:0,w:Date.now()};     // 1 extra
   h.values.set(INDEX, JSON.stringify(auditDoc));
   assert.equal((await audit(h, {action:'index-audit'}, {token:'not-a-token'})).status, 401);

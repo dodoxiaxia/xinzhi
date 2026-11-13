@@ -64,7 +64,22 @@ async function museIndexRead(env) {
 async function museIndexWrite(env, doc) {
   await libraryPut(env.QL_KV, MACHINE_INDEX_KEY, JSON.stringify(doc));
 }
-// Apply a batch of {doi, entry|null} changes in one read and at most one write. Later changes for a DOI win.
+// Change for one DOI from a task record: the entry to store, or null when the task is no longer a candidate. u is the version the
+// change is based on: the record's updatedAt, or the index entry that was observed when there is no record. A removal only takes effect
+// on an entry that is not newer than u, an upsert only on an entry that is not newer than its own u: whatever a concurrent claim, heal
+// or registration stored after this change's record was read is never rolled back by it.
+function museIndexChange(doi, job, observed) {
+  const u = job && Number.isSafeInteger(job.updatedAt) ? job.updatedAt : observed && Number.isSafeInteger(observed.u) ? observed.u : undefined;
+  return {doi,entry:museIndexEntry(job),...(u === undefined ? {} : {u})};
+}
+// Would applying this change leave the stored entry as it is? True for a change an equal-or-newer stored entry has already overtaken.
+function museIndexOvertaken(old, change) {
+  if (!old) return false;
+  if (change.entry) return old.u > change.entry.u;
+  return Number.isSafeInteger(change.u) && old.u > change.u;
+}
+// Apply a batch of {doi, entry|null, u} changes in one read and at most one write. Later changes for a DOI win, except that a change
+// never replaces or removes an entry that is newer than the record it was based on (see museIndexOvertaken).
 async function museIndexApply(env, changes) {
   if (!changes.length) return;
   const existing = await museIndexRead(env);
@@ -72,6 +87,7 @@ async function museIndexApply(env, changes) {
   let dirty = !existing;
   for (const change of changes) {
     const old = doc.entries[change.doi];
+    if (museIndexOvertaken(old, change)) continue;
     if (!change.entry) { if (old) { delete doc.entries[change.doi]; dirty = true; } continue; }
     if (!museIndexSame(old, change.entry)) { doc.entries[change.doi] = change.entry; dirty = true; }
   }
@@ -81,14 +97,14 @@ async function museIndexApply(env, changes) {
   if (dirty) await museIndexWrite(env, doc);
 }
 // Apply, then read the index back and apply again what is not in the stored index as intended: a concurrent writer that read the
-// document before this write may have saved its own copy over it. Checked per change: an entry must be stored (unchanged or newer
-// than the change: a newer update from another request is not overwritten by a retry), a removal must be gone. Applying is
-// idempotent, so a repeat is harmless. Returns how many changes are still not in the stored index after the last round (0 = all
-// of them are). Cost: one read per round, plus the apply.
+// document before this write may have saved its own copy over it. Checked per change: an entry must be stored (unchanged, or newer
+// than the change, which museIndexApply leaves alone), a removal must be gone (or the stored entry newer than the record it was based
+// on). Applying is idempotent, so a repeat is harmless. Returns how many changes are still not in the stored index after the last
+// round (0 = all of them are). Cost: one read per round, plus the apply.
 function museIndexSettled(stored, change) {
   const entry = stored && stored.entries[change.doi];
-  if (!change.entry) return !entry;
-  return !!entry && (museIndexSame(entry, change.entry) || entry.u > change.entry.u);
+  if (!entry) return !change.entry;
+  return !change.entry ? museIndexOvertaken(entry, change) : museIndexSame(entry, change.entry) || museIndexOvertaken(entry, change);
 }
 async function museIndexApplyVerified(env, changes, rounds = 3) {
   let pending = changes;
@@ -131,9 +147,10 @@ async function museIndexAuditChunk(env, cursor, repair) {
       const entry = museIndexEntry(job), old = doc.entries[doi];
       if (entry) {
         candidates++;
-        if (!old) { missing++; changes.push({doi,entry}); }
-        else if (!museIndexSame(old, entry)) { stale++; changes.push({doi,entry}); }
-      } else if (old) { extra++; changes.push({doi,entry:null}); }
+        // An entry newer than the record just read was written by a claim, heal or registration in the meantime: not a mismatch.
+        if (!old) { missing++; changes.push(museIndexChange(doi, job)); }
+        else if (!museIndexSame(old, entry) && !museIndexOvertaken(old, {entry})) { stale++; changes.push(museIndexChange(doi, job)); }
+      } else if (old && !museIndexOvertaken(old, {entry:null,u:job ? job.updatedAt : old.u})) { extra++; changes.push(museIndexChange(doi, job, old)); }
     }
     if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { cursor = MACHINE_AUDIT_PAPER_PHASE; break; }
     cursor = listing.cursor;
