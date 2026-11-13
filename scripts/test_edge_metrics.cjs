@@ -3,6 +3,8 @@
 // switch cfg:metrics_enabled is '1'. It never changes a response and never carries sensitive content.
 // Hooked in at the end of test_muse_reader_upload.cjs (like test_muse_legacy_switch.cjs), so CI runs it from there.
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const {setup} = require('./test_fulltext_auth_helpers.cjs');
 const {doi} = require('./test_doi_library_worker.cjs');
 const base = 'https://learn.dryz.info', SWITCH = 'cfg:metrics_enabled';
@@ -114,5 +116,40 @@ const calls = [
   await assert.rejects(h.context.worker.fetch(new Request(base + '/api/other-thing'), h.env, ctxFor(h)), /synthetic asset failure/);
   await Promise.all(h.waits);
   assert.deepEqual(h.points[0].blobs, ['/api/other', 'GET', '500', 'exception']);
+
+  // 6. The metrics route list is not hand-copied: it must equal the set of /api paths routeRequest can match, both ways.
+  // Derived from edge/_worker.js (the file that is deployed). routeRequest matches only exact `url.pathname === '/api/...'`
+  // literals today; any other matching form (prefix, regex, :param template) makes this test fail until it is taught about it.
+  {
+    const worker = fs.readFileSync(path.join(__dirname, '../edge/_worker.js'), 'utf8');
+    const routerStart = worker.indexOf('async function routeRequest(');
+    assert(routerStart >= 0, 'routeRequest not found in edge/_worker.js');
+    const routerBody = worker.slice(routerStart);
+    const literal = /url\.pathname === '(\/api\/[a-z0-9\/_-]+)'/g;
+    const routed = [...routerBody.matchAll(literal)].map(m => m[1]);
+    assert(routed.length >= 20, 'routeRequest: too few literal /api routes found (' + routed.length + ')');
+    assert.equal(new Set(routed).size, routed.length, 'routeRequest: a path is routed twice');
+    const rest = routerBody.replace(literal, '');
+    assert(!/\/api\//.test(rest.slice(0, rest.indexOf('env.ASSETS.fetch'))), 'routeRequest has an /api/ string that is not an exact pathname match; teach this test the new form');
+    assert(!/(startsWith|endsWith|RegExp|\.match\(|\.test\(|split\(|switch\s*\()/.test(rest.slice(0, rest.indexOf('env.ASSETS.fetch'))), 'routeRequest uses a matching form this test does not understand (prefix/regex/switch); teach this test and METRICS_ROUTES template handling');
+    const listSource = worker.match(/const METRICS_ROUTES = new Set\(\[([\s\S]*?)\]\);/);
+    assert(listSource, 'METRICS_ROUTES not found in edge/_worker.js');
+    const listed = [...listSource[1].matchAll(/'([^']*)'/g)].map(m => m[1]);
+    assert.equal(new Set(listed).size, listed.length, 'METRICS_ROUTES has a duplicate entry');
+    assert(listed.every(r => /^\/api\/[a-z0-9\/_-]+$/.test(r)), 'METRICS_ROUTES entries must be plain /api paths');
+    const missing = routed.filter(r => !listed.includes(r)), stale = listed.filter(r => !routed.includes(r));
+    assert.deepEqual(missing, [], 'routed in routeRequest but missing from METRICS_ROUTES (would be counted as /api/other): ' + missing.join(', '));
+    assert.deepEqual(stale, [], 'in METRICS_ROUTES but routeRequest cannot match it: ' + stale.join(', '));
+
+    // Behavioural cross-check on the real worker: every listed path is handled before the static-asset fallback, and an
+    // unlisted /api path falls through to it. (Only ASSETS usage is observed; handler responses are irrelevant here.)
+    for (const route of [...listed, '/api/__not_a_route__']) {
+      const probe = await create();
+      let assetHits = 0;
+      probe.env.ASSETS = {fetch: async () => { assetHits += 1; return new Response('asset', {status: 200}); }};
+      try { await call(probe, 'GET', route, {}); } catch { /* a handler may throw; only the fallback matters */ }
+      assert.equal(assetHits === 0, route !== '/api/__not_a_route__', 'worker routing disagrees with METRICS_ROUTES for ' + route);
+    }
+  }
   console.log('edge metrics checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
