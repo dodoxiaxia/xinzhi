@@ -604,11 +604,10 @@ async function handleMachineAbandoned(request, env) {
   } catch (error) { return machineError(error); }
 }
 function machineHasStoredFulltext(record, paper) {
+  // Supplementary to paper.fulltextStatus === 'available': a stored pdf object or localAvailable also closes the task.
   const rawPaper = record && typeof record === 'object' && record.paper && typeof record.paper === 'object' ? record.paper : null;
   const hasPdf = !!(record && typeof record === 'object' && record.pdf && typeof record.pdf === 'object' && !Array.isArray(record.pdf));
-  return hasPdf
-    || (paper && paper.fulltextStatus === 'available')
-    || (rawPaper && (rawPaper.fulltextStatus === 'available' || rawPaper.localAvailable === true));
+  return hasPdf || !!(rawPaper && rawPaper.localAvailable === true) || !!(paper && paper.localAvailable === true);
 }
 function machineClaimPayload(job, paper) {
   return {...machineListItem(job),state:'downloading',title:paper && paper.title || '',leaseId:job.leaseId,
@@ -643,7 +642,8 @@ async function machineClaimQueued(env, caller) {
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + job.doi);
       if (attempt && attempt.paused) continue;
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
-      if (machineHasStoredFulltext(record, paper)) { changes.push({doi,entry:null}); continue; }
+      if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
+      if (machineHasStoredFulltext(record, paper)) { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       const scope = scopeDecision(paper);
@@ -687,7 +687,8 @@ async function machineClaimFailed(env, caller) {
       // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
       if (job.state === 'review') continue;
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
-      if (machineHasStoredFulltext(record, paper)) { changes.push({doi,entry:null}); continue; }
+      if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
+      if (machineHasStoredFulltext(record, paper)) { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
       if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (job.state === 'queued' && museExpired(job)) {
         await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes});

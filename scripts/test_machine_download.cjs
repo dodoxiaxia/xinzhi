@@ -1408,7 +1408,7 @@ async function review(h, body) {
     }
   }
 
-  // ---- exclude removes only the claim index entry; done / available / stored fulltext records stay unchanged
+  // ---- exclude / already-done: paper and pdf stay unchanged; already-available jobs stay available
   {
     const excludeTitle = 'Therapeutic angiogenesis in a mouse model of myocardial infarction';
     const excludeJournal = 'Circulation Research';
@@ -1470,19 +1470,61 @@ async function review(h, body) {
       assert.equal(stored(h, 'library:machine-index:v1').entries[doneExcludeDoi], undefined);
     }
 
-    // 2) Stale queued/failed jobs whose paper record already has fulltextStatus:'available', localAvailable:true,
-    //    or a stored pdf object — plus abandoned jobs — only lose their index entry; job, paper, and pdf bytes stay untouched.
+    // 2) Abandoned jobs only lose a stale index entry; job state stays abandoned, paper/pdf untouched.
+    for (const [claimRole, claimState] of [[dsh, 'to-download'], [fallback, 'failed-awaiting-fallback']]) {
+      const baseState = claimState === 'to-download' ? 'queued' : 'failed';
+      h = await create();
+      const ts = Date.now();
+      const abandonedDoi = '10.1000/protected-abandoned-' + claimState;
+      const pdfBytes = paperPdf(abandonedDoi, excludeTitle);
+      const pdfSha = hash(pdfBytes);
+      const job = putJob(h, abandonedDoi, 'abandoned', ts, {reason:'other'});
+      const recordObj = {
+        version:1,
+        paper:{
+          id:'doi-' + hash(abandonedDoi).slice(0, 16),
+          doi:abandonedDoi,
+          title:excludeTitle,
+          journal:excludeJournal,
+          authors:['Jane Doe'],
+          date:'2026-10-07',
+          datePrecision:'day',
+          dateBasis:'Crossref published-online',
+          ingestedAt:'2026-10-07T04:00:00.000Z',
+          metadataStatus:'external_bibliography_checked',
+          fulltextStatus:'manual_needed'
+        }
+      };
+      const originalPaperJson = JSON.stringify(recordObj);
+      h.values.set('library:paper:' + abandonedDoi, originalPaperJson);
+      await reindex(h);
+      const idx = stored(h, 'library:machine-index:v1');
+      idx.entries[abandonedDoi] = {i:job.id,s:baseState,c:ts,u:ts,e:baseState === 'queued' ? ts + 6 * 86400000 : 0,w:ts};
+      h.values.set('library:machine-index:v1', JSON.stringify(idx));
+
+      const res = await (await call(h, '/api/machine/claim', claimRole, {state:claimState})).json();
+      assert.equal(res.task, null);
+      const jobAfter = stored(h, 'library:muse-job:' + abandonedDoi);
+      assert.equal(jobAfter.state, 'abandoned');
+      assert.equal(jobAfter.reason, 'other');
+      assert.equal(jobAfter.scopeExcluded, undefined);
+      assert.equal(h.values.get('library:paper:' + abandonedDoi), originalPaperJson);
+      assert.equal(stored(h, 'library:machine-index:v1').entries[abandonedDoi], undefined);
+    }
+
+    // 3) Stale queued/failed jobs whose record already has fulltext (fulltextStatus available, localAvailable, or a stored pdf)
+    //    are closed as available — this is the original fulltext cleanup, not the exclude "do not write state" rule.
+    //    Paper and pdf bytes stay untouched. A to-download claim also deletes the queue pointer; failed-awaiting-fallback does not (same as main).
     for (const [claimRole, claimState] of [[dsh, 'to-download'], [fallback, 'failed-awaiting-fallback']]) {
       const baseState = claimState === 'to-download' ? 'queued' : 'failed';
       const baseExtra = baseState === 'failed' ? {reason:'not_oa'} : {};
-      for (const variant of ['abandoned', 'paper_available', 'local_available', 'record_pdf']) {
+      for (const variant of ['paper_available', 'local_available', 'record_pdf']) {
         h = await create();
         const ts = Date.now();
         const protectedDoi = '10.1000/protected-' + variant + '-' + claimState;
         const pdfBytes = paperPdf(protectedDoi, excludeTitle);
         const pdfSha = hash(pdfBytes);
-        const jobState = variant === 'abandoned' ? 'abandoned' : baseState;
-        const job = putJob(h, protectedDoi, jobState, ts, variant === 'abandoned' ? {reason:'other'} : baseExtra);
+        const job = putJob(h, protectedDoi, baseState, ts, baseExtra);
         const paperObj = {
           id:'doi-' + hash(protectedDoi).slice(0, 16),
           doi:protectedDoi,
@@ -1508,23 +1550,62 @@ async function review(h, body) {
         h.values.set('library:paper:' + protectedDoi, originalPaperJson);
         if (recordObj.pdf) h.values.set('library:pdf:' + pdfSha, pdfBytes);
         await reindex(h);
-        if (variant === 'abandoned') {
-          const idx = stored(h, 'library:machine-index:v1');
-          idx.entries[protectedDoi] = {i:job.id,s:baseState,c:ts,u:ts,e:baseState === 'queued' ? ts + 6 * 86400000 : 0,w:ts};
-          h.values.set('library:machine-index:v1', JSON.stringify(idx));
-        }
 
         const res = await (await call(h, '/api/machine/claim', claimRole, {state:claimState})).json();
         assert.equal(res.task, null);
         const jobAfter = stored(h, 'library:muse-job:' + protectedDoi);
-        assert.equal(jobAfter.state, jobState);
-        assert.equal(jobAfter.reason, variant === 'abandoned' ? 'other' : baseExtra.reason);
+        assert.equal(jobAfter.state, 'available');
         assert.equal(jobAfter.scopeExcluded, undefined);
+        if (claimState === 'to-download') assert.equal(h.values.has(job.queueKey), false);
+        else assert.equal(h.values.has(job.queueKey), true);
         assert.equal(h.values.get('library:paper:' + protectedDoi), originalPaperJson);
         if (recordObj.pdf) assert.deepEqual(Buffer.from(h.values.get('library:pdf:' + pdfSha)), pdfBytes);
         assert.equal(stored(h, 'library:machine-index:v1').entries[protectedDoi], undefined);
       }
     }
+  }
+
+
+  // ---- queued job whose library record already has a pdf is closed as available and its queue pointer is deleted
+  // This is the original fulltext cleanup on claim scan, not the exclude "do not write state" rule.
+  {
+    h = await create();
+    const ts = Date.now();
+    const storedPdfDoi = '10.1000/queued-already-has-pdf';
+    const storedPdfJob = putJob(h, storedPdfDoi, 'queued', ts);
+    const storedTitle = 'Empagliflozin in patients with HFrEF: a randomized trial';
+    const storedPdfBytes = paperPdf(storedPdfDoi, storedTitle);
+    const storedPdfSha = hash(storedPdfBytes);
+    const storedPaper = {
+      id:'doi-' + hash(storedPdfDoi).slice(0, 16),
+      doi:storedPdfDoi,
+      title:storedTitle,
+      journal:'Heart',
+      authors:['Jane Doe'],
+      date:'2026-10-07',
+      datePrecision:'day',
+      dateBasis:'Crossref published-online',
+      ingestedAt:'2026-10-07T04:00:00.000Z',
+      metadataStatus:'external_bibliography_checked',
+      fulltextStatus:'manual_needed'
+    };
+    const storedRecord = {version:1,paper:storedPaper,pdf:{key:'library:pdf:' + storedPdfSha,sha256:storedPdfSha,size:storedPdfBytes.length,source:'machine'}};
+    const storedPaperJson = JSON.stringify(storedRecord);
+    h.values.set('library:paper:' + storedPdfDoi, storedPaperJson);
+    h.values.set('library:pdf:' + storedPdfSha, storedPdfBytes);
+    await reindex(h);
+    assert.equal(stored(h, 'library:machine-index:v1').entries[storedPdfDoi].s, 'queued');
+
+    const storedClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+    assert.equal(storedClaim.task, null);
+    const storedJobAfter = stored(h, 'library:muse-job:' + storedPdfDoi);
+    assert.equal(storedJobAfter.state, 'available');
+    assert.equal(storedJobAfter.id, storedPdfJob.id);
+    assert.equal(storedJobAfter.scopeExcluded, undefined);
+    assert.equal(h.values.has(storedPdfJob.queueKey), false);
+    assert.equal(h.values.get('library:paper:' + storedPdfDoi), storedPaperJson);
+    assert.deepEqual(Buffer.from(h.values.get('library:pdf:' + storedPdfSha)), storedPdfBytes);
+    assert.equal(stored(h, 'library:machine-index:v1').entries[storedPdfDoi], undefined);
   }
 
   // ---- exclude does not write job state; after force-keep and reindex the same queued job can be claimed
