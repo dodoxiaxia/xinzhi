@@ -2333,8 +2333,12 @@ html[data-style] .drawer-footer #drawerInstitutionLink { flex-basis: 100%; margi
   align-items: center;
   gap: 8px;
   overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
   flex: 1;
   min-width: 0;
+  min-height: 44px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -2602,9 +2606,9 @@ html[data-style="a"] .qf-split.is-on .qf-chip {
 .qf-jrow.is-empty .qf-jname { opacity: .55; }
 .qf-pop-actions { padding: 0 8px 4px; }
 @media (max-width: 600px) {
-  .qf-scope { max-width: 34vw; padding: 0 8px; }
-  .quick-bar { gap: 6px; }
-  .qf-chips { gap: 6px; }
+  .quick-bar { gap: 6px; flex-wrap: wrap; }
+  .qf-scope { max-width: 100%; flex: 0 1 auto; min-width: 0; padding: 0 8px; }
+  .qf-chips { gap: 6px; flex: 1 1 100%; width: 100%; }
 }
 
 /* 摘要明显不完整时的提示（只在判定为只有结论段时出现） */

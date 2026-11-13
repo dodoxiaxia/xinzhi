@@ -6,6 +6,7 @@ import datetime, json, re
 from pathlib import Path
 from abstract_quality import normalize_paper, readable_abstract
 from generate_quicklooks import minor_item
+from scope_filter import scope_decision
 ROOT = Path(__file__).resolve().parents[1]
 DAILY_N, WEEKLY_N, DAYS = 6, 24, 7
 CARDIO = {'心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队'}
@@ -37,6 +38,8 @@ def section_of(p):
 
 
 def score(p, quicklooks):
+    if scope_decision(p)['action'] == 'exclude':
+        return 0
     section = section_of(p)
     if section in EXCLUDED_SECTIONS or minor_item(p) or MINOR_TITLE_RE.match(p.get('title') or ''):
         return 0  # 与周榜一致:更正、来信、回复不进精选

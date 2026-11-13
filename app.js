@@ -3300,7 +3300,9 @@
       durable_checkpoint_required: '自动更新尚未就绪', checkpoint_not_configured: '自动更新尚未就绪',
       checkpoint_write_failed: '更新保存未完成'
     }[status.reason] || '本次更新未完成';
-    const showReason = status.day === beijingToday() && status.reason && groups.todayCount < 3;
+    const showReason = status.day === beijingToday() && status.reason && status.state !== 'complete';
+    // Nothing in scope today is a normal outcome, not a failure.
+    const emptyToday = status.day === beijingToday() && status.state === 'complete' && !groups.todayCount;
     const notStarted = !groups.todayCount && status.day && status.day < beijingToday();
     const days = [];
     groups.history.slice(0, deepReadingHistoryLimit).forEach(p => {
@@ -3308,10 +3310,11 @@
       if (!day || day.day !== p.publishedOn) days.push(day = { day: p.publishedOn, items: [] });
       day.items.push(p);
     });
-    el.innerHTML = '<p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇 · 每天目标 ' + (Number.isInteger(status.target) && status.target > 0 ? status.target : 12) + ' 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
+    el.innerHTML = '<p class="deep-reading-status" role="status">今日已更新 <b>' + groups.todayCount + '</b> 篇</p><p class="deep-reading-timing">北京时间 04:47 计划启动' + (data.updatedAt ? ' · 最近更新 ' + esc(contentDate(data.updatedAt)) : '') + '</p>' +
       (showReason ? '<p class="deep-reading-shortfall">' + esc(reason) + '，当前完成 ' + groups.todayCount + ' 篇。</p>' : '') +
       (notStarted ? '<p class="deep-reading-shortfall">今天的批次尚未生成（GitHub 定时任务常延迟数小时）；下方为最近一次批次。</p>' : '') +
-      (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4><div class="deep-reading-list">' + groups.latest.map(dailyReadingItem).join('') + '</div>' : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
+      (emptyToday ? '<p class="deep-reading-empty">今日暂无符合口径的精读。</p>' : '') +
+      (groups.latest.length ? '<h4 class="deep-reading-batch">最新批次 · ' + esc(groups.latestDay) + ' <span>' + groups.latest.length + ' 篇</span></h4><div class="deep-reading-list">' + groups.latest.map(dailyReadingItem).join('') + '</div>' : emptyToday ? '' : '<p class="deep-reading-empty">今天的全文精读尚未完成；完成后会自动显示在这里。</p>') +
       (groups.history.length ? '<details class="deep-reading-history"' + (historyOpen ? ' open' : '') + '><summary>往期精读 · ' + groups.history.length + ' 篇</summary>' + days.map(d => '<h5 class="deep-reading-day">' + esc(d.day) + ' <span>' + d.items.length + ' 篇</span></h5><div class="deep-reading-list">' + d.items.map(dailyReadingItem).join('') + '</div>').join('') + (groups.history.length > deepReadingHistoryLimit ? '<button class="btn-sm" type="button" data-action="more-daily-readings">查看更多往期精读</button>' : '') + '</details>' : '');
     const count = $('#weeklyPaneReadingCount'); if (count) count.textContent = groups.latest.length || '';
   }
