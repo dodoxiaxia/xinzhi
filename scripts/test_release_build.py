@@ -40,6 +40,10 @@ def synthetic_root(root):
     shutil.copyfile(Path(builder.__file__).parents[1] / 'journal-metrics.js',
                     root / 'journal-metrics.js')
     shutil.copyfile(Path(builder.__file__).parents[1] / 'citation-export.js', root / 'citation-export.js')
+    tiers = Path(builder.__file__).parents[1] / 'journal-tiers.js'
+    if not tiers.is_file():
+        tiers = Path(builder.__file__).parents[1] / 'src/app/journal-tiers.js'
+    shutil.copyfile(tiers, root / 'journal-tiers.js')
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
@@ -67,13 +71,17 @@ class ReleaseBuildTests(unittest.TestCase):
                 builder.main()
             self.assertEqual(set(public_payloads(root)), PUBLIC)
             self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
+            public_js = (root / 'public/public.js').read_text()
+            self.assertIn('XINZHI_JOURNAL_TIERS', public_js)
+            for short in ('顶刊', '心刊', '子刊', 'AI', '其他'):
+                self.assertIn("short: '" + short + "'", public_js)
             self.assertNotIn(b'citation-export.js', (root / 'public/index.html').read_bytes())
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())
             self.assertEqual(manifest['release'], builder.RELEASE)
             self.assertIsNotNone(manifest['buildProvenance']['inputs']['data/curated-archive.json'])
             # Provenance stays private in docs, outside the six-file public bundle.
             self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
-            for name in ('app.js', 'citation-export.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
+            for name in ('app.js', 'citation-export.js', 'journal-tiers.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
                          'config/public_library_adjudications.json',
                          'config/public_library_topic_hides.json',
                          'scripts/publication_status.py', 'config/publication-status.json',

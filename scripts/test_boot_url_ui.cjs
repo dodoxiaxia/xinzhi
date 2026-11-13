@@ -48,6 +48,7 @@ async function run() {
         if (u.pathname.startsWith('/api/')) { assert.strictEqual(req.method(),'GET','No model mutations'); await route.fulfill({json:{ok:true,found:false,canGenerate:false}}); return; }
         if (u.pathname==='/style.css') { if(hold) await cssGate; await route.fulfill({body:fs.readFileSync(path.join(assets,'style.css')),contentType:'text/css'}); return; }
         if (u.pathname==='/citation-export.js') { await route.fulfill({body:fs.readFileSync(path.join(root,'citation-export.js')),contentType:'application/javascript'}); return; }
+        if (u.pathname==='/journal-tiers.js') { await route.fulfill({body:fs.readFileSync(path.join(root,'journal-tiers.js')),contentType:'application/javascript'}); return; }
         if (u.pathname==='/app.js') { if(hold) await appGate; await route.fulfill({body:fs.readFileSync(path.join(root,'app.js')),contentType:'application/javascript'}); return; }
         if (scripts[u.pathname]) { await route.fulfill({body:scripts[u.pathname],contentType:'application/javascript'}); return; }
         if (u.pathname==='/icon.png') { await route.fulfill({body:fs.readFileSync(path.join(root,'icon.png')),contentType:'image/png'}); return; }

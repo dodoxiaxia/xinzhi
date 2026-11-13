@@ -930,7 +930,7 @@ body.dialog-open .back-to-top { display: none; }
 }
 @media (min-width: 721px) and (max-width: 1250px) {
   .header-container { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 10px; gap: 8px 18px; }
-  .header-nav { height: 40px; justify-content: flex-end; }
+  .header-nav { height: 40px; justify-content: flex-start; }
   .header-actions { width: 100%; justify-content: flex-end; }
   .header-actions .search-wrapper { flex: 1; margin-right: auto; }
 }
@@ -1032,6 +1032,7 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover { background: var(-
   .stream-rail .lane-bar { flex-wrap: nowrap; overflow-x: auto; align-items: center; gap: 6px; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
   .stream-rail .lane-label { flex: 0 0 auto; flex-basis: auto; margin: 0 4px 0 0; }
   .stream-rail .lane-chip { flex: 0 0 auto; white-space: nowrap; }
+  .stream-rail .day-bar { padding-right: 24px; overscroll-behavior-x: contain; min-width: 0; max-width: 100%; scrollbar-width: thin; -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 32px), transparent 100%); mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 32px), transparent 100%); }
   .curated-layout .stream-reading-layout { gap: 8px; }
 }
 @media (max-width: 720px) {
@@ -2078,9 +2079,18 @@ html[data-style] .weekly-head .weekly-view-toggle { flex: 0 0 auto; margin-left:
 html[data-style] .weekly-bar {
   display: block;
   justify-content: unset;
+  min-width: 0;
+  max-width: 100%;
 }
 html[data-style] .weekly-category-nav {
+  display: flex;
+  flex-wrap: nowrap;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
   -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
   padding-right: 20px;

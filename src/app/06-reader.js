@@ -101,6 +101,12 @@
       const aiBox = (!ql && !draft) ? (() => {
         if (paper.weeklyPick) return '';
         const s = paper._aiState;
+        const hasPubAbs = typeof hasAbstract === 'function' ? hasAbstract(paper) : !!(paper.summary || (paper.abstractSections || []).some(sec => sec && sec.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
+        if (!hasPubAbs && (s === 'none' || s === 'error' || s === 'noabs' || !s)) {
+          return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
+          ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
+          <p class="ql-meta">暂无公开摘要，无法生成 AI 速览。请查看官方原文。</p></div>`;
+        }
         if (s === 'none' || s === 'error') return `<div class="drawer-section quicklook ai-ask">
           <div class="drawer-section-title">速览</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
