@@ -304,6 +304,7 @@ function machineReplaceDecision(job, paper, record, sha256, caller) {
 async function machineReplacePdf(kv, record, bytes, source) {
   const paper = libraryPaper(record, record.paper.doi), checksum = await pdfDigest('SHA-256', bytes), blobKey = 'library:pdf:' + checksum;
   await libraryPut(kv, blobKey, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  pdfArchiveQueueBytes(checksum, bytes); // optional R2 copy, written after the response; off unless bound and switched on
   await libraryPut(kv, DRIVE_PENDING_PREFIX + checksum, JSON.stringify({doi:paper.doi}));
   await libraryPut(kv, LIBRARY_PREFIX + paper.doi, JSON.stringify({version:1, paper:{...paper,fulltextStatus:'available'}, pdf:{key:blobKey,sha256:checksum,size:bytes.length,source,replacedSha256:record.pdf.sha256}}));
   libraryCatalogCache.clear();

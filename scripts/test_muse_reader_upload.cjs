@@ -130,4 +130,4 @@ const job = h => JSON.parse(h.values.get('library:muse-job:' + doi));
   assert.deepEqual([lag.processed,lag.waits.length],[0,0],'the scheduled run exits at once; it must never hold a runner');
 
   console.log('Muse reader upload, open-access first and six-day queue window passed');
-})().catch(error => {console.error(error);process.exitCode = 1;}).then(() => { require('./test_oa_identity_guard.cjs'); require('./test_muse_legacy_switch.cjs'); }); // run after this file
+})().catch(error => {console.error(error);process.exitCode = 1;}).then(() => { require('./test_oa_identity_guard.cjs'); require('./test_muse_legacy_switch.cjs'); require('./test_r2_archive.cjs'); }); // run after this file

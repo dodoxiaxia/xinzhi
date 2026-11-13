@@ -1,8 +1,13 @@
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {
-  async fetch(request, env) {
-    const response = await routeRequest(request, env);
-    return new URL(request.url).pathname.startsWith('/api/') ? hideInstitutionLinks(request, response) : response;
+  async fetch(request, env, ctx) {
+    pdfArchiveBind(env);
+    try {
+      const response = await routeRequest(request, env);
+      return new URL(request.url).pathname.startsWith('/api/') ? await hideInstitutionLinks(request, response) : response;
+    } finally {
+      pdfArchiveFlush(env, ctx);
+    }
   }
 };
 
