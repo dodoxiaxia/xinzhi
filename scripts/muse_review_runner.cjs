@@ -77,5 +77,47 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
   log(JSON.stringify({processed,scope:'uploaded_originals_only'}));
   return processed;
 }
-module.exports = {runReview,verifyOriginal};
-if (require.main === module) runReview().catch(error => { console.error(failureLog(error,['invalid_recheck','invalid_candidate','invalid_verification','review_sync_pending','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'review_unavailable')); process.exitCode = 1; });
+// Compares the website's job records with its machine candidate index and repairs the gap (the website decides whether it may repair).
+// Run after the review loop, with the same OIDC identity; no machine token. A mismatch is a warning annotation; one that is still there
+// after the website's repair (or when repair is off) fails the run so the red job is the alert. An older website that does not know the
+// action answers 400 muse_bad_request: that is a warning only, because a push run can start before the new code is deployed.
+async function runIndexAudit(env = process.env, http = fetch, log = console.log) {
+  const totals = {scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0};
+  let cursor = '', chunks = 0, indexed = null, building = false, repair = true;
+  for (; chunks < 20; ) {
+    const token = await identityToken(env,http,ENDPOINT);
+    const response = await http(ENDPOINT,{method:'POST',redirect:'error',signal:AbortSignal.timeout(90000),
+      headers:{authorization:'Bearer ' + token,'content-type':'application/json','user-agent':'XinZhiMuseVerifier/1.0'},body:JSON.stringify(cursor ? {action:'index-audit',cursor} : {action:'index-audit'})});
+    const body = await readJson(response);
+    if (response.status === 400 && body.error === 'muse_bad_request') { log('::warning::索引核对：网站尚未部署 index-audit，本次跳过'); return {skipped:true}; }
+    if (!response.ok || body.ok !== true) throw serviceError('index_audit_unavailable',response,body,token,ENDPOINT,'muse-review.yml');
+    chunks++;
+    for (const key of Object.keys(totals)) if (!Number.isSafeInteger(body[key]) || body[key] < 0) throw new Error('invalid_index_audit'); else totals[key] += body[key];
+    if (indexed === null) indexed = body.indexed;
+    repair = body.repair === true;
+    if (body.ready === false) { building = true; break; }
+    if (body.done === true) break;
+    if (typeof body.cursor !== 'string' || !body.cursor || body.cursor.length > 512) throw new Error('invalid_index_audit');
+    cursor = body.cursor;
+  }
+  const mismatch = totals.missing + totals.stale + totals.extra;
+  const summary = {indexAudit:{...totals,indexedBefore:indexed,requests:chunks,repair,...(building ? {building:true} : {}),mismatch}};
+  log(JSON.stringify(summary));
+  if (building) log('::warning::索引核对：索引还在重建，本次未核对完');
+  if (mismatch > 0) log('::warning::索引核对：索引条数与可领任务数对不上（漏 ' + totals.missing + '、过期 ' + totals.stale + '、多余 ' + totals.extra + '），已修复 ' + totals.repaired + ' 条');
+  if (mismatch > 0 && totals.repaired < mismatch) { const error = new Error('index_mismatch'); error.counts = totals; throw error; }
+  return summary.indexAudit;
+}
+module.exports = {runReview,verifyOriginal,runIndexAudit};
+if (require.main === module) (async () => {
+  try { await runReview(); }
+  catch (error) { console.error(failureLog(error,['invalid_recheck','invalid_candidate','invalid_verification','review_sync_pending','website_not_ready','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'review_unavailable')); process.exitCode = 1; }
+  // The index comparison also runs when the review step failed; a single-DOI recheck is only about that DOI.
+  if (process.env.MUSE_RECHECK_DOI) return;
+  try { await runIndexAudit(); }
+  catch (error) {
+    console.error(failureLog(error,['index_mismatch','invalid_index_audit','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'index_audit_unavailable'));
+    // Only a gap that is still there after the repair fails the run; an audit that could not run (website busy) is a warning.
+    if (error.message === 'index_mismatch') process.exitCode = 1; else console.log('::warning::索引核对没有跑完，下一小时再核对');
+  }
+})();

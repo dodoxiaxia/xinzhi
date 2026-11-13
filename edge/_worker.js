@@ -2199,6 +2199,54 @@ async function museIndexApply(env, changes) {
   if (!existing && !Object.keys(doc.entries).length) return;
   if (dirty) await museIndexWrite(env, doc);
 }
+// Apply, then read the index back and apply again what is still missing: a concurrent writer that read the document before
+// this write may have saved its own copy over it. Applying is idempotent, so a repeat is harmless. Returns how many entries
+// are still missing after the last round (0 = every entry is in the stored index). Cost: one read per round, plus the apply.
+async function museIndexApplyVerified(env, changes, rounds = 3) {
+  let pending = changes;
+  for (let round = 0; round < rounds && pending.length; round++) {
+    await museIndexApply(env, pending);
+    const stored = await museIndexRead(env);
+    pending = pending.filter(change => change.entry && !(stored && stored.entries[change.doi]));
+  }
+  return pending.length;
+}
+// One op-bounded slice of a full comparison between the job records and the index (run by the hourly verification job through
+// POST /api/muse/review {"action":"index-audit"}, no machine token needed). Unlike a reindex it never empties the index, so claims
+// keep working. Counts: candidates = records in a state the index is meant to hold; missing = candidate record without an entry;
+// stale = entry that disagrees with its record; extra = entry whose record is no candidate. With repair on, all three are
+// corrected (the record wins). The caller passes the returned cursor back until done is true.
+const MACHINE_INDEX_AUDIT_OPS = 300;
+async function museIndexAuditChunk(env, cursor, repair) {
+  const doc = await museIndexRead(env);
+  if (!doc || !doc.ready) {
+    const next = await museIndexBackfillChunk(env, doc);
+    return {ready:false,done:true,cursor:'',repair,scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0,indexed:Object.keys(next.entries).length};
+  }
+  const changes = [];
+  let ops = 0, scanned = 0, candidates = 0, missing = 0, stale = 0, extra = 0, done = false;
+  while (ops < MACHINE_INDEX_AUDIT_OPS) {
+    const listing = await machineListKeys(env, MUSE_JOB_PREFIX, cursor, 100);
+    ops++;
+    for (const listed of listing.keys) {
+      if (typeof listed.name !== 'string' || !listed.name.startsWith(MUSE_JOB_PREFIX)) continue;
+      const doi = listed.name.slice(MUSE_JOB_PREFIX.length);
+      const job = museRecord(await libraryGet(env.QL_KV, listed.name), doi);
+      ops++; scanned++;
+      const entry = museIndexEntry(job), old = doc.entries[doi];
+      if (entry) {
+        candidates++;
+        if (!old) { missing++; changes.push({doi,entry}); }
+        else if (!museIndexSame(old, entry)) { stale++; changes.push({doi,entry}); }
+      } else if (old) { extra++; changes.push({doi,entry:null}); }
+    }
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { done = true; cursor = ''; break; }
+    cursor = listing.cursor;
+  }
+  let repaired = 0;
+  if (repair && changes.length) { await museIndexApplyVerified(env, changes); repaired = changes.length; }
+  return {ready:true,done,cursor,repair,scanned,candidates,missing,stale,extra,repaired,indexed:Object.keys(doc.entries).length};
+}
 // Scan one op-bounded slice of the job keys into the index and save the progress. The slice length is bounded by
 // the KV operation budget, not by the table size, so a large ledger is backfilled over several requests.
 async function museIndexBackfillChunk(env, current) {
@@ -2232,10 +2280,57 @@ async function museIndexBackfillChunk(env, current) {
   await museIndexWrite(env, latest);
   return latest;
 }
+// Self-healing: the queue pointers (library:muse-queue:<createdAt>:<task id>) list the waiting tasks by task id with a single
+// KV list operation, so a waiting task whose id is not in the index is found without scanning every job record. A batch that was
+// cut off before its index write (client timeout), a lost concurrent update or a replayed registration all leave exactly that gap.
+// At most MACHINE_INDEX_HEAL_MAX tasks are put back per run and a run happens at most every MACHINE_INDEX_HEAL_INTERVAL_MS per
+// isolate, so the worst case is 1 list + 2 reads per task healed + 2 index reads and 1 index write (about 84 operations). Only
+// waiting and verifying tasks have a pointer; the other states are still covered by the reindex escape hatch.
+// MACHINE_INDEX_SELF_HEAL=off turns it off.
+const MACHINE_INDEX_HEAL_INTERVAL_MS = 60000;
+const MACHINE_INDEX_HEAL_MAX = 40;
+const MACHINE_INDEX_HEAL_SEEN_MAX = 2000;
+const MACHINE_INDEX_POINTER_ID = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+let museIndexHealAt = 0;
+// Pointers already judged not to need an entry (stale pointer, task replaced, record gone), so they are not re-read every run.
+const museIndexHealSeen = new Map();
+async function museIndexHeal(env, doc) {
+  const healed = [];
+  try {
+    if (env.MACHINE_INDEX_SELF_HEAL === 'off') return 0;
+    const now = Date.now();
+    if (now - museIndexHealAt >= 0 && now - museIndexHealAt < MACHINE_INDEX_HEAL_INTERVAL_MS) return 0;
+    museIndexHealAt = now;
+    if (museIndexHealSeen.size > MACHINE_INDEX_HEAL_SEEN_MAX) museIndexHealSeen.clear();
+    const known = new Set(Object.values(doc.entries).map(entry => entry.i));
+    const listing = await machineListKeys(env, MUSE_QUEUE_PREFIX, '', 1000);
+    let examined = 0;
+    for (const listed of listing.keys) {
+      if (examined >= MACHINE_INDEX_HEAL_MAX) break;
+      const match = typeof listed.name === 'string' && listed.name.startsWith(MUSE_QUEUE_PREFIX) ? MACHINE_INDEX_POINTER_ID.exec(listed.name) : null;
+      if (!match || known.has(match[1]) || museIndexHealSeen.has(match[1])) continue;
+      examined++;
+      const id = match[1];
+      museIndexHealSeen.set(id, now);
+      const pointer = await libraryGet(env.QL_KV, listed.name);
+      const doi = pointer && typeof pointer.doi === 'string' ? libraryDoi(pointer.doi) : '';
+      if (!doi || pointer.id !== id || doc.entries[doi]) continue;
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      const entry = job && job.id === id ? museIndexEntry(job) : null;
+      if (!entry) continue;
+      doc.entries[doi] = entry;
+      healed.push({doi,entry});
+      museIndexHealSeen.delete(id);
+    }
+    // museIndexApply merges into the latest stored copy, so entries written by other requests meanwhile are kept.
+    if (healed.length) await museIndexApplyVerified(env, healed);
+  } catch { /* healing is best effort; the next run tries again */ }
+  return healed.length;
+}
 // The index for this request. A missing or unfinished index advances the one-time backfill by one slice.
 async function museIndexOpen(env) {
   const doc = await museIndexRead(env);
-  if (doc && doc.ready) { museIndexPrune(doc); return doc; }
+  if (doc && doc.ready) { museIndexPrune(doc); await museIndexHeal(env, doc); return doc; }
   return museIndexBackfillChunk(env, doc);
 }
 // Operator escape hatch: forget the entries and scan the job keys again, so the result is exactly what the records say.
@@ -2510,6 +2605,11 @@ async function handleMuseReview(request, env) {
     const owner = await fulltextJobAuthorize(request,MUSE_REVIEW_POLICY);
     libraryConfig(env); // A configured verifier may finish candidates while Muse polling is disabled.
     const input = await fulltextReadJson(request,1024,'muse_bad_request');
+    if (input.action === 'index-audit') {
+      // Hourly comparison of the job records with the machine candidate index, repaired unless MACHINE_INDEX_SELF_HEAL is 'off'.
+      if (Object.keys(input).some(key => !['action','cursor'].includes(key)) || (Object.hasOwn(input,'cursor') && (typeof input.cursor !== 'string' || !input.cursor || input.cursor.length > 512))) libraryFail('muse_bad_request',400);
+      return json({ok:true,...await museIndexAuditChunk(env,input.cursor || '',env.MACHINE_INDEX_SELF_HEAL !== 'off')});
+    }
     if (input.action === 'recheck') {
       // Only an explicit maintainer dispatch may reopen one quarantined original.
       await fulltextJobAuthorize(request,{...MUSE_REVIEW_POLICY,events:['workflow_dispatch']});
@@ -4326,9 +4426,18 @@ function machineRegisterItem(raw) {
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
   const raw = await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi);
-  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown'}; }
+  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown',job}; }
   const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
-  if (record) { const paper = libraryPaper(record, doi); return {where:'paper',state:paper && paper.fulltextStatus === 'available' ? 'done' : 'no-task'}; }
+  if (record) {
+    const paper = libraryPaper(record, doi);
+    if (paper && paper.fulltextStatus === 'available') return {where:'paper',state:'done'};
+    // A registration cut off between the paper write and the job write leaves exactly this shape and no register record
+    // (written last): such a DOI was never queued, so it is registered again instead of being skipped for good.
+    const halfWritten = !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
+      && Array.isArray(paper.authors) && !paper.authors.length && paper.metadataStatus === 'external_bibliography_checked'
+      && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
+    if (!halfWritten) return {where:'paper',state:'no-task'};
+  }
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
@@ -4354,11 +4463,15 @@ async function machineRegisterOne(env, caller, item, changes) {
     throw error;
   }
   // KV is not atomic: if another writer created the ledger entry first, report skipped and leave their record alone.
-  // The index entry is recorded once per batch (see handleMachineRegister), only for a task that was really written.
+  // The index entry is saved after each group of the batch (see handleMachineRegister).
   changes.push(...local);
   const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + item.doi), item.doi);
   return observed && observed.id === id;
 }
+// A batch is written in groups of MACHINE_REGISTER_GROUP DOIs, each group in parallel. After every group the index
+// entries and the daily quota count are saved, so a request cut off by the client (a 60 second curl timeout) loses at
+// most one group's bookkeeping instead of the whole batch; the next claim or list puts those few back (museIndexHeal).
+const MACHINE_REGISTER_GROUP = 5;
 async function handleMachineRegister(request, env) {
   // Exempt from librarySoftGate. Only a downloader may register; the daily budget counts newly registered DOIs per caller.
   try {
@@ -4372,27 +4485,58 @@ async function handleMachineRegister(request, env) {
     const limit = machineLimit(env, 'MACHINE_REGISTER_DAILY_LIMIT', MACHINE_REGISTER_DAILY_DEFAULT);
     const usedBefore = await libraryGet(env.QL_KV, machineRateKey(caller, 'register'));
     const used = Number.isInteger(usedBefore) && usedBefore >= 0 ? usedBefore : 0;
-    const results = [], seen = new Set(), changes = [];
-    let registered = 0, failure = null;
+    const results = new Array(input.items.length), seen = new Set(), changes = [], todo = [];
+    let registered = 0, consumed = 0, failure = null;
+    // Validation and in-batch duplicates need no storage access; they are settled first, in input order.
+    input.items.forEach((raw, n) => {
+      const item = machineRegisterItem(raw);
+      if (item.error) { results[n] = {doi:item.doi || null,result:'rejected',error:item.error}; return; }
+      if (seen.has(item.doi)) { results[n] = {doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}; return; }
+      seen.add(item.doi);
+      todo.push({n,item});
+    });
+    // Save this batch's index entries and quota count so far. A failure keeps the unsaved entries for the next attempt.
+    const flush = async () => {
+      const pending = changes.slice(), fresh = registered - consumed;
+      let error = null;
+      try {
+        // Read the index back; entries a concurrent writer overwrote are written again. Still missing after three rounds: the client retries (idempotent).
+        const missing = await museIndexApplyVerified(env, pending);
+        if (missing) libraryFail('library_sync_pending', 503);
+        changes.splice(0, pending.length);
+      } catch (e) { error = e; }
+      try { if (fresh > 0) { await machineConsume(env, caller, 'register', fresh); consumed += fresh; } } catch (e) { error = error || e; }
+      if (error) throw error;
+    };
     try {
-      for (const raw of input.items) {
-        const item = machineRegisterItem(raw);
-        if (item.error) { results.push({doi:item.doi || null,result:'rejected',error:item.error}); continue; }
-        if (seen.has(item.doi)) { results.push({doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}); continue; }
-        seen.add(item.doi);
-        const existing = await machineRegisterExisting(env, item.doi);
-        if (existing) { results.push({doi:item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where}); continue; }
-        if (used + registered >= limit) { results.push({doi:item.doi,result:'over_quota'}); continue; }
-        if (await machineRegisterOne(env, caller, item, changes)) { registered++; results.push({doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}); }
-        else results.push({doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'});
+      for (let g = 0; g < todo.length; g += MACHINE_REGISTER_GROUP) {
+        const group = todo.slice(g, g + MACHINE_REGISTER_GROUP);
+        const found = await Promise.all(group.map(entry => machineRegisterExisting(env, entry.item.doi)));
+        const fresh = [];
+        group.forEach((entry, k) => {
+          const existing = found[k];
+          if (existing) {
+            results[entry.n] = {doi:entry.item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where};
+            // A replay after a cut-off batch must also put the task back into the index: the record wins, nothing else is written.
+            if (existing.job) changes.push({doi:entry.item.doi,entry:museIndexEntry(existing.job)});
+          } else if (used + registered + fresh.length >= limit) results[entry.n] = {doi:entry.item.doi,result:'over_quota'};
+          else fresh.push(entry);
+        });
+        const outcomes = await Promise.allSettled(fresh.map(entry => machineRegisterOne(env, caller, entry.item, changes)));
+        fresh.forEach((entry, k) => {
+          const outcome = outcomes[k], item = entry.item;
+          if (outcome.status === 'rejected') { failure = failure || outcome.reason; return; }
+          if (outcome.value) { registered++; results[entry.n] = {doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}; }
+          else results[entry.n] = {doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'};
+        });
+        if (failure) break;
+        await flush();
       }
-    } catch (error) { failure = error; }
+    } catch (error) { failure = failure || error; }
     // Count what really got written, even when a later item failed; a retry then sees those DOIs as skipped.
-    // The candidate index gets the whole batch in one write.
-    try { await museIndexApply(env, changes); } catch (error) { failure = failure || error; }
-    await machineConsume(env, caller, 'register', registered);
+    try { await flush(); } catch (error) { failure = failure || error; }
     if (failure) throw failure;
-    const count = name => results.filter(entry => entry.result === name).length;
+    const count = name => results.filter(entry => entry && entry.result === name).length;
     return json({ok:true,counts:{registered,skipped:count('skipped'),overQuota:count('over_quota'),rejected:count('rejected')},results,
       quota:{limit,used:used + registered,remaining:Math.max(0, limit - used - registered),resetsAt:new Date(Date.parse(new Date().toISOString().slice(0, 10)) + 86400000).toISOString()}});
   } catch (error) { return machineError(error); }

@@ -28,6 +28,7 @@ async function create(options = {}) {
   h.env.MUSE_FULLTEXT_ENABLED = 'true';
   h.env.MUSE_FULLTEXT_KEY = museKey;
   h.env.MACHINE_TOKENS = tokens;
+  h.env.MACHINE_INDEX_SELF_HEAL = 'off'; // these tests count exact KV operations; scripts/test_machine_index_heal.cjs covers the self-heal
   return h;
 }
 function authHeaders(secret, extra = {}) {
@@ -1659,4 +1660,5 @@ async function review(h, body) {
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_machine_index.cjs').run();
+  await require('./test_machine_index_heal.cjs').run();
 })().catch(error => { console.error(error); process.exitCode = 1; });
