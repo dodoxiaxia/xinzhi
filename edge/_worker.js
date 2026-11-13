@@ -97,15 +97,15 @@ function pdfBackLinks(doi) {
   return exact ? '<p class="back"><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a></p>' : ''; // Without a paper the top bar already links back to the library; do not repeat it.
 }
 // Fallback pages must stay self-contained (CSP: default-src 'none'; style-src 'unsafe-inline'),
-// so the main site's style.css tokens (:root and [data-theme="dark"]) are copied here as literals.
+// so the main site's style.css tokens (html[data-style="a"] and [data-theme="dark"]) are copied here as literals.
 const PDF_PAGE_CSS = [
-  ':root{color-scheme:light dark;--bg-primary:#f5f2ea;--bg-secondary:#ece8dd;--bg-card:#fffdf8;--border:#ddd6c6;--border-subtle:#c9c1ae;',
-  '--text-primary:#1f1c17;--text-secondary:#4d483f;--text-muted:#7a7466;--accent:#9b2335;--accent-hover:#7e1a29;--accent-light:#f3e2df;--on-accent:#fffdf8;',
-  '--emerald:#2f6b57;--amber:#8a5a12;--shadow-md:0 8px 24px -12px rgba(31,28,23,.25);',
+  ':root{color-scheme:light dark;--bg-primary:#eef2f7;--bg-secondary:#e6ebf2;--bg-card:#ffffff;--border:#dbe2ec;--border-subtle:#c3cddb;',
+  '--text-primary:#16202e;--text-secondary:#38465a;--text-muted:#62728a;--accent:#1b4f9c;--accent-hover:#143d7a;--accent-light:#e3ecf8;--on-accent:#ffffff;',
+  '--emerald:#0f7b6c;--amber:#86570f;--shadow-md:0 8px 24px -12px rgba(22,32,46,.25);',
   '--font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans SC","Source Han Sans SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei",sans-serif}',
-  '@media (prefers-color-scheme:dark){:root{--bg-primary:#14120f;--bg-secondary:#1c1a16;--bg-card:#1a1814;--border:#2f2b24;--border-subtle:#443f34;',
-  '--text-primary:#ece6d8;--text-secondary:#c2bba9;--text-muted:#908977;--accent:#e0707a;--accent-hover:#f08c94;--accent-light:rgba(224,112,122,.14);--on-accent:#14120f;',
-  '--emerald:#6fb59a;--amber:#d9a84c;--shadow-md:0 8px 24px -12px rgba(0,0,0,.7)}}',
+  '@media (prefers-color-scheme:dark){:root{--bg-primary:#0e1520;--bg-secondary:#172130;--bg-card:#141d2b;--border:#25334a;--border-subtle:#34445e;',
+  '--text-primary:#e7edf6;--text-secondary:#bcc8d9;--text-muted:#8a9bb3;--accent:#78aeff;--accent-hover:#a0c5ff;--accent-light:rgba(120,174,255,.15);--on-accent:#0e1520;',
+  '--emerald:#5cc4b0;--amber:#dbb35a;--shadow-md:0 8px 24px -12px rgba(0,0,0,.7)}}',
   'html{-webkit-text-size-adjust:100%}',
   'body{margin:0;padding:0 16px;background:var(--bg-primary);color:var(--text-primary);font:16px/1.7 var(--font-sans);-webkit-font-smoothing:antialiased}',
   '.topbar{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:.75rem;max-width:42rem;margin:0 auto;padding:.75rem 0}',
@@ -157,7 +157,7 @@ function pdfError(request, code, status, doi = '', diagnostic = null) {
     pdf_method:'下载仅支持 GET 和 POST 请求。', pdf_server:'下载服务暂时不可用。',
     pdf_link_invalid:'下载链接无效，请回到文献页重新输入口令。', pdf_link_expired:'下载链接已过期（5 分钟内有效），请回到文献页重新输入口令。'
   };
-  return pdfHtml('<p>' + pdfEscape(messages[code] || messages.pdf_server) + '</p>' + pdfDiagnosticHtml(safe) + pdfOfficialLink(doi), status);
+  return pdfHtml('<p>' + pdfEscape(messages[code] || messages.pdf_server) + '</p>' + pdfDiagnosticHtml(safe) + pdfOfficialLink(doi), status, 'PDF 下载', doi);
 }
 // Diagnostics exist only after successful authorization. Never retain raw transport data.
 const PDF_REQUEST_DIAGNOSTICS = new WeakMap();

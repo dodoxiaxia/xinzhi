@@ -38,11 +38,12 @@ function checkPage(label, response, html) {
   assert(!/url\(|@import|https?:\/\//i.test(css), label + ': style has no external resources');
   assert(!/<(?:link|script|img|iframe|object|embed|video|audio)\b|\ssrc\s*=|\son[a-z]+\s*=|http-equiv/i.test(html), label + ': no external or executable resources');
 
-  // Main-site palette copied as literals (style.css :root and [data-theme="dark"]); old blue is gone.
-  for (const literal of ['#f5f2ea', '#fffdf8', '#ddd6c6', '#1f1c17', '#4d483f', '#7a7466', '#9b2335', '#7e1a29', '#2f6b57', '#8a5a12',
-    '#14120f', '#1a1814', '#2f2b24', '#ece6d8', '#c2bba9', '#908977', '#e0707a', '#f08c94', '#6fb59a', '#d9a84c',
+  // Main-site palette copied as literals (style.css html[data-style="a"] and [data-theme="dark"]); old beige/burgundy is gone.
+  for (const literal of ['#eef2f7', '#e6ebf2', '#ffffff', '#dbe2ec', '#c3cddb', '#16202e', '#38465a', '#62728a', '#1b4f9c', '#143d7a', '#e3ecf8', '#0f7b6c', '#86570f',
+    '#0e1520', '#172130', '#141d2b', '#25334a', '#34445e', '#e7edf6', '#bcc8d9', '#8a9bb3', '#78aeff', '#a0c5ff', '#5cc4b0', '#dbb35a',
     '"PingFang SC"', '"Noto Sans SC"', '"Microsoft YaHei"']) assert(css.includes(literal), label + ': missing ' + literal);
-  for (const legacy of ['#1d4f91', '#94a3b8', '#334155', '#475569', '#f1f5f9', '#2f6f3e', '#9a3412', 'system-ui']) assert(!css.includes(legacy), label + ': legacy ' + legacy);
+  for (const legacy of ['#f5f2ea', '#ece8dd', '#fffdf8', '#ddd6c6', '#9b2335', '#7e1a29', '#f3e2df', '#14120f', '#1a1814', '#e0707a', '#f08c94',
+    '#1d4f91', '#94a3b8', '#334155', '#475569', '#f1f5f9', '#2f6f3e', '#9a3412', 'system-ui']) assert(!css.includes(legacy), label + ': legacy ' + legacy);
   assert(css.includes('@media (prefers-color-scheme:dark)'), label + ': dark theme media query');
   assert(css.indexOf('@media (prefers-color-scheme:dark)') > css.indexOf(':root{'), label + ': dark variables override light ones');
 
