@@ -199,7 +199,7 @@ async function museOwnerGuard(env, doi) {
   const bot = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi);
   if ((previous && ['queued','running'].includes(previous.state)) || (bot && !['available','failed','review'].includes(bot.state))) libraryFail('muse_owner_conflict',409);
 }
-async function handleMuseRetry(request, env) {
+async function handleMuseRetry(request, env, ctx) {
   let doi = '', release;
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
@@ -231,6 +231,7 @@ async function handleMuseRetry(request, env) {
     await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
     await musePut(env,job);
     await museDelete(env,current.queueKey);
+    downloadNotify(env,ctx,doi,id); // optional webhook notice for the new task; never blocks or fails the response
     return museResponse(request,job,paper);
   } catch (error) { return libraryError(request,error,doi,'/api/muse/retry'); }
   finally { if (release) await release(); }
