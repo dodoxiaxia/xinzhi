@@ -306,24 +306,26 @@
     return byDoi;
   }
   function weeklyCard(p, date, readingId) {
-    const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '', huddled = state.huddle.includes(p.id);
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
+    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
     const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const read = hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息';
     return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
-      publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${esc(zh || p.title)}</button>${deep}</div>` +
+      publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${machineZh ? machineContentLabel('机器翻译') : ''}${esc(zh || p.title)}</button>${deep}</div>` +
       (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
-      (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
+      (line ? `<div class="weekly-auto-line">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(line)}</div>` : '') +
       `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${read}</button><button class="btn-sm ${huddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${huddled ? '已入精选 ✓' : '加入精选清单'}</button></div></div></article>`;
   }
   // One line per paper: rank, title, source line and the AI one-liner, with a star to collect.
   function weeklyRow(p, date, readingId) {
-    const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '', huddled = state.huddle.includes(p.id);
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
+    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const design = p.publicationStatus?.label || p.studyDesign || '';
-    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${esc(zh || p.title)}</button>${deep}</div>` +
+    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${machineZh ? machineContentLabel('机器翻译') : ''}${esc(zh || p.title)}</button>${deep}</div>` +
       publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(p.cleanJournal || p.journal)}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
-      (q && q.one_line ? `<div class="weekly-row-line"><span class="content-label">AI 速览</span>${esc(q.one_line)}</div>` : '') +
+      (line ? `<div class="weekly-row-line">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(line)}</div>` : '') +
       `</div><button type="button" class="weekly-star${huddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${huddled}" aria-label="${huddled ? '移出精选清单' : '加入精选清单'}" title="${huddled ? '已入精选清单' : '加入精选清单'}">${huddled ? '★' : '☆'}</button></li>`;
   }
 

@@ -40,6 +40,8 @@ const listCtx = vm.createContext({
   safeSourceUrl: () => 'https://example.org/paper',
   exactDoi: () => false
 });
+vm.runInContext(fn('officialArticleUrl'), listCtx);
+vm.runInContext(fn('machineContentLabel'), listCtx);
 vm.runInContext(fn('renderArticleCard'), listCtx);
 const cardHtml = listCtx.renderArticleCard({ id: 'p1', title: 'Test Paper', journal: 'Circulation' });
 ok(cardHtml.includes('class="title-open" data-action="open-drawer"'), 'card title button opens reader drawer');
@@ -127,6 +129,7 @@ const readerCtx = vm.createContext({
   getDesignClass: () => '',
   dateLabel: () => '2026-10-01',
   safeSourceUrl: () => 'https://example.org/paper',
+  exactDoi: () => false,
   journalMetricBadge: () => '',
   designBadgeHtml: () => '',
   esc,
@@ -154,7 +157,7 @@ const readerCtx = vm.createContext({
   studyCheck: () => {},
   aiWaitingMessage: () => '等待确认'
 });
-vm.runInContext('let lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
+vm.runInContext(fn('officialArticleUrl') + '\nlet lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
 
 const renderDrawer = paper => {
   readerCtx.state.activeDrawerPaper = null;
