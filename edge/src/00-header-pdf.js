@@ -33,6 +33,8 @@ const PDF_LIBRARY = {};
 const DOI_ADJUDICATIONS = {};
 // Build injects only reviewed, already published public abstracts; never reader-submitted text.
 const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null;
+// Build injects the uncertain-scope paper list for /api/machine/scope-uncertain (machine-authenticated only; never in static assets).
+const SCOPE_UNCERTAIN_LIST = /* scope-uncertain-list */ null;
 const PDF_REPOSITORY = 'dodoxiaxia/AI-';
 const PDF_INDEX_PATH = '文献索引/文献索引.csv';
 const PDF_MAX_BYTES = 20 * 1024 * 1024;
