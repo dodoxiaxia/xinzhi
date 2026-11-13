@@ -135,11 +135,38 @@ function simpleFontWideCodespace({doi, title}) {
   ];
   return finish(assemble(parts), '', 'trailer\n<< /Size 8 /Root 1 0 R >>\n');
 }
+// E: the page's /Contents array is two streams and one TJ array is cut between them: the first stream ends with "]" and the second starts
+// with "TJ" (legal: the streams are one logical stream and the cut falls between tokens; genuine NEJM AI originals do this inside the title).
+// The second headline line carries an "ff" ligature glyph (octal \037), so only the font's ToUnicode map can read it. Built in memory only.
+function splitOperatorAcrossStreams({doi, title}) {
+  const [first, second] = title.split(' | ');
+  const full = first + ' ' + second;
+  const alphabet = [...new Set([...full.replace(/ff/g, '\u0001')])].sort();
+  const code = ch => ch === '\u0001' ? 31 : ch.charCodeAt(0);
+  const hex = value => value.toString(16).toUpperCase().padStart(2, '0');
+  const shown = line => line.replace(/ff/g, '\u0001').split(' ').map(word => '(' + [...word].map(ch => ch === '\u0001' ? '\\037' : escapeText(ch)).join('') + ')10').join(' ( )5 ');
+  let cmap = '/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Adobe-Identity-UCS def /CMapType 2 def\n1 begincodespacerange <00> <FF> endcodespacerange\n';
+  cmap += alphabet.length + ' beginbfchar\n' + alphabet.map(ch => '<' + hex(code(ch)) + '> <' + (ch === '\u0001' ? '00660066' : ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')) + '>').join('\n') + '\nendbfchar\nendcmap end end\n';
+  const one = zlib.deflateSync(latin1('BT /F1 9 Tf 1 0 0 1 72 760 Tm (doi:' + escapeText(doi) + ') Tj ET\nBT /F2 20 Tf 1 0 0 1 72 700 Tm [' + shown(first) + '] TJ ET\nBT 1 0 0 1 72 676 Tm [' + shown(second) + '] '));
+  const two = zlib.deflateSync(latin1('TJ ET\nBT /F1 9 Tf 1 0 0 1 72 640 Tm (Synthetic Author, M.D.) Tj ET\n'));
+  const parts = [
+    {id:1, head:'<< /Type /Catalog /Pages 2 0 R >>\n'},
+    {id:2, head:'<< /Type /Pages /Count 1 /Kids [3 0 R] >>\n'},
+    {id:3, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents [4 0 R 8 0 R] >>\n'},
+    {id:4, ...stream('/Filter /FlateDecode', one)},
+    {id:5, head:'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'},
+    {id:6, head:'<< /Type /Font /Subtype /Type1 /BaseFont /ABCDEF+SyntheticHeadline /FirstChar 31 /LastChar 122 /Encoding << /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [31 /uniFB00] >> /ToUnicode 7 0 R >>\n'},
+    {id:7, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(cmap)))},
+    {id:8, ...stream('/Filter /FlateDecode', two)}
+  ];
+  return finish(assemble(parts), '', 'trailer\n<< /Size 9 /Root 1 0 R >>\n');
+}
 const samples = {
   flate: {doi:'10.9999/synthetic.flate', title:'Synthetic trailing newline after compressed page content in an imaginary cohort'},
   objstm: {doi:'10.9999/synthetic.objstm', title:'Synthetic page tree stored inside an object stream of an imaginary registry'},
   custom: {doi:'10.9999/synthetic.enc', title:'Synthetic custom glyph encoding recovered through a unicode map'},
-  wide: {doi:'10.9999/synthetic.wide', title:'Effect of synthetic offsets on imaginary staff: a ligature headline, set in a simple font'}
+  wide: {doi:'10.9999/synthetic.wide', title:'Effect of synthetic offsets on imaginary staff: a ligature headline, set in a simple font'},
+  split: {doi:'10.9999/synthetic.split', title:'Synthetic ambient scribes in imaginary practice: | A staff offset trial across a split operator'}
 };
 function files() {
   return {
@@ -148,7 +175,7 @@ function files() {
     'custom-encoding-tounicode.pdf':customEncoding(samples.custom)
   };
 }
-module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
+module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
 if (require.main === module) {
   fs.mkdirSync(module.exports.directory, {recursive:true});
   for (const [name, bytes] of Object.entries(files())) fs.writeFileSync(path.join(module.exports.directory, name), bytes);

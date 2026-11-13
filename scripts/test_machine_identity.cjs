@@ -109,6 +109,14 @@ async function verifyNext(h, doi, result, reason) {
   // A Type0 font keeps the width its codespace declares (the custom-encoding sample above is 2-byte Identity-H).
   const wideType0 = mutate(wideBytes, '/Subtype /Type1 /BaseFont /ABCDEF+SyntheticHeadline', '/Subtype /Type0 /BaseFont /ABCDEF+SyntheticHeadline');
   assert.equal((await identity(h, wideType0, wide.doi, wide.title)).reason, 'title_not_found');
+  // One TJ array cut between two /Contents streams ("]" ends the first, "TJ" starts the second): the headline's second line was dropped.
+  const {split} = fixtures.samples, splitTitle = split.title.replace(' | ', ' '), splitBytes = fixtures.splitOperatorAcrossStreams(split);
+  const splitVerdict = await identity(h, splitBytes, split.doi, splitTitle);
+  assert.equal(splitVerdict.verdict, 'ok'); assert.equal(splitVerdict.level, 'full'); assert.equal(splitVerdict.checks.title, 'page');
+  const splitWrong = await identity(h, splitBytes, split.doi, 'Synthetic unrelated study of imaginary tides and moons');
+  assert.equal(splitWrong.verdict, 'mismatch'); assert.equal(splitWrong.reason, 'title_not_found'); // no free pass for another title
+  assert.equal((await identity(h, splitBytes, '10.9999/synthetic.other', splitTitle)).reason, 'doi_not_found'); // DOI still has to be on the page
+  assert.equal((await identity(h, splitBytes, split.doi, splitTitle + ' and more words that the page does not have')).reason, 'title_not_found');
   // Readable page text with a different title is never rescued by metadata.
   const readableWrong = fixtures.flateEol({...flate});
   assert.equal((await identity(h, readableWrong, flate.doi, 'Synthetic unrelated study of imaginary tides and moons')).reason, 'title_not_found');

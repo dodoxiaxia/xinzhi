@@ -2974,13 +2974,18 @@ async function machineFirstPage(bytes) {
     const ids = await machineContentIds(ctx, page.body);
     if (!ids.length) notes.add('contents_not_found');
     const fonts = await machinePageFonts(ctx, page.body);
+    // A page's /Contents array is one logical stream (ISO 32000-1 7.8.2): an operator may start in one stream and end in the
+    // next (a TJ array closed by "]" at the end of one and "TJ" at the start of the next), and the font selected in an
+    // earlier stream stays current. Decode the streams joined, never one by one, or a title split that way is dropped.
+    let joined = '';
     for (const id of ids) {
       const content = await machineContentText(ctx, id);
       if (content === null) { if (!notes.has('inflate_failed') && !notes.has('filter_unsupported') && !notes.has('objstm_unsupported')) notes.add('contents_not_found'); continue; }
       strings += machinePdfStrings(content);
       raw += '\n' + content;
-      decoded += machineDecodeFontText(content, fonts) + '\n';
+      joined += content + '\n';
     }
+    decoded += machineDecodeFontText(joined, fonts) + '\n';
   }
   const metadata = await machineMetadata(ctx);
   // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
