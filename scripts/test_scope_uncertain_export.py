@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import io
 import json
 import sys
@@ -9,7 +10,11 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_public as builder  # noqa: E402
-from scope_uncertain_export import build_scope_uncertain_list, load_topic_hide_filters  # noqa: E402
+from scope_uncertain_export import (  # noqa: E402
+    build_scope_uncertain_list,
+    load_topic_hide_filters,
+    worker_scope_uncertain_payload,
+)
 from test_release_build import synthetic_root  # noqa: E402
 
 
@@ -294,6 +299,92 @@ class ScopeUncertainExportTests(unittest.TestCase):
             self.assertNotIn('scope-uncertain', bundle)
             self.assertNotIn('"uncertain_scope"', bundle)
             self.assertNotIn('SCOPE_UNCERTAIN_LIST', bundle)
+
+    def test_worker_scope_uncertain_payload_strips_id_without_mutating_input(self):
+        doc = build_scope_uncertain_list(
+            [
+                {
+                    'id': 'cand-unc-1',
+                    'doi': '10.1000/paper-unc-1',
+                    'title': 'Hospital workflow standardization in general practice',
+                    'journal': 'JAMA',
+                    'url': 'https://doi.org/10.1000/paper-unc-1',
+                    'date': '2026-11-12',
+                    'ingestedAt': '2026-11-13T01:00:00Z',
+                },
+                {
+                    'id': 'cand-unc-2',
+                    'doi': '',
+                    'title': 'General inpatient care workflow consensus',
+                    'journal': 'BMJ',
+                    'url': '',
+                    'date': '2026-11-11',
+                },
+            ],
+            hidden_ids=set(),
+            hidden_dois=set(),
+            keep_dois=set(),
+            generated_at='2026-11-13T08:00:00Z',
+        )
+        before = copy.deepcopy(doc)
+
+        payload = worker_scope_uncertain_payload(doc)
+
+        self.assertEqual(doc, before)
+        self.assertIsNot(payload, doc)
+        self.assertEqual(payload['generatedAt'], doc['generatedAt'])
+        self.assertEqual(payload['count'], doc['count'])
+        self.assertEqual(len(payload['items']), len(doc['items']))
+        expected_fields = ['doi', 'title', 'journal', 'url', 'date', 'ingestedAt', 'reason', 'detail']
+        for src_item, dst_item in zip(doc['items'], payload['items']):
+            self.assertIsNot(dst_item, src_item)
+            self.assertNotIn('id', dst_item)
+            self.assertEqual(list(dst_item.keys()), expected_fields)
+            for field in expected_fields:
+                self.assertEqual(dst_item[field], src_item[field])
+
+    def test_worker_scope_uncertain_list_excludes_internal_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            synthetic_root(root)
+            uncertain_ids = ['cand-unc-1', 'cand-unc-2']
+            (root / 'data/candidates.json').write_text(json.dumps({
+                'updatedAt': '2026-11-13T04:00:00Z',
+                'items': [
+                    {
+                        'id': 'cand-unc-1',
+                        'title': 'Hospital resource utilization in general medicine',
+                        'doi': '10.1000/paper-unc-1',
+                        'journal': 'JAMA',
+                        'url': 'https://doi.org/10.1000/paper-unc-1',
+                        'date': '2026-11-12',
+                        'ingestedAt': '2026-11-13T01:00:00Z',
+                    },
+                    {
+                        'id': 'cand-unc-2',
+                        'title': 'General inpatient safety coordination review',
+                        'doi': '',
+                        'journal': 'BMJ',
+                        'date': '2026-11-11',
+                        'ingestedAt': '2026-11-12T01:00:00Z',
+                    },
+                ],
+            }), encoding='utf-8')
+
+            with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
+                builder.main()
+
+            worker_text = (root / 'public/_worker.js').read_text(encoding='utf-8')
+            prefix = 'const SCOPE_UNCERTAIN_LIST = '
+            suffix = '; // synthetic worker'
+            raw_json = worker_text.split(prefix, 1)[1].rsplit(suffix, 1)[0]
+            out = json.loads(raw_json)
+            self.assertEqual(out['count'], 2)
+            self.assertEqual(len(out['items']), 2)
+            for item in out['items']:
+                self.assertNotIn('id', item)
+            for paper_id in uncertain_ids:
+                self.assertNotIn(paper_id, worker_text)
 
 
 if __name__ == '__main__':
