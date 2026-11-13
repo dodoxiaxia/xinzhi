@@ -89,7 +89,7 @@ if [ "$BROWSER" = 1 ]; then
     # Standalone scripts, not unittest modules.
     for name in test_back_to_top_ui test_brief_feedback_ui test_curated_doi_layout_ui test_faceted_filters_ui test_journal_ui \
                 test_layout_ui test_mobile_library_ui test_navigation_search_ui test_reader_drawer_scroll test_reader_overlays_ui \
-                test_search_shortlist_ui test_search_toggle_ui test_sidebar_focus_trap_ui test_sol_gap_reader test_weekly_ui; do
+                test_search_shortlist_ui test_search_toggle_ui test_sidebar_focus_trap_ui test_sol_gap_reader test_weekly_ui test_list_actions_ui; do
       run "$name" python3 "scripts/$name.py"
     done
   fi

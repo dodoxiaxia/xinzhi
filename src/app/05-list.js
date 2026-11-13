@@ -1,7 +1,4 @@
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
-  function machineContentLabel(kind = 'AI 速览') {
-    return `<span class="content-label">${esc(kind)} · 未经人工核对</span>`;
-  }
 
   // Render Article Card
   function renderArticleCard(p) {
@@ -19,12 +16,12 @@
     const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
     const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
     const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${!titleZh && machineZh ? machineContentLabel('机器翻译') : ''}${zhHtml}</button></h3>`
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
       : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
 
     // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
-    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(gist)}</p>` : '';
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
     // The English title comes back when an English search hit it.
     const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
@@ -69,7 +66,7 @@
     const title = draftTitle
       ? `[导读] ${esc(draftTitle)}`
       : machineZh
-        ? `${machineContentLabel('机器翻译')}${esc(machineZh)}`
+        ? esc(machineZh)
         : esc(p.title);
 
     return `
@@ -84,11 +81,11 @@
           </div>
         </div>
         <div class="compact-actions">
+          ${pdfDownloadLink(p)}
+          <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
+          ${doiStatusBlock(p) ? '' : doiUrl!=='#' ? `<a class="text-btn" href="${esc(doiUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
           <button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">阅读摘要</button>
           ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}" title="复制微信文案">文案</button>` : ''}
-          <button class="btn-sm ${isHuddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" title="精选清单">${isHuddled ? '已入' : '精选'}</button>
-          ${pdfDownloadLink(p)}
-          ${doiStatusBlock(p) ? '' : doiUrl!=='#' ? `<a href="${esc(doiUrl)}" target="_blank" rel="noopener" class="btn-sm" title="官网原文">↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
         </div>
       </div>
     `;

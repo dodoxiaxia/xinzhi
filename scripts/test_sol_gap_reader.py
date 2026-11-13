@@ -61,8 +61,9 @@ if __name__ == '__main__':
                     translated = body.locator('.abstract-translation .tr-box p:not(.translation-note)').all_text_contents()
                     assert translated == [part for part in paper['translation']['abstract_zh'].splitlines() if part], doi
                     expect(body).to_contain_text(paper['quicklook']['findings'][0]['text'])
-                    expect(body).to_contain_text('Sol 会话依据公开摘要整理译文')
-                    expect(body).to_contain_text('Sol 会话根据公开摘要整理')
+                    expect(body).not_to_contain_text('未经人工')
+                    expect(body).not_to_contain_text('以英文原文为准')
+                    expect(page.locator('.quicklook .drawer-section-title')).to_have_text('速览')
                     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
                     page.locator('#drawerCloseBtn').click(no_wait_after=True)
                 records.append({'width': width, 'coverage': coverage, 'solReadersChecked': len(dois), 'noOverflow': True})

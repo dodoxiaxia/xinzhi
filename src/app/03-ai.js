@@ -139,8 +139,7 @@
   }
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
-    const editorial = preGeneratedOf(paper)?.meta?.generationMeta?.translate?.origin === 'sol-session-public-abstract';
-    if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}<p class="translation-note">${editorial ? 'Sol 会话依据公开摘要整理译文，未经人工医学终审；以英文原文为准。' : '机器翻译，未经人工核对；以英文原文为准。'}</p></div>`;
+    if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}</div>`;
     if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
     if (paper._trState === 'loading') return `<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…${paper._trSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
     if (paper._trState === 'waiting') return `<div class="tr-box"><p class="ql-meta" role="status">${esc(paper._trMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}"${paper._trLookupState === 'loading' ? ' disabled' : ''}>读取已有译文</button></div>`;
@@ -217,7 +216,7 @@
     if (b.state === 'waiting') return `<div class="brief-box"><p class="ql-meta" role="status">${b.timedOut ? '本次等待已到时限，完成状态尚未确认' : '网络中断，完成状态尚未确认'}；后台可能仍在处理，未重新提交。</p>${b.msg ? `<p class="ql-meta" role="status">${esc(b.msg)}</p>` : ''}<button class="btn-sm" data-action="brief-check" data-mode="${mode}"${b.checking ? ' disabled' : ''}>${b.checking ? '读取中…' : '读取已有综述'}</button></div>`;
     const r = b.brief;
     const included = r.refs.length, omitted = Math.max(0, items.length - included);
-    return `<div class="brief-box brief-done"><div class="drawer-section-title">${mode === 'huddle' ? '讨论提纲' : '综述速读'} <small class="ql-flag">模型根据公开摘要生成 · 未经人工核对</small></div>
+    return `<div class="brief-box brief-done"><div class="drawer-section-title">${mode === 'huddle' ? '讨论提纲' : '综述速读'}</div>
       <p class="brief-coverage" role="status">请求 ${items.length} 篇 · 实际纳入 ${included} 篇${omitted ? ` · ${omitted} 篇公开摘要未纳入，下面结果只对应已纳入文献` : ''}</p>
       <p class="ql-line"><strong>${esc(r.theme)}</strong></p>
       <ol class="brief-papers">${r.papers.map(x => `<li>${esc(x.point)}<small> ——《${esc((r.refs[x.n - 1] || {}).title || '')}》</small></li>`).join('')}</ol>
@@ -302,7 +301,7 @@
     return `<span>${esc(source)}</span>${url ? ` · <a href="${esc(url)}" target="_blank" rel="noopener">摘要来源 ↗</a>` : ''}`;
   }
   function studyMetaHtml(result, cached) {
-    return `<p class="study-boundary">仅根据公开摘要生成，未经人工核对。各篇结果不作质量排名，不合并效应量。</p><p class="study-meta">${result.generatedBy === 'metadata-only' ? '摘要获取状态 · 未调用模型' : cached ? '读取已有结果' : '本次生成'}</p>`;
+    return `<p class="study-boundary">仅根据公开摘要生成。各篇结果不作质量排名，不合并效应量。</p><p class="study-meta">${result.generatedBy === 'metadata-only' ? '摘要获取状态 · 未调用模型' : cached ? '读取已有结果' : '本次生成'}</p>`;
   }
   function studyChecklistHtml(result) {
     return `<details class="study-checklist"><summary>全文核对清单（待查事项）</summary><p>以下是阅读全文时需要核对的问题，并非已发现论文存在这些缺陷。</p><ul>${result.checklist.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>${result.caveat ? `<p class="study-boundary">${esc(result.caveat)}</p>` : ''}`;
