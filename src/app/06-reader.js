@@ -12,7 +12,7 @@
     const designClass = getDesignClass(paper.studyDesign);
     const journalName = paper.cleanJournal || paper.journal || '期刊';
     const dateStr = dateLabel(paper);
-    const doiUrl = safeSourceUrl(paper) || '#';
+    const doiUrl = officialArticleUrl(paper) || '#';
     const isHuddled = state.huddle.includes(paper.id);
 
     // Header Badges
