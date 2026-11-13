@@ -12,8 +12,12 @@ const MACHINE_INDEX_ENTRY_MAX_AGE_MS = 604800000 + 3600000;
 // One backfill request spends at most about this many KV operations (list pages plus record reads)
 // before it saves its progress; the platform allows 1000 KV operations per request.
 const MACHINE_INDEX_CHUNK_OPS = 400;
-// A claim or requeue reads at most this many task records looking for a usable one.
+// A claim may consider at most this many usable (non-skipped) candidates. Skipped entries — paused,
+// stale index, already available, review, a soft-retried expiry, and other unusable records — do not
+// count toward this number. A separate scan cap bounds how many task records one request may read.
 const MACHINE_CLAIM_EXAMINE_MAX = 20;
+const MACHINE_CLAIM_SCAN_MAX = 80;
+const MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS = 15;
 const MACHINE_REQUEUE_EXAMINE_MAX = 150;
 const MACHINE_EMPTY_CLAIM_RETRY_SECONDS = 300;
 const MACHINE_INDEX_BUILDING_RETRY_SECONDS = 60;
