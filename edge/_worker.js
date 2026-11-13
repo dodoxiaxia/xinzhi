@@ -3710,8 +3710,13 @@ async function machineStaleQueuedSweep(env, doc, changes) {
           changes.push({doi,entry:actual});
           if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
         }
-        // The record wins: re-check everything on the record itself before touching it.
+        // The record wins: re-check the task and its pause mark before touching it.
+        // A DOI paused after the scan must not be converted.
         if (!job || !machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) continue;
+        let attempt = null;
+        try { attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi); }
+        catch { console.log('stale queued fallback: pause mark unreadable, task skipped this request'); continue; }
+        if (attempt && attempt.paused) { machineStaleSkipMark(doi, actual, now, STALE_QUEUED_SKIP_SHORT_MS); continue; }
         const next = {...job,state:'failed',reason:STALE_QUEUED_REASON,updatedAt:now,
           autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,journal,openAccess,openAccessBasis:openAccess === 'yes' ? 'doi_prefix' : '',reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
         await musePut(env, next, {indexChanges:changes});

@@ -373,7 +373,22 @@ async function run() {
     assert(converted, 'eligible task converted within a few requests');
   }
   {
-    // Worst case measured: 1 counter + 60 scan reads + 30 paper reads + moved rereads.
+    // 40 eligible tasks, default cap of 5: exact read count of the sweep itself.
+    // 1 counter + 30 task records + 30 pause marks + 30 papers + 5 task rereads + 5 pause rereads.
+    h = await enabled();
+    for (let i = 0; i < 40; i++) seed(h, 'dflt' + String(i).padStart(2, '0'), 9 * HOUR - i * 1000);
+    const before = h.reads.length, writes = h.writes.length;
+    assert.equal(await sweep(h), 5);
+    const k = kinds(h, before), total = h.reads.length - before;
+    assert.equal(k['library:stale-fallback-window'], 1, 'one counter read');
+    assert.equal(k['library:paper'], 30, 'paper reads only for the 30-task pool');
+    assert.equal(k['library:muse-job'], 35, '30 scan task records plus 5 convert rereads');
+    assert.equal(k['library:attempt'], 35, '30 scan pause marks plus 5 convert rereads');
+    assert.equal(total, 101, '40 eligible, default cap: exact sweep reads are 101: ' + JSON.stringify(k));
+    console.log('measured default sweep: reads ' + total + ' ' + JSON.stringify(k) + ' writes ' + (h.writes.length - writes));
+  }
+  {
+    // Worst case measured: 1 counter + 60 scan reads + 30 paper reads + moved rereads (task and pause).
     h = await enabled();
     h.env.STALE_QUEUED_FALLBACK_MAX_PER_WINDOW = '25';
     for (let i = 0; i < 40; i++) seed(h, 'wc' + String(i).padStart(2, '0'), 9 * HOUR - i * 1000);
@@ -382,16 +397,18 @@ async function run() {
     const k = kinds(h, before), total = h.reads.length - before;
     assert.equal(k['library:stale-fallback-window'], 1, 'one counter read');
     assert.equal(k['library:paper'], 30, 'paper reads only for the 30-task pool');
-    assert(k['library:muse-job'] <= 60 + 25, 'task records: scan plus reread of moved tasks');
-    assert(total <= 121, 'worst case reads within 121: ' + total);
+    assert.equal(k['library:muse-job'], 55, '30 scan task records plus 25 convert rereads');
+    assert.equal(k['library:attempt'], 55, '30 scan pause marks plus 25 convert rereads');
+    assert.equal(total, 141, 'worst case exact sweep reads are 141: ' + JSON.stringify(k));
     console.log('measured: reads ' + total + ' ' + JSON.stringify(k) + ' writes ' + (h.writes.length - writes));
   }
   {
-    // Default settings: 5 moved. Measure reads and writes.
+    // Default settings through the public list: 5 moved. Measure the whole request (sweep plus list hydration).
     h = await enabled();
-    for (let i = 0; i < 40; i++) seed(h, 'dflt' + String(i).padStart(2, '0'), 9 * HOUR - i * 1000);
+    for (let i = 0; i < 40; i++) seed(h, 'dfltl' + String(i).padStart(2, '0'), 9 * HOUR - i * 1000);
     const before = h.reads.length, writes = h.writes.length;
-    assert.equal(await list(h, 'to-download').then(() => 5), 5);
+    await list(h, 'to-download');
+    assert.equal([...h.values.entries()].filter(([k,v]) => k.startsWith('library:muse-job:') && JSON.parse(v).reason === 'queue_unclaimed').length, 5, 'default list request converts 5');
     const sweepWrites = h.writes.slice(writes).filter(w => /^library:(muse-job|muse-queue|stale-fallback-window)/.test(w.key)).length;
     console.log('measured default list request: writes (jobs, queue pointers, counter) ' + sweepWrites + ', reads ' + (h.reads.length - before));
     void before;
@@ -411,6 +428,27 @@ async function run() {
   }
 
   // ---- N7: paused DOIs are not candidates; lifting the pause is picked up after the short cache expires ----
+  {
+    // A task paused after the scan, before conversion, must not be moved; later unpaused tasks still convert.
+    h = await enabled();
+    const first = seed(h, 'pause-mid-a', 8 * HOUR), second = seed(h, 'pause-mid-b', 7 * HOUR);
+    const firstBefore = raw(h, first);
+    const get = h.env.QL_KV.get;
+    let firstJobReads = 0;
+    h.env.QL_KV.get = async function(k, ...args) {
+      if (k === key(first)) {
+        firstJobReads++;
+        if (firstJobReads === 2) h.values.set('library:attempt:' + first, JSON.stringify({paused:true}));
+      }
+      return get.call(this, k, ...args);
+    };
+    assert.equal(await sweep(h), 1, 'only the task still unpaused at convert time moves');
+    h.env.QL_KV.get = get;
+    assert.equal(raw(h, first), firstBefore, 'paused between scan and convert: record byte-identical');
+    assert.equal(jobWrites(h, first), 0, 'paused between scan and convert: never written');
+    assert.equal(stored(h, key(first)).state, 'queued', 'paused between scan and convert: stays queued');
+    assert.equal(stored(h, key(second)).reason, 'queue_unclaimed', 'later unpaused task still converts');
+  }
   {
     h = await enabled();
     const pausedDoi = seed(h, 'pause-a', 8 * HOUR), other = seed(h, 'pause-b', 7 * HOUR);
