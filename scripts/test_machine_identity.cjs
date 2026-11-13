@@ -172,6 +172,12 @@ async function verifyNext(h, doi, result, reason) {
   const expiredDoi = '10.9999/synthetic.expired';
   seedPaper(h, expiredDoi, 'Synthetic paper whose lease ran out');
   putJob(h, expiredDoi, 'running', {leaseUntil:Date.now() - 1000}); await reindex(h);
+  const expiredFirst = await (await h.context.worker.fetch(new Request(base + '/api/machine/tasks?state=to-download', {headers:{authorization:'Bearer ' + reader}}), h.env)).json();
+  assert.equal(expiredFirst.tasks.find(task => task.doi === expiredDoi).state, 'to-download');
+  assert.equal(expiredFirst.tasks.find(task => task.doi === expiredDoi).reason, '');
+  const expiredFailedFirst = await (await h.context.worker.fetch(new Request(base + '/api/machine/tasks?state=failed-awaiting-fallback', {headers:{authorization:'Bearer ' + reader}}), h.env)).json();
+  assert.equal(expiredFailedFirst.tasks.find(task => task.doi === expiredDoi), undefined);
+  putJob(h, expiredDoi, 'running', {leaseUntil:Date.now() - 1000,softFailCount:1,lastSoftFailReason:'lease_expired'}); await reindex(h);
   const expiredList = await (await h.context.worker.fetch(new Request(base + '/api/machine/tasks?state=failed-awaiting-fallback', {headers:{authorization:'Bearer ' + reader}}), h.env)).json();
   assert.equal(expiredList.tasks.find(task => task.doi === expiredDoi).reason, 'lease_expired');
 
