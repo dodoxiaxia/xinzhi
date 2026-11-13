@@ -36,7 +36,7 @@ class QualityTests(unittest.TestCase):
         no_identity_before = {p['id'] for p in raw if not p['doi'] and not p['url']}
         no_identity_after = {p['id'] for p in projected if not p['doi'] and not p['url']}
         self.assertEqual(len(no_identity_before), 220)  # 245 before 25 DOI-less records received verified DOIs
-        self.assertEqual(len(no_identity_after), 217)  # two DOI-less duplicates (4fe78ed5, 891a0ca9) are no longer listed
+        self.assertEqual(len(no_identity_after), 215)  # four DOI-less duplicates (4fe78ed5, 891a0ca9, f8345cff, aac74a7a) are no longer listed
         self.assertEqual(no_identity_after, (no_identity_before - quality.NAVIGATION.keys() - quality.DUPLICATES.keys()) |
                          {'a97bbb0a11844693', '814b860e19382e2f'})
         self.assertEqual(raw, before)
@@ -71,6 +71,8 @@ class QualityTests(unittest.TestCase):
             '4fe78ed54cf5523d': ('77f5287fc55d4220', '10.1016/j.landig.2025.100916', quality.DUPLICATES['4fe78ed54cf5523d'][2]),
             '891a0ca9ca481407': ('ba5cc383031aa08f', '10.1016/j.landig.2025.100922', quality.DUPLICATES['891a0ca9ca481407'][2]),
             '37cb5c6f96b8b0f5': ('3b51e13dda54492e', '10.1016/j.landig.2025.100960', quality.DUPLICATES['37cb5c6f96b8b0f5'][2]),
+            'f8345cffb3130085': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327', quality.DUPLICATES['f8345cffb3130085'][2]),
+            'aac74a7aaeeff6ef': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327', quality.DUPLICATES['aac74a7aaeeff6ef'][2]),
         })
         raw = snapshot()
         before = copy.deepcopy(raw)
@@ -143,8 +145,8 @@ class QualityTests(unittest.TestCase):
         second, _ = quality.project_public_library(first)
         self.assertEqual(first, reversed_result)
         self.assertEqual(first, second)
-        self.assertEqual((audit['inputCount'], audit['outputCount']), (1268, 1260))
-        self.assertEqual((len(audit['quarantined']), len(audit['aliases']), len(audit['corrections'])), (3, 5, 4))
+        self.assertEqual((audit['inputCount'], audit['outputCount']), (1268, 1258))
+        self.assertEqual((len(audit['quarantined']), len(audit['aliases']), len(audit['corrections'])), (3, 7, 4))
         self.assertEqual(audit['privatePdfBodiesRead'], 0)
 
     def test_changed_target_identity_holds_instead_of_deleting_or_rebinding(self):
@@ -205,8 +207,8 @@ class QualityTests(unittest.TestCase):
                 builder.main()
             bundle = (root / 'public/public.js').read_text()
             library, _ = json.JSONDecoder().raw_decode(bundle.split('window.LIBRARY=', 1)[1])
-            self.assertEqual(len(library['papers']), 1260)
-            self.assertEqual(json.loads((root / 'docs/public-manifest.json').read_text())['counts']['library'], 1260)
+            self.assertEqual(len(library['papers']), 1258)
+            self.assertEqual(json.loads((root / 'docs/public-manifest.json').read_text())['counts']['library'], 1258)
             audit = json.loads((root / 'docs/public-library-quality-audit.json').read_text())
             self.assertEqual(len(audit['quarantined']), 3)
             self.assertNotIn('quarantined', bundle)
