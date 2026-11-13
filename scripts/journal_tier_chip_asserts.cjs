@@ -94,4 +94,46 @@ const missing = el('row').innerHTML;
 assert.ok(!missing.includes('顶刊') && !missing.includes('心刊'),
   'tier chips must not render when XINZHI_JOURNAL_TIERS is missing; html=' + missing);
 
+// 近7天榜：快捷条补 AI 档，口径为 AI 医疗、AI 前沿分类并上 AI 期刊。
+const fnSrc = n => { const m = appSrc.match(new RegExp('  function ' + n + '\\([^]*?\\n  }')); assert(m, n + ' not found in app.js'); return m[0]; };
+const weeklyPapers = [
+  { id: 'w1', journal: 'Circulation', cleanJournal: 'Circulation', weeklyCategory: 'cardio' },
+  { id: 'w2', journal: 'JAMA', cleanJournal: 'JAMA', weeklyCategory: 'general' },
+  { id: 'w3', journal: 'JACC: Advances', cleanJournal: 'JACC: Advances', weeklyCategory: 'aimed' },
+  { id: 'w4', journal: 'Nature Communications', cleanJournal: 'Nature Communications', weeklyCategory: 'aitech' },
+  { id: 'w5', journal: 'npj Digital Medicine', cleanJournal: 'npj Digital Medicine', weeklyCategory: 'cardio' },
+  { id: 'w6', journal: 'Circulation', cleanJournal: 'Circulation' }
+];
+ctx.window.XINZHI_JOURNAL_TIERS = undefined;
+vm.runInContext(tiersSrc, ctx);
+ctx.laneOf = p => (p.id === 'w6' ? 'cardio' : 'general');
+vm.runInContext(fnSrc('weeklyCategoryOf'), ctx);
+ctx.state.mode = 'weekly';
+ctx.weeklyPublicationWindow = () => ({ entries: weeklyPapers.map(paper => ({ paper })) });
+ctx.renderQuickFilters();
+let weeklyHtml = el('row').innerHTML;
+assert.ok(/data-qf-jtier="ai"[^>]*>AI<\/button>/.test(weeklyHtml), 'weekly quick bar should render the AI chip; html=' + weeklyHtml);
+assert.ok(weeklyHtml.includes('aria-label="筛选 AI"'), 'weekly AI chip is named AI');
+assert.ok(!weeklyHtml.includes('data-qf-jtier-menu="ai"'), 'weekly AI chip has no journal list');
+ctx.state.journalTier = 'ai';
+assert.deepEqual(weeklyPapers.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w3', 'w4', 'w5'], 'weekly AI filter = AI 分类与 AI 期刊的并集');
+ctx.renderQfSummary();
+assert.ok(/>AI <span/.test(el('summary').innerHTML), 'weekly selected condition is AI');
+assert.ok(!el('summary').innerHTML.includes('AI 期刊'), 'weekly selected condition is not named AI 期刊');
+// 只剩 AI 期刊时，仍显示 AI 档并筛出该稿
+const journalOnly = weeklyPapers.filter(p => !['w3', 'w4'].includes(p.id));
+ctx.weeklyPublicationWindow = () => ({ entries: journalOnly.map(paper => ({ paper })) });
+ctx.renderQuickFilters();
+assert.ok(/data-qf-jtier="ai"/.test(el('row').innerHTML), 'weekly AI chip remains for AI journals');
+assert.deepEqual(journalOnly.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w5'], 'AI journal alone still matches the union');
+// 分类 AI 和 AI 期刊稿均移除后，榜内不出 AI 档
+ctx.weeklyPublicationWindow = () => ({ entries: weeklyPapers.filter(p => !['w3', 'w4', 'w5'].includes(p.id)).map(paper => ({ paper })) });
+ctx.state.journalTier = '';
+ctx.renderQuickFilters();
+assert.ok(!/data-qf-jtier="ai"/.test(el('row').innerHTML), 'weekly AI chip hidden when neither AI categories nor AI journals remain');
+// 其他栏目：仍按 AI 期刊名单
+ctx.state.mode = 'candidates';
+ctx.state.journalTier = 'ai';
+assert.deepEqual(weeklyPapers.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w5'], 'non-weekly AI filter keeps the journal list');
+
 console.log('journal tier chip contracts passed');

@@ -7,7 +7,7 @@ export default {
     const startedAt = Date.now();
     let response;
     try {
-      response = await routeRequest(request, env);
+      response = await routeRequest(request, env, ctx);
       if (new URL(request.url).pathname.startsWith('/api/')) response = await hideInstitutionLinks(request, response);
     } catch (error) {
       metricsRecord(request, env, ctx, null, startedAt, true);
@@ -21,15 +21,15 @@ export default {
   }
 };
 
-async function routeRequest(request, env) {
+async function routeRequest(request, env, ctx) {
     const url = new URL(request.url);
     museReviewInstant = museReviewConfigured(env);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
     if (url.pathname === '/api/muse/protocol') return handleMuseProtocol(request, env);
-    if (url.pathname === '/api/muse/request') return handleMuseRequest(request, env);
-    if (url.pathname === '/api/muse/retry') return handleMuseRetry(request, env);
+    if (url.pathname === '/api/muse/request') return handleMuseRequest(request, env, ctx);
+    if (url.pathname === '/api/muse/retry') return handleMuseRetry(request, env, ctx);
     if (url.pathname === '/api/muse/claim') return handleMuseClaim(request, env);
     if (url.pathname === '/api/muse/receipt') return handleMuseReceipt(request, env);
     if (url.pathname === '/api/muse/upload') return handleMuseUpload(request, env);
@@ -49,8 +49,8 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);
-    if (url.pathname === '/api/acquire') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);
-    if (url.pathname === '/api/acquire/retry') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);
+    if (url.pathname === '/api/acquire') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env, ctx) : handleAcquire(request, env);
+    if (url.pathname === '/api/acquire/retry') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env, ctx) : handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
     if (url.pathname === '/api/fulltext-source') return handleFulltextSource(request, env);
     if (url.pathname === '/api/pdf') return handlePdf(request, env);

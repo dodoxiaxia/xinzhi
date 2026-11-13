@@ -2343,6 +2343,10 @@ html[data-style] .drawer-footer #drawerInstitutionLink { flex-basis: 100%; margi
   scrollbar-width: none;
 }
 .qf-chips::-webkit-scrollbar { display: none; }
+.qf-chips.qf-fade {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+}
 .qf-chip, .qf-scope {
   flex: 0 0 auto;
   display: inline-flex;
@@ -2606,3 +2610,6 @@ html[data-style="a"] .qf-split.is-on .qf-chip {
   .qf-scope { max-width: 100%; flex: 0 1 auto; min-width: 0; padding: 0 8px; }
   .qf-chips { gap: 6px; flex: 1 1 100%; width: 100%; }
 }
+
+/* 摘要明显不完整时的提示（只在判定为只有结论段时出现） */
+.abs-incomplete-note { margin: 6px 0 0; font-size: 11.5px; color: var(--text-muted); }
