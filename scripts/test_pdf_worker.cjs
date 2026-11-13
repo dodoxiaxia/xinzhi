@@ -6,7 +6,12 @@ const library = {
   article: '10.1000/exact',
   titled: { doi:'', title:'  Clinical, "quoted"\nSTRASSE study  ' },
   both: { doi:'10.1000/exact', title:'Do not use this fallback' },
-  invalid: { doi:'not-a-doi', title:'Clinical, "quoted" STRASSE study' }
+  invalid: { doi:'not-a-doi', title:'Clinical, "quoted" STRASSE study' },
+  columnPrefixed: { doi:'', title:'AI IN MEDICINE  Column Test Article' },
+  columnPlain: { doi:'', title:'Column Test Article' },
+  columnLowercase: { doi:'', title:'Ai in medicine Column Test Article' },
+  columnUnknown: { doi:'', title:'NEWS Column Test Article' },
+  columnDoi: { doi:'10.1000/exact', title:'AI IN MEDICINE Whatever the title says' }
 };
 const defaultPassphrase = 'synthetic-default-passphrase';
 // The repository is public: no passphrase or digest may be baked into the Worker.
@@ -137,8 +142,19 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
 
   h = harness({ csv:csv([[...normalRow.slice(0, 1), '10.1000/exactly-different', ...normalRow.slice(2)]]) });
   await error(await h.request(valid), 404, 'pdf_not_found'); assert.equal(githubCalls(h).length, 1);
-  for (const rows of [[normalRow, normalRow], [noDoiRow, noDoiRow]]) {
-    h = harness({ csv:csv(rows) }); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=' + (rows[0] === normalRow ? 'article' : 'titled')), 409, 'pdf_ambiguous'); assert.equal(githubCalls(h).length, 1);
+  {
+    // The same file registered twice (equal SHA-256, any case) is one match; different or unusable checksums stay ambiguous.
+    const upper = row => [...row.slice(0, 6), row[6].toUpperCase()];
+    const otherPdf = Buffer.from('%PDF-1.7\nAnother synthetic article\n%%EOF\n');
+    const other = row => [...row.slice(0, 6), sha256(otherPdf)];
+    for (const [id, rows] of [['article', [normalRow, normalRow]], ['article', [normalRow, upper(normalRow)]], ['titled', [noDoiRow, noDoiRow]], ['article', [normalRow, normalRow, normalRow]]]) {
+      h = harness({ csv:csv(rows) }); const same = await h.request(valid, {}, 'https://site.test/api/pdf?id=' + id);
+      assert.equal(same.status, 200, 'duplicate rows with one SHA-256 download normally'); assert.deepEqual(Buffer.from(await same.arrayBuffer()), pdf); assert.equal(githubCalls(h).length, 3);
+    }
+    for (const [id, rows] of [['article', [normalRow, other(normalRow)]], ['titled', [noDoiRow, other(noDoiRow)]], ['article', [normalRow, normalRow, other(normalRow)]],
+      ['article', [[...normalRow.slice(0, 6), 'invalid'], [...normalRow.slice(0, 6), 'invalid']]], ['article', [normalRow, [...normalRow.slice(0, 6), 'invalid']]]]) {
+      h = harness({ csv:csv(rows) }); await error(await h.request(valid, {}, 'https://site.test/api/pdf?id=' + id), 409, 'pdf_ambiguous'); assert.equal(githubCalls(h).length, 1);
+    }
   }
   for (const invalidCsv of ['"unclosed', csv([normalRow]).replace('SHA256', 'DOI'), csv([[...normalRow, 'extra']])]) {
     h = harness({ csv:invalidCsv }); await error(await h.request(valid), 502, 'pdf_index_invalid'); assert.equal(githubCalls(h).length, 1);
@@ -183,6 +199,23 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
   h = harness({ pdfResponse:() => new Response(null, { status:302, headers:{ location:'https://raw.githubusercontent.com/dodoxiaxia/AI-/' + commit + '/' + pdfPath.split('/').map(encodeURIComponent).join('/') } }), rawResponse:() => new Response(null, { status:302, headers:{ location:'https://attacker.example' } }) });
   await error(await h.request(valid), 502, 'pdf_upstream'); assert.equal(h.calls.length, 4);
 
+  {
+    // A known uppercase column label in front of a title is ignored on either side, only while exactly one row matches.
+    const row = (title, sha = sha256(pdf)) => [title, '', 'fixture', '', '', pdfPath, sha];
+    const otherSha = sha256(Buffer.from('another file'));
+    const get = async (id, rows) => { const run = harness({ csv:csv(rows) }); return run.request(valid, {}, 'https://site.test/api/pdf?id=' + id); };
+    assert.equal((await get('columnPrefixed', [row('Column Test Article')])).status, 200, 'site title carries the column label, index title does not');
+    assert.equal((await get('columnPlain', [row('AI IN MEDICINE Column Test Article')])).status, 200, 'index title carries the column label');
+    assert.equal((await get('columnPrefixed', [row('AI IN MEDICINE Column Test Article')])).status, 200, 'both carry it');
+    await error(await get('columnPrefixed', [row('Column Test Article'), row('AI IN MEDICINE Column Test Article', otherSha)]), 409, 'pdf_ambiguous');
+    assert.equal((await get('columnPrefixed', [row('Column Test Article'), row('AI IN MEDICINE Column Test Article')])).status, 200, 'same file under both spellings is one file');
+    await error(await get('columnPrefixed', [row('Column Test Article'), row('Column  test article', otherSha)]), 409, 'pdf_ambiguous');
+    await error(await get('columnLowercase', [row('Column Test Article')]), 404, 'pdf_not_found');
+    await error(await get('columnUnknown', [row('Column Test Article')]), 404, 'pdf_not_found');
+    await error(await get('columnPrefixed', [row('Other Article')]), 404, 'pdf_not_found');
+    await error(await get('columnDoi', [row('Whatever the title says')]), 404, 'pdf_not_found');
+    assert.equal((await get('columnDoi', [normalRow])).status, 200, 'with a DOI only the DOI decides');
+  }
   h = harness({ csv:csv([noDoiRow]) }); const fallback = await h.request(valid, {}, undefined, { accept:'text/html' });
   assert.equal(fallback.status, 404); const page = await fallback.text(); assert(page.includes('https://doi.org/10.1000/exact')); assert(!page.includes(pdfPath)); assert(!page.includes(env.GITHUB_LIBRARY_TOKEN));
   const method = await h.context.worker.fetch(new Request('https://site.test/api/pdf?id=article', { method:'PUT' }), env); await error(method, 405, 'pdf_method');

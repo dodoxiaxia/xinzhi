@@ -30,6 +30,11 @@ ONLINE_CORRECTIONS = {
     '47e6d48cc22b6000': ('10.3760/cma.j.cn112139-20260603-00245', '42765408', '2026-09-21'),
     'a762c60c31fbd3e2': ('10.1038/s41746-026-03312-y', '', '2026-09-26'),
 }
+# Records whose public title and DOI name different articles: keep them listed but never
+# bind a PDF, because a DOI match would serve the other article (reviewed 2026-11-13).
+PDF_BINDING_HOLDS = {
+    '37cb5c6f96b8b0f5': 'registered_doi_identifies_unrelated_landig_article',
+}
 DOI_REVIEW = {
     '93b958551c8bf865': {
         'original': ('AI IN MEDICINE The Need to Avoid a Regulatory Gray Zone in Digital Wellness',
@@ -231,6 +236,7 @@ def project_public_library(papers):
     result = sorted(by_id.values(), key=lambda p: (p.get('date') or '', p['id']), reverse=True)
     result, audit['doiReview'], holds = reviewed_doi_projection(result)
     audit['pdfBindingHoldIds'].extend(holds)
+    audit['pdfBindingHoldIds'].extend(i for i in PDF_BINDING_HOLDS if i in by_id and i not in audit['pdfBindingHoldIds'])
     result.sort(key=lambda p: (p.get('date') or '', p['id']), reverse=True)
     audit['outputCount'] = len(result)
     audit['withoutDoiOrUrlBefore'] = sum(not p.get('doi') and not p.get('url') for p in papers)
