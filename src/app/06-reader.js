@@ -244,6 +244,8 @@
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
+      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
+      if (!pdfUrl || changedPaper) resetDlForm($('#drawerPdfForm'));
     }
 
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }

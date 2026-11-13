@@ -198,7 +198,8 @@
     </div>
 
     <div class="drawer-footer">
-      <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" hidden>下载 PDF</a>
+      <a href="#" target="_blank" rel="noopener" class="btn-sm btn-primary" id="drawerPdfLink" data-ft-download hidden>下载 PDF</a>
+      <form class="ft-form ft-dl-form" id="drawerPdfForm" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>
       <button class="btn-sm btn-share" id="drawerCopyShareBtn">微信群文案</button>
       <button class="btn-sm" id="drawerHuddleToggleBtn">加入精选清单</button>
       <a href="#" target="_blank" rel="noopener" class="btn-sm" id="drawerExternalLink">官网原文 ↗</a>
