@@ -55,9 +55,12 @@ class ReleaseDecouplingTests(unittest.TestCase):
     def test_existing_schedules_and_dispatcher_source_are_preserved(self):
         workflow = (ROOT / '.github/workflows/daily.yml').read_text()
         self.assertEqual(re.findall(r"cron: '([^']+)'", workflow), ['47 20 * * *', '37 */4 * * *'])  # fast fallback every 4h (owner, 2026-10-11)
+        config = (ROOT / 'workers/cron-dispatch/wrangler.toml').read_text()
+        self.assertIn('crons = ["7 */2 * * *"]', config)
+        self.assertNotIn('*/5', config)
         for name, digest in (
             ('workers/cron-dispatch/index.js', '7494fbfa472973a8702bdad4112b97235edc5cffda15b23100d751d741c120ee'),
-            ('workers/cron-dispatch/wrangler.toml', 'ffa75e90aa34c09fc9d0b5f1fda033113df65c68adc6218c4720f7ea2bc6cf30'),
+            ('workers/cron-dispatch/wrangler.toml', '05d65286ca71bd8a7dadbeaafee5e75983d335b538063792c74fe98bf44085a9'),
         ):
             self.assertEqual(hashlib.sha256((ROOT / name).read_bytes()).hexdigest(), digest)
 

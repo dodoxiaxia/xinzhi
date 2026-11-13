@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('assert'),fs=require('fs'),vm=require('vm');
 const source=fs.readFileSync('workers/cron-dispatch/index.js','utf8');
+const toml=fs.readFileSync('workers/cron-dispatch/wrangler.toml','utf8');
 const pending='https://learn.dryz.info/api/fulltext-pending';
 const base='https://api.github.com/repos/dodoxiaxia/xinzhi/actions/workflows/fulltext.yml';
 async function harness(options={}) {
@@ -20,6 +21,8 @@ async function harness(options={}) {
  return {calls,logs,context,env};
 }
 (async()=>{
+ assert(toml.includes('crons = ["7 */2 * * *"]'));
+ assert(!toml.includes('*/5'));
  let h=await harness({pending:false});assert.equal(h.calls.length,1);assert(h.logs.join('').includes('queue_empty'));
  h=await harness({active:true});assert.equal(h.calls.length,2);assert(h.logs.join('').includes('workflow_active'));
  h=await harness();assert.equal(h.calls.length,3);assert(h.logs.join('').includes('dispatched'));
