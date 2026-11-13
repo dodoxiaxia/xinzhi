@@ -229,6 +229,97 @@ async function run() {
   h.values.set('library:attempt:' + paused, JSON.stringify({paused:true}));
   assert.equal(await claim(h), null, 'paused DOI cannot be claimed by fallback after conversion');
   assert.equal(stored(h, key(paused)).reason, 'queue_unclaimed', 'paused DOI still undergoes stale conversion');
+  const fs = require('fs'), vm = require('vm');
+  const tierContext = {globalThis:{}};
+  vm.runInNewContext(fs.readFileSync('src/app/journal-tiers.js','utf8'), tierContext);
+  const tierApi = tierContext.globalThis.XINZHI_JOURNAL_TIERS;
+  const match = fs.readFileSync('edge/_worker.js','utf8').match(/const MACHINE_JOURNAL_TIERS = (\{[\s\S]*?\n\});/);
+  assert(match, 'embedded tier literal exists');
+  const embedded = new Function('return (' + match[1] + ')')();
+  for (const tier of ['flagship','cardioMain','cardioSub']) {
+    const names = values => [...new Set(Array.from(values, tierApi.normalizeJournalName))].sort();
+    assert.deepEqual(names(embedded[tier]), names(tierApi.namesInTier(tier)), 'tier drift: ' + tier);
+  }
+  async function backlog(on = true, vars = {}) {
+    const clock = {now:Date.parse('2026-11-14T04:00:00Z')};
+    const b = await create({clock});
+    await claim(b, dsh, 'to-download');
+    if (on) b.env.STALE_QUEUED_FALLBACK_ENABLED = 'true';
+    Object.assign(b.env, vars);
+    const rows = [];
+    const journals = ['plain', ' Heart ', 'Circulation Research', '  THE   LANCET  '];
+    for (let i=0;i<26;i++) {
+      const oa = i % 3 === 0, rank = i % 4;
+      const doi = (oa ? '10.1371/' : '10.1000/') + 'budget-' + String(i).padStart(2,'0');
+      const createdAt = clock.now - 8*HOUR + Math.floor(i/2)*1000;
+      seedJob(b, doi, 'queued', createdAt);
+      const record = stored(b, 'library:paper:' + doi); record.paper.journal = journals[rank];
+      b.values.set('library:paper:' + doi, JSON.stringify(record));
+      rows.push({doi,oa,rank,createdAt});
+    }
+    rows.sort((a,b) => Number(b.oa)-Number(a.oa) || b.rank-a.rank || a.createdAt-b.createdAt || a.doi.localeCompare(b.doi));
+    return {b,clock,expected:rows.map(r=>r.doi)};
+  }
+  const windowKey = (clock, minutes=10) => 'library:stale-fallback-window:' + Math.floor(clock.now/(minutes*60000));
+  {
+    const {b,clock,expected} = await backlog();
+    const ordered = [];
+    for (let window=0;window<6;window++) {
+      const before = b.writes.length, reads = b.reads.length;
+      await list(b, 'to-download');
+      const moved = b.writes.slice(before).filter(w=>w.key.startsWith('library:muse-job:') && JSON.parse(w.value).reason === 'queue_unclaimed');
+      ordered.push(...moved.map(w=>JSON.parse(w.value).doi));
+      assert.equal(moved.length, Math.min(5,26-window*5));
+      const paperReads = b.reads.slice(reads).filter(r=>r.key.startsWith('library:paper:'));
+      assert.equal(new Set(paperReads.map(r=>r.key)).size,paperReads.length,'each candidate paper read once per sweep');
+      assert.equal(stored(b,windowKey(clock)),moved.length);
+      assert.equal(b.writes.find(w=>w.key===windowKey(clock)).opts.expirationTtl,1200);
+      // Repeated list requests must preserve the exhausted budget.
+      await list(b);
+      // Public lists hydrate response records; isolate sweep reads for this assertion.
+      const sweepReads = b.reads.length;
+      await vm.runInContext('machineStaleQueuedSweep', b.context)(b.env, stored(b,INDEX), []);
+      assert(!b.reads.slice(sweepReads).some(x=>x.key.startsWith('library:muse-job:')),'exhausted window reads no task records');
+      assert.equal(stored(b,windowKey(clock)),moved.length);
+      if (window===0) { await claim(b); await list(b); assert.equal(stored(b,windowKey(clock)),5); }
+      clock.now += 10*60000;
+    }
+    assert.deepEqual(ordered,expected,'exact priority order across windows');
+    assert.equal(new Set(ordered).size,26,'no duplicate transition');
+    const reads=b.reads.length;
+    await vm.runInContext('machineStaleQueuedSweep',b.context)(b.env,stored(b,INDEX),[]);
+    assert.equal(b.reads.length,reads,'no candidates costs no counter read');
+  }
+  for (const value of [undefined,'false']) {
+    const {b} = await backlog(false);
+    if (value) b.env.STALE_QUEUED_FALLBACK_ENABLED=value;
+    const before=new Map(b.values), reads=b.reads.length, writes=b.writes.length;
+    assert.equal(await vm.runInContext('machineStaleQueuedSweep',b.context)(b.env,stored(b,INDEX),[]),0);
+    assert.deepEqual(b.values,before,'disabled backlog is byte-identical');
+    assert.equal(b.reads.length,reads); assert.equal(b.writes.length,writes);
+  }
+  {
+    const {b,clock} = await backlog();
+    const put = b.env.QL_KV.put;
+    b.env.QL_KV.put = async function(k,...args) {
+      if (k===windowKey(clock)) throw new Error('synthetic counter failure');
+      return put.call(this,k,...args);
+    };
+    await list(b);
+    assert.equal([...b.values.entries()].filter(([k,v])=>k.startsWith('library:muse-job:') && JSON.parse(v).reason==='queue_unclaimed').length,5,'counter write failure does not break conversion');
+  }
+  for (const value of ['0','26','abc','25']) {
+    const {b,clock} = await backlog(true,{STALE_QUEUED_FALLBACK_MAX_PER_WINDOW:value});
+    await list(b);
+    assert.equal(stored(b,windowKey(clock)),value==='25'?25:5,'max config '+value);
+  }
+  for (const value of ['4','61','x','5','60']) {
+    const {b,clock} = await backlog(true,{STALE_QUEUED_FALLBACK_WINDOW_MINUTES:value});
+    await list(b);
+    const minutes=['5','60'].includes(value)?Number(value):10;
+    assert.equal(stored(b,windowKey(clock,minutes)),5,'window config '+value);
+    assert.equal(b.writes.find(w=>w.key===windowKey(clock,minutes)).opts.expirationTtl,minutes*120);
+  }
   console.log('stale queued fallback tests passed');
 }
 module.exports = {run};

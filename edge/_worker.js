@@ -3588,13 +3588,34 @@ const MACHINE_OA_DOI_HINTS = [
   ['10.1016/j.jacadv.', 'JACC Advances'], ['10.1016/j.jaccas.', 'JACC Case Reports'],
   ['10.1253/circrep.', 'Circulation Reports']
 ];
+// Mirrors src/app/journal-tiers.js, including suggested names; the 'ai' tier is deliberately not ranked.
+const MACHINE_JOURNAL_TIERS = {
+  flagship:["New England Journal of Medicine", "The Lancet", "JAMA", "The BMJ", "Science", "Nature"],
+  cardioMain:["Circulation", "JACC", "JAMA Cardiology", "European Heart Journal", "Nature Medicine", "Nature Cardiovascular Research", "Nature Reviews Cardiology", "Circulation Research"],
+  cardioSub:["Circulation: Cardiovascular Interventions", "Circulation: Heart Failure", "Circulation: Genomic and Precision Medicine", "Circulation: Cardiovascular Imaging", "Circulation: Cardiovascular Quality and Outcomes", "JACC: Case Reports", "JACC: Cardiovascular Interventions", "JACC: Advances", "JACC: Heart Failure", "JACC: Cardiovascular Imaging", "JACC: Clinical Electrophysiology", "JACC Asia", "JACC: Basic to Translational Science", "European Heart Journal - Cardiovascular Imaging", "European Heart Journal - Cardiovascular Pharmacotherapy", "European Heart Journal Supplements", "Heart Rhythm", "Heart Rhythm O2", "Journal of the American Heart Association", "Heart", "Europace", "European Journal of Heart Failure", "Journal of Cardiovascular Electrophysiology", "Cardiovascular Research", "Hypertension", "Arteriosclerosis, Thrombosis, and Vascular Biology", "Pacing and Clinical Electrophysiology", "npj Cardiovascular Health", "American Heart Journal", "Journal of Arrhythmia", "中华心血管病杂志"]
+};
+function machineNormalizeJournalName(s) {
+  return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+function machineJournalRank(journal) {
+  const name = machineNormalizeJournalName(journal);
+  for (const [tier, rank] of [['flagship',3],['cardioMain',2],['cardioSub',1]]) {
+    if (MACHINE_JOURNAL_TIERS[tier].some(n => machineNormalizeJournalName(n) === name)) return rank;
+  }
+  return 0;
+}
 // One request reads at most this many task records for the sweep and converts at most this many tasks.
 const STALE_QUEUED_READ_MAX = 60, STALE_QUEUED_MOVE_MAX = 25;
 function machineStaleQueuedConfig(env) {
   if (!env || env.STALE_QUEUED_FALLBACK_ENABLED !== 'true') return {on:false,hours:STALE_QUEUED_HOURS_DEFAULT};
   const raw = typeof env.STALE_QUEUED_FALLBACK_HOURS === 'string' ? env.STALE_QUEUED_FALLBACK_HOURS.trim() : '';
   const hours = /^[0-9]{1,3}$/.test(raw) && Number(raw) >= 1 && Number(raw) <= STALE_QUEUED_HOURS_MAX ? Number(raw) : STALE_QUEUED_HOURS_DEFAULT;
-  return {on:true,hours};
+  const integer = (value, min, max, fallback) => {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    return /^[0-9]{1,3}$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : fallback;
+  };
+  return {on:true,hours,maxPerWindow:integer(env.STALE_QUEUED_FALLBACK_MAX_PER_WINDOW,1,25,5),
+    windowMinutes:integer(env.STALE_QUEUED_FALLBACK_WINDOW_MINUTES,5,60,10)};
 }
 // "attempts = 0": nobody ever held this task. The record carries no claimant, claim time, soft failure, return or earlier failure.
 function machineNeverClaimed(job) {
@@ -3618,31 +3639,48 @@ async function machineStaleQueuedSweep(env, doc, changes) {
     if (!cfg.on || !doc || !doc.ready) return 0;
     const now = Date.now(), limitMs = cfg.hours * 3600000;
     const candidates = Object.entries(doc.entries).filter(([, e]) => e.s === 'queued' && e.c > 0 && now - e.c >= limitMs).sort(museIndexOrder);
-    let reads = 0;
-    for (const [doi, entry] of candidates) {
-      if (reads >= STALE_QUEUED_READ_MAX || moved >= STALE_QUEUED_MOVE_MAX) break;
-      reads++;
-      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-      const actual = museIndexEntry(job);
-      if (!museIndexSame(actual, entry)) {
-        changes.push({doi,entry:actual});
-        if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
-      }
-      // The record wins: re-check everything on the record itself before touching it.
-      if (!job || !machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) continue;
+    if (!candidates.length) return 0;
+    const windowKey = 'library:stale-fallback-window:' + Math.floor(now / (cfg.windowMinutes * 60000));
+    const counter = await libraryGet(env.QL_KV, windowKey);
+    const used = Number.isInteger(counter) && counter >= 0 ? counter : 0;
+    const limit = Math.min(cfg.maxPerWindow - used, STALE_QUEUED_MOVE_MAX);
+    if (limit <= 0) return 0;
+    const ranked = [];
+    for (const [doi, entry] of candidates.slice(0, STALE_QUEUED_READ_MAX)) {
       let journal = '';
       try {
-        const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
-        const paper = libraryPaper(record, doi);
+        const paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
         journal = paper && paper.journal || '';
       } catch { journal = ''; }
       const openAccess = MACHINE_OA_DOI_HINTS.some(([prefix]) => doi.toLowerCase().startsWith(prefix)) ? 'yes' : 'unknown';
-      const next = {...job,state:'failed',reason:STALE_QUEUED_REASON,updatedAt:now,
-        autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,journal,openAccess,openAccessBasis:openAccess === 'yes' ? 'doi_prefix' : '',reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
-      await musePut(env, next, {indexChanges:changes});
-      if (job.queueKey) await museDelete(env, job.queueKey);
-      doc.entries[doi] = museIndexEntry(next);
-      moved++;
+      ranked.push({doi,entry,journal,openAccess,rank:machineJournalRank(journal)});
+    }
+    ranked.sort((a,b) => Number(b.openAccess === 'yes') - Number(a.openAccess === 'yes') || b.rank - a.rank || museIndexOrder([a.doi,a.entry],[b.doi,b.entry]));
+    let reads = 0;
+    try {
+      for (const {doi, entry, journal, openAccess} of ranked) {
+        if (reads >= STALE_QUEUED_READ_MAX || moved >= limit) break;
+        reads++;
+        const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+        const actual = museIndexEntry(job);
+        if (!museIndexSame(actual, entry)) {
+          changes.push({doi,entry:actual});
+          if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
+        }
+        // The record wins: re-check everything on the record itself before touching it.
+        if (!job || !machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) continue;
+        const next = {...job,state:'failed',reason:STALE_QUEUED_REASON,updatedAt:now,
+          autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,journal,openAccess,openAccessBasis:openAccess === 'yes' ? 'doi_prefix' : '',reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
+        await musePut(env, next, {indexChanges:changes});
+        if (job.queueKey) await museDelete(env, job.queueKey);
+        doc.entries[doi] = museIndexEntry(next);
+        moved++;
+      }
+    } finally {
+      // KV is eventually consistent: concurrent requests may slightly overshoot this budget.
+      if (moved > 0) try {
+        await libraryPut(env.QL_KV, windowKey, JSON.stringify(used + moved), {expirationTtl:cfg.windowMinutes * 60 * 2});
+      } catch { /* counter persistence must never break the request */ }
     }
   } catch { /* the sweep is best effort; the next request tries again */ }
   return moved;
