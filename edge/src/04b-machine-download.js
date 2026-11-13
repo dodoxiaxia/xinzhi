@@ -620,6 +620,7 @@ async function machineClaimQueued(env, caller) {
         if (job.queueKey) await museDelete(env, job.queueKey);
         continue;
       }
+      if (scope.action === 'uncertain') continue;
       const now = Date.now();
       const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
       await musePut(env, claimed, {indexChanges:changes});
@@ -668,6 +669,7 @@ async function machineClaimFailed(env, caller) {
         if (job.queueKey) await museDelete(env, job.queueKey);
         continue;
       }
+      if (scope && scope.action === 'uncertain') continue;
       await museOwnerGuard(env, doi);
       const now = Date.now();
       // The failure that made this task claimable is history, not the state of the new lease.

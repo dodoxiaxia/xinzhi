@@ -2,6 +2,7 @@ import contextlib
 import datetime
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -14,12 +15,23 @@ import merge_candidates  # noqa: E402
 from scope_filter import scope_decision  # noqa: E402
 
 FIXTURES_PATH = Path(__file__).resolve().parent / 'fixtures' / 'scope_filter_cases.json'
+GOLD_PATH = Path(__file__).resolve().parent / 'fixtures' / 'scope_filter_sample_gold.json'
+
+# The JAMA "Supplemental Online Content" record already hidden in PR #123 is not in must_keep.
+
+def _apply_intake_ai_frontier(paper):
+    out = dict(paper)
+    if out.get('journal') in ('OpenAI News', 'Nature Machine Intelligence') and not re.search(
+        r'clinical|medical|health|patient|cardiac|cardiovasc', out.get('title', ''), re.I
+    ):
+        out['category'] = 'AI前沿'
+    return out
 
 
 class ScopeFilterFixtureTests(unittest.TestCase):
     def test_shared_fixtures(self):
         cases = json.loads(FIXTURES_PATH.read_text(encoding='utf-8'))
-        self.assertGreaterEqual(len(cases), 13)
+        self.assertGreaterEqual(len(cases), 25)
         for case in cases:
             with self.subTest(id=case['id']):
                 got = scope_decision(case['paper'])
@@ -27,8 +39,8 @@ class ScopeFilterFixtureTests(unittest.TestCase):
                 self.assertEqual(got['action'], case['action'], case.get('note', ''))
                 self.assertEqual(got['reason'], case['reason'], case.get('note', ''))
                 self.assertIsInstance(got['detail'], str)
-                if case['action'] == 'exclude':
-                    self.assertTrue(got['detail'].strip())
+                if case['action'] in ('exclude', 'uncertain'):
+                    self.assertTrue(got['detail'].strip(), case.get('note', ''))
 
 
 class ScopeFilterFieldPriorityTests(unittest.TestCase):
@@ -39,15 +51,15 @@ class ScopeFilterFieldPriorityTests(unittest.TestCase):
                 self.assertEqual(got['action'], 'keep')
                 self.assertIsNone(got['reason'])
 
-    def test_ai_frontier_category_alone_is_not_medical_ai(self):
+    def test_ai_frontier_category_keeps_even_with_oncology_title(self):
         paper = {
             'title': 'Evaluation of oncology chemotherapy regimens',
             'journal': 'Nature Machine Intelligence',
             'category': 'AI前沿',
         }
         got = scope_decision(paper)
-        self.assertEqual(got['action'], 'exclude')
-        self.assertEqual(got['reason'], 'unrelated_to_cv_or_medical_ai')
+        self.assertEqual(got['action'], 'keep')
+        self.assertIsNone(got['reason'])
 
     def test_ai_medical_category_keeps_cancer_paper(self):
         paper = {
@@ -73,6 +85,13 @@ class ScopeFilterFieldPriorityTests(unittest.TestCase):
         }
         self.assertEqual(scope_decision(both)['action'], 'keep')
 
+        non_cv_both = {
+            'title': 'Translational signaling in patients and mice',
+            'journal': 'Science Translational Medicine',
+            'meshTerms': [{'name': 'Humans'}, {'term': 'Mice'}],
+        }
+        self.assertNotEqual(scope_decision(non_cv_both)['action'], 'exclude')
+
     def test_false_positive_guards(self):
         # 100 mL must not look like ML (machine learning)
         ml_vol = {
@@ -87,7 +106,9 @@ class ScopeFilterFieldPriorityTests(unittest.TestCase):
             'title': 'Tumor necrosis factor inhibition in severe rheumatoid arthritis',
             'journal': 'New England Journal of Medicine',
         }
-        self.assertEqual(scope_decision(tnf)['action'], 'keep')
+        tnf_got = scope_decision(tnf)
+        self.assertEqual(tnf_got['action'], 'uncertain')
+        self.assertEqual(tnf_got['reason'], 'uncertain_scope')
 
         # In vitro fertilization must not trigger basic_research exclude
         ivf = {
@@ -96,7 +117,7 @@ class ScopeFilterFieldPriorityTests(unittest.TestCase):
         }
         self.assertEqual(scope_decision(ivf)['action'], 'keep')
 
-        # Mechanism/pathway/signaling/in vivo/translational alone stay keep
+        # Mechanism/pathway/signaling/in vivo/translational alone stay keep for CV
         vague = {
             'title': 'In vivo translational signaling pathways in human myocardial remodeling',
             'journal': 'European Heart Journal',
@@ -113,8 +134,39 @@ class ScopeFilterFieldPriorityTests(unittest.TestCase):
         self.assertEqual(scope_decision(rct)['action'], 'keep')
 
 
+class ScopeFilterGoldCalibrationTests(unittest.TestCase):
+    def test_gold_must_keep_zero_false_excludes_and_report_hide_recall(self):
+        gold = json.loads(GOLD_PATH.read_text(encoding='utf-8'))
+        must_keep = gold['must_keep']
+        hide89 = gold['hide89']
+        hide91_extra = gold['hide91_extra']
+
+        false_excludes = []
+        for item in must_keep:
+            dec = scope_decision(_apply_intake_ai_frontier(item))
+            if dec['action'] == 'exclude':
+                false_excludes.append((item['id'], item.get('journal', ''), item.get('title', ''), dec))
+
+        self.assertEqual(false_excludes, [], f'Unexpected false excludes on must_keep: {false_excludes[:5]}')
+
+        hide89_excluded = sum(1 for item in hide89 if scope_decision(_apply_intake_ai_frontier(item))['action'] == 'exclude')
+        hide91_decisions = {
+            item['id']: scope_decision(_apply_intake_ai_frontier(item))
+            for item in hide91_extra
+        }
+        self.assertEqual(hide91_decisions['92c33d10a3cfd92f']['action'], 'exclude')
+        self.assertEqual(hide91_decisions['92c33d10a3cfd92f']['reason'], 'not_article')
+        self.assertNotEqual(hide91_decisions['0fe528d72fd56af2']['action'], 'keep')
+        print(
+            f"[scope_filter gold] must_keep={len(must_keep)}, false_excludes=0, "
+            f"hide89_recall={hide89_excluded}/{len(hide89)}, "
+            f"hide91_extra={{'0fe528d72fd56af2': {hide91_decisions['0fe528d72fd56af2']['action']}, "
+            f"'92c33d10a3cfd92f': {hide91_decisions['92c33d10a3cfd92f']['action']}/{hide91_decisions['92c33d10a3cfd92f']['reason']}}}"
+        )
+
+
 class ScopeFilterIntakeWireUpTests(unittest.TestCase):
-    def test_merge_candidates_filters_out_of_scope_and_records_count_only(self):
+    def test_merge_candidates_filters_out_of_scope_keeps_uncertain_and_records_count_only(self):
         today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -123,6 +175,7 @@ class ScopeFilterIntakeWireUpTests(unittest.TestCase):
                 'items': [
                     {'id': 'rss-1', 'title': 'Mouse model of atrial fibrosis', 'url': 'https://example.org/1', 'doi': '10.1000/mouse', 'journal': 'Heart', 'date': today, 'category': '心血管', 'summary': 'Induced in C57BL/6 mice.'},
                     {'id': 'rss-2', 'title': 'Catheter ablation for atrial fibrillation', 'url': 'https://example.org/2', 'doi': '10.1000/af', 'journal': 'Heart', 'date': today, 'category': '心血管', 'summary': 'Randomized trial in 300 patients.'},
+                    {'id': 'rss-3', 'title': 'Clinical perspectives on modern healthcare delivery', 'url': 'https://example.org/3', 'doi': '10.1000/unc', 'journal': 'JAMA', 'date': today, 'category': '综合医学', 'summary': ''},
                 ]
             }), encoding='utf-8')
             (root / 'data/pubmed.json').write_text(json.dumps({
@@ -138,12 +191,12 @@ class ScopeFilterIntakeWireUpTests(unittest.TestCase):
                     patch('subprocess.run'), contextlib.redirect_stdout(out):
                 merge_candidates.main()
             merged = json.loads((root / 'data/candidates.json').read_text(encoding='utf-8'))
-            self.assertEqual([item['id'] for item in merged['items']], ['rss-2'])
+            self.assertEqual([item['id'] for item in merged['items']], ['rss-2', 'rss-3'])
             self.assertEqual(merged['pubmedFallback']['excludedOutOfScope'], 2)
             self.assertNotIn('excludedScope', merged)
             self.assertIn('Merge excluded', out.getvalue())
 
-    def test_enrich_metadata_drops_newly_excluded_candidates_and_keeps_library(self):
+    def test_enrich_metadata_drops_newly_excluded_keeps_uncertain_and_library(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / 'data').mkdir()
@@ -152,6 +205,7 @@ class ScopeFilterIntakeWireUpTests(unittest.TestCase):
                 'items': [
                     {'id': 'c1', 'title': 'Adjuvant chemotherapy for early breast cancer', 'journal': 'JAMA Oncology', 'doi': '10.1000/onc'},
                     {'id': 'c2', 'title': 'Randomized trial of SGLT2 inhibition in heart failure', 'journal': 'NEJM', 'doi': '10.1000/hf'},
+                    {'id': 'c3', 'title': 'Clinical perspectives on modern healthcare delivery', 'journal': 'JAMA', 'doi': '10.1000/unc'},
                 ]
             }), encoding='utf-8')
             (root / 'data/library.json').write_text(json.dumps({
@@ -165,8 +219,8 @@ class ScopeFilterIntakeWireUpTests(unittest.TestCase):
                 enrich_metadata.main()
             cand = json.loads((root / 'data/candidates.json').read_text(encoding='utf-8'))
             lib = json.loads((root / 'data/library.json').read_text(encoding='utf-8'))
-            self.assertEqual([item['id'] for item in cand['items']], ['c2'])
-            self.assertEqual(cand['candidateCount'], 1)
+            self.assertEqual([item['id'] for item in cand['items']], ['c2', 'c3'])
+            self.assertEqual(cand['candidateCount'], 2)
             self.assertEqual(len(lib['papers']), 1)
             self.assertIn('Enrich dropped', out.getvalue())
 

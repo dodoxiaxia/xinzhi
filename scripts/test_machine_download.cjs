@@ -1122,7 +1122,7 @@ async function review(h, body) {
     assert.equal(got.action, item.action, item.id + ': ' + item.note);
     assert.equal(got.reason, item.reason, item.id + ': ' + item.note);
     assert.equal(typeof got.detail, 'string');
-    if (item.action === 'exclude') assert(got.detail.trim().length > 0, item.id + ' detail must be non-empty');
+    if (item.action === 'exclude' || item.action === 'uncertain') assert(got.detail.trim().length > 0, item.id + ' detail must be non-empty');
   }
 
   // ---- claim to-download skips basic research and removes it from index without consuming a lease
@@ -1178,6 +1178,57 @@ async function review(h, body) {
   assert.equal(fbScopeIdx.entries[oncDoi], undefined);
   const fbEmpty = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
   assert.equal(fbEmpty.task, null);
+
+  // ---- claim to-download skips uncertain job without modifying its state/queue/index and claims later keep job
+  h = await create();
+  const uncBase = Date.now();
+  const uncDoi = '10.1000/scope-uncertain-delivery';
+  const uncKeepDoi = '10.1000/scope-uncertain-later-keep';
+  const uncJob = putJob(h, uncDoi, 'queued', uncBase);
+  seedPaper(h, uncDoi, 'Clinical perspectives on modern healthcare delivery', 'manual_needed', 'JAMA');
+  putJob(h, uncKeepDoi, 'queued', uncBase + 10);
+  seedPaper(h, uncKeepDoi, 'Empagliflozin in patients with HFrEF: a randomized trial', 'manual_needed', 'Heart');
+  await reindex(h);
+  const uncClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  assert.equal(uncClaim.task.doi, uncKeepDoi);
+  const uncAfter = stored(h, 'library:muse-job:' + uncDoi);
+  assert.equal(uncAfter.state, 'queued');
+  assert.equal(uncAfter.reason, undefined);
+  assert.equal(uncAfter.scopeExcluded, undefined);
+  assert.equal(uncAfter.leaseId, undefined);
+  assert.equal(h.values.has(uncJob.queueKey), true);
+  const uncIdx = stored(h, 'library:machine-index:v1');
+  assert.equal(uncIdx.entries[uncDoi] && uncIdx.entries[uncDoi].s, 'queued');
+  const uncToDownloadList = await (await call(h, '/api/machine/tasks?state=to-download', reader, null, {method:'GET'})).json();
+  const uncListed = uncToDownloadList.tasks.find(t => t.doi === uncDoi);
+  assert(uncListed && uncListed.state === 'to-download' && uncListed.claimable === true);
+  const uncFailedList = await (await call(h, '/api/machine/tasks?state=failed-awaiting-fallback', reader, null, {method:'GET'})).json();
+  assert(!uncFailedList.tasks.some(t => t.doi === uncDoi));
+  const uncSecondClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+  assert.equal(uncSecondClaim.task, null);
+  assert.equal(stored(h, 'library:muse-job:' + uncDoi).state, 'queued');
+
+  // ---- claim failed-awaiting-fallback skips uncertain job without modifying its state/reason/index and claims later keep job
+  h = await create();
+  const fbUncBase = Date.now();
+  const fbUncDoi = '10.1000/scope-fb-uncertain';
+  const fbUncKeepDoi = '10.1000/scope-fb-uncertain-keep';
+  putJob(h, fbUncDoi, 'failed', fbUncBase, {reason:'not_oa'});
+  seedPaper(h, fbUncDoi, 'Clinical perspectives on modern healthcare delivery', 'manual_needed', 'JAMA');
+  putJob(h, fbUncKeepDoi, 'failed', fbUncBase + 10, {reason:'not_oa'});
+  seedPaper(h, fbUncKeepDoi, 'Pulsed field ablation for atrial fibrillation: a randomized trial', 'manual_needed', 'New England Journal of Medicine');
+  await reindex(h);
+  const fbUncClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+  assert.equal(fbUncClaim.task.doi, fbUncKeepDoi);
+  const fbUncAfter = stored(h, 'library:muse-job:' + fbUncDoi);
+  assert.equal(fbUncAfter.state, 'failed');
+  assert.equal(fbUncAfter.reason, 'not_oa');
+  assert.equal(fbUncAfter.scopeExcluded, undefined);
+  assert.equal(fbUncAfter.leaseId, undefined);
+  const fbUncIdx = stored(h, 'library:machine-index:v1');
+  assert.equal(fbUncIdx.entries[fbUncDoi] && fbUncIdx.entries[fbUncDoi].s, 'failed');
+  const fbUncEmpty = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+  assert.equal(fbUncEmpty.task, null);
 
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();

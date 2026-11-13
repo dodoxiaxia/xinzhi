@@ -107,9 +107,9 @@
       "clinicalTier": "顶级综合与科学",
       "studyDesign": "队列研究"
     },
-    "action": "keep",
-    "reason": null,
-    "note": "General-medicine pneumonia cohort in JAMA is uncertain and must be kept"
+    "action": "exclude",
+    "reason": "unrelated_to_cv_or_medical_ai",
+    "note": "Clear non-CV, non-AI pneumonia cohort in JAMA is excluded as unrelated other-specialty clinical"
   },
   {
     "id": "uncertain_ai_protein_paper",
@@ -122,7 +122,7 @@
     },
     "action": "keep",
     "reason": null,
-    "note": "Non-clinical AI protein paper is uncertain rather than out-of-scope oncology and must be kept"
+    "note": "General AI / diffusion language models paper must be kept"
   },
   {
     "id": "uncertain_translational_mesh_humans_and_mice",
@@ -243,8 +243,130 @@
       "title": "Clinical perspectives on modern healthcare delivery",
       "journal": "JAMA"
     },
+    "action": "uncertain",
+    "reason": "uncertain_scope",
+    "note": "Claim-time ambiguous paper with only title and journal becomes uncertain (kept at intake, skipped at machine claim)"
+  },
+  {
+    "id": "ai_frontier_oncology_title_keep",
+    "paper": {
+      "title": "Evaluation of oncology chemotherapy regimens",
+      "journal": "Nature Machine Intelligence",
+      "category": "AI前沿",
+      "clinicalTier": "前沿大模型与科技"
+    },
     "action": "keep",
     "reason": null,
-    "note": "Claim-time ambiguous paper with only title and journal must be conservatively kept"
+    "note": "Category AI前沿 and Nature Machine Intelligence must be kept even when title mentions oncology"
+  },
+  {
+    "id": "ai_explainable_survey",
+    "paper": {
+      "title": "Explaining explainability: A comprehensive survey on explainable artificial intelligence and relevant industry applications",
+      "journal": "Intelligent Systems with Applications"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Explainable-AI survey is general AI and must be kept"
+  },
+  {
+    "id": "ai_agentic_architecture",
+    "paper": {
+      "title": "A brain-inspired multi-agent and agentic architecture to improve planning with LLMs",
+      "journal": "Nature Communications"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Agentic / multi-agent architecture must be kept"
+  },
+  {
+    "id": "ai_llm_safety_eval",
+    "paper": {
+      "title": "Benchmarking large language models on safety risks in scientific laboratories",
+      "journal": "Nature Machine Intelligence"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "LLM safety evaluation must be kept"
+  },
+  {
+    "id": "cv_pulmonary_artery_sarcoma",
+    "paper": {
+      "title": "Clinical Features of Primary Pulmonary Artery Sarcoma: A Systematic Review and Pooled Analysis",
+      "journal": "Archivos de Bronconeumología"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Primary pulmonary artery sarcoma with title+journal only is cardiovascular clinical literature and must be kept"
+  },
+  {
+    "id": "ai_prompt_engineering_ehr_cancer",
+    "paper": {
+      "title": "Clinician expertise and prompt engineering enhance cancer information extraction in electronic health records",
+      "journal": "Communications Medicine"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Prompt engineering for EHR cancer extraction is medical AI and must not be killed by oncology exclude"
+  },
+  {
+    "id": "not_article_jacc_contents",
+    "paper": {
+      "title": "Contents",
+      "journal": "JACC"
+    },
+    "action": "exclude",
+    "reason": "not_article",
+    "note": "JACC table of contents must be excluded as not_article even in a CV journal"
+  },
+  {
+    "id": "not_article_chinese_issue_toc",
+    "paper": {
+      "title": "中华心血管病杂志 2024 年 6 月第 52 卷第 6 期",
+      "journal": "Unknown"
+    },
+    "action": "exclude",
+    "reason": "not_article",
+    "note": "Chinese journal issue TOC title must be excluded as not_article"
+  },
+  {
+    "id": "not_article_moesm_supplement",
+    "paper": {
+      "title": "42256_2026_1266_MOESM2_ESM",
+      "journal": "Nature Machine Intelligence"
+    },
+    "action": "exclude",
+    "reason": "not_article",
+    "note": "MOESM supplement filename must be excluded as not_article even in Nature Machine Intelligence"
+  },
+  {
+    "id": "not_article_jama_supplemental_online_content",
+    "paper": {
+      "title": "Supplemental Online Content: Nonauthor Collaborators *First name, last name, and suffix (if applicable) are required and will appear in PubMed.",
+      "journal": "JAMA"
+    },
+    "action": "exclude",
+    "reason": "not_article",
+    "note": "Supplemental Online Content boilerplate must be excluded as not_article"
+  },
+  {
+    "id": "cv_real_article_with_supplementation_word",
+    "paper": {
+      "title": "Oral Potassium Supplementation Lowers Clinic Blood Pressure in Untreated Primary Hypertension-Systematic Review and Meta-Analysis of Randomized Trials.",
+      "journal": "Journal of the American Heart Association"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Real CV article mentioning supplementation must not be excluded by not_article rule"
+  },
+  {
+    "id": "ai_chinese_header_with_real_title",
+    "paper": {
+      "title": "中华胸部外科电子杂志 2025 年 5 月第 12 卷第 2 期 Chin J Thorac Surg（Electronic Edition），May 2025，Vol. 12，No. 2 人工智能驱动食管癌新辅助精准治疗",
+      "journal": "中华胸部外科电子杂志"
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Real Chinese AI article with embedded issue header must not be excluded as TOC"
   }
 ]
