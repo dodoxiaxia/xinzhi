@@ -1713,14 +1713,13 @@ function museSupersededKey(doi, taskId) {
   return MUSE_SUPERSEDED_PREFIX + doi + ':' + taskId;
 }
 function museShouldSupersedePrevious(job) {
-  // Keep a snapshot of a failed-awaiting-fallback (or previously failed, then claimed) task so it can be
-  // archived with supersededBy when the new task for the same DOI becomes done. A clean claim/upload is not archived.
+  // Each DOI has one library:muse-job:{doi} key. museIntake overwrites it, so a failed/review/not-done
+  // record must be archived first. A clean in-lease claim that is just uploading the PDF is the same
+  // piece of work, not a replacement, and is not archived.
   if (!job || typeof job.id !== 'string' || !job.id) return false;
-  if (['available','abandoned','verifying'].includes(job.state)) return false;
-  if (['failed','login_required','review'].includes(job.state)) return true;
-  if (typeof job.previousReason === 'string' && job.previousReason) return true;
-  if (['lease_expired','queue_expired','not_oa','han_login','han_quota','source_blocked','wrong_paper','other'].includes(job.reason)) return true;
-  return ['queued','running','uploading'].includes(job.state) && museExpired(job);
+  if (job.state === 'available' || job.state === 'abandoned') return false;
+  if (['running','uploading'].includes(job.state) && !job.previousReason && !job.supersededFrom && !job.supersedes && !museExpired(job)) return false;
+  return true;
 }
 function museSupersedeSnapshot(job) {
   const skip = new Set(['candidateKey','replace','replaceRejected']);
@@ -1731,15 +1730,21 @@ function museSupersedeSnapshot(job) {
 function museSupersededFrom(snapshot) {
   if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id) return null;
   const reason = snapshot.reason || snapshot.previousReason || snapshot.verificationReason || '';
-  const prior = snapshot.supersedes && snapshot.supersedes.id !== snapshot.id ? museSupersededFrom(snapshot.supersedes) : null;
+  let prior = null;
+  if (snapshot.supersededFrom && typeof snapshot.supersededFrom.taskId === 'string' && snapshot.supersededFrom.taskId && snapshot.supersededFrom.taskId !== snapshot.id) {
+    prior = snapshot.supersededFrom;
+  } else if (snapshot.supersedes && snapshot.supersedes.id && snapshot.supersedes.id !== snapshot.id) {
+    prior = museSupersededFrom(snapshot.supersedes);
+  }
   return {taskId:snapshot.id,...(reason ? {reason} : {}),...(snapshot.state ? {previousState:snapshot.state} : {}),...(prior ? {supersedes:prior} : {})};
 }
-async function museArchiveSuperseded(env, snapshot, done) {
-  if (!snapshot || !done || snapshot.id === done.id) return null;
+async function museArchiveSuperseded(env, previous, newId, doi, now) {
+  if (!previous || !newId || !doi || previous.id === newId) return null;
+  const snapshot = museSupersedeSnapshot(previous);
   const pointer = museSupersededFrom(snapshot);
   if (!pointer) return null;
-  const record = {...snapshot,supersededBy:done.id,supersededAt:Date.now()};
-  await libraryPut(env.QL_KV, museSupersededKey(done.doi, snapshot.id), JSON.stringify(record));
+  const record = {...snapshot,supersededBy:newId,supersededAt:now};
+  await libraryPut(env.QL_KV, museSupersededKey(doi, snapshot.id), JSON.stringify(record));
   return pointer;
 }
 
@@ -1760,7 +1765,12 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && Number.isInteger(previous.softFailCount) && previous.softFailCount > 0) inherited.softFailCount = previous.softFailCount;
   if (previous && previous.lastSoftFailReason) inherited.lastSoftFailReason = previous.lastSoftFailReason;
   if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
-  if (previous && museShouldSupersedePrevious(previous)) inherited.supersedes = museSupersedeSnapshot(previous);
+  // Archive the old same-DOI record before overwriting library:muse-job:{doi}, so the previous task is
+  // not lost if this new one is still verifying or later fails review.
+  if (previous && museShouldSupersedePrevious(previous)) {
+    const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
+    if (pointer) inherited.supersededFrom = pointer;
+  }
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
     leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
   await musePut(env,job);
@@ -2240,13 +2250,11 @@ async function handleMuseReview(request, env) {
     await libraryStoredPdf(env.QL_KV,saved);
     // Muse already stored this original in its Drive inbox; record it so the archive workflow does not upload it twice.
     if (job.driveFileId) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + job.sha256,JSON.stringify({version:1,doi:job.doi,sha256:job.sha256,driveFileId:job.driveFileId,source:'muse',archivedAt:Date.now()}));
-    const {replace:replaced, supersedes, ...kept} = job;
+    const {replace:replaced, supersedes:_supersedes, ...kept} = job;
     const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes},
       ...(replaced ? {replacedFrom:{by:replaced.by,at:replaced.at,oldSha256:replaced.oldSha256,newSha256:replaced.newSha256,verifiedAt:Date.now()}} : {})};
-    // A new verified task for this DOI retires any previous failed-awaiting-fallback record: keep it in a side key
-    // with supersededBy, so it leaves the fallback list and cannot be claimed, but the audit trail stays.
-    const supersededFrom = await museArchiveSuperseded(env, supersedes, done);
-    if (supersededFrom) done.supersededFrom = supersededFrom;
+    // The superseded archive was written at museIntake, before this job overwrote library:muse-job:{doi}.
+    // Keep supersededFrom on the done record; do not look the old task up from that single key.
     await musePut(env,done); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
     return json({ok:true,job:musePublicJob(done),downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi),archive:{...libraryArchiveStatus(),sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}}});
   } catch (error) { return museError(error); }
@@ -3258,7 +3266,7 @@ function handleMachineProtocol(request, env) {
     softRetry:{reasons:MACHINE_SOFT_RETRY_REASONS,limit:MACHINE_SOFT_RETRY_LIMIT,
       note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
-      note:'同一 DOI 的新任务核验通过变成 done 时，若先前有失败待兜底（或从失败待兜底领走后尚未完成）的旧任务，会把旧记录写到上述键，带 supersededBy 为新 taskId，不设过期。旧任务不再出现在失败待兜底列表，也不能再被领取。完成记录可带 supersededFrom。旧客户端可忽略。'},
+      note:'每个 DOI 只有一把 library:muse-job:<doi>。museIntake 在覆盖这把键之前，若旧任务是 failed / review / 尚未 done（普通领取后上传除外），就把旧记录原样写到上述键，带 supersededBy 为新 taskId、supersededAt，以及原来的 reason / previousReason，不设过期。新任务立即带 supersededFrom。若新任务后来核验失败进入 review 再重新上传，链会接续（新归档指向刚被覆盖的任务，并嵌套更早的 supersededFrom）。旧任务不再出现在失败待兜底列表，也不能再被领取。旧客户端可忽略。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {

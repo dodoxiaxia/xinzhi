@@ -315,7 +315,7 @@ function handleMachineProtocol(request, env) {
     softRetry:{reasons:MACHINE_SOFT_RETRY_REASONS,limit:MACHINE_SOFT_RETRY_LIMIT,
       note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
-      note:'同一 DOI 的新任务核验通过变成 done 时，若先前有失败待兜底（或从失败待兜底领走后尚未完成）的旧任务，会把旧记录写到上述键，带 supersededBy 为新 taskId，不设过期。旧任务不再出现在失败待兜底列表，也不能再被领取。完成记录可带 supersededFrom。旧客户端可忽略。'},
+      note:'每个 DOI 只有一把 library:muse-job:<doi>。museIntake 在覆盖这把键之前，若旧任务是 failed / review / 尚未 done（普通领取后上传除外），就把旧记录原样写到上述键，带 supersededBy 为新 taskId、supersededAt，以及原来的 reason / previousReason，不设过期。新任务立即带 supersededFrom。若新任务后来核验失败进入 review 再重新上传，链会接续（新归档指向刚被覆盖的任务，并嵌套更早的 supersededFrom）。旧任务不再出现在失败待兜底列表，也不能再被领取。旧客户端可忽略。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
