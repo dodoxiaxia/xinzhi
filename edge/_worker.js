@@ -2199,15 +2199,22 @@ async function museIndexApply(env, changes) {
   if (!existing && !Object.keys(doc.entries).length) return;
   if (dirty) await museIndexWrite(env, doc);
 }
-// Apply, then read the index back and apply again what is still missing: a concurrent writer that read the document before
-// this write may have saved its own copy over it. Applying is idempotent, so a repeat is harmless. Returns how many entries
-// are still missing after the last round (0 = every entry is in the stored index). Cost: one read per round, plus the apply.
+// Apply, then read the index back and apply again what is not in the stored index as intended: a concurrent writer that read the
+// document before this write may have saved its own copy over it. Checked per change: an entry must be stored (unchanged or newer
+// than the change: a newer update from another request is not overwritten by a retry), a removal must be gone. Applying is
+// idempotent, so a repeat is harmless. Returns how many changes are still not in the stored index after the last round (0 = all
+// of them are). Cost: one read per round, plus the apply.
+function museIndexSettled(stored, change) {
+  const entry = stored && stored.entries[change.doi];
+  if (!change.entry) return !entry;
+  return !!entry && (museIndexSame(entry, change.entry) || entry.u > change.entry.u);
+}
 async function museIndexApplyVerified(env, changes, rounds = 3) {
   let pending = changes;
   for (let round = 0; round < rounds && pending.length; round++) {
     await museIndexApply(env, pending);
     const stored = await museIndexRead(env);
-    pending = pending.filter(change => change.entry && !(stored && stored.entries[change.doi]));
+    pending = pending.filter(change => !museIndexSettled(stored, change));
   }
   return pending.length;
 }
@@ -2251,7 +2258,8 @@ async function museIndexAuditChunk(env, cursor, repair) {
     cursor = listing.cursor;
   }
   let repaired = 0;
-  if (repair && changes.length) { await museIndexApplyVerified(env, changes); repaired = changes.length; }
+  // repaired counts only what the read-back found in the stored index; an unrepaired mismatch keeps the verify job red.
+  if (repair && changes.length) repaired = changes.length - await museIndexApplyVerified(env, changes);
   return {ready:true,phase:'jobs',done:false,cursor,repair,scanned,candidates,missing,stale,extra,repaired,indexed:Object.keys(doc.entries).length,orphans:0,orphanDois:[],papers:0};
 }
 // Scan one op-bounded slice of the job keys into the index and save the progress. The slice length is bounded by
@@ -2287,22 +2295,30 @@ async function museIndexBackfillChunk(env, current) {
   await museIndexWrite(env, latest);
   return latest;
 }
-// Self-healing: the queue pointers (library:muse-queue:<createdAt>:<task id>) list the waiting tasks by task id with a single
-// KV list operation, so a waiting task whose id is not in the index is found without scanning every job record. A batch that was
-// cut off before its index write (client timeout), a lost concurrent update or a replayed registration all leave exactly that gap.
-// At most MACHINE_INDEX_HEAL_MAX tasks are put back per run and a run happens at most every MACHINE_INDEX_HEAL_INTERVAL_MS per
-// isolate, so the worst case is 1 list + 2 reads per task healed + 2 index reads and 1 index write (about 84 operations). Only
-// waiting and verifying tasks have a pointer; the other states are still covered by the reindex escape hatch.
-// MACHINE_INDEX_SELF_HEAL=off turns it off.
+// Self-healing: the queue pointers (library:muse-queue:<createdAt>:<task id>) list the waiting tasks by task id with a few KV list
+// operations, so a waiting task whose id is not in the index is found without scanning every job record. A batch that was cut off
+// before its index write (client timeout), a lost concurrent update or a replayed registration all leave exactly that gap.
+// The pointers are read in key order (oldest first) in pages of MACHINE_INDEX_HEAL_PAGE, at most MACHINE_INDEX_HEAL_PAGES pages per
+// run; a run that does not reach the end (page budget or the per-run limit) continues from there next time, so a queue longer than
+// one page is covered over several runs. At most MACHINE_INDEX_HEAL_MAX tasks are put back per run and a run happens at most every
+// MACHINE_INDEX_HEAL_INTERVAL_MS per isolate, so the worst case is MACHINE_INDEX_HEAL_PAGES list operations + 2 reads per task
+// healed + 2 index reads per round and 1 index write per round (about 90 operations). Only waiting and verifying tasks have a
+// pointer; the other states are still covered by the reindex escape hatch.
+// MACHINE_INDEX_SELF_HEAL=off turns it off. A failure is logged with a fixed text (no error text, no key names) and tried again.
 const MACHINE_INDEX_HEAL_INTERVAL_MS = 60000;
 const MACHINE_INDEX_HEAL_MAX = 40;
+const MACHINE_INDEX_HEAL_PAGE = 1000;
+const MACHINE_INDEX_HEAL_PAGES = 5;
 const MACHINE_INDEX_HEAL_SEEN_MAX = 2000;
 const MACHINE_INDEX_POINTER_ID = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 let museIndexHealAt = 0;
+let museIndexHealCursor = '';
 // Pointers already judged not to need an entry (stale pointer, task replaced, record gone), so they are not re-read every run.
 const museIndexHealSeen = new Map();
+// Returns how many entries this run put into the stored index (checked by reading it back).
 async function museIndexHeal(env, doc) {
   const healed = [];
+  let repaired = 0, failed = false;
   try {
     if (env.MACHINE_INDEX_SELF_HEAL === 'off') return 0;
     const now = Date.now();
@@ -2310,29 +2326,37 @@ async function museIndexHeal(env, doc) {
     museIndexHealAt = now;
     if (museIndexHealSeen.size > MACHINE_INDEX_HEAL_SEEN_MAX) museIndexHealSeen.clear();
     const known = new Set(Object.values(doc.entries).map(entry => entry.i));
-    const listing = await machineListKeys(env, MUSE_QUEUE_PREFIX, '', 1000);
-    let examined = 0;
-    for (const listed of listing.keys) {
-      if (examined >= MACHINE_INDEX_HEAL_MAX) break;
-      const match = typeof listed.name === 'string' && listed.name.startsWith(MUSE_QUEUE_PREFIX) ? MACHINE_INDEX_POINTER_ID.exec(listed.name) : null;
-      if (!match || known.has(match[1]) || museIndexHealSeen.has(match[1])) continue;
-      examined++;
-      const id = match[1];
-      museIndexHealSeen.set(id, now);
-      const pointer = await libraryGet(env.QL_KV, listed.name);
-      const doi = pointer && typeof pointer.doi === 'string' ? libraryDoi(pointer.doi) : '';
-      if (!doi || pointer.id !== id || doc.entries[doi]) continue;
-      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-      const entry = job && job.id === id ? museIndexEntry(job) : null;
-      if (!entry) continue;
-      doc.entries[doi] = entry;
-      healed.push({doi,entry});
-      museIndexHealSeen.delete(id);
+    let cursor = museIndexHealCursor, examined = 0, stopped = false;
+    for (let page = 0; page < MACHINE_INDEX_HEAL_PAGES && examined < MACHINE_INDEX_HEAL_MAX; page++) {
+      const listing = await machineListKeys(env, MUSE_QUEUE_PREFIX, cursor, MACHINE_INDEX_HEAL_PAGE);
+      for (const listed of listing.keys) {
+        if (examined >= MACHINE_INDEX_HEAL_MAX) { stopped = true; break; }
+        const match = typeof listed.name === 'string' && listed.name.startsWith(MUSE_QUEUE_PREFIX) ? MACHINE_INDEX_POINTER_ID.exec(listed.name) : null;
+        if (!match || known.has(match[1]) || museIndexHealSeen.has(match[1])) continue;
+        examined++;
+        const id = match[1];
+        // Only a pointer that was read to the end is remembered as judged; a read that fails leaves it for the next run.
+        const pointer = await libraryGet(env.QL_KV, listed.name);
+        const doi = pointer && typeof pointer.doi === 'string' ? libraryDoi(pointer.doi) : '';
+        if (!doi || pointer.id !== id || doc.entries[doi]) { museIndexHealSeen.set(id, now); continue; }
+        const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+        const entry = job && job.id === id ? museIndexEntry(job) : null;
+        if (!entry) { museIndexHealSeen.set(id, now); continue; }
+        doc.entries[doi] = entry;
+        healed.push({doi,entry});
+      }
+      if (stopped) break;
+      if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { cursor = ''; break; }
+      cursor = listing.cursor;
     }
+    // Continue where this run stopped: the unfinished page again (known and judged pointers are skipped without a read), or the next page.
+    museIndexHealCursor = cursor;
     // museIndexApply merges into the latest stored copy, so entries written by other requests meanwhile are kept.
-    if (healed.length) await museIndexApplyVerified(env, healed);
-  } catch { /* healing is best effort; the next run tries again */ }
-  return healed.length;
+    if (healed.length) repaired = healed.length - await museIndexApplyVerified(env, healed);
+  } catch { failed = true; /* healing is best effort; the next run tries again */ }
+  if (failed) console.warn('machine index heal failed; next run retries (' + repaired + ' of ' + healed.length + ' repaired)');
+  else if (healed.length) console.log('machine index heal: ' + repaired + ' of ' + healed.length + ' tasks put back into the index');
+  return repaired;
 }
 async function museIndexAuditOrphans(env, cursor, repair) {
   let ops = 0, papers = 0, orphans = 0, done = false;

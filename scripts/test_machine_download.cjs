@@ -1662,4 +1662,5 @@ async function review(h, body) {
   await require('./test_machine_index.cjs').run();
   await require('./test_machine_index_heal.cjs').run();
   await require('./test_machine_orphan.cjs').run();
+  await require('./test_machine_index_review.cjs').run();
 })().catch(error => { console.error(error); process.exitCode = 1; });

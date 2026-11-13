@@ -84,7 +84,7 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
 async function runIndexAudit(env = process.env, http = fetch, log = console.log) {
   const totals = {scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0};
   const orphanDois = [];
-  let cursor = '', chunks = 0, indexed = null, building = false, repair = true, orphans = 0, papers = 0;
+  let cursor = '', chunks = 0, indexed = null, building = false, repair = true, orphans = 0, papers = 0, finished = false;
   for (; chunks < 40; ) {
     const token = await identityToken(env,http,ENDPOINT);
     const response = await http(ENDPOINT,{method:'POST',redirect:'error',signal:AbortSignal.timeout(90000),
@@ -101,8 +101,8 @@ async function runIndexAudit(env = process.env, http = fetch, log = console.log)
     for (const doi of body.orphanDois) if (orphanDois.length < 20) orphanDois.push(doi);
     if (indexed === null) indexed = body.indexed;
     repair = body.repair === true;
-    if (body.ready === false) { building = true; break; }
-    if (body.done === true) break;
+    if (body.ready === false) { building = true; finished = true; break; }
+    if (body.done === true) { finished = true; break; }
     if (typeof body.cursor !== 'string' || !body.cursor || body.cursor.length > 512) throw new Error('invalid_index_audit');
     cursor = body.cursor;
   }
@@ -112,6 +112,8 @@ async function runIndexAudit(env = process.env, http = fetch, log = console.log)
   if (building) log('::warning::索引核对：索引还在重建，本次未核对完');
   if (mismatch > 0) log('::warning::索引核对：索引条数与可领任务数对不上（漏 ' + totals.missing + '、过期 ' + totals.stale + '、多余 ' + totals.extra + '），已修复 ' + totals.repaired + ' 条');
   if (orphans > 0) log('::warning::索引核对：有 ' + orphans + ' 条只有题录、没有任务的孤儿记录（' + orphanDois.slice(0,10).join('、') + (orphans > 10 ? ' 等' : '') + '）。重发含它们的登记批次即可补建任务；核对本身不补建。');
+  // The scan did not reach the end within the request cap: what was not compared is unknown, so this is a failure, not a pass.
+  if (!finished) { log('::warning::索引核对：扫了 ' + chunks + ' 块还没扫完，本次核对不完整'); const error = new Error('index_audit_incomplete'); error.counts = totals; throw error; }
   if (mismatch > 0 && totals.repaired < mismatch) { const error = new Error('index_mismatch'); error.counts = totals; throw error; }
   return summary.indexAudit;
 }
@@ -123,8 +125,8 @@ if (require.main === module) (async () => {
   if (process.env.MUSE_RECHECK_DOI) return;
   try { await runIndexAudit(); }
   catch (error) {
-    console.error(failureLog(error,['index_mismatch','invalid_index_audit','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'index_audit_unavailable'));
+    console.error(failureLog(error,['index_mismatch','index_audit_incomplete','invalid_index_audit','website_denied','oidc_unavailable','response_too_large','invalid_json_response'].includes(error.message) ? error.message : 'index_audit_unavailable'));
     // Only a gap that is still there after the repair fails the run; an audit that could not run (website busy) is a warning.
-    if (error.message === 'index_mismatch') process.exitCode = 1; else console.log('::warning::索引核对没有跑完，下一小时再核对');
+    if (error.message === 'index_mismatch' || error.message === 'index_audit_incomplete') process.exitCode = 1; else console.log('::warning::索引核对没有跑完，下一小时再核对');
   }
 })();
