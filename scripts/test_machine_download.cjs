@@ -115,6 +115,9 @@ async function review(h, body) {
   assert.equal(protocol.humanGate, 'exempt');
   assert.equal(protocol.legacyMuse.retireOn, '2026-12-12');
   assert.equal(protocol.legacyMuse.autoDisable, false);
+  assert.equal(protocol.claimable.field, 'claimable');
+  assert.equal(protocol.claimable.unclaimableReasonField, 'unclaimableReason');
+  assert.deepEqual(protocol.claimable.unclaimableReasons, ['verification_failed']);
   assert(!JSON.stringify(protocol).includes(dsh));
   assert(!JSON.stringify(protocol).includes(museKey));
   const museProtocol = await (await h.context.worker.fetch(new Request(base + '/api/muse/protocol'), h.env)).json();
@@ -252,6 +255,8 @@ async function review(h, body) {
   const failedBody = await failed.json();
   assert.equal(failedBody.task.state, 'failed-awaiting-fallback');
   assert.equal(failedBody.task.reason, 'not_oa');
+  assert.equal(failedBody.task.claimable, true);
+  assert.equal(failedBody.task.unclaimableReason, undefined);
   assert.equal(failedBody.task.stage, '');
   assert(!failedBody.task.driveFileId);
   assertWeek(jobPuts(h, doi).at(-1));
@@ -353,6 +358,15 @@ async function review(h, body) {
   assert(dry.requeued.some(item => item.doi === requeueDois[1] && item.from === 'failed'));
   assert(!dry.requeued.some(item => item.doi === requeueDois[3]));
   assert(!dry.requeued.some(item => item.doi === requeueDois[0]));
+  const mixedList = await (await call(h, '/api/machine/tasks?state=failed-awaiting-fallback&limit=50', reader, null, {method:'GET'})).json();
+  const reviewItem = mixedList.tasks.find(task => task.doi === requeueDois[3]);
+  const failedItem = mixedList.tasks.find(task => task.doi === requeueDois[1]);
+  assert.equal(reviewItem.state, 'failed-awaiting-fallback');
+  assert.equal(reviewItem.claimable, false);
+  assert.equal(reviewItem.unclaimableReason, 'verification_failed');
+  assert.equal(reviewItem.reason, 'identity_mismatch');
+  assert.equal(failedItem.claimable, true);
+  assert.equal(failedItem.unclaimableReason, undefined);
   assert(dry.skippedPaused.some(item => item.doi === requeueDois[0]));
   assert.equal(dry.truncated, false);
   assert(!h.values.has(rateKey('dsh', 'requeue', dayOf(h))));
@@ -404,6 +418,8 @@ async function review(h, body) {
   assert.equal(failedList.tasks[0].doi, doi);
   assert.equal(failedList.tasks[0].reason, 'identity_mismatch');
   assert.equal(failedList.tasks[0].state, 'failed-awaiting-fallback');
+  assert.equal(failedList.tasks[0].claimable, false);
+  assert.equal(failedList.tasks[0].unclaimableReason, 'verification_failed');
   // A task whose PDF failed verification keeps its candidate and reason: a fallback claim must not take it or overwrite it.
   const before = h.values.get('library:muse-job:' + doi);
   const picked = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
