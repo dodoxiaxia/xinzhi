@@ -37,6 +37,7 @@ async function run() {
           '/index.html': ['index.html', 'text/html'],
           '/style.css': ['style.css', 'text/css'],
           '/journal-metrics.js': ['journal-metrics.js', 'application/javascript'],
+      '/journal-tiers.js': ['journal-tiers.js', 'application/javascript'],
           '/citation-export.js': ['citation-export.js', 'application/javascript'],
           '/app.js': ['app.js', 'application/javascript'],
           '/demo-reading.html': ['demo-reading.html', 'text/html'],

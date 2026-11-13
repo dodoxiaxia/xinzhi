@@ -61,6 +61,7 @@ STATIC_FILES = {
     '/style.css': ('style.css', 'text/css; charset=utf-8'),
     '/app.js': ('app.js', 'application/javascript; charset=utf-8'),
     '/citation-export.js': ('citation-export.js', 'application/javascript; charset=utf-8'),
+        '/journal-tiers.js': ('journal-tiers.js', 'application/javascript; charset=utf-8'),
     '/icon.png': ('icon.png', 'image/png'),
 }
 

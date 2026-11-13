@@ -98,3 +98,4 @@ eq(html.includes('<ol class="weekly-list">'),true,'list view renders one row per
 eq(html.includes('data-action="open-deep-reading" data-reading-id="PMC9"'),true,'board links a paper to its full-text reading by DOI');
 ctx.state.viewMode='cards';ctx.dailyReadingList=()=>[];
 console.log(JSON.stringify({passed:true,checks,networkCalls:0,scope:'weekly helpers and renderer only'}));
+require('./journal_tier_chip_asserts.cjs');

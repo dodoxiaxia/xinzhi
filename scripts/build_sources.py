@@ -18,6 +18,32 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLES = {'app.js': 'src/app', 'edge/_worker.js': 'edge/src'}
 
+# Standalone data file loaded before app.js locally, and inlined into public.js.
+# Kept next to the quick-filter sources but not concatenated into the app IIFE
+# (its name would sort after boot code). Synced to the repo root for index.html.
+ROOT_COPIES = {'journal-tiers.js': 'src/app/journal-tiers.js'}
+
+
+def copy_text(root, dest):
+    src = Path(root) / ROOT_COPIES[dest]
+    text = src.read_text(encoding='utf-8')
+    if not text.endswith('\n'):
+        raise ValueError('Source part must end with a newline: ' + ROOT_COPIES[dest])
+    return text
+
+
+def stale_copies(root=ROOT):
+    names = []
+    for dest, src in ROOT_COPIES.items():
+        src_path = Path(root) / src
+        dest_path = Path(root) / dest
+        if not src_path.is_file():
+            continue
+        if not dest_path.is_file() or dest_path.read_text(encoding='utf-8') != copy_text(root, dest):
+            names.append(dest)
+    return names
+
+
 
 def parts(root, directory):
     files = sorted(p for p in (Path(root) / directory).glob('*.js') if p.is_file() and p.name != 'journal-tiers.js')
@@ -44,7 +70,7 @@ def stale(root=ROOT):
     has nothing to compare and is not stale."""
     return [target for target in BUNDLES
             if (Path(root) / BUNDLES[target]).is_dir()
-            and (not (Path(root) / target).is_file() or (Path(root) / target).read_text(encoding='utf-8') != joined(root, target))]
+            and (not (Path(root) / target).is_file() or (Path(root) / target).read_text(encoding='utf-8') != joined(root, target))] + stale_copies(root)
 
 
 def require_fresh(root=ROOT):
@@ -61,6 +87,15 @@ def write(root=ROOT):
         if not path.is_file() or path.read_text(encoding='utf-8') != text:
             path.write_text(text, encoding='utf-8')
             changed.append(target)
+    for dest in ROOT_COPIES:
+        src_path = Path(root) / ROOT_COPIES[dest]
+        if not src_path.is_file():
+            continue
+        text = copy_text(root, dest)
+        path = Path(root) / dest
+        if not path.is_file() or path.read_text(encoding='utf-8') != text:
+            path.write_text(text, encoding='utf-8')
+            changed.append(dest)
     return changed
 
 

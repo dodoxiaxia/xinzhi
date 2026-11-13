@@ -37,7 +37,7 @@ def reading(pmcid, day, title, body):
 
 
 def write_fixture(dest):
-    for name in ('index.html', 'style.css', 'app.js', 'citation-export.js'):
+    for name in ('index.html', 'style.css', 'app.js', 'citation-export.js', 'journal-tiers.js'):
         shutil.copyfile(ROOT / name, dest / name)
     (dest / 'data').mkdir()
     paper = {

@@ -56,6 +56,7 @@ def build_routes(root: Path, origin: str, posts: list):
         '/app.js': ('app.js', 'application/javascript'),
         '/citation-export.js': ('citation-export.js', 'application/javascript'),
         '/journal-metrics.js': ('journal-metrics.js', 'application/javascript'),
+        '/journal-tiers.js': ('journal-tiers.js', 'application/javascript'),
         '/config/journal-metrics.json': ('config/journal-metrics.json', 'application/json'),
         '/style.css': ('style.css', 'text/css'),
         '/icon.png': ('icon.png', 'image/png'),

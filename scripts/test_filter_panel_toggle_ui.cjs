@@ -72,6 +72,7 @@ async function run() {
       }
       if (u.pathname === '/style.css') return route.fulfill({ body: fs.readFileSync(path.join(root, 'style.css')), contentType: 'text/css' });
       if (u.pathname === '/citation-export.js') return route.fulfill({ body: fs.readFileSync(path.join(root, 'citation-export.js')), contentType: 'application/javascript' });
+      if (u.pathname === '/journal-tiers.js') return route.fulfill({ body: fs.readFileSync(path.join(root, 'journal-tiers.js')), contentType: 'application/javascript' });
       if (u.pathname === '/app.js') return route.fulfill({ body: fs.readFileSync(path.join(root, 'app.js')), contentType: 'application/javascript' });
       if (scripts[u.pathname]) return route.fulfill({ body: scripts[u.pathname], contentType: 'application/javascript' });
       if (u.pathname === '/icon.png') return route.fulfill({ body: fs.readFileSync(path.join(root, 'icon.png')), contentType: 'image/png' });
