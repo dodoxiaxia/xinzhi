@@ -1,8 +1,17 @@
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {
-  async fetch(request, env) {
-    const response = await routeRequest(request, env);
-    return new URL(request.url).pathname.startsWith('/api/') ? hideInstitutionLinks(request, response) : response;
+  async fetch(request, env, ctx) {
+    const startedAt = Date.now();
+    let response;
+    try {
+      response = await routeRequest(request, env);
+      if (new URL(request.url).pathname.startsWith('/api/')) response = await hideInstitutionLinks(request, response);
+    } catch (error) {
+      metricsRecord(request, env, ctx, null, startedAt, true);
+      throw error;
+    }
+    metricsRecord(request, env, ctx, response, startedAt, false);
+    return response;
   }
 };
 
