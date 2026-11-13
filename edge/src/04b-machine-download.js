@@ -10,6 +10,8 @@ const MACHINE_RETURN_LIMIT = 3;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
+// Reasons the site itself writes when it stops a task (a client never reports them).
+const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed'];
 const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
@@ -237,10 +239,72 @@ function machineReason(job) {
   if (MACHINE_VERIFICATION_REASONS.includes(job.verificationReason)) return job.verificationReason;
   if (MACHINE_VERIFICATION_REASONS.includes(job.reason)) return job.reason;
   if (job.state === 'login_required') return 'han_login';
-  if (job.previousReason && (MACHINE_FAILURE_REASONS.includes(job.previousReason) || ['lease_expired','queue_expired','agent_failed'].includes(job.previousReason)) && ['running','uploading'].includes(job.state) && museExpired(job)) return job.previousReason;
-  if (['lease_expired','queue_expired','agent_failed'].includes(job.reason)) return job.reason;
+  if (job.previousReason && (MACHINE_FAILURE_REASONS.includes(job.previousReason) || MACHINE_AUTO_REASONS.includes(job.previousReason)) && ['running','uploading'].includes(job.state) && museExpired(job)) return job.previousReason;
+  if (MACHINE_AUTO_REASONS.includes(job.reason)) return job.reason;
   if (museExpired(job)) return job.state === 'queued' ? 'queue_expired' : 'lease_expired';
   return '';
+}
+// ---- Stale queued tasks go to the fallback (off by default) ----
+// A task that nobody claimed for hours stays queued until the six-day expiry. When the downloader is not polling the
+// site, the fallback bot (which only takes failed-awaiting-fallback) never sees it. With the switch on, a queued task
+// that was never claimed and is older than the threshold becomes `failed` with reason queue_unclaimed, which is
+// exactly the public state failed-awaiting-fallback. Where it runs: lazily, inside a fallback claim and inside the
+// to-download / failed-awaiting-fallback list. There is no cron path for the machine queue, and a downloader claim
+// never sweeps, so a downloader that is polling still gets first pick.
+// Config is two plain environment variables, like the other Pages switches (MUSE_LEGACY_ENDPOINTS_DISABLED and the
+// feature flags): STALE_QUEUED_FALLBACK_ENABLED must be exactly 'true' (anything else, or unset, is off and costs no KV
+// operation at all), and STALE_QUEUED_FALLBACK_HOURS is an integer 1-144 (missing or invalid means 6).
+const STALE_QUEUED_HOURS_DEFAULT = 6, STALE_QUEUED_HOURS_MAX = 144;
+const STALE_QUEUED_REASON = 'queue_unclaimed';
+// One request reads at most this many task records for the sweep and converts at most this many tasks.
+const STALE_QUEUED_READ_MAX = 60, STALE_QUEUED_MOVE_MAX = 25;
+function machineStaleQueuedConfig(env) {
+  if (!env || env.STALE_QUEUED_FALLBACK_ENABLED !== 'true') return {on:false,hours:STALE_QUEUED_HOURS_DEFAULT};
+  const raw = typeof env.STALE_QUEUED_FALLBACK_HOURS === 'string' ? env.STALE_QUEUED_FALLBACK_HOURS.trim() : '';
+  const hours = /^[0-9]{1,3}$/.test(raw) && Number(raw) >= 1 && Number(raw) <= STALE_QUEUED_HOURS_MAX ? Number(raw) : STALE_QUEUED_HOURS_DEFAULT;
+  return {on:true,hours};
+}
+// "attempts = 0": nobody ever held this task. The record carries no claimant, claim time, soft failure, return or earlier failure.
+function machineNeverClaimed(job) {
+  return !!job && job.state === 'queued' && !job.claimant && !job.acquisitionStartedAt && !job.leaseId && !job.previousReason && !job.lastSoftFailReason
+    && !(Number.isInteger(job.softFailCount) && job.softFailCount > 0) && !(Number.isInteger(job.returnCount) && job.returnCount > 0)
+    && !(Number.isInteger(job.attempts) && job.attempts > 0);
+}
+function machineAutoFallback(job) {
+  const f = job && job.autoFallback;
+  if (!f || typeof f !== 'object' || typeof f.reason !== 'string' || typeof f.at !== 'string') return null;
+  return {reason:f.reason.slice(0,120),at:f.at,hours:Number.isInteger(f.hours) ? f.hours : STALE_QUEUED_HOURS_DEFAULT};
+}
+// Converts eligible stale queued tasks found in the already-open index. Mutates doc.entries and appends to changes so
+// the caller's candidate list and its single index write see the result. Never throws: a failed sweep must not break a claim or a list.
+async function machineStaleQueuedSweep(env, doc, changes) {
+  let moved = 0;
+  try {
+    const cfg = machineStaleQueuedConfig(env);
+    if (!cfg.on || !doc || !doc.ready) return 0;
+    const now = Date.now(), limitMs = cfg.hours * 3600000;
+    const candidates = Object.entries(doc.entries).filter(([, e]) => e.s === 'queued' && e.c > 0 && now - e.c >= limitMs).sort(museIndexOrder);
+    let reads = 0;
+    for (const [doi, entry] of candidates) {
+      if (reads >= STALE_QUEUED_READ_MAX || moved >= STALE_QUEUED_MOVE_MAX) break;
+      reads++;
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      const actual = museIndexEntry(job);
+      if (!museIndexSame(actual, entry)) {
+        changes.push({doi,entry:actual});
+        if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
+      }
+      // The record wins: re-check everything on the record itself before touching it.
+      if (!job || !machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) continue;
+      const next = {...job,state:'failed',reason:STALE_QUEUED_REASON,updatedAt:now,
+        autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
+      await musePut(env, next, {indexChanges:changes});
+      if (job.queueKey) await museDelete(env, job.queueKey);
+      doc.entries[doi] = museIndexEntry(next);
+      moved++;
+    }
+  } catch { /* the sweep is best effort; the next request tries again */ }
+  return moved;
 }
 function machineStage(job) {
   if (MACHINE_STAGE_TAGS.includes(job.stage)) return job.stage;
@@ -274,7 +338,8 @@ function machineListItem(job) {
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {}),
-    ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {})};
+    ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
+    ...(state === 'failed-awaiting-fallback' && machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
@@ -527,8 +592,9 @@ async function machineCollectIndexed(env, state, cursorText, limit) {
   const after = machineIndexCursorDecode(cursorText);
   const doc = await museIndexOpen(env);
   machineIndexReadyOrWait(doc);
-  const candidates = museIndexPublicCandidates(doc, state, Date.now()).filter(([doi, entry]) => machineIndexSortKey(doi, entry) > after);
   const tasks = [], fixes = [];
+  if (state === 'to-download' || state === 'failed-awaiting-fallback') await machineStaleQueuedSweep(env, doc, fixes);
+  const candidates = museIndexPublicCandidates(doc, state, Date.now()).filter(([doi, entry]) => machineIndexSortKey(doi, entry) > after);
   let last = '', more = false;
   for (let n = 0; n < candidates.length; n++) {
     const [doi, entry] = candidates[n];
@@ -665,6 +731,7 @@ async function machineClaimFailed(env, caller) {
   const changes = [];
   let task = null, scanLimited = false;
   try {
+    await machineStaleQueuedSweep(env, doc, changes);
     const candidates = museIndexFailedCandidates(doc, Date.now());
     let scanned = 0;
     for (let i = 0; i < candidates.length && !task; i++) {

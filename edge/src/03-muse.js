@@ -106,7 +106,7 @@ function museVerificationInstant(job) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
-  const kept = ['lease_expired','queue_expired','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
+  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
     : job.state === 'login_required' ? 'login_required'
     : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
@@ -118,7 +118,8 @@ function musePublicJob(value, doi = '') {
   const messages = {queued:'已在下载队列中，等待领取；领取时间取决于下载端的运行安排，不保证即时。手里已有 PDF 可以直接上传。',running:'已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:job.source === 'reader_upload' ? '已收到你上传的 PDF，等待网站核验 DOI、题名与全部页面。' : job.source === 'open_access' ? '已从开放获取来源取得 PDF，等待网站核验 DOI、题名与全部页面。' : 'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
     login_required:'汉堡会话需要重新登录，请维护者在原授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'下载未完成，任务已停止，等待维护者确认。',abandoned:'已确认不再获取这篇全文。'};
   const reasons = {lease_expired:'领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
-    queue_expired:'任务排队过久仍未被领取，已停止。可以直接上传 PDF，或用全文口令重新排队。'};
+    queue_expired:'任务排队过久仍未被领取，已停止。可以直接上传 PDF，或用全文口令重新排队。',
+    queue_unclaimed:'下载端暂时没有领取这篇，已转给兜底下载处理，通常数小时内有结果。手里已有 PDF 可以直接上传。'};
   return {id:job.id,doi:job.doi,state,stage,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
     message:reasons[reason] || (verificationDelayed ? 'PDF 已收到，计划核验时间已到，核验尚未完成；实际执行以 GitHub 队列为准。' : messages[job.state]), ...(reason ? {reason} : {}),
     ...(job.state === 'verifying' ? {nextVerificationAt:planned,verificationDelayed,verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。',
@@ -187,7 +188,7 @@ function museTaskView(job, publicJob) {
   if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未取得',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
   if (job.state === 'review') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
   if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未取得',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
-  if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
+  if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : publicJob.reason === 'queue_unclaimed' ? '下载端暂时没有领取，已转给兜底下载处理。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
     eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
       : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};
