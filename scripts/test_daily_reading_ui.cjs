@@ -27,4 +27,14 @@ const bad={...p(5,'2026-10-09'),titleZh:'<img src=x onerror=alert(1)>',journal:'
 const rendered=ctx.dailyReadingItem(bad)+ctx.deepReadingBody(bad);assert(!rendered.includes('<img'));assert(!rendered.includes('<script>bad'));assert(!rendered.includes('<svg'));
 ctx.window.DEEP_READINGS={items:[]};ctx.renderDailyDeepRead();assert(node.innerHTML.includes('尚未完成'));
 ctx.window.DEEP_READINGS={items:[p(1,'2026-10-08')]};ctx.renderDailyDeepRead();assert(node.innerHTML.includes('最新批次 · 2026-10-08'));assert(node.innerHTML.includes('今日已更新 <b>0</b> 篇'));
+// Nothing in scope today: a normal complete state with its own sentence, not a failure message.
+ctx.window.DEEP_READINGS={items:[p(1,'2026-10-08')],status:{day:'2026-10-09',completed:0,state:'complete',reason:''}};ctx.renderDailyDeepRead();
+assert(node.innerHTML.includes('今日暂无符合口径的精读'));assert(!node.innerHTML.includes('尚未完成'));assert(!node.innerHTML.includes('当前完成'));assert(node.innerHTML.includes('最新批次 · 2026-10-08'));
+ctx.window.DEEP_READINGS={items:[],status:{day:'2026-10-09',completed:0,state:'complete',reason:''}};ctx.renderDailyDeepRead();
+assert(node.innerHTML.includes('今日暂无符合口径的精读'));assert(!node.innerHTML.includes('尚未完成；完成后'));
+// A generation failure still reports its reason; a day with readings never shows the empty-scope sentence.
+ctx.window.DEEP_READINGS={items:[],status:{day:'2026-10-09',completed:0,state:'waiting',reason:'model_unavailable'}};ctx.renderDailyDeepRead();
+assert(node.innerHTML.includes('暂时不可用'));assert(!node.innerHTML.includes('今日暂无符合口径'));
+ctx.window.DEEP_READINGS={items:[p(1,'2026-10-09')],status:{day:'2026-10-09',completed:1,state:'complete',reason:''}};ctx.renderDailyDeepRead();
+assert(!node.innerHTML.includes('今日暂无符合口径'));assert(node.innerHTML.includes('今日已更新 <b>1</b> 篇'));
 console.log('daily full-text reading UI contracts passed');

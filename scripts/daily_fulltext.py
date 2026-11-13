@@ -673,6 +673,24 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     save(data, ledger)
     return data['status']
 
+# Private reasons that only say "fewer than the cap": not a generation failure.
+NO_FAILURE_REASONS = ('', 'validation_or_fulltext_shortfall')
+
+def public_status(status, items):
+    """Public completion state from the same basis as the column: items exported for the batch day.
+
+    Exported > 0 means complete (no minimum count). Exported = 0 with no generation error means
+    "nothing in scope today", also complete. Only a generation error keeps its failure state/reason."""
+    out = {k: status[k] for k in ('day', 'target', 'completed', 'state', 'reason') if k in status}
+    day = status.get('day')
+    if not day:
+        return out  # no batch yet (pending): nothing to recompute
+    shown = sum(p['publishedOn'] == day for p in items)
+    out['completed'] = shown
+    if shown or status.get('reason', '') in NO_FAILURE_REASONS:
+        out.update(state='complete', reason='')
+    return out
+
 def public_readings(raw):
     if raw is None:
         return empty_data()
@@ -691,11 +709,7 @@ def public_readings(raw):
         clean.update(sourceUrl='https://europepmc.org/articles/' + item['pmcid'],
                      scope='public-fulltext-body', humanReviewed=False)
         out['items'].append(clean)
-    status = raw.get('status', {})
-    out['status'] = {k: status[k] for k in ('day', 'target', 'completed', 'state', 'reason') if k in status}
-    if 'completed' in out['status']:
-        # The count must match what the column shows: only items that survive the scope rule, for the batch day.
-        out['status']['completed'] = sum(p['publishedOn'] == status.get('day') for p in out['items'])
+    out['status'] = public_status(raw.get('status', {}), out['items'])
     out['updatedAt'] = raw.get('updatedAt', '')
     return out
 

@@ -221,6 +221,35 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual(result['status']['completed'], 1)
         self.assertEqual(raw['status']['completed'], 2)  # private store keeps its own generation count
 
+    def _status_for(self, status, titles):
+        raw = d.empty_data()
+        for n, title in enumerate(titles, 1):
+            row = item(n)
+            row['title'] = title
+            raw['items'].append(row)
+        raw['status'] = status
+        return d.public_readings(raw)['status']
+
+    def test_status_is_complete_when_anything_in_scope_is_shown_without_a_minimum(self):
+        # Private store says "partial" with a shortfall reason; one exported reading is enough.
+        status = self._status_for({'day': '2026-10-09', 'target': 12, 'completed': 7, 'state': 'partial',
+                                   'reason': 'validation_or_fulltext_shortfall'},
+                                  ['Heart outcomes study', 'Machine learning prediction of ankle reinjury'])
+        self.assertEqual((status['state'], status['reason'], status['completed']), ('complete', '', 1))
+
+    def test_status_with_nothing_in_scope_is_complete_not_a_failure(self):
+        for reason in ('', 'validation_or_fulltext_shortfall'):
+            status = self._status_for({'day': '2026-10-09', 'target': 12, 'completed': 3, 'state': 'waiting', 'reason': reason},
+                                      ['Machine learning prediction of ankle reinjury', 'Deep learning for skin lesion classification in dermatology'])
+            self.assertEqual((status['state'], status['reason'], status['completed']), ('complete', '', 0), reason)
+
+    def test_status_keeps_a_real_generation_failure_when_nothing_is_shown(self):
+        for reason in ('model_unavailable', 'provider_failed_today', 'prior_attempt_uncertain', 'checkpoint_write_failed'):
+            status = self._status_for({'day': '2026-10-09', 'target': 12, 'completed': 0, 'state': 'waiting', 'reason': reason}, [])
+            self.assertEqual((status['state'], status['reason'], status['completed']), ('waiting', reason, 0), reason)
+        # No batch yet stays pending.
+        self.assertEqual(self._status_for({'state': 'pending', 'target': 4}, []), {'state': 'pending', 'target': 4})
+
     def test_generation_never_pays_for_off_scope_papers(self):
         bad = dict(paper(1, 'AI 医疗'), title='Machine learning prediction of ankle reinjury')
         good = dict(paper(2, '心血管'))
