@@ -214,6 +214,12 @@ async function verifyNext(h, doi, result, reason) {
   assert.equal(stored(h, 'library:paper:' + rd).pdf.sha256, hash(original)); // the old original stays downloadable until verification passes
   const verifying = stored(h, 'library:muse-job:' + rd);
   assert.equal(verifying.state, 'verifying'); assert.equal(verifying.replace.previous.state, 'available');
+  assert.equal(verifying.supersededFrom.taskId, oldJob.id);
+  assert.equal(verifying.supersededFrom.previousState, 'available');
+  const replacedArchive = stored(h, 'library:muse-superseded:' + rd + ':' + oldJob.id);
+  assert.equal(replacedArchive.state, 'available');
+  assert.equal(replacedArchive.sha256, hash(original));
+  assert.equal(replacedArchive.supersededBy, verifying.id);
   assert.equal((await upload(h, copy, rd, dsh, {'x-machine-replace':'1'})).status, 200);
   assert.equal(rate('dsh'), spent + 1);
   await error(await upload(h, third, rd, dsh, {'x-machine-replace':'1'}), 409, 'machine_conflict');

@@ -272,14 +272,10 @@ function museSupersededKey(doi, taskId) {
   return MUSE_SUPERSEDED_PREFIX + doi + ':' + taskId;
 }
 function museShouldSupersedePrevious(job) {
-  // Keep a snapshot of a failed-awaiting-fallback (or previously failed, then claimed) task so it can be
-  // archived with supersededBy when the new task for the same DOI becomes done. A clean claim/upload is not archived.
-  if (!job || typeof job.id !== 'string' || !job.id) return false;
-  if (['available','abandoned','verifying'].includes(job.state)) return false;
-  if (['failed','login_required','review'].includes(job.state)) return true;
-  if (typeof job.previousReason === 'string' && job.previousReason) return true;
-  if (['lease_expired','queue_expired','not_oa','han_login','han_quota','source_blocked','wrong_paper','other'].includes(job.reason)) return true;
-  return ['queued','running','uploading'].includes(job.state) && museExpired(job);
+  // Each DOI has one library:muse-job:{doi} key. Any overwrite of an existing task is archived first,
+  // including a failed/review/not-done job and an already done/available original replaced via
+  // X-Machine-Replace (for example swapping an early publication for the official version).
+  return !!(job && typeof job.id === 'string' && job.id);
 }
 function museSupersedeSnapshot(job) {
   const skip = new Set(['candidateKey','replace','replaceRejected']);
@@ -290,15 +286,21 @@ function museSupersedeSnapshot(job) {
 function museSupersededFrom(snapshot) {
   if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id) return null;
   const reason = snapshot.reason || snapshot.previousReason || snapshot.verificationReason || '';
-  const prior = snapshot.supersedes && snapshot.supersedes.id !== snapshot.id ? museSupersededFrom(snapshot.supersedes) : null;
+  let prior = null;
+  if (snapshot.supersededFrom && typeof snapshot.supersededFrom.taskId === 'string' && snapshot.supersededFrom.taskId && snapshot.supersededFrom.taskId !== snapshot.id) {
+    prior = snapshot.supersededFrom;
+  } else if (snapshot.supersedes && snapshot.supersedes.id && snapshot.supersedes.id !== snapshot.id) {
+    prior = museSupersededFrom(snapshot.supersedes);
+  }
   return {taskId:snapshot.id,...(reason ? {reason} : {}),...(snapshot.state ? {previousState:snapshot.state} : {}),...(prior ? {supersedes:prior} : {})};
 }
-async function museArchiveSuperseded(env, snapshot, done) {
-  if (!snapshot || !done || snapshot.id === done.id) return null;
+async function museArchiveSuperseded(env, previous, newId, doi, now) {
+  if (!previous || !newId || !doi || previous.id === newId) return null;
+  const snapshot = museSupersedeSnapshot(previous);
   const pointer = museSupersededFrom(snapshot);
   if (!pointer) return null;
-  const record = {...snapshot,supersededBy:done.id,supersededAt:Date.now()};
-  await libraryPut(env.QL_KV, museSupersededKey(done.doi, snapshot.id), JSON.stringify(record));
+  const record = {...snapshot,supersededBy:newId,supersededAt:now};
+  await libraryPut(env.QL_KV, museSupersededKey(doi, snapshot.id), JSON.stringify(record));
   return pointer;
 }
 
@@ -321,7 +323,12 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
   if (previous && Number.isInteger(previous.oaVerificationFails) && previous.oaVerificationFails > 0) inherited.oaVerificationFails = previous.oaVerificationFails;
   if (previous && Array.isArray(previous.oaRejected) && previous.oaRejected.length) inherited.oaRejected = previous.oaRejected;
-  if (previous && museShouldSupersedePrevious(previous)) inherited.supersedes = museSupersedeSnapshot(previous);
+  // Archive the old same-DOI record before overwriting library:muse-job:{doi}, so the previous task is
+  // not lost if this new one is still verifying or later fails review.
+  if (previous && museShouldSupersedePrevious(previous)) {
+    const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
+    if (pointer) inherited.supersededFrom = pointer;
+  }
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
     leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
   await musePut(env,job);
