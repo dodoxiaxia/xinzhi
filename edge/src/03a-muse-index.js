@@ -143,7 +143,7 @@ const museIndexRequeueCandidates = museIndexFailedCandidates;
 function museIndexPublicCandidates(doc, publicState, now) {
   const expired = e => e.e > 0 && e.e <= now;
   const keep = {
-    'to-download':e => e.s === 'queued' && !expired(e),
+    'to-download':e => (e.s === 'queued' && !expired(e)) || (['running','uploading'].includes(e.s) && expired(e)),
     'downloading':e => ['running','uploading'].includes(e.s) && !expired(e),
     'uploaded-awaiting-verification':e => e.s === 'verifying',
     'failed-awaiting-fallback':e => ['failed','login_required','review'].includes(e.s) || (['queued','running','uploading'].includes(e.s) && expired(e))

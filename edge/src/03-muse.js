@@ -267,6 +267,40 @@ function museReviewConfigured(env) {
 }
 // Bytes that did not come through Muse (reader upload, open access) enter the same private candidate
 // area; the GitHub dual-parser verifier still has to confirm DOI, title and every page before download.
+const MUSE_SUPERSEDED_PREFIX = 'library:muse-superseded:';
+function museSupersededKey(doi, taskId) {
+  return MUSE_SUPERSEDED_PREFIX + doi + ':' + taskId;
+}
+function museShouldSupersedePrevious(job) {
+  // Keep a snapshot of a failed-awaiting-fallback (or previously failed, then claimed) task so it can be
+  // archived with supersededBy when the new task for the same DOI becomes done. A clean claim/upload is not archived.
+  if (!job || typeof job.id !== 'string' || !job.id) return false;
+  if (['available','abandoned','verifying'].includes(job.state)) return false;
+  if (['failed','login_required','review'].includes(job.state)) return true;
+  if (typeof job.previousReason === 'string' && job.previousReason) return true;
+  if (['lease_expired','queue_expired','not_oa','han_login','han_quota','source_blocked','wrong_paper','other'].includes(job.reason)) return true;
+  return ['queued','running','uploading'].includes(job.state) && museExpired(job);
+}
+function museSupersedeSnapshot(job) {
+  const skip = new Set(['candidateKey','replace','replaceRejected','supersedes']);
+  const snap = {};
+  for (const [key, value] of Object.entries(job)) if (!skip.has(key)) snap[key] = value;
+  return snap;
+}
+function museSupersededFrom(snapshot) {
+  if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id) return null;
+  const reason = snapshot.reason || snapshot.previousReason || snapshot.verificationReason || '';
+  return {taskId:snapshot.id,...(reason ? {reason} : {}),...(snapshot.state ? {previousState:snapshot.state} : {})};
+}
+async function museArchiveSuperseded(env, snapshot, done) {
+  if (!snapshot || !done || snapshot.id === done.id) return null;
+  const pointer = museSupersededFrom(snapshot);
+  if (!pointer) return null;
+  const record = {...snapshot,supersededBy:done.id,supersededAt:Date.now()};
+  await libraryPut(env.QL_KV, museSupersededKey(done.doi, snapshot.id), JSON.stringify(record));
+  return pointer;
+}
+
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
@@ -281,6 +315,10 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && typeof previous.claimant === 'string' && previous.claimant) inherited.claimant = previous.claimant;
   if (previous && Number.isSafeInteger(previous.acquisitionStartedAt) && previous.acquisitionStartedAt > 0) inherited.acquisitionStartedAt = previous.acquisitionStartedAt;
   if (previous && previous.registration) inherited.registration = previous.registration;
+  if (previous && Number.isInteger(previous.softFailCount) && previous.softFailCount > 0) inherited.softFailCount = previous.softFailCount;
+  if (previous && previous.lastSoftFailReason) inherited.lastSoftFailReason = previous.lastSoftFailReason;
+  if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
+  if (previous && museShouldSupersedePrevious(previous)) inherited.supersedes = museSupersedeSnapshot(previous);
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
     leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
   await musePut(env,job);

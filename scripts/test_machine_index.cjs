@@ -203,11 +203,28 @@ async function run() {
   assert.deepEqual(failed.map(doi => stored(h, INDEX).entries[doi].s), ['queued','queued','queued','queued','queued']);
   const fallbackClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
   assert.equal(fallbackClaim.task, null); assert.equal(fallbackClaim.retryAfterSeconds, 300);
-  // an expired lease is a fallback candidate without anyone marking it
+  // a first lease expiry returns to to-download; fallback must not take it in that same request
   const leased = (await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json()).task;
   const leasedJob = stored(h, 'library:muse-job:' + leased.doi);
   h.values.set('library:muse-job:' + leased.doi, JSON.stringify({...leasedJob,leaseUntil:Date.now() - 1000,updatedAt:leasedJob.updatedAt + 1}));
   const doc2 = stored(h, INDEX); doc2.entries[leased.doi] = {...doc2.entries[leased.doi],e:Date.now() - 1000,u:leasedJob.updatedAt + 1}; h.values.set(INDEX, JSON.stringify(doc2));
+  const firstExpiry = (await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json()).task;
+  assert.equal(firstExpiry, null);
+  const retried = stored(h, 'library:muse-job:' + leased.doi);
+  assert.equal(retried.state, 'queued');
+  assert.equal(retried.id, leasedJob.id);
+  assert.equal(retried.softFailCount, 1);
+  const again = (await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json()).task;
+  assert.equal(again.doi, leased.doi);
+  const againJob = stored(h, 'library:muse-job:' + leased.doi);
+  h.values.set('library:muse-job:' + leased.doi, JSON.stringify({...againJob,leaseUntil:Date.now() - 1000,updatedAt:againJob.updatedAt + 1}));
+  const doc3 = stored(h, INDEX); doc3.entries[leased.doi] = {...doc3.entries[leased.doi],e:Date.now() - 1000,u:againJob.updatedAt + 1}; h.values.set(INDEX, JSON.stringify(doc3));
+  const secondExpiry = (await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json()).task;
+  assert.equal(secondExpiry, null);
+  const marked = stored(h, 'library:muse-job:' + leased.doi);
+  assert.equal(marked.state, 'failed');
+  assert.equal(marked.reason, 'lease_expired');
+  assert.equal(marked.softFailCount, 2);
   const taken = (await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json()).task;
   assert.equal(taken.doi, leased.doi); assert.equal(taken.claimant, 'fallback');
 
