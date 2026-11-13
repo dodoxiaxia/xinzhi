@@ -26,8 +26,9 @@ function machineError(error) {
   const known = error instanceof LibraryFailure || error instanceof PdfFailure;
   const body = {ok:false,error:known ? error.code : 'machine_server'};
   if (error instanceof MachineIdentityFailure) { body.reason = error.reason; if (error.checks) body.checks = error.checks; }
-  if (known && error.retryAfter) Object.assign(body, libraryRetryInfo(error.retryAfter));
-  return json(body, known ? error.status : 500);
+  const retry = known && error.retryAfter ? libraryRetryInfo(error.retryAfter) : {};
+  Object.assign(body, retry);
+  return json(body, known ? error.status : 500, retry.retryAfterSeconds ? {'retry-after':String(retry.retryAfterSeconds)} : {});
 }
 function machineLimit(env, name, fallback) {
   const raw = env[name];
@@ -230,7 +231,7 @@ function handleMachineProtocol(request, env) {
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
-    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,
+    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
@@ -348,7 +349,8 @@ async function machineListKeys(env, prefix, cursor, limit) {
   if (!listing || !Array.isArray(listing.keys) || listing.keys.length > limit) libraryFail('library_storage', 503);
   return listing;
 }
-async function machineCollect(env, state, cursorText, limit) {
+// Scan path: every job key, in key order. Used for states the index does not hold (done, confirmed-abandoned) and for an unfiltered list.
+async function machineCollectScan(env, state, cursorText, limit) {
   let position = machineCursorDecode(cursorText);
   const tasks = [];
   for (let page = 0; page < 50 && tasks.length < limit; page++) {
@@ -370,6 +372,47 @@ async function machineCollect(env, state, cursorText, limit) {
     if (tasks.length >= limit) return {tasks,cursor:machineCursorEncode(position)};
   }
   return {tasks,cursor:position.c ? machineCursorEncode(position) : null};
+}
+// The index is not complete until its one-time backfill has finished; a list or requeue then waits instead of answering from part of the table.
+function machineIndexReadyOrWait(doc) {
+  if (!doc.ready) libraryFail('machine_index_building', 503, Date.now() + MACHINE_INDEX_BUILDING_RETRY_SECONDS * 1000);
+}
+function machineIndexCursorEncode(key) {
+  return machineCursorEncode({c:'idx:' + key,skip:0});
+}
+function machineIndexCursorDecode(value) {
+  if (!value) return '';
+  const position = machineCursorDecode(value);
+  if (!position.c.startsWith('idx:') || position.skip !== 0) libraryFail('machine_bad_request', 400);
+  return position.c.slice(4);
+}
+function machineIndexSortKey(doi, entry) {
+  return String(entry.c).padStart(13, '0') + ':' + doi;
+}
+// Per-state list from the index: one read for the index plus one record read per returned task, no key listing.
+async function machineCollectIndexed(env, state, cursorText, limit) {
+  const after = machineIndexCursorDecode(cursorText);
+  const doc = await museIndexOpen(env);
+  machineIndexReadyOrWait(doc);
+  const candidates = museIndexPublicCandidates(doc, state, Date.now()).filter(([doi, entry]) => machineIndexSortKey(doi, entry) > after);
+  const tasks = [], fixes = [];
+  let last = '', more = false;
+  for (let n = 0; n < candidates.length; n++) {
+    const [doi, entry] = candidates[n];
+    if (tasks.length >= limit) { more = true; break; }
+    last = machineIndexSortKey(doi, entry);
+    const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    const actual = museIndexEntry(job);
+    if (!museIndexSame(actual, entry)) fixes.push({doi,entry:actual});
+    if (!job) continue;
+    const item = machineListItem(job);
+    if (item.state === state) tasks.push(item);
+  }
+  await museIndexApply(env, fixes);
+  return {tasks,cursor:more ? machineIndexCursorEncode(last) : null};
+}
+async function machineCollect(env, state, cursorText, limit) {
+  return MACHINE_INDEXED_PUBLIC_STATES.includes(state) ? machineCollectIndexed(env, state, cursorText, limit) : machineCollectScan(env, state, cursorText, limit);
 }
 function machineQuery(request, allowed) {
   const url = new URL(request.url);
@@ -400,83 +443,86 @@ async function handleMachineAbandoned(request, env) {
     return json({ok:true,tasks:page.tasks.map(task => task),cursor:page.cursor});
   } catch (error) { return machineError(error); }
 }
-async function machineWalk(env, prefix, visit) {
-  let cursor = '';
-  for (let page = 0; page < 50; page++) {
-    const listing = await machineListKeys(env, prefix, cursor, 100);
-    for (const entry of listing.keys) {
-      if (await visit(entry)) return {stopped:true};
-    }
-    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) return {stopped:false};
-    cursor = listing.cursor;
-  }
-  return {stopped:false,cursor};
-}
 function machineClaimPayload(job, paper) {
   return {...machineListItem(job),state:'downloading',title:paper && paper.title || '',leaseId:job.leaseId,
     leaseUntil:new Date(job.leaseUntil).toISOString(),sources:['open_access','authorized_hamburg'],
     institutionLoginUrl:HAN_LOGIN_URL,institutionUrl:hanDoiUrl(job.doi)};
 }
+// Claim candidates come from the index; every record is re-read before it is touched. KV is not atomic: the
+// lease id is checked after the write, and a lost race is machine_sync_pending. All index changes of one claim
+// (corrections of stale entries and the claim itself) are applied together at the end.
 async function machineClaimQueued(env, caller) {
+  const doc = await museIndexOpen(env);
+  const changes = [];
   let task = null;
-  // QL_KV is not atomic. The lease id is checked after the write; a lost race is machine_sync_pending.
-  await machineWalk(env, MUSE_QUEUE_PREFIX, async entry => {
-    if (typeof entry.name !== 'string' || !entry.name.startsWith(MUSE_QUEUE_PREFIX)) return false;
-    const pointer = await libraryGet(env.QL_KV, entry.name);
-    const job = pointer && pointer.doi && museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + pointer.doi), pointer.doi);
-    if (!job || job.id !== pointer.id || job.queueKey !== entry.name) return false;
-    if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, entry.name); return false; }
-    if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
-      await musePut(env, {...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()});
-      await museDelete(env, entry.name);
-      return false;
+  try {
+    const candidates = museIndexQueuedCandidates(doc, Date.now());
+    for (let examined = 0; examined < candidates.length && examined < MACHINE_CLAIM_EXAMINE_MAX && !task; examined++) {
+      const [doi, entry] = candidates[examined];
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+      if (!job) continue;
+      if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, job.queueKey); continue; }
+      if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
+        await musePut(env, {...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()}, {indexChanges:changes});
+        await museDelete(env, job.queueKey);
+        continue;
+      }
+      if (job.state !== 'queued') continue;
+      if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
+      const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + job.doi);
+      if (attempt && attempt.paused) continue;
+      await museOwnerGuard(env, job.doi);
+      const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
+      if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
+      if (!paper || paper.fulltextStatus === 'review') continue;
+      const now = Date.now();
+      const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
+      await musePut(env, claimed, {indexChanges:changes});
+      const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + job.doi), job.doi);
+      if (!observed || observed.leaseId !== claimed.leaseId || observed.claimant !== caller.id) libraryFail('machine_sync_pending', 503);
+      task = machineClaimPayload(claimed, paper);
     }
-    if (job.state !== 'queued') return false;
-    if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}); await museDelete(env, entry.name); return false; }
-    const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + job.doi);
-    if (attempt && attempt.paused) return false;
-    await museOwnerGuard(env, job.doi);
-    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
-    if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}); await museDelete(env, entry.name); return false; }
-    if (!paper || paper.fulltextStatus === 'review') return false;
-    const now = Date.now();
-    const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
-    await musePut(env, claimed);
-    const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + job.doi), job.doi);
-    if (!observed || observed.leaseId !== claimed.leaseId || observed.claimant !== caller.id) libraryFail('machine_sync_pending', 503);
-    task = machineClaimPayload(claimed, paper);
-    return true;
-  });
-  return task;
+  } finally { await machineIndexFlush(env, changes); }
+  return {task,building:!doc.ready};
 }
 async function machineClaimFailed(env, caller) {
+  const doc = await museIndexOpen(env);
+  const changes = [];
   let task = null;
-  await machineWalk(env, MUSE_JOB_PREFIX, async entry => {
-    if (typeof entry.name !== 'string' || !entry.name.startsWith(MUSE_JOB_PREFIX)) return false;
-    const doi = entry.name.slice(MUSE_JOB_PREFIX.length);
-    const job = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
-    if (!job || machinePublicState(job) !== 'failed-awaiting-fallback') return false;
-    const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
-    if (attempt && attempt.paused) return false;
-    if (['running','uploading'].includes(job.state) && job.leaseUntil > Date.now()) return false;
-    const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
-    if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}); return false; }
-    if (paper && paper.fulltextStatus === 'review') return false;
-    // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
-    if (job.state === 'review') return false;
-    await museOwnerGuard(env, doi);
-    const now = Date.now();
-    // The failure that made this task claimable is history, not the state of the new lease.
-    const {reason:previousReason, ...rest} = job;
-    const claimed = {...rest,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now,...(previousReason ? {previousReason} : {})};
-    await musePut(env, claimed);
-    const observed = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
-    if (!observed || observed.leaseId !== claimed.leaseId) libraryFail('machine_sync_pending', 503);
-    if (job.queueKey) await museDelete(env, job.queueKey);
-    task = machineClaimPayload(claimed, paper);
-    return true;
-  });
-  return task;
+  try {
+    const candidates = museIndexFailedCandidates(doc, Date.now());
+    for (let examined = 0; examined < candidates.length && examined < MACHINE_CLAIM_EXAMINE_MAX && !task; examined++) {
+      const [doi, entry] = candidates[examined];
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+      if (!job || machinePublicState(job) !== 'failed-awaiting-fallback') continue;
+      const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+      if (attempt && attempt.paused) continue;
+      if (['running','uploading'].includes(job.state) && job.leaseUntil > Date.now()) continue;
+      const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
+      if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
+      if (paper && paper.fulltextStatus === 'review') continue;
+      // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
+      if (job.state === 'review') continue;
+      await museOwnerGuard(env, doi);
+      const now = Date.now();
+      // The failure that made this task claimable is history, not the state of the new lease.
+      const {reason:previousReason, ...rest} = job;
+      const claimed = {...rest,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now,...(previousReason ? {previousReason} : {})};
+      await musePut(env, claimed, {indexChanges:changes});
+      const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      if (!observed || observed.leaseId !== claimed.leaseId) libraryFail('machine_sync_pending', 503);
+      if (job.queueKey) await museDelete(env, job.queueKey);
+      task = machineClaimPayload(claimed, paper);
+    }
+  } finally { await machineIndexFlush(env, changes); }
+  return {task,building:!doc.ready};
+}
+// Applies the collected index changes. Never hides the error that ended the request: a failed flush only leaves
+// stale entries behind, which the next claim corrects from the records.
+async function machineIndexFlush(env, changes) {
+  try { await museIndexApply(env, changes); } catch {}
 }
 async function handleMachineClaim(request, env) {
   try {
@@ -486,8 +532,11 @@ async function handleMachineClaim(request, env) {
     if (Object.keys(input).some(key => key !== 'state') || !['to-download','failed-awaiting-fallback'].includes(input.state)) libraryFail('machine_bad_request', 400);
     if (caller.role === 'downloader' && input.state !== 'to-download') libraryFail('machine_forbidden', 403);
     if (caller.role === 'fallback' && input.state !== 'failed-awaiting-fallback') libraryFail('machine_forbidden', 403);
-    const task = input.state === 'to-download' ? await machineClaimQueued(env, caller) : await machineClaimFailed(env, caller);
-    return json({ok:true,task});
+    const result = input.state === 'to-download' ? await machineClaimQueued(env, caller) : await machineClaimFailed(env, caller);
+    if (result.task) return json({ok:true,task:result.task});
+    // Nothing to claim: tell the caller how long to wait before asking again (the same value in the Retry-After header).
+    const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
+    return json({ok:true,task:null,retryAfterSeconds:wait}, 200, {'retry-after':String(wait)});
   } catch (error) { return machineError(error); }
 }
 function machineRequeueCandidate(job) {
@@ -495,12 +544,12 @@ function machineRequeueCandidate(job) {
   if (job.state === 'failed' || job.state === 'login_required') return true;
   return ['queued','running','uploading'].includes(job.state) && museExpired(job);
 }
-async function machineRequeueOne(env, job) {
+async function machineRequeueOne(env, job, changes) {
   const now = Date.now(), id = crypto.randomUUID();
   const next = {version:1,id,doi:job.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,
     ...(job.registration ? {registration:job.registration} : {})};
   await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:job.doi,id}), {expirationTtl:604800});
-  await musePut(env, next);
+  await musePut(env, next, {indexChanges:changes});
   if (job.queueKey && job.queueKey !== next.queueKey) await museDelete(env, job.queueKey);
   return next;
 }
@@ -510,29 +559,38 @@ async function handleMachineRequeue(request, env) {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
     const caller = await machineAuthorize(request, env, 'requeue');
     const input = await fulltextReadJson(request, 256, 'machine_bad_request');
-    if (Object.keys(input).some(key => !['dryRun','limit'].includes(key))) libraryFail('machine_bad_request', 400);
+    if (Object.keys(input).some(key => !['dryRun','limit','reindex'].includes(key))) libraryFail('machine_bad_request', 400);
     if (Object.hasOwn(input,'dryRun') && typeof input.dryRun !== 'boolean') libraryFail('machine_bad_request', 400);
+    if (Object.hasOwn(input,'reindex')) {
+      // Rebuild the candidate index from the job keys: send {"reindex":true} until the reply says ready. It changes no task.
+      if (input.reindex !== true || Object.keys(input).length !== 1) libraryFail('machine_bad_request', 400);
+      const doc = await museIndexRestart(env);
+      return json({ok:true,reindex:{ready:doc.ready,entries:Object.keys(doc.entries).length}});
+    }
     const dryRun = input.dryRun === true;
     const limit = Object.hasOwn(input,'limit') ? input.limit : 20;
     if (!Number.isInteger(limit) || limit < 1 || limit > 50) libraryFail('machine_bad_request', 400);
     const room = dryRun ? limit : Math.min(limit, await machineRemaining(env, caller, 'requeue', machineLimit(env, 'MACHINE_REQUEUE_DAILY_LIMIT', MACHINE_REQUEUE_DAILY_DEFAULT)));
-    const requeued = [], skippedPaused = [];
+    const doc = await museIndexOpen(env);
+    machineIndexReadyOrWait(doc);
+    const requeued = [], skippedPaused = [], changes = [];
     let truncated = false;
-    const walk = await machineWalk(env, MUSE_JOB_PREFIX, async entry => {
-      if (requeued.length >= room) { truncated = true; return true; }
-      if (typeof entry.name !== 'string' || !entry.name.startsWith(MUSE_JOB_PREFIX)) return false;
-      const doi = entry.name.slice(MUSE_JOB_PREFIX.length);
-      const job = museRecord(await libraryGet(env.QL_KV, entry.name), doi);
-      if (!machineRequeueCandidate(job)) return false;
-      const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
-      if (attempt && attempt.paused) { skippedPaused.push({doi}); return false; }
-      const paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
-      if (paper && paper.fulltextStatus === 'available') return false;
-      requeued.push({doi,from:job.state});
-      if (!dryRun) await machineRequeueOne(env, job);
-      return false;
-    });
-    if (walk.cursor) truncated = true;
+    try {
+      const candidates = museIndexRequeueCandidates(doc, Date.now());
+      for (let n = 0; n < candidates.length; n++) {
+        if (requeued.length >= room || n >= MACHINE_REQUEUE_EXAMINE_MAX) { truncated = true; break; }
+        const [doi, entry] = candidates[n];
+        const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+        if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+        if (!machineRequeueCandidate(job)) continue;
+        const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
+        if (attempt && attempt.paused) { skippedPaused.push({doi}); continue; }
+        const paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+        if (paper && paper.fulltextStatus === 'available') continue;
+        requeued.push({doi,from:job.state});
+        if (!dryRun) await machineRequeueOne(env, job, changes);
+      }
+    } finally { await machineIndexFlush(env, changes); }
     if (!dryRun) await machineConsume(env, caller, 'requeue', requeued.length);
     return json({ok:true,dryRun,limit,requeued,skippedPaused,truncated});
   } catch (error) { return machineError(error); }
@@ -560,7 +618,7 @@ async function machineRegisterExisting(env, doi) {
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
-async function machineRegisterOne(env, caller, item) {
+async function machineRegisterOne(env, caller, item, changes) {
   const now = Date.now(), id = crypto.randomUUID();
   const registration = {source:item.source,section:item.section};
   const job = {version:1,id,doi:item.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,registration};
@@ -568,9 +626,10 @@ async function machineRegisterOne(env, caller, item) {
     ingestedAt:new Date(now).toISOString(),metadataStatus:'external_bibliography_checked',fulltextStatus:'manual_needed'};
   // Same order as a site-owner selection: paper record, job, queue pointer. A half-written DOI would later look
   // like "already exists" and never enter the queue, so a failure removes what this call wrote.
+  const local = [];
   try {
     await librarySave(env.QL_KV, paper, null, 'library_manual_needed');
-    await musePut(env, job);
+    await musePut(env, job, {indexChanges:local});
     await libraryPut(env.QL_KV, job.queueKey, JSON.stringify({doi:item.doi,id}), {expirationTtl:604800});
     await libraryPut(env.QL_KV, MACHINE_REGISTER_PREFIX + item.doi, JSON.stringify({version:1,doi:item.doi,title:item.title,source:item.source,section:item.section,registeredBy:caller.id,registeredAt:now,taskId:id}));
   } catch (error) {
@@ -581,6 +640,8 @@ async function machineRegisterOne(env, caller, item) {
     throw error;
   }
   // KV is not atomic: if another writer created the ledger entry first, report skipped and leave their record alone.
+  // The index entry is recorded once per batch (see handleMachineRegister), only for a task that was really written.
+  changes.push(...local);
   const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + item.doi), item.doi);
   return observed && observed.id === id;
 }
@@ -597,7 +658,7 @@ async function handleMachineRegister(request, env) {
     const limit = machineLimit(env, 'MACHINE_REGISTER_DAILY_LIMIT', MACHINE_REGISTER_DAILY_DEFAULT);
     const usedBefore = await libraryGet(env.QL_KV, machineRateKey(caller, 'register'));
     const used = Number.isInteger(usedBefore) && usedBefore >= 0 ? usedBefore : 0;
-    const results = [], seen = new Set();
+    const results = [], seen = new Set(), changes = [];
     let registered = 0, failure = null;
     try {
       for (const raw of input.items) {
@@ -608,11 +669,13 @@ async function handleMachineRegister(request, env) {
         const existing = await machineRegisterExisting(env, item.doi);
         if (existing) { results.push({doi:item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where}); continue; }
         if (used + registered >= limit) { results.push({doi:item.doi,result:'over_quota'}); continue; }
-        if (await machineRegisterOne(env, caller, item)) { registered++; results.push({doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}); }
+        if (await machineRegisterOne(env, caller, item, changes)) { registered++; results.push({doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}); }
         else results.push({doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'});
       }
     } catch (error) { failure = error; }
     // Count what really got written, even when a later item failed; a retry then sees those DOIs as skipped.
+    // The candidate index gets the whole batch in one write.
+    try { await museIndexApply(env, changes); } catch (error) { failure = failure || error; }
     await machineConsume(env, caller, 'register', registered);
     if (failure) throw failure;
     const count = name => results.filter(entry => entry.result === name).length;

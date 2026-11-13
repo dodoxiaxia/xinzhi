@@ -133,10 +133,15 @@ async function musePublicJobValue(env, doi) {
 function museTerminalRecord(job) {
   return job.state === 'available' || job.state === 'abandoned';
 }
-async function musePut(env, job) {
+async function musePut(env, job, options = {}) {
   // Done and confirmed-abandoned stay in KV until deleted. Other states keep the 7-day TTL.
   await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),museTerminalRecord(job) ? undefined : {expirationTtl:604800});
   libraryCatalogCache.clear();
+  // Keep the machine candidate index in step with every state change. A caller that writes many tasks passes
+  // indexChanges and applies them once with museIndexApply.
+  const change = {doi:job.doi,entry:museIndexEntry(job)};
+  if (Array.isArray(options.indexChanges)) options.indexChanges.push(change);
+  else await museIndexApply(env,[change]);
 }
 function museExpired(job) {
   // A queued request may wait six days; an acquisition's 24 hours start when Muse claims it.
