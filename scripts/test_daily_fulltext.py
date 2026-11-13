@@ -263,6 +263,54 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual([i['pmcid'] for i in data['items']], ['PMC2'])
         self.assertTrue(all('PMC1' not in u for u in fetched))
 
+class RunExitCodeTests(unittest.TestCase):
+    """`--run` has no minimum count: few or no readings exit 0; only a real generation error exits non-zero."""
+    def run_main(self, papers, model=None, model_config=None):
+        import contextlib, io, sys
+        real_generate = d.generate
+        class Writer:
+            def save(self, data, ledger):
+                d.atomic(d.ROOT / d.DATA_PATH, data)
+                d.atomic(d.ROOT / d.LEDGER_PATH, ledger)
+        by_pmc = {p['pmcid']: p for p in papers}
+        generate = lambda *a, **k: real_generate(*a, fetch=lambda url: xml(by_pmc[url.split('/')[-2]]),
+                                                 model=model or (lambda *args: output(args[-1][0]['id'])), **k)
+        with tempfile.TemporaryDirectory() as tmp, \
+                patch.object(d, 'ROOT', Path(tmp)), patch.object(d, 'now', return_value=WHEN), \
+                patch.object(d, 'checkpoint', return_value=Writer()), \
+                patch.object(d, 'model_config', model_config or (lambda: {})), \
+                patch.object(d, 'discover', return_value=(papers, [])), \
+                patch.object(d, 'generate', generate), patch.object(sys, 'argv', ['daily_fulltext.py', '--run']), \
+                contextlib.redirect_stdout(io.StringIO()):
+            code = d.main()
+            return code, json.loads((Path(tmp) / d.DATA_PATH).read_text())['status']
+
+    def test_too_few_candidates_exit_zero(self):
+        for papers in ([], [paper(1, '心血管')], [dict(paper(2, 'AI 医疗'), title='Machine learning prediction of ankle reinjury')]):
+            code, status = self.run_main(papers)
+            self.assertEqual(code, 0, len(papers))
+            self.assertEqual(status['state'], 'complete')
+            self.assertEqual(status['completed'], 1 if papers and papers[0]['title'] == 'Heart outcomes study' else 0)
+
+    def test_real_generation_errors_still_exit_non_zero(self):
+        def unavailable(*_):
+            raise d.ReadingError('model_unavailable')
+        code, status = self.run_main([paper(1, '心血管')], model=unavailable)
+        self.assertEqual((code, status['state'], status['reason']), (1, 'waiting', 'model_unavailable'))
+        def not_configured():
+            raise d.ReadingError('model_not_configured')
+        code, status = self.run_main([paper(1, '心血管')], model_config=not_configured)
+        self.assertEqual((code, status['reason']), (1, 'model_not_configured'))
+
+    def test_the_run_exit_code_and_the_public_status_share_one_judgement(self):
+        for reason in ('', 'validation_or_fulltext_shortfall'):
+            self.assertFalse(d.generation_failed(reason))
+        for reason in ('model_unavailable', 'provider_failed_today', 'prior_attempt_uncertain', 'checkpoint_write_failed', 'time_budget'):
+            self.assertTrue(d.generation_failed(reason))
+            self.assertEqual(d.generation_state(0, reason), 'waiting')
+            self.assertEqual(d.generation_state(2, reason), 'partial')
+        self.assertEqual(d.generation_state(0, 'validation_or_fulltext_shortfall'), 'complete')
+
 class GenerationTests(unittest.TestCase):
     def generate(self, data=None, ledger=None, model=None, save=None):
         data, ledger = data or d.empty_data(), ledger or d.empty_ledger()

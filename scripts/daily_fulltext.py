@@ -599,6 +599,17 @@ def apply_resolutions(ledger, entries):
                 changed += 1
     return changed
 
+# Private reasons that only say "fewer than the cap" (or nothing in scope): not a generation failure.
+# One judgement shared by the run's exit code, the private state and the public status.
+NO_FAILURE_REASONS = ('', 'validation_or_fulltext_shortfall')
+
+def generation_failed(reason):
+    return (reason or '') not in NO_FAILURE_REASONS
+
+def generation_state(published, reason):
+    """No minimum count: only a real generation error leaves a day waiting/partial."""
+    return ('partial' if published else 'waiting') if generation_failed(reason) else 'complete'
+
 def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=call_model, deadline=None):
     check_store(data, ledger)
     today, day = when.astimezone(SHANGHAI).date(), day_of(when)
@@ -665,16 +676,14 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     # Keep reservation history; never erase uncertain attempts to create more paid budget.
     data['generatorVersion'] = GENERATOR_VERSION
     data['updatedAt'] = now().isoformat()
+    reason = stopped or ('validation_or_fulltext_shortfall' if len(published) < TARGET else '')
     data['status'] = {'day': day, 'target': TARGET, 'completed': len(published),
-                      'state': 'complete' if len(published) >= 3 else 'partial' if published else 'waiting',
-                      'reason': stopped or ('validation_or_fulltext_shortfall' if len(published) < TARGET else ''),
+                      'state': generation_state(published, reason),
+                      'reason': reason,
                       'attempts': len(rows), 'sourceRequests': fetched,
                       'errorCodes': sorted(set(errors))}
     save(data, ledger)
     return data['status']
-
-# Private reasons that only say "fewer than the cap": not a generation failure.
-NO_FAILURE_REASONS = ('', 'validation_or_fulltext_shortfall')
 
 def public_status(status, items):
     """Public completion state from the same basis as the column: items exported for the batch day.
@@ -687,7 +696,7 @@ def public_status(status, items):
         return out  # no batch yet (pending): nothing to recompute
     shown = sum(p['publishedOn'] == day for p in items)
     out['completed'] = shown
-    if shown or status.get('reason', '') in NO_FAILURE_REASONS:
+    if shown or not generation_failed(status.get('reason')):
         out.update(state='complete', reason='')
     return out
 
@@ -723,8 +732,8 @@ def recover_only(data, ledger, when):
         day = day_of(when)
         done = sum(p['publishedOn'] == day for p in data['items'])
         status = dict(data.get('status') or {}) if (data.get('status') or {}).get('day') == day else {'day': day, 'target': TARGET}
-        status.update(completed=done, state='complete' if done >= 3 else 'partial',
-                      reason='' if done >= TARGET else status.get('reason') or 'validation_or_fulltext_shortfall')
+        reason = '' if done >= TARGET else status.get('reason') or 'validation_or_fulltext_shortfall'
+        status.update(completed=done, state=generation_state(done, reason), reason=reason)
         data['status'] = status
         data['updatedAt'] = now().isoformat()
         save(data, ledger)
@@ -761,7 +770,8 @@ def main():
         result = generate(data, ledger, papers, when, writer.save, cfg, deadline=step_deadline())
         result['recoveredDrafts'] = recovered
         print(json.dumps(result, ensure_ascii=False))
-        return 0 if result['completed'] >= 3 else 1
+        # Fewer readings, even none, is a normal outcome when few papers are in scope; only a real error fails.
+        return 1 if generation_failed(result['reason']) else 0
     except ReadingError as e:
         # Fixed codes only. Preserve all existing successful items; no raw provider diagnostics.
         data['updatedAt'] = now().isoformat()
