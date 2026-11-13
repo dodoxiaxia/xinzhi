@@ -624,4 +624,4 @@ function assertD1MatchesKv(h, key, expectedEntity) {
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
-}).then(() => { require('./test_d1_backfill.cjs'); }); // hooked here: this file already runs from test_muse_reader_upload.cjs
+});

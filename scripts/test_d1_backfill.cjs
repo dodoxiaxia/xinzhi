@@ -1,7 +1,7 @@
 'use strict';
 // Offline: POST /api/machine/d1-backfill. KV is the ledger; kv_mirror in D1 is a copy that the live shadow write only fills going forward.
 // verify (default) reports the difference and writes nothing; apply needs apply:true in the body AND D1_BACKFILL_ENABLED=true.
-// Hooked in at the end of test_d1_shadow.cjs (which test_muse_reader_upload.cjs already runs).
+// Loaded directly by test_muse_reader_upload.cjs (the daily.yml offline list) and by run_all_tests.sh (scripts/test_*.cjs).
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
@@ -209,9 +209,34 @@ const kvSnapshot = h => JSON.stringify([...h.values.entries()].map(([k, v]) => [
   assert(!/\bDELETE\s+FROM\b/i.test(src) && !/\bDROP\b/i.test(src) && !/\bUPDATE\s+kv_mirror\b/i.test(src) && !/\bINSERT\s+INTO\b/i.test(src), '07e-d1-backfill.js writes only through the shadow statements');
   assert(src.includes('D1_SHADOW_UPSERT_SQL') && src.includes('D1_SHADOW_DELETE_SQL'));
 
-  // 12. The Python client that drives it (paging, both sides, verify after apply, exit codes).
+  // 12. A freshly written tombstone whose KV key is still present is 'recent': it is not counted in diff, and apply does not resurrect it.
+  //     An old tombstone in the same page is still kv_present_d1_deleted. After the grace window the fresh one is compared like any other tombstone and apply restores it from KV.
+  h = create(); h.env.D1_BACKFILL_ENABLED = 'true';
+  const freshKey = JOB + '10.1000/fresh-del', oldKey = JOB + '10.1000/old-del';
+  h.put(freshKey, '{"v":1}'); h.put(oldKey, '{"v":2}');
+  h.row(freshKey, 'muse_job', '{"v":1}', {deleted: 1, updated_at: NOW - 1000});
+  h.row(oldKey, 'muse_job', '{"v":2}', {deleted: 1, updated_at: NOW - 3600000});
+  body = await kvPass(h);
+  assert.equal(body.counts.recent, 1); assert.equal(body.counts.kv_present_d1_deleted, 1); assert.equal(body.diff, 1); assert.equal(body.written, 0);
+  assert.deepEqual(body.samples.kv_present_d1_deleted, [oldKey]);
+  assert.equal(body.samples.recent, undefined, 'recent is not a difference category and carries no sample list');
+  body = await kvPass(h, {apply: true});
+  assert.equal(body.mode, 'apply'); assert.equal(body.written, 1); assert.equal(body.counts.recent, 1);
+  assert.equal(h.rows.get(freshKey).deleted, 1, 'a tombstone written moments ago is not resurrected');
+  assert.equal(h.rows.get(oldKey).deleted, 0, 'an old tombstone is still filled from KV');
+  assert.equal(h.rows.get(oldKey).value, '{"v":2}');
+  h.clock.now = NOW + 300000;
+  body = await kvPass(h);
+  assert.equal(body.counts.recent, 0); assert.equal(body.counts.kv_present_d1_deleted, 1); assert.equal(body.diff, 1);
+  assert.deepEqual(body.samples.kv_present_d1_deleted, [freshKey]);
+  body = await kvPass(h, {apply: true});
+  assert.equal(body.written, 1); assert.equal(h.rows.get(freshKey).deleted, 0); assert.equal(h.rows.get(freshKey).value, '{"v":1}');
+  body = await kvPass(h);
+  assert.equal(body.diff, 0); assert.equal(body.counts.same, 2);
+
+  // 13. The Python client that drives it (paging, both sides, verify after apply, exit codes).
   const client = require('child_process').spawnSync('python3', [path.join(__dirname, 'test_d1_backfill_client.py')], {cwd: path.join(__dirname, '..'), stdio: 'inherit'});
   assert.equal(client.status, 0, 'scripts/test_d1_backfill_client.py failed');
 
-  console.log('D1 backfill: verify by default, two gates, row shape, shadow race, tombstones, idempotence, paging and failure isolation passed');
+  console.log('D1 backfill: verify by default, two gates, row shape, shadow race, tombstones, recent-tombstone grace, idempotence, paging and failure isolation passed');
 })().catch(error => {console.error(error); process.exitCode = 1;});

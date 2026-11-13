@@ -5791,7 +5791,8 @@ function downloadNotify(env, ctx, doi, taskId) {
 // switched on, so keys that already existed in KV have no D1 row. This endpoint closes that gap and reports the remaining difference.
 //   Request body: {"prefix":"<one of D1_SHADOW_PREFIXES>","side":"kv"|"d1","cursor":"","limit":1..100,"apply":true}
 //   side "kv" (default): walk the KV keys of one prefix. Each key is compared with its D1 row; with apply, missing, tombstoned and
-//                        different rows are upserted from the KV value (KV is the ledger, D1 only a copy).
+//                        different rows are upserted from the KV value (KV is the ledger, D1 only a copy). A tombstone whose
+//                        updated_at is within D1_BACKFILL_GRACE_MS is counted as 'recent' and is not resurrected.
 //   side "d1":           walk the D1 rows of one prefix. A live row whose KV key is gone (and whose TTL has not run out) is a D1-only
 //                        row; with apply it is marked deleted (a tombstone, never DELETE FROM).
 //   - Without "apply" nothing is written: the reply is the difference report (verify). Needs only LIBRARY_DB and QL_KV.
@@ -5805,7 +5806,11 @@ function downloadNotify(env, ctx, doi, taskId) {
 const D1_BACKFILL_SWITCH = 'D1_BACKFILL_ENABLED';
 const D1_BACKFILL_LIMIT_DEFAULT = 50, D1_BACKFILL_LIMIT_MAX = 100, D1_BACKFILL_IN_BATCH = 50, D1_BACKFILL_SAMPLE = 10;
 // A D1 row written less than this long ago may be a live shadow write racing the comparison: counted as 'recent', not as a difference.
+// The same window covers a freshly written tombstone, so apply does not resurrect a key the shadow just deleted.
 const D1_BACKFILL_GRACE_MS = 120000, D1_BACKFILL_EXPIRY_GRACE_MS = 300000;
+function d1BackfillIsRecent(row) {
+  return Number.isFinite(row.updated_at) && Date.now() - row.updated_at < D1_BACKFILL_GRACE_MS;
+}
 const D1_BACKFILL_SELECT_COLUMNS = 'key, entity, sha256, size, expires_at, updated_at, deleted';
 const D1_BACKFILL_DIFF_CATEGORIES = ['missing_in_d1', 'kv_present_d1_deleted', 'value_diff', 'missing_in_kv'];
 
@@ -5857,9 +5862,9 @@ async function d1BackfillKvPage(env, prefix, cursor, limit, apply) {
     const row = rows.get(key);
     let category;
     if (!row) category = 'missing_in_d1';
-    else if (row.deleted) category = 'kv_present_d1_deleted';
+    else if (row.deleted) category = d1BackfillIsRecent(row) ? 'recent' : 'kv_present_d1_deleted';
     else if (row.sha256 === sha256) category = 'same';
-    else category = Number.isFinite(row.updated_at) && Date.now() - row.updated_at < D1_BACKFILL_GRACE_MS ? 'recent' : 'value_diff';
+    else category = d1BackfillIsRecent(row) ? 'recent' : 'value_diff';
     d1BackfillNote(state, category, key);
     if (apply && D1_BACKFILL_DIFF_CATEGORIES.includes(category)) {
       const expiresAt = Number.isFinite(entry.expiration) ? entry.expiration * 1000 : null;
@@ -5888,7 +5893,7 @@ async function d1BackfillD1Page(env, prefix, cursor, limit, apply) {
     try { value = await env.QL_KV.get(row.key); } catch { libraryFail('library_storage', 503); }
     if (typeof value === 'string') { state.counts.kv_present++; continue; } // the key exists: the kv side judges its content
     if (Number.isFinite(row.expires_at) && row.expires_at + D1_BACKFILL_EXPIRY_GRACE_MS < Date.now()) { state.counts.expired_ok++; continue; }
-    if (Number.isFinite(row.updated_at) && Date.now() - row.updated_at < D1_BACKFILL_GRACE_MS) { state.counts.recent++; continue; }
+    if (d1BackfillIsRecent(row)) { state.counts.recent++; continue; }
     d1BackfillNote(state, 'missing_in_kv', row.key);
     if (apply) statements.push(env.LIBRARY_DB.prepare(D1_SHADOW_DELETE_SQL).bind(row.key, row.entity || d1ShadowEntity(row.key), readAt));
   }
