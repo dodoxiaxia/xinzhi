@@ -9,7 +9,7 @@ the Worker can succeed. The repository is public: the snapshot holds
 SHA-256 prefixes of normalised DOIs and titles, never titles, paths or checksums.
 
 DOI and title normalisation and the column-prefix list are read from the Worker source
-so the two sides cannot drift apart; scripts/test_pdf_identity.py cross-checks them with node.
+so the two sides cannot drift apart; scripts/test_public_build.py cross-checks them with node.
 """
 import csv
 import datetime

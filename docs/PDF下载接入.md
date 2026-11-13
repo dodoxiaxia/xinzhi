@@ -10,7 +10,7 @@
 
 服务端只接受现有文献库中的 ID，按 DOI 精确匹配；无 DOI 时仅接受唯一的完全相同题名（忽略大小写和连续空白），不用模糊匹配。有 DOI 的条目不回退到题名。索引和单篇 PDF 固定在同一 GitHub commit。匹配歧义、异常校验记录、非 PDF 或缺少全文时拒绝下载并提示官网入口。下载响应为 `application/pdf` 与 attachment，支持中文文件名，并禁止缓存。
 
-2026-11-13 起，下载按钮和 Worker 的 ID 白名单只给“在索引里恰好对上 1 个可用文件”的文献：构建读取仓库内的 `config/pdf_index_keys.json`（索引每行 DOI 与题名的哈希，不含题名、路径和校验值，构建本身没有访问 AI- 的权限，也没有新增 Secret），对上才在 `LIBRARY.pdfIds` 里列出该 ID。对不上的文献不出按钮，原来点开才报“暂未提供可下载的 PDF”或“对应关系需要核验”。题名比对另外忽略一份明确列出的栏目前缀（`edge/src/00-header-pdf.js` 的 `PDF_COLUMN_PREFIXES`，目前只有 `AI IN MEDICINE`：全大写、后接一个空格才会去掉），去掉后仍须唯一匹配；Python 端 `scripts/pdf_identity.py` 直接读取同一份常量，`test_public_build.py` 用 node 逐项对照两端的归一化结果。AI- 索引新增 PDF 后，维护者在有 AI- 读权限的 `gh` 登录下运行 `python3 scripts/refresh_pdf_index_keys.py` 更新快照并走 PR；快照超过 14 天构建日志会提醒，新入库的文件在刷新前没有按钮（服务端本身仍读取最新索引）。
+2026-11-13 起，下载按钮和 Worker 的 ID 白名单只给“在索引里恰好对上 1 个可用文件”的文献（同一 SHA256 的多行视为同一文件）：构建读取仓库内的 `config/pdf_index_keys.json`（索引每行 DOI 与题名的哈希，不含题名、路径和校验值，构建本身没有访问 AI- 的权限，也没有新增 Secret），对上才在 `LIBRARY.pdfIds` 里列出该 ID。对不上的文献不出按钮，原来点开才报“暂未提供可下载的 PDF”或“对应关系需要核验”。题名比对另外忽略一份明确列出的栏目前缀（`edge/src/00-header-pdf.js` 的 `PDF_COLUMN_PREFIXES`，目前只有 `AI IN MEDICINE`：全大写、后接一个空格才会去掉），去掉后仍须唯一匹配；Python 端 `scripts/pdf_identity.py` 直接读取同一份常量，`test_public_build.py` 用 node 逐项对照两端的归一化结果。AI- 索引新增 PDF 后，维护者在有 AI- 读权限的 `gh` 登录下运行 `python3 scripts/refresh_pdf_index_keys.py` 更新快照并走 PR；快照超过 14 天构建日志会提醒，新入库的文件在刷新前没有按钮（服务端本身仍读取最新索引）。
 
 公开六文件包不含 PDF、GitHub 凭据、私有路径或原始索引。构建只向 Worker 注入已公开文献 ID、DOI 与题名的对应表。GitHub 文件通过服务端读取，凭据不传给浏览器。
 

@@ -52,10 +52,17 @@ class QualityTests(unittest.TestCase):
         self.assertEqual((p['date'], p['onlineDate'], p['issueDate']), ('2026-04-10', '2026-04-10', '2026-03'))
         self.assertEqual((p['volume'], p['issue']), ('8', '3'))
         self.assertEqual(audit['aliases'][0]['canonicalId'], quality.AGENTIC_IDS[0])
-        self.assertEqual(set(audit['pdfBindingHoldIds']), {quality.AGENTIC_IDS[0], *quality.DOI_REVIEW})
+        self.assertEqual(set(audit['pdfBindingHoldIds']), {quality.AGENTIC_IDS[0], *quality.DOI_REVIEW, *(set(quality.PDF_BINDING_HOLDS) & set(papers))})
         self.assertFalse(p['localAvailable'])
         self.assertEqual(p['fulltextStatus'], 'not_verified')
         self.assertIsNone(p['ingestedAt'])
+
+    def test_record_whose_doi_names_another_article_keeps_listing_without_pdf_binding(self):
+        raw = [{'id': '37cb5c6f96b8b0f5', 'title': 'x', 'doi': '10.1016/j.landig.2026.100979'}]
+        projected, audit = quality.project_public_library(raw)
+        self.assertEqual([p['id'] for p in projected], ['37cb5c6f96b8b0f5'])
+        self.assertEqual(projected[0]['doi'], '10.1016/j.landig.2026.100979')
+        self.assertIn('37cb5c6f96b8b0f5', audit['pdfBindingHoldIds'])
 
     def test_each_surgery_record_separates_verified_online_date_from_indexed_issue_month(self):
         projected, _ = quality.project_public_library(snapshot())
