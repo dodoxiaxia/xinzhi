@@ -1,3 +1,5 @@
+# Repository copy of the live xinzhi-cron timer. Actions does not deploy this worker.
+# Schedule matches production: minute 7, every 2 hours. Dispatch target and inputs stay in index.js.
 name = "xinzhi-cron"
 main = "index.js"
 compatibility_date = "2024-09-23"
@@ -5,4 +7,4 @@ workers_dev = true
 keep_vars = true
 
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["7 */2 * * *"]

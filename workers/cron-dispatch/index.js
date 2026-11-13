@@ -1,8 +1,8 @@
-// Existing xinzhi-cron: check the queue before starting a GitHub runner.
+// Repository copy of the live xinzhi-cron timer. Actions does not deploy this worker.
+// Live behavior, and this source: every 2 hours at minute 7, dispatch daily.yml as a fast refresh.
 // GH_TOKEN stays in Cloudflare; scope: this repository, Actions read/write.
 const REPO = 'dodoxiaxia/xinzhi';
-const WORKFLOW = 'fulltext.yml';
-const PENDING = 'https://learn.dryz.info/api/fulltext-pending';
+const WORKFLOW = 'daily.yml';
 const BASE = 'https://api.github.com/repos/' + REPO + '/actions/workflows/' + WORKFLOW;
 async function request(url, init) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
@@ -26,16 +26,10 @@ async function request(url, init) {
 }
 async function dispatch(env) {
   try {
-    const pending = await request(PENDING, { method:'GET', headers:{ accept:'application/json', 'User-Agent':'XinZhiFulltextDispatch/1.0' } });
-    if (pending.status !== 200 || !pending.body || pending.body.ok !== true || typeof pending.body.pending !== 'boolean') return 'queue_unavailable';
-    if (!pending.body.pending) return 'queue_empty';
     if (typeof env.GH_TOKEN !== 'string' || !env.GH_TOKEN.trim()) return 'dispatch_not_configured';
     const headers = { Authorization:'Bearer ' + env.GH_TOKEN, Accept:'application/vnd.github+json',
-      'X-GitHub-Api-Version':'2022-11-28', 'User-Agent':'XinZhiFulltextDispatch/1.0' };
-    const runs = await request(BASE + '/runs?branch=main&per_page=5', { method:'GET', headers });
-    if (runs.status !== 200 || !runs.body || !Array.isArray(runs.body.workflow_runs)) return 'workflow_unavailable';
-    if (runs.body.workflow_runs.some(run => ['queued','in_progress','waiting','pending','requested'].includes(run.status))) return 'workflow_active';
-    const result = await request(BASE + '/dispatches', { method:'POST', headers:{ ...headers, 'Content-Type':'application/json' }, body:JSON.stringify({ ref:'main' }) });
+      'X-GitHub-Api-Version':'2022-11-28', 'User-Agent':'XinZhiFulltextDispatch/1.0', 'Content-Type':'application/json' };
+    const result = await request(BASE + '/dispatches', { method:'POST', headers, body:JSON.stringify({ ref:'main', inputs:{ mode:'fast' } }) });
     return result.status === 204 ? 'dispatched' : 'dispatch_failed';
   } catch { return 'dispatch_unavailable'; }
 }
