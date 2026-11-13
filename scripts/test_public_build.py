@@ -284,20 +284,71 @@ class PublicBuildTests(unittest.TestCase):
   self.assertEqual(pi.title_key('AI IN MEDICINE: A study'),'ai in medicine: a study')
   self.assertEqual(pi.title_key('  AI IN MEDICINE \u3000 Will   it?'),'will it?')
  def test_snapshot_keeps_titles_paths_and_checksums_private(self):
-  rows=[{'题名':'Very private title','DOI':'10.1000/secret','当前路径':'私有/路径.pdf','SHA256':'c'*64}]
-  text=json.dumps(pi.build_snapshot(rows),ensure_ascii=False)
-  for word in ('private','secret','私有','路径','c'*64,'10.1000'):self.assertNotIn(word,text)
+  rows=[{'题名':'Very private title','DOI':'10.1000/secret','当前路径':'私有/路径.pdf','SHA256':'c'*64,'文件类别':'补充材料'}]
+  snap=pi.build_snapshot(rows)
+  self.assertEqual(snap['schema'],3);self.assertEqual(len(snap['rows'][0]),4);self.assertEqual(snap['rows'][0][3],'x')
+  text=json.dumps(snap,ensure_ascii=False)
+  for word in ('private','secret','私有','路径','c'*64,'10.1000','补充','正文'):self.assertNotIn(word,text)
   with tempfile.TemporaryDirectory() as d:
    root=Path(d);(root/'config').mkdir()
    with self.assertRaisesRegex(ValueError,'missing'):pi.load_snapshot(root)
-   for bad in ({'schema':1,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},{'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[]},
-     {'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[['x','','']]},{'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[['','',1]]},{'schema':2,'generatedOn':'later','rowCount':0,'rows':[]}):
+   h='0'*24
+   for bad in ({'schema':1,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},{'schema':2,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},
+     {'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h]]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[['x','','','']]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[['','',1,'']]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h]]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,'','']]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,'正文']]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,'y']]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,None]]},{'schema':3,'generatedOn':'later','rowCount':0,'rows':[]}):
     (root/'config/pdf_index_keys.json').write_text(json.dumps(bad))
     with self.assertRaises(ValueError):pi.load_snapshot(root)
    (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)))
    self.assertEqual(pi.load_snapshot(root)['rowCount'],1)
+   for code in ('','m','x'):
+    (root/'config/pdf_index_keys.json').write_text(json.dumps({'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,code]]}))
+    self.assertEqual(pi.load_snapshot(root)['rows'][0][3],code)
+ def test_snapshot_category_codes_follow_the_worker_constants(self):
+  self.assertEqual((pi.CATEGORY_COLUMN,pi.CATEGORY_MAIN),('文件类别','正文'))
+  base={'题名':'t','DOI':'','当前路径':'a.pdf','SHA256':'a'*64}
+  for value,code in ((None,''),('',''),('  ',''),('正文','m'),(' 正文\u3000','m'),('补充材料','x'),('译本','x'),('待定','x'),('正文本','x')):
+   row=dict(base) if value is None else {**base,'文件类别':value}
+   self.assertEqual(pi.build_snapshot([row])['rows'][0][3],code,value)
+  csv_text='\ufeff题名,DOI,期刊,实际出版日期,日期来源,当前路径,SHA256,文件类别\r\nA,10.1000/a,j,,,a.pdf,'+'a'*64+',正文\r\nB,10.1000/a,j,,,b.pdf,'+'b'*64+',补充材料\r\n'
+  self.assertEqual(sorted(r[3] for r in pi.build_snapshot(pi.read_index_csv(csv_text.encode('utf-8')))['rows']),['m','x'])
+  old_csv='题名,DOI,期刊,实际出版日期,日期来源,当前路径,SHA256\r\nA,10.1000/a,j,,,a.pdf,'+'a'*64+'\r\n'
+  self.assertEqual(pi.build_snapshot(pi.read_index_csv(old_csv))['rows'][0][3],'')
+ def test_download_button_follows_the_file_category_rule(self):
+  def row(doi,cat=None,s='a',title='T',path=None):
+   r={'题名':title,'DOI':doi,'当前路径':path or ('期刊/'+s+'.pdf'),'SHA256':s*64}
+   if cat is not None:r['文件类别']=cat
+   return r
+  cases={
+   'c01-main-supplement':([row('10.2000/c01','补充材料','b'),row('10.2000/c01','正文','a')],True),
+   'c02-main-translation':([row('10.2000/c02','译本','b'),row('10.2000/c02','正文','a')],True),
+   'c03-two-supplements-main':([row('10.2000/c03','补充材料','b'),row('10.2000/c03','正文','a'),row('10.2000/c03','补充材料','c')],True),
+   'c04-all-blank':([row('10.2000/c04','','a'),row('10.2000/c04','','b')],False),
+   'c05-no-main':([row('10.2000/c05','补充材料','a'),row('10.2000/c05','译本','b')],False),
+   'c06-two-mains-differ':([row('10.2000/c06','正文','a'),row('10.2000/c06','正文','b')],False),
+   'c07-two-mains-same':([row('10.2000/c07','正文','a'),row('10.2000/c07','正文','a',path='期刊/other.pdf')],True),
+   'c08-single-supplement':([row('10.2000/c08','补充材料','a')],False),
+   'c09-single-main':([row('10.2000/c09','正文','a')],True),
+   'c10-main-blank':([row('10.2000/c10','','b'),row('10.2000/c10','正文','a')],True),
+   'c11a-no-column-one':([row('10.2000/c11a')],True),
+   'c11b-no-column-same':([row('10.2000/c11b'),row('10.2000/c11b')],True),
+   'c11c-no-column-differ':([row('10.2000/c11c',s='a'),row('10.2000/c11c',s='b')],False),
+   'unknown-value-main':([row('10.2000/u1','待定','b'),row('10.2000/u1','正文','a')],True),
+   'single-translation':([row('10.2000/u2','译本','a')],False),
+   'single-blank':([row('10.2000/u3','','a')],True),
+   'main-unusable':([row('10.2000/u4','补充材料','b'),row('10.2000/u4','正文','a',path='../x.pdf')],False),
+   'title-main-supplement':([row('','补充材料','b',title='Category title paper'),row('','正文','a',title='Category title paper')],True),
+   'title-single-supplement':([row('','补充材料','a',title='Lonely supplement paper')],False)}
+  rows=[r for case_rows,_ in cases.values() for r in case_rows]
+  papers=[{'id':case,'doi':case_rows[0]['DOI'],'title':case_rows[0]['题名']} for case,(case_rows,_) in cases.items()]
+  # A DOI paper never falls back to the title, even when the title has a main-text row.
+  papers.append({'id':'doi-first','doi':'10.2000/c08','title':'Category title paper'})
+  self.assertEqual(pi.downloadable_ids(papers,pi.build_snapshot(rows)),sorted(case for case,(_,expected) in cases.items() if expected))
  def test_committed_snapshot_is_valid_and_complete(self):
   snap=pi.load_snapshot(Path(__file__).resolve().parents[1])
+  self.assertEqual(snap['schema'],3)
   self.assertGreater(snap['rowCount'],1000)
   self.assertTrue(all(r[2] for r in snap['rows']))
  def test_python_and_worker_normalise_identically(self):

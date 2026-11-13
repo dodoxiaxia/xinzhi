@@ -59,6 +59,10 @@ const pdfTitle = value => Array.from(String(value || '').trim().replace(/\s+/gu,
 // Known publisher column labels that scraped titles carry in front of the real title (uppercase, followed by one space).
 // Keep this list identical in effect to scripts/pdf_identity.py, which reads it from this file; the title that is left must still match exactly one index row.
 const PDF_COLUMN_PREFIXES = ["AI IN MEDICINE"];
+// Optional index column that tells the article itself apart from supplements and translations.
+// scripts/pdf_identity.py reads both constants from this file; old indexes without the column keep the old rules.
+const PDF_CATEGORY_COLUMN = "文件类别";
+const PDF_CATEGORY_MAIN = "正文";
 const pdfTitleKey = value => {
   const raw = String(value || '').trim().replace(/\s+/gu, ' ');
   for (const prefix of PDF_COLUMN_PREFIXES) if (raw.startsWith(prefix + ' ') && raw.length > prefix.length + 1) return pdfTitle(raw.slice(prefix.length + 1));
@@ -373,6 +377,13 @@ function pdfSafePath(value) {
   if (typeof value !== 'string' || !value || value !== value.trim() || value.length > 1024 || /[\\\x00-\x1f\x7f]/.test(value) || value.startsWith('/') || value.split('/').some(part => !part || part === '.' || part === '..') || value.split('/')[0].includes(':') || !/\.pdf$/i.test(value)) pdfFail('pdf_index_invalid');
   return value;
 }
+// Once any matched row carries a file category, only rows marked as the main text count;
+// supplements, translations, blank and unknown categories are ignored. No category anywhere keeps all rows.
+function pdfSelectRows(matching) {
+  const category = row => String(row[PDF_CATEGORY_COLUMN] || '').trim();
+  if (!matching.some(row => category(row))) return matching;
+  return matching.filter(row => category(row) === PDF_CATEGORY_MAIN);
+}
 const pdfContentsUrl = (path, commit) => 'https://api.github.com/repos/' + PDF_REPOSITORY + '/contents/' + path.split('/').map(encodeURIComponent).join('/') + '?ref=' + commit;
 const pdfRawPath = (path, commit) => '/' + PDF_REPOSITORY + '/' + commit + '/' + path;
 async function pdfDigest(algorithm, bytes) {
@@ -504,9 +515,12 @@ async function handlePdf(request, env) {
     if (diagnostic) diagnostic.reason = 'identity';
     const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitleKey(entry['题名']) === title);
     if (!matching.length) pdfFail('pdf_not_found', 404);
+    // A supplement or translation is never sent as the article: no main-text row left means ambiguous.
+    const selected = pdfSelectRows(matching);
+    if (!selected.length) pdfFail('pdf_ambiguous', 409);
     // Several rows that carry the same valid SHA-256 are one file registered more than once; different checksums stay ambiguous.
-    if (matching.length !== 1 && (!/^[a-f0-9]{64}$/.test(String(matching[0].SHA256 || '').trim().toLowerCase()) || matching.some(row => String(row.SHA256 || '').trim().toLowerCase() !== String(matching[0].SHA256 || '').trim().toLowerCase()))) pdfFail('pdf_ambiguous', 409);
-    const entry = matching[0], path = pdfSafePath(entry['当前路径']);
+    if (selected.length !== 1 && (!/^[a-f0-9]{64}$/.test(String(selected[0].SHA256 || '').trim().toLowerCase()) || selected.some(row => String(row.SHA256 || '').trim().toLowerCase() !== String(selected[0].SHA256 || '').trim().toLowerCase()))) pdfFail('pdf_ambiguous', 409);
+    const entry = selected[0], path = pdfSafePath(entry['当前路径']);
     const checksum = entry.SHA256.trim().toLowerCase();
     if (!/^[a-f0-9]{64}$/.test(checksum)) pdfFail('pdf_index_invalid');
     const endpoint = pdfContentsUrl(path, commit);
