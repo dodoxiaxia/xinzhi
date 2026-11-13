@@ -647,11 +647,7 @@ async function machineClaimQueued(env, caller) {
       if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') {
-        await musePut(env, {...job,state:'failed',reason:'out_of_scope',scopeExcluded:true,scopeReason:scope.reason,scopeDetail:scope.detail,updatedAt:Date.now()}, {indexChanges:changes});
-        if (job.queueKey) await museDelete(env, job.queueKey);
-        continue;
-      }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, job.doi);
       const now = Date.now();
@@ -699,11 +695,7 @@ async function machineClaimFailed(env, caller) {
         continue;
       }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') {
-        await musePut(env, {...job,state:'failed',reason:'out_of_scope',scopeExcluded:true,scopeReason:scope.reason,scopeDetail:scope.detail,updatedAt:Date.now()}, {indexChanges:changes});
-        if (job.queueKey) await museDelete(env, job.queueKey);
-        continue;
-      }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, doi);
       const now = Date.now();
@@ -812,7 +804,7 @@ async function handleMachineReturn(request, env) {
   } catch (error) { return machineError(error); }
 }
 function machineRequeueCandidate(job) {
-  if (!job || job.scopeExcluded === true || job.reason === 'out_of_scope' || ['review','available','abandoned','verifying'].includes(job.state)) return false;
+  if (!job || ['review','available','abandoned','verifying'].includes(job.state)) return false;
   if (job.state === 'failed' || job.state === 'login_required') return true;
   return ['queued','running','uploading'].includes(job.state) && museExpired(job);
 }

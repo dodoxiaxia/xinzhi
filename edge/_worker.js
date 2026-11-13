@@ -2144,7 +2144,7 @@ const MACHINE_INDEXED_PUBLIC_STATES = ['to-download','downloading','uploaded-awa
 // Index entry for one task record, or null when the task is no longer a machine candidate.
 // i: task id, s: state, c: createdAt, u: updatedAt, e: when the task counts as expired (0 = never), w: when the entry was written.
 function museIndexEntry(job) {
-  if (!job || !libraryDoi(job.doi) || !MACHINE_INDEX_STATES.includes(job.state) || job.scopeExcluded === true || job.reason === 'out_of_scope') return null;
+  if (!job || !libraryDoi(job.doi) || !MACHINE_INDEX_STATES.includes(job.state)) return null;
   let expires = 0;
   if (job.state === 'queued') expires = job.createdAt + MUSE_QUEUE_MS;
   else if (job.state === 'running' || job.state === 'uploading') expires = Math.min(job.leaseUntil, (job.acquisitionStartedAt || job.createdAt) + 86400000);
@@ -3967,11 +3967,7 @@ async function machineClaimQueued(env, caller) {
       if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') {
-        await musePut(env, {...job,state:'failed',reason:'out_of_scope',scopeExcluded:true,scopeReason:scope.reason,scopeDetail:scope.detail,updatedAt:Date.now()}, {indexChanges:changes});
-        if (job.queueKey) await museDelete(env, job.queueKey);
-        continue;
-      }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, job.doi);
       const now = Date.now();
@@ -4019,11 +4015,7 @@ async function machineClaimFailed(env, caller) {
         continue;
       }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') {
-        await musePut(env, {...job,state:'failed',reason:'out_of_scope',scopeExcluded:true,scopeReason:scope.reason,scopeDetail:scope.detail,updatedAt:Date.now()}, {indexChanges:changes});
-        if (job.queueKey) await museDelete(env, job.queueKey);
-        continue;
-      }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, doi);
       const now = Date.now();
@@ -4132,7 +4124,7 @@ async function handleMachineReturn(request, env) {
   } catch (error) { return machineError(error); }
 }
 function machineRequeueCandidate(job) {
-  if (!job || job.scopeExcluded === true || job.reason === 'out_of_scope' || ['review','available','abandoned','verifying'].includes(job.state)) return false;
+  if (!job || ['review','available','abandoned','verifying'].includes(job.state)) return false;
   if (job.state === 'failed' || job.state === 'login_required') return true;
   return ['queued','running','uploading'].includes(job.state) && museExpired(job);
 }

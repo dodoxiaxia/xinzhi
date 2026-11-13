@@ -1131,20 +1131,22 @@ async function review(h, body) {
   const basicDoi = '10.1000/scope-basic-mi';
   const cvDoi = '10.1000/scope-cv-hfref';
   const basicJob = putJob(h, basicDoi, 'queued', scopeBase);
+  const basicBeforeRaw = h.values.get('library:muse-job:' + basicDoi);
   seedPaper(h, basicDoi, 'Therapeutic angiogenesis in a mouse model of myocardial infarction', 'manual_needed', 'Circulation Research');
   putJob(h, cvDoi, 'queued', scopeBase + 10);
   seedPaper(h, cvDoi, 'Empagliflozin in patients with HFrEF: a randomized trial', 'manual_needed', 'Heart');
   await reindex(h);
   const scopeClaimed = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
   assert.equal(scopeClaimed.task.doi, cvDoi);
+  assert.equal(h.values.get('library:muse-job:' + basicDoi), basicBeforeRaw);
   const basicAfter = stored(h, 'library:muse-job:' + basicDoi);
-  assert.equal(basicAfter.state, 'failed');
-  assert.equal(basicAfter.reason, 'out_of_scope');
-  assert.equal(basicAfter.scopeExcluded, true);
-  assert.equal(basicAfter.scopeReason, 'basic_research');
-  assert(basicAfter.scopeDetail);
+  assert.equal(basicAfter.state, 'queued');
+  assert.equal(basicAfter.reason, undefined);
+  assert.equal(basicAfter.scopeExcluded, undefined);
+  assert.equal(basicAfter.scopeReason, undefined);
+  assert.equal(basicAfter.scopeDetail, undefined);
   assert.equal(basicAfter.leaseId, undefined);
-  assert.equal(h.values.has(basicJob.queueKey), false);
+  assert.equal(h.values.has(basicJob.queueKey), true);
   const scopeIdx = stored(h, 'library:machine-index:v1');
   assert.equal(scopeIdx.entries[basicDoi], undefined);
   const scopeToDownloadList = await (await call(h, '/api/machine/tasks?state=to-download', reader, null, {method:'GET'})).json();
@@ -1160,20 +1162,22 @@ async function review(h, body) {
   const oncDoi = '10.1000/scope-onc-chemo';
   const fbCvDoi = '10.1000/scope-fb-cv';
   const oncJob = putJob(h, oncDoi, 'failed', fbScopeBase, {reason:'not_oa'});
+  const oncBeforeRaw = h.values.get('library:muse-job:' + oncDoi);
   seedPaper(h, oncDoi, 'Adjuvant chemotherapy in early-stage breast cancer', 'manual_needed', 'JAMA Oncology');
   putJob(h, fbCvDoi, 'failed', fbScopeBase + 10, {reason:'not_oa'});
   seedPaper(h, fbCvDoi, 'Pulsed field ablation for atrial fibrillation: a randomized trial', 'manual_needed', 'New England Journal of Medicine');
   await reindex(h);
   const fbScopeClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
   assert.equal(fbScopeClaim.task.doi, fbCvDoi);
+  assert.equal(h.values.get('library:muse-job:' + oncDoi), oncBeforeRaw);
   const oncAfter = stored(h, 'library:muse-job:' + oncDoi);
   assert.equal(oncAfter.state, 'failed');
-  assert.equal(oncAfter.reason, 'out_of_scope');
-  assert.equal(oncAfter.scopeExcluded, true);
-  assert.equal(oncAfter.scopeReason, 'unrelated_to_cv_or_medical_ai');
-  assert(oncAfter.scopeDetail);
+  assert.equal(oncAfter.reason, 'not_oa');
+  assert.equal(oncAfter.scopeExcluded, undefined);
+  assert.equal(oncAfter.scopeReason, undefined);
+  assert.equal(oncAfter.scopeDetail, undefined);
   assert.equal(oncAfter.leaseId, undefined);
-  assert.equal(h.values.has(oncJob.queueKey), false);
+  assert.equal(h.values.has(oncJob.queueKey), true);
   const fbScopeIdx = stored(h, 'library:machine-index:v1');
   assert.equal(fbScopeIdx.entries[oncDoi], undefined);
   const fbEmpty = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
@@ -1521,6 +1525,54 @@ async function review(h, body) {
         assert.equal(stored(h, 'library:machine-index:v1').entries[protectedDoi], undefined);
       }
     }
+  }
+
+  // ---- exclude does not write job state; after force-keep and reindex the same queued job can be claimed
+  // Note: 「全程状态不变」only constrains the exclude phase not to write any job state/fields;
+  // once force-keep + reindex puts the job back in the claim index, normal claim writing running/downloading (claimed) is expected.
+  {
+    h = await create();
+    const ts = Date.now();
+    const excludeDoi = '10.1000/scope-exclude-then-force-keep';
+    const excludeJob = putJob(h, excludeDoi, 'queued', ts);
+    const beforeRaw = h.values.get('library:muse-job:' + excludeDoi);
+    const beforeObj = JSON.parse(beforeRaw);
+    seedPaper(h, excludeDoi, 'Therapeutic angiogenesis in a mouse model of myocardial infarction', 'manual_needed', 'Circulation Research');
+    await reindex(h);
+    assert.equal(stored(h, 'library:machine-index:v1').entries[excludeDoi].s, 'queued');
+
+    // 1) Exclude scan yields no task, drops only the index entry, and leaves the KV job & queue pointer completely unchanged.
+    const firstClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+    assert.equal(firstClaim.task, null);
+    assert.equal(h.values.get('library:muse-job:' + excludeDoi), beforeRaw);
+    const afterExclude = stored(h, 'library:muse-job:' + excludeDoi);
+    assert.deepEqual(afterExclude, beforeObj);
+    assert.equal(afterExclude.state, 'queued');
+    assert.equal(afterExclude.reason, undefined);
+    assert.equal(afterExclude.scopeExcluded, undefined);
+    assert.equal(afterExclude.scopeReason, undefined);
+    assert.equal(afterExclude.scopeDetail, undefined);
+    assert.equal(afterExclude.leaseId, undefined);
+    assert.equal(h.values.has(excludeJob.queueKey), true);
+    assert.equal(stored(h, 'library:machine-index:v1').entries[excludeDoi], undefined);
+
+    // 2) Add DOI to SCOPE_FORCE_KEEP_DOIS and reindex; the exact same queued job returns to the index and is claimed.
+    h.context.SCOPE_FORCE_KEEP_DOIS.add(excludeDoi);
+    assert.equal(h.context.SCOPE_FORCE_KEEP_DOIS.has(excludeDoi), true);
+    await reindex(h);
+    assert.equal(stored(h, 'library:machine-index:v1').entries[excludeDoi].s, 'queued');
+
+    const secondClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+    assert(secondClaim.task);
+    assert.equal(secondClaim.task.doi, excludeDoi);
+    assert.equal(secondClaim.task.taskId, excludeJob.id);
+    assert.equal(secondClaim.task.state, 'downloading');
+    assert(secondClaim.task.leaseId);
+    const afterClaim = stored(h, 'library:muse-job:' + excludeDoi);
+    assert.equal(afterClaim.id, excludeJob.id);
+    assert.equal(afterClaim.state, 'running');
+    assert.equal(afterClaim.claimant, 'dsh');
+    assert.equal(afterClaim.leaseId, secondClaim.task.leaseId);
   }
 
   console.log('machine download tests passed');
