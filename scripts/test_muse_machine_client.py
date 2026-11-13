@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""register 子命令的单元测试：全部 mock HTTP（替换 run_curl），不连线上，不读真实令牌。"""
+"""machine_client.py 的单元测试：全部 mock HTTP（替换 run_curl），不连线上，不读真实令牌。"""
 import contextlib
 import io
 import json
@@ -32,7 +32,7 @@ class Harness(object):
         return self.code, json.dumps(self.body)
 
 
-class RegisterTests(unittest.TestCase):
+class ClientTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -66,6 +66,8 @@ class RegisterTests(unittest.TestCase):
         return {"ok": True, "counts": {}, "results": results,
                 "quota": quota or {"limit": 200, "used": 1, "remaining": 199, "resetsAt": "2026-11-13T00:00:00.000Z"}}
 
+
+class RegisterTests(ClientTestCase):
     # --- tokenIsOwnAndNeverFallsBack ---
     def test_register_requires_token_env_and_never_uses_default_path(self):
         batch = self.write("a.json", json.dumps([GOOD]))
@@ -224,6 +226,38 @@ class RegisterTests(unittest.TestCase):
         rc, _o, _e, _h = self.run_cli(["register", "--file", self.write("a.json", json.dumps([GOOD]))], Harness(200, {"ok": True}))
         self.assertEqual(rc, 5)
 
+
+
+class StatusDetailTests(ClientTestCase):
+    """status --detail：本地校验与请求正文。复用 RegisterTests 的令牌与 run_cli。"""
+
+    def test_status_detail_just_accepted_is_sent_with_source_blocked(self):
+        h = Harness(200, {"ok": True, "task": {"doi": "10.1000/a", "state": "to-download"}})
+        rc, out, err, h = self.run_cli(
+            ["status", "--doi", "10.1000/a", "--reason", "source_blocked",
+             "--detail", "\x07just_accepted\n"], h)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(h.calls), 1)
+        self.assertEqual(h.calls[0]["body"]["detail"], "just_accepted")
+        self.assertEqual(h.calls[0]["body"]["reason"], "source_blocked")
+        self.assertNotIn(FAKE_TOKEN, out)
+        self.assertNotIn(FAKE_TOKEN, err)
+
+    def test_status_detail_rejected_locally_for_other_reason_or_value(self):
+        rc, _o, err, h = self.run_cli(
+            ["status", "--doi", "10.1000/a", "--reason", "not_oa", "--detail", "just_accepted"], Harness())
+        self.assertEqual(rc, 5)
+        self.assertEqual(h.calls, [])
+        self.assertIn("source_blocked", err)
+        rc, _o, err, h = self.run_cli(
+            ["status", "--doi", "10.1000/a", "--reason", "source_blocked", "--detail", "sciencedirect"], Harness())
+        self.assertEqual(rc, 5)
+        self.assertEqual(h.calls, [])
+        self.assertIn("just_accepted", err)
+        rc, _o, err, h = self.run_cli(
+            ["status", "--doi", "10.1000/a", "--reason", "source_blocked", "--detail", ""], Harness())
+        self.assertEqual(rc, 5)
+        self.assertEqual(h.calls, [])
 
 if __name__ == "__main__":
     unittest.main()

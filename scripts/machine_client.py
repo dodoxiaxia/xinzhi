@@ -35,6 +35,8 @@ FAILURE_REASONS = (
     "wrong_paper",
     "other",
 )
+STATUS_DETAILS = ("just_accepted",)
+STATUS_DETAIL_MAX = 500
 PUBLIC_STATES = (
     "to-download",
     "downloading",
@@ -325,6 +327,15 @@ def cmd_status(args):
         if args.stage not in ("han", "yiigle"):
             raise ClientError("stage 只能是 han 或 yiigle", 5)
         body["stage"] = args.stage
+    if args.detail is not None:
+        if not isinstance(args.detail, str):
+            raise ClientError("detail 必须是字符串", 5)
+        detail = re.sub(r"[\x00-\x1f\x7f]", "", args.detail).strip()
+        if not detail or len(detail) > STATUS_DETAIL_MAX or detail not in STATUS_DETAILS:
+            raise ClientError("detail 目前只允许 just_accepted（最长 %d 字，已去除控制字符）" % STATUS_DETAIL_MAX, 5)
+        if args.reason != "source_blocked":
+            raise ClientError("detail 只允许在 just_accepted 结果下使用（reason 须为 source_blocked）", 5)
+        body["detail"] = detail
     code, data, _body = request("POST", "/api/machine/status", token=token, json_body=body)
     payload, rc = classify_http(code, data)
     return emit(payload, 0 if rc == 0 else rc)
@@ -554,6 +565,7 @@ def build_parser():
     s.add_argument("--doi", required=True)
     s.add_argument("--reason", required=True, choices=FAILURE_REASONS)
     s.add_argument("--stage", choices=("han", "yiigle"))
+    s.add_argument("--detail", help="可选备注；目前只允许 just_accepted，且仅与 source_blocked 连用")
 
     r = sub.add_parser("requeue", help="批量重排；默认 dry-run，不改账本")
     r.add_argument("--dry-run", action="store_true", default=False,
