@@ -36,8 +36,8 @@ class QualityTests(unittest.TestCase):
         no_identity_before = {p['id'] for p in raw if not p['doi'] and not p['url']}
         no_identity_after = {p['id'] for p in projected if not p['doi'] and not p['url']}
         self.assertEqual(len(no_identity_before), 231)  # 245 before 14 DOI-less records received verified DOIs
-        self.assertEqual(len(no_identity_after), 230)
-        self.assertEqual(no_identity_after, (no_identity_before - quality.NAVIGATION.keys()) |
+        self.assertEqual(len(no_identity_after), 228)  # two DOI-less duplicates (4fe78ed5, 891a0ca9) are no longer listed
+        self.assertEqual(no_identity_after, (no_identity_before - quality.NAVIGATION.keys() - quality.DUPLICATES.keys()) |
                          {'a97bbb0a11844693', '814b860e19382e2f'})
         self.assertEqual(raw, before)
 
@@ -58,11 +58,54 @@ class QualityTests(unittest.TestCase):
         self.assertIsNone(p['ingestedAt'])
 
     def test_record_whose_doi_names_another_article_keeps_listing_without_pdf_binding(self):
-        raw = [{'id': '37cb5c6f96b8b0f5', 'title': 'x', 'doi': '10.1016/j.landig.2026.100979'}]
-        projected, audit = quality.project_public_library(raw)
-        self.assertEqual([p['id'] for p in projected], ['37cb5c6f96b8b0f5'])
+        raw = [{'id': 'held-record', 'title': 'x', 'doi': '10.1016/j.landig.2026.100979'}]
+        with patch.object(quality, 'PDF_BINDING_HOLDS', {'held-record': 'reviewed'}):
+            projected, audit = quality.project_public_library(raw)
+        self.assertEqual([p['id'] for p in projected], ['held-record'])
         self.assertEqual(projected[0]['doi'], '10.1016/j.landig.2026.100979')
-        self.assertIn('37cb5c6f96b8b0f5', audit['pdfBindingHoldIds'])
+        self.assertIn('held-record', audit['pdfBindingHoldIds'])
+
+    def test_duplicates_are_listed_once_and_snapshot_records_are_kept(self):
+        self.assertEqual(quality.DUPLICATES, {
+            '3bcf52b03b3bfd64': ('ffeb47ca0a734600', '10.1001/jama.2026.0946', quality.DUPLICATES['3bcf52b03b3bfd64'][2]),
+            '4fe78ed54cf5523d': ('77f5287fc55d4220', '10.1016/j.landig.2025.100916', quality.DUPLICATES['4fe78ed54cf5523d'][2]),
+            '891a0ca9ca481407': ('ba5cc383031aa08f', '10.1016/j.landig.2025.100922', quality.DUPLICATES['891a0ca9ca481407'][2]),
+            '37cb5c6f96b8b0f5': ('3b51e13dda54492e', '10.1016/j.landig.2025.100960', quality.DUPLICATES['37cb5c6f96b8b0f5'][2]),
+        })
+        raw = snapshot()
+        before = copy.deepcopy(raw)
+        projected, audit = quality.project_public_library(raw)
+        shown = {p['id'] for p in projected}
+        in_snapshot = {p['id']: p for p in snapshot()}
+        aliases = {a['record']['id']: a for a in audit['aliases']}
+        for duplicate, (canonical, doi, title) in quality.DUPLICATES.items():
+            with self.subTest(duplicate=duplicate):
+                self.assertIn(canonical, shown)                  # original stays listed
+                self.assertNotIn(duplicate, shown)               # duplicate is not shown
+                self.assertIn(duplicate, in_snapshot)            # snapshot record is not deleted
+                self.assertEqual(in_snapshot[duplicate]['title'], title)
+                self.assertEqual(aliases[duplicate]['canonicalId'], canonical)
+                self.assertEqual(aliases[duplicate]['status'], 'public_bibliographic_duplicate')
+                self.assertEqual(next(p for p in projected if p['id'] == canonical)['doi'], doi)
+        self.assertEqual(raw, before)
+        # The 37cb5c6f record's own DOI belongs to another article and is never rewritten.
+        self.assertEqual(in_snapshot['37cb5c6f96b8b0f5']['doi'], '10.1016/j.landig.2026.100979')
+
+    def test_changed_duplicate_or_original_identity_holds_the_build(self):
+        for identifier, change in [('3bcf52b03b3bfd64', {'title': 'A different title'}),
+                                   ('ffeb47ca0a734600', {'doi': '10.1001/jama.2026.9999'}),
+                                   ('77f5287fc55d4220', {'doi': ''}),
+                                   ('3b51e13dda54492e', {'doi': '10.1016/j.landig.2025.100961'})]:
+            raw = snapshot()
+            next(p for p in raw if p['id'] == identifier).update(change)
+            with self.subTest(id=identifier), self.assertRaisesRegex(ValueError, 'duplicate_identity_changed'):
+                quality.project_public_library(raw)
+        raw = [p for p in snapshot() if p['id'] != '891a0ca9ca481407']
+        projected, _ = quality.project_public_library(raw)   # absent duplicate: nothing to do
+        self.assertIn('ba5cc383031aa08f', {p['id'] for p in projected})
+        raw = [p for p in snapshot() if p['id'] != 'ba5cc383031aa08f']
+        with self.assertRaisesRegex(ValueError, 'duplicate_identity_changed'):  # original gone, duplicate present
+            quality.project_public_library(raw)
 
     def test_each_surgery_record_separates_verified_online_date_from_indexed_issue_month(self):
         projected, _ = quality.project_public_library(snapshot())
@@ -88,7 +131,7 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(by_id['a762c60c31fbd3e2']['date'], '2026-09-26')
         self.assertEqual(by_id['another-sep1-paper']['date'], '2026-09-01')
         targeted = (set(quality.NAVIGATION) | set(quality.AGENTIC_IDS) |
-                    set(quality.ONLINE_CORRECTIONS) | set(quality.DOI_REVIEW))
+                    set(quality.ONLINE_CORRECTIONS) | set(quality.DOI_REVIEW) | set(quality.DUPLICATES))
         for p in raw:
             if p['id'] not in targeted:
                 self.assertEqual(by_id[p['id']], p)
@@ -100,8 +143,8 @@ class QualityTests(unittest.TestCase):
         second, _ = quality.project_public_library(first)
         self.assertEqual(first, reversed_result)
         self.assertEqual(first, second)
-        self.assertEqual((audit['inputCount'], audit['outputCount']), (1268, 1264))
-        self.assertEqual((len(audit['quarantined']), len(audit['aliases']), len(audit['corrections'])), (3, 1, 4))
+        self.assertEqual((audit['inputCount'], audit['outputCount']), (1268, 1260))
+        self.assertEqual((len(audit['quarantined']), len(audit['aliases']), len(audit['corrections'])), (3, 5, 4))
         self.assertEqual(audit['privatePdfBodiesRead'], 0)
 
     def test_changed_target_identity_holds_instead_of_deleting_or_rebinding(self):
@@ -162,13 +205,13 @@ class QualityTests(unittest.TestCase):
                 builder.main()
             bundle = (root / 'public/public.js').read_text()
             library, _ = json.JSONDecoder().raw_decode(bundle.split('window.LIBRARY=', 1)[1])
-            self.assertEqual(len(library['papers']), 1264)
-            self.assertEqual(json.loads((root / 'docs/public-manifest.json').read_text())['counts']['library'], 1264)
+            self.assertEqual(len(library['papers']), 1260)
+            self.assertEqual(json.loads((root / 'docs/public-manifest.json').read_text())['counts']['library'], 1260)
             audit = json.loads((root / 'docs/public-library-quality-audit.json').read_text())
             self.assertEqual(len(audit['quarantined']), 3)
             self.assertNotIn('quarantined', bundle)
             worker = (root / 'public/_worker.js').read_text()
-            for identifier in (*quality.NAVIGATION, *quality.AGENTIC_IDS):
+            for identifier in (*quality.NAVIGATION, *quality.AGENTIC_IDS, *quality.DUPLICATES):
                 self.assertNotIn(identifier, worker)
             for p in paths:
                 self.assertEqual(p.read_bytes(), before[p])
