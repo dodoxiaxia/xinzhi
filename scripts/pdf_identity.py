@@ -82,10 +82,15 @@ def usable_row(row):
     return safe_path(row.get('当前路径')) and bool(re.fullmatch(r'[a-f0-9]{64}', str(row.get('SHA256') or '').strip().lower()))
 
 
+def file_key(row):
+    """Hash of the row's SHA-256 when the row is usable, else ''. Rows with equal keys are one file."""
+    return key_hash('file', str(row.get('SHA256') or '').strip().lower()) if usable_row(row) else ''
+
+
 def keys_from_index_rows(rows):
-    """[[doi_hash, title_hash, usable 0/1], ...] sorted; duplicates are kept so ambiguity stays visible."""
-    return sorted([key_hash('doi', pdf_doi(r.get('DOI'))), key_hash('title', title_key(r.get('题名'))),
-                   1 if usable_row(r) else 0] for r in rows)
+    """[[doi_hash, title_hash, file_key], ...] sorted; duplicate rows are kept so ambiguity stays visible."""
+    return sorted([key_hash('doi', pdf_doi(r.get('DOI'))), key_hash('title', title_key(r.get('题名'))), file_key(r)]
+                  for r in rows)
 
 
 def read_index_csv(data):
@@ -97,7 +102,7 @@ def read_index_csv(data):
 
 
 def build_snapshot(rows, today=None):
-    return {'schema': 1, 'generatedOn': (today or datetime.date.today()).isoformat(), 'rowCount': len(rows),
+    return {'schema': 2, 'generatedOn': (today or datetime.date.today()).isoformat(), 'rowCount': len(rows),
             'rows': keys_from_index_rows(rows)}
 
 
@@ -106,11 +111,11 @@ def load_snapshot(root=ROOT):
     if path.is_symlink() or not path.is_file():
         raise ValueError('PDF index key snapshot is missing; hold public build')
     data = json.loads(path.read_text(encoding='utf-8'))
-    ok = (isinstance(data, dict) and data.get('schema') == 1 and isinstance(data.get('rows'), list)
+    ok = (isinstance(data, dict) and data.get('schema') == 2 and isinstance(data.get('rows'), list)
           and data.get('rowCount') == len(data['rows'])
           and isinstance(data.get('generatedOn'), str)
-          and all(isinstance(r, list) and len(r) == 3 and isinstance(r[0], str) and isinstance(r[1], str) and r[2] in (0, 1)
-                  and re.fullmatch(r'(?:[0-9a-f]{24})?', r[0]) and re.fullmatch(r'(?:[0-9a-f]{24})?', r[1])
+          and all(isinstance(r, list) and len(r) == 3 and isinstance(r[0], str) and isinstance(r[1], str) and isinstance(r[2], str)
+                  and all(re.fullmatch(r'(?:[0-9a-f]{24})?', cell) for cell in r)
                   for r in data['rows']))
     if not ok:
         raise ValueError('PDF index key snapshot is invalid; hold public build')
@@ -139,6 +144,7 @@ def downloadable_ids(papers, snapshot, hold_ids=()):
         if (doi_raw and not doi) or (not doi and not title):
             continue
         matches = index.get((0, key_hash('doi', doi))) if doi else index.get((1, key_hash('title', title)))
-        if matches and len(matches) == 1 and matches[0][2] == 1:
+        # One usable row, or several rows that all carry the same file key (same SHA-256), as in the Worker.
+        if matches and matches[0][2] and all(row[2] == matches[0][2] for row in matches):
             ids.append(paper_id)
     return sorted(set(ids))

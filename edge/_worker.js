@@ -467,7 +467,8 @@ async function handlePdf(request, env) {
     if (diagnostic) diagnostic.reason = 'identity';
     const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitleKey(entry['题名']) === title);
     if (!matching.length) pdfFail('pdf_not_found', 404);
-    if (matching.length !== 1) pdfFail('pdf_ambiguous', 409);
+    // Several rows that carry the same valid SHA-256 are one file registered more than once; different checksums stay ambiguous.
+    if (matching.length !== 1 && (!/^[a-f0-9]{64}$/.test(String(matching[0].SHA256 || '').trim().toLowerCase()) || matching.some(row => String(row.SHA256 || '').trim().toLowerCase() !== String(matching[0].SHA256 || '').trim().toLowerCase()))) pdfFail('pdf_ambiguous', 409);
     const entry = matching[0], path = pdfSafePath(entry['当前路径']);
     const checksum = entry.SHA256.trim().toLowerCase();
     if (!/^[a-f0-9]{64}$/.test(checksum)) pdfFail('pdf_index_invalid');

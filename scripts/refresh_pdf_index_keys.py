@@ -41,7 +41,7 @@ def main(argv=None):
     data = Path(args.csv).read_bytes() if args.csv else fetch_index()
     snapshot = identity.build_snapshot(identity.read_index_csv(data))
     Path(args.out).write_text(json.dumps(snapshot, separators=(',', ':')) + '\n', encoding='utf-8')
-    usable = sum(row[2] for row in snapshot['rows'])
+    usable = sum(1 for row in snapshot['rows'] if row[2])
     print('rows', snapshot['rowCount'], 'usable', usable, 'generatedOn', snapshot['generatedOn'])
     return 0
 

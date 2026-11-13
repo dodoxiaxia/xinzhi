@@ -256,17 +256,19 @@ class PublicBuildTests(unittest.TestCase):
    self.assertEqual((dest/'public.js').read_text(),'// previous published bytes')
  def test_download_button_only_where_exactly_one_index_row_matches(self):
   row=lambda title,doi='',sha='a'*64,path='期刊/a.pdf':{'题名':title,'DOI':doi,'当前路径':path,'SHA256':sha}
-  rows=[row('Exact DOI paper','https://doi.org/10.1000/ONE'),row('Title only paper'),row('Twice DOI','10.1000/dup'),row('Twice DOI again','10.1000/dup'),
-   row('Same title'),row('Same title'),row('Broken sha','10.1000/bad',sha='nothex'),row('Unsafe path','10.1000/path',path='../x.pdf'),
+  rows=[row('Exact DOI paper','https://doi.org/10.1000/ONE'),row('Title only paper'),row('Twice DOI','10.1000/dup',sha='d'*64),row('Twice DOI again','10.1000/dup',sha='e'*64),
+   row('Same title'),row('Same title'),row('Registered twice','10.1000/twice'),row('Registered twice again','10.1000/TWICE',path='期刊/b.pdf'),
+   row('Twice but one unusable','10.1000/half'),row('Twice but one unusable too','10.1000/half',path='../x.pdf'),row('Twice other sha','10.1000/other'),row('Twice other sha too','10.1000/other',sha='f'*64),
+   row('Same SHA title'),row('Same SHA title',sha='A'*64),row('Diff sha title'),row('Diff sha title',sha='9'*64),row('Broken sha','10.1000/bad',sha='nothex'),row('Unsafe path','10.1000/path',path='../x.pdf'),
    row('Column paper'),row('AI IN MEDICINE Indexed with label'),row('Wrong DOI paper','10.1001/right')]
   snap=pi.build_snapshot(rows)
   papers=[{'id':'doi-ok','doi':'10.1000/one','title':'whatever'},{'id':'title-ok','title':'title  ONLY paper'},{'id':'doi-dup','doi':'10.1000/dup'},
-   {'id':'title-dup','title':'Same title'},{'id':'sha-bad','doi':'10.1000/bad'},{'id':'path-bad','doi':'10.1000/path'},
+   {'id':'title-dup','title':'Same title'},{'id':'twice-same-file','doi':'10.1000/twice'},{'id':'half-unusable','doi':'10.1000/half'},{'id':'twice-other-sha','doi':'10.1000/other'},{'id':'title-twice-same-file','title':'Same SHA title'},{'id':'title-other-sha','title':'Diff sha title'},{'id':'sha-bad','doi':'10.1000/bad'},{'id':'path-bad','doi':'10.1000/path'},
    {'id':'prefixed','title':'AI IN MEDICINE Column paper'},{'id':'index-prefixed','title':'Indexed with label'},
    {'id':'lowercase-label','title':'Ai in medicine Column paper'},{'id':'other-label','title':'NEWS Column paper'},
    {'id':'wrong-doi','doi':'10.1097/acm.0000000000001323','title':'Wrong DOI paper'},{'id':'bad-doi-format','doi':'not-a-doi','title':'Title only paper'},
    {'id':'unknown','title':'Not in the index'},{'id':'empty'},{'id':'held','doi':'10.1000/one'},{'id':'doi-title-ignored','doi':'10.1000/one','title':'Different'}]
-  self.assertEqual(pi.downloadable_ids(papers,snap,{'held'}),sorted(['doi-ok','title-ok','prefixed','index-prefixed','doi-title-ignored']))
+  self.assertEqual(pi.downloadable_ids(papers,snap,{'held'}),sorted(['doi-ok','title-ok','prefixed','index-prefixed','doi-title-ignored','twice-same-file','title-twice-same-file','title-dup']))
  def test_prefix_removal_keeps_a_unique_match_requirement(self):
   rows=[{'题名':'Column paper','DOI':'','当前路径':'a.pdf','SHA256':'a'*64},{'题名':'AI IN MEDICINE Column paper','DOI':'','当前路径':'b.pdf','SHA256':'b'*64}]
   self.assertEqual(pi.downloadable_ids([{'id':'p','title':'AI IN MEDICINE Column paper'},{'id':'q','title':'Column paper'}],pi.build_snapshot(rows)),[])
@@ -280,8 +282,8 @@ class PublicBuildTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    root=Path(d);(root/'config').mkdir()
    with self.assertRaisesRegex(ValueError,'missing'):pi.load_snapshot(root)
-   for bad in ({'schema':2,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},{'schema':1,'generatedOn':'2026-11-13','rowCount':1,'rows':[]},
-     {'schema':1,'generatedOn':'2026-11-13','rowCount':1,'rows':[['x','','1']]},{'schema':1,'generatedOn':'later','rowCount':0,'rows':[]}):
+   for bad in ({'schema':1,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},{'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[]},
+     {'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[['x','','']]},{'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[['','',1]]},{'schema':2,'generatedOn':'later','rowCount':0,'rows':[]}):
     (root/'config/pdf_index_keys.json').write_text(json.dumps(bad))
     with self.assertRaises(ValueError):pi.load_snapshot(root)
    (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)))
@@ -289,7 +291,7 @@ class PublicBuildTests(unittest.TestCase):
  def test_committed_snapshot_is_valid_and_complete(self):
   snap=pi.load_snapshot(Path(__file__).resolve().parents[1])
   self.assertGreater(snap['rowCount'],1000)
-  self.assertTrue(all(r[2]==1 for r in snap['rows']))
+  self.assertTrue(all(r[2] for r in snap['rows']))
  def test_python_and_worker_normalise_identically(self):
   import shutil,subprocess
   node=shutil.which('node')
