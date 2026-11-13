@@ -171,8 +171,13 @@ async function machineReadUpload(request) {
 function machineSoftFailCount(job) {
   return job && Number.isInteger(job.softFailCount) && job.softFailCount > 0 ? job.softFailCount : 0;
 }
+function machineHasHardFailureHistory(job) {
+  // A task claimed out of failed-awaiting-fallback keeps previousReason (not_oa, han_login, etc.).
+  // Those must not be soft-retried back to to-download when the new lease expires.
+  return !!(job && typeof job.previousReason === 'string' && job.previousReason);
+}
 function machineWouldSoftRetry(job, reason) {
-  return MACHINE_SOFT_RETRY_REASONS.includes(reason) && machineSoftFailCount(job) + 1 < MACHINE_SOFT_RETRY_LIMIT;
+  return MACHINE_SOFT_RETRY_REASONS.includes(reason) && !machineHasHardFailureHistory(job) && machineSoftFailCount(job) + 1 < MACHINE_SOFT_RETRY_LIMIT;
 }
 function machinePublicState(job) {
   if (!job) return '';
@@ -189,12 +194,16 @@ function machinePublicState(job) {
   return 'failed-awaiting-fallback';
 }
 function machineSoftRetryPlan(job, reason, now) {
-  const softFailCount = machineSoftFailCount(job) + 1;
-  const {claimant,leaseId,leaseUntil,acquisitionStartedAt,reason:_reason,stage:_stage,previousReason:_prev,reviewOwner:_ro,reviewLeaseId:_rl,reviewLeaseUntil:_ru, ...rest} = job;
-  if (softFailCount < MACHINE_SOFT_RETRY_LIMIT) {
-    return {queued:true,next:{...rest,state:'queued',updatedAt:now,softFailCount,lastSoftFailReason:reason}};
+  const {leaseId:_leaseId,leaseUntil:_leaseUntil,reviewOwner:_ro,reviewLeaseId:_rl,reviewLeaseUntil:_ru,stage:_stage, ...kept} = job;
+  if (!machineWouldSoftRetry(job, reason)) {
+    const keptReason = job.previousReason || job.reason || reason;
+    const state = keptReason === 'han_login' ? 'login_required' : 'failed';
+    return {queued:false,next:{...kept,state,reason:keptReason,updatedAt:now,
+      ...(job.previousReason ? {previousReason:job.previousReason} : {softFailCount:machineSoftFailCount(job) + 1,lastSoftFailReason:reason})}};
   }
-  return {queued:false,next:{...rest,state:'failed',reason,updatedAt:now,softFailCount,lastSoftFailReason:reason}};
+  const softFailCount = machineSoftFailCount(job) + 1;
+  const {claimant:_c,acquisitionStartedAt:_a,reason:_reason,previousReason:_prev, ...rest} = kept;
+  return {queued:true,next:{...rest,state:'queued',updatedAt:now,softFailCount,lastSoftFailReason:reason}};
 }
 async function machineCommitSoftRetry(env, job, reason, now, options = {}) {
   const plan = machineSoftRetryPlan(job, reason, now);
@@ -211,6 +220,7 @@ function machineReason(job) {
   if (MACHINE_VERIFICATION_REASONS.includes(job.verificationReason)) return job.verificationReason;
   if (MACHINE_VERIFICATION_REASONS.includes(job.reason)) return job.reason;
   if (job.state === 'login_required') return 'han_login';
+  if (job.previousReason && (MACHINE_FAILURE_REASONS.includes(job.previousReason) || ['lease_expired','queue_expired','agent_failed'].includes(job.previousReason)) && ['running','uploading'].includes(job.state) && museExpired(job)) return job.previousReason;
   if (['lease_expired','queue_expired','agent_failed'].includes(job.reason)) return job.reason;
   if (museExpired(job)) return job.state === 'queued' ? 'queue_expired' : 'lease_expired';
   return '';
@@ -303,7 +313,7 @@ function handleMachineProtocol(request, env) {
     claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
       note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
     softRetry:{reasons:MACHINE_SOFT_RETRY_REASONS,limit:MACHINE_SOFT_RETRY_LIMIT,
-      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
+      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'同一 DOI 的新任务核验通过变成 done 时，若先前有失败待兜底（或从失败待兜底领走后尚未完成）的旧任务，会把旧记录写到上述键，带 supersededBy 为新 taskId，不设过期。旧任务不再出现在失败待兜底列表，也不能再被领取。完成记录可带 supersededFrom。旧客户端可忽略。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});

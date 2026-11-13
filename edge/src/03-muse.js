@@ -282,7 +282,7 @@ function museShouldSupersedePrevious(job) {
   return ['queued','running','uploading'].includes(job.state) && museExpired(job);
 }
 function museSupersedeSnapshot(job) {
-  const skip = new Set(['candidateKey','replace','replaceRejected','supersedes']);
+  const skip = new Set(['candidateKey','replace','replaceRejected']);
   const snap = {};
   for (const [key, value] of Object.entries(job)) if (!skip.has(key)) snap[key] = value;
   return snap;
@@ -290,7 +290,8 @@ function museSupersedeSnapshot(job) {
 function museSupersededFrom(snapshot) {
   if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id) return null;
   const reason = snapshot.reason || snapshot.previousReason || snapshot.verificationReason || '';
-  return {taskId:snapshot.id,...(reason ? {reason} : {}),...(snapshot.state ? {previousState:snapshot.state} : {})};
+  const prior = snapshot.supersedes && snapshot.supersedes.id !== snapshot.id ? museSupersededFrom(snapshot.supersedes) : null;
+  return {taskId:snapshot.id,...(reason ? {reason} : {}),...(snapshot.state ? {previousState:snapshot.state} : {}),...(prior ? {supersedes:prior} : {})};
 }
 async function museArchiveSuperseded(env, snapshot, done) {
   if (!snapshot || !done || snapshot.id === done.id) return null;

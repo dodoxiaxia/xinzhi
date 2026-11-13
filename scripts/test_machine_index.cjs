@@ -225,6 +225,8 @@ async function run() {
   assert.equal(marked.state, 'failed');
   assert.equal(marked.reason, 'lease_expired');
   assert.equal(marked.softFailCount, 2);
+  assert.equal(marked.claimant, 'dsh');
+  assert.equal(marked.acquisitionStartedAt, againJob.acquisitionStartedAt);
   const taken = (await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json()).task;
   assert.equal(taken.doi, leased.doi); assert.equal(taken.claimant, 'fallback');
 
