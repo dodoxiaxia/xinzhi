@@ -494,6 +494,7 @@ class ClientAndSecurityTests(unittest.TestCase):
         report = json.loads(out.getvalue())
         self.assertTrue(report["ok"])
         self.assertFalse(report["rechecked"])
+        self.assertEqual(report["kv_read_mode"], "bulk")
         self.assertEqual(report["counts"]["same"], 1)
         self.assertEqual(report["entity_counts"], {"index": 1})
         self._assert_no_secrets_leaked(out.getvalue(), env, [val])
@@ -685,6 +686,7 @@ class ClientAndSecurityTests(unittest.TestCase):
         self.assertEqual(report["counts"]["same"], 1)
         self.assertEqual(report["counts"]["value_diff"], 1)
         self.assertEqual(report["samples"]["value_diff"], [key_diff])
+        self.assertEqual(report["kv_read_mode"], "per_key")
 
         # KV 原始值不得出现在输出中
         combined = out.getvalue() + err.getvalue()
@@ -787,7 +789,21 @@ class ClientAndSecurityTests(unittest.TestCase):
         )
         res = client.bulk_get_kv_sha256(["library:paper:exists", "library:paper:vanished"])
         self.assertEqual(res, {"library:paper:exists": _sha("hello")})
+        self.assertEqual(client.kv_read_mode, "per_key")
         self._assert_readonly_requests(server.requests, env)
+
+    def test_human_report_prints_kv_read_mode_line(self) -> None:
+        for mode, text in (("bulk", "KV 读取方式: bulk（批量读取）"), ("per_key", "KV 读取方式: 逐键")):
+            report = rec.build_report(
+                result={"categories": {c: [] for c in rec.CATEGORIES}, "entity_counts": {}, "rechecked": False, "checked_at_ms": 1},
+                active_prefixes=["library:paper:"],
+                shadow_prefixes={"mirrored": ["library:paper:"], "excluded": []},
+                sample=5,
+                grace_s=120,
+                kv_read_mode=mode,
+            )
+            self.assertEqual(report["kv_read_mode"], mode)
+            self.assertIn(text, rec.format_human_report(report))
 
     def _assert_readonly_requests(self, requests: list[dict], env: dict[str, str]) -> None:
         acct = env["CLOUDFLARE_ACCOUNT_ID"]

@@ -175,7 +175,7 @@ const scenarios = {
       return {paperKey: 'library:paper:' + libDoi, pdfKey: 'library:pdf:' + hash(libPdf), drivePendingKey: 'library:drive-pending:' + hash(libPdf)};
     }
   },
-  // 2. Machine upload + review verify -> writes machine-rate, muse-job, muse-review, paper, machine-index:v1, drive-pending; deletes muse-review & muse-candidate
+  // 2. Machine upload + review verify -> writes machine-rate (KV only, not mirrored), muse-job, muse-review, paper, machine-index:v1, drive-pending; deletes muse-review & muse-candidate
   machine: {
     opts: {muse: true},
     async run(h) {
@@ -313,8 +313,9 @@ function assertD1MatchesKv(h, key, expectedEntity) {
     assert.deepEqual(kvSnapshot(h), reference.machine.kv);
     assertD1MatchesKv(h, keys.paperKey, 'paper');
     assertD1MatchesKv(h, keys.jobKey, 'muse_job');
-    const rateRow = assertD1MatchesKv(h, keys.rateKey, 'quota');
-    assert.equal(rateRow.expires_at, rateRow.updated_at + 172800 * 1000);
+    assert.equal(typeof h.values.get(keys.rateKey), 'string', 'the machine quota key is written to KV');
+    assert(!h.d1.rows.has(keys.rateKey), 'library:machine-rate: is a rate counter and is not mirrored');
+    assert(![...h.d1.rows.keys()].some(k => k.startsWith('library:machine-rate:')), 'no machine-rate row in D1');
     assertD1MatchesKv(h, keys.indexKey, 'index');
     assert(!h.d1.rows.has(keys.candidateKey), 'muse-candidate binary must not be mirrored');
     const deletedReviews = [...h.d1.rows.entries()].filter(([k, r]) => k.startsWith('library:muse-review:') && r.deleted === 1);
@@ -373,6 +374,8 @@ function assertD1MatchesKv(h, key, expectedEntity) {
       'library:lock:10.1/x',
       'library:cap:2026-11-13',
       'library:ip:1.2.3.4:2026-11-13',
+      'library:machine-rate:upload:dsh:2026-11-13',
+      'library:machine-rate:stats:dsh:2026-11-13',
       'library:diagnostic:10.1/x',
       'library:muse-review-dispatch',
       'library:machine-index:v1-other',

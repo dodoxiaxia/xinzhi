@@ -12,7 +12,7 @@
 
 CREATE TABLE IF NOT EXISTS kv_mirror (
   key        TEXT PRIMARY KEY NOT NULL,   -- 与 KV 键完全相同
-  entity     TEXT NOT NULL,               -- 业务实体：paper、job、queue、attempt、drive、index、quota 等
+  entity     TEXT NOT NULL,               -- 业务实体：paper、job、queue、attempt、drive、index 等
   value      TEXT,                        -- KV 里的原始字符串；超过 1,000,000 字节时为 NULL
   size       INTEGER NOT NULL DEFAULT 0,  -- value 的 UTF-8 字节数
   sha256     TEXT,                        -- value 的小写十六进制 SHA-256

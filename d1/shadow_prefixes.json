@@ -12,8 +12,7 @@
     "library:attempt:",
     "library:drive-pending:",
     "library:drive:",
-    "library:machine-index:v1",
-    "library:machine-rate:"
+    "library:machine-index:v1"
   ],
   "excluded": [
     {
@@ -35,6 +34,10 @@
     {
       "prefix": "library:ip:",
       "reason": "锁与读者限流计数。"
+    },
+    {
+      "prefix": "library:machine-rate:",
+      "reason": "机器调用方每日配额与观察计数，2 天 TTL，属于限流计数，不影子写。"
     },
     {
       "prefix": "library:diagnostic:",

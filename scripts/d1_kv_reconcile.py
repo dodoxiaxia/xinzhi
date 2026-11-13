@@ -213,6 +213,15 @@ def default_transport(
 TransportFn = Callable[[str, str, dict[str, str], bytes | None, float], tuple[int, dict[str, str], bytes]]
 
 
+KV_READ_MODE_LABELS = {
+    "bulk": "bulk（批量读取）",
+    "per_key": "逐键（bulk 不可用，已退回逐键读取）",
+    "mixed": "先 bulk，中途退回逐键",
+    "none": "无（没有需要读取的键）",
+    "unknown": "未知",
+}
+
+
 class CloudflareClient:
     """只读 Cloudflare KV / D1 客户端。"""
 
@@ -239,6 +248,8 @@ class CloudflareClient:
         self._max_retries = max(0, int(max_retries))
         self._timeout = float(timeout)
         self._has_made_request = False
+        # 本次主读取用的方式：none（没有键要读）、bulk、per_key（bulk 不可用，逐键读）、mixed（先 bulk，中途退回逐键）
+        self.kv_read_mode = "none"
 
     def _kv_base_path(self) -> str:
         return f"/client/v4/accounts/{self._account_id}/storage/kv/namespaces/{self._kv_namespace_id}"
@@ -394,11 +405,14 @@ class CloudflareClient:
         """优先用 POST bulk/get 批量读取 KV 值并算 SHA-256；非 2xx 时退回逐键 GET。"""
         hashes: dict[str, str] = {}
         bulk_unavailable = False
+        bulk_chunks = 0
+        fallback_chunks = 0
         unique_keys = list(dict.fromkeys(keys))
 
         for start in range(0, len(unique_keys), KV_BULK_BATCH_SIZE):
             chunk = unique_keys[start : start + KV_BULK_BATCH_SIZE]
             if bulk_unavailable:
+                fallback_chunks += 1
                 hashes.update(self.get_kv_many_per_key(chunk))
                 continue
 
@@ -413,6 +427,7 @@ class CloudflareClient:
                 if exc.status in (401, 403, 429) or exc.status is None:
                     raise
                 bulk_unavailable = True
+                fallback_chunks += 1
                 hashes.update(self.get_kv_many_per_key(chunk))
                 continue
 
@@ -424,8 +439,11 @@ class CloudflareClient:
 
             if not isinstance(values, dict):
                 bulk_unavailable = True
+                fallback_chunks += 1
                 hashes.update(self.get_kv_many_per_key(chunk))
                 continue
+
+            bulk_chunks += 1
 
             for key in chunk:
                 val = values.get(key)
@@ -434,6 +452,14 @@ class CloudflareClient:
             # 显式丢弃批量响应文本引用
             del payload, values, raw_body
 
+        if not unique_keys:
+            self.kv_read_mode = "none"
+        elif not fallback_chunks:
+            self.kv_read_mode = "bulk"
+        elif not bulk_chunks:
+            self.kv_read_mode = "per_key"
+        else:
+            self.kv_read_mode = "mixed"
         return hashes
 
     def d1_query(self, sql: str, params: Sequence[Any] | None = None) -> list[dict[str, Any]]:
@@ -669,6 +695,7 @@ def build_report(
     shadow_prefixes: Mapping[str, Any],
     sample: int,
     grace_s: float,
+    kv_read_mode: str = "unknown",
 ) -> dict[str, Any]:
     """构造可供 JSON 或中文摘要输出的报告结构。"""
     categories: Mapping[str, list[str]] = result["categories"]
@@ -685,6 +712,7 @@ def build_report(
         "checked_at_ms": result["checked_at_ms"],
         "grace_s": grace_s,
         "rechecked": bool(result["rechecked"]),
+        "kv_read_mode": kv_read_mode,
         "active_prefixes": list(active_prefixes),
         "mirrored_prefixes": list(shadow_prefixes["mirrored"]),
         "excluded_prefixes": list(shadow_prefixes["excluded"]),
@@ -703,6 +731,7 @@ def format_human_report(report: Mapping[str, Any]) -> str:
     lines.append(
         f"检查时间戳(ms): {report['checked_at_ms']} | 宽限期(s): {report['grace_s']} | 是否复查: {'是' if report['rechecked'] else '否'}"
     )
+    lines.append(f"KV 读取方式: {KV_READ_MODE_LABELS.get(report.get('kv_read_mode'), report.get('kv_read_mode'))}")
     lines.append("")
     lines.append("分类统计：")
     counts = report["counts"]
@@ -836,6 +865,7 @@ def main(
         shadow_prefixes=shadow_prefixes,
         sample=args.sample,
         grace_s=args.grace,
+        kv_read_mode=client.kv_read_mode,
     )
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2), file=out)

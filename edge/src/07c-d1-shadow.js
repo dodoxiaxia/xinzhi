@@ -12,12 +12,12 @@
 //   - 全文状态/尝试：library:attempt:
 //   - 网盘归档登记：library:drive-pending:、library:drive:
 //   - 索引：library:machine-index:v1（精确匹配这一个 key）
-//   - 配额与计数：library:machine-rate:（机器调用方每日配额和观察计数，2 天 TTL）
 //
 // Excluded prefixes (not mirrored):
 //   - library:pdf:（PDF 二进制，已有 R2 备份，文献记录里有 sha256 和大小，行里放不下）
 //   - library:muse-candidate:（待核验的 PDF 二进制，7 天 TTL）
 //   - library:lock:、library:cap:、library:ip:（锁和读者限流计数，短期）
+//   - library:machine-rate:（机器调用方每日配额和观察计数，2 天 TTL，属限流计数）
 //   - library:diagnostic:、library:muse-review-dispatch（缓存/短期标记）
 //   - ai:、lock:（AI 结果缓存、任务回执、AI 锁和读者额度）
 //   - cfg:（配置开关，带外写入）
@@ -36,8 +36,7 @@ const D1_SHADOW_PREFIX_MAP = [
   ['library:attempt:', 'attempt'],
   ['library:drive-pending:', 'drive_pending'],
   ['library:drive:', 'drive'],
-  ['library:machine-index:v1', 'index', true], // exact match only
-  ['library:machine-rate:', 'quota']
+  ['library:machine-index:v1', 'index', true] // exact match only
 ];
 const D1_SHADOW_PREFIXES = D1_SHADOW_PREFIX_MAP.map(entry => entry[0]);
 const D1_SHADOW_UPSERT_SQL = 'INSERT INTO kv_mirror (key, entity, value, size, sha256, expires_at, updated_at, deleted) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0) ON CONFLICT(key) DO UPDATE SET entity = excluded.entity, value = excluded.value, size = excluded.size, sha256 = excluded.sha256, expires_at = excluded.expires_at, updated_at = excluded.updated_at, deleted = 0 WHERE excluded.updated_at >= kv_mirror.updated_at';
