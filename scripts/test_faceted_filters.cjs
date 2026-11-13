@@ -44,7 +44,7 @@ const context = vm.createContext({
 context.history = { replaceState: (_state, _title, url) => { context.window.location.href = new URL(url, context.window.location.href).href; } };
 vm.runInContext([
   'publisherForJournal', 'sidebarSelections', 'clearSidebarFilters', 'selectSidebarFilter',
-  'browseOnlyButton', 'paperDerived', 'paperSearchText', 'matchesQuery', 'sidebarMisses', 'matchesSidebarFilters', 'matchesFilters',
+  'browseOnlyButton', 'paperDerived', 'paperSearchText', 'matchesQuery', 'selectedJournals', 'sidebarMisses', 'matchesSidebarFilters', 'matchesFilters',
   'renderSidebarFilters', 'renderActiveFilterChips', 'renderEmptyFilters', 'syncUrl', 'defaultRange'
 ].map(fn).join('\n') + '\n' + ['PAPER_DERIVED', 'FACET_BITS'].map(name => source.match(new RegExp('  const ' + name + ' = [^\\n]+'))[0]).join('\n'), context);
 let checks = 0;
@@ -58,13 +58,12 @@ check(matches() === 'circ-rct,circ-cohort,nejm-cohort,jama-rct', 'Base scope exc
 select('journal', 'Circulation');
 select('design', 'RCT');
 check(matches() === 'circ-rct', 'Different dimensions intersect');
-check(context.state.publisher === 'AHA (Circulation)', 'Journal sets its canonical publisher');
+check(context.state.journal === 'Circulation' && context.selectedJournals().join() === 'Circulation' && !context.state.publisher, 'Selected journal is recorded without inventing a publisher');
 select('journal', 'JAMA');
-check(matches() === 'jama-rct', 'Changing journal replaces the previous source and retains study design');
-check(context.state.publisher === 'JAMA Network', 'Changing publisher families cannot retain a contradictory parent');
+check(matches() === 'circ-rct,jama-rct', 'Adding a second journal unions the sources and retains study design');
+check(context.selectedJournals().slice().sort().join() === 'Circulation,JAMA' && !context.state.publisher, 'Journals can be combined and do not keep a parent publisher');
 select('journal', 'JAMA');
-check(!context.state.journal && !context.state.publisher && matches() === 'circ-rct,jama-rct', 'Clicking an already selected journal toggles it off while retaining design');
-select('journal', 'Circulation');
+check(context.selectedJournals().join() === 'Circulation' && context.state.journal === 'Circulation' && !context.state.publisher && matches() === 'circ-rct', 'Clicking an already selected journal toggles only that journal off while retaining design');
 select('design', 'RCT');
 check(context.state.studyDesign === 'RCT', 'Clicking the selected design retains it');
 select('pub', 'AHA (Circulation)');
@@ -73,8 +72,8 @@ select('design', '队列研究');
 check(matches() === 'circ-cohort', 'Changing a design replaces it without broadening the source');
 select('design', '');
 check(matches() === 'circ-rct,circ-cohort', 'All designs clears only the design dimension');
-select('journal', '');
-check(!context.state.publisher && !context.state.journal && matches().split(',').length === 4, 'Removing the source clears both publisher and journal');
+select('pub', '');
+check(!context.state.publisher && !context.state.journal && !context.selectedJournals().length && matches().split(',').length === 4, 'Removing the publisher source clears it and leaves the base scope');
 
 for (const [group, value] of [['tier', '顶级综合与科学'], ['pub', 'MMS (NEJM)'], ['journal', 'NEJM'], ['design', 'RCT'], ['tag', '#卒中']]) {
   reset();
@@ -105,13 +104,14 @@ check(!chipClass(elements.designFilterList.innerHTML, 'data-filter-design', '队
 check(publishers.includes('data-pub-expand=') && publishers.includes('data-filter-publisher='), 'Expand and source selection are separate controls');
 context.renderActiveFilterChips(1);
 check(!elements.activeFiltersBar.innerHTML.includes('当前筛选'), 'Condition bar carries no explanatory label');
-check(elements.activeFiltersBar.innerHTML.includes('期刊：Circulation') && !elements.activeFiltersBar.innerHTML.includes('出版方：'), 'A journal and its parent appear as one source chip');
-check(elements.activeFiltersBar.innerHTML.includes('data-clear="journal"') && elements.activeFiltersBar.innerHTML.includes('data-clear="design"'), 'Every condition chip is removable on its own (the panel 重置 clears the rest)');
+check(context.sidebarSelections().some(s => s.group === 'journal' && s.value === 'Circulation') && !context.sidebarSelections().some(s => s.group === 'pub'), 'A selected journal is the source condition; its publisher is not a second condition');
+check(context.sidebarSelections().some(s => s.group === 'design' && s.value === 'RCT'), 'Study design remains a listed condition');
 select('tier', '综合医学与其他');
 check(context.matchesSidebarFilters({ cleanJournal: 'Circulation', publisher: 'AHA (Circulation)', studyDesign: 'RCT' }), 'Unclassified source group uses the same fallback as its displayed count');
 select('tier', '');
 
-select('journal', 'NEJM');
+select('journal', 'NEJM', true);
+select('design', 'RCT');
 check(matches() === '', 'Incompatible dimensions yield no result instead of implicitly switching to OR');
 const beforeEmpty = snapshot(), empty = context.renderEmptyFilters();
 check(snapshot() === beforeEmpty, 'Rendering the empty state never relaxes conditions');
@@ -131,6 +131,8 @@ for (const [key, value] of [['q', 'trial'], ['range', '30'], ['lane', 'cardio'],
 }
 context.clearSidebarFilters();
 select('design', '<script>bad</script>');
+context.renderSidebarFilters();
 context.renderActiveFilterChips(0);
-check(!elements.activeFiltersBar.innerHTML.includes('<script>') && elements.activeFiltersBar.innerHTML.includes('&lt;script&gt;'), 'URL-derived filter values are escaped');
+const panelHtml = [elements.tierFilterList, elements.publisherAccordion, elements.designFilterList, elements.tagsCloud, elements.activeFiltersBar].map(el => el.innerHTML).join('\n');
+check(!panelHtml.includes('<script>'), 'Sidebar and condition bar do not interpolate unsanitized markup');
 console.log('faceted filters: ' + checks + ' assertions passed');

@@ -306,31 +306,31 @@
     return byDoi;
   }
   function weeklyCard(p, date, readingId) {
-    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
-    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh;
+    const line = cardTakeaway(p);
     const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
-    const read = hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息';
-    return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-body"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
+    return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-body"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(cardJournalName(p))}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
       publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${esc(zh || p.title)}</button>${deep}</div>` +
       (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
       (line ? `<div class="weekly-auto-line">${esc(line)}</div>` : '') +
-      `</div><div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${read}</button><button class="btn-sm ${huddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${huddled ? '已入精选 ✓' : '加入精选清单'}</button></div></div></article>`;
+      `</div>${cardSideActionsHtml(p)}</div></article>`;
   }
   // One line per paper: rank, title, source line and the AI one-liner, with a star to collect.
   function weeklyRow(p, date, readingId) {
-    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
-    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh;
+    const line = cardTakeaway(p);
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const design = p.publicationStatus?.label || p.studyDesign || '';
     return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${esc(zh || p.title)}</button>${deep}</div>` +
-      publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(p.cleanJournal || p.journal)}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
+      publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(cardJournalName(p))}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
       (line ? `<div class="weekly-row-line">${esc(line)}</div>` : '') +
-      `</div><div class="weekly-row-actions"><button type="button" class="weekly-star${huddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${huddled}" aria-label="${huddled ? '移出精选清单' : '加入精选清单'}" title="${huddled ? '已入精选清单' : '加入精选清单'}">${huddled ? '★' : '☆'}</button></div></li>`;
+      `</div>${cardSideActionsHtml(p)}</li>`;
   }
 
   function renderWeeklyAuto() {
     const el = $('#weeklyAuto'); if (!el) return;
+    if (typeof renderQuickFilters === 'function') renderQuickFilters();
     const now = Date.now(), boardWindow = weeklyPublicationWindow(FEEDS.items, now);
     const reports = FEEDS.items.filter(p => p.weeklyPick).map(p => p.weeklyAt)
       .filter(value => typeof value === 'string' && value.includes('T') && weeklyPublicationDate({ date: value }, now))
@@ -339,22 +339,24 @@
     const validUpdate = typeof updatedAt === 'string' && updatedAt.includes('T') && weeklyPublicationDate({ date: updatedAt }, now);
     const stale = validUpdate && now - Date.parse(updatedAt) > 6 * 3600000;
     const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}` : '更新时间暂无有效记录，时效待确认';
-    const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper));
+    const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper) && (typeof matchesQuickFilters === 'function' ? matchesQuickFilters(paper) : true));
     const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
     const boardCount = $('#weeklyPaneBoardCount'); if (boardCount) boardCount.textContent = entries.length || '';
     const preparedTranslations = entries.filter(({paper:p})=>validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)])).length;
     const preparedQuicklooks = entries.filter(({paper:p})=>quicklookOf(p)).length;
     const infoOpen = !!el.querySelector?.('.weekly-info[open]');
-    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` +
+    const compactEarly = state.viewMode === 'compact';
+    const viewToggle = `<div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compactEarly ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compactEarly}">详细</button><button type="button" class="view-toggle-btn${compactEarly ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compactEarly}">列表</button></div>`;
+    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` + viewToggle +
       `<div class="weekly-meta"><span>发表于 ${boardWindow.start.slice(5)} 至 ${boardWindow.end.slice(5)}（北京时间，含今天）· ${timing}</span>${stale ? '<b class="weekly-stale">更新已超过 6 小时，时效待确认</b>' : ''}` +
       `<details class="weekly-info"${infoOpen ? ' open' : ''}><summary>榜单说明</summary><div class="weekly-info-body"><p>收录北京时间 ${boardWindow.start}–${boardWindow.end} 发表的入榜文献。分类与排序为自动规则，未经逐篇质量评审。</p><p class="weekly-preparation">摘要内容准备：中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，不代表全文精读。</p><p>点题名打开阅读台看摘要；出版商原文链接在阅读台底部。</p></div></details></div></div>`
       + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');
     if (!entries.length) { el.innerHTML = heading + `<p class="text-muted" role="status">${state.search ? '当前榜内没有匹配文献，可清除关键词；更大范围请到文献雷达检索。' : '近7天暂无入榜条目'}</p>`; return; }
     const cat = groups.some(g => g.id === state.weeklyCat) ? state.weeklyCat : '';
-    const compact = state.viewMode === 'compact';
+    const compact = compactEarly;
     const bar = `<div class="weekly-bar"><div class="weekly-category-nav" role="group" aria-label="文献榜分类"><button type="button" data-weekly-cat="" aria-pressed="${!cat}">全部 <span>${entries.length}</span></button>` +
       groups.map(g => `<button type="button" data-weekly-cat="${g.id}" aria-pressed="${cat === g.id}"${g.entries.length || cat === g.id ? '' : ' disabled'}>${g.name} <span>${g.entries.length}</span></button>`).join('') +
-      `</div><div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compact ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compact}">详细</button><button type="button" class="view-toggle-btn${compact ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compact}">列表</button></div></div>`;
+      `</div></div>`;
     const readings = weeklyReadingIds();
     const shown = cat ? groups.filter(g => g.id === cat) : groups.filter(g => g.entries.length);
     el.innerHTML = heading + bar + `<div class="weekly-board ${compact ? 'weekly-board-compact' : ''}">` + shown.map(g => `<section class="weekly-group" id="weekly-group-${g.id}" aria-labelledby="weekly-title-${g.id}"><h4 id="weekly-title-${g.id}" class="weekly-group-title">${g.name}<span>${g.entries.length} 篇</span></h4>` + (g.entries.length ?
