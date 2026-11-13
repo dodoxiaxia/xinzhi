@@ -15,6 +15,7 @@ async function create(options = {}) {
   const h = await setup(options);
   h.env.MUSE_FULLTEXT_ENABLED = 'true';
   h.env.MACHINE_TOKENS = tokens;
+  h.env.MACHINE_INDEX_SELF_HEAL = 'off'; // these tests count exact KV operations; scripts/test_machine_index_heal.cjs covers the self-heal
   return h;
 }
 function call(h, route, secret, body, method = 'POST') {
@@ -255,6 +256,7 @@ async function run() {
   const rebuild = [];
   for (let n = 0; n < 5; n++) { const body = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json(); rebuild.push(body); if (body.task) break; }
   assert(rebuild.at(-1).task, 'the claim finds the task after the index was rebuilt');
+  await require('./test_stale_queued_fallback.cjs').run();
   console.log('machine index tests passed');
 }
 module.exports = {run};

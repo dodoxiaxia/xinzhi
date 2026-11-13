@@ -1327,6 +1327,7 @@
     else if (rec?.state === 'done') content = studyResultHtml(rec.result, [paper], rec.cached, 'study') + (rec.result.generatedBy === 'metadata-only' && rec.canGenerate && hasPubAbs ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">重新获取公开摘要</button>` : '');
     else if (rec?.state === 'loading') content = `<p class="study-meta" role="status">正在从公开来源读取摘要并提取研究结构，请稍候…${rec.slow ? '用时较长，无需重复点击。' : ''}</p>`;
     else if (rec?.state === 'waiting') content = `<p class="study-meta" role="status">${esc(rec.msg || aiWaitingMessage())}</p><button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">读取已有研究结构</button>`;
+    else if (!hasPubAbs && paper._absState === 'loading') content = '<p class="study-meta" role="status">正在获取摘要…</p>';
     else if (!hasPubAbs) content = noAbsMsg;
     else if (rec && rec.state !== 'checking') {
       content = (rec.msg ? `<p class="study-error" role="status">${esc(rec.msg)}</p>` : '') + (rec.canGenerate ? `<button class="btn-sm" data-action="ai-study" data-paper-id="${esc(paper.id)}">${rec.state === 'error' ? '重试生成研究结构' : '提取研究结构与核对清单'}</button><p class="study-meta">点击后由模型读取公开摘要；不会读取全文。</p>` : `<p class="study-meta">${rec.phase === 'lookup' ? '尚未读取到已有结果。' : '研究结构服务暂未开放。已有缓存仍可阅读。'}</p>${rec.phase === 'lookup' ? `<button class="btn-sm" data-action="study-check" data-paper-id="${esc(paper.id)}">重查已有结果</button>` : ''}`);
@@ -1460,6 +1461,23 @@
   }
   // ==== src/app/04-filters.js · Dates, full-text links, lane/range bars, URL sync, filtering, sidebar facets ====
   function hasAbstract(p) { return !!(p.summary || (p.abstractSections||[]).some(x=>x.text) || quicklookOf(p)?.abstract); }
+  // 摘要明显不完整（只有结论）：保守判定，只在下面两种情况成立，其余一律不提示。
+  // 1) 有分段：所有分段的标题都是 Conclusion(s) / 结论，没有 Background、Methods、Results 等其他段。
+  // 2) 无分段（单段无标题，或只有 summary）：全文不超过 600 字，且以 Conclusion(s): / In conclusion, 开头，
+  //    或以 “These/Our findings|results support|suggest|indicate|show|demonstrate|highlight” 这类结论句型开头。
+  function abstractMayBeIncomplete(p) {
+    if (!p) return false;
+    const concluding = t => {
+      t = String(t || '').trim();
+      return t.length > 0 && t.length <= 600 && (/^(conclusions?|in conclusion)\s*[:：.,]/i.test(t) || /^(these|our) (findings|results) (support|suggest|indicate|show|demonstrate|highlight)\b/i.test(t));
+    };
+    const secs = (p.abstractSections || []).filter(x => x && String(x.text || '').trim());
+    if (secs.length) {
+      if (secs.every(x => /^(conclusions?|结论)\s*[:：]?$/i.test(String(x.label || '').trim()))) return true;
+      return secs.length === 1 && !String(secs[0].label || '').trim() && concluding(secs[0].text);
+    }
+    return concluding(p.summary);
+  }
   function datePrecision(p) {
     if (p.datePrecision) return p.datePrecision;
     if (!p.date) return 'unknown';
@@ -2507,6 +2525,7 @@
     const changedPaper = !state.activeDrawerPaper || state.activeDrawerPaper.id !== paper.id;
     hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
+    let absFetchPlanned = false;
     const drawer = $('#readerDrawer');
     const backdrop = $('#drawerBackdrop');
     if (!drawer || !backdrop) return;
@@ -2590,6 +2609,10 @@
         paper._absFetched = true;
         if (!paper.pmid && ql.pmid) paper.pmid = ql.pmid;
       }
+      // 公开摘要要去 Europe PMC 拉取时，先标成拉取中再渲染：速览和结构区在拉取期间显示「正在获取摘要…」，
+      // 不抢跑写「暂无公开摘要」。拉取结束（含失败）后才按真实结果显示。
+      absFetchPlanned = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && !!(paper.doi || paper.pmid) && !paper._absTries;
+      if (absFetchPlanned) { paper._absTries = 1; paper._absState = 'loading'; }
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
           <div class="drawer-section-title">速览</div>
@@ -2606,6 +2629,10 @@
         const s = paper._aiState;
         // Do not name this hasAbstract: openReaderDrawer later declares a local const hasAbstract (TDZ).
         const hasPubAbs = !!(paper.summary || (paper.abstractSections || []).some(sec => sec && sec.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
+        if (!hasPubAbs && paper._absState === 'loading') {
+          return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
+          <p class="ql-meta" role="status">正在获取摘要…</p></div>`;
+        }
         if (!hasPubAbs && (s === 'none' || s === 'error' || s === 'noabs' || !s)) {
           return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
@@ -2694,6 +2721,7 @@
             <div class="abs-panel" data-abs-panel="zh" role="tabpanel">${zhAbs}</div>
             <div class="abs-panel" data-abs-panel="en" role="tabpanel" hidden lang="en"><div class="structured-abstract">${abstractHtml}</div></div>
           ` : `<div class="structured-abstract">${abstractHtml}</div>`}
+          ${abstractMayBeIncomplete(paper) ? '<p class="abs-incomplete-note">摘要可能不完整</p>' : ''}
           ${absSource}
         </section>
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字</summary>${quantBox}</details>` : ''}
@@ -2780,11 +2808,7 @@
     }
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).
-    const needsAbs = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
-    if (needsAbs) {
-      paper._absTries = 1;
-      paper._absState = 'loading';
-      openBodyOnly(paper);
+    if (absFetchPlanned) {
       fetchPublicAbstract(paper).then(res => {
         if (res && res.sections.length) {
           paper.abstractSections = res.sections;
@@ -3108,11 +3132,20 @@
     if (p) {
       if (p.status === 'records_observed') parts.push(`PubMed 备用快照 ${p.observedItems} 条，近14天 ${p.eligibleItems} 条${p.stale || olderThan(p.checkedAt,6) ? '（快照已过期）' : ''}。`);
       else parts.push(p.configured ? 'PubMed 备用查询尚无匹配记录。' : 'PubMed 备用查询尚未覆盖此来源。');
+      if (p.fetchStatus === 'failed') parts.push(pubmedFetchNotice(p));
       if (p.checkedAt && (p.configured || p.status === 'records_observed')) parts.push(`备用检查：${contentDate(p.checkedAt)}（北京时间）。`);
       if (p.queryScope === 'cardiovascular_or_ai' && p.configured) parts.push('备用检索限心血管或 AI 主题。');
       if (p.queryTruncated && p.configured) parts.push('备用检索达到结果上限，不能据此判断完整覆盖。');
     }
     return parts.join(' ');
+  }
+
+  function pubmedFetchNotice(fetch) {
+    if (!fetch || (fetch.status !== 'failed' && fetch.fetchStatus !== 'failed')) return '';
+    const category = typeof fetch.errorCategory === 'string' ? fetch.errorCategory : '';
+    const http = Number.isInteger(fetch.httpStatus) ? `，HTTP ${fetch.httpStatus}` : '';
+    const reused = fetch.reusedPrevious ? '，已沿用上一轮条目' : '';
+    return `PubMed 备用源本轮失败（${category}${http}）${reused}。`;
   }
 
   function renderSourcesHealth() {
@@ -3130,8 +3163,9 @@
     if (summary) summary.innerHTML = tile('', sources.length, '订阅信源') + tile('ok', okCount, '本轮获取成功') + tile('attention', sources.length - okCount, '需要关注', sources.length > okCount ? ' source-summary-attention' : '');
 
     if (meta) {
-      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
-      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6));
+      const pubmedNotice = pubmedFetchNotice(HEALTH.pubmedFetch).replace(/。$/, '');
+      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}${pubmedNotice ? ' · ' + pubmedNotice : ''}`;
+      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6) || (HEALTH.pubmedFetch && HEALTH.pubmedFetch.status === 'failed'));
     }
 
     const q = state.search.trim().toLowerCase();
@@ -3534,6 +3568,10 @@
   }
 
   const WEEKLY_CATEGORIES = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']];
+  // 近7天榜的分类口径：榜单预生成的 weeklyCategory 优先，缺省按领域回退。分类条使用此分类；快捷条 AI 档将 AI 医疗、AI 前沿分类并上 AI 期刊。
+  function weeklyCategoryOf(p) {
+    return ['cardio', 'general', 'aimed', 'aitech'].includes(p.weeklyCategory) ? p.weeklyCategory : laneOf(p);
+  }
   function weeklyReadingIds() {
     const byDoi = new Map();
     dailyReadingList().forEach(p => { if (p.doi && !byDoi.has(String(p.doi).toLowerCase())) byDoi.set(String(p.doi).toLowerCase(), p.pmcid); });
@@ -3562,6 +3600,16 @@
       `</div>${cardSideActionsHtml(p)}</li>`;
   }
 
+  function weeklyTitleCountText(shown, total) {
+    if (state.search) return `匹配 ${shown} / ${total}`;
+    if (shown === total) return `${total}`;
+    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports) {
+      const label = state.journalTier === 'ai' && weeklyAiTier() ? 'AI' : (tierDef(state.journalTier).title || state.journalTier);
+      return `· ${label} ${shown}`;
+    }
+    return `${shown} / ${total}`;
+  }
+
   function renderWeeklyAuto() {
     const el = $('#weeklyAuto'); if (!el) return;
     if (typeof renderQuickFilters === 'function') renderQuickFilters();
@@ -3574,14 +3622,14 @@
     const stale = validUpdate && now - Date.parse(updatedAt) > 6 * 3600000;
     const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}` : '更新时间暂无有效记录，时效待确认';
     const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper) && (typeof matchesQuickFilters === 'function' ? matchesQuickFilters(paper) : true));
-    const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
+    const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => weeklyCategoryOf(paper) === id) }));
     const boardCount = $('#weeklyPaneBoardCount'); if (boardCount) boardCount.textContent = entries.length || '';
     const preparedTranslations = entries.filter(({paper:p})=>validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)])).length;
     const preparedQuicklooks = entries.filter(({paper:p})=>quicklookOf(p)).length;
     const infoOpen = !!el.querySelector?.('.weekly-info[open]');
     const compactEarly = state.viewMode === 'compact';
     const viewToggle = `<div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compactEarly ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compactEarly}">详细</button><button type="button" class="view-toggle-btn${compactEarly ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compactEarly}">列表</button></div>`;
-    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` + viewToggle +
+    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${weeklyTitleCountText(entries.length, boardWindow.entries.length)} 篇</span></h3>` + viewToggle +
       `<div class="weekly-meta"><span>发表于 ${boardWindow.start.slice(5)} 至 ${boardWindow.end.slice(5)}（北京时间，含今天）· ${timing}</span>${stale ? '<b class="weekly-stale">更新已超过 6 小时，时效待确认</b>' : ''}` +
       `<details class="weekly-info"${infoOpen ? ' open' : ''}><summary>榜单说明</summary><div class="weekly-info-body"><p>收录北京时间 ${boardWindow.start}–${boardWindow.end} 发表的入榜文献。分类与排序为自动规则，未经逐篇质量评审。</p><p class="weekly-preparation">摘要内容准备：中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，不代表全文精读。</p><p>点题名打开阅读台看摘要；出版商原文链接在阅读台底部。</p></div></details></div></div>`
       + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');
@@ -3645,7 +3693,6 @@
   ];
 
   let qfOpen = null; // { kind, query }
-
   function loadRecentJournals() {
     try {
       const a = JSON.parse(safeGet(QF_RECENT_KEY) || '[]');
@@ -3741,8 +3788,15 @@
     const api = JT();
     return api ? api.tierOfName(name) : 'other';
   }
+  // 近7天榜里「AI」档按分类并上 AI 期刊的并集口径：AI 医疗 + AI 前沿 + AI 期刊；其他栏目仍按 AI 期刊档。
+  function weeklyAiTier() { return state.mode === 'weekly'; }
+  function paperIsWeeklyAi(p) {
+    const c = typeof weeklyCategoryOf === 'function' ? weeklyCategoryOf(p) : '';
+    return c === 'aimed' || c === 'aitech' || paperTierId(p) === 'ai';
+  }
   function paperMatchesJournalFilter(p) {
     if (!state.journalTier && !(selectedJournals().length)) return true;
+    if (weeklyAiTier() && state.journalTier === 'ai' && !selectedJournals().length) return paperIsWeeklyAi(p);
     const name = paperJournalKey(p);
     if (!name) return false;
     const js = selectedJournals();
@@ -3786,6 +3840,7 @@
     return rows;
   }
   function tierHasPapers(tierId) {
+    if (tierId === 'ai' && weeklyAiTier()) return qfPapers().some(paperIsWeeklyAi);
     return qfPapers().some(p => {
       const name = paperJournalKey(p);
       if (!name) return false;
@@ -3905,6 +3960,21 @@
     return laneName + ' · ' + rangeName;
   }
 
+  let qfLastMode = null;
+  // 右侧渐隐：条超出一屏且还没滚到尽头时才显示，滚到尽头去掉，最后一个芯片完整可见。
+  function qfSyncFade(row) {
+    if (!row) return;
+    const overflow = row.scrollWidth > row.clientWidth + 2;
+    const atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 2;
+    row.classList.toggle('qf-fade', overflow && !atEnd);
+  }
+  function qfBindFade(row) {
+    if (!row.dataset || row.dataset.qfFadeBound || typeof row.addEventListener !== 'function') return;
+    row.dataset.qfFadeBound = '1';
+    row.addEventListener('scroll', () => qfSyncFade(row), { passive: true });
+    if (typeof window.addEventListener === 'function') window.addEventListener('resize', () => qfSyncFade(row));
+  }
+
   function renderQuickFilters() {
     const bar = $('#quickBar');
     const row = $('#qfChipRow');
@@ -3936,6 +4006,10 @@
       const on = tierIsOn(tier.id);
       const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
       const openKind = 'jtier:' + tier.id;
+      if (tier.id === 'ai' && weeklyAiTier()) {
+        parts.push(`<button type="button" class="qf-chip qf-chip-ai${on ? ' is-on' : ''}" data-qf-jtier="ai" aria-pressed="${on}" aria-label="筛选 AI" title="AI 医疗、AI 前沿，以及发在 AI 期刊的稿子">${esc(tier.short)}</button>`);
+        return;
+      }
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
         <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}">${esc(label)}</button>
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
@@ -3943,6 +4017,10 @@
     });
     if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
     row.innerHTML = parts.join('');
+    // 换栏目（页签）时快捷条横向位置归零，避免上一栏滑出去的位置留在新栏目里。
+    if (qfLastMode !== state.mode) { row.scrollLeft = 0; qfLastMode = state.mode; }
+    qfBindFade(row);
+    qfSyncFade(row);
     renderQfSummary();
     if (qfOpen) openQfPop(qfOpen.kind, true);
   }
@@ -3959,7 +4037,7 @@
     const bits = [];
     if (state.favoritesOnly) bits.push(item('只看关注期刊', 'favorites'));
     if (state.journalTier && !selectedJournals().length) {
-      bits.push(item(tierDef(state.journalTier).title || state.journalTier, 'jtier'));
+      bits.push(item(state.journalTier === 'ai' && weeklyAiTier() ? 'AI' : (tierDef(state.journalTier).title || state.journalTier), 'jtier'));
     } else if (selectedJournals().length) {
       const prefix = state.journalTier ? (tierDef(state.journalTier).short + '：') : '';
       selectedJournals().forEach(j => bits.push(item(prefix + j, 'journal', j)));

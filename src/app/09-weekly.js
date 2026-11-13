@@ -303,6 +303,10 @@
   }
 
   const WEEKLY_CATEGORIES = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']];
+  // 近7天榜的分类口径：榜单预生成的 weeklyCategory 优先，缺省按领域回退。分类条使用此分类；快捷条 AI 档将 AI 医疗、AI 前沿分类并上 AI 期刊。
+  function weeklyCategoryOf(p) {
+    return ['cardio', 'general', 'aimed', 'aitech'].includes(p.weeklyCategory) ? p.weeklyCategory : laneOf(p);
+  }
   function weeklyReadingIds() {
     const byDoi = new Map();
     dailyReadingList().forEach(p => { if (p.doi && !byDoi.has(String(p.doi).toLowerCase())) byDoi.set(String(p.doi).toLowerCase(), p.pmcid); });
@@ -331,6 +335,16 @@
       `</div>${cardSideActionsHtml(p)}</li>`;
   }
 
+  function weeklyTitleCountText(shown, total) {
+    if (state.search) return `匹配 ${shown} / ${total}`;
+    if (shown === total) return `${total}`;
+    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports) {
+      const label = state.journalTier === 'ai' && weeklyAiTier() ? 'AI' : (tierDef(state.journalTier).title || state.journalTier);
+      return `· ${label} ${shown}`;
+    }
+    return `${shown} / ${total}`;
+  }
+
   function renderWeeklyAuto() {
     const el = $('#weeklyAuto'); if (!el) return;
     if (typeof renderQuickFilters === 'function') renderQuickFilters();
@@ -343,14 +357,14 @@
     const stale = validUpdate && now - Date.parse(updatedAt) > 6 * 3600000;
     const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}` : '更新时间暂无有效记录，时效待确认';
     const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper) && (typeof matchesQuickFilters === 'function' ? matchesQuickFilters(paper) : true));
-    const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
+    const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => weeklyCategoryOf(paper) === id) }));
     const boardCount = $('#weeklyPaneBoardCount'); if (boardCount) boardCount.textContent = entries.length || '';
     const preparedTranslations = entries.filter(({paper:p})=>validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)])).length;
     const preparedQuicklooks = entries.filter(({paper:p})=>quicklookOf(p)).length;
     const infoOpen = !!el.querySelector?.('.weekly-info[open]');
     const compactEarly = state.viewMode === 'compact';
     const viewToggle = `<div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compactEarly ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compactEarly}">详细</button><button type="button" class="view-toggle-btn${compactEarly ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compactEarly}">列表</button></div>`;
-    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` + viewToggle +
+    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${weeklyTitleCountText(entries.length, boardWindow.entries.length)} 篇</span></h3>` + viewToggle +
       `<div class="weekly-meta"><span>发表于 ${boardWindow.start.slice(5)} 至 ${boardWindow.end.slice(5)}（北京时间，含今天）· ${timing}</span>${stale ? '<b class="weekly-stale">更新已超过 6 小时，时效待确认</b>' : ''}` +
       `<details class="weekly-info"${infoOpen ? ' open' : ''}><summary>榜单说明</summary><div class="weekly-info-body"><p>收录北京时间 ${boardWindow.start}–${boardWindow.end} 发表的入榜文献。分类与排序为自动规则，未经逐篇质量评审。</p><p class="weekly-preparation">摘要内容准备：中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，不代表全文精读。</p><p>点题名打开阅读台看摘要；出版商原文链接在阅读台底部。</p></div></details></div></div>`
       + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');

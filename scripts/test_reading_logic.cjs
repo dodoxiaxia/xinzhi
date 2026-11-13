@@ -45,5 +45,34 @@ assert.deepEqual(idsFor({papers:libraryPapers}),['a','b'],'local preview data wi
 console.log('3 build-listed PDF button assertions passed');
 console.log('4 private PDF link scope assertions passed');
 
+// 「摘要可能不完整」判定：保守，只在只有结论段时成立。
+const incomplete=vm.createContext({});vm.runInContext(fn('abstractMayBeIncomplete'),incomplete);
+const longText='x'.repeat(601);
+const incompleteCases=[
+  ['只有 Conclusions 段',{abstractSections:[{label:'Conclusions',text:'These findings support X.'}]},true],
+  ['只有 CONCLUSION 段（大小写、冒号）',{abstractSections:[{label:'CONCLUSION:',text:'Y.'}]},true],
+  ['两个结论类分段',{abstractSections:[{label:'Conclusion',text:'A.'},{label:'结论',text:'B.'}]},true],
+  ['结构化摘要完整',{abstractSections:[{label:'Background',text:'a'},{label:'Methods',text:'b'},{label:'Results',text:'c'},{label:'Conclusions',text:'d'}]},false],
+  ['有结论也有方法',{abstractSections:[{label:'Methods',text:'b'},{label:'Conclusions',text:'d'}]},false],
+  ['只有 Results 段',{abstractSections:[{label:'Results',text:'c'}]},false],
+  ['单段无标题且以 Conclusions: 开头且很短',{abstractSections:[{label:'',text:'CONCLUSIONS: In this trial, drug X reduced events.'}]},true],
+  ['单段无标题、结论句型开头',{abstractSections:[{label:'',text:'These findings support community-based care.'}]},true],
+  ['单段无标题但不是结论开头',{abstractSections:[{label:'',text:'We enrolled 400 adults and measured blood pressure.'}]},false],
+  ['单段无标题、结论开头但超过 600 字',{abstractSections:[{label:'',text:'Conclusions: '+longText}]},false],
+  ['多段无标题不判',{abstractSections:[{label:'',text:'Conclusion: a.'},{label:'',text:'b.'}]},false],
+  ['summary 以 CONCLUSION: 开头',{summary:'CONCLUSION: Community pharmacies have a critical role.'},true],
+  ['summary 以 In conclusion, 开头',{summary:'In conclusion, the trial was neutral.'},true],
+  ['summary 普通摘要',{summary:'Background: AF is common. Methods: cohort. Results: higher risk. Conclusions: monitor.'},false],
+  ['summary 句中含 conclusion 不判',{summary:'The authors reached no firm conclusion: results were mixed.'},false],
+  ['summary 结论开头但超过 600 字',{summary:'Conclusions: '+longText},false],
+  ['没有摘要',{},false],
+  ['空分段',{abstractSections:[{label:'Conclusions',text:'  '}]},false],
+  ['空对象/空值',null,false]
+];
+for(const [name,paper,expected] of incompleteCases)assert.strictEqual(incomplete.abstractMayBeIncomplete(paper),expected,name);
+console.log(incompleteCases.length+' incomplete-abstract rule assertions passed');
+
 // Existing deployment gate also verifies browsing/filter transitions offline.
 require('./test_faceted_filters.cjs');
+
+require('./test_complete_abstract_false_positives.cjs');

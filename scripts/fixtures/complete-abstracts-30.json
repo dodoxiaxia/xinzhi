@@ -1,0 +1,678 @@
+{
+  "source": "local candidates.json snapshot (xinzhi-listui2-1113)",
+  "seed": 20261114,
+  "selection": "random 30 papers whose abstractSections include Background/Methods/Results/Conclusion-like labels",
+  "textPolicy": "each section keeps its label plus the first and last 40 characters of the text (ellipsis in between); enough to reproduce abstractMayBeIncomplete",
+  "papers": [
+    {
+      "doi": "10.1161/jaha.126.051373",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Stellate ganglion block (SGB) may reduce…eventing POAF following cardiac surgery."
+        },
+        {
+          "label": "METHODS",
+          "text": "In this single-center, randomized, doubl…ative day 0 to day 7 or until discharge."
+        },
+        {
+          "label": "RESULTS",
+          "text": "A total of 132 patients completed the st… [95% CI, 0.06-0.98]; adjusted P=0.046)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "While preoperative SGB did not reduce th…sk of postoperative acute kidney injury."
+        },
+        {
+          "label": "REGISTRATION",
+          "text": "URL: https://www.chictr.org.cn; URL Identifier: ChiCTR2300068572."
+        }
+      ]
+    },
+    {
+      "doi": "10.1093/cvr/cvag262",
+      "abstractSections": [
+        {
+          "label": "AIMS",
+          "text": "Vascular endothelial senescence is a cri…al senescence remains poorly understood."
+        },
+        {
+          "label": "METHODS AND RESULTS",
+          "text": "LncRNA microarray analysis was performed…ately leading to endothelial senescence."
+        },
+        {
+          "label": "CONCLUSION",
+          "text": "Our current findings firstly reveal the …en of cardiovascular diseases in humans."
+        }
+      ]
+    },
+    {
+      "doi": "10.1093/eurheartj/ehag854",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND AND AIMS",
+          "text": "The aim of the study was to assess the e…NT-proBNP] levels), and lower mortality."
+        },
+        {
+          "label": "METHODS",
+          "text": "GDMT score, RVFWS, and NT-proBNP levels … NT-proBNP levels of >20%, respectively."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Of 213 patients (age 43 ± 15 years; 54% …ients with mild RV systolic dysfunction."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "GDMT use was associated with improved ou…moderate/severe RV systolic dysfunction."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/hypertensionaha.126.27213",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The transcriptional mechanisms governing…ment of pulmonary arterial hypertension."
+        },
+        {
+          "label": "METHODS",
+          "text": "Clinical samples and multiomics data set…-induced pulmonary hypertension in rats."
+        },
+        {
+          "label": "RESULTS",
+          "text": "ZEB1 was upregulated in pulmonary arteri…ted experimental pulmonary hypertension."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "ZEB1 promotes macrophage glutamine metab…rget in pulmonary arterial hypertension."
+        }
+      ]
+    },
+    {
+      "doi": "10.1093/cvr/cvag272",
+      "abstractSections": [
+        {
+          "label": "AIMS",
+          "text": "The mechanisms underlying colchicine's c…ant further translational investigation."
+        },
+        {
+          "label": "METHODS AND RESULTS",
+          "text": "In a randomized, double-blind, placebo-c… the SHR following colchicine treatment."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "These findings support the hypothesis th…sclerosis require further investigation."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circresaha.126.329026",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "TRP (transient receptor potential) catio…hannels to limit myogenic arterial tone."
+        },
+        {
+          "label": "METHODS",
+          "text": "Using vascular smooth muscle cells (VSMC…mera peptide degrader targeting CaMKIIδ."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Inhibiting TRPC6 with SH045 or SAR7334 s…ization and RyR activation in old VSMCs."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Together, our findings identify age-depe…rpolarization and vasodilation in aging."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circulationaha.126.083383",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The PREVENT-HF equations estimate 10-yea…HF for subtype-specific risk assessment."
+        },
+        {
+          "label": "METHODS",
+          "text": "We included data from five pooled longit… prevalent cardiovascular disease or HF."
+        },
+        {
+          "label": "RESULTS",
+          "text": "The pooled cohort studies included 23,65…r HFrEF was 0.038 (95% CI 0.036, 0.040)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "PREVENT-HF demonstrated excellent discri…ablish subtype-specific risk thresholds."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.hrthm.2026.10.064",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "AI-enabled electrocardiography (AI-ECG) …guarantees, not on discrimination alone."
+        },
+        {
+          "label": "OBJECTIVE",
+          "text": "To test whether the conformal-prediction…ed audit restores it without retraining."
+        },
+        {
+          "label": "METHODS",
+          "text": "A four-class 12-lead rhythm classifier t… policy with finite-sample risk control."
+        },
+        {
+          "label": "RESULTS",
+          "text": "AF AUC remained 0.998 (95% CI 0.997-0.99…in China but abstained in the US cohort."
+        },
+        {
+          "label": "CONCLUSION",
+          "text": "AI-ECG uncertainty can fail silently des…subgroup-aware, task-specific guarantee."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/strokeaha.126.056786",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Stroke recovery is highly heterogeneous,…urce of clinically relevant information."
+        },
+        {
+          "label": "METHODS",
+          "text": "In this prospective longitudinal observa…remity scale and a Motor Recovery Index."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Seventy-seven patients with subacute str…a specific link with recovery potential."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "These findings reveal a dissociation bet… rehabilitation strategies after stroke."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.hrthm.2026.10.068",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The shark-fin sign (SFS) is a rare, high…structive coronary artery disease (CAD)."
+        },
+        {
+          "label": "OBJECTIVE",
+          "text": "To characterize the electrocardiographic…inical outcomes associated with the SFS."
+        },
+        {
+          "label": "METHODS",
+          "text": "We systematically reviewed PubMed, EMBAS…all studies with participant-level data."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Eighty-five papers involving 104 patient…hmias in 66% of patients with vasospasm."
+        },
+        {
+          "label": "CONCLUSION",
+          "text": "SFS is a high-risk ECG pattern rather th…be considered when clinically suspected."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.jcin.2026.10.023",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Left atrial appendage occlusion (LAAO) i… effective LAAO of the predicate device."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "The purpose of this analysis was to eval…a next-generation device through 1 year."
+        },
+        {
+          "label": "METHODS",
+          "text": "VERITAS is a single-arm, prospective, gl… leak and device-related thrombus (DRT)."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Complete left atrial appendage (LAA) clo…low-up was 365 days (IQR: 349-380 days)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "The VERITAS study results support the 1-…ott Medical-VERITAS Study; NCT06707688)."
+        }
+      ]
+    },
+    {
+      "doi": "10.1056/nejmoa2607326",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "For patients with moderate aortic stenos…comes in these patients remains unknown."
+        },
+        {
+          "label": "METHODS",
+          "text": "We conducted an international, open-labe…ed in the intention-to-treat population."
+        },
+        {
+          "label": "RESULTS",
+          "text": "A total of 744 patients underwent random… who underwent aortic-valve replacement."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Among patients with moderate aortic sten…linicalTrials.gov number, NCT04889872.)."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circulationaha.126.083540",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Electrocardiographic analysis aided by a…F atrial findings in a randomized trial."
+        },
+        {
+          "label": "METHODS",
+          "text": "In this single-center, open-label trial,…trial complexes, or nonsustained AF/AFl."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 7337 intervention and 7328 control…ipants versus 18.8% of matched controls."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "AI-ECG-guided monitoring resulted in a m…aluating its impact on patient outcomes."
+        },
+        {
+          "label": "REGISTRATION",
+          "text": "URL: https://www.clinicaltrials.gov; Unique identifier: NCT06847932."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.jacadv.2026.103445",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Invasive coronary physiology enables com…mplexity and prolonged acquisition time."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "The PyCath system is a rapid-exchange mi…nd thermoconvection-based flow velocity."
+        },
+        {
+          "label": "METHODS",
+          "text": "First-in-human, prospective, single-arm …lyzed by an independent core laboratory."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Seventeen patients (mean age 59.3 ± 9.4 … (0.477-0.933), and 0.759 (0.397-0.919)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "In this first-in-human experience, the P…velocity with excellent reproducibility."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/jaha.126.050498",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "This study aimed to investigate whether …d large infarct in a real-world setting."
+        },
+        {
+          "label": "METHODS",
+          "text": "This study was a post hoc analysis of a …cranial hemorrhage and 90-day mortality."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 745 patients with acute ischemic s…ct for effectiveness or safety outcomes."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "In patients with acute ischemic stroke a…n EVT and RI status for 90-day outcomes."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circgen.125.005501",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Standard modifiable risk factors such as…sease before symptoms or a heart attack."
+        },
+        {
+          "label": "METHODS",
+          "text": "We performed targeted metabolomics, iden… an independent External cohort (n=311)."
+        },
+        {
+          "label": "RESULT",
+          "text": "A model including age, sex, and 5 metabo… with scanning all low-risk individuals."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "In the External validation cohort, BioHE…ly in younger and SMuRFless individuals."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.hrthm.2026.10.063",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Exercise is associated with ventricular …rrhythmic patterns are less established."
+        },
+        {
+          "label": "OBJECTIVE",
+          "text": "To assess prior exercise intensity and d…rns across the ARVC diagnostic spectrum."
+        },
+        {
+          "label": "METHODS",
+          "text": "Genotype-positive probands and relatives…essed at first visit and last follow-up."
+        },
+        {
+          "label": "RESULTS",
+          "text": "We included 122 individuals (49% women; …sted OR 2.43, 95% CI 0.85-6.97, p=0.10)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Associations with exercise was consisten…lance rather than a direct relationship."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/jaha.126.053967",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Statin intolerance may disrupt lipid-low…among patients who discontinued all LLT."
+        },
+        {
+          "label": "METHODS",
+          "text": "We studied new statin users at Mass Gene…ll LLT with those who continued any LLT."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 254 035 new statin users, 10 644 (…lity to 2.14 for venous thromboembolism."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Clinician-documented statin intolerance …toration of statin or nonstatin therapy."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.jacadv.2026.103432",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Nontraumatic cervical artery dissection …thies suggests broader vascular disease."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "The objectives of the study was to deter…sociated with recurrent arterial events."
+        },
+        {
+          "label": "METHODS",
+          "text": "Consecutive adults with CeAD evaluated i…ncident extracervical artery dissection."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 315 patients, 136 (43.2%) had isol…tional adjustment for baseline aneurysm."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Head-to-pelvis imaging identified freque…valuation, counseling, and surveillance."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/jaha.126.053443",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The 2026 American College of Cardiology/… impact of this transition is uncertain."
+        },
+        {
+          "label": "METHODS",
+          "text": "We analyzed National Health and Nutritio…sessed among guideline-supported adults."
+        },
+        {
+          "label": "RESULTS",
+          "text": "The analytic sample included 1662 partic…work and 40.5% under the 2026 framework."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Transition to the 2026 Predicting Risk o…ment remains a major implementation gap."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circinterventions.126.017029",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The BRIGHT-4 trial (Bivalirudin With Pro…I with these 2 anticoagulation regimens."
+        },
+        {
+          "label": "METHODS",
+          "text": "In this multicenter, open-label, randomi…tium types 3 to 5 bleeding at 12 months."
+        },
+        {
+          "label": "RESULTS",
+          "text": "At 12 months, the primary outcome occurr…zation, and stroke between the 2 groups."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Among patients with ST-segment-elevation…segment-elevation myocardial infarction."
+        },
+        {
+          "label": "REGISTRATION",
+          "text": "URL: https://www.clinicaltrials.gov; Unique identifier: NCT03822975."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.jacadv.2026.103405",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Peripartum cardiomyopathy (PPCM) disprop…dominantly Black cohorts remain limited."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "The purpose of this study was to charact…n (LVEF) recovery in a U.S. PPCM cohort."
+        },
+        {
+          "label": "METHODS",
+          "text": "This retrospective-prospective registry … LVEF recovery and subsequent pregnancy."
+        },
+        {
+          "label": "RESULTS",
+          "text": "The cohort was 80.5% Black. Over a media…lure predicted lower LVEF recovery odds."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "This long-term predominantly Black PPCM …lance to guide clinical decision-making."
+        }
+      ]
+    },
+    {
+      "doi": "10.1093/europace/euag304",
+      "abstractSections": [
+        {
+          "label": "AIM",
+          "text": "To assess the efficacy of fludrocortison…nomic syncope and hypotensive phenotype."
+        },
+        {
+          "label": "METHODS AND RESULTS",
+          "text": "Multicentre, prospective, non-randomized… and in 41 older (56 ± 12 yrs) patients."
+        },
+        {
+          "label": "CONCLUSION",
+          "text": "Fludrocortisone therapy was associated w…continuation of therapy in 17% of cases."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circinterventions.126.017259",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "The virtual circle method is currently u…atients undergoing Redo-TAV replacement."
+        },
+        {
+          "label": "METHODS",
+          "text": "This multicenter retrospective study inc…d and observed index TAV frame diameter."
+        },
+        {
+          "label": "RESULTS",
+          "text": "In the Evolut-in-SAPIEN combination, mea…26.4%) and underestimation in 8 (15.1%)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "The virtual circle method provided an ac…when dilatation strategies are employed."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.jacadv.2026.103413",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Interhospital transfer logistics and fra…tion, and allow time-stamp data capture."
+        },
+        {
+          "label": "OBJECTIVES",
+          "text": "We aimed to assess the effect of App imp…res in a multicenter health care system."
+        },
+        {
+          "label": "METHODS",
+          "text": "We conducted an observational comparison…) comparisons, reported as median (IQR)."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Composite D2D time decreased from 92 min….4% (11/54) to 46.0% (29/63; P = 0.006)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "In this observational multicenter implem…esholds across 2 interfacility pathways."
+        }
+      ]
+    },
+    {
+      "doi": "10.1016/j.hrthm.2026.11.008",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Pulsed Field Ablation (PFA) is a non-the…sons between PFA systems remain limited."
+        },
+        {
+          "label": "OBJECTIVE",
+          "text": "This study compared the procedural chara…chnologies in routine clinical practice."
+        },
+        {
+          "label": "METHODS",
+          "text": "Consecutive patients undergoing their fi… followed by routine clinical follow-up."
+        },
+        {
+          "label": "RESULTS",
+          "text": "A total of 198 patients (CMAC:91, VLCC:5…0.51%, ischemic stroke (CMAC)) occurred."
+        },
+        {
+          "label": "CONCLUSION",
+          "text": "In this prospective real-world study, PV…mes, while procedural profiles differed."
+        }
+      ]
+    },
+    {
+      "doi": "10.1093/ehjcvp/pvag096",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND AND AIMS",
+          "text": "Contemporary evidence on the effects of …ntricular ejection fraction (LVEF) >40%."
+        },
+        {
+          "label": "METHODS",
+          "text": "Patients with a recent (≤14 days) MI and…timated by a linear mixed-effects model."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 2707 randomised patients, 2681 (99…groups (age, sex, type of MI, and LVEF)."
+        },
+        {
+          "label": "CONCLUSION",
+          "text": "Overall, a high HRQoL was observed among…er MI in patients without heart failure."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circulationaha.126.083722",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "In CARDIO-TTRansform, the TTR (transthyr…rdiac structure and function is unknown."
+        },
+        {
+          "label": "METHODS",
+          "text": "CARDIO-TTRansform randomized 1432 patien…with mixed models for repeated measures."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 1426 participants with baseline ec…erved in patients receiving stabilizers."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Among patients with TTR amyloidosis with… in TTR amyloidosis with cardiomyopathy."
+        },
+        {
+          "label": "REGISTRATION",
+          "text": "URL: https://www.clinicaltrials.gov; Uni… xxx; Unique identifier: 2019-002835-27."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/circgen.126.005754",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "MYBPC3 truncating variants (MYBPC3tv) re…ariability remains incompletely defined."
+        },
+        {
+          "label": "METHODS",
+          "text": "We analyzed 11 991 unrelated hypertrophi…by a multivariable Cox regression model."
+        },
+        {
+          "label": "RESULTS",
+          "text": "Among 2767 genotype-positive probands, M…C3 carriers were diagnosed in childhood."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Cumulative rare variant burden explains …alized management, and guided therapies."
+        }
+      ]
+    },
+    {
+      "doi": "10.1161/jaha.126.050695",
+      "abstractSections": [
+        {
+          "label": "BACKGROUND",
+          "text": "Advanced arrhythmogenic right ventricula…aging (CMR), remains largely unexplored."
+        },
+        {
+          "label": "METHODS",
+          "text": "Consecutive patients with arrhythmogenic…al end points were end-stage HF and MVA."
+        },
+        {
+          "label": "RESULTS",
+          "text": "A total of 316 patients (mean age 38±15 …h left ventricular involvement (P=0.08)."
+        },
+        {
+          "label": "CONCLUSIONS",
+          "text": "Lower cardiac magnetic resonance-derived…assessment, pending external validation."
+        }
+      ]
+    }
+  ]
+}

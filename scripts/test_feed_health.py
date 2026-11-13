@@ -290,17 +290,23 @@ class HealthTests(OfflineTests):
         item['date'] = (NOW + datetime.timedelta(days=2)).isoformat()
         self.assertEqual(feeds.eligible(item, NOW), (False, 'future'))
 
-    def test_no_permanent_source_filter_and_82_scope_stays_website_only(self):
+    def test_no_permanent_source_filter_and_enabled_scope_stays_website_only(self):
         library = json.loads((feeds.ROOT / 'data/library.json').read_text())
-        chosen = feeds.select_sources(library, all_sources=True)
-        self.assertEqual(len(chosen), 82)
+        chosen = feeds.select_sources(library, all_sources=True, extra_path=Path('/nonexistent/extra_feeds.json'))
+        # 期望数从 state 里的 library.json 推出来：启用的源加上 OpenAI News。
+        # 不写死数字，这样在 state 里停用或启用某个源时，发布前验证不会被卡住。
+        expected = sum(1 for row in library['feeds'] if row['enabled'] or row['name'] == 'OpenAI News')
+        self.assertGreater(expected, 1)
+        self.assertEqual(len(chosen), expected)
         self.assertEqual(sum(row['name'] == 'OpenAI News' for row in chosen), 1)
         # This API deliberately accepts no previous health selection input.
         self.assertEqual({row['url'] for row in chosen}, {row['url'] for row in library['feeds'] if row['enabled'] or row['name'] == 'OpenAI News'})
 
     def test_main_collects_once_and_writes_current_health_despite_old_blocked_status(self):
         library = json.loads((feeds.ROOT / 'data/library.json').read_text())
-        chosen = feeds.select_sources(library, all_sources=True)
+        chosen = feeds.select_sources(library, all_sources=True, extra_path=Path('/nonexistent/extra_feeds.json'))
+        expected = len(chosen)
+        self.assertGreater(expected, 1)
         observed = [(report(source, raw=0, status='empty_feed'), []) for source in chosen]
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -308,13 +314,13 @@ class HealthTests(OfflineTests):
             (root / 'data/library.json').write_text(json.dumps(library))
             (root / 'data/source-health.json').write_text(json.dumps({'checkedAt': '2026-09-29T00:00:00Z',
                 'sources': [{'id': source['id'], 'status': 'http_error'} for source in chosen]}))
-            with patch.object(feeds, 'ROOT', root), patch.object(feeds, 'collect', return_value=observed) as collector, patch('builtins.print'):
+            with patch.object(feeds, 'ROOT', root), patch.object(feeds, 'EXTRA_FEEDS_PATH', root / 'config/extra_feeds.json'), patch.object(feeds, 'collect', return_value=observed) as collector, patch('builtins.print'):
                 self.assertEqual(feeds.main(['--all']), 0)
             self.assertEqual(collector.call_count, 1)
-            self.assertEqual(len(collector.call_args.args[0]), 82)
+            self.assertEqual(len(collector.call_args.args[0]), expected)
             output = json.loads((root / 'data/source-health.json').read_text())
-            self.assertEqual(len(output['sources']), 82)
-            self.assertEqual(output['summary'], {'empty_feed': 82})
+            self.assertEqual(len(output['sources']), expected)
+            self.assertEqual(output['summary'], {'empty_feed': expected})
             self.assertNotEqual(output['checkedAt'], '2026-09-29T00:00:00Z')
             self.assertEqual({path.name for path in (root / 'data').iterdir()},
                              {'library.json', 'feeds.json', 'feeds.js', 'source-health.json', 'source-health.js'})
@@ -458,6 +464,66 @@ class HealthTests(OfflineTests):
               patch.object(Path, 'write_text', side_effect=AssertionError('Audit import must not write'))):
             import audit_sources
             importlib.reload(audit_sources)
+
+
+class ExtraFeedsTests(unittest.TestCase):
+    """config/extra_feeds.json: repository-declared sources on top of the state-branch catalogue."""
+
+    def rows(self):
+        return json.loads(feeds.EXTRA_FEEDS_PATH.read_text(encoding='utf-8'))
+
+    def test_file_is_well_formed_and_deduplicated(self):
+        rows = self.rows()
+        self.assertGreater(len(rows), 0)
+        urls = [row['url'] for row in rows]
+        self.assertEqual(len(urls), len(set(urls)))
+        for row in rows:
+            self.assertTrue(row['name'].strip())
+            self.assertTrue(row['url'].startswith('https://'))
+            self.assertFalse(feeds.has_credentials(row['url']), row['name'])
+            self.assertIn(row['category'], {'心血管', 'AI医疗', '综合医学'})
+            self.assertIn(row['route'], {'publisher', 'pubmed'})
+            if 'fallbackCategory' in row:
+                self.assertIn(row['fallbackCategory'], feeds.EXTRA_FALLBACK_CATEGORIES)
+
+    def test_extra_sources_get_catalogue_style_ids_and_skip_known_urls(self):
+        rows = self.rows()
+        known = {rows[0]['url']}
+        chosen = feeds.extra_sources(known)
+        self.assertEqual(len(chosen), len(rows) - 1)
+        self.assertNotIn(rows[0]['url'], {row['url'] for row in chosen})
+        for row in chosen:
+            self.assertRegex(row['id'], r'^[0-9a-f]{12}$')
+            self.assertEqual(row['id'], feeds.source_id(row['url']))
+            self.assertTrue(row['enabled'])
+
+    def test_extras_join_the_all_run_only(self):
+        library = {'feeds': [{'id': 'a', 'name': 'Heart Online First', 'url': 'https://example.org/rss', 'enabled': True}]}
+        self.assertEqual([row['name'] for row in feeds.select_sources(library)], ['Heart Online First'])
+        self.assertGreater(len(feeds.select_sources(library, all_sources=True)), 1)
+
+    def test_malformed_overlay_raises_instead_of_dropping_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'extra.json'
+            for payload in ('{}', '[1]', '[{"name":"x","url":"http://example.org/a","enabled":true}]',
+                            '[{"name":"x","url":"https://example.org/a?token=abc","enabled":true}]',
+                            '[{"name":"x","url":"https://example.org/a","enabled":true,"fallbackCategory":"待分类"}]'):
+                path.write_text(payload)
+                with self.assertRaises(ValueError, msg=payload):
+                    feeds.extra_sources(path=path)
+
+    def test_fallback_category_keeps_specialty_journal_without_keyword_in_name(self):
+        raw = rss(title='Statin therapy and plaque regression')
+        plain = {'id': 'x1', 'name': 'Atherosclerosis', 'url': 'https://example.org/rss', 'enabled': True}
+        self.assertEqual(feeds.parse_feed(raw, plain, checked_at=CHECKED)['items'], [])
+        declared = dict(plain, fallbackCategory='心血管')
+        kept = feeds.parse_feed(raw, declared, checked_at=CHECKED)['items']
+        self.assertEqual([item['category'] for item in kept], ['心血管'])
+
+    def test_fallback_does_not_bypass_scope_filter(self):
+        raw = rss(title='Lysosomal dysfunction in knockout mice cardiomyocytes in vitro')
+        declared = {'id': 'x1', 'name': 'Atherosclerosis', 'url': 'https://example.org/rss', 'enabled': True, 'fallbackCategory': '心血管'}
+        self.assertEqual(feeds.parse_feed(raw, declared, checked_at=CHECKED)['items'], [])
 
 
 if __name__ == '__main__':

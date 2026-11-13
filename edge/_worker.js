@@ -1882,7 +1882,7 @@ function museVerificationInstant(job) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
-  const kept = ['lease_expired','queue_expired','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
+  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
     : job.state === 'login_required' ? 'login_required'
     : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
@@ -1894,7 +1894,8 @@ function musePublicJob(value, doi = '') {
   const messages = {queued:'已在下载队列中，等待领取；领取时间取决于下载端的运行安排，不保证即时。手里已有 PDF 可以直接上传。',running:'已领取，正在获取全文。',uploading:'Drive 已报告上传，正在向网站回传 PDF。',verifying:job.source === 'reader_upload' ? '已收到你上传的 PDF，等待网站核验 DOI、题名与全部页面。' : job.source === 'open_access' ? '已从开放获取来源取得 PDF，等待网站核验 DOI、题名与全部页面。' : 'PDF 已收到，等待网站核验 DOI、题名与全部页面。',
     login_required:'汉堡会话需要重新登录，请维护者在原授权浏览器中处理。',available:'全文已核验，可下载。',review:'PDF 核验未通过，需维护者核查。',failed:'下载未完成，任务已停止，等待维护者确认。',abandoned:'已确认不再获取这篇全文。'};
   const reasons = {lease_expired:'领取凭据已过期，任务已停止；需维护者检查原任务与已下载文件，不会自动重复下载。',
-    queue_expired:'任务排队过久仍未被领取，已停止。可以直接上传 PDF，或用全文口令重新排队。'};
+    queue_expired:'任务排队过久仍未被领取，已停止。可以直接上传 PDF，或用全文口令重新排队。',
+    queue_unclaimed:'下载端暂时没有领取这篇，已转给兜底下载处理，通常数小时内有结果。手里已有 PDF 可以直接上传。'};
   return {id:job.id,doi:job.doi,state,stage,attempts:0,createdAt:new Date(job.createdAt).toISOString(),updatedAt:new Date(job.updatedAt).toISOString(),
     message:reasons[reason] || (verificationDelayed ? 'PDF 已收到，计划核验时间已到，核验尚未完成；实际执行以 GitHub 队列为准。' : messages[job.state]), ...(reason ? {reason} : {}),
     ...(job.state === 'verifying' ? {nextVerificationAt:planned,verificationDelayed,verificationSchedule:'每小时第 23 分钟；GitHub 队列可能延迟。',
@@ -1915,7 +1916,7 @@ async function musePut(env, job, options = {}) {
   libraryCatalogCache.clear();
   // Keep the machine candidate index in step with every state change. A caller that writes many tasks passes
   // indexChanges and applies them once with museIndexApply.
-  const change = {doi:job.doi,entry:museIndexEntry(job)};
+  const change = museIndexChange(job.doi, job);
   if (Array.isArray(options.indexChanges)) options.indexChanges.push(change);
   else await museIndexApply(env,[change]);
 }
@@ -1963,7 +1964,7 @@ function museTaskView(job, publicJob) {
   if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未取得',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
   if (job.state === 'review') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
   if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未取得',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
-  if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
+  if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : publicJob.reason === 'queue_unclaimed' ? '下载端暂时没有领取，已转给兜底下载处理。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
     eta:publicJob.verificationMode === 'immediate' ? '核验通常几分钟内完成。'
       : '即时核验没有赶上，正在等待下一轮核验，具体时间不固定，可能需要数小时。',action:'refresh'};
@@ -1975,7 +1976,7 @@ async function museOwnerGuard(env, doi) {
   const bot = grokRecord(await libraryGet(env.QL_KV,GROK_JOB_PREFIX + doi),doi);
   if ((previous && ['queued','running'].includes(previous.state)) || (bot && !['available','failed','review'].includes(bot.state))) libraryFail('muse_owner_conflict',409);
 }
-async function handleMuseRetry(request, env) {
+async function handleMuseRetry(request, env, ctx) {
   let doi = '', release;
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
@@ -2007,6 +2008,7 @@ async function handleMuseRetry(request, env) {
     await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
     await musePut(env,job);
     await museDelete(env,current.queueKey);
+    downloadNotify(env,ctx,doi,id); // optional webhook notice for the new task; never blocks or fails the response
     return museResponse(request,job,paper);
   } catch (error) { return libraryError(request,error,doi,'/api/muse/retry'); }
   finally { if (release) await release(); }
@@ -2181,7 +2183,22 @@ async function museIndexRead(env) {
 async function museIndexWrite(env, doc) {
   await libraryPut(env.QL_KV, MACHINE_INDEX_KEY, JSON.stringify(doc));
 }
-// Apply a batch of {doi, entry|null} changes in one read and at most one write. Later changes for a DOI win.
+// Change for one DOI from a task record: the entry to store, or null when the task is no longer a candidate. u is the version the
+// change is based on: the record's updatedAt, or the index entry that was observed when there is no record. A removal only takes effect
+// on an entry that is not newer than u, an upsert only on an entry that is not newer than its own u: whatever a concurrent claim, heal
+// or registration stored after this change's record was read is never rolled back by it.
+function museIndexChange(doi, job, observed) {
+  const u = job && Number.isSafeInteger(job.updatedAt) ? job.updatedAt : observed && Number.isSafeInteger(observed.u) ? observed.u : undefined;
+  return {doi,entry:museIndexEntry(job),...(u === undefined ? {} : {u})};
+}
+// Would applying this change leave the stored entry as it is? True for a change an equal-or-newer stored entry has already overtaken.
+function museIndexOvertaken(old, change) {
+  if (!old) return false;
+  if (change.entry) return old.u > change.entry.u;
+  return Number.isSafeInteger(change.u) && old.u > change.u;
+}
+// Apply a batch of {doi, entry|null, u} changes in one read and at most one write. Later changes for a DOI win, except that a change
+// never replaces or removes an entry that is newer than the record it was based on (see museIndexOvertaken).
 async function museIndexApply(env, changes) {
   if (!changes.length) return;
   const existing = await museIndexRead(env);
@@ -2189,6 +2206,7 @@ async function museIndexApply(env, changes) {
   let dirty = !existing;
   for (const change of changes) {
     const old = doc.entries[change.doi];
+    if (museIndexOvertaken(old, change)) continue;
     if (!change.entry) { if (old) { delete doc.entries[change.doi]; dirty = true; } continue; }
     if (!museIndexSame(old, change.entry)) { doc.entries[change.doi] = change.entry; dirty = true; }
   }
@@ -2196,6 +2214,70 @@ async function museIndexApply(env, changes) {
   // A missing index is only created when there is something to record; the backfill covers the rest.
   if (!existing && !Object.keys(doc.entries).length) return;
   if (dirty) await museIndexWrite(env, doc);
+}
+// Apply, then read the index back and apply again what is not in the stored index as intended: a concurrent writer that read the
+// document before this write may have saved its own copy over it. Checked per change: an entry must be stored (unchanged, or newer
+// than the change, which museIndexApply leaves alone), a removal must be gone (or the stored entry newer than the record it was based
+// on). Applying is idempotent, so a repeat is harmless. Returns how many changes are still not in the stored index after the last
+// round (0 = all of them are). Cost: one read per round, plus the apply.
+function museIndexSettled(stored, change) {
+  const entry = stored && stored.entries[change.doi];
+  if (!entry) return !change.entry;
+  return !change.entry ? museIndexOvertaken(entry, change) : museIndexSame(entry, change.entry) || museIndexOvertaken(entry, change);
+}
+async function museIndexApplyVerified(env, changes, rounds = 3) {
+  let pending = changes;
+  for (let round = 0; round < rounds && pending.length; round++) {
+    await museIndexApply(env, pending);
+    const stored = await museIndexRead(env);
+    pending = pending.filter(change => !museIndexSettled(stored, change));
+  }
+  return pending.length;
+}
+// One op-bounded slice of a full comparison between the job records and the index (run by the hourly verification job through
+// POST /api/muse/review {"action":"index-audit"}, no machine token needed). Unlike a reindex it never empties the index, so claims
+// keep working. Counts: candidates = records in a state the index is meant to hold; missing = candidate record without an entry;
+// stale = entry that disagrees with its record; extra = entry whose record is no candidate. With repair on, all three are
+// corrected (the record wins). The caller passes the returned cursor back until done is true.
+const MACHINE_INDEX_AUDIT_OPS = 300;
+// After the job records, the audit walks the paper records (cursor prefix 'p:') looking for orphans: a paper that a cut-off
+// registration wrote (machineOrphanPaper) with no job, no register record and no legacy job. Report only: the audit never creates
+// a task, because source and section of a registration are known only to the client that sent it; a repeat registration of the
+// DOI creates the task. At most MACHINE_AUDIT_ORPHAN_LIST DOIs are listed per request; orphans is always the exact count.
+const MACHINE_AUDIT_PAPER_PHASE = 'p:';
+const MACHINE_AUDIT_ORPHAN_LIST = 20;
+async function museIndexAuditChunk(env, cursor, repair) {
+  if (cursor.startsWith(MACHINE_AUDIT_PAPER_PHASE)) return museIndexAuditOrphans(env, cursor.slice(MACHINE_AUDIT_PAPER_PHASE.length), repair);
+  const doc = await museIndexRead(env);
+  if (!doc || !doc.ready) {
+    const next = await museIndexBackfillChunk(env, doc);
+    return {ready:false,phase:'jobs',done:true,cursor:'',repair,scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0,indexed:Object.keys(next.entries).length,orphans:0,orphanDois:[],papers:0};
+  }
+  const changes = [];
+  let ops = 0, scanned = 0, candidates = 0, missing = 0, stale = 0, extra = 0;
+  while (ops < MACHINE_INDEX_AUDIT_OPS) {
+    const listing = await machineListKeys(env, MUSE_JOB_PREFIX, cursor, 100);
+    ops++;
+    for (const listed of listing.keys) {
+      if (typeof listed.name !== 'string' || !listed.name.startsWith(MUSE_JOB_PREFIX)) continue;
+      const doi = listed.name.slice(MUSE_JOB_PREFIX.length);
+      const job = museRecord(await libraryGet(env.QL_KV, listed.name), doi);
+      ops++; scanned++;
+      const entry = museIndexEntry(job), old = doc.entries[doi];
+      if (entry) {
+        candidates++;
+        // An entry newer than the record just read was written by a claim, heal or registration in the meantime: not a mismatch.
+        if (!old) { missing++; changes.push(museIndexChange(doi, job)); }
+        else if (!museIndexSame(old, entry) && !museIndexOvertaken(old, {entry})) { stale++; changes.push(museIndexChange(doi, job)); }
+      } else if (old && !museIndexOvertaken(old, {entry:null,u:job ? job.updatedAt : old.u})) { extra++; changes.push(museIndexChange(doi, job, old)); }
+    }
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { cursor = MACHINE_AUDIT_PAPER_PHASE; break; }
+    cursor = listing.cursor;
+  }
+  let repaired = 0;
+  // repaired counts only what the read-back found in the stored index; an unrepaired mismatch keeps the verify job red.
+  if (repair && changes.length) repaired = changes.length - await museIndexApplyVerified(env, changes);
+  return {ready:true,phase:'jobs',done:false,cursor,repair,scanned,candidates,missing,stale,extra,repaired,indexed:Object.keys(doc.entries).length,orphans:0,orphanDois:[],papers:0};
 }
 // Scan one op-bounded slice of the job keys into the index and save the progress. The slice length is bounded by
 // the KV operation budget, not by the table size, so a large ledger is backfilled over several requests.
@@ -2230,10 +2312,95 @@ async function museIndexBackfillChunk(env, current) {
   await museIndexWrite(env, latest);
   return latest;
 }
+// Self-healing: the queue pointers (library:muse-queue:<createdAt>:<task id>) list the waiting tasks by task id with a few KV list
+// operations, so a waiting task whose id is not in the index is found without scanning every job record. A batch that was cut off
+// before its index write (client timeout), a lost concurrent update or a replayed registration all leave exactly that gap.
+// The pointers are read in key order (oldest first) in pages of MACHINE_INDEX_HEAL_PAGE, at most MACHINE_INDEX_HEAL_PAGES pages per
+// run; a run that does not reach the end (page budget or the per-run limit) continues from there next time, so a queue longer than
+// one page is covered over several runs. At most MACHINE_INDEX_HEAL_MAX tasks are put back per run and a run happens at most every
+// MACHINE_INDEX_HEAL_INTERVAL_MS per isolate, so the worst case is MACHINE_INDEX_HEAL_PAGES list operations + 2 reads per task
+// healed + 2 index reads per round and 1 index write per round (about 90 operations). Only waiting and verifying tasks have a
+// pointer; the other states are still covered by the reindex escape hatch.
+// MACHINE_INDEX_SELF_HEAL=off turns it off. A failure is logged with a fixed text (no error text, no key names) and tried again.
+const MACHINE_INDEX_HEAL_INTERVAL_MS = 60000;
+const MACHINE_INDEX_HEAL_MAX = 40;
+const MACHINE_INDEX_HEAL_PAGE = 1000;
+const MACHINE_INDEX_HEAL_PAGES = 5;
+const MACHINE_INDEX_HEAL_SEEN_MAX = 2000;
+const MACHINE_INDEX_POINTER_ID = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+let museIndexHealAt = 0;
+let museIndexHealCursor = '';
+// Pointers already judged not to need an entry (stale pointer, task replaced, record gone), so they are not re-read every run.
+const museIndexHealSeen = new Map();
+// Returns how many entries this run put into the stored index (checked by reading it back).
+async function museIndexHeal(env, doc) {
+  const healed = [];
+  let repaired = 0, failed = false;
+  try {
+    if (env.MACHINE_INDEX_SELF_HEAL === 'off') return 0;
+    const now = Date.now();
+    if (now - museIndexHealAt >= 0 && now - museIndexHealAt < MACHINE_INDEX_HEAL_INTERVAL_MS) return 0;
+    museIndexHealAt = now;
+    if (museIndexHealSeen.size > MACHINE_INDEX_HEAL_SEEN_MAX) museIndexHealSeen.clear();
+    const known = new Set(Object.values(doc.entries).map(entry => entry.i));
+    let cursor = museIndexHealCursor, examined = 0, stopped = false;
+    for (let page = 0; page < MACHINE_INDEX_HEAL_PAGES && examined < MACHINE_INDEX_HEAL_MAX; page++) {
+      const listing = await machineListKeys(env, MUSE_QUEUE_PREFIX, cursor, MACHINE_INDEX_HEAL_PAGE);
+      for (const listed of listing.keys) {
+        if (examined >= MACHINE_INDEX_HEAL_MAX) { stopped = true; break; }
+        const match = typeof listed.name === 'string' && listed.name.startsWith(MUSE_QUEUE_PREFIX) ? MACHINE_INDEX_POINTER_ID.exec(listed.name) : null;
+        if (!match || known.has(match[1]) || museIndexHealSeen.has(match[1])) continue;
+        examined++;
+        const id = match[1];
+        // Only a pointer that was read to the end is remembered as judged; a read that fails leaves it for the next run.
+        const pointer = await libraryGet(env.QL_KV, listed.name);
+        const doi = pointer && typeof pointer.doi === 'string' ? libraryDoi(pointer.doi) : '';
+        if (!doi || pointer.id !== id || doc.entries[doi]) { museIndexHealSeen.set(id, now); continue; }
+        const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+        const entry = job && job.id === id ? museIndexEntry(job) : null;
+        if (!entry) { museIndexHealSeen.set(id, now); continue; }
+        doc.entries[doi] = entry;
+        healed.push({doi,entry});
+      }
+      if (stopped) break;
+      if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { cursor = ''; break; }
+      cursor = listing.cursor;
+    }
+    // Continue where this run stopped: the unfinished page again (known and judged pointers are skipped without a read), or the next page.
+    museIndexHealCursor = cursor;
+    // museIndexApply merges into the latest stored copy, so entries written by other requests meanwhile are kept.
+    if (healed.length) repaired = healed.length - await museIndexApplyVerified(env, healed);
+  } catch { failed = true; /* healing is best effort; the next run tries again */ }
+  if (failed) console.warn('machine index heal failed; next run retries (' + repaired + ' of ' + healed.length + ' repaired)');
+  else if (healed.length) console.log('machine index heal: ' + repaired + ' of ' + healed.length + ' tasks put back into the index');
+  return repaired;
+}
+async function museIndexAuditOrphans(env, cursor, repair) {
+  let ops = 0, papers = 0, orphans = 0, done = false;
+  const orphanDois = [];
+  while (ops < MACHINE_INDEX_AUDIT_OPS) {
+    const listing = await machineListKeys(env, LIBRARY_PREFIX, cursor, 100);
+    ops++;
+    for (const listed of listing.keys) {
+      if (typeof listed.name !== 'string' || !listed.name.startsWith(LIBRARY_PREFIX)) continue;
+      const doi = listed.name.slice(LIBRARY_PREFIX.length);
+      const record = await libraryGet(env.QL_KV, listed.name);
+      ops++; papers++;
+      if (!libraryDoi(doi) || libraryDoi(doi) !== doi || !machineOrphanPaper(record, libraryPaper(record, doi))) continue;
+      if (await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi)
+          || await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) { ops += 4; continue; }
+      ops += 4; orphans++;
+      if (orphanDois.length < MACHINE_AUDIT_ORPHAN_LIST) orphanDois.push(doi);
+    }
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { done = true; cursor = ''; break; }
+    cursor = listing.cursor;
+  }
+  return {ready:true,phase:'papers',done,cursor:done ? '' : MACHINE_AUDIT_PAPER_PHASE + cursor,repair,scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0,indexed:0,papers,orphans,orphanDois};
+}
 // The index for this request. A missing or unfinished index advances the one-time backfill by one slice.
 async function museIndexOpen(env) {
   const doc = await museIndexRead(env);
-  if (doc && doc.ready) { museIndexPrune(doc); return doc; }
+  if (doc && doc.ready) { museIndexPrune(doc); await museIndexHeal(env, doc); return doc; }
   return museIndexBackfillChunk(env, doc);
 }
 // Operator escape hatch: forget the entries and scan the job keys again, so the result is exactly what the records say.
@@ -2349,7 +2516,7 @@ async function handleMuseReaderUpload(request, env) {
     return libraryError(request,error,doi,'/api/muse/reader-upload');
   } finally { if (release) await release(); }
 }
-async function handleMuseRequest(request, env) {
+async function handleMuseRequest(request, env, ctx) {
   let doi = '';
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
@@ -2382,6 +2549,7 @@ async function handleMuseRequest(request, env) {
       await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
       await musePut(env,job);
       await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
+      downloadNotify(env,ctx,doi,id); // optional webhook notice for the new task; never blocks or fails the response
       return museResponse(request,job,metadata);
     } finally { clearTimeout(timer); await release(); }
   } catch (error) { return libraryError(request,error,doi); }
@@ -2507,6 +2675,11 @@ async function handleMuseReview(request, env) {
     const owner = await fulltextJobAuthorize(request,MUSE_REVIEW_POLICY);
     libraryConfig(env); // A configured verifier may finish candidates while Muse polling is disabled.
     const input = await fulltextReadJson(request,1024,'muse_bad_request');
+    if (input.action === 'index-audit') {
+      // Hourly comparison of the job records with the machine candidate index, repaired unless MACHINE_INDEX_SELF_HEAL is 'off'.
+      if (Object.keys(input).some(key => !['action','cursor'].includes(key)) || (Object.hasOwn(input,'cursor') && (typeof input.cursor !== 'string' || !input.cursor || input.cursor.length > 512))) libraryFail('muse_bad_request',400);
+      return json({ok:true,...await museIndexAuditChunk(env,input.cursor || '',env.MACHINE_INDEX_SELF_HEAL !== 'off')});
+    }
     if (input.action === 'recheck') {
       // Only an explicit maintainer dispatch may reopen one quarantined original.
       await fulltextJobAuthorize(request,{...MUSE_REVIEW_POLICY,events:['workflow_dispatch']});
@@ -3330,6 +3503,8 @@ const MACHINE_RETURN_LIMIT = 3;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
+// Reasons the site itself writes when it stops a task (a client never reports them).
+const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed'];
 const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
@@ -3557,10 +3732,180 @@ function machineReason(job) {
   if (MACHINE_VERIFICATION_REASONS.includes(job.verificationReason)) return job.verificationReason;
   if (MACHINE_VERIFICATION_REASONS.includes(job.reason)) return job.reason;
   if (job.state === 'login_required') return 'han_login';
-  if (job.previousReason && (MACHINE_FAILURE_REASONS.includes(job.previousReason) || ['lease_expired','queue_expired','agent_failed'].includes(job.previousReason)) && ['running','uploading'].includes(job.state) && museExpired(job)) return job.previousReason;
-  if (['lease_expired','queue_expired','agent_failed'].includes(job.reason)) return job.reason;
+  if (job.previousReason && (MACHINE_FAILURE_REASONS.includes(job.previousReason) || MACHINE_AUTO_REASONS.includes(job.previousReason)) && ['running','uploading'].includes(job.state) && museExpired(job)) return job.previousReason;
+  if (MACHINE_AUTO_REASONS.includes(job.reason)) return job.reason;
   if (museExpired(job)) return job.state === 'queued' ? 'queue_expired' : 'lease_expired';
   return '';
+}
+// ---- Stale queued tasks go to the fallback (off by default) ----
+// A task that nobody claimed for hours stays queued until the six-day expiry. When the downloader is not polling the
+// site, the fallback bot (which only takes failed-awaiting-fallback) never sees it. With the switch on, a queued task
+// that was never claimed and is older than the threshold becomes `failed` with reason queue_unclaimed, which is
+// exactly the public state failed-awaiting-fallback. Where it runs: lazily, inside a fallback claim and inside the
+// to-download / failed-awaiting-fallback list. There is no cron path for the machine queue, and a downloader claim
+// never sweeps, so a downloader that is polling still gets first pick.
+// Config is four plain environment variables, like the other Pages switches (MUSE_LEGACY_ENDPOINTS_DISABLED and the
+// feature flags): STALE_QUEUED_FALLBACK_ENABLED must be exactly 'true' (anything else, or unset, is off and costs no KV
+// operation at all); STALE_QUEUED_FALLBACK_HOURS is an integer 1-144 (missing or invalid means 6);
+// STALE_QUEUED_FALLBACK_MAX_PER_WINDOW is an integer 1-25 (default 5) and STALE_QUEUED_FALLBACK_WINDOW_MINUTES is an
+// integer 5-60 (default 10): at most that many conversions per window. They only take effect on a new deployment.
+const STALE_QUEUED_HOURS_DEFAULT = 6, STALE_QUEUED_HOURS_MAX = 144;
+const STALE_QUEUED_REASON = 'queue_unclaimed';
+// Hint for fallback clients to try open access before the Hamburg quota, not a guarantee.
+// The claim path still verifies the file.
+const MACHINE_OA_DOI_HINTS = [
+  ['10.1371/', 'PLOS'], ['10.3389/', 'Frontiers'], ['10.1186/', 'BMC'], ['10.3390/', 'MDPI'],
+  ['10.1097/md.', 'Medicine'], ['10.1016/j.eclinm.', 'eClinicalMedicine'],
+  ['10.1002/ccr3.', 'Clinical Case Reports'], ['10.1001/jamanetworkopen.', 'JAMA Network Open'],
+  ['10.1016/j.jacadv.', 'JACC Advances'], ['10.1016/j.jaccas.', 'JACC Case Reports'],
+  ['10.1253/circrep.', 'Circulation Reports']
+];
+// Mirrors src/app/journal-tiers.js, including suggested names; the 'ai' tier is deliberately not ranked.
+const MACHINE_JOURNAL_TIERS = {
+  flagship:["New England Journal of Medicine", "The Lancet", "JAMA", "The BMJ", "Science", "Nature"],
+  cardioMain:["Circulation", "JACC", "JAMA Cardiology", "European Heart Journal", "Nature Medicine", "Nature Cardiovascular Research", "Nature Reviews Cardiology", "Circulation Research"],
+  cardioSub:["Circulation: Cardiovascular Interventions", "Circulation: Heart Failure", "Circulation: Genomic and Precision Medicine", "Circulation: Cardiovascular Imaging", "Circulation: Cardiovascular Quality and Outcomes", "JACC: Case Reports", "JACC: Cardiovascular Interventions", "JACC: Advances", "JACC: Heart Failure", "JACC: Cardiovascular Imaging", "JACC: Clinical Electrophysiology", "JACC Asia", "JACC: Basic to Translational Science", "European Heart Journal - Cardiovascular Imaging", "European Heart Journal - Cardiovascular Pharmacotherapy", "European Heart Journal Supplements", "Heart Rhythm", "Heart Rhythm O2", "Journal of the American Heart Association", "Heart", "Europace", "European Journal of Heart Failure", "Journal of Cardiovascular Electrophysiology", "Cardiovascular Research", "Hypertension", "Arteriosclerosis, Thrombosis, and Vascular Biology", "Pacing and Clinical Electrophysiology", "npj Cardiovascular Health", "American Heart Journal", "Journal of Arrhythmia", "中华心血管病杂志"]
+};
+function machineNormalizeJournalName(s) {
+  return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+function machineJournalRank(journal) {
+  const name = machineNormalizeJournalName(journal);
+  for (const [tier, rank] of [['flagship',3],['cardioMain',2],['cardioSub',1]]) {
+    if (MACHINE_JOURNAL_TIERS[tier].some(n => machineNormalizeJournalName(n) === name)) return rank;
+  }
+  return 0;
+}
+// Per request: at most STALE_QUEUED_SCAN_READ_MAX KV reads of task records and pause marks while looking for eligible tasks,
+// at most STALE_QUEUED_POOL_MAX eligible tasks ranked (one paper read each), and at most STALE_QUEUED_MOVE_MAX conversions.
+const STALE_QUEUED_SCAN_READ_MAX = 60, STALE_QUEUED_POOL_MAX = 30, STALE_QUEUED_MOVE_MAX = 25;
+// Negative cache, per isolate and in memory (no KV write): a stale queued task that is not eligible (claimed before, paused, or
+// its record disagrees) is skipped without any KV read until its index entry changes (the entry's updatedAt is part of the match)
+// or the time-to-live runs out. A claimed task stays ineligible until the record changes, so its time-to-live is long; a pause can
+// be lifted without touching the task record, so that one is short.
+const STALE_QUEUED_SKIP_CLAIMED_MS = 3600000, STALE_QUEUED_SKIP_SHORT_MS = 600000, STALE_QUEUED_SKIP_CACHE_MAX = 500;
+const machineStaleSkip = new Map();
+function machineStaleSkipped(doi, entry, now) {
+  const hit = machineStaleSkip.get(doi);
+  return !!hit && hit.u === entry.u && hit.until > now;
+}
+function machineStaleSkipMark(doi, entry, now, ms) {
+  if (!entry) return;
+  if (machineStaleSkip.size >= STALE_QUEUED_SKIP_CACHE_MAX) machineStaleSkip.clear();
+  machineStaleSkip.set(doi, {u:entry.u,until:now + ms});
+}
+function machineStaleQueuedConfig(env) {
+  if (!env || env.STALE_QUEUED_FALLBACK_ENABLED !== 'true') return {on:false,hours:STALE_QUEUED_HOURS_DEFAULT};
+  const raw = typeof env.STALE_QUEUED_FALLBACK_HOURS === 'string' ? env.STALE_QUEUED_FALLBACK_HOURS.trim() : '';
+  const hours = /^[0-9]{1,3}$/.test(raw) && Number(raw) >= 1 && Number(raw) <= STALE_QUEUED_HOURS_MAX ? Number(raw) : STALE_QUEUED_HOURS_DEFAULT;
+  const integer = (value, min, max, fallback) => {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    return /^[0-9]{1,3}$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : fallback;
+  };
+  return {on:true,hours,maxPerWindow:integer(env.STALE_QUEUED_FALLBACK_MAX_PER_WINDOW,1,25,5),
+    windowMinutes:integer(env.STALE_QUEUED_FALLBACK_WINDOW_MINUTES,5,60,10)};
+}
+// "attempts = 0": nobody ever held this task. The record carries no claimant, claim time, soft failure, return or earlier failure.
+function machineNeverClaimed(job) {
+  return !!job && job.state === 'queued' && !job.claimant && !job.acquisitionStartedAt && !job.leaseId && !job.previousReason && !job.lastSoftFailReason
+    && !(Number.isInteger(job.softFailCount) && job.softFailCount > 0) && !(Number.isInteger(job.returnCount) && job.returnCount > 0)
+    && !(Number.isInteger(job.attempts) && job.attempts > 0);
+}
+function machineAutoFallback(job) {
+  const f = job && job.autoFallback;
+  if (!f || typeof f !== 'object' || typeof f.reason !== 'string' || typeof f.at !== 'string') return null;
+  return {reason:f.reason.slice(0,120),at:f.at,hours:Number.isInteger(f.hours) ? f.hours : STALE_QUEUED_HOURS_DEFAULT,
+    journal:typeof f.journal === 'string' ? f.journal.slice(0,200) : '',
+    openAccess:f.openAccess === 'yes' ? 'yes' : 'unknown',openAccessBasis:f.openAccessBasis === 'doi_prefix' ? 'doi_prefix' : ''};
+}
+// Converts eligible stale queued tasks found in the already-open index. Mutates doc.entries and appends to changes so
+// the caller's candidate list and its single index write see the result. Never throws: a failed sweep must not break a claim or a list.
+async function machineStaleQueuedSweep(env, doc, changes) {
+  let moved = 0;
+  try {
+    const cfg = machineStaleQueuedConfig(env);
+    if (!cfg.on || !doc || !doc.ready) return 0;
+    const now = Date.now(), limitMs = cfg.hours * 3600000;
+    // Stale queued entries in the index, oldest first, minus the ones already known to be ineligible.
+    const candidates = Object.entries(doc.entries).filter(([doi, e]) => e.s === 'queued' && e.c > 0 && now - e.c >= limitMs && !machineStaleSkipped(doi, e, now)).sort(museIndexOrder);
+    if (!candidates.length) return 0;
+    const windowNumber = Math.floor(now / (cfg.windowMinutes * 60000));
+    const windowKey = 'library:stale-fallback-window:' + windowNumber;
+    const counter = await libraryGet(env.QL_KV, windowKey);
+    const used = Number.isInteger(counter) && counter >= 0 ? counter : 0;
+    const limit = Math.min(cfg.maxPerWindow - used, STALE_QUEUED_MOVE_MAX);
+    if (limit <= 0) return 0;
+    // Step 1: find eligible tasks from the task records themselves (the record wins), before reading any paper record.
+    // A task that was claimed before, is paused, or is too young is skipped and remembered, and does not use up a pool slot,
+    // so a long run of ineligible old tasks can never hide the eligible ones behind them.
+    const pool = [];
+    let scanReads = 0;
+    for (const [doi, entry] of candidates) {
+      if (pool.length >= STALE_QUEUED_POOL_MAX || scanReads >= STALE_QUEUED_SCAN_READ_MAX) break;
+      scanReads++;
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      const actual = museIndexEntry(job);
+      if (!museIndexSame(actual, entry)) {
+        changes.push({doi,entry:actual});
+        if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
+      }
+      if (!job) continue;
+      if (!machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) { machineStaleSkipMark(doi, actual, now, STALE_QUEUED_SKIP_CLAIMED_MS); continue; }
+      if (scanReads >= STALE_QUEUED_SCAN_READ_MAX) break;
+      scanReads++;
+      let attempt = null;
+      try { attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi); } catch { console.log('stale queued fallback: pause mark unreadable, task skipped this request'); continue; }
+      if (attempt && attempt.paused) { machineStaleSkipMark(doi, actual, now, STALE_QUEUED_SKIP_SHORT_MS); continue; }
+      pool.push({doi,entry:actual});
+    }
+    if (!pool.length) return 0;
+    // Step 2: only the eligible tasks get a paper read (journal name for ranking).
+    const ranked = [];
+    for (const {doi, entry} of pool) {
+      let journal = '';
+      try {
+        const paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+        journal = paper && paper.journal || '';
+      } catch { journal = ''; console.log('stale queued fallback: paper record unreadable, journal left empty'); }
+      const openAccess = MACHINE_OA_DOI_HINTS.some(([prefix]) => doi.toLowerCase().startsWith(prefix)) ? 'yes' : 'unknown';
+      ranked.push({doi,entry,journal,openAccess,rank:machineJournalRank(journal)});
+    }
+    ranked.sort((a,b) => Number(b.openAccess === 'yes') - Number(a.openAccess === 'yes') || b.rank - a.rank || museIndexOrder([a.doi,a.entry],[b.doi,b.entry]));
+    try {
+      for (const {doi, entry, journal, openAccess} of ranked) {
+        if (moved >= limit) break;
+        const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+        const actual = museIndexEntry(job);
+        if (!museIndexSame(actual, entry)) {
+          changes.push(museIndexChange(doi, job, entry));
+          if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
+        }
+        // The record wins: re-check the task and its pause mark before touching it.
+        // A DOI paused after the scan must not be converted.
+        if (!job || !machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) continue;
+        let attempt = null;
+        try { attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi); }
+        catch { console.log('stale queued fallback: pause mark unreadable, task skipped this request'); continue; }
+        if (attempt && attempt.paused) { machineStaleSkipMark(doi, actual, now, STALE_QUEUED_SKIP_SHORT_MS); continue; }
+        const next = {...job,state:'failed',reason:STALE_QUEUED_REASON,updatedAt:now,
+          autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,journal,openAccess,openAccessBasis:openAccess === 'yes' ? 'doi_prefix' : '',reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
+        await musePut(env, next, {indexChanges:changes});
+        if (job.queueKey) await museDelete(env, job.queueKey);
+        doc.entries[doi] = museIndexEntry(next);
+        moved++;
+      }
+    } finally {
+      // The counter is read, then overwritten: KV has no atomic increment, so concurrent requests may lose an update
+      // and slightly overshoot this budget (known, see the pull request text).
+      if (moved > 0) {
+        try {
+          await libraryPut(env.QL_KV, windowKey, JSON.stringify(used + moved), {expirationTtl:cfg.windowMinutes * 60 * 2});
+        } catch { console.log('stale queued fallback: window counter write failed, budget not recorded'); }
+        console.log('stale queued fallback: moved ' + moved + ' task(s) to the fallback queue in window ' + windowNumber);
+      }
+    }
+  } catch { console.log('stale queued fallback: sweep failed, next request retries'); }
+  return moved;
 }
 function machineStage(job) {
   if (MACHINE_STAGE_TAGS.includes(job.stage)) return job.stage;
@@ -3594,7 +3939,8 @@ function machineListItem(job) {
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {}),
-    ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {})};
+    ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
+    ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
@@ -3654,7 +4000,7 @@ function handleMachineProtocol(request, env) {
     claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
       note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
     softRetry:{reasons:MACHINE_SOFT_RETRY_REASONS,limit:MACHINE_SOFT_RETRY_LIMIT,
-      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
+      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 与 queue_unclaimed（排队超时无人领取转兜底）仍是硬失败，不走软重试。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'每个 DOI 只有一把 library:muse-job:<doi>。museIntake 只要覆盖这把键上的任何现有任务，就会先把旧记录原样写到上述键（含旧 sha256 与旧状态），带 supersededBy 为新 taskId、supersededAt，以及原来的 reason / previousReason，不设过期。这包括失败/review/尚未完成的任务，以及用 X-Machine-Replace 替换已是 done/available 的原件。新任务立即带 supersededFrom。若新任务后来核验失败进入 review 再重新上传，链会接续。旧客户端可忽略。'},
     oaVerify:{source:'open_access',limit:2,note:'开放获取来源核验未通过时，第一次把任务退回待下载，候选文件只留记录不删，并记入 oaRejected。同一篇第二次核验未通过则留在 review，claimable 为 false。机器或读者上传核验未通过仍直接进 review。旧客户端可忽略新计数字段。'},
@@ -3847,8 +4193,9 @@ async function machineCollectIndexed(env, state, cursorText, limit) {
   const after = machineIndexCursorDecode(cursorText);
   const doc = await museIndexOpen(env);
   machineIndexReadyOrWait(doc);
-  const candidates = museIndexPublicCandidates(doc, state, Date.now()).filter(([doi, entry]) => machineIndexSortKey(doi, entry) > after);
   const tasks = [], fixes = [];
+  if (state === 'to-download' || state === 'failed-awaiting-fallback') await machineStaleQueuedSweep(env, doc, fixes);
+  const candidates = museIndexPublicCandidates(doc, state, Date.now()).filter(([doi, entry]) => machineIndexSortKey(doi, entry) > after);
   let last = '', more = false;
   for (let n = 0; n < candidates.length; n++) {
     const [doi, entry] = candidates[n];
@@ -3856,7 +4203,7 @@ async function machineCollectIndexed(env, state, cursorText, limit) {
     last = machineIndexSortKey(doi, entry);
     const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
     const actual = museIndexEntry(job);
-    if (!museIndexSame(actual, entry)) fixes.push({doi,entry:actual});
+    if (!museIndexSame(actual, entry)) fixes.push(museIndexChange(doi, job, entry));
     if (!job) continue;
     const item = machineListItem(job);
     if (item.state === state) tasks.push(item);
@@ -3948,11 +4295,11 @@ async function machineClaimQueued(env, caller) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
       const [doi, entry] = candidates[i];
-      if (!libraryDoi(doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(doi)) { changes.push({doi,entry:null,u:entry.u}); continue; }
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-      if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+      if (!museIndexSame(museIndexEntry(job), entry)) changes.push(museIndexChange(doi, job, entry));
       if (!job) continue;
-      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, job.queueKey); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
         await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
@@ -3967,7 +4314,7 @@ async function machineClaimQueued(env, caller) {
       if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, job.doi);
       const now = Date.now();
@@ -3985,17 +4332,18 @@ async function machineClaimFailed(env, caller) {
   const changes = [];
   let task = null, scanLimited = false;
   try {
+    await machineStaleQueuedSweep(env, doc, changes);
     const candidates = museIndexFailedCandidates(doc, Date.now());
     let scanned = 0;
     for (let i = 0; i < candidates.length && !task; i++) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
       const [doi, entry] = candidates[i];
-      if (!libraryDoi(doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(doi)) { changes.push({doi,entry:null,u:entry.u}); continue; }
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-      if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+      if (!museIndexSame(museIndexEntry(job), entry)) changes.push(museIndexChange(doi, job, entry));
       if (!job) continue;
-      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null}); continue; }
+      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
         await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
         continue;
@@ -4016,7 +4364,7 @@ async function machineClaimFailed(env, caller) {
         continue;
       }
       const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
+      if (scope.action === 'exclude') { changes.push({doi,entry:null,u:job.updatedAt}); continue; }
       if (scope.action === 'uncertain') continue;
       await museOwnerGuard(env, doi);
       const now = Date.now();
@@ -4169,7 +4517,7 @@ async function handleMachineRequeue(request, env) {
         if (requeued.length >= room || n >= MACHINE_REQUEUE_EXAMINE_MAX) { truncated = true; break; }
         const [doi, entry] = candidates[n];
         const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
-        if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
+        if (!museIndexSame(museIndexEntry(job), entry)) changes.push(museIndexChange(doi, job, entry));
         if (!machineRequeueCandidate(job)) continue;
         const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
         if (attempt && attempt.paused) { skippedPaused.push({doi}); continue; }
@@ -4197,12 +4545,26 @@ function machineRegisterItem(raw) {
   if (typeof raw.section !== 'string' || !MACHINE_REGISTER_SECTIONS.includes(raw.section)) return {doi,error:'bad_section'};
   return {doi,title,source:raw.source,section:raw.section};
 }
+// The record a registration writes first (see machineRegisterOne): no journal, no authors, no publication date, no PDF, full text
+// still needed (libraryPaper always reports the bibliography as checked, so that field cannot tell records apart). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
+// The caller must still confirm that no job and no register record exist; the register record is written last, after the job.
+function machineOrphanPaper(record, paper) {
+  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
+    && Array.isArray(paper.authors) && !paper.authors.length && !paper.date;
+}
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
   const raw = await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi);
-  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown'}; }
+  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown',job}; }
   const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
-  if (record) { const paper = libraryPaper(record, doi); return {where:'paper',state:paper && paper.fulltextStatus === 'available' ? 'done' : 'no-task'}; }
+  if (record) {
+    const paper = libraryPaper(record, doi);
+    if (paper && paper.fulltextStatus === 'available') return {where:'paper',state:'done'};
+    // Orphan rule (machineOrphanPaper): a paper written by a registration that was cut off before its job and register record.
+    // Such a DOI was never queued, so a repeat registration creates the task; it is not reported as already existing.
+    const halfWritten = machineOrphanPaper(record, paper) && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
+    if (!halfWritten) return {where:'paper',state:'no-task'};
+  }
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
@@ -4228,11 +4590,15 @@ async function machineRegisterOne(env, caller, item, changes) {
     throw error;
   }
   // KV is not atomic: if another writer created the ledger entry first, report skipped and leave their record alone.
-  // The index entry is recorded once per batch (see handleMachineRegister), only for a task that was really written.
+  // The index entry is saved after each group of the batch (see handleMachineRegister).
   changes.push(...local);
   const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + item.doi), item.doi);
   return observed && observed.id === id;
 }
+// A batch is written in groups of MACHINE_REGISTER_GROUP DOIs, each group in parallel. After every group the index
+// entries and the daily quota count are saved, so a request cut off by the client (a 60 second curl timeout) loses at
+// most one group's bookkeeping instead of the whole batch; the next claim or list puts those few back (museIndexHeal).
+const MACHINE_REGISTER_GROUP = 5;
 async function handleMachineRegister(request, env) {
   // Exempt from librarySoftGate. Only a downloader may register; the daily budget counts newly registered DOIs per caller.
   try {
@@ -4246,27 +4612,58 @@ async function handleMachineRegister(request, env) {
     const limit = machineLimit(env, 'MACHINE_REGISTER_DAILY_LIMIT', MACHINE_REGISTER_DAILY_DEFAULT);
     const usedBefore = await libraryGet(env.QL_KV, machineRateKey(caller, 'register'));
     const used = Number.isInteger(usedBefore) && usedBefore >= 0 ? usedBefore : 0;
-    const results = [], seen = new Set(), changes = [];
-    let registered = 0, failure = null;
+    const results = new Array(input.items.length), seen = new Set(), changes = [], todo = [];
+    let registered = 0, consumed = 0, failure = null;
+    // Validation and in-batch duplicates need no storage access; they are settled first, in input order.
+    input.items.forEach((raw, n) => {
+      const item = machineRegisterItem(raw);
+      if (item.error) { results[n] = {doi:item.doi || null,result:'rejected',error:item.error}; return; }
+      if (seen.has(item.doi)) { results[n] = {doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}; return; }
+      seen.add(item.doi);
+      todo.push({n,item});
+    });
+    // Save this batch's index entries and quota count so far. A failure keeps the unsaved entries for the next attempt.
+    const flush = async () => {
+      const pending = changes.slice(), fresh = registered - consumed;
+      let error = null;
+      try {
+        // Read the index back; entries a concurrent writer overwrote are written again. Still missing after three rounds: the client retries (idempotent).
+        const missing = await museIndexApplyVerified(env, pending);
+        if (missing) libraryFail('library_sync_pending', 503);
+        changes.splice(0, pending.length);
+      } catch (e) { error = e; }
+      try { if (fresh > 0) { await machineConsume(env, caller, 'register', fresh); consumed += fresh; } } catch (e) { error = error || e; }
+      if (error) throw error;
+    };
     try {
-      for (const raw of input.items) {
-        const item = machineRegisterItem(raw);
-        if (item.error) { results.push({doi:item.doi || null,result:'rejected',error:item.error}); continue; }
-        if (seen.has(item.doi)) { results.push({doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}); continue; }
-        seen.add(item.doi);
-        const existing = await machineRegisterExisting(env, item.doi);
-        if (existing) { results.push({doi:item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where}); continue; }
-        if (used + registered >= limit) { results.push({doi:item.doi,result:'over_quota'}); continue; }
-        if (await machineRegisterOne(env, caller, item, changes)) { registered++; results.push({doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}); }
-        else results.push({doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'});
+      for (let g = 0; g < todo.length; g += MACHINE_REGISTER_GROUP) {
+        const group = todo.slice(g, g + MACHINE_REGISTER_GROUP);
+        const found = await Promise.all(group.map(entry => machineRegisterExisting(env, entry.item.doi)));
+        const fresh = [];
+        group.forEach((entry, k) => {
+          const existing = found[k];
+          if (existing) {
+            results[entry.n] = {doi:entry.item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where};
+            // A replay after a cut-off batch must also put the task back into the index: the record wins, nothing else is written.
+            if (existing.job) changes.push(museIndexChange(entry.item.doi, existing.job));
+          } else if (used + registered + fresh.length >= limit) results[entry.n] = {doi:entry.item.doi,result:'over_quota'};
+          else fresh.push(entry);
+        });
+        const outcomes = await Promise.allSettled(fresh.map(entry => machineRegisterOne(env, caller, entry.item, changes)));
+        fresh.forEach((entry, k) => {
+          const outcome = outcomes[k], item = entry.item;
+          if (outcome.status === 'rejected') { failure = failure || outcome.reason; return; }
+          if (outcome.value) { registered++; results[entry.n] = {doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}; }
+          else results[entry.n] = {doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'};
+        });
+        if (failure) break;
+        await flush();
       }
-    } catch (error) { failure = error; }
+    } catch (error) { failure = failure || error; }
     // Count what really got written, even when a later item failed; a retry then sees those DOIs as skipped.
-    // The candidate index gets the whole batch in one write.
-    try { await museIndexApply(env, changes); } catch (error) { failure = failure || error; }
-    await machineConsume(env, caller, 'register', registered);
+    try { await flush(); } catch (error) { failure = failure || error; }
     if (failure) throw failure;
-    const count = name => results.filter(entry => entry.result === name).length;
+    const count = name => results.filter(entry => entry && entry.result === name).length;
     return json({ok:true,counts:{registered,skipped:count('skipped'),overQuota:count('over_quota'),rejected:count('rejected')},results,
       quota:{limit,used:used + registered,remaining:Math.max(0, limit - used - registered),resetsAt:new Date(Date.parse(new Date().toISOString().slice(0, 10)) + 86400000).toISOString()}});
   } catch (error) { return machineError(error); }
@@ -5312,6 +5709,7 @@ async function handleAI(request, env) {
 const METRICS_SWITCH_KEY = 'cfg:metrics_enabled', METRICS_SWITCH_TTL_MS = 60000, METRICS_ERROR_CODE = /^[a-z0-9_]{1,48}$/;
 const METRICS_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS']);
 const METRICS_ROUTES = new Set([
+  '/api/machine/d1-backfill',
   '/api/library', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
   '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
   '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/scope-uncertain', '/api/machine/abandoned',
@@ -5603,6 +6001,201 @@ async function d1ShadowRun(env, items) {
     }
   } catch { /* shadow write never throws */ }
 }
+// ==== edge/src/07d-download-notify.js · Webhook notice for a new full-text download task (off by default) ====
+// When a reader asks for a full text the site does not have and a new download task is queued (handleMuseRequest and
+// handleMuseRetry, the two places that create a queued Muse job), the Worker POSTs one small JSON notice to a webhook.
+// Nothing is sent unless ALL of these hold:
+//   (1) Worker secrets DOWNLOAD_NOTIFY_URL (an https URL) and DOWNLOAD_NOTIFY_KEY both exist;
+//   (2) the KV switch DOWNLOAD_NOTIFY_SWITCH_KEY holds exactly '1' or 'true' (missing, other value or read error = off);
+//   (3) the DOI has not been sent in the last hour (KV key with expirationTtl 3600);
+//   (4) fewer than DOWNLOAD_NOTIFY_HOURLY_MAX notices were sent in the current UTC hour (KV counter with TTL).
+// Payload: exactly {doi, task_id, ts}; no user information, title or abstract. The key travels as `Authorization: Bearer <key>`.
+// The whole thing runs inside ctx.waitUntil with a 3 second limit and swallows every error, so a failing or slow webhook can
+// never change the response. KV is written only when a notice is really about to be sent. The URL and key are never logged.
+// The KV keys are outside the D1 shadow prefixes on purpose: they are short-lived counters, not ledger records.
+const DOWNLOAD_NOTIFY_SWITCH_KEY = 'cfg:download_notify_enabled';
+const DOWNLOAD_NOTIFY_DOI_PREFIX = 'notify:download:doi:', DOWNLOAD_NOTIFY_HOUR_PREFIX = 'notify:download:hour:';
+const DOWNLOAD_NOTIFY_DOI_TTL = 3600, DOWNLOAD_NOTIFY_HOUR_TTL = 7200, DOWNLOAD_NOTIFY_HOURLY_MAX = 20, DOWNLOAD_NOTIFY_TIMEOUT_MS = 3000;
+
+function downloadNotifyConfig(env) {
+  try {
+    const url = new URL(env.DOWNLOAD_NOTIFY_URL);
+    if (url.protocol !== 'https:' || url.username || url.password || url.href.length > 2048) return null;
+    if (typeof env.DOWNLOAD_NOTIFY_KEY !== 'string' || !/^[\x21-\x7e]{1,512}$/.test(env.DOWNLOAD_NOTIFY_KEY)) return null;
+    return { url: url.href, key: env.DOWNLOAD_NOTIFY_KEY };
+  } catch { return null; }
+}
+
+async function downloadNotifyRun(env, doi, taskId) {
+  try {
+    const config = downloadNotifyConfig(env);
+    if (!config || !env.QL_KV || !libraryDoi(doi) || typeof taskId !== 'string') return;
+    const flag = await env.QL_KV.get(DOWNLOAD_NOTIFY_SWITCH_KEY);
+    if (flag !== '1' && flag !== 'true') return;
+    const doiKey = DOWNLOAD_NOTIFY_DOI_PREFIX + doi;
+    if (await env.QL_KV.get(doiKey)) return;
+    const now = Date.now(), hourKey = DOWNLOAD_NOTIFY_HOUR_PREFIX + new Date(now).toISOString().slice(0, 13).replace(/\D/g, '');
+    const sent = Number(await env.QL_KV.get(hourKey)) || 0;
+    if (sent >= DOWNLOAD_NOTIFY_HOURLY_MAX) { console.log('download notify: hourly limit reached, not sent'); return; }
+    await env.QL_KV.put(doiKey, '1', { expirationTtl: DOWNLOAD_NOTIFY_DOI_TTL });
+    await env.QL_KV.put(hourKey, String(sent + 1), { expirationTtl: DOWNLOAD_NOTIFY_HOUR_TTL });
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), DOWNLOAD_NOTIFY_TIMEOUT_MS);
+    try {
+      const response = await awaitAbort(fetch(config.url, { method: 'POST', redirect: 'manual', signal: controller.signal,
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + config.key },
+        body: JSON.stringify({ doi, task_id: taskId, ts: new Date(now).toISOString() }) }), controller.signal, 'download_notify_timeout');
+      if (!response || response.status < 200 || response.status >= 300) console.log('download notify: webhook answered ' + Number(response && response.status));
+      try { if (response && response.body && typeof response.body.cancel === 'function') await response.body.cancel(); } catch { /* body is not needed */ }
+    } finally { clearTimeout(timer); }
+  } catch { console.log('download notify: not sent'); } // fixed text only: no URL, key, DOI or error detail
+}
+
+// Called right after a new queued task was stored. Returns at once and never throws; without ctx.waitUntil nothing is sent.
+function downloadNotify(env, ctx, doi, taskId) {
+  try {
+    if (!ctx || typeof ctx.waitUntil !== 'function' || !env || !env.DOWNLOAD_NOTIFY_URL || !env.DOWNLOAD_NOTIFY_KEY || !env.QL_KV) return;
+    ctx.waitUntil(downloadNotifyRun(env, doi, taskId));
+  } catch { /* a notice never affects the request */ }
+}
+// ==== edge/src/07e-d1-backfill.js · One-time KV -> D1 kv_mirror backfill and per-key reconcile (verify by default) ====
+// POST /api/machine/d1-backfill, fallback role only. The live shadow write (07c-d1-shadow.js) mirrors only keys written after it was
+// switched on, so keys that already existed in KV have no D1 row. This endpoint closes that gap and reports the remaining difference.
+//   Request body: {"prefix":"<one of D1_SHADOW_PREFIXES>","side":"kv"|"d1","cursor":"","limit":1..100,"apply":true}
+//   side "kv" (default): walk the KV keys of one prefix. Each key is compared with its D1 row; with apply, missing, tombstoned and
+//                        different rows are upserted from the KV value (KV is the ledger, D1 only a copy). A tombstone whose
+//                        updated_at is within D1_BACKFILL_GRACE_MS is counted as 'recent' and is not resurrected.
+//   side "d1":           walk the D1 rows of one prefix. A live row whose KV key is gone (and whose TTL has not run out) is a D1-only
+//                        row; with apply it is marked deleted (a tombstone, never DELETE FROM).
+//   - Without "apply" nothing is written: the reply is the difference report (verify). Needs only LIBRARY_DB and QL_KV.
+//   - Writing needs BOTH "apply":true AND the variable D1_BACKFILL_ENABLED = 'true' (off by default). Re-running changes nothing:
+//     every write is the shadow's own conditional upsert, so a row that already matches is rewritten with identical content.
+//   - Race with the live shadow: updated_at is the moment BEFORE the KV value was read, and the upsert only applies when
+//     excluded.updated_at >= kv_mirror.updated_at, so a shadow write that happened after our read always wins.
+//   - Rows are written exactly as the shadow writes them (UTF-8 sha256 of the raw string, value NULL above 1,000,000 bytes,
+//     expires_at from the key's KV expiration).
+//   The reply never contains a KV value; sample key names (at most 10 per category) are returned.
+const D1_BACKFILL_SWITCH = 'D1_BACKFILL_ENABLED';
+const D1_BACKFILL_LIMIT_DEFAULT = 50, D1_BACKFILL_LIMIT_MAX = 100, D1_BACKFILL_IN_BATCH = 50, D1_BACKFILL_SAMPLE = 10;
+// A D1 row written less than this long ago may be a live shadow write racing the comparison: counted as 'recent', not as a difference.
+// The same window covers a freshly written tombstone, so apply does not resurrect a key the shadow just deleted.
+const D1_BACKFILL_GRACE_MS = 120000, D1_BACKFILL_EXPIRY_GRACE_MS = 300000;
+function d1BackfillIsRecent(row) {
+  return Number.isFinite(row.updated_at) && Date.now() - row.updated_at < D1_BACKFILL_GRACE_MS;
+}
+const D1_BACKFILL_SELECT_COLUMNS = 'key, entity, sha256, size, expires_at, updated_at, deleted';
+const D1_BACKFILL_DIFF_CATEGORIES = ['missing_in_d1', 'kv_present_d1_deleted', 'value_diff', 'missing_in_kv'];
+
+function d1BackfillCounters() {
+  const counts = {same: 0, kv_present: 0, recent: 0, gone: 0, expired_ok: 0, deleted_ok: 0, missing_in_d1: 0, kv_present_d1_deleted: 0, value_diff: 0, missing_in_kv: 0};
+  return {counts, samples: {}, written: 0};
+}
+function d1BackfillNote(state, category, key) {
+  state.counts[category]++;
+  if (D1_BACKFILL_DIFF_CATEGORIES.includes(category)) {
+    const list = state.samples[category] || (state.samples[category] = []);
+    if (list.length < D1_BACKFILL_SAMPLE) list.push(key);
+  }
+}
+async function d1BackfillRows(env, keys) {
+  const rows = new Map();
+  for (let i = 0; i < keys.length; i += D1_BACKFILL_IN_BATCH) {
+    const chunk = keys.slice(i, i + D1_BACKFILL_IN_BATCH);
+    const sql = 'SELECT ' + D1_BACKFILL_SELECT_COLUMNS + ' FROM kv_mirror WHERE key IN (' + chunk.map((_, n) => '?' + (n + 1)).join(', ') + ')';
+    let result;
+    try { result = await env.LIBRARY_DB.prepare(sql).bind(...chunk).all(); } catch { libraryFail('machine_d1_read', 503); }
+    for (const row of result && Array.isArray(result.results) ? result.results : []) rows.set(row.key, row);
+  }
+  return rows;
+}
+async function d1BackfillWrite(env, statements) {
+  for (let i = 0; i < statements.length; i += D1_SHADOW_BATCH_SIZE) {
+    try { await env.LIBRARY_DB.batch(statements.slice(i, i + D1_SHADOW_BATCH_SIZE)); } catch { libraryFail('machine_d1_write', 503); }
+  }
+}
+
+// side "kv": one page of KV keys of the prefix.
+async function d1BackfillKvPage(env, prefix, cursor, limit, apply) {
+  const listing = await machineListKeys(env, prefix, cursor, limit);
+  const state = d1BackfillCounters();
+  const keys = listing.keys.filter(entry => typeof entry.name === 'string' && entry.name.startsWith(prefix));
+  const rows = await d1BackfillRows(env, keys.map(entry => entry.name));
+  const statements = [];
+  const encoder = new TextEncoder();
+  for (const entry of keys) {
+    const key = entry.name, entity = d1ShadowEntity(key);
+    if (!entity) continue;
+    const readAt = Date.now(); // BEFORE the read: a shadow write after this moment must win the conditional upsert
+    let value;
+    try { value = await env.QL_KV.get(key); } catch { libraryFail('library_storage', 503); }
+    if (typeof value !== 'string') { state.counts.gone++; continue; } // deleted or expired between the list and the read
+    const bytes = encoder.encode(value);
+    const sha256 = await pdfDigest('SHA-256', bytes);
+    const row = rows.get(key);
+    let category;
+    if (!row) category = 'missing_in_d1';
+    else if (row.deleted) category = d1BackfillIsRecent(row) ? 'recent' : 'kv_present_d1_deleted';
+    else if (row.sha256 === sha256) category = 'same';
+    else category = d1BackfillIsRecent(row) ? 'recent' : 'value_diff';
+    d1BackfillNote(state, category, key);
+    if (apply && D1_BACKFILL_DIFF_CATEGORIES.includes(category)) {
+      const expiresAt = Number.isFinite(entry.expiration) ? entry.expiration * 1000 : null;
+      statements.push(env.LIBRARY_DB.prepare(D1_SHADOW_UPSERT_SQL).bind(key, entity, bytes.length > D1_SHADOW_MAX_VALUE_BYTES ? null : value, bytes.length, sha256, expiresAt, readAt));
+    }
+  }
+  if (statements.length) { await d1BackfillWrite(env, statements); state.written = statements.length; }
+  const more = !listing.list_complete && typeof listing.cursor === 'string' && !!listing.cursor;
+  return {state, scanned: keys.length, more, cursor: more ? listing.cursor : ''};
+}
+
+// side "d1": one page of D1 rows of the prefix, in key order. The cursor is the last key returned.
+async function d1BackfillD1Page(env, prefix, cursor, limit, apply) {
+  const lower = cursor && cursor > prefix ? cursor : prefix;
+  const sql = 'SELECT ' + D1_BACKFILL_SELECT_COLUMNS + ' FROM kv_mirror WHERE key > ?1 AND key >= ?2 AND key < ?3 ORDER BY key LIMIT ?4';
+  let result;
+  try { result = await env.LIBRARY_DB.prepare(sql).bind(cursor || '', lower, prefix + '\u{10FFFF}', limit).all(); } catch { libraryFail('machine_d1_read', 503); }
+  const rows = result && Array.isArray(result.results) ? result.results : [];
+  const state = d1BackfillCounters();
+  const statements = [];
+  for (const row of rows) {
+    if (typeof row.key !== 'string' || !row.key.startsWith(prefix)) continue;
+    if (row.deleted) { state.counts.deleted_ok++; continue; }
+    const readAt = Date.now();
+    let value;
+    try { value = await env.QL_KV.get(row.key); } catch { libraryFail('library_storage', 503); }
+    if (typeof value === 'string') { state.counts.kv_present++; continue; } // the key exists: the kv side judges its content
+    if (Number.isFinite(row.expires_at) && row.expires_at + D1_BACKFILL_EXPIRY_GRACE_MS < Date.now()) { state.counts.expired_ok++; continue; }
+    if (d1BackfillIsRecent(row)) { state.counts.recent++; continue; }
+    d1BackfillNote(state, 'missing_in_kv', row.key);
+    if (apply) statements.push(env.LIBRARY_DB.prepare(D1_SHADOW_DELETE_SQL).bind(row.key, row.entity || d1ShadowEntity(row.key), readAt));
+  }
+  if (statements.length) { await d1BackfillWrite(env, statements); state.written = statements.length; }
+  const more = rows.length === limit;
+  return {state, scanned: rows.length, more, cursor: more ? rows[rows.length - 1].key : ''};
+}
+
+async function handleMachineD1Backfill(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    // 'abandon' is held by the fallback role only (the role that may already close tasks by hand).
+    await machineAuthorize(request, env, 'abandon');
+    const input = await fulltextReadJson(request, 2048, 'machine_bad_request');
+    if (Object.keys(input).some(key => !['prefix', 'side', 'cursor', 'limit', 'apply'].includes(key))) libraryFail('machine_bad_request', 400);
+    if (typeof input.prefix !== 'string' || !D1_SHADOW_PREFIXES.includes(input.prefix)) libraryFail('machine_bad_request', 400);
+    const side = Object.hasOwn(input, 'side') ? input.side : 'kv';
+    if (side !== 'kv' && side !== 'd1') libraryFail('machine_bad_request', 400);
+    if (Object.hasOwn(input, 'apply') && typeof input.apply !== 'boolean') libraryFail('machine_bad_request', 400);
+    if (Object.hasOwn(input, 'cursor') && (typeof input.cursor !== 'string' || input.cursor.length > 2000)) libraryFail('machine_bad_request', 400);
+    const limit = Object.hasOwn(input, 'limit') ? input.limit : D1_BACKFILL_LIMIT_DEFAULT;
+    if (!Number.isInteger(limit) || limit < 1 || limit > D1_BACKFILL_LIMIT_MAX) libraryFail('machine_bad_request', 400);
+    const enabled = env[D1_BACKFILL_SWITCH] === 'true', apply = input.apply === true;
+    if (apply && !enabled) libraryFail('machine_d1_backfill_disabled', 403);
+    if (!d1ShadowBound(env)) libraryFail('machine_d1_unbound', 503);
+    const page = side === 'kv' ? await d1BackfillKvPage(env, input.prefix, input.cursor || '', limit, apply) : await d1BackfillD1Page(env, input.prefix, input.cursor || '', limit, apply);
+    const diff = D1_BACKFILL_DIFF_CATEGORIES.reduce((sum, name) => sum + page.state.counts[name], 0);
+    return json({ok: true, mode: apply ? 'apply' : 'verify', applyEnabled: enabled, prefix: input.prefix, side, scanned: page.scanned,
+      counts: page.state.counts, diff, written: page.state.written, samples: page.state.samples, done: !page.more, ...(page.more ? {cursor: page.cursor} : {})}, 200, {'cache-control': 'no-store'});
+  } catch (error) { return machineError(error); }
+}
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {
   async fetch(request, env, ctx) {
@@ -5612,7 +6205,7 @@ export default {
     const startedAt = Date.now();
     let response;
     try {
-      response = await routeRequest(request, env);
+      response = await routeRequest(request, env, ctx);
       if (new URL(request.url).pathname.startsWith('/api/')) response = await hideInstitutionLinks(request, response);
     } catch (error) {
       metricsRecord(request, env, ctx, null, startedAt, true);
@@ -5626,15 +6219,15 @@ export default {
   }
 };
 
-async function routeRequest(request, env) {
+async function routeRequest(request, env, ctx) {
     const url = new URL(request.url);
     museReviewInstant = museReviewConfigured(env);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
     if (url.pathname === '/api/muse/protocol') return handleMuseProtocol(request, env);
-    if (url.pathname === '/api/muse/request') return handleMuseRequest(request, env);
-    if (url.pathname === '/api/muse/retry') return handleMuseRetry(request, env);
+    if (url.pathname === '/api/muse/request') return handleMuseRequest(request, env, ctx);
+    if (url.pathname === '/api/muse/retry') return handleMuseRetry(request, env, ctx);
     if (url.pathname === '/api/muse/claim') return handleMuseClaim(request, env);
     if (url.pathname === '/api/muse/receipt') return handleMuseReceipt(request, env);
     if (url.pathname === '/api/muse/upload') return handleMuseUpload(request, env);
@@ -5651,11 +6244,12 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/machine/return') return handleMachineReturn(request, env);
     if (url.pathname === '/api/machine/requeue') return handleMachineRequeue(request, env);
     if (url.pathname === '/api/machine/register') return handleMachineRegister(request, env);
+    if (url.pathname === '/api/machine/d1-backfill') return handleMachineD1Backfill(request, env);
     if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);
-    if (url.pathname === '/api/acquire') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);
-    if (url.pathname === '/api/acquire/retry') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env) : handleAcquire(request, env);
+    if (url.pathname === '/api/acquire') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env, ctx) : handleAcquire(request, env);
+    if (url.pathname === '/api/acquire/retry') return env.MUSE_FULLTEXT_ENABLED === 'true' ? handleMuseRequest(request, env, ctx) : handleAcquire(request, env);
     if (url.pathname === '/api/fulltext') return handleFulltext(request, env);
     if (url.pathname === '/api/fulltext-source') return handleFulltextSource(request, env);
     if (url.pathname === '/api/pdf') return handlePdf(request, env);

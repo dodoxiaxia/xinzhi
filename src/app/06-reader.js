@@ -4,6 +4,7 @@
     const changedPaper = !state.activeDrawerPaper || state.activeDrawerPaper.id !== paper.id;
     hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
+    let absFetchPlanned = false;
     const drawer = $('#readerDrawer');
     const backdrop = $('#drawerBackdrop');
     if (!drawer || !backdrop) return;
@@ -87,6 +88,10 @@
         paper._absFetched = true;
         if (!paper.pmid && ql.pmid) paper.pmid = ql.pmid;
       }
+      // 公开摘要要去 Europe PMC 拉取时，先标成拉取中再渲染：速览和结构区在拉取期间显示「正在获取摘要…」，
+      // 不抢跑写「暂无公开摘要」。拉取结束（含失败）后才按真实结果显示。
+      absFetchPlanned = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && !!(paper.doi || paper.pmid) && !paper._absTries;
+      if (absFetchPlanned) { paper._absTries = 1; paper._absState = 'loading'; }
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
           <div class="drawer-section-title">速览</div>
@@ -103,6 +108,10 @@
         const s = paper._aiState;
         // Do not name this hasAbstract: openReaderDrawer later declares a local const hasAbstract (TDZ).
         const hasPubAbs = !!(paper.summary || (paper.abstractSections || []).some(sec => sec && sec.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
+        if (!hasPubAbs && paper._absState === 'loading') {
+          return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
+          <p class="ql-meta" role="status">正在获取摘要…</p></div>`;
+        }
         if (!hasPubAbs && (s === 'none' || s === 'error' || s === 'noabs' || !s)) {
           return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
@@ -191,6 +200,7 @@
             <div class="abs-panel" data-abs-panel="zh" role="tabpanel">${zhAbs}</div>
             <div class="abs-panel" data-abs-panel="en" role="tabpanel" hidden lang="en"><div class="structured-abstract">${abstractHtml}</div></div>
           ` : `<div class="structured-abstract">${abstractHtml}</div>`}
+          ${abstractMayBeIncomplete(paper) ? '<p class="abs-incomplete-note">摘要可能不完整</p>' : ''}
           ${absSource}
         </section>
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字</summary>${quantBox}</details>` : ''}
@@ -277,11 +287,7 @@
     }
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).
-    const needsAbs = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && (paper.doi || paper.pmid) && !paper._absTries;
-    if (needsAbs) {
-      paper._absTries = 1;
-      paper._absState = 'loading';
-      openBodyOnly(paper);
+    if (absFetchPlanned) {
       fetchPublicAbstract(paper).then(res => {
         if (res && res.sections.length) {
           paper.abstractSections = res.sections;

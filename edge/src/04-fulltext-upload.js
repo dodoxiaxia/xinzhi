@@ -76,7 +76,7 @@ async function handleMuseReaderUpload(request, env) {
     return libraryError(request,error,doi,'/api/muse/reader-upload');
   } finally { if (release) await release(); }
 }
-async function handleMuseRequest(request, env) {
+async function handleMuseRequest(request, env, ctx) {
   let doi = '';
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
@@ -109,6 +109,7 @@ async function handleMuseRequest(request, env) {
       await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
       await musePut(env,job);
       await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
+      downloadNotify(env,ctx,doi,id); // optional webhook notice for the new task; never blocks or fails the response
       return museResponse(request,job,metadata);
     } finally { clearTimeout(timer); await release(); }
   } catch (error) { return libraryError(request,error,doi); }
@@ -234,6 +235,11 @@ async function handleMuseReview(request, env) {
     const owner = await fulltextJobAuthorize(request,MUSE_REVIEW_POLICY);
     libraryConfig(env); // A configured verifier may finish candidates while Muse polling is disabled.
     const input = await fulltextReadJson(request,1024,'muse_bad_request');
+    if (input.action === 'index-audit') {
+      // Hourly comparison of the job records with the machine candidate index, repaired unless MACHINE_INDEX_SELF_HEAL is 'off'.
+      if (Object.keys(input).some(key => !['action','cursor'].includes(key)) || (Object.hasOwn(input,'cursor') && (typeof input.cursor !== 'string' || !input.cursor || input.cursor.length > 512))) libraryFail('muse_bad_request',400);
+      return json({ok:true,...await museIndexAuditChunk(env,input.cursor || '',env.MACHINE_INDEX_SELF_HEAL !== 'off')});
+    }
     if (input.action === 'recheck') {
       // Only an explicit maintainer dispatch may reopen one quarantined original.
       await fulltextJobAuthorize(request,{...MUSE_REVIEW_POLICY,events:['workflow_dispatch']});
