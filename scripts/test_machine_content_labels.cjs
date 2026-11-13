@@ -32,7 +32,7 @@ const ctx = vm.createContext({
   preGeneratedOf: () => null,
   trKeyOf: p => p.id,
 });
-vm.runInContext(['machineContentLabel', 'renderArticleCard', 'renderCompactRow', 'weeklyCard', 'weeklyRow'].map(fn).join('\n'), ctx);
+vm.runInContext(['officialArticleUrl', 'machineContentLabel', 'renderArticleCard', 'renderCompactRow', 'weeklyCard', 'weeklyRow'].map(fn).join('\n'), ctx);
 
 let checks = 0;
 const check = (cond, msg) => { assert(cond, msg); checks++; };
