@@ -21,7 +21,7 @@ import sys
 ENCODED_WORDS = ('YmVhY29u', '54O954Gr5Y+w', '5b+D5ZCJ5bq3', 'eGluamlrYW5n', 'eGpr', '5LqS6IGU572R5Yy76Zmi', 'QUnljLvnlJ8=')
 BANNED_WORDS = tuple(base64.b64decode(w).decode() for w in ENCODED_WORDS)
 CHECKS = ('banned-words', 'public-ids', 'secrets', 'hex32', 'sources-fresh', 'forbidden-files', 'workflows-untouched', 'ui-banned-labels', 'feature-map-selectors')
-INJECTED_WORKER_CONSTANTS = frozenset(('PDF_LIBRARY', 'DOI_ADJUDICATIONS', 'PUBLIC_ABSTRACT_SOURCES', 'FULLTEXT_OIDC_BUILD_KEYS'))
+INJECTED_WORKER_CONSTANTS = frozenset(('PDF_LIBRARY', 'DOI_ADJUDICATIONS', 'PUBLIC_ABSTRACT_SOURCES', 'FULLTEXT_OIDC_BUILD_KEYS', 'SCOPE_UNCERTAIN_LIST'))
 BASELINE = ('docs/screenshots/**', 'docs/manual-assets/*', 'docs/使用说明.pdf', 'scripts/fixtures/machine-identity/*.pdf', 'icon.png')
 ADDED_ALLOW = ('scripts/fixtures/machine-identity/*.pdf', 'icon.png')
 HEX = re.compile(r'\b[0-9a-fA-F]{32}\b')
