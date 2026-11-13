@@ -236,7 +236,7 @@ function machineStage(job) {
 // Open-access sources the site dropped because the file was the wrong paper: only a public URL without query, and a reason code.
 function machineOaRejected(job) {
   if (!Array.isArray(job.oaRejected)) return [];
-  return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch'}));
+  return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch',...(typeof item.sha256 === 'string' && /^[0-9a-f]{64}$/.test(item.sha256) ? {sha256:item.sha256} : {}),...(Number.isSafeInteger(item.at) && item.at > 0 ? {at:new Date(item.at).toISOString()} : {})}));
 }
 function machineClaimable(job) {
   // Only the task record already in hand: review (verification failed) cannot be claimed or requeued.
@@ -320,6 +320,7 @@ function handleMachineProtocol(request, env) {
       note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'每个 DOI 只有一把 library:muse-job:<doi>。museIntake 只要覆盖这把键上的任何现有任务，就会先把旧记录原样写到上述键（含旧 sha256 与旧状态），带 supersededBy 为新 taskId、supersededAt，以及原来的 reason / previousReason，不设过期。这包括失败/review/尚未完成的任务，以及用 X-Machine-Replace 替换已是 done/available 的原件。新任务立即带 supersededFrom。若新任务后来核验失败进入 review 再重新上传，链会接续。旧客户端可忽略。'},
+    oaVerify:{source:'open_access',limit:2,note:'开放获取来源核验未通过时，第一次把任务退回待下载，候选文件只留记录不删，并记入 oaRejected。同一篇第二次核验未通过则留在 review，claimable 为 false。机器或读者上传核验未通过仍直接进 review。旧客户端可忽略新计数字段。'},
     lease:{extendMinutes:20,maxMinutesFromClaim:120,returnLimit:MACHINE_RETURN_LIMIT,
       note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。下载端退回不是失败，任务回到待下载并保留原 FIFO，同一篇最多 3 次，超过后拒绝（machine_return_limit），只能改报失败。兜底角色退回（以及带 previousReason 的条目）回到失败待兜底并保留原原因，不会回到待下载。旧客户端不调用这两个接口即可。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});

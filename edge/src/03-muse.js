@@ -323,6 +323,8 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && Number.isInteger(previous.softFailCount) && previous.softFailCount > 0) inherited.softFailCount = previous.softFailCount;
   if (previous && previous.lastSoftFailReason) inherited.lastSoftFailReason = previous.lastSoftFailReason;
   if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
+  if (previous && Number.isInteger(previous.oaVerificationFails) && previous.oaVerificationFails > 0) inherited.oaVerificationFails = previous.oaVerificationFails;
+  if (previous && Array.isArray(previous.oaRejected) && previous.oaRejected.length) inherited.oaRejected = previous.oaRejected;
   // Archive the old same-DOI record before overwriting library:muse-job:{doi}, so the previous task is
   // not lost if this new one is still verifying or later fails review.
   if (previous && museShouldSupersedePrevious(previous)) {
