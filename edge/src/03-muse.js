@@ -278,7 +278,9 @@ function museShouldSupersedePrevious(job) {
   return !!(job && typeof job.id === 'string' && job.id);
 }
 function museSupersedeSnapshot(job) {
-  const skip = new Set(['candidateKey','replace','replaceRejected']);
+  // Keep the record as-is, including replace / replaceRejected. Only candidateKey is dropped:
+  // it points at a temporary candidate copy that expires after seven days.
+  const skip = new Set(['candidateKey']);
   const snap = {};
   for (const [key, value] of Object.entries(job)) if (!skip.has(key)) snap[key] = value;
   return snap;

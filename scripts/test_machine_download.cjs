@@ -947,6 +947,29 @@ async function review(h, body) {
   assertKept(h.writes.filter(write => write.key === 'library:muse-superseded:' + replaceDoi + ':' + oldReplaceId).at(-1));
   assert.equal(stored(h, 'library:paper:' + replaceDoi).pdf.sha256, firstSha);
 
+  // supersedeArchiveKeepsReplaceFields: the archive is a verbatim copy, so replace and replaceRejected survive; only candidateKey is dropped.
+  h = await create();
+  const keepDoi = '10.1000/supersede-keep-replace';
+  const oldKeepId = crypto.randomUUID();
+  const keepOldPdf = paperPdf(keepDoi);
+  const keepOldSha = hash(keepOldPdf);
+  const keepReplace = {by:'dsh',at:Date.now() - 9000,oldSha256:'a'.repeat(64),newSha256:keepOldSha};
+  const keepRejected = {by:'dsh',at:keepReplace.at,oldSha256:keepReplace.oldSha256,newSha256:keepOldSha,reason:'invalid_identity',rejectedAt:Date.now() - 8000};
+  seedPaper(h, keepDoi, title, 'available');
+  const keepPaper = stored(h, 'library:paper:' + keepDoi);
+  keepPaper.paper.fulltextStatus = 'available';
+  keepPaper.pdf = {key:'library:pdf:' + keepOldSha,sha256:keepOldSha,size:keepOldPdf.length,source:'machine'};
+  h.values.set('library:paper:' + keepDoi, JSON.stringify(keepPaper));
+  h.values.set('library:pdf:' + keepOldSha, keepOldPdf);
+  putJob(h, keepDoi, 'available', Date.now() - 5000, {id:oldKeepId,sha256:keepOldSha,bytes:keepOldPdf.length,source:'dsh',caller:'dsh',candidateKey:'library:muse-candidate:' + keepOldSha,replace:keepReplace,replaceRejected:keepRejected,verification:{method:'dual_parser_all_pages_title_doi',pages:4,sha256:keepOldSha,bytes:keepOldPdf.length}});
+  const keepUp = await upload(h, paperPdf(keepDoi, title, 'official-version'), keepDoi, dsh, {'x-machine-replace':'1'});
+  assert.equal(keepUp.status, 202);
+  const keepArchive = stored(h, 'library:muse-superseded:' + keepDoi + ':' + oldKeepId);
+  assert.deepEqual(keepArchive.replace, keepReplace);
+  assert.deepEqual(keepArchive.replaceRejected, keepRejected);
+  assert.equal(keepArchive.candidateKey, undefined);
+  assert.equal(keepArchive.supersededBy, stored(h, 'library:muse-job:' + keepDoi).id);
+
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_machine_index.cjs').run();
