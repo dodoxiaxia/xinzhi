@@ -411,7 +411,18 @@
       if (ft.dataset.ftAction === 'open-form') {
         const form = (box.querySelector('[data-ft-form]') || (box.parentElement && box.parentElement.querySelector('[data-ft-form]')));
         if (form) { form.hidden = false; form.querySelector('input')?.focus(); }
-      } else if (ft.dataset.ftAction === 'refresh') { ft.disabled = true; lookupSupplementalDoi(doi, true).then(refreshSupplementalView); }
+      } else if (ft.dataset.ftAction === 'refresh') {
+        ft.disabled = true;
+        const form = ft.closest('form[data-ft-form]');
+        if (form) {
+          const inDrawer = !!form.closest('#drawerFulltext');
+          const err = form.querySelector('.ft-error');
+          if (err) err.textContent = '正在核对状态…';
+          reconcileFtFormAfterLookup(doi, form, inDrawer);
+        } else {
+          lookupSupplementalDoi(doi, true).then(refreshSupplementalView);
+        }
+      }
       return;
     }
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
@@ -696,9 +707,14 @@
   switchMode(state.mode, true);
   loadSupplementalLibrary();
   const refreshLibraryAfterReturn = () => {
-    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < 2000) return;
+    if (SUPPLEMENTAL_LIBRARY.promise) return;
+    const doi = exactDoi(state.search);
+    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < LIBRARY_REFRESH_TTL_MS) {
+      if (doi && doiJobActive(DOI_JOBS.get(doi))) lookupSupplementalDoi(doi, true);
+      return;
+    }
     loadSupplementalLibrary(true);
-    const doi = exactDoi(state.search); if (doi) lookupSupplementalDoi(doi, true);
+    if (doi) lookupSupplementalDoi(doi, true);
     DOI_TOUCHED.forEach(touched => { if (touched !== doi) lookupSupplementalDoi(touched, true); });
   };
   document.addEventListener('click', e => {

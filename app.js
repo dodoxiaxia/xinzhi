@@ -169,6 +169,7 @@
   // DOIs whose full-text page the reader opened in another tab; rechecked when they come back.
   const DOI_TOUCHED = new Set();
   const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
+  const LIBRARY_REFRESH_TTL_MS = 60000;
 
   function exactDoi(value) {
     if (typeof value !== 'string' || value.length > 500) return '';
@@ -303,53 +304,293 @@
   }
   // Submitting a request, retrying and refreshing all happen inside the status block, so there is no second page
   // to visit and come back from. The passphrase goes in the POST body of a same-origin request, never in a URL.
+  function liveFtForm(doi, form, inDrawer) {
+    if (form && form.isConnected) return form;
+    const forms = [...document.querySelectorAll('form[data-ft-form]')].filter(f => exactDoi(f.dataset.doi) === doi);
+    if (inDrawer) {
+      const df = forms.find(f => f.closest('#drawerFulltext'));
+      if (df) return df;
+    }
+    return forms.find(f => !f.hidden && !f.closest('#drawerFulltext')) || forms.find(f => !f.hidden) || forms[0] || null;
+  }
+  function setFtRecheckButton(form, doi, show, disabled = false) {
+    if (!form) return;
+    let recheck = form.querySelector('[data-ft-action="refresh"]');
+    if (!show) { if (recheck) recheck.remove(); return; }
+    if (!recheck) {
+      recheck = document.createElement('button');
+      recheck.type = 'button';
+      recheck.className = 'btn-sm ft-recheck-btn';
+      recheck.dataset.ftAction = 'refresh';
+      recheck.dataset.doi = doi;
+      recheck.textContent = '刷新状态';
+      form.appendChild(recheck);
+    }
+    recheck.disabled = !!disabled;
+  }
+  async function reconcileFtFormAfterLookup(doi, form, inDrawer, prev = null) {
+    if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
+    await lookupSupplementalDoi(doi, true);
+    if (exactDoi(state.search) !== doi && !DOI_TOUCHED.has(doi)) refreshSupplementalView();
+    const lookup = DOI_LOOKUPS.get(doi);
+    const job = DOI_JOBS.get(doi);
+    const paper = exactDoiPapers(doi)[0] || DOI_FULLTEXT.get(doi) || { doi };
+    const view = fulltextState(paper);
+    const hasProgress = doiJobActive(job) || ['ready', 'verifying', 'queued', 'running', 'review'].includes(view.kind)
+      || (!!job && (!prev || prev.mode === 'submit' || job.id !== prev.jobId || job.state !== prev.jobState));
+    const live = liveFtForm(doi, form, inDrawer);
+    if (hasProgress) {
+      if (live) {
+        const inp = live.querySelector('input[name="passphrase"]'), btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
+        if (inp) inp.value = '';
+        if (err) err.textContent = '已提交，正在处理';
+        if (btn) btn.disabled = true;
+        delete live.dataset.busy;
+        delete live.dataset.ftUncertain;
+        setFtRecheckButton(live, doi, false);
+        live.hidden = true;
+      }
+      showToast('已提交，正在处理');
+      return;
+    }
+    if (lookup && lookup.state === 'complete') {
+      if (live) {
+        const btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
+        if (err) err.textContent = '核对后确认没有提交上，可以重试';
+        if (btn) btn.disabled = false;
+        delete live.dataset.busy;
+        delete live.dataset.ftUncertain;
+        setFtRecheckButton(live, doi, false);
+        live.hidden = false;
+      }
+      return;
+    }
+    if (live) {
+      const btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
+      if (err) err.textContent = '仍无法确认是否已提交，请稍后再点“刷新状态”核对，先不要重复提交';
+      if (btn) btn.disabled = true;
+      delete live.dataset.busy;
+      live.dataset.ftUncertain = '1';
+      setFtRecheckButton(live, doi, true, false);
+      live.hidden = false;
+    }
+  }
   async function submitFulltextForm(form) {
+    if (!form || form.dataset.busy === '1' || form.dataset.ftUncertain === '1') return;
     const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
-    if (!doi || !input || !input.value) return;
+    if (!doi || !input || !input.value || (button && button.disabled)) return;
+    const inDrawer = !!(form.closest && form.closest('#drawerFulltext'));
     const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
+    const prevJob = DOI_JOBS.get(doi);
+    const prev = { mode: mode || 'submit', jobId: prevJob ? prevJob.id : '', jobState: prevJob ? prevJob.state : '' };
     const messages = { pdf_passphrase_invalid: '全文口令不正确，请重新输入。', pdf_rate_limited: '口令错误次数过多，请一小时后再试。', library_paused: '这篇暂时停止获取，请稍后再试。', library_identity: '这篇的全文来源还在核对中，暂时不能重新提交。', muse_owner_conflict: '这篇已有任务在进行，请刷新状态。' };
     if (error) error.textContent = ''; if (button) button.disabled = true;
+    form.dataset.busy = '1';
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await fetch(route + '?doi=' + encodeURIComponent(doi), { method: 'POST', cache: 'no-store', signal: controller.signal,
         headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ passphrase: input.value }).toString() });
       let result = null; try { result = await response.json(); } catch (e) { result = null; }
-      if (!response.ok && response.status !== 202) { const code = result && result.error; throw Object.assign(new Error(code || 'submit_failed'), { code }); }
+      if (!response.ok && response.status !== 202) {
+        const code = result && typeof result.error === 'string' ? result.error : '';
+        if (code && (Object.prototype.hasOwnProperty.call(messages, code) || (response.status >= 400 && response.status < 500 && result.ok === false))) {
+          throw Object.assign(new Error(code), { code, knownError: true });
+        }
+        throw Object.assign(new Error(code || 'submit_failed'), { code, uncertain: true });
+      }
+      if (!result || result.ok !== true) {
+        throw Object.assign(new Error('submit_unconfirmed'), { uncertain: true });
+      }
+      const liveNow = liveFtForm(doi, form, inDrawer);
+      const liveNowInput = liveNow && liveNow.querySelector('input[name="passphrase"]');
+      if (liveNowInput) liveNowInput.value = '';
       input.value = '';
       if (result && result.job) mergeDoiJob(doi, result.job);
       if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
       await lookupSupplementalDoi(doi, true);
-      refreshSupplementalView();
+      if (exactDoi(state.search) !== doi && !DOI_TOUCHED.has(doi)) refreshSupplementalView();
+      const live = liveFtForm(doi, form, inDrawer);
+      if (live) {
+        const liveInput = live.querySelector('input[name="passphrase"]'), liveBtn = live.querySelector('button[type="submit"]');
+        if (liveInput) liveInput.value = '';
+        if (liveBtn) liveBtn.disabled = false;
+        delete live.dataset.busy;
+        delete live.dataset.ftUncertain;
+        setFtRecheckButton(live, doi, false);
+      }
     } catch (e) {
-      if (error) error.textContent = messages[e.code] || (e.name === 'AbortError' ? '请求超时，请稍后刷新状态确认是否已提交。' : '提交没有成功，请稍后再试。');
-      if (button) button.disabled = false;
+      if (e && e.knownError) {
+        const live = liveFtForm(doi, form, inDrawer);
+        if (live) {
+          const liveErr = live.querySelector('.ft-error'), liveBtn = live.querySelector('button[type="submit"]');
+          if (liveErr) liveErr.textContent = messages[e.code] || '提交没有成功，请稍后再试。';
+          if (liveBtn) liveBtn.disabled = false;
+          delete live.dataset.busy;
+          delete live.dataset.ftUncertain;
+          setFtRecheckButton(live, doi, false);
+        }
+        return;
+      }
+      const live = liveFtForm(doi, form, inDrawer);
+      if (live) {
+        const liveErr = live.querySelector('.ft-error'), liveBtn = live.querySelector('button[type="submit"]');
+        if (liveErr) liveErr.textContent = '不确定是否已提交，正在核对状态…';
+        if (liveBtn) liveBtn.disabled = true;
+        live.dataset.busy = '1';
+      }
+      await reconcileFtFormAfterLookup(doi, form, inDrawer, prev);
     } finally { clearTimeout(timer); }
   }
+  function captureFtFormSnapshots() {
+    if (typeof document === 'undefined') return [];
+    const snaps = [];
+    const drawerOpen = !!$('#readerDrawer.open');
+    const drawerPaperId = state.activeDrawerPaper ? String(state.activeDrawerPaper.id) : '';
+    document.querySelectorAll('form[data-ft-form]:not([hidden]), form[data-ft-dl-form]:not([hidden])').forEach(form => {
+      const inDrawer = !!form.closest('#drawerFulltext');
+      if (inDrawer && !drawerOpen) return;
+      const isDl = form.hasAttribute('data-ft-dl-form');
+      const paperEl = form.closest('[data-paper-id]');
+      const paperId = inDrawer ? drawerPaperId : (paperEl ? String(paperEl.dataset.paperId || '') : '');
+      const doi = isDl ? '' : exactDoi(form.dataset.doi);
+      if (!isDl && !doi) return;
+      if (isDl && form.id !== 'drawerPdfForm' && !paperId) return;
+      const input = form.querySelector('input[name="passphrase"]');
+      const btn = form.querySelector('button[type="submit"]');
+      const err = form.querySelector('.ft-error');
+      const recheck = form.querySelector('[data-ft-action="refresh"]');
+      const inputFocused = !!(input && document.activeElement === input);
+      const btnFocused = !!(btn && document.activeElement === btn);
+      const recheckFocused = !!(recheck && document.activeElement === recheck);
+      snaps.push({
+        isDl,
+        inDrawer,
+        isDrawerPdfForm: form.id === 'drawerPdfForm',
+        paperId,
+        doi,
+        value: input ? input.value : '',
+        inputDisabled: !!(input && input.disabled),
+        btnDisabled: !!(btn && btn.disabled),
+        btnText: btn ? btn.textContent : '',
+        errorText: err ? err.textContent : '',
+        busy: form.dataset.busy || '',
+        uncertain: form.dataset.ftUncertain || '',
+        isBusyClass: form.classList.contains('is-busy'),
+        ariaBusy: form.getAttribute('aria-busy'),
+        hasRecheck: !!recheck,
+        recheckDisabled: !!(recheck && recheck.disabled),
+        inputFocused,
+        btnFocused,
+        recheckFocused,
+        selStart: inputFocused && typeof input.selectionStart === 'number' ? input.selectionStart : null,
+        selEnd: inputFocused && typeof input.selectionEnd === 'number' ? input.selectionEnd : null,
+        selDir: inputFocused ? (input.selectionDirection || 'none') : null
+      });
+    });
+    return snaps;
+  }
+  function findFtSnapshotTarget(snap) {
+    if (snap.isDrawerPdfForm) {
+      const drawer = $('#readerDrawer.open');
+      const form = $('#drawerPdfForm');
+      const link = $('#drawerPdfLink');
+      if (!drawer || !form || !link || link.hidden) return null;
+      if (snap.paperId && String(state.activeDrawerPaper?.id || '') !== snap.paperId) return null;
+      return form;
+    }
+    if (snap.isDl) {
+      if (!snap.paperId) return null;
+      const cards = [...document.querySelectorAll('#articlesStream [data-paper-id]')].filter(el => String(el.dataset.paperId || '') === snap.paperId);
+      for (const card of cards) {
+        const form = card.querySelector('form[data-ft-dl-form]');
+        if (form) return form;
+      }
+      return null;
+    }
+    if (snap.inDrawer) {
+      if (!$('#readerDrawer.open')) return null;
+      if (snap.paperId && String(state.activeDrawerPaper?.id || '') !== snap.paperId) return null;
+      return [...document.querySelectorAll('#drawerFulltext form[data-ft-form]')].find(f => exactDoi(f.dataset.doi) === snap.doi) || null;
+    }
+    const streamForms = [...document.querySelectorAll('#articlesStream form[data-ft-form]')].filter(f => exactDoi(f.dataset.doi) === snap.doi);
+    if (snap.paperId) {
+      const exact = streamForms.find(f => String(f.closest('[data-paper-id]')?.dataset.paperId || '') === snap.paperId);
+      if (exact) return exact;
+    }
+    return streamForms[0] || null;
+  }
+  function restoreFtFormSnapshots(snaps) {
+    if (!snaps || !snaps.length) return;
+    for (const snap of snaps) {
+      const form = findFtSnapshotTarget(snap);
+      if (!form) continue;
+      form.hidden = false;
+      const input = form.querySelector('input[name="passphrase"]');
+      const btn = form.querySelector('button[type="submit"]');
+      const err = form.querySelector('.ft-error');
+      if (input) {
+        input.value = snap.value;
+        input.disabled = snap.inputDisabled;
+      }
+      if (btn) {
+        btn.disabled = snap.btnDisabled;
+        if (snap.btnText) btn.textContent = snap.btnText;
+      }
+      if (err) err.textContent = snap.errorText;
+      if (snap.busy) form.dataset.busy = snap.busy; else delete form.dataset.busy;
+      if (snap.uncertain) form.dataset.ftUncertain = snap.uncertain; else delete form.dataset.ftUncertain;
+      form.classList.toggle('is-busy', snap.isBusyClass);
+      if (snap.ariaBusy) form.setAttribute('aria-busy', snap.ariaBusy); else form.removeAttribute('aria-busy');
+      if (!snap.isDl) setFtRecheckButton(form, snap.doi, snap.hasRecheck, snap.recheckDisabled);
+      if (snap.inputFocused && input && !input.disabled) {
+        try {
+          input.focus({ preventScroll: true });
+          if (snap.selStart !== null && snap.selEnd !== null) {
+            input.setSelectionRange(snap.selStart, snap.selEnd, snap.selDir || 'none');
+          }
+        } catch (e) { /* ignore */ }
+      } else if (snap.btnFocused && btn && !btn.disabled) {
+        try { btn.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      } else if (snap.recheckFocused) {
+        const recheck = form.querySelector('[data-ft-action="refresh"]');
+        if (recheck && !recheck.disabled) { try { recheck.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      }
+    }
+  }
   function refreshSupplementalView() {
+    const snapshots = captureFtFormSnapshots();
     updateHeaderBadges();
     if (!exactDoi(state.search) && state.mode !== 'weekly' && state.mode !== 'sources') renderSidebarFilters();
     renderStream();
     if (state.activeDrawerPaper) openReaderDrawer(allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper);
     if ($('#huddleModalBackdrop.open')) openHuddleModal();
+    restoreFtFormSnapshots(snapshots);
   }
   async function lookupSupplementalDoi(doi, retry = false) {
-    if (!doi || (!retry && DOI_LOOKUPS.has(doi)) || DOI_LOOKUPS.get(doi)?.state === 'loading') return;
-    DOI_LOOKUPS.set(doi, { state: 'loading' });
-    try {
-      const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
-      mergeDoiJob(doi, result.job);
-      if (result.found === true) {
-        if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
-      } else if (result.found === false) {
-        const previous = DOI_FULLTEXT.get(doi);
-        if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
-        DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
-      }
-      else throw new Error('library_unavailable');
-    } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
-    if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
-    // Only the searched DOI owns the polling timer; a background recheck must not cancel it.
-    if (exactDoi(state.search) === doi || DOI_JOB_WATCH.doi === doi) watchDoiJob(doi);
+    if (!doi) return;
+    const current = DOI_LOOKUPS.get(doi);
+    if (!retry && current) return current.promise;
+    if (current?.state === 'loading' && current.promise) await current.promise;
+    if (DOI_LOOKUPS.get(doi)?.state === 'loading') return DOI_LOOKUPS.get(doi).promise;
+    const run = (async () => {
+      try {
+        const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
+        mergeDoiJob(doi, result.job);
+        if (result.found === true) {
+          if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
+        } else if (result.found === false) {
+          const previous = DOI_FULLTEXT.get(doi);
+          if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
+          DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
+        }
+        else throw new Error('library_unavailable');
+      } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
+      if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
+      // Only the searched DOI owns the polling timer; a background recheck must not cancel it.
+      if (exactDoi(state.search) === doi || DOI_JOB_WATCH.doi === doi) watchDoiJob(doi);
+    })();
+    DOI_LOOKUPS.set(doi, { state: 'loading', promise: run });
+    return run;
   }
   function loadSupplementalLibrary(refresh = false) {
     if (SUPPLEMENTAL_LIBRARY.promise) return SUPPLEMENTAL_LIBRARY.promise;
@@ -2312,6 +2553,9 @@
           ${absSource}
         </section>
       `;
+      // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
+      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
+      var typingSel = typingEl ? [typingEl.selectionStart, typingEl.selectionEnd] : null;
       const ftSection = $('#drawerFulltext');
       const pdfLinkEl = $('#drawerPdfLink');
       const pdfFormEl = $('#drawerPdfForm');
@@ -2368,6 +2612,9 @@
       }
     }
 
+    if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
+      try { typingEl.focus({ preventScroll: true }); if (typingSel && typingSel[0] !== null) typingEl.setSelectionRange(typingSel[0], typingSel[1]); } catch (e) { /* ignore */ }
+    }
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
     drawer.classList.add('open');
     backdrop.classList.add('open');
@@ -3617,7 +3864,18 @@
       if (ft.dataset.ftAction === 'open-form') {
         const form = (box.querySelector('[data-ft-form]') || (box.parentElement && box.parentElement.querySelector('[data-ft-form]')));
         if (form) { form.hidden = false; form.querySelector('input')?.focus(); }
-      } else if (ft.dataset.ftAction === 'refresh') { ft.disabled = true; lookupSupplementalDoi(doi, true).then(refreshSupplementalView); }
+      } else if (ft.dataset.ftAction === 'refresh') {
+        ft.disabled = true;
+        const form = ft.closest('form[data-ft-form]');
+        if (form) {
+          const inDrawer = !!form.closest('#drawerFulltext');
+          const err = form.querySelector('.ft-error');
+          if (err) err.textContent = '正在核对状态…';
+          reconcileFtFormAfterLookup(doi, form, inDrawer);
+        } else {
+          lookupSupplementalDoi(doi, true).then(refreshSupplementalView);
+        }
+      }
       return;
     }
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
@@ -3902,9 +4160,14 @@
   switchMode(state.mode, true);
   loadSupplementalLibrary();
   const refreshLibraryAfterReturn = () => {
-    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < 2000) return;
+    if (SUPPLEMENTAL_LIBRARY.promise) return;
+    const doi = exactDoi(state.search);
+    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < LIBRARY_REFRESH_TTL_MS) {
+      if (doi && doiJobActive(DOI_JOBS.get(doi))) lookupSupplementalDoi(doi, true);
+      return;
+    }
     loadSupplementalLibrary(true);
-    const doi = exactDoi(state.search); if (doi) lookupSupplementalDoi(doi, true);
+    if (doi) lookupSupplementalDoi(doi, true);
     DOI_TOUCHED.forEach(touched => { if (touched !== doi) lookupSupplementalDoi(touched, true); });
   };
   document.addEventListener('click', e => {

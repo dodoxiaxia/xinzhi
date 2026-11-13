@@ -215,6 +215,9 @@
           ${absSource}
         </section>
       `;
+      // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
+      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
+      var typingSel = typingEl ? [typingEl.selectionStart, typingEl.selectionEnd] : null;
       const ftSection = $('#drawerFulltext');
       const pdfLinkEl = $('#drawerPdfLink');
       const pdfFormEl = $('#drawerPdfForm');
@@ -271,6 +274,9 @@
       }
     }
 
+    if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
+      try { typingEl.focus({ preventScroll: true }); if (typingSel && typingSel[0] !== null) typingEl.setSelectionRange(typingSel[0], typingSel[1]); } catch (e) { /* ignore */ }
+    }
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
     drawer.classList.add('open');
     backdrop.classList.add('open');
