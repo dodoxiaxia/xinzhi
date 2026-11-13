@@ -30,6 +30,16 @@ v14.1 增加独立的[按 DOI 获取与补录](DOI按需全文与补录.md)。�
 
 下载要求索引提供合法 SHA-256，并同时核对实际文件大小、PDF 文件头与 Git blob 指纹。云端单篇上限 20 MiB、本地上限 50 MiB；超过上限时提示使用官网入口。
 
+## 签名下载链接（可选，默认关闭）
+
+环境变量 `PDF_SIGNED_LINK` 恰好为 `true` 时开启；未设置或其他值都是关闭，行为与此前完全一致（点「下载 PDF」新开服务端口令页）。开启后：
+
+- 卡片和阅读台的「下载 PDF」原位展开口令框；提交到 `POST /api/pdf?id=…&link=1`（文献库 DOI 路径为 `POST /api/fulltext?doi=…&link=1`），口令校验与限速和原口令页相同，通过后返回 5 分钟有效的链接 `…&t=令牌`，页面直接跳转让浏览器下载。
+- 令牌格式 `到期秒数.签名`，签名只覆盖「用途 + 这一篇的 id（或 DOI）+ 到期时间」，换篇、改时间、过期都会被拒绝（中文错误页）。有效期内可重复使用，不记录任何服务端状态，不写 KV。
+- 签名密钥由现有 Secret 派生（HKDF-SHA256，用途标签 `pdf-link-v1`），不新增 Secret；因口令本身熵低，派生同时混入 `GITHUB_LIBRARY_TOKEN`，两者缺一都不签发。
+- 前端读取 `GET /api/ai?task=status` 的 `pdfSignedLink` 字段决定是否启用口令框；开关关闭时换链接接口返回 `pdf_link_disabled`，前端退回新开口令页。
+- 取消开关即回到旧行为；已发出的链接在 5 分钟内仍可用到期。
+
 ## Cloudflare Pages 配置
 
 在现有 `dryz-xinzhi` 项目配置以下运行时变量/Secret；这是 Pages Worker 的运行时配置，不是 GitHub Actions 模型配置。

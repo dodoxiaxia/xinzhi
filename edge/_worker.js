@@ -10,6 +10,7 @@
 // POST /api/ai {task:'translate',pmid|doi} 摘要中英对照翻译；GET /api/ai?task=translate&k=… 读缓存
 // POST /api/ai {task:'brief',mode:'huddle'|'digest',items:[{pmid|doi}…2-8]} 多篇讨论提纲/综述；同一组文献缓存复用
 // GET /api/pdf?id=公开文献ID：显示口令表单；POST 同址逐次验证口令后，精确匹配并校验单篇 PDF。
+// 可选 PDF_SIGNED_LINK=true：POST ?id=…&link=1 验证口令后返回 5 分钟签名链接，GET ?id=…&t=… 凭链接下载（/api/fulltext 同理）。
 // PDF 下载默认关闭；需 PDF_DOWNLOAD_ENABLED=true、GITHUB_LIBRARY_TOKEN（Contents 只读）；
 // 可选 Secret PDF_DOWNLOAD_PASSPHRASE 覆盖默认口令、PDF_GITHUB_COMMIT 固定版本，否则解析 main commit。
 // POST /api/ai {task:'study',pmid|doi} / {task:'compare',items:[{pmid|doi}…2-4]} 公开摘要证据拆解
@@ -93,7 +94,7 @@ function hanDoiUrl(value) {
 }
 function pdfBackLinks(doi) {
   const exact = libraryDoi(doi);
-  return exact ? '<p class="back"><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a></p>' : '<p class="back"><a href="/?mode=library">返回文献库</a></p>';
+  return exact ? '<p class="back"><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a></p>' : ''; // Without a paper the top bar already links back to the library; do not repeat it.
 }
 // Fallback pages must stay self-contained (CSP: default-src 'none'; style-src 'unsafe-inline'),
 // so the main site's style.css tokens (:root and [data-theme="dark"]) are copied here as literals.
@@ -153,7 +154,8 @@ function pdfError(request, code, status, doi = '', diagnostic = null) {
     pdf_index_invalid:'文献索引暂时无法用于下载。', pdf_ambiguous:'索引中的文献对应关系需要核验。',
     pdf_integrity:'PDF 完整性校验未通过，请稍后重试。', pdf_too_large:'PDF 或索引超过下载服务的大小限制。',
     pdf_timeout:'下载源响应超时，请稍后重试。', pdf_upstream:'暂时无法读取下载源，请稍后重试。',
-    pdf_method:'下载仅支持 GET 和 POST 请求。', pdf_server:'下载服务暂时不可用。'
+    pdf_method:'下载仅支持 GET 和 POST 请求。', pdf_server:'下载服务暂时不可用。',
+    pdf_link_invalid:'下载链接无效，请回到文献页重新输入口令。', pdf_link_expired:'下载链接已过期（5 分钟内有效），请回到文献页重新输入口令。'
   };
   return pdfHtml('<p>' + pdfEscape(messages[code] || messages.pdf_server) + '</p>' + pdfDiagnosticHtml(safe) + pdfOfficialLink(doi), status);
 }
@@ -263,6 +265,63 @@ async function pdfVerifyPassphrase(passphrase, env, request) {
   let difference = 0;
   for (let index = 0; index < 64; index++) difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
   if (difference) { await pdfPassphraseFailures(request, true); pdfFail('pdf_passphrase_invalid', 403); }
+}
+// Signed download links (off unless PDF_SIGNED_LINK is exactly 'true'): after one passphrase check the
+// page receives a short-lived URL bound to one kind ('pdf' = public paper id, 'ft' = normalized DOI),
+// that subject and its expiry. Nothing is stored; the key is derived from two existing secrets because
+// the passphrase alone has too little entropy. Tokens look like <exp>.<base64url(HMAC(kind|subject|exp))>.
+const PDF_LINK_TTL_SECONDS = 300;
+const pdfLinkEnabled = env => env.PDF_SIGNED_LINK === 'true';
+const PDF_LINK_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+function pdfLinkEncode(bytes) {
+  let out = '';
+  for (let index = 0; index < bytes.length; index += 3) {
+    const chunk = bytes[index] << 16 | (index + 1 < bytes.length ? bytes[index + 1] : 0) << 8 | (index + 2 < bytes.length ? bytes[index + 2] : 0);
+    const count = Math.min(3, bytes.length - index) + 1;
+    for (let position = 0; position < count; position++) out += PDF_LINK_ALPHABET[chunk >> (18 - 6 * position) & 63];
+  }
+  return out;
+}
+function pdfLinkDecode(text) {
+  const bytes = []; let buffer = 0, bits = 0;
+  for (const char of text) {
+    const value = PDF_LINK_ALPHABET.indexOf(char);
+    if (value < 0) return null;
+    buffer = (buffer << 6 | value) & 0xffffff; bits += 6;
+    if (bits >= 8) { bits -= 8; bytes.push(buffer >> bits & 255); }
+  }
+  // Only the canonical spelling is accepted: unused trailing bits must be zero.
+  return bits && buffer & ((1 << bits) - 1) ? null : new Uint8Array(bytes);
+}
+async function pdfLinkKey(env) {
+  const secret = env.GITHUB_LIBRARY_TOKEN, passphrase = env.PDF_DOWNLOAD_PASSPHRASE;
+  if (typeof secret !== 'string' || !secret.trim() || typeof passphrase !== 'string' || !passphrase || passphrase.length > 256) pdfFail('pdf_not_configured', 503);
+  const encoder = new TextEncoder();
+  const material = await crypto.subtle.importKey('raw', encoder.encode(secret + '\0' + passphrase), 'HKDF', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name:'HKDF', hash:'SHA-256', salt:encoder.encode('xinzhi/download-link/v1'), info:encoder.encode('pdf-link-v1') }, material, 256);
+  return crypto.subtle.importKey('raw', bits, { name:'HMAC', hash:'SHA-256' }, false, ['sign','verify']);
+}
+const pdfLinkMessage = (kind, subject, exp) => new TextEncoder().encode(kind + '|' + subject + '|' + exp);
+async function pdfLinkSign(env, kind, subject, expSeconds) {
+  if (!['pdf','ft'].includes(kind) || typeof subject !== 'string' || !subject || !Number.isSafeInteger(expSeconds) || expSeconds <= 0) pdfFail('pdf_server', 500);
+  const signature = await crypto.subtle.sign('HMAC', await pdfLinkKey(env), pdfLinkMessage(kind, subject, expSeconds));
+  return expSeconds + '.' + pdfLinkEncode(new Uint8Array(signature));
+}
+async function pdfLinkVerify(env, kind, subject, token) {
+  const key = await pdfLinkKey(env);
+  const match = typeof token === 'string' && /^([1-9]\d{0,11})\.([A-Za-z0-9_-]{43})$/.exec(token);
+  const signature = match && pdfLinkDecode(match[2]);
+  if (!match || !signature || signature.length !== 32 || !['pdf','ft'].includes(kind) || typeof subject !== 'string' || !subject) pdfFail('pdf_link_invalid', 403);
+  const exp = Number(match[1]);
+  // subtle.verify compares in constant time; kind, subject and exp are all inside the signed message.
+  if (!(await crypto.subtle.verify('HMAC', key, signature, pdfLinkMessage(kind, subject, exp)))) pdfFail('pdf_link_invalid', 403);
+  const now = Math.floor(Date.now() / 1000);
+  if (exp > now + PDF_LINK_TTL_SECONDS + 60) pdfFail('pdf_link_invalid', 403);
+  if (exp <= now) pdfFail('pdf_link_expired', 410);
+}
+async function pdfLinkIssue(env, kind, subject, path) {
+  const token = await pdfLinkSign(env, kind, subject, Math.floor(Date.now() / 1000) + PDF_LINK_TTL_SECONDS);
+  return json({ ok:true, url:path + '&t=' + token, expiresIn:PDF_LINK_TTL_SECONDS }, 200, { 'referrer-policy':'no-referrer' });
 }
 
 // Timeout covers headers AND the streamed body. Authorization is sent only to api.github.com.
@@ -478,7 +537,10 @@ async function handlePdf(request, env) {
   try {
     if (!['GET','POST'].includes(request.method)) pdfFail('pdf_method', 405);
     const url = new URL(request.url), ids = url.searchParams.getAll('id');
-    if (ids.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'id') || !/^[A-Za-z0-9_.:-]{1,160}$/.test(ids[0])) pdfFail('pdf_bad_id', 400);
+    // Only id; plus link=1 on POST (issue a signed link) or t on GET (use one).
+    const links = url.searchParams.getAll('link'), linkTokens = url.searchParams.getAll('t'), allowed = ['id', request.method === 'POST' ? 'link' : 't'];
+    if (ids.length !== 1 || [...url.searchParams.keys()].some(key => !allowed.includes(key)) || links.length > 1 || (links.length && links[0] !== '1') || linkTokens.length > 1 || !/^[A-Za-z0-9_.:-]{1,160}$/.test(ids[0])) pdfFail('pdf_bad_id', 400);
+    if ((links.length || linkTokens.length) && !pdfLinkEnabled(env)) pdfFail('pdf_link_disabled', 404); // before any passphrase or secret is read
     if (!Object.prototype.hasOwnProperty.call(PDF_LIBRARY, ids[0])) pdfFail('pdf_not_found', 404);
     id = ids[0];
     const identity = PDF_LIBRARY[id];
@@ -486,7 +548,11 @@ async function handlePdf(request, env) {
     doi = pdfDoi(declaredDoi);
     const title = typeof identity === 'object' && identity ? pdfTitleKey(identity.title) : '';
     if ((declaredDoi && !doi) || (!doi && !title)) pdfFail('pdf_not_found', 404);
-    if (request.method === 'GET') return pdfPassphraseForm(id, doi);
+    if (request.method === 'GET') {
+      if (!linkTokens.length) return pdfPassphraseForm(id, doi);
+      await pdfLinkVerify(env, 'pdf', id, linkTokens[0]); // A valid link stands in for the passphrase, for this one paper only.
+      return await pdfDownloadAuthorized(request, env, doi, title);
+    }
     const fetchSite = request.headers.get('sec-fetch-site');
     if (fetchSite && !['same-origin','none'].includes(fetchSite)) pdfFail('pdf_origin', 403);
     const origin = request.headers.get('origin');
@@ -496,44 +562,8 @@ async function handlePdf(request, env) {
       if (sourceOrigin !== url.origin) pdfFail('pdf_origin', 403);
     }
     await pdfVerifyPassphrase(await pdfReadPassphrase(request), env, request); // No GitHub request before successful password verification.
-    const diagnostic = pdfDiagnosticStart(request);
-    if (env.QL_KV && doi) {
-      const previous = await libraryGet(env.QL_KV,'library:attempt:' + doi);
-      if (previous?.paused === true) { diagnostic.historical = true; const error = new LibraryFailure('library_paused',423); error.diagnostic = await pdfLastDiagnostic(env,doi); throw error; }
-    }
-    if (env.PDF_DOWNLOAD_ENABLED !== 'true') pdfFail('pdf_disabled', 503);
-    if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT && !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT))) pdfFail('pdf_not_configured', 503);
-    const token = env.GITHUB_LIBRARY_TOKEN;
-    let commit = env.PDF_GITHUB_COMMIT;
-    if (!commit) {
-      const latest = pdfDiagnosticJson(diagnostic, await pdfRead('https://api.github.com/repos/' + PDF_REPOSITORY + '/commits/main', 262144, {token,diagnostic,stage:'configuration'}));
-      commit = latest && latest.sha;
-      if (typeof commit !== 'string' || !/^[a-f0-9]{40}$/i.test(commit)) pdfFail('pdf_upstream');
-    }
-    commit = commit.toLowerCase();
-    const entries = pdfCsv(await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token,diagnostic,stage:'index',accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) }));
-    if (diagnostic) diagnostic.reason = 'identity';
-    const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitleKey(entry['题名']) === title);
-    if (!matching.length) pdfFail('pdf_not_found', 404);
-    // A supplement or translation is never sent as the article: no main-text row left means ambiguous.
-    const selected = pdfSelectRows(matching);
-    if (!selected.length) pdfFail('pdf_ambiguous', 409);
-    // Several rows that carry the same valid SHA-256 are one file registered more than once; different checksums stay ambiguous.
-    if (selected.length !== 1 && (!/^[a-f0-9]{64}$/.test(String(selected[0].SHA256 || '').trim().toLowerCase()) || selected.some(row => String(row.SHA256 || '').trim().toLowerCase() !== String(selected[0].SHA256 || '').trim().toLowerCase()))) pdfFail('pdf_ambiguous', 409);
-    const entry = selected[0], path = pdfSafePath(entry['当前路径']);
-    const checksum = entry.SHA256.trim().toLowerCase();
-    if (!/^[a-f0-9]{64}$/.test(checksum)) pdfFail('pdf_index_invalid');
-    const endpoint = pdfContentsUrl(path, commit);
-    const metadata = pdfDiagnosticJson(diagnostic, await pdfRead(endpoint, 2 * 1024 * 1024, { token,file:true,diagnostic,stage:'contents_metadata',accept:'application/vnd.github+json' }));
-    if (diagnostic) diagnostic.reason = 'identity';
-    if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || typeof metadata.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(metadata.sha) || !Number.isInteger(metadata.size) || metadata.size < 8) pdfFail('pdf_integrity');
-    if (metadata.size > PDF_MAX_BYTES) pdfFail('pdf_too_large', 413);
-    const raw = await pdfRead(endpoint, PDF_MAX_BYTES, { token,file:true,diagnostic,stage:'contents_raw',accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
-    const bytes = await pdfGithubBytes(metadata, raw, checksum, {token,diagnostic,limit:PDF_MAX_BYTES});
-    const downloadTitle = Array.from(String(entry['题名'] || 'article').replace(/[\x00-\x1f\x7f\/\\":<>|?*]/g, ' ').trim()).slice(0, 120).join('') || 'article';
-    const filename = downloadTitle.replace(/\.pdf$/i, '') + '.pdf';
-    const encodedFilename = encodeURIComponent(filename).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase());
-    return new Response(bytes, { headers:{ 'content-type':'application/pdf', 'content-disposition':"attachment; filename=\"article.pdf\"; filename*=UTF-8''" + encodedFilename, 'content-length':String(bytes.byteLength), 'cache-control':'private, no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'no-referrer', 'content-security-policy':"default-src 'none'; frame-ancestors 'none'" } });
+    if (links.length) { pdfDownloadReady(env); return await pdfLinkIssue(env, 'pdf', id, '/api/pdf?id=' + encodeURIComponent(id)); } // Issues a link only; no PDF is read here.
+    return await pdfDownloadAuthorized(request, env, doi, title);
   } catch (error) {
     pdfAttachDiagnostic(error,PDF_REQUEST_DIAGNOSTICS.get(request));
     if (PDF_REQUEST_DIAGNOSTICS.has(request) && !PDF_REQUEST_DIAGNOSTICS.get(request).historical) await pdfSaveDiagnostic(env,doi,error.diagnostic);
@@ -549,6 +579,50 @@ async function handlePdf(request, env) {
   }
 }
 
+// Everything after authorization (passphrase POST or verified signed link): exact index match, checks and download.
+async function pdfDownloadAuthorized(request, env, doi, title) {
+  const diagnostic = pdfDiagnosticStart(request);
+  if (env.QL_KV && doi) {
+    const previous = await libraryGet(env.QL_KV,'library:attempt:' + doi);
+    if (previous?.paused === true) { diagnostic.historical = true; const error = new LibraryFailure('library_paused',423); error.diagnostic = await pdfLastDiagnostic(env,doi); throw error; }
+  }
+  pdfDownloadReady(env);
+  const token = env.GITHUB_LIBRARY_TOKEN;
+  let commit = env.PDF_GITHUB_COMMIT;
+  if (!commit) {
+    const latest = pdfDiagnosticJson(diagnostic, await pdfRead('https://api.github.com/repos/' + PDF_REPOSITORY + '/commits/main', 262144, {token,diagnostic,stage:'configuration'}));
+    commit = latest && latest.sha;
+    if (typeof commit !== 'string' || !/^[a-f0-9]{40}$/i.test(commit)) pdfFail('pdf_upstream');
+  }
+  commit = commit.toLowerCase();
+  const entries = pdfCsv(await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token,diagnostic,stage:'index',accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) }));
+  if (diagnostic) diagnostic.reason = 'identity';
+  const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitleKey(entry['题名']) === title);
+  if (!matching.length) pdfFail('pdf_not_found', 404);
+  // A supplement or translation is never sent as the article: no main-text row left means ambiguous.
+  const selected = pdfSelectRows(matching);
+  if (!selected.length) pdfFail('pdf_ambiguous', 409);
+  // Several rows that carry the same valid SHA-256 are one file registered more than once; different checksums stay ambiguous.
+  if (selected.length !== 1 && (!/^[a-f0-9]{64}$/.test(String(selected[0].SHA256 || '').trim().toLowerCase()) || selected.some(row => String(row.SHA256 || '').trim().toLowerCase() !== String(selected[0].SHA256 || '').trim().toLowerCase()))) pdfFail('pdf_ambiguous', 409);
+  const entry = selected[0], path = pdfSafePath(entry['当前路径']);
+  const checksum = entry.SHA256.trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(checksum)) pdfFail('pdf_index_invalid');
+  const endpoint = pdfContentsUrl(path, commit);
+  const metadata = pdfDiagnosticJson(diagnostic, await pdfRead(endpoint, 2 * 1024 * 1024, { token,file:true,diagnostic,stage:'contents_metadata',accept:'application/vnd.github+json' }));
+  if (diagnostic) diagnostic.reason = 'identity';
+  if (!metadata || metadata.type !== 'file' || metadata.path !== path || metadata.target || metadata.submodule_git_url || typeof metadata.sha !== 'string' || !/^[a-f0-9]{40}$/i.test(metadata.sha) || !Number.isInteger(metadata.size) || metadata.size < 8) pdfFail('pdf_integrity');
+  if (metadata.size > PDF_MAX_BYTES) pdfFail('pdf_too_large', 413);
+  const raw = await pdfRead(endpoint, PDF_MAX_BYTES, { token,file:true,diagnostic,stage:'contents_raw',accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(path, commit) });
+  const bytes = await pdfGithubBytes(metadata, raw, checksum, {token,diagnostic,limit:PDF_MAX_BYTES});
+  const downloadTitle = Array.from(String(entry['题名'] || 'article').replace(/[\x00-\x1f\x7f\/\\":<>|?*]/g, ' ').trim()).slice(0, 120).join('') || 'article';
+  const filename = downloadTitle.replace(/\.pdf$/i, '') + '.pdf';
+  const encodedFilename = encodeURIComponent(filename).replace(/[!'()*]/g, char => '%' + char.charCodeAt(0).toString(16).toUpperCase());
+  return new Response(bytes, { headers:{ 'content-type':'application/pdf', 'content-disposition':"attachment; filename=\"article.pdf\"; filename*=UTF-8''" + encodedFilename, 'content-length':String(bytes.byteLength), 'cache-control':'private, no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'no-referrer', 'content-security-policy':"default-src 'none'; frame-ancestors 'none'" } });
+}
+function pdfDownloadReady(env) {
+  if (env.PDF_DOWNLOAD_ENABLED !== 'true') pdfFail('pdf_disabled', 503);
+  if (typeof env.GITHUB_LIBRARY_TOKEN !== 'string' || !env.GITHUB_LIBRARY_TOKEN.trim() || (env.PDF_GITHUB_COMMIT && !/^[a-f0-9]{40}$/i.test(env.PDF_GITHUB_COMMIT))) pdfFail('pdf_not_configured', 503);
+}
 // ==== edge/src/01-library-jobs.js · Supplemental DOI library, full-text jobs and OIDC claims ====
 // Supplemental records/PDFs live independently of static bibliography, editorial decisions and AI caches.
 const LIBRARY_PREFIX = 'library:paper:';
@@ -611,11 +685,14 @@ async function libraryPut(kv, key, value, options) {
 function libraryQuery(request) {
   const url = new URL(request.url), values = url.searchParams.getAll('doi');
   const downloads = url.searchParams.getAll('download');
-  if (values.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'doi' && !(key === 'download' && url.pathname === '/api/acquire'))
-      || (downloads.length && (downloads.length !== 1 || downloads[0] !== '1'))) libraryFail('library_bad_doi', 400);
+  // /api/fulltext alone also takes link=1 (POST, issue a signed link) or t (GET, use one).
+  const fulltext = url.pathname === '/api/fulltext', links = url.searchParams.getAll('link'), linkTokens = url.searchParams.getAll('t');
+  const linkKey = fulltext && request.method === 'POST' ? 'link' : fulltext && request.method === 'GET' ? 't' : '';
+  if (values.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'doi' && !(key === 'download' && url.pathname === '/api/acquire') && !(linkKey && key === linkKey))
+      || (downloads.length && (downloads.length !== 1 || downloads[0] !== '1')) || links.length > 1 || (links.length && links[0] !== '1') || linkTokens.length > 1) libraryFail('library_bad_doi', 400);
   const doi = libraryDoi(values[0]);
   if (!doi) libraryFail('library_bad_doi', 400);
-  return { url, doi, download:downloads.length === 1 };
+  return { url, doi, download:downloads.length === 1, link:links.length === 1, linkToken:linkTokens.length === 1 ? linkTokens[0] : null };
 }
 function libraryConfig(env) {
   if (!env.QL_KV) libraryFail('library_not_configured', 503);
@@ -856,8 +933,11 @@ async function libraryGithub(paper, env, context) {
     }
   }
   if (!rows.length) return context.metadataOnly ? {...inspection,candidateFound:false} : null; // An index miss is not evidence that no file exists elsewhere.
-  if (rows.length !== 1) libraryFail('library_identity', 409);
-  const row = rows[0], title = pdfTitle(row['题名']);
+  // Same rules as /api/pdf: once any row carries a file category only main-text rows count (a lone supplement or
+  // translation is never the article); rows with the same valid SHA-256 are one file; no category column keeps the old rules.
+  const selected = pdfSelectRows(rows), firstSha = selected.length ? String(selected[0].SHA256 || '').trim().toLowerCase() : '';
+  if (!selected.length || (selected.length !== 1 && (!/^[a-f0-9]{64}$/.test(firstSha) || selected.some(candidate => String(candidate.SHA256 || '').trim().toLowerCase() !== firstSha)))) libraryFail('library_identity', 409);
+  const row = selected[0], title = pdfTitle(row['题名']);
   const accepted = decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit ? decision.acceptedTitles : [paper.title];
   if (!Array.isArray(accepted) || !accepted.some(value => pdfTitle(value) === title) || (decision && decision.action === 'official' && DOI_ADJUDICATIONS.sourceCommit === commit && pdfTitle(decision.metadata && decision.metadata.title) !== pdfTitle(paper.title))) libraryFail('library_identity', 409);
   const path = pdfSafePath(row['当前路径']), checksum = row.SHA256.trim().toLowerCase();
@@ -2481,11 +2561,20 @@ async function handleFulltext(request, env) {
   let doi = '';
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
-    if (request.method === 'GET') return libraryForm(doi, '/api/fulltext');
+    if ((parsed.link || parsed.linkToken !== null) && !pdfLinkEnabled(env)) pdfFail('pdf_link_disabled', 404); // before any passphrase or secret is read
+    if (request.method === 'GET') {
+      if (parsed.linkToken === null) return libraryForm(doi, '/api/fulltext');
+      await pdfLinkVerify(env, 'ft', doi, parsed.linkToken); // A valid link stands in for the passphrase, for this one DOI only.
+      libraryConfig(env);
+      const linked = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), linkedPaper = libraryPaper(linked, doi);
+      if (!linkedPaper || linkedPaper.fulltextStatus !== 'available') libraryFail('library_not_found', 404);
+      return libraryPdfResponse(linkedPaper, await libraryStoredPdf(env.QL_KV, linked));
+    }
     if (request.method !== 'POST') libraryFail('library_method', 405);
     await libraryAuthorize(request, env, parsed.url); libraryConfig(env);
     const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
     if (!paper || paper.fulltextStatus !== 'available') libraryFail('library_not_found', 404);
+    if (parsed.link) return await pdfLinkIssue(env, 'ft', doi, '/api/fulltext?doi=' + encodeURIComponent(doi)); // Read-only: issues a link, reads no PDF.
     const bytes = await libraryStoredPdf(env.QL_KV, record);
     return libraryPdfResponse(paper, bytes);
   } catch (error) { return libraryError(request, error, doi, '/api/fulltext'); }
@@ -2974,13 +3063,18 @@ async function machineFirstPage(bytes) {
     const ids = await machineContentIds(ctx, page.body);
     if (!ids.length) notes.add('contents_not_found');
     const fonts = await machinePageFonts(ctx, page.body);
+    // A page's /Contents array is one logical stream (ISO 32000-1 7.8.2): an operator may start in one stream and end in the
+    // next (a TJ array closed by "]" at the end of one and "TJ" at the start of the next), and the font selected in an
+    // earlier stream stays current. Decode the streams joined, never one by one, or a title split that way is dropped.
+    let joined = '';
     for (const id of ids) {
       const content = await machineContentText(ctx, id);
       if (content === null) { if (!notes.has('inflate_failed') && !notes.has('filter_unsupported') && !notes.has('objstm_unsupported')) notes.add('contents_not_found'); continue; }
       strings += machinePdfStrings(content);
       raw += '\n' + content;
-      decoded += machineDecodeFontText(content, fonts) + '\n';
+      joined += content + '\n';
     }
+    decoded += machineDecodeFontText(joined, fonts) + '\n';
   }
   const metadata = await machineMetadata(ctx);
   // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
@@ -4189,7 +4283,7 @@ async function runtimeStatus(env) {
     hasEndpoint:!!env.LLM_ENDPOINT, hasModel:!!env.LLM_MODEL, hasApiKey:!!env.LLM_API_KEY,
     endpointValid:!problem, configurationError:problem ? safeModelError(Error(problem)) : null,
     canGenerate:!!(env.QL_KV && env.LLM_API_KEY && env.LLM_MODEL && !problem) && env.AI_ENABLED !== 'off',
-    lastDiagnostic, note:'Configuration presence and the last provider attempt do not prove a valid generated answer.' };
+    lastDiagnostic, pdfSignedLink:env.PDF_SIGNED_LINK === 'true', note:'Configuration presence and the last provider attempt do not prove a valid generated answer.' };
 }
 async function reserveModelAttempt(env) {
   // KV is eventually consistent: this is a soft daily attempt limit, not an atomic billing cap.

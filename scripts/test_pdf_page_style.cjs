@@ -27,7 +27,11 @@ function checkPage(label, response, html) {
   assert(topbar.test(html), label + ': top bar with 心知 and ← 返回文献库 link to /?mode=library');
   assert(html.indexOf('class="topback"') < html.indexOf('<main>'), label + ': top bar precedes main');
   assert(!html.includes('<main style='), label + ': no inline main styles');
-  assert(/<main><h1>[^<]+<\/h1>[\s\S]*<p class="back"><a href="[^"]+">[^<]+<\/a><\/p><\/main>/.test(html), label + ': h1, body, pdfBackLinks order kept');
+  assert(/<main><h1>[^<]+<\/h1>[\s\S]*<\/main>/.test(html), label + ': h1 then body inside main');
+  // The library link appears once, in the top bar; only a link to the specific paper may follow the body.
+  assert.equal((html.match(/返回文献库/g) || []).length, 1, label + ': exactly one 返回文献库 link (top bar)');
+  const back = /<p class="back"><a href="([^"]+)">([^<]+)<\/a><\/p><\/main>/.exec(html);
+  if (back) assert.equal(back[2], '回到网站查看这篇文献', label + ': a bottom link may only point at the specific paper');
 
   // Nothing external, nothing executable.
   const css = /<style>([\s\S]*?)<\/style>/.exec(html)[1];

@@ -482,11 +482,20 @@ async function handleFulltext(request, env) {
   let doi = '';
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
-    if (request.method === 'GET') return libraryForm(doi, '/api/fulltext');
+    if ((parsed.link || parsed.linkToken !== null) && !pdfLinkEnabled(env)) pdfFail('pdf_link_disabled', 404); // before any passphrase or secret is read
+    if (request.method === 'GET') {
+      if (parsed.linkToken === null) return libraryForm(doi, '/api/fulltext');
+      await pdfLinkVerify(env, 'ft', doi, parsed.linkToken); // A valid link stands in for the passphrase, for this one DOI only.
+      libraryConfig(env);
+      const linked = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), linkedPaper = libraryPaper(linked, doi);
+      if (!linkedPaper || linkedPaper.fulltextStatus !== 'available') libraryFail('library_not_found', 404);
+      return libraryPdfResponse(linkedPaper, await libraryStoredPdf(env.QL_KV, linked));
+    }
     if (request.method !== 'POST') libraryFail('library_method', 405);
     await libraryAuthorize(request, env, parsed.url); libraryConfig(env);
     const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
     if (!paper || paper.fulltextStatus !== 'available') libraryFail('library_not_found', 404);
+    if (parsed.link) return await pdfLinkIssue(env, 'ft', doi, '/api/fulltext?doi=' + encodeURIComponent(doi)); // Read-only: issues a link, reads no PDF.
     const bytes = await libraryStoredPdf(env.QL_KV, record);
     return libraryPdfResponse(paper, bytes);
   } catch (error) { return libraryError(request, error, doi, '/api/fulltext'); }

@@ -323,11 +323,88 @@
   // Sidebar Filter Reset buttons
 
   // Global Document Clicks Delegation
+  // 卡片内口令下载：服务端 /api/ai?task=status 返回 pdfSignedLink:true 才启用；默认 false，此时「下载 PDF」照旧新开标签。
+  let PDF_SIGNED_LINK = false;
+  const DL_MSG = {
+    invalid: '口令不正确，请重新输入。',
+    limited: '口令错误次数过多，请一小时后再试。',
+    network: '网络异常，请稍后重试。',
+    other: '暂时无法下载，请稍后重试，或到官网原文获取。',
+    empty: '请输入全文口令。'
+  };
+  function dlSetBusy(form, busy, label) {
+    const input = form.querySelector('input[name="passphrase"]'), btn = form.querySelector('button[type="submit"]');
+    if (input) input.disabled = busy;
+    if (btn) { btn.disabled = busy; btn.textContent = label; }
+    form.classList.toggle('is-busy', busy);
+    if (busy) form.setAttribute('aria-busy', 'true'); else form.removeAttribute('aria-busy');
+  }
+  // 提交口令换取签名链接：口令只放在 POST 正文里，不写 console / localStorage / URL。
+  async function submitDownloadForm(form) {
+    if (form.dataset.busy === '1') return;
+    const link = dlLinkFor(form), input = form.querySelector('input[name="passphrase"]'), err = form.querySelector('.ft-error');
+    const showError = msg => { if (err) err.textContent = msg; };
+    const passphrase = input ? input.value : '';
+    showError('');
+    if (!passphrase.trim()) { showError(DL_MSG.empty); if (input) input.focus(); return; }
+    const href = link ? (link.getAttribute('href') || '') : '';
+    if (!/^\/api\/(pdf|fulltext)\?/.test(href)) { showError(DL_MSG.other); return; }
+    form.dataset.busy = '1';
+    dlSetBusy(form, true, '正在验证口令…');
+    const restore = () => { delete form.dataset.busy; dlSetBusy(form, false, DL_BTN_LABEL); };
+    const fail = msg => { restore(); showError(msg); if (input) input.focus(); };
+    let status = 0, data = null;
+    try {
+      const resp = await fetch(href + '&link=1', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+        body: 'passphrase=' + encodeURIComponent(passphrase),
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      status = resp.status;
+      data = await resp.json().catch(() => null);
+    } catch (e) { data = null; }
+    if (!data || typeof data !== 'object') { fail(DL_MSG.network); return; }
+    if (data.ok === true) {
+      const url = typeof data.url === 'string' ? data.url : '';
+      if (!/^\/api\/(pdf|fulltext)\?/.test(url)) { fail(DL_MSG.other); return; }
+      if (input) input.value = '';
+      dlSetBusy(form, true, '正在取回 PDF…');
+      location.assign(url);
+      setTimeout(() => { resetDlForm(form); showToast('已开始下载'); }, 2000);
+      return;
+    }
+    const code = typeof data.error === 'string' ? data.error : '';
+    if (code === 'pdf_link_disabled') {
+      // 服务端关闭了签名链接：退回旧行为，新开标签到服务端口令页。
+      PDF_SIGNED_LINK = false;
+      resetDlForm(form);
+      window.open(href, '_blank', 'noopener');
+      return;
+    }
+    if (code === 'pdf_rate_limited' || status === 429) { fail(DL_MSG.limited); return; }
+    if (code === 'pdf_passphrase_invalid' || code === 'library_passphrase_invalid' || status === 403) { fail(DL_MSG.invalid); return; }
+    fail(DL_MSG.other);
+  }
   document.addEventListener('submit', e => {
+    const dlForm = e.target.closest && e.target.closest('form[data-ft-dl-form]');
+    if (dlForm) { e.preventDefault(); submitDownloadForm(dlForm); return; }
     const form = e.target.closest && e.target.closest('form[data-ft-form]');
     if (form) { e.preventDefault(); submitFulltextForm(form); }
   });
   document.addEventListener('click', e => {
+    const dl = e.target.closest('a[data-ft-download]');
+    if (dl && PDF_SIGNED_LINK && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) {
+      const dlForm = dlFormFor(dl);
+      if (dlForm) {
+        e.preventDefault();
+        if (dlForm.dataset.busy === '1') return;
+        if (dlForm.hidden) { dlForm.hidden = false; dlForm.querySelector('input')?.focus(); }
+        else resetDlForm(dlForm);
+        return;
+      }
+    }
     const ft = e.target.closest('[data-ft-action]');
     if (ft) {
       const doi = exactDoi(ft.dataset.doi), box = ft.closest('[data-ft-doi]') || ft.parentElement;
@@ -633,8 +710,8 @@
   window.addEventListener('pageshow', event => { if (event.persisted) refreshLibraryAfterReturn(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && doiJobActive(DOI_JOBS.get(exactDoi(state.search)))) lookupSupplementalDoi(exactDoi(state.search), true); });
   aiRequest('/api/ai?task=status', { headers: { accept: 'application/json' } })
-    .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
-    .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
+    .then(j => { AI_AVAIL = !!(j && j.canGenerate); PDF_SIGNED_LINK = !!(j && j.pdfSignedLink === true); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
+    .catch(() => { AI_AVAIL = false; PDF_SIGNED_LINK = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
 
   if (state.mode === 'weekly' && urlParams.get('read')) openDeepReading(urlParams.get('read'), { push: false });
 
