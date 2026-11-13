@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import build_public as builder
+import pdf_identity
 import apply_public_library as snapshot_apply
 import sync_public_library as library_sync
 from package_release import PUBLIC, public_payloads
@@ -51,6 +52,7 @@ def synthetic_root(root):
         'editorial/source_checked_drafts.json': {'articles': []},
     }.items():
         (root / name).write_text(json.dumps(data))
+    (root / 'config/pdf_index_keys.json').write_text(json.dumps(pdf_identity.build_snapshot([])))
     write_public_library_fixture(root)
 
 

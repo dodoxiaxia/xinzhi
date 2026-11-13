@@ -25,10 +25,32 @@ AGENTIC_FRAGMENT = ('The rise of the agentic AI colleague Artificial intelligenc
                     'evolving into of standardised data and the persistence of “information')
 AGENTIC_OLD_DOIS = {
     AGENTIC_IDS[0]: '10.1038/s41551-', AGENTIC_IDS[1]: '10.1016/j.landig.2025'}
+# Reviewed 2026-11-13: records that are the same article as a canonical record. Each
+# entry pins the duplicate's exact public title and the canonical record's DOI; if either
+# changed the build holds instead of guessing. The duplicate stays in the approved snapshot
+# (never deleted) and is only left out of the public list, recorded in audit['aliases'].
+DUPLICATES = {
+    '3bcf52b03b3bfd64': ('ffeb47ca0a734600', '10.1001/jama.2026.0946',
+                         'AI IN MEDICINE The Lost Aura of the Physician in the Age of Artificial Intelligence'),
+    '4fe78ed54cf5523d': ('77f5287fc55d4220', '10.1016/j.landig.2025.100916',
+                         'Evaluation of performance measures in predictive artificial intelligence models '
+                         'to support medical decisions: overview'),
+    '891a0ca9ca481407': ('ba5cc383031aa08f', '10.1016/j.landig.2025.100922',
+                         'Physician input improves generative artificial intelligence models\u2019 diagnostic '
+                         'performance in solving complex clinical'),
+    '37cb5c6f96b8b0f5': ('3b51e13dda54492e', '10.1016/j.landig.2025.100960',
+                         'Large language models for simplifying radiology reports: a systematic review and '
+                         'meta-analysis of patient, public,'),
+}
 ONLINE_CORRECTIONS = {
     'a76a3fd5e0e70fd7': ('10.3760/cma.j.cn112139-20260730-00329', '42765414', '2026-09-21'),
     '47e6d48cc22b6000': ('10.3760/cma.j.cn112139-20260603-00245', '42765408', '2026-09-21'),
     'a762c60c31fbd3e2': ('10.1038/s41746-026-03312-y', '', '2026-09-26'),
+}
+# Records whose public title and DOI name different articles: keep them listed but never
+# bind a PDF, because a DOI match would serve the other article (reviewed 2026-11-13).
+PDF_BINDING_HOLDS = {
+    '37cb5c6f96b8b0f5': 'registered_doi_identifies_unrelated_landig_article',
 }
 DOI_REVIEW = {
     '93b958551c8bf865': {
@@ -204,6 +226,18 @@ def project_public_library(papers):
                                      'status': 'public_bibliographic_duplicate',
                                      'evidenceUrl': canonical['bibliographicEvidenceUrl']})
             del by_id[alias['id']]
+    for identifier, (canonical_id, canonical_doi, title) in DUPLICATES.items():
+        duplicate = by_id.get(identifier)
+        if duplicate is None:
+            continue
+        canonical = by_id.get(canonical_id)
+        if (canonical is None or duplicate.get('title') != title
+                or normalize_doi(canonical.get('doi', '')) != canonical_doi):
+            _hold('duplicate_identity_changed')
+        audit['aliases'].append({'record': _audit(duplicate), 'canonicalId': canonical_id,
+                                 'status': 'public_bibliographic_duplicate',
+                                 'evidenceUrl': 'https://doi.org/' + canonical_doi})
+        del by_id[identifier]
     for identifier, (doi, pmid, date) in ONLINE_CORRECTIONS.items():
         paper = by_id.get(identifier)
         if paper is None:
@@ -231,6 +265,7 @@ def project_public_library(papers):
     result = sorted(by_id.values(), key=lambda p: (p.get('date') or '', p['id']), reverse=True)
     result, audit['doiReview'], holds = reviewed_doi_projection(result)
     audit['pdfBindingHoldIds'].extend(holds)
+    audit['pdfBindingHoldIds'].extend(i for i in PDF_BINDING_HOLDS if i in by_id and i not in audit['pdfBindingHoldIds'])
     result.sort(key=lambda p: (p.get('date') or '', p['id']), reverse=True)
     audit['outputCount'] = len(result)
     audit['withoutDoiOrUrlBefore'] = sum(not p.get('doi') and not p.get('url') for p in papers)

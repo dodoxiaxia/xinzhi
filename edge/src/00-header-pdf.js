@@ -56,6 +56,18 @@ const pdfDoi = value => {
 // Unicode case-fold exceptions after toLowerCase; titles are matched exactly, never fuzzily.
 const PDF_CASE_FOLD = {"µ":"μ","ß":"ss","ŉ":"ʼn","ſ":"s","ǰ":"ǰ","ͅ":"ι","ΐ":"ΐ","ΰ":"ΰ","ς":"σ","ϐ":"β","ϑ":"θ","ϕ":"φ","ϖ":"π","ϰ":"κ","ϱ":"ρ","ϵ":"ε","և":"եւ","ꭰ":"Ꭰ","ꭱ":"Ꭱ","ꭲ":"Ꭲ","ꭳ":"Ꭳ","ꭴ":"Ꭴ","ꭵ":"Ꭵ","ꭶ":"Ꭶ","ꭷ":"Ꭷ","ꭸ":"Ꭸ","ꭹ":"Ꭹ","ꭺ":"Ꭺ","ꭻ":"Ꭻ","ꭼ":"Ꭼ","ꭽ":"Ꭽ","ꭾ":"Ꭾ","ꭿ":"Ꭿ","ꮀ":"Ꮀ","ꮁ":"Ꮁ","ꮂ":"Ꮂ","ꮃ":"Ꮃ","ꮄ":"Ꮄ","ꮅ":"Ꮅ","ꮆ":"Ꮆ","ꮇ":"Ꮇ","ꮈ":"Ꮈ","ꮉ":"Ꮉ","ꮊ":"Ꮊ","ꮋ":"Ꮋ","ꮌ":"Ꮌ","ꮍ":"Ꮍ","ꮎ":"Ꮎ","ꮏ":"Ꮏ","ꮐ":"Ꮐ","ꮑ":"Ꮑ","ꮒ":"Ꮒ","ꮓ":"Ꮓ","ꮔ":"Ꮔ","ꮕ":"Ꮕ","ꮖ":"Ꮖ","ꮗ":"Ꮗ","ꮘ":"Ꮘ","ꮙ":"Ꮙ","ꮚ":"Ꮚ","ꮛ":"Ꮛ","ꮜ":"Ꮜ","ꮝ":"Ꮝ","ꮞ":"Ꮞ","ꮟ":"Ꮟ","ꮠ":"Ꮠ","ꮡ":"Ꮡ","ꮢ":"Ꮢ","ꮣ":"Ꮣ","ꮤ":"Ꮤ","ꮥ":"Ꮥ","ꮦ":"Ꮦ","ꮧ":"Ꮧ","ꮨ":"Ꮨ","ꮩ":"Ꮩ","ꮪ":"Ꮪ","ꮫ":"Ꮫ","ꮬ":"Ꮬ","ꮭ":"Ꮭ","ꮮ":"Ꮮ","ꮯ":"Ꮯ","ꮰ":"Ꮰ","ꮱ":"Ꮱ","ꮲ":"Ꮲ","ꮳ":"Ꮳ","ꮴ":"Ꮴ","ꮵ":"Ꮵ","ꮶ":"Ꮶ","ꮷ":"Ꮷ","ꮸ":"Ꮸ","ꮹ":"Ꮹ","ꮺ":"Ꮺ","ꮻ":"Ꮻ","ꮼ":"Ꮼ","ꮽ":"Ꮽ","ꮾ":"Ꮾ","ꮿ":"Ꮿ","ᏸ":"Ᏸ","ᏹ":"Ᏹ","ᏺ":"Ᏺ","ᏻ":"Ᏻ","ᏼ":"Ᏼ","ᏽ":"Ᏽ","ᲀ":"в","ᲁ":"д","ᲂ":"о","ᲃ":"с","ᲄ":"т","ᲅ":"т","ᲆ":"ъ","ᲇ":"ѣ","ᲈ":"ꙋ","ẖ":"ẖ","ẗ":"ẗ","ẘ":"ẘ","ẙ":"ẙ","ẚ":"aʾ","ẛ":"ṡ","ὐ":"ὐ","ὒ":"ὒ","ὔ":"ὔ","ὖ":"ὖ","ᾀ":"ἀι","ᾁ":"ἁι","ᾂ":"ἂι","ᾃ":"ἃι","ᾄ":"ἄι","ᾅ":"ἅι","ᾆ":"ἆι","ᾇ":"ἇι","ᾐ":"ἠι","ᾑ":"ἡι","ᾒ":"ἢι","ᾓ":"ἣι","ᾔ":"ἤι","ᾕ":"ἥι","ᾖ":"ἦι","ᾗ":"ἧι","ᾠ":"ὠι","ᾡ":"ὡι","ᾢ":"ὢι","ᾣ":"ὣι","ᾤ":"ὤι","ᾥ":"ὥι","ᾦ":"ὦι","ᾧ":"ὧι","ᾲ":"ὰι","ᾳ":"αι","ᾴ":"άι","ᾶ":"ᾶ","ᾷ":"ᾶι","ι":"ι","ῂ":"ὴι","ῃ":"ηι","ῄ":"ήι","ῆ":"ῆ","ῇ":"ῆι","ῒ":"ῒ","ΐ":"ΐ","ῖ":"ῖ","ῗ":"ῗ","ῢ":"ῢ","ΰ":"ΰ","ῤ":"ῤ","ῦ":"ῦ","ῧ":"ῧ","ῲ":"ὼι","ῳ":"ωι","ῴ":"ώι","ῶ":"ῶ","ῷ":"ῶι","ﬀ":"ff","ﬁ":"fi","ﬂ":"fl","ﬃ":"ffi","ﬄ":"ffl","ﬅ":"st","ﬆ":"st","ﬓ":"մն","ﬔ":"մե","ﬕ":"մի","ﬖ":"վն","ﬗ":"մխ"};
 const pdfTitle = value => Array.from(String(value || '').trim().replace(/\s+/gu, ' ').toLowerCase(), char => PDF_CASE_FOLD[char] || char).join('');
+// Known publisher column labels that scraped titles carry in front of the real title (uppercase, followed by one space).
+// Keep this list identical in effect to scripts/pdf_identity.py, which reads it from this file; the title that is left must still match exactly one index row.
+const PDF_COLUMN_PREFIXES = ["AI IN MEDICINE"];
+// Optional index column that tells the article itself apart from supplements and translations.
+// scripts/pdf_identity.py reads both constants from this file; old indexes without the column keep the old rules.
+const PDF_CATEGORY_COLUMN = "文件类别";
+const PDF_CATEGORY_MAIN = "正文";
+const pdfTitleKey = value => {
+  const raw = String(value || '').trim().replace(/\s+/gu, ' ');
+  for (const prefix of PDF_COLUMN_PREFIXES) if (raw.startsWith(prefix + ' ') && raw.length > prefix.length + 1) return pdfTitle(raw.slice(prefix.length + 1));
+  return pdfTitle(raw);
+};
 const pdfEscape = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 // Hamburg institutional access is the maintainer's own login: pages show it only to browsers
 // that turned on maintainer mode (?maintainer=1 sets the xz_maintainer cookie).
@@ -83,8 +95,45 @@ function pdfBackLinks(doi) {
   const exact = libraryDoi(doi);
   return exact ? '<p class="back"><a href="/?mode=library&amp;q=' + pdfEscape(encodeURIComponent(exact)) + '">回到网站查看这篇文献</a></p>' : '<p class="back"><a href="/?mode=library">返回文献库</a></p>';
 }
+// Fallback pages must stay self-contained (CSP: default-src 'none'; style-src 'unsafe-inline'),
+// so the main site's style.css tokens (:root and [data-theme="dark"]) are copied here as literals.
+const PDF_PAGE_CSS = [
+  ':root{color-scheme:light dark;--bg-primary:#f5f2ea;--bg-secondary:#ece8dd;--bg-card:#fffdf8;--border:#ddd6c6;--border-subtle:#c9c1ae;',
+  '--text-primary:#1f1c17;--text-secondary:#4d483f;--text-muted:#7a7466;--accent:#9b2335;--accent-hover:#7e1a29;--accent-light:#f3e2df;--on-accent:#fffdf8;',
+  '--emerald:#2f6b57;--amber:#8a5a12;--shadow-md:0 8px 24px -12px rgba(31,28,23,.25);',
+  '--font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans SC","Source Han Sans SC","Hiragino Sans GB","Microsoft YaHei UI","Microsoft YaHei",sans-serif}',
+  '@media (prefers-color-scheme:dark){:root{--bg-primary:#14120f;--bg-secondary:#1c1a16;--bg-card:#1a1814;--border:#2f2b24;--border-subtle:#443f34;',
+  '--text-primary:#ece6d8;--text-secondary:#c2bba9;--text-muted:#908977;--accent:#e0707a;--accent-hover:#f08c94;--accent-light:rgba(224,112,122,.14);--on-accent:#14120f;',
+  '--emerald:#6fb59a;--amber:#d9a84c;--shadow-md:0 8px 24px -12px rgba(0,0,0,.7)}}',
+  'html{-webkit-text-size-adjust:100%}',
+  'body{margin:0;padding:0 16px;background:var(--bg-primary);color:var(--text-primary);font:16px/1.7 var(--font-sans);-webkit-font-smoothing:antialiased}',
+  '.topbar{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:.75rem;max-width:42rem;margin:0 auto;padding:.75rem 0}',
+  '.topbar .site{font-size:1.4rem;font-weight:700;letter-spacing:.02em;line-height:1.2;color:var(--accent)}',
+  'a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hover);text-decoration:underline;text-underline-offset:3px}',
+  'a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}',
+  '.topbar a.topback{display:inline-flex;align-items:center;box-sizing:border-box;min-height:44px;padding:0 .9rem;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);font-weight:600;white-space:nowrap}',
+  '.topbar a.topback:hover{border-color:var(--accent);text-decoration:none}',
+  'main{box-sizing:border-box;max-width:42rem;margin:0 auto 2rem;padding:1.5rem 1.5rem 1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-md);overflow-wrap:anywhere}',
+  'h1{font-size:1.5rem;line-height:1.3;margin:0 0 1rem;color:var(--text-primary)}',
+  'main p,main li{overflow-wrap:anywhere;color:var(--text-primary)}',
+  'label{display:inline-block;margin-bottom:.25rem;font-weight:600;color:var(--text-secondary)}',
+  'p.back a,main>p>a:only-child:not(.primary),main p>a[target=_blank]{display:inline-block;box-sizing:border-box;min-height:44px;padding:.6rem .15rem;line-height:1.7}',
+  'input[type=password],input[type=text],input[type=search],input[type=email],input[type=url],select,textarea{box-sizing:border-box;width:100%;min-height:44px;padding:.55rem .75rem;font:inherit;font-size:16px;line-height:1.4;color:var(--text-primary);background:var(--bg-primary);border:1px solid var(--border-subtle);border-radius:8px}',
+  'input[type=password]:focus,input[type=text]:focus,input[type=search]:focus,input[type=email]:focus,input[type=url]:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}',
+  'a.primary,button.primary,form>button[type=submit]{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;padding:.55rem 1.2rem;border:0;border-radius:8px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:16px;font-weight:600;line-height:1.4;text-decoration:none;cursor:pointer}',
+  'a.primary:hover,button.primary:hover,form>button[type=submit]:hover{background:var(--accent-hover);color:var(--on-accent);text-decoration:none}',
+  'ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:var(--emerald)}ol.steps .stop{color:var(--amber)}',
+  '.next{border-left:3px solid var(--border-subtle);padding:.2rem .8rem;color:var(--text-secondary)}',
+  '.paper-title{font-weight:600;color:var(--text-primary)}',
+  '.status{border-left:3px solid var(--accent);padding:.2rem .8rem;background:var(--bg-secondary);border-radius:0 8px 8px 0}',
+  '.hint,.maint{color:var(--text-muted);font-size:.9rem}',
+  'main [role=alert]{color:var(--accent);font-weight:600}',
+  'main div[role=status]{padding:.2rem .8rem;background:var(--bg-secondary);border-radius:8px;color:var(--text-secondary);font-size:.9rem}',
+  '@media (max-width:480px){body{padding:0 12px}.topbar{padding:.5rem 0}main{padding:1rem 1rem .5rem}h1{font-size:1.35rem}',
+  'a.primary,button.primary,form>button[type=submit]{display:flex;width:100%}}'
+].join('');
 function pdfHtml(body, status = 200, heading = 'PDF 下载', doi = '') {
-  return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>心知 · ' + pdfEscape(heading) + '</title><style>body{margin:0}main{box-sizing:border-box}h1{font-size:1.5rem;line-height:1.3;margin:0 0 1rem}main p,main li{overflow-wrap:anywhere}main a{color:#1d4f91}p.back a,main>p>a:only-child:not(.primary){display:inline-block;padding:.65rem .15rem;min-height:1.5rem}input[type=password]{box-sizing:border-box;width:100%;min-height:44px;padding:0 .75rem;font:inherit;border:1px solid #94a3b8;border-radius:8px}a.primary,button.primary,form>button[type=submit]{min-height:44px;box-sizing:border-box}ol.steps{padding-left:1.4rem}ol.steps li[aria-current]{font-weight:600}ol.steps .done{color:#2f6f3e}ol.steps .stop{color:#9a3412}.next{border-left:3px solid #94a3b8;padding:.2rem .8rem;color:#334155}.paper-title{font-weight:600}.status{border-left:3px solid #1d4f91;padding:.2rem .8rem;background:#f1f5f9}.hint,.maint{color:#475569;font-size:.9rem}a.primary,button.primary,form>button[type=submit]{display:inline-block;padding:.55rem 1.2rem;border:0;border-radius:8px;background:#1d4f91;color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}</style><body><main style="max-width:42rem;margin:clamp(1rem,8vh,6rem) auto;padding:0 1.25rem 2rem;font:16px/1.7 system-ui,sans-serif"><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
+  return new Response('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>心知 · ' + pdfEscape(heading) + '</title><style>' + PDF_PAGE_CSS + '</style></head><body><header class="topbar"><span class="site">心知</span><a class="topback" href="/?mode=library">← 返回文献库</a></header><main><h1>' + pdfEscape(heading) + '</h1>' + body + pdfBackLinks(doi) + '</main></body></html>', {
     status, headers:{ 'content-type':'text/html; charset=utf-8', 'cache-control':'no-store', 'x-content-type-options':'nosniff', 'referrer-policy':'same-origin', 'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" }
   });
 }
@@ -328,6 +377,13 @@ function pdfSafePath(value) {
   if (typeof value !== 'string' || !value || value !== value.trim() || value.length > 1024 || /[\\\x00-\x1f\x7f]/.test(value) || value.startsWith('/') || value.split('/').some(part => !part || part === '.' || part === '..') || value.split('/')[0].includes(':') || !/\.pdf$/i.test(value)) pdfFail('pdf_index_invalid');
   return value;
 }
+// Once any matched row carries a file category, only rows marked as the main text count;
+// supplements, translations, blank and unknown categories are ignored. No category anywhere keeps all rows.
+function pdfSelectRows(matching) {
+  const category = row => String(row[PDF_CATEGORY_COLUMN] || '').trim();
+  if (!matching.some(row => category(row))) return matching;
+  return matching.filter(row => category(row) === PDF_CATEGORY_MAIN);
+}
 const pdfContentsUrl = (path, commit) => 'https://api.github.com/repos/' + PDF_REPOSITORY + '/contents/' + path.split('/').map(encodeURIComponent).join('/') + '?ref=' + commit;
 const pdfRawPath = (path, commit) => '/' + PDF_REPOSITORY + '/' + commit + '/' + path;
 async function pdfDigest(algorithm, bytes) {
@@ -428,7 +484,7 @@ async function handlePdf(request, env) {
     const identity = PDF_LIBRARY[id];
     const declaredDoi = typeof identity === 'string' ? identity : identity && identity.doi;
     doi = pdfDoi(declaredDoi);
-    const title = typeof identity === 'object' && identity ? pdfTitle(identity.title) : '';
+    const title = typeof identity === 'object' && identity ? pdfTitleKey(identity.title) : '';
     if ((declaredDoi && !doi) || (!doi && !title)) pdfFail('pdf_not_found', 404);
     if (request.method === 'GET') return pdfPassphraseForm(id, doi);
     const fetchSite = request.headers.get('sec-fetch-site');
@@ -457,10 +513,14 @@ async function handlePdf(request, env) {
     commit = commit.toLowerCase();
     const entries = pdfCsv(await pdfRead(pdfContentsUrl(PDF_INDEX_PATH, commit), PDF_MAX_INDEX_BYTES, { token,diagnostic,stage:'index',accept:'application/vnd.github.raw+json', rawPath:pdfRawPath(PDF_INDEX_PATH, commit) }));
     if (diagnostic) diagnostic.reason = 'identity';
-    const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitle(entry['题名']) === title);
+    const matching = entries.filter(entry => doi ? pdfDoi(entry.DOI) === doi : pdfTitleKey(entry['题名']) === title);
     if (!matching.length) pdfFail('pdf_not_found', 404);
-    if (matching.length !== 1) pdfFail('pdf_ambiguous', 409);
-    const entry = matching[0], path = pdfSafePath(entry['当前路径']);
+    // A supplement or translation is never sent as the article: no main-text row left means ambiguous.
+    const selected = pdfSelectRows(matching);
+    if (!selected.length) pdfFail('pdf_ambiguous', 409);
+    // Several rows that carry the same valid SHA-256 are one file registered more than once; different checksums stay ambiguous.
+    if (selected.length !== 1 && (!/^[a-f0-9]{64}$/.test(String(selected[0].SHA256 || '').trim().toLowerCase()) || selected.some(row => String(row.SHA256 || '').trim().toLowerCase() !== String(selected[0].SHA256 || '').trim().toLowerCase()))) pdfFail('pdf_ambiguous', 409);
+    const entry = selected[0], path = pdfSafePath(entry['当前路径']);
     const checksum = entry.SHA256.trim().toLowerCase();
     if (!/^[a-f0-9]{64}$/.test(checksum)) pdfFail('pdf_index_invalid');
     const endpoint = pdfContentsUrl(path, commit);

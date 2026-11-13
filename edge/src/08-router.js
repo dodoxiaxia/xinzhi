@@ -2,12 +2,19 @@
 export default {
   async fetch(request, env, ctx) {
     pdfArchiveBind(env);
+    const startedAt = Date.now();
+    let response;
     try {
-      const response = await routeRequest(request, env);
-      return new URL(request.url).pathname.startsWith('/api/') ? await hideInstitutionLinks(request, response) : response;
+      response = await routeRequest(request, env);
+      if (new URL(request.url).pathname.startsWith('/api/')) response = await hideInstitutionLinks(request, response);
+    } catch (error) {
+      metricsRecord(request, env, ctx, null, startedAt, true);
+      throw error;
     } finally {
       pdfArchiveFlush(env, ctx);
     }
+    metricsRecord(request, env, ctx, response, startedAt, false);
+    return response;
   }
 };
 

@@ -10,6 +10,20 @@
 
 服务端只接受现有文献库中的 ID，按 DOI 精确匹配；无 DOI 时仅接受唯一的完全相同题名（忽略大小写和连续空白），不用模糊匹配。有 DOI 的条目不回退到题名。索引和单篇 PDF 固定在同一 GitHub commit。匹配歧义、异常校验记录、非 PDF 或缺少全文时拒绝下载并提示官网入口。下载响应为 `application/pdf` 与 attachment，支持中文文件名，并禁止缓存。
 
+2026-11-13 起，下载按钮和 Worker 的 ID 白名单只给“在索引里恰好对上 1 个可用文件”的文献（同一 SHA256 的多行视为同一文件）：构建读取仓库内的 `config/pdf_index_keys.json`（索引每行 DOI 与题名的哈希，不含题名、路径和校验值，构建本身没有访问 AI- 的权限，也没有新增 Secret），对上才在 `LIBRARY.pdfIds` 里列出该 ID。对不上的文献不出按钮，原来点开才报“暂未提供可下载的 PDF”或“对应关系需要核验”。题名比对另外忽略一份明确列出的栏目前缀（`edge/src/00-header-pdf.js` 的 `PDF_COLUMN_PREFIXES`，目前只有 `AI IN MEDICINE`：全大写、后接一个空格才会去掉），去掉后仍须唯一匹配；Python 端 `scripts/pdf_identity.py` 直接读取同一份常量，`test_public_build.py` 用 node 逐项对照两端的归一化结果。AI- 索引新增 PDF 后，维护者在有 AI- 读权限的 `gh` 登录下运行 `python3 scripts/refresh_pdf_index_keys.py` 更新快照并走 PR；快照超过 14 天构建日志会提醒，新入库的文件在刷新前没有按钮（服务端本身仍读取最新索引）。
+
+### 「文件类别」列
+
+AI- 索引可以带一列「文件类别」，取值为“正文”“补充材料”“译本”；其他值或空表示未判定。这一列是可选的，旧索引没有它也照常使用（Worker 的必需列检查不含它）。按 DOI 或题名规则匹配出的行按下面的规则选文件（单元格首尾空白忽略）：
+
+1. 匹配出的行「文件类别」全部为空，或索引没有这一列：完全按原规则处理（唯一一行，或多行但 SHA256 相同）。
+2. 只要其中任何一行「文件类别」非空，就只取类别恰好为“正文”的行：取到一行，或多行但 SHA256 完全相同，就下载它，其余行（补充材料、译本、空、未知值如“待定”）一律忽略；没有任何“正文”行，或多个“正文”行 SHA256 不同，仍返回 409 `pdf_ambiguous`。
+3. 只匹配到一行、且它的类别非空又不是“正文”，也返回 409 `pdf_ambiguous`，不会把补充材料或译本当成文章正文发出。只匹配到一行且类别为空或为“正文”，照旧下载。
+
+列名和“正文”取值是 `edge/src/00-header-pdf.js` 的 `PDF_CATEGORY_COLUMN`、`PDF_CATEGORY_MAIN`，选行逻辑在 `pdfSelectRows`。`scripts/pdf_identity.py` 读取同样的常量；快照 `config/pdf_index_keys.json` 因此升为 schema 3，每行 `[doi_hash, title_hash, file_key, category]`，category 为 `''`（类别为空或无此列）、`m`（正文）或 `x`（其他类别），只接受 schema 3。`scripts/test_pdf_category_parity.py` 用同一批合成用例对照 Python 的按钮判断与 Worker 的实际下载结果，两边不一致即失败。
+
+合并顺序：先合并 AI- 仓库给索引加「文件类别」列的 PR，再用 `scripts/refresh_pdf_index_keys.py` 重新生成 schema 3 快照，并与本仓库的这次改动一起合并。本仓库的构建只接受 schema 3 快照，旧的 schema 2 快照会让构建报错停止。
+
 公开六文件包不含 PDF、GitHub 凭据、私有路径或原始索引。构建只向 Worker 注入已公开文献 ID、DOI 与题名的对应表。GitHub 文件通过服务端读取，凭据不传给浏览器。
 
 v14.1 增加独立的[按 DOI 获取与补录](DOI按需全文与补录.md)。它沿用全文口令，在已有 GitHub 文件之外尝试开放全文，并把补录题录和文件保存到受保护存储中；原有 ID 下载接口及其限制保留。补录需要现有 `QL_KV` 绑定，浏览器只收到安全题录和受保护下载入口。

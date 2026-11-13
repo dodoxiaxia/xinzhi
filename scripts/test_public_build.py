@@ -2,6 +2,7 @@ import contextlib,io,json,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 import build_public as b
+import pdf_identity as pi
 from editorial_review import content_sha256
 
 def write_legacy(root,draft,date='2026-09-29'):
@@ -244,6 +245,14 @@ class PublicBuildTests(unittest.TestCase):
    self.assertEqual(manifest['assetLimit']['failRatio'],0.90)
    self.assertEqual(manifest['assetLimit']['warnings'],[])
    self.assertIn('/shards/*',(dest/'_headers').read_text())
+   rules={};current=None
+   for line in (dest/'_headers').read_text().splitlines():
+    if line and not line[0].isspace():current=line.strip();rules[current]={}
+    elif current and ':' in line:
+     name,value=line.split(':',1);self.assertNotIn(name.strip().lower(),rules[current],current+' repeats '+name.strip());rules[current][name.strip().lower()]=value.strip()
+   for path,mime in (('/public.js','application/javascript'),('/radar.js','application/javascript'),('/feed.xml','application/xml'),('/shards/*','application/javascript')):
+    self.assertEqual(rules[path]['content-type'],mime+'; charset=utf-8',path)
+   self.assertEqual(rules['/shards/*']['cache-control'],'public, max-age=31536000, immutable')
  def test_oversized_asset_stops_before_replacing_public_files(self):
   with tempfile.TemporaryDirectory() as d:
    from test_release_build import synthetic_root
@@ -253,4 +262,119 @@ class PublicBuildTests(unittest.TestCase):
    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),patch.dict(os.environ,env),self.assertRaisesRegex(ValueError,'构建停止'):
     b.main()
    self.assertEqual((dest/'public.js').read_text(),'// previous published bytes')
+ def test_download_button_only_where_exactly_one_index_row_matches(self):
+  row=lambda title,doi='',sha='a'*64,path='期刊/a.pdf':{'题名':title,'DOI':doi,'当前路径':path,'SHA256':sha}
+  rows=[row('Exact DOI paper','https://doi.org/10.1000/ONE'),row('Title only paper'),row('Twice DOI','10.1000/dup',sha='d'*64),row('Twice DOI again','10.1000/dup',sha='e'*64),
+   row('Same title'),row('Same title'),row('Registered twice','10.1000/twice'),row('Registered twice again','10.1000/TWICE',path='期刊/b.pdf'),
+   row('Twice but one unusable','10.1000/half'),row('Twice but one unusable too','10.1000/half',path='../x.pdf'),row('Twice other sha','10.1000/other'),row('Twice other sha too','10.1000/other',sha='f'*64),
+   row('Same SHA title'),row('Same SHA title',sha='A'*64),row('Diff sha title'),row('Diff sha title',sha='9'*64),row('Broken sha','10.1000/bad',sha='nothex'),row('Unsafe path','10.1000/path',path='../x.pdf'),
+   row('Column paper'),row('AI IN MEDICINE Indexed with label'),row('Wrong DOI paper','10.1001/right')]
+  snap=pi.build_snapshot(rows)
+  papers=[{'id':'doi-ok','doi':'10.1000/one','title':'whatever'},{'id':'title-ok','title':'title  ONLY paper'},{'id':'doi-dup','doi':'10.1000/dup'},
+   {'id':'title-dup','title':'Same title'},{'id':'twice-same-file','doi':'10.1000/twice'},{'id':'half-unusable','doi':'10.1000/half'},{'id':'twice-other-sha','doi':'10.1000/other'},{'id':'title-twice-same-file','title':'Same SHA title'},{'id':'title-other-sha','title':'Diff sha title'},{'id':'sha-bad','doi':'10.1000/bad'},{'id':'path-bad','doi':'10.1000/path'},
+   {'id':'prefixed','title':'AI IN MEDICINE Column paper'},{'id':'index-prefixed','title':'Indexed with label'},
+   {'id':'lowercase-label','title':'Ai in medicine Column paper'},{'id':'other-label','title':'NEWS Column paper'},
+   {'id':'wrong-doi','doi':'10.1097/acm.0000000000001323','title':'Wrong DOI paper'},{'id':'bad-doi-format','doi':'not-a-doi','title':'Title only paper'},
+   {'id':'unknown','title':'Not in the index'},{'id':'empty'},{'id':'held','doi':'10.1000/one'},{'id':'doi-title-ignored','doi':'10.1000/one','title':'Different'}]
+  self.assertEqual(pi.downloadable_ids(papers,snap,{'held'}),sorted(['doi-ok','title-ok','prefixed','index-prefixed','doi-title-ignored','twice-same-file','title-twice-same-file','title-dup']))
+ def test_prefix_removal_keeps_a_unique_match_requirement(self):
+  rows=[{'题名':'Column paper','DOI':'','当前路径':'a.pdf','SHA256':'a'*64},{'题名':'AI IN MEDICINE Column paper','DOI':'','当前路径':'b.pdf','SHA256':'b'*64}]
+  self.assertEqual(pi.downloadable_ids([{'id':'p','title':'AI IN MEDICINE Column paper'},{'id':'q','title':'Column paper'}],pi.build_snapshot(rows)),[])
+  self.assertEqual(pi.title_key('AI IN MEDICINE'),'ai in medicine')
+  self.assertEqual(pi.title_key('AI IN MEDICINE: A study'),'ai in medicine: a study')
+  self.assertEqual(pi.title_key('  AI IN MEDICINE \u3000 Will   it?'),'will it?')
+ def test_snapshot_keeps_titles_paths_and_checksums_private(self):
+  rows=[{'题名':'Very private title','DOI':'10.1000/secret','当前路径':'私有/路径.pdf','SHA256':'c'*64,'文件类别':'补充材料'}]
+  snap=pi.build_snapshot(rows)
+  self.assertEqual(snap['schema'],3);self.assertEqual(len(snap['rows'][0]),4);self.assertEqual(snap['rows'][0][3],'x')
+  text=json.dumps(snap,ensure_ascii=False)
+  for word in ('private','secret','私有','路径','c'*64,'10.1000','补充','正文'):self.assertNotIn(word,text)
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);(root/'config').mkdir()
+   with self.assertRaisesRegex(ValueError,'missing'):pi.load_snapshot(root)
+   h='0'*24
+   for bad in ({'schema':1,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},{'schema':2,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},
+     {'schema':2,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h]]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[['x','','','']]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[['','',1,'']]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h]]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,'','']]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,'正文']]},{'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,'y']]},
+     {'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,None]]},{'schema':3,'generatedOn':'later','rowCount':0,'rows':[]}):
+    (root/'config/pdf_index_keys.json').write_text(json.dumps(bad))
+    with self.assertRaises(ValueError):pi.load_snapshot(root)
+   (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)))
+   self.assertEqual(pi.load_snapshot(root)['rowCount'],1)
+   for code in ('','m','x'):
+    (root/'config/pdf_index_keys.json').write_text(json.dumps({'schema':3,'generatedOn':'2026-11-13','rowCount':1,'rows':[[h,'',h,code]]}))
+    self.assertEqual(pi.load_snapshot(root)['rows'][0][3],code)
+ def test_snapshot_category_codes_follow_the_worker_constants(self):
+  self.assertEqual((pi.CATEGORY_COLUMN,pi.CATEGORY_MAIN),('文件类别','正文'))
+  base={'题名':'t','DOI':'','当前路径':'a.pdf','SHA256':'a'*64}
+  for value,code in ((None,''),('',''),('  ',''),('正文','m'),(' 正文\u3000','m'),('补充材料','x'),('译本','x'),('待定','x'),('正文本','x')):
+   row=dict(base) if value is None else {**base,'文件类别':value}
+   self.assertEqual(pi.build_snapshot([row])['rows'][0][3],code,value)
+  csv_text='\ufeff题名,DOI,期刊,实际出版日期,日期来源,当前路径,SHA256,文件类别\r\nA,10.1000/a,j,,,a.pdf,'+'a'*64+',正文\r\nB,10.1000/a,j,,,b.pdf,'+'b'*64+',补充材料\r\n'
+  self.assertEqual(sorted(r[3] for r in pi.build_snapshot(pi.read_index_csv(csv_text.encode('utf-8')))['rows']),['m','x'])
+  old_csv='题名,DOI,期刊,实际出版日期,日期来源,当前路径,SHA256\r\nA,10.1000/a,j,,,a.pdf,'+'a'*64+'\r\n'
+  self.assertEqual(pi.build_snapshot(pi.read_index_csv(old_csv))['rows'][0][3],'')
+ def test_download_button_follows_the_file_category_rule(self):
+  def row(doi,cat=None,s='a',title='T',path=None):
+   r={'题名':title,'DOI':doi,'当前路径':path or ('期刊/'+s+'.pdf'),'SHA256':s*64}
+   if cat is not None:r['文件类别']=cat
+   return r
+  cases={
+   'c01-main-supplement':([row('10.2000/c01','补充材料','b'),row('10.2000/c01','正文','a')],True),
+   'c02-main-translation':([row('10.2000/c02','译本','b'),row('10.2000/c02','正文','a')],True),
+   'c03-two-supplements-main':([row('10.2000/c03','补充材料','b'),row('10.2000/c03','正文','a'),row('10.2000/c03','补充材料','c')],True),
+   'c04-all-blank':([row('10.2000/c04','','a'),row('10.2000/c04','','b')],False),
+   'c05-no-main':([row('10.2000/c05','补充材料','a'),row('10.2000/c05','译本','b')],False),
+   'c06-two-mains-differ':([row('10.2000/c06','正文','a'),row('10.2000/c06','正文','b')],False),
+   'c07-two-mains-same':([row('10.2000/c07','正文','a'),row('10.2000/c07','正文','a',path='期刊/other.pdf')],True),
+   'c08-single-supplement':([row('10.2000/c08','补充材料','a')],False),
+   'c09-single-main':([row('10.2000/c09','正文','a')],True),
+   'c10-main-blank':([row('10.2000/c10','','b'),row('10.2000/c10','正文','a')],True),
+   'c11a-no-column-one':([row('10.2000/c11a')],True),
+   'c11b-no-column-same':([row('10.2000/c11b'),row('10.2000/c11b')],True),
+   'c11c-no-column-differ':([row('10.2000/c11c',s='a'),row('10.2000/c11c',s='b')],False),
+   'unknown-value-main':([row('10.2000/u1','待定','b'),row('10.2000/u1','正文','a')],True),
+   'single-translation':([row('10.2000/u2','译本','a')],False),
+   'single-blank':([row('10.2000/u3','','a')],True),
+   'main-unusable':([row('10.2000/u4','补充材料','b'),row('10.2000/u4','正文','a',path='../x.pdf')],False),
+   'title-main-supplement':([row('','补充材料','b',title='Category title paper'),row('','正文','a',title='Category title paper')],True),
+   'title-single-supplement':([row('','补充材料','a',title='Lonely supplement paper')],False)}
+  rows=[r for case_rows,_ in cases.values() for r in case_rows]
+  papers=[{'id':case,'doi':case_rows[0]['DOI'],'title':case_rows[0]['题名']} for case,(case_rows,_) in cases.items()]
+  # A DOI paper never falls back to the title, even when the title has a main-text row.
+  papers.append({'id':'doi-first','doi':'10.2000/c08','title':'Category title paper'})
+  self.assertEqual(pi.downloadable_ids(papers,pi.build_snapshot(rows)),sorted(case for case,(_,expected) in cases.items() if expected))
+ def test_committed_snapshot_is_valid_and_complete(self):
+  snap=pi.load_snapshot(Path(__file__).resolve().parents[1])
+  self.assertEqual(snap['schema'],3)
+  self.assertGreater(snap['rowCount'],1000)
+  self.assertTrue(all(r[2] for r in snap['rows']))
+ def test_python_and_worker_normalise_identically(self):
+  import shutil,subprocess
+  node=shutil.which('node')
+  if not node:self.skipTest('node is not installed')
+  worker=(Path(__file__).resolve().parents[1]/'edge/src/00-header-pdf.js').read_text(encoding='utf-8')
+  start,end=worker.index('const pdfDoi = '),worker.index('const pdfEscape = ')
+  samples=['AI IN MEDICINE Will Autonomous AI?','AI IN MEDICINE  Two  spaces','AI IN MEDICINE','AI IN MEDICINE: colon','ai in medicine lower',' \u00a0AI IN MEDICINE\u3000Nbsp title\ufeff',
+   'Straße ΣΊΣΥΦΟΣ ŉ ǰ','İstanbul ǅ','Tabs\tand\nnewlines','中文题名 AI IN MEDICINE','','  ','https://doi.org/10.1001/JAMA.2026.1','doi: 10.1000/x y','10.1000/'+'a'*201,'10.123/short','DOI:10.1001/ok']
+  script=worker[start:end]+'\nconst samples=JSON.parse(process.argv[1]);console.log(JSON.stringify(samples.map(v=>[pdfDoi(v),pdfTitle(v),pdfTitleKey(v)])));'
+  out=subprocess.run([node,'-e',script,json.dumps(samples)],capture_output=True,text=True,check=True).stdout
+  self.assertEqual(json.loads(out),[[pi.pdf_doi(v),pi.pdf_title(v),pi.title_key(v)] for v in samples])
+ def test_build_lists_download_ids_and_restricts_worker_allowlist(self):
+  from test_release_build import synthetic_root
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir()
+   rows=[{'题名':'Synthetic clinical trial','DOI':'10.1234/synthetic','当前路径':'a.pdf','SHA256':'a'*64}]
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),contextlib.redirect_stdout(io.StringIO()):
+    (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot([])));b.main()
+    bundle=(dest/'public.js').read_text();worker=(dest/'_worker.js').read_text()
+    self.assertIn('"pdfIds":[]',bundle);self.assertIn('const PDF_LIBRARY = {};',worker)
+    for f in dest.iterdir():
+     if f.is_file():f.unlink()
+    (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)));b.main()
+    bundle=(dest/'public.js').read_text();worker=(dest/'_worker.js').read_text()
+    ids=json.loads(bundle[bundle.index('"pdfIds":')+9:].split(']')[0]+']')
+    self.assertEqual(len(ids),1);self.assertIn('"'+ids[0]+'":{"doi":"10.1234/synthetic"',worker)
 if __name__=='__main__':unittest.main()

@@ -35,6 +35,14 @@ assert.equal(downloads.pdfDownloadUrl({id:'known-id',doi:'10.1234/known'}),'/api
 assert.equal(downloads.pdfDownloadUrl({id:'radar-id',doi:'10.1234/known'}),'');
 assert.equal(downloads.pdfDownloadUrl({id:'known-id',doi:'',title:'Exact title'}),'/api/pdf?id=known-id');
 assert.equal(downloads.pdfDownloadUrl(null),'');
+const idsLine=fs.readFileSync(require('path').join(__dirname,'../src/app/00-core-data.js'),'utf8').split('\n').filter((line,i,all)=>line.includes('const PDF_LIBRARY_IDS = ')).join('\n');
+assert(idsLine.startsWith('  const PDF_LIBRARY_IDS = new Set('));
+const idsFor=LIBRARY=>{const context=vm.createContext({LIBRARY});vm.runInContext(idsLine.replace('const PDF_LIBRARY_IDS','var PDF_LIBRARY_IDS'),context);return [...context.PDF_LIBRARY_IDS].sort();};
+const libraryPapers=[{id:'a',doi:'10.1/a'},{id:'b',title:'Only title'},{id:'c'}];
+assert.deepEqual(idsFor({papers:libraryPapers,pdfIds:['a']}),['a'],'the build list decides which papers get a download button');
+assert.deepEqual(idsFor({papers:libraryPapers,pdfIds:[]}),[],'an empty build list means no buttons');
+assert.deepEqual(idsFor({papers:libraryPapers}),['a','b'],'local preview data without the list keeps the old rule');
+console.log('3 build-listed PDF button assertions passed');
 console.log('4 private PDF link scope assertions passed');
 
 // Existing deployment gate also verifies browsing/filter transitions offline.
