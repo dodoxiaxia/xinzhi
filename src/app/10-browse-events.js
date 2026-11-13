@@ -6,7 +6,7 @@
     return sidebarSelections().length + (state.reading ? 1 : 0) + (state.favoritesOnly ? 1 : 0) + (state.minor ? 1 : 0)
       + (state.lane !== 'core' ? 1 : 0) + (state.range !== defaultRange(state.mode) ? 1 : 0) + (state.mode === 'library' && state.ftFilter ? 1 : 0);
   }
-  const READING_OPTS = [['', '全部内容'], ['abstract', '有公开摘要'], ['guide', '已核对导读'], ['quicklook', 'AI 速览（未核对）']];
+  const READING_OPTS = [['', '全部内容'], ['abstract', '有公开摘要'], ['guide', '已核对导读'], ['quicklook', 'AI 速览']];
   const PANEL_GROUPS = () => [
     ['lane', '#panelOptLane', LANES.map(l => [l.id, l.short || l.name]), state.lane],
     ['ft', '#panelOptFt', FT_FILTERS.map(([v, n]) => [v, v === '' ? '全部全文' : n]), state.ftFilter || ''],

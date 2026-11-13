@@ -36,7 +36,7 @@
       if (draft) {
         editorialSection = `
           <div class="drawer-section">
-            <div class="drawer-section-title">${draft.source_checked === true ? '已核对导读 <small>对照公开摘要核对 · 未经医生终审</small>' : 'AI 速览 <small class="ql-flag">未经人工核对</small>'}</div>
+            <div class="drawer-section-title">${draft.source_checked === true ? '已核对导读 <small>对照公开摘要核对</small>' : '速览'}</div>
             <div class="editorial-box">
               <p>${esc(draft.summary)}</p>
               ${draft.limitations ? `<p style="margin-top:8px; font-size:12px; color:var(--rose);"><b>证据边界：</b>${esc(draft.limitations)}</p>` : ''}
@@ -105,7 +105,6 @@
 
       // AI 速览 (daily batch, labelled unreviewed) + its stored public abstract
       const ql = quicklookOf(paper);
-      const editorialQuicklook = ql === preGeneratedOf(paper)?.quicklook && preGeneratedOf(paper)?.meta?.generationMeta?.quicklook?.origin === 'sol-session-public-abstract';
       if (ql && ql.abstract && !paper.summary && !(paper.abstractSections && paper.abstractSections.length)) {
         paper.abstractSections = [{ label: '', text: ql.abstract }];
         forgetPaper(paper);
@@ -114,7 +113,7 @@
       }
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
-          <div class="drawer-section-title">AI 速览 <small class="ql-flag">${editorialQuicklook ? 'Sol 会话根据公开摘要整理 · 未经人工医学终审' : '模型根据公开摘要生成 · 未经人工核对'}</small></div>
+          <div class="drawer-section-title">速览</div>
           <p class="ql-line"><strong>${esc(ql.one_line)}</strong></p>
           <p class="ql-meta"><span>${esc(prioritizedDesign(paper) || ql.design)}</span></p>
           <ul class="ql-findings">${ql.findings.map(f => `<li>${esc(f.text)}<blockquote>${esc(f.quote)}</blockquote></li>`).join('')}</ul>
@@ -127,16 +126,16 @@
         if (paper.weeklyPick) return '';
         const s = paper._aiState;
         if (s === 'none' || s === 'error') return `<div class="drawer-section quicklook ai-ask">
-          <div class="drawer-section-title">AI 速览</div>
+          <div class="drawer-section-title">速览</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
-          <p class="ql-meta">点击后由模型根据公开摘要生成 AI 速览；生成时间取决于公开来源和模型响应。生成后会保存在本站，之后所有读者可直接查看；内容未经人工核对。</p>
+          <p class="ql-meta">点击后由模型根据公开摘要生成 AI 速览；生成时间取决于公开来源和模型响应。生成后会保存在本站，之后所有读者可直接查看。</p>
           <button class="btn-sm btn-primary" data-action="ai-interpret" data-paper-id="${esc(paper.id)}">一键生成 AI 速览</button></div>`;
-        if (s === 'noabs') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 速览</div>
+        if (s === 'noabs') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
           <p class="ql-meta">本次已完成的公开来源查询未取得可用摘要，因此未生成 AI 速览。请查看官方原文；页面展示的摘要与服务本次可验证的来源可能不同。</p>
           ${!paper.titleZh ? `<button class="btn-sm" data-action="${['waiting','checking'].includes(paper._ttState) ? 'title-check' : 'ai-title'}" data-paper-id="${esc(paper.id)}"${['loading','checking'].includes(paper._ttState) ? ' disabled' : ''}>${['waiting','checking'].includes(paper._ttState) ? '读取已有标题译文' : '只翻译标题'}</button>` : ''}${paper._ttMsg ? `<span class="ql-meta" style="color:#b45309;"> ${esc(paper._ttMsg)}</span>` : ''}</div>`;
-        if (s === 'waiting' || s === 'lookup-error') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 速览</div><p class="ql-meta" role="status">${esc(paper._aiMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="ai-check" data-paper-id="${esc(paper.id)}">读取已有 AI 速览</button></div>`;
+        if (s === 'waiting' || s === 'lookup-error') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div><p class="ql-meta" role="status">${esc(paper._aiMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="ai-check" data-paper-id="${esc(paper.id)}">读取已有 AI 速览</button></div>`;
         if (s === 'checking') return '<div class="drawer-section quicklook ai-ask"><p class="ql-meta" role="status">正在读取已有 AI 速览…</p></div>';
-        if (s === 'loading') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 速览</div><p class="ql-meta">正在读取公开摘要并生成 AI 速览，请稍候…${paper._aiSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
+        if (s === 'loading') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div><p class="ql-meta">正在读取公开摘要并生成 AI 速览，请稍候…${paper._aiSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
         return '';
       })() : '';
 
@@ -190,8 +189,8 @@
         ${publicationStatusHtml(paper)}
         ${paper.media && paper.media.length ? `<div class="drawer-media">${paper.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('')}</div>` : ''}
 
-        ${!draft && ql?.title_zh ? `<div class="drawer-title-zh"><small class="content-label">机器翻译</small>${esc(ql.title_zh)}</div>` : ''}
-        ${!draft && !ql?.title_zh && paper.titleZh ? `<div class="drawer-title-zh"><small class="content-label">机器翻译</small>${esc(paper.titleZh)}</div>` : ''}
+        ${!draft && ql?.title_zh ? `<div class="drawer-title-zh">${esc(ql.title_zh)}</div>` : ''}
+        ${!draft && !ql?.title_zh && paper.titleZh ? `<div class="drawer-title-zh">${esc(paper.titleZh)}</div>` : ''}
         ${draft?.title_zh ? `<div class="drawer-title-zh">${esc(draft.title_zh)}</div>` : ''}
         <h2 class="drawer-title-en">${esc(paper.title)}</h2>
 
