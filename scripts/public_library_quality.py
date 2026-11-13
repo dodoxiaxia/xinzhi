@@ -41,6 +41,12 @@ DUPLICATES = {
     '37cb5c6f96b8b0f5': ('3b51e13dda54492e', '10.1016/j.landig.2025.100960',
                          'Large language models for simplifying radiology reports: a systematic review and '
                          'meta-analysis of patient, public,'),
+    # Reviewed 2026-11-13: this public record is a JAMA supplement (Nonauthor Collaborators),
+    # not a standalone article. Same publisher file family as the canonical paper
+    # (joi260005supp3 vs already-catalogued joi260005supp2/supp4).
+    'f8345cffb3130085': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327',
+                         'Supplemental Online Content: Nonauthor Collaborators *First name, last name, and '
+                         'suffix (if applicable) are required and will appear in PubMed.'),
 }
 ONLINE_CORRECTIONS = {
     'a76a3fd5e0e70fd7': ('10.3760/cma.j.cn112139-20260730-00329', '42765414', '2026-09-21'),
