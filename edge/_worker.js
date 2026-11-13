@@ -1759,6 +1759,8 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && Number.isInteger(previous.softFailCount) && previous.softFailCount > 0) inherited.softFailCount = previous.softFailCount;
   if (previous && previous.lastSoftFailReason) inherited.lastSoftFailReason = previous.lastSoftFailReason;
   if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
+  if (previous && Number.isInteger(previous.oaVerificationFails) && previous.oaVerificationFails > 0) inherited.oaVerificationFails = previous.oaVerificationFails;
+  if (previous && Array.isArray(previous.oaRejected) && previous.oaRejected.length) inherited.oaRejected = previous.oaRejected;
   if (previous && museShouldSupersedePrevious(previous)) inherited.supersedes = museSupersedeSnapshot(previous);
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
     leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
@@ -2217,8 +2219,23 @@ async function handleMuseReview(request, env) {
       // A rejected replacement leaves the verified original in place: the task goes back to 'available' and keeps the refusal.
       const restored = job.replace && job.replace.oldSha256 ? {...(job.replace.previous || {version:1,id:job.id,doi:job.doi,state:'available',createdAt:job.createdAt,queueKey:job.queueKey}),updatedAt:Date.now(),
         replaceRejected:{by:job.replace.by,at:job.replace.at,oldSha256:job.replace.oldSha256,newSha256:job.replace.newSha256,reason:verificationReason,rejectedAt:Date.now()}} : null;
-      const rejected = restored || {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
-      await musePut(env,rejected); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
+      let rejected = restored;
+      if (!rejected && job.source === 'open_access') {
+        const fails = (Number.isInteger(job.oaVerificationFails) && job.oaVerificationFails > 0 ? job.oaVerificationFails : 0) + 1;
+        const record = {source:job.source,reason:verificationReason,sha256:job.sha256,at:Date.now()};
+        const oaRejected = [...(Array.isArray(job.oaRejected) ? job.oaRejected : []), record].slice(-5);
+        if (fails < 2) {
+          // First OA verification failure: back to the download queue. Keep the candidate object as a record; do not delete it.
+          const {leaseId:_l,leaseUntil:_u,reviewOwner:_o,reviewLeaseId:_rl,reviewLeaseUntil:_ru,verificationReason:_vr,reason:_r, ...rest} = job;
+          rejected = {...rest,state:'queued',updatedAt:Date.now(),oaVerificationFails:fails,oaRejected,lastOaVerificationReason:verificationReason};
+        } else {
+          rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason,oaVerificationFails:fails,oaRejected};
+        }
+      }
+      if (!rejected) rejected = {...job,state:'review',updatedAt:Date.now(),verificationReason,reason:verificationReason};
+      await musePut(env,rejected);
+      if (rejected.state === 'queued' && rejected.queueKey) await libraryPut(env.QL_KV, rejected.queueKey, JSON.stringify({doi:rejected.doi,id:rejected.id}), {expirationTtl:604800});
+      await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
       return json({ok:true,job:musePublicJob(rejected),archive:libraryArchiveStatus()});
     }
     let stored; try { stored = await env.QL_KV.get(job.candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
@@ -3168,7 +3185,7 @@ function machineStage(job) {
 // Open-access sources the site dropped because the file was the wrong paper: only a public URL without query, and a reason code.
 function machineOaRejected(job) {
   if (!Array.isArray(job.oaRejected)) return [];
-  return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch'}));
+  return job.oaRejected.slice(0,3).filter(item => item && typeof item.source === 'string' && typeof item.reason === 'string').map(item => ({source:item.source.slice(0,200),reason:/^[a-z_]{1,40}$/.test(item.reason) ? item.reason : 'identity_mismatch',...(typeof item.sha256 === 'string' && /^[0-9a-f]{64}$/.test(item.sha256) ? {sha256:item.sha256} : {}),...(Number.isSafeInteger(item.at) && item.at > 0 ? {at:new Date(item.at).toISOString()} : {})}));
 }
 function machineClaimable(job) {
   // Only the task record already in hand: review (verification failed) cannot be claimed or requeued.
@@ -3252,6 +3269,7 @@ function handleMachineProtocol(request, env) {
       note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'同一 DOI 的新任务核验通过变成 done 时，若先前有失败待兜底（或从失败待兜底领走后尚未完成）的旧任务，会把旧记录写到上述键，带 supersededBy 为新 taskId，不设过期。旧任务不再出现在失败待兜底列表，也不能再被领取。完成记录可带 supersededFrom。旧客户端可忽略。'},
+    oaVerify:{source:'open_access',limit:2,note:'开放获取来源核验未通过时，第一次把任务退回待下载，候选文件只留记录不删，并记入 oaRejected。同一篇第二次核验未通过则留在 review，claimable 为 false。机器或读者上传核验未通过仍直接进 review。旧客户端可忽略新计数字段。'},
     lease:{extendMinutes:20,maxMinutesFromClaim:120,returnLimit:MACHINE_RETURN_LIMIT,
       note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。退回不是失败，任务回到待下载并保留原 FIFO；同一篇最多退回 3 次，超过后拒绝（machine_return_limit），只能改报失败。旧客户端不调用这两个接口即可。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
