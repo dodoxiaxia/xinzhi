@@ -121,10 +121,53 @@ def date_valid(value, today, days=90):
     except (ValueError, TypeError):
         return False
 
+# Deep-reading scope (owner decision 2026-11-13). The column takes two kinds of papers only:
+# 1) cardiovascular, including cardiovascular AI (chest-pain/ACS/heart-failure/arrhythmia triage counts);
+# 2) general LLM / medical-AI methodology and evaluation that targets no single specialty
+#    (clinical-reasoning benchmarks, LLM diagnostic evaluations, AI clinical-trial methodology).
+# Clinical AI applications inside one other specialty stay in the library and the radar, not here.
+# The decision reads the title only: the public store keeps no abstract, so export and selection
+# must reach the same verdict for a paper that was already paid for.
+SCOPE_NOT_CARDIAC = re.compile(r'lympho-?vascular|vascular invasion|vascular endothelial|portal hypertension|intracranial hypertension|ocular hypertension|heat ?stroke|chemoembol', re.I)
+SCOPE_CARDIO = re.compile(r'cardio|\bheart|cardiac|atrial|coronary|hypertensi|aort|ventric|arrhyth|fibrillation|anticoagul|myocard|blood pressure|vascular|stroke|atheroscl|dyslipid|cholesterol|\bLDL\b|thromboemb|pulmonary embol|infarct|angina|chest pain|\bECG\b|\bEKG\b|electrocardio|photoplethysmo|\bstatins?\b|valvular|\bTAV[IR]\b', re.I)
+SCOPE_LLM = re.compile(r'large language model|language model|\bLLMs?\b|chatgpt|\bgpt-?\d|generative (?:ai|artificial)|foundation model|chatbot', re.I)
+SCOPE_AI = re.compile(r'artificial intelligence|machine learning|deep learning|neural network|\bAI\b', re.I)
+SCOPE_EVALUATION = re.compile(r'benchmark|reasoning|evaluat|assess|accuracy|performance|compar|capabilit|diagnos|validat|safety|reliab', re.I)
+SCOPE_METHODOLOGY = re.compile(r'benchmark|clinical reasoning|\btrials?\b|methodolog|reporting (?:guideline|standard)|consort|spirit|checklist', re.I)
+# Single-specialty or single-scenario applications: never "general" medical AI.
+SCOPE_OTHER_SPECIALTY = re.compile(
+    r'cancer|carcinoma|tumou?r|neoplas|oncolog|malignan|metasta|lymphoma|leuk(?:a)?emi|myeloma|sarcoma|glioma|melanoma|radiotherap|chemotherap|'
+    r'orthop|ankle|knee|\bhip\b|spine|spinal|vertebr|fracture|osteo|arthro|rotator|musculoskeletal|bone|'
+    r'dental|dentist|tooth|teeth|orthodont|periodont|pulpitis|\boral\b|'
+    r'skin|dermat|psoria|eczema|'
+    r'hematolog|haematolog|an(?:a)?emia|thalass|sickle|h(?:a)?emophil|coagulopath|'
+    r'delirium|psychiat|depress|anxiety|mental|bipolar|schizo|dementia|alzheimer|autis|parkinson|epilep|'
+    r'emergency|triage|ophthal|retina|retinopathy|glaucoma|cataract|'
+    r'kidney|renal|nephro|liver|hepat|gallstone|colitis|diabet|thyroid|lung|pulmonary|airway|'
+    r'pediatric|paediatric|neonat|obstetric|pregnan|prenatal|fetal|surgery|surgical|radiomic|radiograph|\bMRI\b|\bOCT\b|macular|audiolog|genetic|nutri|rehabilit|physiotherap|psycholog|'
+    # Education, teaching and text-processing uses are not methodology or evaluation of clinical AI either.
+    r'education|teaching|student|interns?\b|curricul|clinical notes|synthetic|anonymi', re.I)
+
+def deep_reading_scope(title):
+    """'cardio', 'general' or '' (outside the deep-reading column). One rule for selection and export."""
+    title = normalized(title or '')
+    if not title:
+        return ''
+    if SCOPE_CARDIO.search(SCOPE_NOT_CARDIAC.sub(' ', title)):
+        return 'cardio'
+    if SCOPE_OTHER_SPECIALTY.search(title) or not MEDICAL.search(title):
+        return ''
+    if SCOPE_LLM.search(title) and SCOPE_EVALUATION.search(title):
+        return 'general'
+    if SCOPE_AI.search(title) and SCOPE_METHODOLOGY.search(title):
+        return 'general'
+    return ''
+
 def topic_of(title, abstract=''):
-    text = title + ' ' + abstract
-    cardio, ai = bool(CARDIO.search(text)), bool(AI.search(text))
-    return '心血管 × AI' if cardio and ai else '心血管' if cardio else 'AI 医疗' if ai and MEDICAL.search(text) else ''
+    scope = deep_reading_scope(title)
+    if scope == 'cardio':
+        return '心血管 × AI' if AI.search(title + ' ' + abstract) else '心血管'
+    return 'AI 医疗' if scope == 'general' else ''
 
 def rank(paper, today):
     recent = date_valid(paper['date'], today, 30)
@@ -167,7 +210,10 @@ def discover(today, fetch=fetch_bytes):
     start = (today - dt.timedelta(days=89)).isoformat()
     queries = [
         '(TITLE_ABS:cardiovascular OR TITLE_ABS:heart OR TITLE_ABS:atrial OR TITLE_ABS:coronary OR TITLE_ABS:hypertension)',
-        '((TITLE_ABS:"artificial intelligence" OR TITLE_ABS:"machine learning" OR TITLE_ABS:"deep learning") AND (TITLE_ABS:clinical OR TITLE_ABS:patient OR TITLE_ABS:medical OR TITLE_ABS:health))',
+        # Cardiovascular AI: the AI terms alone no longer pull in other specialties.
+        '((TITLE_ABS:"artificial intelligence" OR TITLE_ABS:"machine learning" OR TITLE_ABS:"deep learning") AND (TITLE:cardiovascular OR TITLE:cardiac OR TITLE:heart OR TITLE:atrial OR TITLE:coronary OR TITLE:hypertension OR TITLE:ECG OR TITLE:electrocardiogram OR TITLE:"chest pain"))',
+        # General LLM / medical-AI methodology and evaluation only, no single specialty.
+        '((TITLE:"large language model" OR TITLE:"large language models" OR TITLE:LLM OR TITLE:ChatGPT OR TITLE:"artificial intelligence") AND (TITLE:benchmark OR TITLE:"clinical reasoning" OR TITLE:evaluation OR TITLE:"clinical trial" OR TITLE:"clinical trials" OR TITLE:methodology OR TITLE:"reporting guideline") AND (TITLE:clinical OR TITLE:medical OR TITLE:diagnosis OR TITLE:diagnostic))',
     ]
     papers, seen, errors = [], set(), []
     for q in queries:
@@ -562,7 +608,7 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     attempted = {p['identity'] for p in rows}
     # A source that already failed validation on an earlier day would only spend the budget again.
     attempted |= {r['identity'] for d, old in ledger['days'].items() if d < day for r in old if r['state'] == 'invalid'}
-    pending = [p for p in papers if p.get('topic') in ('心血管', '心血管 × AI', 'AI 医疗') and identity(p) not in seen and identity(p) not in attempted]
+    pending = [p for p in papers if p.get('topic') in ('心血管', '心血管 × AI', 'AI 医疗') and deep_reading_scope(p.get('title')) and identity(p) not in seen and identity(p) not in attempted]
     # Round-robin topics before falling back, so one theme does not occupy the entire day.
     ordered = []
     while pending:
@@ -634,6 +680,8 @@ def public_readings(raw):
     check_store(raw, empty_ledger())
     out = {'schemaVersion': 1, 'items': []}
     for item in raw['items']:
+        if not deep_reading_scope(item['title']):
+            continue  # single-specialty AI applications stay in the private store, off the public column
         clean = validate_output(item, item['sourceParagraphs'], item['title'])
         for k in ('title', 'journal', 'date', 'doi', 'pmid', 'pmcid', 'topic', 'publishedOn', 'generatedAt', 'retrievedAt', 'sourceHash', 'whySelected'):
             value = item.get(k, '')

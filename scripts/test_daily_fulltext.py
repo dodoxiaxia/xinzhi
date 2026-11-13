@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import tempfile
 import unittest
+import urllib.parse as urllib_parse
 from unittest.mock import patch
 from pathlib import Path
 import daily_fulltext as d
@@ -114,6 +115,98 @@ class SourceTests(unittest.TestCase):
             self.assertNotIn(field, serialized)
         self.assertFalse(result['items'][0]['humanReviewed'])
         self.assertEqual(result['items'][0]['scope'], 'public-fulltext-body')
+
+class ScopeTests(unittest.TestCase):
+    """Deep-reading column scope (owner decision 2026-11-13): cardiovascular, or general LLM/medical-AI methodology."""
+    OUT = (
+        ('10.1111/cas.70548', 'Multimodal Integration Identifies C16orf74 as an EMT Regulator With Prognostic Relevance in HNSCC.'),
+        ('10.1186/s40798-026-01137-3', 'Sex-Equitable Machine Learning Prediction of Ankle Reinjury in Individuals with Chronic Ankle Instability: A 2-Year Prospective Cohort Study with Fairness Audit.'),
+        ('10.1002/jsp2.70227', 'Development of a Multimodal Model Combining Imaging and Clinical Data to Predict Bone Cement Leakage During Vertebroplasty for Fresh Thoracolumbar Compression Fractures.'),
+        ('bladder', 'Biparametric MRI with deep learning for the preoperative prediction of muscle invasion in patients with bladder cancer: a multicenter study.'),
+        ('dental', 'Artificial Intelligence Applications in Pediatric Dentistry: A Systematic Scoping Review With Visual Evidence Mapping.'),
+        ('breast', 'Magnetic resonance imaging radiomics for predicting pathologic complete response to neoadjuvant chemotherapy in breast cancer.'),
+        ('triage', 'Explainable Machine Learning for Predicting Hospital Admission at Emergency Department Triage: Retrospective Cohort Study.'),
+        ('delirium', 'External Validation of a Machine Learning Model for Delirium Risk.'),
+        ('skin', 'Deep learning for skin lesion classification in dermatology clinics.'),
+        ('lymphovascular', 'Machine learning to predict lymphovascular invasion in gastric cancer.'),
+        ('astronomy', 'Deep learning for astronomy'),
+    )
+    IN_CARDIO = (
+        ('ecg-af', 'Deep learning electrocardiogram analysis for atrial fibrillation detection'),
+        ('acs-triage', 'Machine learning triage of chest pain and acute coronary syndrome in the emergency department'),
+        ('10.1177/1753495x261499121', 'Evaluation of a postpartum cardiovascular risk clinic after hypertensive disorder of pregnancy: First-year experience.'),
+        ('hf', 'Artificial intelligence for heart failure risk prediction'),
+        ('cardio-onc', 'Cardiotoxicity prediction in breast cancer patients treated with anthracyclines'),
+    )
+    IN_GENERAL = (
+        ('reasoning', 'A benchmark for clinical reasoning in large language models'),
+        ('llm-diagnosis', 'Evaluating large language models for diagnosis from clinical vignettes'),
+        ('trial-method', 'Methodological standards for randomized clinical trials of artificial intelligence interventions'),
+    )
+
+    def test_off_scope_applications_are_rejected(self):
+        for key, title in self.OUT:
+            self.assertEqual(d.deep_reading_scope(title), '', key)
+            self.assertEqual(d.topic_of(title, 'machine learning clinical patient health'), '', key)
+
+    def test_cardiovascular_and_general_ai_methodology_are_accepted(self):
+        for key, title in self.IN_CARDIO:
+            self.assertEqual(d.deep_reading_scope(title), 'cardio', key)
+        for key, title in self.IN_GENERAL:
+            self.assertEqual(d.deep_reading_scope(title), 'general', key)
+            self.assertEqual(d.topic_of(title), 'AI 医疗', key)
+        self.assertEqual(d.topic_of('Deep learning electrocardiogram analysis for atrial fibrillation detection'), '心血管 × AI')
+        self.assertEqual(d.topic_of('Evaluation of a postpartum cardiovascular risk clinic'), '心血管')
+
+    def test_broad_cardio_words_do_not_mislabel_other_specialties(self):
+        for title in ('Vascular endothelial growth factor expression in hepatocellular carcinoma',
+                      'Portal hypertension and machine learning in cirrhosis', 'Heat stroke prediction with deep learning',
+                      'Transarterial chemoembolization response prediction with machine learning'):
+            self.assertEqual(d.deep_reading_scope(title), '', title)
+
+    def test_the_title_alone_decides_so_export_matches_selection(self):
+        row = {'isOpenAccess': 'Y', 'pmcid': 'PMC9', 'source': 'MED', 'id': '9', 'firstPublicationDate': '2026-10-08',
+               'doi': '10.1234/x', 'title': 'Machine learning prediction of ankle reinjury',
+               'abstractText': 'A clinical machine learning study of patients; cardiovascular and vascular risk noted.'}
+        self.assertIsNone(d.candidate(row, WHEN.date()))
+        row['title'] = 'Evaluating large language models for clinical reasoning: a benchmark'
+        self.assertEqual(d.candidate(row, WHEN.date())['topic'], 'AI 医疗')
+
+    def test_discovery_limits_the_ai_query_and_adds_a_narrow_general_query(self):
+        urls = []
+        def fetch(url, maximum):
+            urls.append(urllib_parse.unquote(url))
+            return b'{"resultList": {"result": []}}'
+        papers, errors = d.discover(WHEN.date(), fetch=fetch)
+        self.assertEqual((papers, errors, len(urls)), ([], [], 3))
+        ai_cardio, general = urls[1], urls[2]
+        self.assertIn('TITLE:cardiovascular', ai_cardio)
+        self.assertNotIn('TITLE_ABS:health', ai_cardio)
+        self.assertIn('TITLE:benchmark', general)
+        self.assertNotIn('TITLE_ABS:patient', general)
+
+    def test_public_column_drops_off_scope_items_but_keeps_the_private_store(self):
+        raw = d.empty_data()
+        keep, drop = item(1), item(2)
+        drop['title'] = 'Machine learning prediction of ankle reinjury in chronic ankle instability'
+        raw['items'] += [keep, drop]
+        before = copy.deepcopy(raw)
+        result = d.public_readings(raw)
+        self.assertEqual([r['pmcid'] for r in result['items']], [keep['pmcid']])
+        self.assertEqual(raw, before)
+
+    def test_generation_never_pays_for_off_scope_papers(self):
+        bad = dict(paper(1, 'AI 医疗'), title='Machine learning prediction of ankle reinjury')
+        good = dict(paper(2, '心血管'))
+        fetched = []
+        def fetch(url):
+            fetched.append(url)
+            return xml(good)
+        data, ledger = d.empty_data(), d.empty_ledger()
+        d.generate(data, ledger, [bad, good], WHEN, lambda *_: None, {}, fetch=fetch,
+                   model=lambda *args: output(args[-1][0]['id']))
+        self.assertEqual([i['pmcid'] for i in data['items']], ['PMC2'])
+        self.assertTrue(all('PMC1' not in u for u in fetched))
 
 class GenerationTests(unittest.TestCase):
     def generate(self, data=None, ledger=None, model=None, save=None):
