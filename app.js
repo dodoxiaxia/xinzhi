@@ -3555,7 +3555,7 @@
   }
 
   const WEEKLY_CATEGORIES = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']];
-  // 近7天榜的分类口径：榜单预生成的 weeklyCategory 优先，缺省按领域回退。分类条和快捷条的 AI 档共用这一处。
+  // 近7天榜的分类口径：榜单预生成的 weeklyCategory 优先，缺省按领域回退。分类条使用此分类；快捷条 AI 档将 AI 医疗、AI 前沿分类并上 AI 期刊。
   function weeklyCategoryOf(p) {
     return ['cardio', 'general', 'aimed', 'aitech'].includes(p.weeklyCategory) ? p.weeklyCategory : laneOf(p);
   }
@@ -3765,11 +3765,11 @@
     const api = JT();
     return api ? api.tierOfName(name) : 'other';
   }
-  // 近7天榜里「AI」档按分类条的口径：AI 医疗 + AI 前沿，不按期刊名单；其他栏目仍按 AI 期刊档。
+  // 近7天榜里「AI」档按分类并上 AI 期刊的并集口径：AI 医疗 + AI 前沿 + AI 期刊；其他栏目仍按 AI 期刊档。
   function weeklyAiTier() { return state.mode === 'weekly'; }
   function paperIsWeeklyAi(p) {
     const c = typeof weeklyCategoryOf === 'function' ? weeklyCategoryOf(p) : '';
-    return c === 'aimed' || c === 'aitech';
+    return c === 'aimed' || c === 'aitech' || paperTierId(p) === 'ai';
   }
   function paperMatchesJournalFilter(p) {
     if (!state.journalTier && !(selectedJournals().length)) return true;
@@ -3984,7 +3984,7 @@
       const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
       const openKind = 'jtier:' + tier.id;
       if (tier.id === 'ai' && weeklyAiTier()) {
-        parts.push(`<button type="button" class="qf-chip qf-chip-ai${on ? ' is-on' : ''}" data-qf-jtier="ai" aria-pressed="${on}" aria-label="筛选 AI 医疗 / AI 前沿" title="与榜内分类条的「AI 医疗」「AI 前沿」口径一致">${esc(tier.short)}</button>`);
+        parts.push(`<button type="button" class="qf-chip qf-chip-ai${on ? ' is-on' : ''}" data-qf-jtier="ai" aria-pressed="${on}" aria-label="筛选 AI" title="AI 医疗、AI 前沿，以及发在 AI 期刊的稿子">${esc(tier.short)}</button>`);
         return;
       }
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
@@ -4014,7 +4014,7 @@
     const bits = [];
     if (state.favoritesOnly) bits.push(item('只看关注期刊', 'favorites'));
     if (state.journalTier && !selectedJournals().length) {
-      bits.push(item(state.journalTier === 'ai' && weeklyAiTier() ? 'AI 医疗 / AI 前沿' : (tierDef(state.journalTier).title || state.journalTier), 'jtier'));
+      bits.push(item(state.journalTier === 'ai' && weeklyAiTier() ? 'AI' : (tierDef(state.journalTier).title || state.journalTier), 'jtier'));
     } else if (selectedJournals().length) {
       const prefix = state.journalTier ? (tierDef(state.journalTier).short + '：') : '';
       selectedJournals().forEach(j => bits.push(item(prefix + j, 'journal', j)));

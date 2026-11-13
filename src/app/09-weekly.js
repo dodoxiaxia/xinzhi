@@ -300,7 +300,7 @@
   }
 
   const WEEKLY_CATEGORIES = [['cardio', '心血管'], ['general', '综合医学'], ['aimed', 'AI 医疗'], ['aitech', 'AI 前沿']];
-  // 近7天榜的分类口径：榜单预生成的 weeklyCategory 优先，缺省按领域回退。分类条和快捷条的 AI 档共用这一处。
+  // 近7天榜的分类口径：榜单预生成的 weeklyCategory 优先，缺省按领域回退。分类条使用此分类；快捷条 AI 档将 AI 医疗、AI 前沿分类并上 AI 期刊。
   function weeklyCategoryOf(p) {
     return ['cardio', 'general', 'aimed', 'aitech'].includes(p.weeklyCategory) ? p.weeklyCategory : laneOf(p);
   }

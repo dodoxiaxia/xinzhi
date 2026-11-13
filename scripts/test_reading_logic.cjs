@@ -74,3 +74,5 @@ console.log(incompleteCases.length+' incomplete-abstract rule assertions passed'
 
 // Existing deployment gate also verifies browsing/filter transitions offline.
 require('./test_faceted_filters.cjs');
+
+require('./test_complete_abstract_false_positives.cjs');

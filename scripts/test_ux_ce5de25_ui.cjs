@@ -1,7 +1,7 @@
 'use strict';
 // 离线浏览器测试（不访问外网，不调用模型）：ce5de25 上线后体验复核的四项修复。
 //  1 摘要拉取中：速览和结构区显示「正在获取摘要…」，确认没有摘要（为空或失败）后才显示「暂无公开摘要」
-//  2 近7天榜快捷条有「AI」档，口径与榜内分类条的 AI 医疗 / AI 前沿一致
+//  2 近7天榜快捷条有「AI」档，口径为 AI 医疗、AI 前沿分类并上 AI 期刊
 //  3 390 宽快捷条右侧渐隐（滚到尽头去掉），换栏目时横向滚动位置归零
 //  4 摘要只有结论段时显示「摘要可能不完整」，完整摘要不显示
 const fs = require('fs'), path = require('path'), assert = require('assert');
@@ -30,7 +30,7 @@ const weekly = [
   base('w-general', { weeklyPick: 2, weeklyCategory: 'general', weeklyAt: hourAgo, journal: 'JAMA', cleanJournal: 'JAMA', summary: 'General weekly.' }),
   base('w-aimed', { weeklyPick: 3, weeklyCategory: 'aimed', weeklyAt: hourAgo, journal: 'JACC: Advances', cleanJournal: 'JACC: Advances', summary: 'AI medical weekly.' }),
   base('w-aitech', { weeklyPick: 4, weeklyCategory: 'aitech', weeklyAt: hourAgo, journal: 'Nature Communications', cleanJournal: 'Nature Communications', summary: 'AI frontier weekly.' }),
-  // AI 期刊名单里的刊但被榜单分到心血管：按分类条口径，不在 AI 档里
+  // 分到心血管但发在 npj Digital Medicine，应出现在 AI 档
   base('w-aijournal-cardio', { weeklyPick: 5, weeklyCategory: 'cardio', weeklyAt: hourAgo, journal: 'npj Digital Medicine', cleanJournal: 'npj Digital Medicine', summary: 'Cardio-ranked AI journal.' })
 ];
 const feedItems = radar.concat(weekly);
@@ -125,12 +125,13 @@ async function testWeeklyAiChip(browser, width) {
   const ai = page.locator('#qfChipRow [data-qf-jtier="ai"]');
   assert.strictEqual(await ai.count(), 1, width + ': 近7天榜快捷条有 AI 档');
   assert.strictEqual((await ai.innerText()).trim(), 'AI');
-  assert(/AI 医疗 \/ AI 前沿/.test(await ai.getAttribute('aria-label')), width + ': AI 档的名称对应分类条');
+  assert(/筛选 AI/.test(await ai.getAttribute('aria-label')), width + ': AI 档的名称为 AI');
   assert.strictEqual(await page.locator('#qfChipRow [data-qf-jtier-menu="ai"]').count(), 0, width + ': 榜内 AI 档不带期刊名单');
   await ai.click();
   await page.waitForFunction(() => document.querySelector('#qfChipRow [data-qf-jtier="ai"]')?.getAttribute('aria-pressed') === 'true');
-  assert.deepStrictEqual(await catCount(), { all: 2, cardio: 0, general: 0, aimed: 1, aitech: 1 }, width + ': AI 档只留下 AI 医疗 + AI 前沿（与分类条口径一致，不按期刊名单）');
-  assert((await page.locator('#qfSummary').innerText()).includes('AI 医疗 / AI 前沿'), width + ': 已选条件的名称');
+  assert.deepStrictEqual(await catCount(), { all: 3, cardio: 1, general: 0, aimed: 1, aitech: 1 }, width + ': AI 档保留 AI 分类与 AI 期刊的并集');
+  const summary = await page.locator('#qfSummary').innerText();
+  assert(/(?:^|[^A-Za-z])AI(?:$|[^A-Za-z])/.test(summary) && !summary.includes('AI 期刊'), width + ': 已选条件的名称为独立的 AI');
   await ai.click();
   await page.waitForFunction(() => document.querySelector('#qfChipRow [data-qf-jtier="ai"]')?.getAttribute('aria-pressed') === 'false');
   assert.strictEqual((await catCount()).all, 5, width + ': 再点一次取消筛选');
