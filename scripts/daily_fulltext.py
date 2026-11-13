@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -562,10 +563,12 @@ def recover_drafts(data, ledger, when, save):
     # A draft that failed on an earlier day is recoverable too; it was paid for once already.
     rows = [r for d, old in sorted(ledger['days'].items(), reverse=True) if d >= floor for r in old]
     seen = {identity(p) for p in data['items']}
+    seen_pmcids = {p.get('pmcid') for p in data['items']}
     for key, draft in list(data.get('drafts', {}).items()):
         if sum(p['publishedOn'] == day_of(when) for p in data['items']) >= TARGET:
             break
-        if key in seen:
+        # The same PMCID may come back with a DOI the stored item lacked: a different identity, the same article.
+        if key in seen or draft.get('paper', {}).get('pmcid') in seen_pmcids:
             continue
         request = next((r for r in rows if r['identity'] == key and r['state'] == 'invalid'), None)
         if not request or request.get('sourceHash') != draft.get('sourceHash') or identity(draft.get('paper', {})) != key:
@@ -579,6 +582,7 @@ def recover_drafts(data, ledger, when, save):
         data['drafts'].pop(key)
         request.update(state='validated', recoveredWithoutModel=True, **({'repairedWithoutModel': True} if repaired else {}))
         seen.add(key)
+        seen_pmcids.add(item['pmcid'])
         recovered += 1
         save(data, ledger)
     return recovered
@@ -616,10 +620,13 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     rows = ledger['days'].setdefault(day, [])
     published = [p for p in data['items'] if p['publishedOn'] == day]
     seen = {identity(p) for p in data['items']}
+    # identity() is the DOI when there is one, else the PMCID. An item stored before Europe PMC knew the DOI
+    # would not match the same article once it has one, so the PMCID is checked as well.
+    seen_pmcids = {p.get('pmcid') for p in data['items']}
     attempted = {p['identity'] for p in rows}
     # A source that already failed validation on an earlier day would only spend the budget again.
     attempted |= {r['identity'] for d, old in ledger['days'].items() if d < day for r in old if r['state'] == 'invalid'}
-    pending = [p for p in papers if p.get('topic') in ('心血管', '心血管 × AI', 'AI 医疗') and deep_reading_scope(p.get('title')) and identity(p) not in seen and identity(p) not in attempted]
+    pending = [p for p in papers if p.get('topic') in ('心血管', '心血管 × AI', 'AI 医疗') and deep_reading_scope(p.get('title')) and identity(p) not in seen and p.get('pmcid') not in seen_pmcids and identity(p) not in attempted]
     # Round-robin topics before falling back, so one theme does not occupy the entire day.
     ordered = []
     while pending:
@@ -700,15 +707,40 @@ def public_status(status, items):
         out.update(state='complete', reason='')
     return out
 
+def dedupe_by_pmcid(items):
+    """One public reading per PMCID, chosen by a fixed rule (the private store is never modified).
+
+    The same article can be stored twice: identity() prefers the DOI, so an item saved before Europe PMC
+    listed a DOI and a later one saved with it do not match. Keep the first generated reading (earliest
+    generatedAt, then smallest sourceHash), so a published reading keeps its date and wording; take a DOI
+    or PMID it lacks from the dropped copy. Each drop is reported on stderr. Order is kept."""
+    groups = {}
+    for item in items:
+        groups.setdefault(item.get('pmcid'), []).append(item)
+    chosen = {}
+    for pmcid, rows in groups.items():
+        if len(rows) == 1:
+            chosen[pmcid] = rows[0]
+            continue
+        rows = sorted(rows, key=lambda r: (str(r.get('generatedAt', '')), str(r.get('sourceHash', ''))))
+        keep = dict(rows[0])
+        for dropped in rows[1:]:
+            for k in ('doi', 'pmid'):
+                if not keep.get(k) and dropped.get(k):
+                    keep[k] = dropped[k]
+        print('警告：AI 全文精读标识重复，同一 PMCID 只公开一条：%s 保留 %s，丢弃 %d 条（%s）' % (
+            pmcid, keep.get('generatedAt', ''), len(rows) - 1, ', '.join(str(r.get('generatedAt', '')) for r in rows[1:])), file=sys.stderr)
+        chosen[pmcid] = keep
+    return [chosen.pop(i.get('pmcid')) for i in items if i.get('pmcid') in chosen]
+
 def public_readings(raw):
     if raw is None:
         return empty_data()
     # Revalidate using the private source paragraphs, then project only reader-facing fields.
     check_store(raw, empty_ledger())
     out = {'schemaVersion': 1, 'items': []}
-    for item in raw['items']:
-        if not deep_reading_scope(item['title']):
-            continue  # single-specialty AI applications stay in the private store, off the public column
+    for item in dedupe_by_pmcid([i for i in raw['items'] if deep_reading_scope(i['title'])]):
+        # Out-of-scope single-specialty AI applications stay in the private store, off the public column.
         clean = validate_output(item, item['sourceParagraphs'], item['title'])
         for k in ('title', 'journal', 'date', 'doi', 'pmid', 'pmcid', 'topic', 'publishedOn', 'generatedAt', 'retrievedAt', 'sourceHash', 'whySelected'):
             value = item.get(k, '')

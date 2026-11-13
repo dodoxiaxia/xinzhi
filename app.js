@@ -3132,11 +3132,20 @@
     if (p) {
       if (p.status === 'records_observed') parts.push(`PubMed 备用快照 ${p.observedItems} 条，近14天 ${p.eligibleItems} 条${p.stale || olderThan(p.checkedAt,6) ? '（快照已过期）' : ''}。`);
       else parts.push(p.configured ? 'PubMed 备用查询尚无匹配记录。' : 'PubMed 备用查询尚未覆盖此来源。');
+      if (p.fetchStatus === 'failed') parts.push(pubmedFetchNotice(p));
       if (p.checkedAt && (p.configured || p.status === 'records_observed')) parts.push(`备用检查：${contentDate(p.checkedAt)}（北京时间）。`);
       if (p.queryScope === 'cardiovascular_or_ai' && p.configured) parts.push('备用检索限心血管或 AI 主题。');
       if (p.queryTruncated && p.configured) parts.push('备用检索达到结果上限，不能据此判断完整覆盖。');
     }
     return parts.join(' ');
+  }
+
+  function pubmedFetchNotice(fetch) {
+    if (!fetch || (fetch.status !== 'failed' && fetch.fetchStatus !== 'failed')) return '';
+    const category = typeof fetch.errorCategory === 'string' ? fetch.errorCategory : '';
+    const http = Number.isInteger(fetch.httpStatus) ? `，HTTP ${fetch.httpStatus}` : '';
+    const reused = fetch.reusedPrevious ? '，已沿用上一轮条目' : '';
+    return `PubMed 备用源本轮失败（${category}${http}）${reused}。`;
   }
 
   function renderSourcesHealth() {
@@ -3154,8 +3163,9 @@
     if (summary) summary.innerHTML = tile('', sources.length, '订阅信源') + tile('ok', okCount, '本轮获取成功') + tile('attention', sources.length - okCount, '需要关注', sources.length > okCount ? ' source-summary-attention' : '');
 
     if (meta) {
-      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
-      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6));
+      const pubmedNotice = pubmedFetchNotice(HEALTH.pubmedFetch).replace(/。$/, '');
+      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}${pubmedNotice ? ' · ' + pubmedNotice : ''}`;
+      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6) || (HEALTH.pubmedFetch && HEALTH.pubmedFetch.status === 'failed'));
     }
 
     const q = state.search.trim().toLowerCase();
@@ -3590,6 +3600,16 @@
       `</div>${cardSideActionsHtml(p)}</li>`;
   }
 
+  function weeklyTitleCountText(shown, total) {
+    if (state.search) return `匹配 ${shown} / ${total}`;
+    if (shown === total) return `${total}`;
+    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports) {
+      const label = state.journalTier === 'ai' && weeklyAiTier() ? 'AI' : (tierDef(state.journalTier).title || state.journalTier);
+      return `· ${label} ${shown}`;
+    }
+    return `${shown} / ${total}`;
+  }
+
   function renderWeeklyAuto() {
     const el = $('#weeklyAuto'); if (!el) return;
     if (typeof renderQuickFilters === 'function') renderQuickFilters();
@@ -3609,7 +3629,7 @@
     const infoOpen = !!el.querySelector?.('.weekly-info[open]');
     const compactEarly = state.viewMode === 'compact';
     const viewToggle = `<div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compactEarly ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compactEarly}">详细</button><button type="button" class="view-toggle-btn${compactEarly ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compactEarly}">列表</button></div>`;
-    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` + viewToggle +
+    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${weeklyTitleCountText(entries.length, boardWindow.entries.length)} 篇</span></h3>` + viewToggle +
       `<div class="weekly-meta"><span>发表于 ${boardWindow.start.slice(5)} 至 ${boardWindow.end.slice(5)}（北京时间，含今天）· ${timing}</span>${stale ? '<b class="weekly-stale">更新已超过 6 小时，时效待确认</b>' : ''}` +
       `<details class="weekly-info"${infoOpen ? ' open' : ''}><summary>榜单说明</summary><div class="weekly-info-body"><p>收录北京时间 ${boardWindow.start}–${boardWindow.end} 发表的入榜文献。分类与排序为自动规则，未经逐篇质量评审。</p><p class="weekly-preparation">摘要内容准备：中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，不代表全文精读。</p><p>点题名打开阅读台看摘要；出版商原文链接在阅读台底部。</p></div></details></div></div>`
       + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');

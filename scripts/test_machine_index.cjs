@@ -15,6 +15,7 @@ async function create(options = {}) {
   const h = await setup(options);
   h.env.MUSE_FULLTEXT_ENABLED = 'true';
   h.env.MACHINE_TOKENS = tokens;
+  h.env.MACHINE_INDEX_SELF_HEAL = 'off'; // these tests count exact KV operations; scripts/test_machine_index_heal.cjs covers the self-heal
   return h;
 }
 function call(h, route, secret, body, method = 'POST') {
