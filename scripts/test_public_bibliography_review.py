@@ -188,7 +188,7 @@ class ReviewBuildTests(unittest.TestCase):
                 builder.main()
             bundle = (root / 'public/public.js').read_text()
             library, _ = json.JSONDecoder().raw_decode(bundle.split('window.LIBRARY=', 1)[1])
-            self.assertEqual(len(library['papers']), 1260)
+            self.assertEqual(len(library['papers']), 1167)
             worker = (root / 'public/_worker.js').read_text()
             for identifier in quality.DOI_REVIEW:
                 self.assertNotIn(identifier, worker)

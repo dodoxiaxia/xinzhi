@@ -48,7 +48,7 @@
           </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${safeSourceUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(safeSourceUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${officialArticleUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(officialArticleUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
         ${doiStatusBlock(p)}
@@ -63,7 +63,7 @@
     const designClass = getDesignClass(p.studyDesign);
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
-    const doiUrl = safeSourceUrl(p) || '#';
+    const doiUrl = officialArticleUrl(p) || '#';
     const draftTitle = p.draftData?.title_zh || '';
     const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
     const title = draftTitle
@@ -103,14 +103,17 @@
     if (sources) sources.hidden = !!doi || state.mode !== 'sources';
     const noSidebar = !!doi || special || state.mode === 'curated';
     { const head = $('#listHead'); if (head) head.hidden = special || !!doi; }
+    const rail = $('#streamRail'); if (rail) rail.hidden = !!doi || state.mode !== 'curated';
     const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
     const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
     const app = $('.app-container');
     if (app) {
       app.classList.toggle('full-width-layout', noSidebar);
+      app.classList.toggle('curated-layout', !doi && state.mode === 'curated');
       app.classList.toggle('weekly-layout', !doi && state.mode === 'weekly');
       app.classList.toggle('sources-layout', !doi && state.mode === 'sources');
     }
+    if (doi || special) syncToolRowVisibility();
   }
   function supplementalLibraryNotice() {
     if (SUPPLEMENTAL_LIBRARY.state === 'error') return '<div class="doi-library-notice">补录文献暂未加载，已保留现有文献。<button class="btn-sm" data-action="refresh-doi-library">重试加载</button></div>';
@@ -125,7 +128,10 @@
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
     const uncertain = lookup && ['error', 'unsupported'].includes(lookup.state);
-    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : '站内暂未收录这个 DOI。';
+    const radarNote = papers.length ? '' : radarArchiveNotice();
+    const radarPending = !papers.length && (RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle');
+    const radarError = !papers.length && RADAR_LOAD.state === 'error';
+    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : radarNote ? '' : '站内暂未收录这个 DOI。';
     // The bibliography-conflict note is maintainer information; ordinary readers only see the one status block.
     let conflictNotice = '';
     const record = DOI_FULLTEXT.get(doi);
@@ -135,9 +141,9 @@
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
     const plainMatch = papers.length && !pendingLookup && !uncertain;
-    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`)
+    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3>${message ? `<p>${message}</p>` : ''}${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}${radarNote}</div>`)
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
-      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3>' + (pendingLookup ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
+      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : (pendingLookup || radarPending) ? '正在核对收录状态' : (uncertain || radarError) ? '现有题录未命中' : '未找到站内文献') + '</h3>' + ((pendingLookup || (radarPending && !activeJob)) ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
     if (!lookup) lookupSupplementalDoi(doi);
   }
@@ -150,18 +156,15 @@
     const doi = exactDoi(state.search);
     if (radarArchiveNeeded()) loadRadarArchive();
     applyDoiSearchLayout(doi);
-    if (doi) { renderFtBar(); renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
-    if (state.mode === 'weekly') { renderFtBar(); renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
-    if (state.mode === 'sources') { renderFtBar(); renderSourcesHealth(); syncUrl(); return; }
+    if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
+    if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
+    if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
     renderActiveFilterChips(filtered.length);
-    renderModeNote();
-    renderLaneBar();
+    syncToolRowVisibility();
     renderCuratedDayBar();
-    renderRangeBar();
-    renderFtBar();
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();

@@ -36,9 +36,10 @@ class QualityTests(unittest.TestCase):
         no_identity_before = {p['id'] for p in raw if not p['doi'] and not p['url']}
         no_identity_after = {p['id'] for p in projected if not p['doi'] and not p['url']}
         self.assertEqual(len(no_identity_before), 220)  # 245 before 25 DOI-less records received verified DOIs
-        self.assertEqual(len(no_identity_after), 217)  # two DOI-less duplicates (4fe78ed5, 891a0ca9) are no longer listed
-        self.assertEqual(no_identity_after, (no_identity_before - quality.NAVIGATION.keys() - quality.DUPLICATES.keys()) |
-                         {'a97bbb0a11844693', '814b860e19382e2f'})
+        self.assertEqual(len(no_identity_after), 194)
+        self.assertEqual(no_identity_after,
+                         (no_identity_before - quality.NAVIGATION.keys() - quality.DUPLICATES.keys()
+                          - quality.TOPIC_HIDES.keys()) | {'a97bbb0a11844693', '814b860e19382e2f'})
         self.assertEqual(raw, before)
 
     def test_agentic_official_metadata_deduplicates_only_enumerated_ids_and_holds_pdf_binding(self):
@@ -71,6 +72,8 @@ class QualityTests(unittest.TestCase):
             '4fe78ed54cf5523d': ('77f5287fc55d4220', '10.1016/j.landig.2025.100916', quality.DUPLICATES['4fe78ed54cf5523d'][2]),
             '891a0ca9ca481407': ('ba5cc383031aa08f', '10.1016/j.landig.2025.100922', quality.DUPLICATES['891a0ca9ca481407'][2]),
             '37cb5c6f96b8b0f5': ('3b51e13dda54492e', '10.1016/j.landig.2025.100960', quality.DUPLICATES['37cb5c6f96b8b0f5'][2]),
+            'f8345cffb3130085': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327', quality.DUPLICATES['f8345cffb3130085'][2]),
+            'aac74a7aaeeff6ef': ('f3ab7fe35456aeca', '10.1001/jama.2026.1327', quality.DUPLICATES['aac74a7aaeeff6ef'][2]),
         })
         raw = snapshot()
         before = copy.deepcopy(raw)
@@ -131,7 +134,8 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(by_id['a762c60c31fbd3e2']['date'], '2026-09-26')
         self.assertEqual(by_id['another-sep1-paper']['date'], '2026-09-01')
         targeted = (set(quality.NAVIGATION) | set(quality.AGENTIC_IDS) |
-                    set(quality.ONLINE_CORRECTIONS) | set(quality.DOI_REVIEW) | set(quality.DUPLICATES))
+                    set(quality.ONLINE_CORRECTIONS) | set(quality.DOI_REVIEW) |
+                    set(quality.DUPLICATES) | set(quality.TOPIC_HIDES))
         for p in raw:
             if p['id'] not in targeted:
                 self.assertEqual(by_id[p['id']], p)
@@ -143,8 +147,9 @@ class QualityTests(unittest.TestCase):
         second, _ = quality.project_public_library(first)
         self.assertEqual(first, reversed_result)
         self.assertEqual(first, second)
-        self.assertEqual((audit['inputCount'], audit['outputCount']), (1268, 1260))
-        self.assertEqual((len(audit['quarantined']), len(audit['aliases']), len(audit['corrections'])), (3, 5, 4))
+        self.assertEqual((audit['inputCount'], audit['outputCount']), (1268, 1167))
+        self.assertEqual((len(audit['quarantined']), len(audit['aliases']), len(audit['corrections'])), (3, 7, 4))
+        self.assertEqual(len(audit['topicHides']), 91)
         self.assertEqual(audit['privatePdfBodiesRead'], 0)
 
     def test_changed_target_identity_holds_instead_of_deleting_or_rebinding(self):
@@ -164,6 +169,7 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(result, [paper])
         self.assertEqual(audit['quarantined'], [])
         self.assertEqual(audit['aliases'], [])
+        self.assertEqual(audit['topicHides'], [])
 
     def test_projection_and_audit_never_export_private_unknown_fields(self):
         raw = snapshot()
@@ -205,13 +211,14 @@ class QualityTests(unittest.TestCase):
                 builder.main()
             bundle = (root / 'public/public.js').read_text()
             library, _ = json.JSONDecoder().raw_decode(bundle.split('window.LIBRARY=', 1)[1])
-            self.assertEqual(len(library['papers']), 1260)
-            self.assertEqual(json.loads((root / 'docs/public-manifest.json').read_text())['counts']['library'], 1260)
+            self.assertEqual(len(library['papers']), 1167)
+            self.assertEqual(json.loads((root / 'docs/public-manifest.json').read_text())['counts']['library'], 1167)
             audit = json.loads((root / 'docs/public-library-quality-audit.json').read_text())
             self.assertEqual(len(audit['quarantined']), 3)
+            self.assertEqual(len(audit['topicHides']), 91)
             self.assertNotIn('quarantined', bundle)
             worker = (root / 'public/_worker.js').read_text()
-            for identifier in (*quality.NAVIGATION, *quality.AGENTIC_IDS, *quality.DUPLICATES):
+            for identifier in (*quality.NAVIGATION, *quality.AGENTIC_IDS, *quality.DUPLICATES, *quality.TOPIC_HIDES):
                 self.assertNotIn(identifier, worker)
             for p in paths:
                 self.assertEqual(p.read_bytes(), before[p])
@@ -220,6 +227,65 @@ class QualityTests(unittest.TestCase):
             policy.write_text(policy.read_text() + '\n# changed projection\n')
             with self.assertRaisesRegex(ValueError, 'provenance'):
                 public_payloads(root)
+
+    def test_topic_hides_omit_only_pinned_ids_and_keep_snapshot_unchanged(self):
+        self.assertEqual(len(quality.TOPIC_HIDES), 91)
+        raw = snapshot()
+        before = copy.deepcopy(raw)
+        projected, audit = quality.project_public_library(raw)
+        shown = {p['id'] for p in projected}
+        in_snapshot = {p['id']: p for p in snapshot()}
+        entries = {entry['record']['id']: entry for entry in audit['topicHides']}
+        self.assertEqual(len(entries), 91)
+        for identifier, (pinned_doi, pinned_title, category) in quality.TOPIC_HIDES.items():
+            with self.subTest(id=identifier):
+                self.assertNotIn(identifier, shown)
+                self.assertIn(identifier, in_snapshot)
+                self.assertEqual(in_snapshot[identifier]['title'], pinned_title)
+                self.assertEqual(quality.normalize_doi(in_snapshot[identifier].get('doi') or ''), pinned_doi)
+                self.assertEqual(entries[identifier]['status'], 'public_topic_hidden')
+                self.assertEqual(entries[identifier]['category'], category)
+                self.assertTrue(set(entries[identifier]['record']) <= quality.AUDIT_FIELDS)
+        self.assertEqual(raw, before)
+
+    def test_general_ai_and_tech_papers_remain_public(self):
+        projected, _ = quality.project_public_library(snapshot())
+        shown = {p['id'] for p in projected}
+        for identifier in ('8df1104bbf8da115', 'd5e6765952d1e264', 'ed458e90359ee85b',
+                           '073274ec0b04bbb1', 'cc0db6a315499f7d'):
+            self.assertIn(identifier, shown)
+
+    def test_changed_topic_hide_identity_holds_and_absent_id_is_skipped(self):
+        for identifier, change in [('02812acb29e11998', {'title': 'A different title'}),
+                                   ('02812acb29e11998', {'doi': '10.1056/nejmp9999999'}),
+                                   ('02812acb29e11998', {'doi': ''}),
+                                   ('0568c9b011c1a4a9', {'doi': '10.1234/filled'})]:
+            raw = snapshot()
+            next(p for p in raw if p['id'] == identifier).update(change)
+            with self.subTest(id=identifier, change=change), self.assertRaisesRegex(ValueError, 'topic_hide_identity_changed'):
+                quality.project_public_library(raw)
+        raw = [p for p in snapshot() if p['id'] != '0fe528d72fd56af2']
+        projected, audit = quality.project_public_library(raw)
+        self.assertEqual(len(projected), 1167)
+        self.assertEqual(len(audit['topicHides']), 90)
+        self.assertNotIn('0fe528d72fd56af2', {entry['record']['id'] for entry in audit['topicHides']})
+
+    def test_malformed_topic_hides_config_raises_clear_error(self):
+        base = json.loads(quality.TOPIC_HIDES_PATH.read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for label, mutator in [
+                ('wrong_count', lambda d: d['records'].pop()),
+                ('duplicate_id', lambda d: d['records'].__setitem__(1, dict(d['records'][0]))),
+                ('non_string_doi', lambda d: d['records'][0].__setitem__('doi', None)),
+                ('empty_category', lambda d: d['records'][0].__setitem__('category', '')),
+            ]:
+                data = copy.deepcopy(base)
+                mutator(data)
+                path = root / f'{label}.json'
+                path.write_text(json.dumps(data), encoding='utf-8')
+                with self.subTest(case=label), self.assertRaises(ValueError):
+                    quality._load_topic_hides(path)
 
 
 if __name__ == '__main__':

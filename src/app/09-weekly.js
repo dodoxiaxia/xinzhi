@@ -80,6 +80,7 @@
   // Full-text readings open in their own panel, so the close button, the section
   // list and 上一篇 / 下一篇 stay on screen however long the reading is.
   var deepReaderFocus = null;
+  var deepReaderPushed = false;
   function deepReaderUrl(id) {
     const u = new URL(window.location.href);
     if (id) u.searchParams.set('read', id); else u.searchParams.delete('read');
@@ -209,8 +210,13 @@
     $('#drawerBackdrop')?.classList.add('open');
     document.body.classList.add('dialog-open');
     try {
-      if (push && !wasOpen) history.pushState({ deepReader: id }, '', deepReaderUrl(id));
-      else history.replaceState(history.state && history.state.deepReader ? { deepReader: id } : history.state, '', deepReaderUrl(id));
+      if (push && !wasOpen) {
+        history.pushState({ deepReader: id }, '', deepReaderUrl(id));
+        deepReaderPushed = true;
+      } else {
+        const nextState = deepReaderPushed && history.state && history.state.deepReader ? { deepReader: id } : (history.state && history.state.deepReader ? null : history.state);
+        history.replaceState(nextState, '', deepReaderUrl(id));
+      }
     } catch (e) { /* file:// or sandboxed */ }
     if (!wasOpen) { try { reader.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     return true;
@@ -237,13 +243,15 @@
     if (!reader || !reader.classList.contains('open')) return;
     // Opening pushed a history entry so the phone back button closes the panel;
     // closing by button or Esc walks back over it instead of leaving it behind.
-    if (!fromHistory && history.state && history.state.deepReader) { history.back(); return; }
+    if (!fromHistory && deepReaderPushed && history.state && history.state.deepReader) { history.back(); return; }
+    deepReaderPushed = false;
     const id = activeDeepReadingId;
     activeDeepReadingId = '';
     reader.classList.remove('open');
     reader.setAttribute('aria-hidden', 'true');
     if (!$('#readerDrawer.open')) { $('#drawerBackdrop')?.classList.remove('open'); document.body.classList.remove('dialog-open'); }
     $$('.deep-reading-item.active').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+    try { if (history.state && history.state.deepReader) history.replaceState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
     syncUrl();
     const item = [...document.querySelectorAll('.deep-reading-item')].find(b => b.dataset.readingId === id && b.getClientRects().length);
     const target = item || (deepReaderFocus && deepReaderFocus.isConnected ? deepReaderFocus : null);

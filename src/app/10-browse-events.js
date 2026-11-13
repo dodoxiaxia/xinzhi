@@ -153,14 +153,23 @@
     });
   }
 
-  $('#searchToggleBtn')?.addEventListener('click', () => {
+  const searchBtn = $('#searchToggleBtn');
+  // Prevent pointer mousedown on the toggle from blurring #globalSearch before click sees the open panel.
+  searchBtn?.addEventListener('mousedown', e => e.preventDefault());
+  searchBtn?.addEventListener('click', () => {
     const panel = $('#searchPanel');
     if (!panel) return;
-    if (!panel.hidden && !state.search && !searchInput?.value) { syncSearchPanel(false); panel.hidden = true; $('#searchToggleBtn').setAttribute('aria-expanded', 'false'); $('#searchToggleBtn').classList.remove('active'); return; }
+    if (!panel.hidden && !state.search && !searchInput?.value) {
+      panel.hidden = true;
+      searchBtn.setAttribute('aria-expanded', 'false');
+      searchBtn.classList.remove('active');
+      searchBtn.focus({ preventScroll: true });
+      return;
+    }
     syncSearchPanel(true);
     searchInput?.focus();
   });
-  searchInput?.addEventListener('blur', () => { if (!searchInput.value && !state.search) { const p = $('#searchPanel'); if (p) p.hidden = true; $('#searchToggleBtn')?.setAttribute('aria-expanded', 'false'); $('#searchToggleBtn')?.classList.remove('active'); } });
+  searchInput?.addEventListener('blur', () => { if (!searchInput.value && !state.search) { const p = $('#searchPanel'); if (p) p.hidden = true; searchBtn?.setAttribute('aria-expanded', 'false'); searchBtn?.classList.remove('active'); } });
   // Hotkey '/' for search
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
@@ -171,8 +180,15 @@
       syncSearchPanel(true);
       searchInput?.focus();
     } else if (e.key === 'Tab') {
-      const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open');
-      if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
+      const modal = $('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open') || $('#appSidebar.open');
+      if (modal) {
+        const nodes = [...modal.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && !x.hidden && !x.closest('[hidden],[inert]') && x.getClientRects().length && getComputedStyle(x).visibility !== 'hidden' && (!x.checkVisibility || x.checkVisibility({ checkVisibilityCSS: true })) && !(x.closest('details:not([open])') && !(x.tagName === 'SUMMARY' && x.parentElement?.matches('details:not([open])'))));
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        if (!first) return;
+        if (!modal.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+        else if (e.shiftKey && (document.activeElement === first || document.activeElement === modal)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
     } else if (e.key === 'Escape') {
       // One press closes the topmost layer only: shortlist, then reader, then full-text reading, then filters.
       if ($('#huddleModalBackdrop.open')) closeHuddleModal();
@@ -617,9 +633,18 @@
     const id = entry.deepReader;
     if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
     else closeDeepReading({ fromHistory: true });
-    // Back after switching tabs returns to the previous tab.
-    const mode = new URLSearchParams(location.search).get('mode') || 'curated';
-    if (!entry.overlay && !entry.deepReader && mode !== state.mode && ['curated', 'weekly', 'candidates', 'library', 'sources'].includes(mode)) switchMode(mode);
+    if (entry.overlay || entry.deepReader) return;
+    const next = readStateFromUrl();
+    if (!URL_STATE_KEYS.some(k => state[k] !== next[k])) return;
+    clearTimeout(searchTimer);
+    viewInUrl = next.viewInUrl;
+    URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
+    if (searchInput) searchInput.value = state.search;
+    if (sortSelect) sortSelect.value = state.sort;
+    $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
+    $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
+    syncSearchPanel();
+    switchMode(next.mode, true);
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
@@ -688,7 +713,7 @@
 
   // Initialize
   // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.
-  try { if (history.state && history.state.overlay) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
+  try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';

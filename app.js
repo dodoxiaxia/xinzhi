@@ -149,7 +149,7 @@
     const script = document.createElement('script');
     script.src = window.RADAR_SRC;
     script.async = true;
-    script.onerror = () => { RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates') renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
+    script.onerror = () => { window.XINZHI_RADAR_READY = null; RADAR_LOAD.state = 'error'; script.remove(); if (state.mode === 'candidates' || exactDoi(state.search)) renderStream(); if ($('#huddleModalBackdrop.open')) openHuddleModal(); };
     document.head.appendChild(script);
   }
   function radarArchiveNeeded() {
@@ -157,7 +157,13 @@
     return !!exactDoi(state.search) || (state.mode === 'candidates' && !['7', '14'].includes(state.range));
   }
   function radarArchiveNotice() {
-    if (state.mode !== 'candidates' || !radarArchiveNeeded()) return '';
+    const forDoi = !!exactDoi(state.search);
+    if (!forDoi && (state.mode !== 'candidates' || !radarArchiveNeeded())) return '';
+    if (forDoi) {
+      if (RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle') return '<p class="radar-archive-note" role="status">正在检索旧雷达存档…</p>';
+      if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">旧雷达存档加载失败，暂时无法确认站内是否收录这个 DOI。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
+      return '';
+    }
     if (RADAR_LOAD.state === 'loading') return '<p class="radar-archive-note" role="status">正在载入 365 天题录存档，结果将自动补全…</p>';
     if (RADAR_LOAD.state === 'error') return '<p class="radar-archive-note" role="status">365 天题录存档载入失败，当前仅显示近 3 周内容。<button type="button" class="btn-sm" data-action="retry-radar-archive">重试</button></p>';
     return '';
@@ -398,31 +404,66 @@
   } catch (e) { /* cookies blocked */ }
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
+  const VALID_MODES = ['curated', 'weekly', 'candidates', 'library', 'sources'];
+  function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
+  function readStateFromUrl(search = window.location.search) {
+    const params = new URLSearchParams(search);
+    const rawMode = params.get('mode') || 'curated';
+    const mode = VALID_MODES.includes(rawMode) ? rawMode : 'curated';
+    const nextViewInUrl = validView(params.get('view'));
+    return {
+      mode,
+      viewInUrl: nextViewInUrl,
+      viewMode: nextViewInUrl ? params.get('view') : validView(safeGet('xinzhi_view_mode')) ? safeGet('xinzhi_view_mode') : 'cards',
+      search: params.get('q') || '',
+      clinicalTier: params.get('tier') || '',
+      publisher: params.get('pub') || '',
+      journal: params.get('journal') || '',
+      studyDesign: params.get('design') || '',
+      tag: params.get('tag') || '',
+      lane: params.get('lane') || 'core',
+      sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
+      range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
+      minor: params.get('minor') === '1',
+      reading: ['abstract', 'guide', 'quicklook'].includes(params.get('reading')) ? params.get('reading') : '',
+      favoritesOnly: params.get('favorites') === '1',
+      day: params.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') || '') ? params.get('day') : '',
+      weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(params.get('wcat')) ? params.get('wcat') : '',
+      weeklyPane: params.get('pane') === 'reading' ? 'reading' : 'board',
+      sourceFilter: ['ok', 'attention'].includes(params.get('sf')) ? params.get('sf') : '',
+      ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(params.get('ft')) ? params.get('ft') : ''
+    };
+  }
+  const URL_STATE_KEYS = [
+    'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
+    'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
+    'favoritesOnly', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
+  ];
   // Saved view preferences affect rendering without adding a URL parameter.
-  let viewInUrl = validView(urlParams.get('view'));
-  const savedView = safeGet('xinzhi_view_mode');
+  const initialUrlState = readStateFromUrl(window.location.search);
+  let viewInUrl = initialUrlState.viewInUrl;
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
-    mode: urlParams.get('mode') || 'curated', // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
-    viewMode: viewInUrl ? urlParams.get('view') : validView(savedView) ? savedView : 'cards', // 'cards' | 'compact'
+    mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
+    viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
-    search: urlParams.get('q') || '',
-    clinicalTier: urlParams.get('tier') || '',
-    publisher: urlParams.get('pub') || '',
-    journal: urlParams.get('journal') || '',
-    studyDesign: urlParams.get('design') || '',
-    tag: urlParams.get('tag') || '',
-    lane: urlParams.get('lane') || 'core',
-    sort: (['smart','date-desc','date-asc','journal-date'].includes(urlParams.get('sort'))) ? urlParams.get('sort') : 'date-desc',
-    range: ['7','14','30','90','365','all'].includes(urlParams.get('range')) ? urlParams.get('range') : '',
-    minor: urlParams.get('minor') === '1',
-    reading: ['abstract','guide','quicklook'].includes(urlParams.get('reading')) ? urlParams.get('reading') : '',
-    favoritesOnly: urlParams.get('favorites') === '1',
-    day: urlParams.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(urlParams.get('day') || '') ? urlParams.get('day') : '',
-    weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(urlParams.get('wcat')) ? urlParams.get('wcat') : '',
-    weeklyPane: urlParams.get('pane') === 'reading' ? 'reading' : 'board',
-    sourceFilter: ['ok', 'attention'].includes(urlParams.get('sf')) ? urlParams.get('sf') : '',
-    ftFilter: ['ready', 'verifying', 'queued', 'failed', 'none'].includes(urlParams.get('ft')) ? urlParams.get('ft') : '',
+    search: initialUrlState.search,
+    clinicalTier: initialUrlState.clinicalTier,
+    publisher: initialUrlState.publisher,
+    journal: initialUrlState.journal,
+    studyDesign: initialUrlState.studyDesign,
+    tag: initialUrlState.tag,
+    lane: initialUrlState.lane,
+    sort: initialUrlState.sort,
+    range: initialUrlState.range,
+    minor: initialUrlState.minor,
+    reading: initialUrlState.reading,
+    favoritesOnly: initialUrlState.favoritesOnly,
+    day: initialUrlState.day,
+    weeklyCat: initialUrlState.weeklyCat,
+    weeklyPane: initialUrlState.weeklyPane,
+    sourceFilter: initialUrlState.sourceFilter,
+    ftFilter: initialUrlState.ftFilter,
     favoriteJournals: (()=>{try { const a=JSON.parse(safeGet('xz_favorite_journals')||'[]'); return Array.isArray(a)?a.filter(x=>typeof x==='string'):[]; } catch(e){return [];} })(),
     pageSize: 20,
     page: 1,
@@ -432,9 +473,6 @@
     activeDrawerPaper: null,
     huddleCompare: [] // Explicit selection, kept only in this browser session.
   };
-
-  function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
-  if (!state.range) state.range = defaultRange(state.mode);
 
   // Helper DOM selectors
   const $ = selector => document.querySelector(selector);
@@ -656,7 +694,7 @@
     return (valid ? embedded : null) || (window.QUICKLOOKS || {})[k] || LIVE_QL[k] || null;
   }
   // ==== src/app/03-ai.js · AI services: shared request lifecycle (aiRun) and the six features ====
-  // 一键 AI 解读：后端 /api/ql（Cloudflare _worker.js）。本地静态预览没有后端时自动隐藏按钮。
+  // 一键生成 AI 速览：后端 /api/ql（Cloudflare _worker.js）。本地静态预览没有后端时自动隐藏按钮。
   function aiRequest(url, options = {}, onSlow = null) {
     // Bound headers and body even when an upstream ignores cancellation.
     const controller = new AbortController(), paid = options.method === 'POST';
@@ -731,7 +769,7 @@
         else if (aiTaskStatus(j) === 'waiting' || aiTaskStatus(j) === 'completed' || (previous === 'waiting' && !aiTaskStatus(j))) { paper._aiState = 'waiting'; paper._aiMsg = aiWaitingMessage(j); }
         else { paper._aiState = j.canGenerate ? 'none' : 'off'; paper._aiMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'quicklook') : ''; if (paper._aiMsg && j.canGenerate) paper._aiState = 'error'; }
       },
-      fail: () => { paper._aiState = previous === 'waiting' ? 'waiting' : 'lookup-error'; paper._aiMsg = '已有解读读取失败，请重查；没有重新调用模型。'; },
+      fail: () => { paper._aiState = previous === 'waiting' ? 'waiting' : 'lookup-error'; paper._aiMsg = '已有 AI 速览读取失败，请重查；没有重新调用模型。'; },
       after: () => { if (current()) paper._aiLookupLoading = false; rerenderReader(paper); } });
   }
   // ---- 摘要翻译 / 多篇综述（同一后端 /api/ai，结果服务器端缓存、全站共享）----
@@ -1060,7 +1098,7 @@
     return text;
   }
   // ---- End public-abstract study services. ----
-  const AI_ERR = { daily_cap: '今日 AI 解读额度已用完，明天再试。', ip_cap: '你今天的解读次数已达上限。', no_abstract: '本次已完成的公开来源查询未取得可用摘要。可查看官方原文。', metadata_timeout: '公开摘要读取超时，未生成结果。请稍后重试。', metadata_error: '公开摘要来源暂时不可读，未生成结果。请稍后重试。', request_timeout: '本次任务未能在时限内完成，未保存结果。可点击重试。', task_timeout: '本次任务未能在时限内完成，未保存结果。可点击重试。', task_cancelled: '本次任务已取消，未保存结果。可点击重试。',
+  const AI_ERR = { daily_cap: '今日 AI 额度已用完，明天再试。', ip_cap: '你今天的 AI 调用次数已达上限。', no_abstract: '本次已完成的公开来源查询未取得可用摘要。可查看官方原文。', metadata_timeout: '公开摘要读取超时，未生成结果。请稍后重试。', metadata_error: '公开摘要来源暂时不可读，未生成结果。请稍后重试。', request_timeout: '本次任务未能在时限内完成，未保存结果。可点击重试。', task_timeout: '本次任务未能在时限内完成，未保存结果。可点击重试。', task_cancelled: '本次任务已取消，未保存结果。可点击重试。',
     model_failed: 'AI 服务未能完成处理，未保存。请稍后重试。', in_progress: '该任务仍在处理中，请读取已有结果确认进度。',
     generation_off: 'AI 功能暂未开放。', not_configured: 'AI 服务尚未配置完成，需要维护者处理。', server: '服务暂时出错，请稍后重试。', need_two: '至少需要 2 篇文献。', bad_key: '这篇缺少 PMID/DOI，无法处理。' };
   const AI_MODEL_ERR = {
@@ -1128,6 +1166,11 @@
   function safeSourceUrl(p) {
     const val=p.url || (p.doi?'https://doi.org/'+p.doi:'');
     try { const u=new URL(val); return ['https:','http:'].includes(u.protocol)?u.href:''; } catch(e){return '';}
+  }
+  function officialArticleUrl(p) {
+    const doi = p && exactDoi(p.doi);
+    if (doi) return 'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/');
+    return p && p.url ? safeSourceUrl({ url: p.url }) : '';
   }
   function pdfDownloadUrl(p) {
     if (p && typeof DOI_FULLTEXT !== 'undefined') {
@@ -1251,7 +1294,7 @@
   function renderRangeBar() {
     const el = $('#rangeBar');
     if (!el) return;
-    if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!usesLane() || exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
     const ranges = RANGES_BY_MODE[state.mode] || RANGES_BY_MODE.library;
     el.innerHTML = '<span class="range-label">发表时间</span><select class="range-select" data-range-select aria-label="发表时间">' + ranges.map(([v, n]) => `<option value="${v}"${state.range === v ? ' selected' : ''}>${n}</option>`).join('') + '</select>';
@@ -1283,6 +1326,7 @@
   function renderLaneBar() {
     const el = $('#laneBar');
     if (!el) return;
+    if (exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     if (state.mode === 'curated') {
       // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
       const counts = {}, day = curatedDay();
@@ -1361,7 +1405,7 @@
     return !Number.isFinite(time) || Date.now() - time > hours * 3600000;
   }
   const MODE_NOTES = {
-    candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点“阅读摘要”再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
+    candidates: '自动聚合的期刊新文献，未经逐篇核对。<span class="mode-note-more">近 14 天来自 RSS 与 PubMed（多数带摘要）；更早的是 PubMed 题录（已关注的心血管与 AI 医学期刊），点题名打开阅读面板再取公开摘要。已核对导读与 AI 速览分别标记。</span><button type="button" class="mode-note-toggle" aria-expanded="false">数据来源</button>',
     library: '既往题录档案，按期刊与时间检索。<span class="mode-note-more">输入全文口令后可下载已收录的 PDF；未收录全文的条目可访问官网。没有摘要的条目，可尝试获取公开摘要。刊期按月份显示，日期未知的排在最后。</span><button type="button" class="mode-note-toggle" aria-expanded="false">说明</button>'
   };
 
@@ -1374,6 +1418,12 @@
     if (laneBar && laneSlot && laneBar.parentElement !== laneSlot) laneSlot.append(laneBar);
     el.innerHTML = '';
     el.hidden = true;
+  }
+  function syncToolRowVisibility() {
+    renderModeNote();
+    renderLaneBar();
+    renderRangeBar();
+    renderFtBar();
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
@@ -1467,10 +1517,18 @@
     if (!['tier', 'pub', 'journal', 'design', 'tag'].includes(group) || typeof value !== 'string') return false;
     if (only) clearSidebarFilters();
     if (group === 'tier') state.clinicalTier = value;
-    if (group === 'pub') { state.publisher = value; state.journal = ''; }
-    if (group === 'journal') { state.journal = value; state.publisher = publisherForJournal(value); }
+    if (group === 'pub') {
+      const clear = !only && value && state.publisher === value && !state.journal;
+      state.publisher = clear ? '' : value;
+      state.journal = '';
+    }
+    if (group === 'journal') {
+      const clear = !only && value && state.journal === value;
+      state.journal = clear ? '' : value;
+      state.publisher = clear ? '' : publisherForJournal(value);
+    }
     if (group === 'design') state.studyDesign = value;
-    if (group === 'tag') state.tag = value;
+    if (group === 'tag') state.tag = !only && value && state.tag === value ? '' : value;
     if (state.publisher) expandedPublishers.add(state.publisher);
     state.page = 1;
     return true;
@@ -1909,7 +1967,7 @@
           </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${safeSourceUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(safeSourceUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${officialArticleUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(officialArticleUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
         ${doiStatusBlock(p)}
@@ -1924,7 +1982,7 @@
     const designClass = getDesignClass(p.studyDesign);
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
-    const doiUrl = safeSourceUrl(p) || '#';
+    const doiUrl = officialArticleUrl(p) || '#';
     const draftTitle = p.draftData?.title_zh || '';
     const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
     const title = draftTitle
@@ -1964,14 +2022,17 @@
     if (sources) sources.hidden = !!doi || state.mode !== 'sources';
     const noSidebar = !!doi || special || state.mode === 'curated';
     { const head = $('#listHead'); if (head) head.hidden = special || !!doi; }
+    const rail = $('#streamRail'); if (rail) rail.hidden = !!doi || state.mode !== 'curated';
     const sidebar = $('#appSidebar'); if (sidebar) sidebar.style.display = noSidebar ? 'none' : '';
     const toggle = $('#filterToggleBtn'); if (toggle) toggle.hidden = noSidebar;
     const app = $('.app-container');
     if (app) {
       app.classList.toggle('full-width-layout', noSidebar);
+      app.classList.toggle('curated-layout', !doi && state.mode === 'curated');
       app.classList.toggle('weekly-layout', !doi && state.mode === 'weekly');
       app.classList.toggle('sources-layout', !doi && state.mode === 'sources');
     }
+    if (doi || special) syncToolRowVisibility();
   }
   function supplementalLibraryNotice() {
     if (SUPPLEMENTAL_LIBRARY.state === 'error') return '<div class="doi-library-notice">补录文献暂未加载，已保留现有文献。<button class="btn-sm" data-action="refresh-doi-library">重试加载</button></div>';
@@ -1986,7 +2047,10 @@
     if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · <b>${papers.length}</b> 篇文献</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
     const pendingLookup = !lookup || lookup.state === 'loading';
     const uncertain = lookup && ['error', 'unsupported'].includes(lookup.state);
-    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : '站内暂未收录这个 DOI。';
+    const radarNote = papers.length ? '' : radarArchiveNotice();
+    const radarPending = !papers.length && (RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle');
+    const radarError = !papers.length && RADAR_LOAD.state === 'error';
+    const message = pendingLookup ? '正在检查补录文献…' : uncertain ? '已检索现有题录；补录状态暂不可用。' : papers.length ? '已按完整 DOI 匹配，当前栏目与筛选条件不影响结果。' : radarNote ? '' : '站内暂未收录这个 DOI。';
     // The bibliography-conflict note is maintainer information; ordinary readers only see the one status block.
     let conflictNotice = '';
     const record = DOI_FULLTEXT.get(doi);
@@ -1996,9 +2060,9 @@
     }
     streamEl.className = state.viewMode === 'compact' ? 'articles-stream compact-mode' : 'articles-stream';
     const plainMatch = papers.length && !pendingLookup && !uncertain;
-    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3><p>${message}</p>${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}</div>`)
+    streamEl.innerHTML = (plainMatch ? '' : `<div class="doi-search-notice"><h3>按 DOI 全站检索</h3>${message ? `<p>${message}</p>` : ''}${uncertain ? `<button class="btn-sm" data-action="refresh-doi-status" data-doi="${esc(doi)}">重试检索</button>` : ''}${radarNote}</div>`)
       + conflictNotice + papers.map(state.viewMode === 'compact' ? renderCompactRow : renderArticleCard).join('')
-      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : pendingLookup ? '正在核对收录状态' : uncertain ? '现有题录未命中' : '未找到站内文献') + '</h3>' + (pendingLookup ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
+      + (!papers.length ? '<div class="empty-state doi-empty"><h3>' + (activeJob ? '后台任务已提交' : (pendingLookup || radarPending) ? '正在核对收录状态' : (uncertain || radarError) ? '现有题录未命中' : '未找到站内文献') + '</h3>' + ((pendingLookup || (radarPending && !activeJob)) ? '' : fulltextStatusHtml({ doi }, true)) + '</div>' : '');
     if (loadMoreBtn) loadMoreBtn.hidden = true;
     if (!lookup) lookupSupplementalDoi(doi);
   }
@@ -2011,18 +2075,15 @@
     const doi = exactDoi(state.search);
     if (radarArchiveNeeded()) loadRadarArchive();
     applyDoiSearchLayout(doi);
-    if (doi) { renderFtBar(); renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
-    if (state.mode === 'weekly') { renderFtBar(); renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
-    if (state.mode === 'sources') { renderFtBar(); renderSourcesHealth(); syncUrl(); return; }
+    if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
+    if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
+    if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
     renderActiveFilterChips(filtered.length);
-    renderModeNote();
-    renderLaneBar();
+    syncToolRowVisibility();
     renderCuratedDayBar();
-    renderRangeBar();
-    renderFtBar();
     renderMoreFilters();
     { const ss = $('#sortSelector'); if (ss) { ss.hidden = state.mode === 'curated'; ss.value = state.sort; } }
     syncUrl();
@@ -2117,7 +2178,7 @@
     const designClass = getDesignClass(paper.studyDesign);
     const journalName = paper.cleanJournal || paper.journal || '期刊';
     const dateStr = dateLabel(paper);
-    const doiUrl = safeSourceUrl(paper) || '#';
+    const doiUrl = officialArticleUrl(paper) || '#';
     const isHuddled = state.huddle.includes(paper.id);
 
     // Header Badges
@@ -2141,7 +2202,7 @@
       if (draft) {
         editorialSection = `
           <div class="drawer-section">
-            <div class="drawer-section-title">中文核心导读 (AI 辅助核对)</div>
+            <div class="drawer-section-title">${draft.source_checked === true ? '已核对导读 <small>对照公开摘要核对 · 未经医生终审</small>' : 'AI 速览 <small class="ql-flag">未经人工核对</small>'}</div>
             <div class="editorial-box">
               <p>${esc(draft.summary)}</p>
               ${draft.limitations ? `<p style="margin-top:8px; font-size:12px; color:var(--rose);"><b>证据边界：</b>${esc(draft.limitations)}</p>` : ''}
@@ -2232,16 +2293,16 @@
         if (paper.weeklyPick) return '';
         const s = paper._aiState;
         if (s === 'none' || s === 'error') return `<div class="drawer-section quicklook ai-ask">
-          <div class="drawer-section-title">AI 解读</div>
+          <div class="drawer-section-title">AI 速览</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
-          <p class="ql-meta">点击后由模型根据公开摘要生成中文解读；生成时间取决于公开来源和模型响应。生成后会保存在本站，之后所有读者可直接查看；内容未经人工核对。</p>
-          <button class="btn-sm btn-primary" data-action="ai-interpret" data-paper-id="${esc(paper.id)}">一键 AI 解读</button></div>`;
-        if (s === 'noabs') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div>
-          <p class="ql-meta">本次已完成的公开来源查询未取得可用摘要，因此未生成解读。请查看官方原文；页面展示的摘要与服务本次可验证的来源可能不同。</p>
+          <p class="ql-meta">点击后由模型根据公开摘要生成 AI 速览；生成时间取决于公开来源和模型响应。生成后会保存在本站，之后所有读者可直接查看；内容未经人工核对。</p>
+          <button class="btn-sm btn-primary" data-action="ai-interpret" data-paper-id="${esc(paper.id)}">一键生成 AI 速览</button></div>`;
+        if (s === 'noabs') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 速览</div>
+          <p class="ql-meta">本次已完成的公开来源查询未取得可用摘要，因此未生成 AI 速览。请查看官方原文；页面展示的摘要与服务本次可验证的来源可能不同。</p>
           ${!paper.titleZh ? `<button class="btn-sm" data-action="${['waiting','checking'].includes(paper._ttState) ? 'title-check' : 'ai-title'}" data-paper-id="${esc(paper.id)}"${['loading','checking'].includes(paper._ttState) ? ' disabled' : ''}>${['waiting','checking'].includes(paper._ttState) ? '读取已有标题译文' : '只翻译标题'}</button>` : ''}${paper._ttMsg ? `<span class="ql-meta" style="color:#b45309;"> ${esc(paper._ttMsg)}</span>` : ''}</div>`;
-        if (s === 'waiting' || s === 'lookup-error') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div><p class="ql-meta" role="status">${esc(paper._aiMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="ai-check" data-paper-id="${esc(paper.id)}">读取已有解读</button></div>`;
-        if (s === 'checking') return '<div class="drawer-section quicklook ai-ask"><p class="ql-meta" role="status">正在读取已有解读…</p></div>';
-        if (s === 'loading') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 解读</div><p class="ql-meta">正在读取公开摘要并生成解读，请稍候…${paper._aiSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
+        if (s === 'waiting' || s === 'lookup-error') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 速览</div><p class="ql-meta" role="status">${esc(paper._aiMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="ai-check" data-paper-id="${esc(paper.id)}">读取已有 AI 速览</button></div>`;
+        if (s === 'checking') return '<div class="drawer-section quicklook ai-ask"><p class="ql-meta" role="status">正在读取已有 AI 速览…</p></div>';
+        if (s === 'loading') return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">AI 速览</div><p class="ql-meta">正在读取公开摘要并生成 AI 速览，请稍候…${paper._aiSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
         return '';
       })() : '';
 
@@ -2559,7 +2620,7 @@
       body.innerHTML = `
         <div class="empty-state" style="padding:30px;">
           <p id="huddleEmptyHelp" role="status">精选清单当前为空，添加文献后可清空、复制或导出。</p>
-          <small style="color:var(--text-muted);">从文献列表中点击“加入精选清单”，即可将心仪文献加入讨论清单。</small>
+          <small style="color:var(--text-muted);">在文献列表中点卡片上的“精选”加入精选清单。</small>
         </div>
       `;
     } else {
@@ -2802,9 +2863,11 @@
       if (newMode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); }
       renderStream();
     } else if (newMode === 'sources') {
+      syncToolRowVisibility();
       renderSourcesHealth();
       syncUrl();
     } else if (newMode === 'weekly') {
+      syncToolRowVisibility();
       renderWeeklyHeader();
       renderNextCandidates();
       syncUrl();
@@ -2897,6 +2960,7 @@
   // Full-text readings open in their own panel, so the close button, the section
   // list and 上一篇 / 下一篇 stay on screen however long the reading is.
   var deepReaderFocus = null;
+  var deepReaderPushed = false;
   function deepReaderUrl(id) {
     const u = new URL(window.location.href);
     if (id) u.searchParams.set('read', id); else u.searchParams.delete('read');
@@ -3026,8 +3090,13 @@
     $('#drawerBackdrop')?.classList.add('open');
     document.body.classList.add('dialog-open');
     try {
-      if (push && !wasOpen) history.pushState({ deepReader: id }, '', deepReaderUrl(id));
-      else history.replaceState(history.state && history.state.deepReader ? { deepReader: id } : history.state, '', deepReaderUrl(id));
+      if (push && !wasOpen) {
+        history.pushState({ deepReader: id }, '', deepReaderUrl(id));
+        deepReaderPushed = true;
+      } else {
+        const nextState = deepReaderPushed && history.state && history.state.deepReader ? { deepReader: id } : (history.state && history.state.deepReader ? null : history.state);
+        history.replaceState(nextState, '', deepReaderUrl(id));
+      }
     } catch (e) { /* file:// or sandboxed */ }
     if (!wasOpen) { try { reader.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     return true;
@@ -3054,13 +3123,15 @@
     if (!reader || !reader.classList.contains('open')) return;
     // Opening pushed a history entry so the phone back button closes the panel;
     // closing by button or Esc walks back over it instead of leaving it behind.
-    if (!fromHistory && history.state && history.state.deepReader) { history.back(); return; }
+    if (!fromHistory && deepReaderPushed && history.state && history.state.deepReader) { history.back(); return; }
+    deepReaderPushed = false;
     const id = activeDeepReadingId;
     activeDeepReadingId = '';
     reader.classList.remove('open');
     reader.setAttribute('aria-hidden', 'true');
     if (!$('#readerDrawer.open')) { $('#drawerBackdrop')?.classList.remove('open'); document.body.classList.remove('dialog-open'); }
     $$('.deep-reading-item.active').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+    try { if (history.state && history.state.deepReader) history.replaceState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
     syncUrl();
     const item = [...document.querySelectorAll('.deep-reading-item')].find(b => b.dataset.readingId === id && b.getClientRects().length);
     const target = item || (deepReaderFocus && deepReaderFocus.isConnected ? deepReaderFocus : null);
@@ -3346,14 +3417,23 @@
     });
   }
 
-  $('#searchToggleBtn')?.addEventListener('click', () => {
+  const searchBtn = $('#searchToggleBtn');
+  // Prevent pointer mousedown on the toggle from blurring #globalSearch before click sees the open panel.
+  searchBtn?.addEventListener('mousedown', e => e.preventDefault());
+  searchBtn?.addEventListener('click', () => {
     const panel = $('#searchPanel');
     if (!panel) return;
-    if (!panel.hidden && !state.search && !searchInput?.value) { syncSearchPanel(false); panel.hidden = true; $('#searchToggleBtn').setAttribute('aria-expanded', 'false'); $('#searchToggleBtn').classList.remove('active'); return; }
+    if (!panel.hidden && !state.search && !searchInput?.value) {
+      panel.hidden = true;
+      searchBtn.setAttribute('aria-expanded', 'false');
+      searchBtn.classList.remove('active');
+      searchBtn.focus({ preventScroll: true });
+      return;
+    }
     syncSearchPanel(true);
     searchInput?.focus();
   });
-  searchInput?.addEventListener('blur', () => { if (!searchInput.value && !state.search) { const p = $('#searchPanel'); if (p) p.hidden = true; $('#searchToggleBtn')?.setAttribute('aria-expanded', 'false'); $('#searchToggleBtn')?.classList.remove('active'); } });
+  searchInput?.addEventListener('blur', () => { if (!searchInput.value && !state.search) { const p = $('#searchPanel'); if (p) p.hidden = true; searchBtn?.setAttribute('aria-expanded', 'false'); searchBtn?.classList.remove('active'); } });
   // Hotkey '/' for search
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
@@ -3364,8 +3444,15 @@
       syncSearchPanel(true);
       searchInput?.focus();
     } else if (e.key === 'Tab') {
-      const modal=$('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open');
-      if (modal) {const nodes=[...modal.querySelectorAll('button,a[href],input,select,summary,[tabindex="0"]')].filter(x=>!x.disabled && !x.hidden && x.getClientRects().length);const first=nodes[0],last=nodes[nodes.length-1]; if(e.shiftKey && document.activeElement===first){e.preventDefault();last?.focus();} else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first?.focus();}}
+      const modal = $('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open') || $('#appSidebar.open');
+      if (modal) {
+        const nodes = [...modal.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && !x.hidden && !x.closest('[hidden],[inert]') && x.getClientRects().length && getComputedStyle(x).visibility !== 'hidden' && (!x.checkVisibility || x.checkVisibility({ checkVisibilityCSS: true })) && !(x.closest('details:not([open])') && !(x.tagName === 'SUMMARY' && x.parentElement?.matches('details:not([open])'))));
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        if (!first) return;
+        if (!modal.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+        else if (e.shiftKey && (document.activeElement === first || document.activeElement === modal)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
     } else if (e.key === 'Escape') {
       // One press closes the topmost layer only: shortlist, then reader, then full-text reading, then filters.
       if ($('#huddleModalBackdrop.open')) closeHuddleModal();
@@ -3810,9 +3897,18 @@
     const id = entry.deepReader;
     if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
     else closeDeepReading({ fromHistory: true });
-    // Back after switching tabs returns to the previous tab.
-    const mode = new URLSearchParams(location.search).get('mode') || 'curated';
-    if (!entry.overlay && !entry.deepReader && mode !== state.mode && ['curated', 'weekly', 'candidates', 'library', 'sources'].includes(mode)) switchMode(mode);
+    if (entry.overlay || entry.deepReader) return;
+    const next = readStateFromUrl();
+    if (!URL_STATE_KEYS.some(k => state[k] !== next[k])) return;
+    clearTimeout(searchTimer);
+    viewInUrl = next.viewInUrl;
+    URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
+    if (searchInput) searchInput.value = state.search;
+    if (sortSelect) sortSelect.value = state.sort;
+    $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
+    $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
+    syncSearchPanel();
+    switchMode(next.mode, true);
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
@@ -3881,7 +3977,7 @@
 
   // Initialize
   // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.
-  try { if (history.state && history.state.overlay) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
+  try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
