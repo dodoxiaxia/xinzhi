@@ -429,6 +429,7 @@ async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
   if (fetched && fetched.bytes) {
     const checksum = await pdfDigest('SHA-256', fetched.bytes), blobKey = 'library:pdf:' + checksum;
     await libraryPut(kv, blobKey, fetched.bytes.buffer.slice(fetched.bytes.byteOffset, fetched.bytes.byteOffset + fetched.bytes.byteLength));
+    pdfArchiveQueueBytes(checksum, fetched.bytes); // optional R2 copy, written after the response; off unless bound and switched on
     // Queue the original for the Drive archive before the record can point at it; stale pointers are dropped on claim.
     await libraryPut(kv, DRIVE_PENDING_PREFIX + checksum, JSON.stringify({ doi:paper.doi }));
     pdf = { key:blobKey, sha256:checksum, size:fetched.bytes.length, source:fetched.source, ...(fetched.commit ? { commit:fetched.commit } : {}) };

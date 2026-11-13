@@ -1054,6 +1054,7 @@ async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
   if (fetched && fetched.bytes) {
     const checksum = await pdfDigest('SHA-256', fetched.bytes), blobKey = 'library:pdf:' + checksum;
     await libraryPut(kv, blobKey, fetched.bytes.buffer.slice(fetched.bytes.byteOffset, fetched.bytes.byteOffset + fetched.bytes.byteLength));
+    pdfArchiveQueueBytes(checksum, fetched.bytes); // optional R2 copy, written after the response; off unless bound and switched on
     // Queue the original for the Drive archive before the record can point at it; stale pointers are dropped on claim.
     await libraryPut(kv, DRIVE_PENDING_PREFIX + checksum, JSON.stringify({ doi:paper.doi }));
     pdf = { key:blobKey, sha256:checksum, size:fetched.bytes.length, source:fetched.source, ...(fetched.commit ? { commit:fetched.commit } : {}) };
@@ -3424,6 +3425,7 @@ function machineReplaceDecision(job, paper, record, sha256, caller) {
 async function machineReplacePdf(kv, record, bytes, source) {
   const paper = libraryPaper(record, record.paper.doi), checksum = await pdfDigest('SHA-256', bytes), blobKey = 'library:pdf:' + checksum;
   await libraryPut(kv, blobKey, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  pdfArchiveQueueBytes(checksum, bytes); // optional R2 copy, written after the response; off unless bound and switched on
   await libraryPut(kv, DRIVE_PENDING_PREFIX + checksum, JSON.stringify({doi:paper.doi}));
   await libraryPut(kv, LIBRARY_PREFIX + paper.doi, JSON.stringify({version:1, paper:{...paper,fulltextStatus:'available'}, pdf:{key:blobKey,sha256:checksum,size:bytes.length,source,replacedSha256:record.pdf.sha256}}));
   libraryCatalogCache.clear();
@@ -5062,11 +5064,134 @@ async function handleAI(request, env) {
   return json({ ok: false, error: 'bad_task' }, 400);
 }
 
+// ==== edge/src/07a-metrics.js · Request/error metrics (Analytics Engine, off by default) ====
+// One data point per /api/* request, written only when BOTH the METRICS binding exists AND the runtime KV
+// switch METRICS_SWITCH_KEY holds '1'. Nothing here may change a response, so every step is guarded and the
+// write is handed to ctx.waitUntil. No DOI, title, token, passphrase, query string, IP or user agent is recorded.
+const METRICS_SWITCH_KEY = 'cfg:metrics_enabled', METRICS_SWITCH_TTL_MS = 60000, METRICS_ERROR_CODE = /^[a-z0-9_]{1,48}$/;
+const METRICS_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS']);
+const METRICS_ROUTES = new Set([
+  '/api/library', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
+  '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
+  '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/abandoned',
+  '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register',
+  '/api/drive-archive', '/api/fulltext-pending', '/api/grok-fulltext-receipt', '/api/acquire', '/api/acquire/retry',
+  '/api/fulltext', '/api/fulltext-source', '/api/pdf', '/api/ql', '/api/ai'
+]);
+let metricsSwitch = { on: false, at: 0 };
+
+// Per-isolate cache of the KV switch. A missing key, any other value or a failing read all mean off.
+async function metricsEnabled(env) {
+  const now = Date.now();
+  if (now - metricsSwitch.at >= 0 && now - metricsSwitch.at < METRICS_SWITCH_TTL_MS) return metricsSwitch.on;
+  let on = false;
+  try { on = (await env.QL_KV.get(METRICS_SWITCH_KEY)) === '1'; } catch { on = false; }
+  metricsSwitch = { on, at: now };
+  return on;
+}
+
+// Start before the response is returned; never throws and never touches the response that is returned.
+// Returns nothing the caller needs. `failure` is set when routing itself threw (reported as status 500).
+function metricsRecord(request, env, ctx, response, startedAt, failure) {
+  try {
+    if (!env || !env.METRICS || typeof env.METRICS.writeDataPoint !== 'function' || !env.QL_KV) return;
+    const path = new URL(request.url).pathname;
+    if (!path.startsWith('/api/')) return;
+    const route = METRICS_ROUTES.has(path) ? path : '/api/other';
+    const method = METRICS_METHODS.has(request.method) ? request.method : 'OTHER';
+    const status = failure ? 500 : response.status;
+    let errorSource = null;
+    if (!failure && status >= 400 && (response.headers.get('content-type') || '').includes('application/json')) errorSource = response.clone();
+    const work = (async () => {
+      try {
+        if (!(await metricsEnabled(env))) return;
+        let errorCode = failure ? 'exception' : '';
+        if (errorSource) {
+          try {
+            const text = await errorSource.text();
+            const code = text.length <= 4096 ? JSON.parse(text).error : '';
+            errorCode = typeof code === 'string' && METRICS_ERROR_CODE.test(code) ? code : 'other';
+          } catch { errorCode = 'other'; }
+        }
+        env.METRICS.writeDataPoint({ blobs: [route, method, String(status), errorCode], doubles: [Math.max(0, Date.now() - startedAt), 1], indexes: [route] });
+      } catch { /* metrics never affect the request */ }
+    })();
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(work);
+  } catch { /* metrics never affect the request */ }
+}
+// ==== edge/src/07b-pdf-archive.js · R2 backup of stored PDFs (write-only, off by default) ====
+// Every place that stores verified PDF bytes under library:pdf:<sha256> (librarySave and machineReplacePdf) queues the
+// bytes here. After the response is built, the router hands the queue to ctx.waitUntil. Nothing is written unless BOTH
+// the PDF_ARCHIVE R2 binding exists AND the KV switch PDF_ARCHIVE_SWITCH_KEY holds '1'. R2 is only written, never read:
+// downloads still come from KV. The object key is the SHA-256 of the bytes; head first, so an existing object is kept.
+// Metadata is limited to the content type, sha256 and size. Nothing in here may change a response or throw.
+const PDF_ARCHIVE_SWITCH_KEY = 'cfg:r2_archive_enabled', PDF_ARCHIVE_SWITCH_TTL_MS = 60000, PDF_ARCHIVE_PREFIX = 'pdf/sha256/', PDF_ARCHIVE_MAX_QUEUE = 8;
+let pdfArchiveSwitch = { on: false, at: 0 }, pdfArchiveBound = false, pdfArchiveQueue = [];
+
+// Called at the start of every request: queue only when the binding exists, so an unbound site holds no extra bytes.
+function pdfArchiveBind(env) {
+  try { pdfArchiveBound = !!(env && env.PDF_ARCHIVE && typeof env.PDF_ARCHIVE.head === 'function' && typeof env.PDF_ARCHIVE.put === 'function' && env.QL_KV); } catch { pdfArchiveBound = false; }
+}
+// Called right after the PDF bytes were stored in KV. `bytes` is the Uint8Array that was stored; it is not modified.
+function pdfArchiveQueueBytes(sha256, bytes) {
+  try {
+    if (!pdfArchiveBound || !/^[a-f0-9]{64}$/.test(sha256) || !bytes || !bytes.length) return;
+    if (pdfArchiveQueue.length < PDF_ARCHIVE_MAX_QUEUE) pdfArchiveQueue.push({ sha256, bytes });
+  } catch { /* archiving never affects the request */ }
+}
+// Per-isolate cache of the KV switch. A missing key, any other value or a failing read all mean off.
+async function pdfArchiveEnabled(env) {
+  const now = Date.now();
+  if (now - pdfArchiveSwitch.at >= 0 && now - pdfArchiveSwitch.at < PDF_ARCHIVE_SWITCH_TTL_MS) return pdfArchiveSwitch.on;
+  let on = false;
+  try { on = (await env.QL_KV.get(PDF_ARCHIVE_SWITCH_KEY)) === '1'; } catch { on = false; }
+  pdfArchiveSwitch = { on, at: now };
+  return on;
+}
+// Called after the response exists (also when routing threw). Takes the queue and returns at once; the work runs in waitUntil.
+function pdfArchiveFlush(env, ctx) {
+  try {
+    if (!pdfArchiveQueue.length) return;
+    const items = pdfArchiveQueue.splice(0);
+    if (!env || !env.PDF_ARCHIVE || !env.QL_KV) return;
+    const work = pdfArchiveRun(env, items);
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(work);
+  } catch { /* archiving never affects the request */ }
+}
+async function pdfArchiveRun(env, items) {
+  try {
+    if (!(await pdfArchiveEnabled(env))) return;
+    const seen = new Set();
+    for (const { sha256, bytes } of items) {
+      if (seen.has(sha256)) continue;
+      seen.add(sha256);
+      const key = PDF_ARCHIVE_PREFIX + sha256 + '.pdf';
+      let stage = 'head';
+      try {
+        if (await env.PDF_ARCHIVE.head(key)) continue;
+        stage = 'put';
+        await env.PDF_ARCHIVE.put(key, bytes, { sha256, httpMetadata: { contentType: 'application/pdf' }, customMetadata: { sha256, size: String(bytes.length) } });
+      } catch { console.warn('pdf archive: ' + stage + ' failed'); } // fixed text only: no key, DOI or error detail
+    }
+  } catch { /* archiving never affects the request */ }
+}
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {
-  async fetch(request, env) {
-    const response = await routeRequest(request, env);
-    return new URL(request.url).pathname.startsWith('/api/') ? hideInstitutionLinks(request, response) : response;
+  async fetch(request, env, ctx) {
+    pdfArchiveBind(env);
+    const startedAt = Date.now();
+    let response;
+    try {
+      response = await routeRequest(request, env);
+      if (new URL(request.url).pathname.startsWith('/api/')) response = await hideInstitutionLinks(request, response);
+    } catch (error) {
+      metricsRecord(request, env, ctx, null, startedAt, true);
+      throw error;
+    } finally {
+      pdfArchiveFlush(env, ctx);
+    }
+    metricsRecord(request, env, ctx, response, startedAt, false);
+    return response;
   }
 };
 
