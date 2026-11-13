@@ -355,10 +355,18 @@
     if (!['tier', 'pub', 'journal', 'design', 'tag'].includes(group) || typeof value !== 'string') return false;
     if (only) clearSidebarFilters();
     if (group === 'tier') state.clinicalTier = value;
-    if (group === 'pub') { state.publisher = value; state.journal = ''; }
-    if (group === 'journal') { state.journal = value; state.publisher = publisherForJournal(value); }
+    if (group === 'pub') {
+      const clear = !only && value && state.publisher === value && !state.journal;
+      state.publisher = clear ? '' : value;
+      state.journal = '';
+    }
+    if (group === 'journal') {
+      const clear = !only && value && state.journal === value;
+      state.journal = clear ? '' : value;
+      state.publisher = clear ? '' : publisherForJournal(value);
+    }
     if (group === 'design') state.studyDesign = value;
-    if (group === 'tag') state.tag = value;
+    if (group === 'tag') state.tag = !only && value && state.tag === value ? '' : value;
     if (state.publisher) expandedPublishers.add(state.publisher);
     state.page = 1;
     return true;
