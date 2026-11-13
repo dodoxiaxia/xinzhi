@@ -104,6 +104,25 @@ async function machineConsume(env, caller, bucket, amount) {
   const used = Number.isInteger(count) && count >= 0 ? count : 0;
   await libraryPut(env.QL_KV, key, JSON.stringify(used + amount), {expirationTtl:172800});
 }
+// Daily observation counters share the same key pattern and 2-day TTL as the quota keys, but live in one
+// JSON document per caller per UTC day so a request that bumps one field still costs one read and one write.
+// Quota keys (upload/requeue/register) stay integers and are not mixed into this document.
+const MACHINE_STATS_FIELDS = ['claim','emptyClaim','upload409','release'];
+function machineStatsKey(caller) {
+  return 'library:machine-rate:stats:' + caller.id + ':' + new Date().toISOString().slice(0, 10);
+}
+function machineStatsNormalize(value) {
+  const doc = {version:1};
+  for (const field of MACHINE_STATS_FIELDS) doc[field] = value && Number.isInteger(value[field]) && value[field] >= 0 ? value[field] : 0;
+  return doc;
+}
+async function machineStatsBump(env, caller, field, amount = 1) {
+  if (!amount || !caller || !MACHINE_STATS_FIELDS.includes(field)) return;
+  const key = machineStatsKey(caller);
+  const current = machineStatsNormalize(await libraryGet(env.QL_KV, key));
+  current[field] += amount;
+  await libraryPut(env.QL_KV, key, JSON.stringify(current), {expirationTtl:172800});
+}
 async function machineReadBody(request, max) {
   const declared = request.headers.get('content-length');
   if (declared && (!/^\d+$/.test(declared) || Number(declared) > max)) libraryFail('muse_bad_pdf', 413);
@@ -186,9 +205,13 @@ function machineListItem(job) {
   const state = machinePublicState(job);
   const claimable = machineClaimable(job);
   // A failure reason belongs to failed states only. A claimed or queued task must not show the failure it came from.
+  const claimedAt = Number.isSafeInteger(job.acquisitionStartedAt) && job.acquisitionStartedAt > 0 ? job.acquisitionStartedAt : 0;
+  const receivedAt = Number.isSafeInteger(job.receivedAt) && job.receivedAt > 0 ? job.receivedAt : 0;
   return {doi:job.doi,state,reason:state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned' ? machineReason(job) : '',stage:machineStage(job),
     claimant:typeof job.claimant === 'string' ? job.claimant : '',updatedAt:new Date(job.updatedAt).toISOString(),taskId:job.id,claimable,
     ...(claimable ? {} : {unclaimableReason:'verification_failed'}),
+    ...(claimedAt ? {claimedAt:new Date(claimedAt).toISOString()} : {}),
+    ...(claimedAt && receivedAt && receivedAt >= claimedAt ? {claimDurationSeconds:Math.round((receivedAt - claimedAt) / 1000)} : {}),
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
@@ -240,6 +263,8 @@ function handleMachineProtocol(request, env) {
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
+    stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
+      note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
@@ -250,9 +275,10 @@ function handleMachineProtocol(request, env) {
 }
 async function handleMachineUpload(request, env) {
   // Exempt from librarySoftGate (30/day site-wide and 20/IP). Only the per-token counter applies.
+  let caller = null;
   try {
     if (!['PUT','POST'].includes(request.method) || new URL(request.url).search) libraryFail('machine_bad_request', request.method === 'PUT' || request.method === 'POST' ? 400 : 405);
-    const caller = await machineAuthorize(request, env, 'upload');
+    caller = await machineAuthorize(request, env, 'upload');
     const replaceHeader = request.headers.get('x-machine-replace');
     if (replaceHeader !== null && replaceHeader !== '1') libraryFail('machine_bad_request', 400);
     const replacing = replaceHeader === '1';
@@ -291,7 +317,12 @@ async function handleMachineUpload(request, env) {
     const replace = replacing ? {by:caller.id,at:Date.now(),oldSha256:decision.oldSha,newSha256:sha256,previous:existing && existing.state === 'available' ? existing : null} : null;
     const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(replace ? {replace} : {})});
     return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256,identity:identity.level,...(replace ? {replace:machineReplacePublic(replace)} : {})}}, 202);
-  } catch (error) { return machineError(error); }
+  } catch (error) {
+    if (caller && error instanceof LibraryFailure && error.status === 409) {
+      try { await machineStatsBump(env, caller, 'upload409'); } catch {}
+    }
+    return machineError(error);
+  }
 }
 async function handleMachineStatus(request, env) {
   try {
@@ -542,8 +573,12 @@ async function handleMachineClaim(request, env) {
     if (caller.role === 'downloader' && input.state !== 'to-download') libraryFail('machine_forbidden', 403);
     if (caller.role === 'fallback' && input.state !== 'failed-awaiting-fallback') libraryFail('machine_forbidden', 403);
     const result = input.state === 'to-download' ? await machineClaimQueued(env, caller) : await machineClaimFailed(env, caller);
-    if (result.task) return json({ok:true,task:result.task});
+    if (result.task) {
+      try { await machineStatsBump(env, caller, 'claim'); } catch {}
+      return json({ok:true,task:result.task});
+    }
     // Nothing to claim: tell the caller how long to wait before asking again (the same value in the Retry-After header).
+    try { await machineStatsBump(env, caller, 'emptyClaim'); } catch {}
     const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
     return json({ok:true,task:null,retryAfterSeconds:wait}, 200, {'retry-after':String(wait)});
   } catch (error) { return machineError(error); }
