@@ -95,11 +95,21 @@ function scopeHasAiCue(text) {
   if (!SCOPE_AROMATASE_RE.test(text) && SCOPE_AI_UPPER_RE.test(text)) return true;
   return false;
 }
+function scopeDoi(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '').toLowerCase();
+}
 function scopeResult(action, reason = null, detail = '') {
   return {action,reason,detail};
 }
-function scopeDecision(paper) {
+function scopeDecision(paper, forceKeepDois = SCOPE_FORCE_KEEP_DOIS) {
   if (!paper || typeof paper !== 'object' || Array.isArray(paper)) return scopeResult('keep');
+  // Manual force-keep by DOI overrides all automated rules (including not_article).
+  const doi = scopeDoi(paper.doi);
+  const keepSet = forceKeepDois && typeof forceKeepDois.has === 'function' ? forceKeepDois : SCOPE_FORCE_KEEP_DOIS;
+  if (doi && keepSet.has(doi)) {
+    return scopeResult('keep', 'forced_keep', '按 DOI 人工放行，优先于自动范围判定');
+  }
   const title = scopeStr(paper.title);
   const journal = scopeStr(paper.cleanJournal) || scopeStr(paper.journal);
   const rawJournal = scopeStr(paper.journal);

@@ -1,8 +1,11 @@
+import ast
 import contextlib
 import datetime
 import io
 import json
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -12,8 +15,11 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import enrich_metadata  # noqa: E402
 import merge_candidates  # noqa: E402
-from scope_filter import scope_decision  # noqa: E402
+from scope_filter import load_scope_keep_dois, normalize_scope_doi, scope_decision  # noqa: E402
 
+ROOT = Path(__file__).resolve().parents[1]
+KEEPS_JSON_PATH = ROOT / 'config' / 'public_library_scope_keeps.json'
+KEEPS_JS_PATH = ROOT / 'edge' / 'src' / '01b-scope-keeps.js'
 FIXTURES_PATH = Path(__file__).resolve().parent / 'fixtures' / 'scope_filter_cases.json'
 GOLD_PATH = Path(__file__).resolve().parent / 'fixtures' / 'scope_filter_sample_gold.json'
 
@@ -223,6 +229,74 @@ class ScopeFilterIntakeWireUpTests(unittest.TestCase):
             self.assertEqual(cand['candidateCount'], 2)
             self.assertEqual(len(lib['papers']), 1)
             self.assertIn('Enrich dropped', out.getvalue())
+
+
+class ScopeForceKeepTests(unittest.TestCase):
+    def _parse_js_keep_dois(self, text):
+        node = shutil.which('node')
+        if node:
+            script = text + '\nconsole.log(JSON.stringify([...SCOPE_FORCE_KEEP_DOIS]));'
+            out = subprocess.run([node, '-e', script], capture_output=True, text=True, check=True).stdout
+            return json.loads(out)
+        match = re.search(r'const\s+SCOPE_FORCE_KEEP_DOIS\s*=\s*new\s+Set\(\s*(\[[\s\S]*?\])\s*\)\s*;', text)
+        self.assertIsNotNone(match, 'SCOPE_FORCE_KEEP_DOIS not found')
+        return ast.literal_eval(match.group(1))
+
+    def test_json_and_js_force_keep_dois_match(self):
+        cfg = json.loads(KEEPS_JSON_PATH.read_text(encoding='utf-8'))
+        self.assertEqual(cfg.get('schemaVersion'), 1)
+        self.assertIsInstance(cfg.get('dois'), list)
+        json_dois = {normalize_scope_doi(d) for d in cfg['dois'] if normalize_scope_doi(d)}
+        self.assertEqual(json_dois, set(load_scope_keep_dois(KEEPS_JSON_PATH)))
+
+        js_raw = self._parse_js_keep_dois(KEEPS_JS_PATH.read_text(encoding='utf-8'))
+        js_dois = {normalize_scope_doi(d) for d in js_raw if normalize_scope_doi(d)}
+        self.assertEqual(js_dois, json_dois)
+
+    def test_missing_keeps_file_acts_as_empty_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / 'missing_scope_keeps.json'
+            self.assertEqual(load_scope_keep_dois(missing), frozenset())
+            uncertain = {'title': 'Clinical perspectives on modern healthcare delivery', 'journal': 'JAMA', 'doi': '10.1000/unc'}
+            got = scope_decision(uncertain, keeps_path=missing)
+            self.assertEqual(got['action'], 'uncertain')
+            self.assertEqual(got['reason'], 'uncertain_scope')
+
+    def test_force_keep_overrides_uncertain_and_exclude_including_not_article(self):
+        # Manual force-keep by DOI takes precedence over all automated rules (uncertain, basic_research, oncology, not_article).
+        uncertain_paper = {
+            'title': 'Clinical perspectives on modern healthcare delivery',
+            'journal': 'JAMA',
+            'doi': 'https://doi.org/10.1000/Unc-Keep',
+        }
+        excluded_paper = {
+            'title': 'Adjuvant chemotherapy in triple-negative breast cancer',
+            'journal': 'JAMA Oncology',
+            'doi': 'doi:10.1000/Onc-Keep',
+        }
+        not_article_paper = {
+            'title': 'Table of Contents',
+            'journal': 'NEJM',
+            'doi': '10.1000/Toc-Keep',
+        }
+        self.assertEqual(scope_decision(uncertain_paper, keep_dois=set())['action'], 'uncertain')
+        self.assertEqual(scope_decision(excluded_paper, keep_dois=set())['action'], 'exclude')
+        self.assertEqual(scope_decision(not_article_paper, keep_dois=set())['reason'], 'not_article')
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg_path = Path(tmp) / 'keeps.json'
+            cfg_path.write_text(json.dumps({
+                'schemaVersion': 1,
+                'reviewedOn': '2026-11-13',
+                'decision': 'Manual force-keep test fixture.',
+                'dois': ['10.1000/unc-keep', 'https://doi.org/10.1000/ONC-KEEP', '10.1000/toc-keep'],
+            }), encoding='utf-8')
+            for paper in (uncertain_paper, excluded_paper, not_article_paper):
+                with self.subTest(doi=paper['doi']):
+                    got = scope_decision(paper, keeps_path=cfg_path)
+                    self.assertEqual(got['action'], 'keep')
+                    self.assertEqual(got['reason'], 'forced_keep')
+                    self.assertTrue(got['detail'])
 
 
 if __name__ == '__main__':

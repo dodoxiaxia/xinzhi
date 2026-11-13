@@ -1230,6 +1230,100 @@ async function review(h, body) {
   const fbUncEmpty = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
   assert.equal(fbUncEmpty.task, null);
 
+  // ---- force-keep DOI overrides exclude (including not_article) and uncertain in scopeDecision
+  {
+    const forcedDoi = '10.1000/forced-keep-item';
+    const forcedSet = new Set([forcedDoi]);
+    const uncPaper = {title:'Clinical perspectives on modern healthcare delivery',journal:'JAMA',doi:'https://doi.org/10.1000/FORCED-KEEP-ITEM'};
+    const tocPaper = {title:'Table of Contents',journal:'NEJM',doi:forcedDoi};
+    assert.equal(h.context.scopeDecision(uncPaper).action, 'uncertain');
+    assert.equal(h.context.scopeDecision(tocPaper).reason, 'not_article');
+    for (const paper of [uncPaper, tocPaper]) {
+      const dec = h.context.scopeDecision(paper, forcedSet);
+      assert.equal(dec.action, 'keep');
+      assert.equal(dec.reason, 'forced_keep');
+      assert(dec.detail);
+    }
+  }
+
+  // ---- GET /api/machine/scope-uncertain (read-only export) & direct /scope-uncertain.json blocked (404)
+  {
+    const sampleDoc = {
+      generatedAt:'2026-11-13T08:00:00Z',
+      count:1,
+      items:[{
+        id:'unc-1',
+        doi:'10.1000/unc-sample',
+        title:'Clinical perspectives on modern healthcare delivery',
+        journal:'JAMA',
+        url:'https://doi.org/10.1000/unc-sample',
+        date:'2026-11-12',
+        ingestedAt:'2026-11-12T08:00:00Z',
+        reason:'uncertain_scope',
+        detail:'主题尚不明确，保留待人工判断，不自动机器领取'
+      }]
+    };
+    const bodyText = JSON.stringify(sampleDoc);
+
+    // Direct static asset requests must return 404 without hitting ASSETS, with or without token
+    for (const headers of [{}, {authorization:'Bearer ' + reader}, {authorization:'Bearer ' + dsh}]) {
+      h = await create();
+      let assetHits = 0;
+      h.env.ASSETS = {fetch:async () => { assetHits += 1; return new Response(bodyText, {status:200}); }};
+      const directStatic = await h.context.worker.fetch(new Request(base + '/scope-uncertain.json', {method:'GET',headers}), h.env);
+      assert.equal(directStatic.status, 404);
+      const text = await directStatic.text();
+      assert(!text.includes('10.1000/unc-sample'));
+      assert(!text.includes('uncertain_scope'));
+      assert.equal(assetHits, 0);
+    }
+
+    // Auth failures -> 401
+    h = await create();
+    h.env.ASSETS = {fetch:async () => new Response(bodyText, {status:200})};
+    await error(await h.context.worker.fetch(new Request(base + '/api/machine/scope-uncertain', {method:'GET'}), h.env), 401, 'machine_unauthorized');
+    await error(await call(h, '/api/machine/scope-uncertain', unknown, null, {method:'GET'}), 401, 'machine_unauthorized');
+    await error(await call(h, '/api/machine/scope-uncertain', revoked, null, {method:'GET'}), 401, 'machine_revoked');
+
+    // Method & query string validation -> 405 / 400
+    await error(await call(h, '/api/machine/scope-uncertain', reader, {}), 405, 'machine_bad_request');
+    await error(await call(h, '/api/machine/scope-uncertain?limit=10', reader, null, {method:'GET'}), 400, 'machine_bad_request');
+
+    // Missing/bad ASSETS -> 503 library_storage
+    h = await create();
+    await error(await call(h, '/api/machine/scope-uncertain', reader, null, {method:'GET'}), 503, 'library_storage');
+    for (const badRes of [
+      () => new Response('missing', {status:404}),
+      () => new Response('not-json', {status:200}),
+      () => new Response(JSON.stringify([]), {status:200}),
+      () => new Response(JSON.stringify({generatedAt:'2026-11-13T08:00:00Z',count:1,items:[]}), {status:200}),
+      () => new Response(JSON.stringify({generatedAt:'2026-11-13T08:00:00Z',count:1,items:[{doi:'10.1/a',title:'T'}]}), {status:200})
+    ]) {
+      h = await create();
+      h.env.ASSETS = {fetch:async () => badRes()};
+      await error(await call(h, '/api/machine/scope-uncertain', reader, null, {method:'GET'}), 503, 'library_storage');
+    }
+
+    // Success for reader & downloader, zero KV reads/writes/lists, no-store cache-control
+    for (const secret of [reader, dsh]) {
+      h = await create();
+      const assetRequests = [];
+      h.env.ASSETS = {fetch:async req => { assetRequests.push(new URL(req.url).pathname); return new Response(bodyText, {status:200,headers:{'content-type':'application/json'}}); }};
+      const res = await call(h, '/api/machine/scope-uncertain', secret, null, {method:'GET'});
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('cache-control'), 'no-store');
+      const body = await res.json();
+      assert.equal(body.ok, true);
+      assert.equal(body.generatedAt, sampleDoc.generatedAt);
+      assert.equal(body.count, 1);
+      assert.deepEqual(body.items, sampleDoc.items);
+      assert.deepEqual(assetRequests, ['/scope-uncertain.json']);
+      assert.equal(h.reads.length, 0);
+      assert.equal(h.writes.length, 0);
+      assert.equal(h.lists.length, 0);
+    }
+  }
+
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_machine_index.cjs').run();

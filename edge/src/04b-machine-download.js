@@ -571,6 +571,43 @@ async function handleMachineTasks(request, env) {
     return json({ok:true,tasks:page.tasks,cursor:page.cursor,...(page.truncated ? {truncated:true} : {})});
   } catch (error) { return machineError(error); }
 }
+function machineScopeUncertainValidItem(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+  if (!(typeof item.doi === 'string' || item.doi === null)) return false;
+  if (typeof item.title !== 'string' || typeof item.journal !== 'string') return false;
+  if (typeof item.reason !== 'string' || typeof item.detail !== 'string') return false;
+  if (!Object.hasOwn(item, 'ingestedAt') || !(item.ingestedAt === null || typeof item.ingestedAt === 'string')) return false;
+  return true;
+}
+async function handleMachineScopeUncertain(request, env) {
+  try {
+    await machineAuthorize(request, env, 'list');
+    if (request.method !== 'GET') libraryFail('machine_bad_request', 405);
+    const url = new URL(request.url);
+    if (url.search) libraryFail('machine_bad_request', 400);
+    if (!env.ASSETS || typeof env.ASSETS.fetch !== 'function') libraryFail('library_storage', 503);
+    let assetRes;
+    try {
+      assetRes = await env.ASSETS.fetch(new Request(new URL('/scope-uncertain.json', request.url), {method:'GET'}));
+    } catch {
+      libraryFail('library_storage', 503);
+    }
+    if (!assetRes || !assetRes.ok) libraryFail('library_storage', 503);
+    let data;
+    try {
+      data = await assetRes.json();
+    } catch {
+      libraryFail('library_storage', 503);
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.items)
+      || typeof data.generatedAt !== 'string' || !data.generatedAt
+      || (Object.hasOwn(data, 'count') && (!Number.isInteger(data.count) || data.count !== data.items.length))
+      || !data.items.every(machineScopeUncertainValidItem)) {
+      libraryFail('library_storage', 503);
+    }
+    return json({ok:true,generatedAt:data.generatedAt,count:data.items.length,items:data.items});
+  } catch (error) { return machineError(error); }
+}
 async function handleMachineAbandoned(request, env) {
   try {
     await machineAuthorize(request, env, 'abandoned');

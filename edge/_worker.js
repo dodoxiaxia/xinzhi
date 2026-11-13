@@ -1430,11 +1430,21 @@ function scopeHasAiCue(text) {
   if (!SCOPE_AROMATASE_RE.test(text) && SCOPE_AI_UPPER_RE.test(text)) return true;
   return false;
 }
+function scopeDoi(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i, '').toLowerCase();
+}
 function scopeResult(action, reason = null, detail = '') {
   return {action,reason,detail};
 }
-function scopeDecision(paper) {
+function scopeDecision(paper, forceKeepDois = SCOPE_FORCE_KEEP_DOIS) {
   if (!paper || typeof paper !== 'object' || Array.isArray(paper)) return scopeResult('keep');
+  // Manual force-keep by DOI overrides all automated rules (including not_article).
+  const doi = scopeDoi(paper.doi);
+  const keepSet = forceKeepDois && typeof forceKeepDois.has === 'function' ? forceKeepDois : SCOPE_FORCE_KEEP_DOIS;
+  if (doi && keepSet.has(doi)) {
+    return scopeResult('keep', 'forced_keep', '按 DOI 人工放行，优先于自动范围判定');
+  }
   const title = scopeStr(paper.title);
   const journal = scopeStr(paper.cleanJournal) || scopeStr(paper.journal);
   const rawJournal = scopeStr(paper.journal);
@@ -1512,6 +1522,9 @@ function scopeDecision(paper) {
   if (!title || !journal) return scopeResult('keep');
   return scopeResult('uncertain', 'uncertain_scope', '主题尚不明确，保留待人工判断，不自动机器领取');
 }
+// ==== edge/src/01b-scope-keeps.js · Manual force-keep DOIs (synced with config/public_library_scope_keeps.json) ====
+// Manual force-keep overrides all automated scopeDecision() rules (including not_article).
+const SCOPE_FORCE_KEEP_DOIS = new Set([]);
 // ==== edge/src/02-acquire-import.js · Acquisition bot queue (Grok) and owner import ====
 // The existing Bot remains the only acquisition owner. No cookies or credentials
 // travel in task bodies. KV dedup is soft; the Bot must also claim the original ledger.
@@ -3876,6 +3889,43 @@ async function handleMachineTasks(request, env) {
     return json({ok:true,tasks:page.tasks,cursor:page.cursor,...(page.truncated ? {truncated:true} : {})});
   } catch (error) { return machineError(error); }
 }
+function machineScopeUncertainValidItem(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+  if (!(typeof item.doi === 'string' || item.doi === null)) return false;
+  if (typeof item.title !== 'string' || typeof item.journal !== 'string') return false;
+  if (typeof item.reason !== 'string' || typeof item.detail !== 'string') return false;
+  if (!Object.hasOwn(item, 'ingestedAt') || !(item.ingestedAt === null || typeof item.ingestedAt === 'string')) return false;
+  return true;
+}
+async function handleMachineScopeUncertain(request, env) {
+  try {
+    await machineAuthorize(request, env, 'list');
+    if (request.method !== 'GET') libraryFail('machine_bad_request', 405);
+    const url = new URL(request.url);
+    if (url.search) libraryFail('machine_bad_request', 400);
+    if (!env.ASSETS || typeof env.ASSETS.fetch !== 'function') libraryFail('library_storage', 503);
+    let assetRes;
+    try {
+      assetRes = await env.ASSETS.fetch(new Request(new URL('/scope-uncertain.json', request.url), {method:'GET'}));
+    } catch {
+      libraryFail('library_storage', 503);
+    }
+    if (!assetRes || !assetRes.ok) libraryFail('library_storage', 503);
+    let data;
+    try {
+      data = await assetRes.json();
+    } catch {
+      libraryFail('library_storage', 503);
+    }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.items)
+      || typeof data.generatedAt !== 'string' || !data.generatedAt
+      || (Object.hasOwn(data, 'count') && (!Number.isInteger(data.count) || data.count !== data.items.length))
+      || !data.items.every(machineScopeUncertainValidItem)) {
+      libraryFail('library_storage', 503);
+    }
+    return json({ok:true,generatedAt:data.generatedAt,count:data.items.length,items:data.items});
+  } catch (error) { return machineError(error); }
+}
 async function handleMachineAbandoned(request, env) {
   try {
     await machineAuthorize(request, env, 'abandoned');
@@ -5271,7 +5321,7 @@ const METRICS_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTION
 const METRICS_ROUTES = new Set([
   '/api/library', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
   '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
-  '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/abandoned',
+  '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/scope-uncertain', '/api/machine/abandoned',
   '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register',
   '/api/drive-archive', '/api/fulltext-pending', '/api/grok-fulltext-receipt', '/api/acquire', '/api/acquire/retry',
   '/api/fulltext', '/api/fulltext-source', '/api/pdf', '/api/ql', '/api/ai'
@@ -5601,6 +5651,7 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/machine/upload') return handleMachineUpload(request, env);
     if (url.pathname === '/api/machine/status') return handleMachineStatus(request, env);
     if (url.pathname === '/api/machine/tasks') return handleMachineTasks(request, env);
+    if (url.pathname === '/api/machine/scope-uncertain') return handleMachineScopeUncertain(request, env);
     if (url.pathname === '/api/machine/abandoned') return handleMachineAbandoned(request, env);
     if (url.pathname === '/api/machine/claim') return handleMachineClaim(request, env);
     if (url.pathname === '/api/machine/renew') return handleMachineRenew(request, env);
@@ -5621,5 +5672,6 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/ai') {
       try { return await handleAI(request, env); } catch (e) { return json({ ok: false, error: 'server' }, 500); }
     }
+    if (url.pathname === '/scope-uncertain.json') return new Response('Not found', {status:404,headers:{'cache-control':'no-store'}});
     return env.ASSETS.fetch(request);
 }

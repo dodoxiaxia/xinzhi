@@ -4,7 +4,13 @@
 - exclude: high-confidence non-article (TOC/supplement), pure basic research,
   or clearly unrelated oncology / other-specialty clinical papers
 - uncertain: ambiguous / general clinical papers kept at intake, skipped at machine claim."""
+import json
+from pathlib import Path
 import re
+
+SCOPE_KEEPS_PATH = Path(__file__).resolve().parents[1] / 'config/public_library_scope_keeps.json'
+_DOI_PREFIX_RE = re.compile(r'^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)', re.I)
+_KEEPS_CACHE = {}
 
 CV_CATEGORIES = {'心血管', '交叉研究'}
 AI_CATEGORIES = {'AI医疗', '交叉研究', 'AI前沿'}
@@ -241,13 +247,62 @@ def _has_ai_cue(text):
     return False
 
 
+def normalize_scope_doi(value):
+    if not isinstance(value, str):
+        return ''
+    return _DOI_PREFIX_RE.sub('', value.strip()).lower()
+
+
+def load_scope_keep_dois(path=SCOPE_KEEPS_PATH):
+    target = Path(path)
+    try:
+        stat = target.stat()
+    except FileNotFoundError:
+        return frozenset()
+    except OSError as exc:
+        raise ValueError(f'Failed to load scope keeps config {target}: {exc}') from exc
+    cache_key = (str(target), stat.st_mtime_ns, stat.st_size)
+    cached = _KEEPS_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        raw = json.loads(target.read_text(encoding='utf-8'))
+    except FileNotFoundError:
+        return frozenset()
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f'Failed to load scope keeps config {target}: {exc}') from exc
+    if not isinstance(raw, dict) or not isinstance(raw.get('dois'), list):
+        raise ValueError(f'Malformed scope keeps config {target}: expected object with dois list')
+    dois = set()
+    for item in raw['dois']:
+        if not isinstance(item, str):
+            raise ValueError(f'Malformed scope keep DOI in {target}: expected string')
+        doi = normalize_scope_doi(item)
+        if doi:
+            dois.add(doi)
+    result = frozenset(dois)
+    _KEEPS_CACHE[cache_key] = result
+    return result
+
+
+def _resolve_keep_dois(keep_dois=None, keeps_path=None):
+    if keep_dois is not None:
+        return frozenset(d for d in (normalize_scope_doi(v) for v in keep_dois) if d)
+    return load_scope_keep_dois(SCOPE_KEEPS_PATH if keeps_path is None else keeps_path)
+
+
 def _decision(action, reason=None, detail=''):
     return {'action': action, 'reason': reason, 'detail': detail}
 
 
-def scope_decision(paper):
+def scope_decision(paper, *, keep_dois=None, keeps_path=None):
     if not isinstance(paper, dict):
         return _decision('keep')
+
+    # Manual force-keep by DOI overrides all automated rules (including not_article).
+    doi = normalize_scope_doi(paper.get('doi'))
+    if doi and doi in _resolve_keep_dois(keep_dois=keep_dois, keeps_path=keeps_path):
+        return _decision('keep', 'forced_keep', '按 DOI 人工放行，优先于自动范围判定')
 
     title = _str(paper.get('title'))
     journal = _str(paper.get('cleanJournal')) or _str(paper.get('journal'))

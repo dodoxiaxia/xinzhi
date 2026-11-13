@@ -22,7 +22,8 @@ def synthetic_root(root):
         (root / folder).mkdir()
     for name in ('build_public.py', 'release_integrity.py', 'enrich_metadata.py',
                  'editorial_review.py', 'refresh_feeds.py', 'build_data.py', 'source_fallbacks.py',
-                 'publication_dates.py', 'journal_metrics.py', 'publication_status.py'):
+                 'publication_dates.py', 'journal_metrics.py', 'publication_status.py',
+                 'scope_filter.py', 'scope_uncertain_export.py'):
         shutil.copyfile(Path(builder.__file__).parent / name, root / 'scripts' / name)
     for module in (snapshot_apply, library_sync):
         source = Path(module.__file__)
@@ -66,6 +67,9 @@ class ReleaseBuildTests(unittest.TestCase):
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
             self.assertEqual(set(public_payloads(root)), PUBLIC)
+            uncertain_doc = json.loads((root / 'public/scope-uncertain.json').read_text(encoding='utf-8'))
+            self.assertEqual(uncertain_doc['count'], 0)
+            self.assertEqual(uncertain_doc['items'], [])
             self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
             self.assertNotIn(b'citation-export.js', (root / 'public/index.html').read_bytes())
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())
