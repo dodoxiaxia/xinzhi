@@ -76,7 +76,7 @@ async function handleMuseReaderUpload(request, env) {
     return libraryError(request,error,doi,'/api/muse/reader-upload');
   } finally { if (release) await release(); }
 }
-async function handleMuseRequest(request, env) {
+async function handleMuseRequest(request, env, ctx) {
   let doi = '';
   try {
     const parsed = libraryQuery(request); doi = parsed.doi;
@@ -109,6 +109,7 @@ async function handleMuseRequest(request, env) {
       await librarySave(env.QL_KV,{...metadata,fulltextStatus:'manual_needed'},null,'library_manual_needed');
       await musePut(env,job);
       await libraryPut(env.QL_KV,job.queueKey,JSON.stringify({doi,id}),{expirationTtl:604800});
+      downloadNotify(env,ctx,doi,id); // optional webhook notice for the new task; never blocks or fails the response
       return museResponse(request,job,metadata);
     } finally { clearTimeout(timer); await release(); }
   } catch (error) { return libraryError(request,error,doi); }
