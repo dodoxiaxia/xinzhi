@@ -118,6 +118,8 @@ async function review(h, body) {
   assert.equal(protocol.claimable.field, 'claimable');
   assert.equal(protocol.claimable.unclaimableReasonField, 'unclaimableReason');
   assert.deepEqual(protocol.claimable.unclaimableReasons, ['verification_failed']);
+  assert.equal(protocol.limits.listLimitDefault, 20);
+  assert.equal(protocol.limits.listLimitMax, 50);
   assert(!JSON.stringify(protocol).includes(dsh));
   assert(!JSON.stringify(protocol).includes(museKey));
   const museProtocol = await (await h.context.worker.fetch(new Request(base + '/api/muse/protocol'), h.env)).json();
@@ -340,6 +342,40 @@ async function review(h, body) {
   assert.equal(new Set(seen).size, 12);
   const donePage = await (await call(h, '/api/machine/tasks?state=done', reader, null, {method:'GET'})).json();
   assert.deepEqual(donePage.tasks.map(task => task.doi), ['10.1000/p-done']);
+  assert.equal(donePage.truncated, undefined);
+
+  h = await create();
+  const overLimit = await call(h, '/api/machine/tasks?limit=51', reader, null, {method:'GET'});
+  assert.equal(overLimit.status, 400);
+  const overBody = await overLimit.json();
+  assert.equal(overBody.ok, false);
+  assert.equal(overBody.error, 'machine_bad_request');
+  assert.equal(overBody.listLimitMax, 50);
+  assert(String(overBody.message || '').includes('50'), overBody.message);
+  const okMax = await call(h, '/api/machine/tasks?limit=50', reader, null, {method:'GET'});
+  assert.equal(okMax.status, 200);
+  assert.equal((await okMax.json()).truncated, undefined);
+
+  h = await create();
+  capList(h, 1);
+  const scanBase = Date.now();
+  for (let index = 0; index < 60; index++) putJob(h, '10.1000/aaa-q' + String(index).padStart(2, '0'), 'queued', scanBase + index);
+  putJob(h, '10.1000/zzz-done', 'available', scanBase + 1000);
+  const truncatedPage = await (await call(h, '/api/machine/tasks?state=done&limit=5', reader, null, {method:'GET'})).json();
+  assert.equal(truncatedPage.ok, true);
+  assert.equal(truncatedPage.truncated, true);
+  assert(truncatedPage.cursor, 'scan cap should leave a cursor');
+  assert.deepEqual(truncatedPage.tasks.map(task => task.doi), []);
+  const seenDone = [];
+  let scanCursor = truncatedPage.cursor;
+  for (let page = 0; page < 8 && scanCursor; page++) {
+    const body = await (await call(h, '/api/machine/tasks?state=done&limit=5&cursor=' + encodeURIComponent(scanCursor), reader, null, {method:'GET'})).json();
+    seenDone.push(...body.tasks.map(task => task.doi));
+    scanCursor = body.cursor;
+    if (!body.cursor) assert.equal(body.truncated, undefined);
+  }
+  assert.deepEqual(seenDone, ['10.1000/zzz-done']);
+  assert.equal(scanCursor, null);
 
   h = await create();
   capList(h);

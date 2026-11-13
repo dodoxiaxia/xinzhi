@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""register 子命令的单元测试：全部 mock HTTP（替换 run_curl），不连线上，不读真实令牌。"""
+"""machine_client.py 的单元测试：全部 mock HTTP（替换 run_curl），不连线上，不读真实令牌。"""
 import contextlib
 import io
 import json
@@ -32,7 +32,7 @@ class Harness(object):
         return self.code, json.dumps(self.body)
 
 
-class RegisterTests(unittest.TestCase):
+class ClientTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -66,6 +66,8 @@ class RegisterTests(unittest.TestCase):
         return {"ok": True, "counts": {}, "results": results,
                 "quota": quota or {"limit": 200, "used": 1, "remaining": 199, "resetsAt": "2026-11-13T00:00:00.000Z"}}
 
+
+class RegisterTests(ClientTestCase):
     # --- tokenIsOwnAndNeverFallsBack ---
     def test_register_requires_token_env_and_never_uses_default_path(self):
         batch = self.write("a.json", json.dumps([GOOD]))
@@ -196,6 +198,19 @@ class RegisterTests(unittest.TestCase):
             self.assertIn("HTTP %d" % code, err)
             self.assertIn(err_code, err)
 
+    def test_register_muse_owner_conflict_stops_with_exit_3_and_no_retry(self):
+        h = Harness(409, {"ok": False, "error": "muse_owner_conflict"})
+        rc, out, err, h = self.run_cli(["register", "--file", self.write("a.json", json.dumps([GOOD]))], h)
+        self.assertEqual(rc, 3)
+        self.assertEqual(len(h.calls), 1, "409 muse_owner_conflict must not be retried")
+        self.assertIn("HTTP 409", err)
+        self.assertIn("muse_owner_conflict", err)
+        payload = json.loads(out)
+        self.assertEqual(payload.get("error"), "muse_owner_conflict")
+        self.assertEqual(payload.get("http"), 409)
+        self.assertNotIn(FAKE_TOKEN, out)
+        self.assertNotIn(FAKE_TOKEN, err)
+
     # --- results and exit codes ---
     def test_register_exit_codes_for_results(self):
         reg = {"doi": "10.1000/a", "result": "registered", "state": "to-download"}
@@ -224,6 +239,79 @@ class RegisterTests(unittest.TestCase):
         rc, _o, _e, _h = self.run_cli(["register", "--file", self.write("a.json", json.dumps([GOOD]))], Harness(200, {"ok": True}))
         self.assertEqual(rc, 5)
 
+
+
+class TasksPaginationTests(ClientTestCase):
+    """tasks：本地上限、自动翻页、非 2xx 停止。"""
+
+    def test_tasks_limit_over_50_fails_locally_without_request(self):
+        h = Harness(200, {"ok": True, "tasks": [], "cursor": None})
+        rc, _o, err, h = self.run_cli(["tasks", "--limit", "51"], h)
+        self.assertEqual(rc, 5)
+        self.assertEqual(h.calls, [])
+        self.assertIn("50", err)
+
+    def test_tasks_follows_cursor_until_null_and_merges_pages(self):
+        pages = [
+            (200, {"ok": True, "tasks": [{"doi": "10.1000/a"}], "cursor": "CURSOR1"}),
+            (200, {"ok": True, "tasks": [{"doi": "10.1000/b"}], "cursor": "CURSOR2"}),
+            (200, {"ok": True, "tasks": [{"doi": "10.1000/c"}], "cursor": None}),
+        ]
+
+        class Seq(Harness):
+            def __init__(self, pages):
+                Harness.__init__(self)
+                self.pages, self.i = pages, 0
+
+            def __call__(self, args, header_lines, timeout):
+                code, body = self.pages[self.i]
+                self.i += 1
+                sent = None
+                for a in args:
+                    if a.startswith("@"):
+                        sent = json.loads(open(a[1:], "rb").read().decode("utf-8"))
+                url = ""
+                for a in args:
+                    if isinstance(a, str) and a.startswith("http"):
+                        url = a
+                self.calls.append({"args": list(args), "headers": list(header_lines), "body": sent, "url": url})
+                return code, json.dumps(body)
+
+        h = Seq(pages)
+        rc, out, err, h = self.run_cli(["tasks", "--state", "failed-awaiting-fallback", "--limit", "1"], h)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(h.calls), 3)
+        payload = json.loads(out)
+        self.assertEqual([t["doi"] for t in payload["tasks"]], ["10.1000/a", "10.1000/b", "10.1000/c"])
+        self.assertIsNone(payload["cursor"])
+        self.assertIn("cursor=CURSOR1", h.calls[1]["url"])
+        self.assertIn("cursor=CURSOR2", h.calls[2]["url"])
+        self.assertNotIn("cursor=", h.calls[0]["url"])
+        self.assertNotIn(FAKE_TOKEN, out)
+        self.assertNotIn(FAKE_TOKEN, err)
+
+    def test_tasks_non_2xx_stops_without_further_pages(self):
+        class OnceThenError(Harness):
+            def __init__(self):
+                Harness.__init__(self)
+                self.i = 0
+
+            def __call__(self, args, header_lines, timeout):
+                self.i += 1
+                self.calls.append({"args": list(args), "headers": list(header_lines)})
+                if self.i == 1:
+                    return 200, json.dumps({"ok": True, "tasks": [{"doi": "10.1000/a"}], "cursor": "NEXT"})
+                return 409, json.dumps({"ok": False, "error": "machine_bad_request"})
+
+        h = OnceThenError()
+        rc, out, err, h = self.run_cli(["tasks", "--limit", "20"], h)
+        self.assertEqual(rc, 3)
+        self.assertEqual(len(h.calls), 2, "must stop after the non-2xx, not retry")
+        self.assertIn("HTTP 409", err)
+        payload = json.loads(out)
+        self.assertEqual(payload.get("http"), 409)
+        self.assertNotIn(FAKE_TOKEN, out)
+        self.assertNotIn(FAKE_TOKEN, err)
 
 if __name__ == "__main__":
     unittest.main()
