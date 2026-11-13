@@ -148,3 +148,19 @@ def build_scope_uncertain_list(
         'count': len(items),
         'items': items,
     }
+
+
+def worker_scope_uncertain_payload(doc):
+    """Return a public Worker copy of build_scope_uncertain_list output without internal paper IDs."""
+    source = doc if isinstance(doc, dict) else {}
+    raw_items = source.get('items')
+    items = [
+        {k: v for k, v in item.items() if k != 'id'}
+        for item in (raw_items if isinstance(raw_items, (list, tuple)) else ())
+        if isinstance(item, dict)
+    ]
+    return {
+        'generatedAt': source.get('generatedAt'),
+        'count': source.get('count', len(items)),
+        'items': items,
+    }
