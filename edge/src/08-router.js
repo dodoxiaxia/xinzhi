@@ -39,6 +39,7 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/api/machine/upload') return handleMachineUpload(request, env);
     if (url.pathname === '/api/machine/status') return handleMachineStatus(request, env);
     if (url.pathname === '/api/machine/tasks') return handleMachineTasks(request, env);
+    if (url.pathname === '/api/machine/scope-uncertain') return handleMachineScopeUncertain(request, env);
     if (url.pathname === '/api/machine/abandoned') return handleMachineAbandoned(request, env);
     if (url.pathname === '/api/machine/claim') return handleMachineClaim(request, env);
     if (url.pathname === '/api/machine/renew') return handleMachineRenew(request, env);
@@ -59,5 +60,6 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/api/ai') {
       try { return await handleAI(request, env); } catch (e) { return json({ ok: false, error: 'server' }, 500); }
     }
+    if (url.pathname === '/scope-uncertain.json') return new Response('Not found', {status:404,headers:{'cache-control':'no-store'}});
     return env.ASSETS.fetch(request);
 }
