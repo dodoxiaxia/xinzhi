@@ -20,7 +20,7 @@ const identity = (h, bytes, doi, title) => run(h, 'machineIdentity')(new Uint8Ar
 function latin(bytes) { return bytes.toString('latin1'); }
 function mutate(bytes, from, to) { const text = latin(bytes); assert(text.includes(from), from); return Buffer.from(text.replace(from, to), 'latin1'); }
 function seedPaper(h, doi, title, status = 'manual_needed', pdf = null) {
-  const paper = {id:'doi-' + hash(doi).slice(0, 16), doi, title, journal:'Heart', authors:['Jane Doe'], date:'2026-10-07', datePrecision:'day', dateBasis:'Crossref published-online', ingestedAt:'2026-10-07T04:00:00.000Z', metadataStatus:'external_bibliography_checked', fulltextStatus:status};
+  const paper = {id:'doi-' + hash(doi).slice(0, 16), doi, title, journal:'Synthetic', authors:['Jane Doe'], date:'2026-10-07', datePrecision:'day', dateBasis:'Crossref published-online', ingestedAt:'2026-10-07T04:00:00.000Z', metadataStatus:'external_bibliography_checked', fulltextStatus:status};
   const record = {version:1, paper};
   if (pdf) { record.pdf = {key:'library:pdf:' + hash(pdf), sha256:hash(pdf), size:pdf.length, source:'machine'}; h.values.set(record.pdf.key, pdf); }
   h.values.set('library:paper:' + doi, JSON.stringify(record));

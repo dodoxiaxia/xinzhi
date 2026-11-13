@@ -571,30 +571,6 @@ async function handleMachineTasks(request, env) {
     return json({ok:true,tasks:page.tasks,cursor:page.cursor,...(page.truncated ? {truncated:true} : {})});
   } catch (error) { return machineError(error); }
 }
-function machineScopeUncertainValidItem(item) {
-  if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
-  if (!(typeof item.doi === 'string' || item.doi === null)) return false;
-  if (typeof item.title !== 'string' || typeof item.journal !== 'string') return false;
-  if (typeof item.reason !== 'string' || typeof item.detail !== 'string') return false;
-  if (!Object.hasOwn(item, 'ingestedAt') || !(item.ingestedAt === null || typeof item.ingestedAt === 'string')) return false;
-  return true;
-}
-async function handleMachineScopeUncertain(request, env) {
-  try {
-    await machineAuthorize(request, env, 'list');
-    if (request.method !== 'GET') libraryFail('machine_bad_request', 405);
-    const url = new URL(request.url);
-    if (url.search) libraryFail('machine_bad_request', 400);
-    const data = SCOPE_UNCERTAIN_LIST;
-    if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.items)
-      || typeof data.generatedAt !== 'string' || !data.generatedAt
-      || (Object.hasOwn(data, 'count') && (!Number.isInteger(data.count) || data.count !== data.items.length))
-      || !data.items.every(machineScopeUncertainValidItem)) {
-      libraryFail('library_storage', 503);
-    }
-    return json({ok:true,generatedAt:data.generatedAt,count:data.items.length,items:data.items});
-  } catch (error) { return machineError(error); }
-}
 async function handleMachineAbandoned(request, env) {
   try {
     await machineAuthorize(request, env, 'abandoned');
@@ -602,12 +578,6 @@ async function handleMachineAbandoned(request, env) {
     const page = await machineCollect(env, 'confirmed-abandoned', query.cursor, query.limit);
     return json({ok:true,tasks:page.tasks.map(task => task),cursor:page.cursor,...(page.truncated ? {truncated:true} : {})});
   } catch (error) { return machineError(error); }
-}
-function machineHasStoredFulltext(record, paper) {
-  // Supplementary to paper.fulltextStatus === 'available': a stored pdf object or localAvailable also closes the task.
-  const rawPaper = record && typeof record === 'object' && record.paper && typeof record.paper === 'object' ? record.paper : null;
-  const hasPdf = !!(record && typeof record === 'object' && record.pdf && typeof record.pdf === 'object' && !Array.isArray(record.pdf));
-  return hasPdf || !!(rawPaper && rawPaper.localAvailable === true) || !!(paper && paper.localAvailable === true);
 }
 function machineClaimPayload(job, paper) {
   return {...machineListItem(job),state:'downloading',title:paper && paper.title || '',leaseId:job.leaseId,
@@ -628,28 +598,22 @@ async function machineClaimQueued(env, caller) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
       const [doi, entry] = candidates[i];
-      if (!libraryDoi(doi)) { changes.push({doi,entry:null}); continue; }
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
       if (!job) continue;
-      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null}); continue; }
       if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, job.queueKey); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
         await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
         continue;
       }
       if (job.state !== 'queued') continue;
+      if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + job.doi);
       if (attempt && attempt.paused) continue;
+      await museOwnerGuard(env, job.doi);
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + job.doi), paper = libraryPaper(record, job.doi);
       if (paper && paper.fulltextStatus === 'available') { await libraryStoredPdf(env.QL_KV, record); await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
-      if (machineHasStoredFulltext(record, paper)) { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
-      if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
-      if (museExpired(job)) { await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes}); await museDelete(env, job.queueKey); continue; }
-      const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
-      if (scope.action === 'uncertain') continue;
-      await museOwnerGuard(env, job.doi);
+      if (!paper || paper.fulltextStatus === 'review') continue;
       const now = Date.now();
       const claimed = {...job,state:'running',claimant:caller.id,acquisitionStartedAt:now,leaseId:crypto.randomUUID(),leaseUntil:now + MUSE_LEASE_MS,updatedAt:now};
       await musePut(env, claimed, {indexChanges:changes});
@@ -671,11 +635,9 @@ async function machineClaimFailed(env, caller) {
       if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
       scanned++;
       const [doi, entry] = candidates[i];
-      if (!libraryDoi(doi)) { changes.push({doi,entry:null}); continue; }
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
       if (!job) continue;
-      if (!libraryDoi(job.doi)) { changes.push({doi,entry:null}); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
         await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
         continue;
@@ -684,20 +646,16 @@ async function machineClaimFailed(env, caller) {
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       if (attempt && attempt.paused) continue;
       if (['running','uploading'].includes(job.state) && job.leaseUntil > Date.now()) continue;
-      // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
-      if (job.state === 'review') continue;
-      const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
-      if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
-      if (machineHasStoredFulltext(record, paper)) { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
-      if (!paper || !libraryDoi(paper.doi) || paper.fulltextStatus === 'review') continue;
       if (job.state === 'queued' && museExpired(job)) {
         await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes});
         if (job.queueKey) await museDelete(env, job.queueKey);
         continue;
       }
-      const scope = scopeDecision(paper);
-      if (scope.action === 'exclude') { changes.push({doi,entry:null}); continue; }
-      if (scope.action === 'uncertain') continue;
+      const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
+      if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
+      if (paper && paper.fulltextStatus === 'review') continue;
+      // A task whose PDF failed verification keeps its candidate and reason; a claim must not overwrite it.
+      if (job.state === 'review') continue;
       await museOwnerGuard(env, doi);
       const now = Date.now();
       // The failure that made this task claimable is history, not the state of the new lease.
