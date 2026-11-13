@@ -66,7 +66,7 @@ fi
 run "service-unittest" python3 -m unittest discover -s service/tests -t .
 
 # Browser-driven Node tests (need Playwright + Chromium).
-NODE_BROWSER="test_boot_url_ui test_citation_export_ui test_deep_reader_history_ui test_doi_direct_download test_doi_library_ui test_download_inline_ui test_grok_fulltext test_fulltext_resilience_ui"
+NODE_BROWSER="test_boot_url_ui test_citation_export_ui test_deep_reader_history_ui test_doi_direct_download test_doi_library_ui test_doi_radar_archive_ui test_download_inline_ui test_filter_panel_toggle_ui test_fulltext_resilience_ui test_grok_fulltext test_mode_toolrow_ui test_popstate_restore_ui test_range_bar_ui"
 echo "== Node tests"
 for f in scripts/test_*.cjs; do
   name="$(basename "$f" .cjs)"
@@ -87,9 +87,9 @@ if [ "$BROWSER" = 1 ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"
   else
     # Standalone scripts, not unittest modules.
-    for name in test_back_to_top_ui test_brief_feedback_ui test_faceted_filters_ui test_journal_ui \
+    for name in test_back_to_top_ui test_brief_feedback_ui test_curated_doi_layout_ui test_faceted_filters_ui test_journal_ui \
                 test_layout_ui test_mobile_library_ui test_navigation_search_ui test_reader_drawer_scroll test_reader_overlays_ui \
-                test_search_shortlist_ui test_sol_gap_reader test_weekly_ui; do
+                test_search_shortlist_ui test_search_toggle_ui test_sidebar_focus_trap_ui test_sol_gap_reader test_weekly_ui; do
       run "$name" python3 "scripts/$name.py"
     done
   fi
