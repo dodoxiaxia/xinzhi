@@ -19,6 +19,18 @@
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
   const VALID_MODES = ['curated', 'weekly', 'candidates', 'library', 'sources'];
+  function parseJournalList(many, one) {
+    const out = [];
+    String(many || '').split(',').forEach(s => { const v = decodeURIComponent(s).trim(); if (v && !out.includes(v)) out.push(v); });
+    const single = String(one || '').trim();
+    if (single && !out.includes(single)) out.unshift(single);
+    return out;
+  }
+  function selectedJournals() {
+    if (Array.isArray(state.journals) && state.journals.length) return state.journals;
+    return state.journal ? [state.journal] : [];
+  }
+  function isCaseReport(p) { return (p && p.studyDesign) === '病例报告'; }
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
   function readStateFromUrl(search = window.location.search) {
     const params = new URLSearchParams(search);
@@ -41,6 +53,9 @@
       minor: params.get('minor') === '1',
       reading: ['abstract', 'guide', 'quicklook'].includes(params.get('reading')) ? params.get('reading') : '',
       favoritesOnly: params.get('favorites') === '1',
+      excludeCaseReports: params.get('nocase') === '1',
+      journals: parseJournalList(params.get('journals'), params.get('journal')),
+      journalTier: ['flagship', 'cardioMain', 'cardioSub', 'ai', 'other'].includes(params.get('jtier') || '') ? params.get('jtier') : '',
       day: params.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') || '') ? params.get('day') : '',
       weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(params.get('wcat')) ? params.get('wcat') : '',
       weeklyPane: params.get('pane') === 'reading' ? 'reading' : 'board',
@@ -51,7 +66,7 @@
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
     'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
-    'favoritesOnly', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
+    'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
   const initialUrlState = readStateFromUrl(window.location.search);
@@ -73,6 +88,9 @@
     minor: initialUrlState.minor,
     reading: initialUrlState.reading,
     favoritesOnly: initialUrlState.favoritesOnly,
+    excludeCaseReports: initialUrlState.excludeCaseReports,
+    journals: initialUrlState.journals || [],
+    journalTier: initialUrlState.journalTier || '',
     day: initialUrlState.day,
     weeklyCat: initialUrlState.weeklyCat,
     weeklyPane: initialUrlState.weeklyPane,
@@ -137,6 +155,55 @@
     if (p.includes('pubmed')) return 'journal-pubmed';
     if (p.includes('tech') || p.includes('ai')) return 'journal-tech';
     return '';
+  }
+
+  function isInternalSourceName(s) {
+    return /^PubMed\s*:/i.test(s) || String(s).includes('追踪');
+  }
+  function cardJournalName(p) {
+    const clean = String((p && p.cleanJournal) || '').trim();
+    const raw = String((p && p.journal) || '').trim();
+    // A PubMed/追踪 feed label is not a journal; do not fall back to the feed topic (e.g. "atrial fibrillation").
+    if (clean && !isInternalSourceName(clean)) return clean;
+    if (clean && isInternalSourceName(clean)) return '期刊待补';
+    if (raw && !isInternalSourceName(raw)) return raw;
+    return '期刊待补';
+  }
+  function huddleStarSvg(on) {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.85-4.2 4.1 1 5.8L12 16.9l-5.2 2.75 1-5.8-4.2-4.1 5.8-.85z" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+  }
+
+  // One-line takeaway: only existing brief / takeaway / editorial summary / quicklook one_line. Never invent. paper.summary is the abstract, not used here.
+  function cardTakeaway(p) {
+    const d = (p && p.draftData) || {};
+    const ql = typeof quicklookOf === 'function' ? quicklookOf(p) : null;
+    const raw = [d.takeaway, d.brief, p && p.takeaway, p && p.brief, ql && ql.one_line, d.summary]
+      .find(v => typeof v === 'string' && v.trim());
+    return raw ? String(raw).trim() : '';
+  }
+  function cardSideActionsHtml(p) {
+    const isHuddled = state.huddle.includes(p.id);
+    const sourceUrl = officialArticleUrl(p);
+    const doiBlock = doiStatusBlock(p);
+    const pid = esc(p.id);
+    return `<div class="card-side-actions" role="group" aria-label="操作">
+          <button type="button" class="card-icon-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${pid}" aria-pressed="${isHuddled}" aria-label="${isHuddled ? '移出精选' : '加入精选'}" title="${isHuddled ? '已精选，点击移出' : '加入精选'}">${huddleStarSvg(isHuddled)}</button>
+          ${sourceUrl && !doiBlock ? `<a class="text-btn card-source" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="在期刊官网打开原文">官网<span aria-hidden="true">&thinsp;↗</span></a>` : ''}
+          ${pdfDownloadLink(p)}
+        </div>`;
+  }
+  function authorAffilHtml(p) {
+    const authors = Array.isArray(p.authors) ? p.authors.filter(Boolean) : [];
+    const affs = Array.isArray(p.affiliations) ? p.affiliations.filter(Boolean) : [];
+    if (!authors.length && !affs.length) return '';
+    const who = authors.length ? (authors.length > 1 ? `${authors[0]} 等` : authors[0]) : '';
+    const aff = affs[0] || '';
+    const summary = [who, aff].filter(Boolean).join(' · ');
+    const full = [
+      authors.length ? `<p class="drawer-bylines-authors">${esc(authors.join('，'))}</p>` : '',
+      affs.length ? `<p class="drawer-bylines-affils">${esc(affs.join('；'))}</p>` : ''
+    ].join('');
+    return `<details class="drawer-bylines"><summary>${esc(summary)}</summary><div class="drawer-bylines-full">${full}</div></details>`;
   }
 
   // Study design badge class

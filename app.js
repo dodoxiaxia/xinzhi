@@ -646,6 +646,18 @@
   const validView = value => ['cards', 'compact'].includes(value);
   const validTheme = value => ['light', 'dark'].includes(value);
   const VALID_MODES = ['curated', 'weekly', 'candidates', 'library', 'sources'];
+  function parseJournalList(many, one) {
+    const out = [];
+    String(many || '').split(',').forEach(s => { const v = decodeURIComponent(s).trim(); if (v && !out.includes(v)) out.push(v); });
+    const single = String(one || '').trim();
+    if (single && !out.includes(single)) out.unshift(single);
+    return out;
+  }
+  function selectedJournals() {
+    if (Array.isArray(state.journals) && state.journals.length) return state.journals;
+    return state.journal ? [state.journal] : [];
+  }
+  function isCaseReport(p) { return (p && p.studyDesign) === '病例报告'; }
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
   function readStateFromUrl(search = window.location.search) {
     const params = new URLSearchParams(search);
@@ -668,6 +680,9 @@
       minor: params.get('minor') === '1',
       reading: ['abstract', 'guide', 'quicklook'].includes(params.get('reading')) ? params.get('reading') : '',
       favoritesOnly: params.get('favorites') === '1',
+      excludeCaseReports: params.get('nocase') === '1',
+      journals: parseJournalList(params.get('journals'), params.get('journal')),
+      journalTier: ['flagship', 'cardioMain', 'cardioSub', 'ai', 'other'].includes(params.get('jtier') || '') ? params.get('jtier') : '',
       day: params.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') || '') ? params.get('day') : '',
       weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(params.get('wcat')) ? params.get('wcat') : '',
       weeklyPane: params.get('pane') === 'reading' ? 'reading' : 'board',
@@ -678,7 +693,7 @@
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
     'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
-    'favoritesOnly', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
+    'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
   const initialUrlState = readStateFromUrl(window.location.search);
@@ -700,6 +715,9 @@
     minor: initialUrlState.minor,
     reading: initialUrlState.reading,
     favoritesOnly: initialUrlState.favoritesOnly,
+    excludeCaseReports: initialUrlState.excludeCaseReports,
+    journals: initialUrlState.journals || [],
+    journalTier: initialUrlState.journalTier || '',
     day: initialUrlState.day,
     weeklyCat: initialUrlState.weeklyCat,
     weeklyPane: initialUrlState.weeklyPane,
@@ -764,6 +782,55 @@
     if (p.includes('pubmed')) return 'journal-pubmed';
     if (p.includes('tech') || p.includes('ai')) return 'journal-tech';
     return '';
+  }
+
+  function isInternalSourceName(s) {
+    return /^PubMed\s*:/i.test(s) || String(s).includes('追踪');
+  }
+  function cardJournalName(p) {
+    const clean = String((p && p.cleanJournal) || '').trim();
+    const raw = String((p && p.journal) || '').trim();
+    // A PubMed/追踪 feed label is not a journal; do not fall back to the feed topic (e.g. "atrial fibrillation").
+    if (clean && !isInternalSourceName(clean)) return clean;
+    if (clean && isInternalSourceName(clean)) return '期刊待补';
+    if (raw && !isInternalSourceName(raw)) return raw;
+    return '期刊待补';
+  }
+  function huddleStarSvg(on) {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.85-4.2 4.1 1 5.8L12 16.9l-5.2 2.75 1-5.8-4.2-4.1 5.8-.85z" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+  }
+
+  // One-line takeaway: only existing brief / takeaway / editorial summary / quicklook one_line. Never invent. paper.summary is the abstract, not used here.
+  function cardTakeaway(p) {
+    const d = (p && p.draftData) || {};
+    const ql = typeof quicklookOf === 'function' ? quicklookOf(p) : null;
+    const raw = [d.takeaway, d.brief, p && p.takeaway, p && p.brief, ql && ql.one_line, d.summary]
+      .find(v => typeof v === 'string' && v.trim());
+    return raw ? String(raw).trim() : '';
+  }
+  function cardSideActionsHtml(p) {
+    const isHuddled = state.huddle.includes(p.id);
+    const sourceUrl = officialArticleUrl(p);
+    const doiBlock = doiStatusBlock(p);
+    const pid = esc(p.id);
+    return `<div class="card-side-actions" role="group" aria-label="操作">
+          <button type="button" class="card-icon-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${pid}" aria-pressed="${isHuddled}" aria-label="${isHuddled ? '移出精选' : '加入精选'}" title="${isHuddled ? '已精选，点击移出' : '加入精选'}">${huddleStarSvg(isHuddled)}</button>
+          ${sourceUrl && !doiBlock ? `<a class="text-btn card-source" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="在期刊官网打开原文">官网<span aria-hidden="true">&thinsp;↗</span></a>` : ''}
+          ${pdfDownloadLink(p)}
+        </div>`;
+  }
+  function authorAffilHtml(p) {
+    const authors = Array.isArray(p.authors) ? p.authors.filter(Boolean) : [];
+    const affs = Array.isArray(p.affiliations) ? p.affiliations.filter(Boolean) : [];
+    if (!authors.length && !affs.length) return '';
+    const who = authors.length ? (authors.length > 1 ? `${authors[0]} 等` : authors[0]) : '';
+    const aff = affs[0] || '';
+    const summary = [who, aff].filter(Boolean).join(' · ');
+    const full = [
+      authors.length ? `<p class="drawer-bylines-authors">${esc(authors.join('，'))}</p>` : '',
+      affs.length ? `<p class="drawer-bylines-affils">${esc(affs.join('；'))}</p>` : ''
+    ].join('');
+    return `<details class="drawer-bylines"><summary>${esc(summary)}</summary><div class="drawer-bylines-full">${full}</div></details>`;
   }
 
   // Study design badge class
@@ -1514,20 +1581,29 @@
     }).join('');
     const fullBadge = view.kind === 'none' ? '' : '<span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>';
     if (drawer) {
-      const secondary = (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '')
-        + ((view.action !== 'official' && official) || upload ? '<span class="ft-actions">' + (view.action === 'official' ? '' : official) + upload + '</span>' : '');
-      return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">'
-        + '<div class="ft-head">' + fullBadge
-        + '<p class="ft-line" role="status"><b title="' + esc(view.headline) + '">' + esc(view.headline) + '</b></p>'
-        + '<span class="ft-head-action" data-drawer-ft-primary>' + (view.action === 'download' ? '' : primary) + '</span></div>'
-        + (view.action === 'download' ? '<div class="ft-dl-slot" data-drawer-ft-form-slot></div>' : form)
-        + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
-        + (secondary ? '<div class="ft-sub">' + secondary + '</div>' : '')
-        + maint + '</div>';
+      if (view.kind === 'ready') return '';
+      const hint = view.headline + (view.eta ? ' · ' + view.eta.replace(/^下一步：/, '') : '');
+      return '<p class="ft-hint ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + esc(hint) + (upload ? ' ' + upload : '') + (maint ? ' ' + maint : '') + '</p>';
     }
     return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + fullBadge + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
       + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
+  }
+  // Primary action + passphrase form for the reader footer. Download uses the persistent #drawerPdfLink / #drawerPdfForm.
+  function fulltextFooterActionHtml(p) {
+    const conflict = fulltextConflict(p);
+    if (conflict) return '';
+    const view = fulltextView(p), doi = p && exactDoi(p.doi);
+    if (!view) return '';
+    const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
+    const officialUrl = officialArticleUrl(p);
+    const mode = job && job.stage ? 'muse' : 'legacy';
+    if (view.action === 'download') return '';
+    if (view.action === 'refresh') return '<button type="button" class="btn-sm" data-ft-action="refresh" data-doi="' + safeDoi + '">查看进度</button>';
+    if (view.action === 'upload') return '<a class="btn-sm" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>';
+    if (view.action === 'official') return officialUrl ? '<a class="btn-sm" href="' + esc(officialUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
+    const form = '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>';
+    return '<button type="button" class="btn-sm" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>' + form;
   }
   function pdfDownloadLink(p) {
     // In the DOI search view the card carries the full status block instead, so it is never repeated.
@@ -1588,13 +1664,9 @@
     if (!el) return;
     if (exactDoi(state.search)) { el.hidden = true; el.innerHTML = ''; return; }
     if (state.mode === 'curated') {
-      // Topic counts follow the day being viewed; the selected topic stays visible to clear it.
-      const counts = {}, day = curatedDay();
-      getCuratedList().filter(p => !day || publishedDate(p) === day).forEach(p => (p.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
-      if (state.tag && !counts[state.tag]) counts[state.tag] = 0;
-      const tags = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-      el.hidden = tags.length === 0;
-      el.innerHTML = tags.length ? `<span class="lane-label">主题</span>` + tags.map(([t, n]) => `<button class="lane-chip ${state.tag === t ? 'active' : ''}" data-filter-tag="${esc(t)}">${esc(t.replace(/^#/, ''))} <small>${n}</small></button>`).join('') : '';
+      // 主题芯片整行已按站长要求去掉；日期条仍由 curatedDayBar 渲染。
+      el.hidden = true;
+      el.innerHTML = '';
       return;
     }
     if (!usesLane()) { el.hidden = true; el.innerHTML = ''; return; }
@@ -1684,6 +1756,9 @@
     renderLaneBar();
     renderRangeBar();
     renderFtBar();
+    const toggle = document.querySelector('#filterToggleBtn');
+    if (toggle) toggle.hidden = true;
+    if (typeof renderQuickFilters === 'function') renderQuickFilters();
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
@@ -1696,7 +1771,11 @@
       set('q', state.search, '');
       set('tier', state.clinicalTier, '');
       set('pub', state.publisher, '');
-      set('journal', state.journal, '');
+      const js = selectedJournals();
+      set('journal', js.length === 1 ? js[0] : '', '');
+      set('journals', js.length > 1 ? js.join(',') : '', '');
+      set('jtier', state.journalTier || '', '');
+      set('nocase', state.excludeCaseReports ? '1' : '', '');
       set('design', state.studyDesign, '');
       set('tag', state.tag, '');
       set('lane', usesLane() ? state.lane : '', 'core');
@@ -1704,7 +1783,7 @@
       set('range', state.range, defaultRange(state.mode));
       set('minor', state.minor ? '1' : '', '');
       set('reading', usesLane()?state.reading:'', '');
-      set('favorites', usesLane()&&state.favoritesOnly ? '1' : '', '');
+      set('favorites', state.favoritesOnly ? '1' : '', '');
       set('wcat', state.mode === 'weekly' ? state.weeklyCat : '', '');
       set('day', state.mode === 'curated' ? state.day : '', '');
       set('pane', state.mode === 'weekly' ? state.weeklyPane : '', 'board');
@@ -1712,8 +1791,8 @@
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       set('ft', state.mode === 'library' ? state.ftFilter : '', '');
       u.searchParams.delete('maintainer');
-      const filteredView = state.search || state.clinicalTier || state.publisher || state.journal || state.studyDesign || state.tag
-        || state.ftFilter || state.range !== defaultRange(state.mode) || (usesLane() && (state.lane !== 'core' || state.minor || state.reading || state.favoritesOnly));
+      const filteredView = state.search || state.clinicalTier || state.publisher || selectedJournals().length || state.studyDesign || state.tag
+        || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
       history.replaceState(history.state, '', u.pathname + (u.search || '') + u.hash);
@@ -1757,20 +1836,24 @@
     const paper = getCurrentDataset().find(p => p.cleanJournal === journal || p.journal === journal);
     return paper ? paper.publisher || '其他学术刊物' : '';
   }
-  if (state.journal) state.publisher = publisherForJournal(state.journal);
+  // 快捷条选刊不再自动带上出版方。
   if (state.publisher) expandedPublishers.add(state.publisher);
 
   function sidebarSelections() {
+    const journals = selectedJournals();
     return [
       { group: 'tier', value: state.clinicalTier, label: '信源分组' },
-      state.journal ? { group: 'journal', value: state.journal, label: '期刊' }
-        : { group: 'pub', value: state.publisher, label: '出版方' },
+      ...journals.map(j => ({ group: 'journal', value: j, label: '期刊' })),
+      ...(journals.length ? [] : [{ group: 'pub', value: state.publisher, label: '出版方' }]),
       { group: 'design', value: state.studyDesign, label: '研究设计' },
       { group: 'tag', value: state.tag, label: '主题' }
     ].filter(selection => selection.value);
   }
   function clearSidebarFilters() {
     state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
+    state.journals = [];
+    state.journalTier = '';
+    state.excludeCaseReports = false;
     state.page = 1;
   }
   function selectSidebarFilter(group, value, only = false) {
@@ -1778,16 +1861,22 @@
     if (only) clearSidebarFilters();
     if (group === 'tier') state.clinicalTier = value;
     if (group === 'pub') {
-      const clear = !only && value && state.publisher === value && !state.journal;
+      const clear = !only && value && state.publisher === value && !selectedJournals().length;
       state.publisher = clear ? '' : value;
       state.journal = '';
+      state.journals = [];
     }
     if (group === 'journal') {
-      const clear = !only && value && state.journal === value;
-      state.journal = clear ? '' : value;
-      state.publisher = clear ? '' : publisherForJournal(value);
+      const list = selectedJournals();
+      const clear = !only && value && list.includes(value);
+      state.journals = clear ? list.filter(j => j !== value) : (only ? [value] : list.concat(value).filter((j, i, a) => a.indexOf(j) === i));
+      state.journal = state.journals[0] || '';
+      if (state.journals.length) state.publisher = '';
     }
-    if (group === 'design') state.studyDesign = value;
+    if (group === 'design') {
+      state.studyDesign = value;
+      if (state.studyDesign === '病例报告') state.excludeCaseReports = false;
+    }
     if (group === 'tag') state.tag = !only && value && state.tag === value ? '' : value;
     if (state.publisher) expandedPublishers.add(state.publisher);
     state.page = 1;
@@ -1844,9 +1933,10 @@
       if (!state.minor && p.minor) return false;
       if (state.range !== 'all' && (datePrecision(p)!=='day' || p.date.slice(0,10)<rangeStart() || p.date.slice(0,10)>beijingToday())) return false;
       if (!skipLane && !inLane(p, state.lane)) return false;
-      if (state.favoritesOnly && !state.favoriteJournals.includes(p.cleanJournal || p.journal || '')) return false;
       if (state.reading==='guide' && !p.hasDraft) return false;
     }
+    if (state.favoritesOnly && !state.favoriteJournals.includes(p.cleanJournal || p.journal || '')) return false;
+    if (state.excludeCaseReports && isCaseReport(p)) return false;
     if (!matchesSidebarFilters(p, skip)) return false;
     if (lane && state.reading==='abstract' && !hasAbstract(p)) return false;
     if (lane && state.reading==='quicklook' && (!quicklookOf(p) || p.hasDraft)) return false;
@@ -1858,8 +1948,17 @@
   function sidebarMisses(p) {
     let miss = 0;
     if (state.clinicalTier && (p.clinicalTier || '综合医学与其他') !== state.clinicalTier) miss |= 1;
-    if (state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) miss |= 2;
-    if (state.journal && (p.cleanJournal !== state.journal && p.journal !== state.journal)) miss |= 2;
+    if (typeof paperMatchesJournalFilter === 'function') {
+      if (!paperMatchesJournalFilter(p)) miss |= 2;
+    } else {
+      const js = selectedJournals();
+      if (js.length) {
+        if (!js.includes(p.cleanJournal) && !js.includes(p.journal)) miss |= 2;
+      } else if (state.journalTier) {
+        miss |= 2;
+      }
+    }
+    if (!selectedJournals().length && !state.journalTier && state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) miss |= 2;
     if (state.studyDesign && p.studyDesign !== state.studyDesign) miss |= 4;
     if (state.tag && (!p.tags || !p.tags.includes(state.tag))) miss |= 8;
     return miss;
@@ -2081,6 +2180,7 @@
       { name: '叙述综述', key: '叙述综述' },
       { name: '研究方案', key: '研究方案' },
       { name: '横断面研究', key: '横断面研究' },
+      { name: '病例报告', key: '病例报告' },
       { name: '研究类型待核验', key: '研究类型待核验' }
     ];
 
@@ -2121,23 +2221,15 @@
     const container = $('#activeFiltersBar');
     if (!container) return;
 
-    const selections = sidebarSelections();
     let chips = '';
-    const defaults = usesLane();
-    const chip = (label, value, clear) => `<span class="filter-badge-active"><span class="filter-badge-label">${label}${value ? '：' + esc(value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${clear}" aria-label="清除${label}筛选">&times;</button></span>`;
-    // The tool row already shows 领域 and 全文; chips list only what the row cannot show.
-    if (defaults && state.range !== defaultRange(state.mode)) chips += chip('发表时间', state.range === 'all' ? '全部时间' : '近 ' + state.range + ' 天', 'range');
-    if (defaults && state.minor) chips += chip('文章类型', '含更正/来信', 'minor');
-    chips += selections.map(selection => `<span class="filter-badge-active"><span class="filter-badge-label">${selection.label}：${esc(selection.value)}${selection.group === 'journal' ? ' ' + journalMetricBadge(selection.value) : ''}</span><button type="button" class="filter-badge-remove" data-clear="${selection.group}" aria-label="清除${selection.label}筛选">&times;</button></span>`).join('');
     streamTotal = totalCount;
     if (typeof renderStreamTotal === 'function') renderStreamTotal();
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
     }
-    if(usesLane() && state.reading) chips+=`<span class="filter-badge-active">可读内容：${esc({'abstract':'有摘要','guide':'已核对导读','quicklook':'AI 速览'}[state.reading])}<button type="button" class="filter-badge-remove" data-clear="reading" aria-label="清除可读内容筛选">&times;</button></span>`;
-    if(usesLane() && state.favoritesOnly) chips+='<span class="filter-badge-active">我的期刊（仅此浏览器保存）<button type="button" class="filter-badge-remove" data-clear="favorites" aria-label="清除我的期刊筛选">&times;</button></span>';
     container.innerHTML = chips;
+    if (typeof renderQfSummary === 'function') renderQfSummary();
   }
   // 共 N 篇 sits at the head of the list, with sort, view and the AI digest link beside it.
   function renderStreamTotal() {
@@ -2183,50 +2275,42 @@
   function renderArticleCard(p) {
     const isHuddled = state.huddle.includes(p.id);
     const pubClass = getPublisherClass(p.publisher);
-    const journalName = p.cleanJournal || p.journal || '期刊';
+    const journalName = cardJournalName(p);
     const dateStr = dateLabel(p);
 
     const titleEn = esc(p.title);
-    const titleZh = p.draftData?.title_zh ? esc(p.draftData.title_zh) : '';
+    const reviewedZh = p.draftData?.title_zh || '';
+    const machineZh = !p.hasDraft ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
+    const zh = reviewedZh || machineZh;
+    const pid = esc(p.id);
 
-    const qlc = quicklookOf(p);
-    // One calm card: journal and date, one title (the Chinese title when there is one), one status, the actions.
-    // Everything else (impact factor, study type, tags, abstract, evidence limits, second links) lives in the reader.
-    const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
-    const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
-    const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
-      : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
+    const titleBlock = `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${pid}">${zh ? esc(zh) : titleEn}</button></h3>`;
 
-    // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
-    const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
-    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
-    // The English title comes back when an English search hit it.
+    // 有中文标题时，英文原题作为一行弱化副标题；英文检索命中时完整显示
     const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
-    const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
-    const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
+    const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
+    const enLine = zh ? `<p class="article-title-en${enHit ? ' is-hit' : ''}" lang="en" title="${titleEn}">${titleEn}</p>` : '';
 
-    const sourceUrl = officialArticleUrl(p);
+    const gist = p.hasDraft ? (p.draftData?.summary || '') : (quicklookOf(p)?.one_line || '');
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
+
     const doiBlock = doiStatusBlock(p);
+
     return `
-      <article class="article-card has-side-actions" data-paper-id="${esc(p.id)}">
+      <article class="article-card has-side-actions" data-paper-id="${pid}">
         <div class="card-main">
           <div class="card-top">
             <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
-            <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+            <span class="date-badge">${esc(dateStr)}</span>
+            ${designBadgeHtml(p)}
           </div>
-
           ${publicationStatusHtml(p)}
           ${titleBlock}
           ${enLine}
           ${gistHtml}
         </div>
 
-        <div class="card-side-actions" role="group" aria-label="操作">
-          ${pdfDownloadLink(p)}
-          <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-          ${sourceUrl && !doiBlock ? `<a class="text-btn" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
-        </div>
+        ${cardSideActionsHtml(p)}
         ${doiBlock}
       </article>
     `;
@@ -2234,38 +2318,28 @@
 
   // Render Compact Row
   function renderCompactRow(p) {
-    const isHuddled = state.huddle.includes(p.id);
     const pubClass = getPublisherClass(p.publisher);
-    const designClass = getDesignClass(p.studyDesign);
-    const journalName = p.cleanJournal || p.journal || '期刊';
+    const journalName = cardJournalName(p);
     const dateStr = dateLabel(p);
-    const doiUrl = officialArticleUrl(p) || '#';
-    const draftTitle = p.draftData?.title_zh || '';
-    const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
-    const title = draftTitle
-      ? `[导读] ${esc(draftTitle)}`
-      : machineZh
-        ? esc(machineZh)
-        : esc(p.title);
+    const pid = esc(p.id);
+    const titleEn = esc(p.title);
+    const zh = p.draftData?.title_zh || (!p.hasDraft ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '');
+    const doiBlock = doiStatusBlock(p);
 
     return `
-      <div class="compact-row" data-paper-id="${esc(p.id)}">
+      <div class="compact-row" data-paper-id="${pid}">
         <div class="compact-main">
-          <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${title}</button>
+          <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${pid}" title="${titleEn}">${zh ? esc(zh) : titleEn}</button>
+          ${zh ? `<p class="article-title-en" lang="en" title="${titleEn}">${titleEn}</p>` : ''}
           ${publicationStatusHtml(p)}
-          ${doiStatusBlock(p)}
+          ${doiBlock}
           <div class="compact-meta">
             <span class="journal-badge ${pubClass}" title="${esc(journalName)}">${esc(journalName)}</span>
-            <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+            <span class="date-badge">${esc(dateStr)}</span>
+            ${designBadgeHtml(p)}
           </div>
         </div>
-        <div class="compact-actions">
-          ${pdfDownloadLink(p)}
-          <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-          ${doiStatusBlock(p) ? '' : doiUrl!=='#' ? `<a class="text-btn" href="${esc(doiUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
-          <button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">阅读摘要</button>
-          ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}" title="复制微信文案">文案</button>` : ''}
-        </div>
+        ${cardSideActionsHtml(p)}
       </div>
     `;
   }
@@ -2433,7 +2507,7 @@
 
     const pubClass = getPublisherClass(paper.publisher);
     const designClass = getDesignClass(paper.studyDesign);
-    const journalName = paper.cleanJournal || paper.journal || '期刊';
+    const journalName = cardJournalName(paper);
     const dateStr = dateLabel(paper);
     const doiUrl = officialArticleUrl(paper) || '#';
     const isHuddled = state.huddle.includes(paper.id);
@@ -2456,41 +2530,17 @@
       const draft = paper.draftData;
 
       let editorialSection = '';
-      if (draft) {
+      if (draft && (draft.limitations || draft.learning_question)) {
         editorialSection = `
-          <div class="drawer-section">
-            <div class="drawer-section-title">${draft.source_checked === true ? '已核对导读 <small>对照公开摘要核对</small>' : '速览'}</div>
-            <div class="editorial-box">
-              <p>${esc(draft.summary)}</p>
-              ${draft.limitations ? `<p style="margin-top:8px; font-size:12px; color:var(--rose);"><b>证据边界：</b>${esc(draft.limitations)}</p>` : ''}
-            </div>
-            ${draft.learning_question ? `
-              <div class="clinical-question-box">
-                <b>共读问题：</b>
-                <p>${esc(draft.learning_question)}</p>
-              </div>
-            ` : ''}
+          <div class="drawer-section drawer-editorial-extra">
+            ${draft.source_checked === true ? '<div class="drawer-section-title">已核对导读 <small>对照公开摘要核对</small></div>' : ''}
+            ${draft.limitations ? `<details class="drawer-extra"><summary>证据边界</summary><p>${esc(draft.limitations)}</p></details>` : ''}
+            ${draft.learning_question ? `<div class="clinical-question-box"><b>共读问题</b><p>${esc(draft.learning_question)}</p></div>` : ''}
           </div>
         `;
       }
 
-      // Authors & Affiliations Box
-      let authorBox = '';
-      if (paper.authors && paper.authors.length) {
-        authorBox = `
-          <div class="drawer-authors-box">
-            <div class="drawer-authors-line">
-              <span style="color:var(--text-muted); font-size:11.5px;">研究团队：</span>
-              <span>${esc(paper.authors.slice(0, 5).join(', '))}${paper.authors.length > 5 ? ' 等' : ''}</span>
-            </div>
-            ${paper.affiliations && paper.affiliations.length ? `
-              <div class="drawer-affiliations-line">
-                <span style="color:var(--text-muted);">收录机构：</span>${esc(paper.affiliations[0])}
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }
+      const authorBox = authorAffilHtml(paper);
 
       // Quantitative Metrics Grid
       let quantBox = '';
@@ -2537,7 +2587,7 @@
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
           <div class="drawer-section-title">速览</div>
-          <p class="ql-line"><strong>${esc(ql.one_line)}</strong></p>
+          ${ql.one_line && ql.one_line.trim() !== cardTakeaway(paper) ? `<p class="ql-line"><strong>${esc(ql.one_line)}</strong></p>` : ''}
           <p class="ql-meta"><span>${esc(prioritizedDesign(paper) || ql.design)}</span></p>
           <ul class="ql-findings">${ql.findings.map(f => `<li>${esc(f.text)}<blockquote>${esc(f.quote)}</blockquote></li>`).join('')}</ul>
           <p class="ql-meta"><b>局限：</b>${esc(ql.limits)}</p>
@@ -2585,8 +2635,6 @@
       const absSource = (paper.abstractSections && paper.abstractSections.length && paper._absFetched)
         ? '<p class="text-muted" style="font-size:11.5px;margin-top:8px;">摘要来自 Europe PMC / PubMed 公开数据，版权归原出版商；此处未做 AI 加工。</p>' : '';
       const hasAbstract = !!(paper.summary || (paper.abstractSections && paper.abstractSections.length));
-      const translationReady = hasAbstract && validTranslation(LIVE_TR[trKeyOf(paper)]);
-      const translationHtml = hasAbstract ? `<div class="abstract-translation" lang="zh-CN"><h3 class="abstract-column-title" tabindex="-1">${translationReady ? '中文译文' : '中文译文状态'}</h3>${trBoxHtml(paper)}</div>` : '';
 
       // Citation helpers (built from real fields only; no invented authors)
       const cites = buildCitations(paper);
@@ -2608,61 +2656,61 @@
 
       const tagsHtml = (paper.tags || []).map(t => `<span class="tag-chip active">${esc(t)}</span>`).join('');
 
+      const zhTitle = (draft && draft.title_zh) || (ql && ql.title_zh) || paper.titleZh || '';
+      const takeaway = cardTakeaway(paper);
       const head = `
         ${publicationStatusHtml(paper)}
         ${paper.media && paper.media.length ? `<div class="drawer-media">${paper.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('')}</div>` : ''}
 
-        ${!draft && ql?.title_zh ? `<div class="drawer-title-zh">${esc(ql.title_zh)}</div>` : ''}
-        ${!draft && !ql?.title_zh && paper.titleZh ? `<div class="drawer-title-zh">${esc(paper.titleZh)}</div>` : ''}
-        ${draft?.title_zh ? `<div class="drawer-title-zh">${esc(draft.title_zh)}</div>` : ''}
         <h2 class="drawer-title-en">${esc(paper.title)}</h2>
-
+        ${zhTitle ? `<div class="drawer-title-zh">${esc(zhTitle)}</div>` : ''}
+        ${takeaway ? `<p class="drawer-takeaway">${esc(takeaway)}</p>` : ''}
         ${journalMetricDetails(paper).replace(/<summary>[^<]*<\/summary>/, '<summary>指标来源与核对说明</summary>')}
-
-        ${authorBox}
-
-        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">${tagsHtml}</div>` : ''}
-
-        ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字（请对照下方原文核验）</summary>${quantBox}</details>` : ''}
       `;
+      const tr = LIVE_TR[trKeyOf(paper)];
+      const zhAbs = (hasAbstract && validTranslation(tr)) ? tr.abstract_zh.split(/\n+/).map(s => `<p>${esc(s)}</p>`).join('') : '';
+      const translationReady = !!(hasAbstract && zhAbs);
       const abstractSection = `
-        <section class="drawer-section abstract-reader" aria-label="公开摘要阅读">
-          <div class="drawer-section-title">公开摘要 <small class="abstract-translation-status" role="status">${hasAbstract ? abstractTranslationStatus(paper) : '原文'}</small></div>
-          ${hasAbstract ? `<nav class="abstract-jump-nav" aria-label="摘要阅读位置"><button type="button" class="btn-sm" data-action="abstract-jump" data-column="original">原始摘要</button><button type="button" class="btn-sm" data-action="abstract-jump" data-column="translation">${validTranslation(LIVE_TR[trKeyOf(paper)]) ? '中文译文' : '译文状态'}</button></nav>` : ''}
-          <div class="abstract-columns${!hasAbstract ? ' abstract-only' : translationReady ? ' abstract-paired' : ' abstract-pending'}">
-            ${!translationReady ? translationHtml : ''}
-            <div class="abstract-original" lang="en"><h3 class="abstract-column-title" tabindex="-1">英文原文</h3><div class="structured-abstract">${abstractHtml}</div></div>
-            ${translationReady ? translationHtml : ''}
-          </div>
+        <section class="drawer-section abstract-reader" aria-label="摘要">
+          <div class="drawer-section-title">摘要</div>
+          ${translationReady ? `
+            <div class="abs-tabs" role="tablist" aria-label="摘要语言">
+              <button type="button" class="abs-tab is-active" role="tab" data-abs-tab="zh" aria-selected="true">中文</button>
+              <button type="button" class="abs-tab" role="tab" data-abs-tab="en" aria-selected="false">原文</button>
+            </div>
+            <div class="abs-panel" data-abs-panel="zh" role="tabpanel">${zhAbs}</div>
+            <div class="abs-panel" data-abs-panel="en" role="tabpanel" hidden lang="en"><div class="structured-abstract">${abstractHtml}</div></div>
+          ` : `<div class="structured-abstract">${abstractHtml}</div>`}
           ${absSource}
         </section>
+        ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字</summary>${quantBox}</details>` : ''}
+        ${authorBox}
+        ${tagsHtml ? `<div class="drawer-tags">${tagsHtml}</div>` : ''}
       `;
       // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
-      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
+      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFtSlot input[name="passphrase"], .drawer-footer input[name="passphrase"]') ? document.activeElement : null;
       var typingSel = typingEl ? [typingEl.selectionStart, typingEl.selectionEnd] : null;
       const ftSection = $('#drawerFulltext');
-      const pdfLinkEl = $('#drawerPdfLink');
-      const pdfFormEl = $('#drawerPdfForm');
       ftSection.remove();
-      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ''], ['editorial', editorialSection], ['abstract', abstractSection],
+      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
       bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
-      if (ftStatus.dataset.ftHtml !== ftHtml) {
-        // 先把挂载在状态块里的持久节点挪回 #drawerFulltext，避免被 innerHTML 覆盖销毁。
-        if (pdfLinkEl && pdfLinkEl.parentElement !== ftSection) ftSection.appendChild(pdfLinkEl);
-        if (pdfFormEl && pdfFormEl.parentElement !== ftSection) ftSection.appendChild(pdfFormEl);
+      if (ftStatus && ftStatus.dataset.ftHtml !== ftHtml) {
         ftStatus.innerHTML = ftHtml;
         ftStatus.dataset.ftHtml = ftHtml;
       }
     }
 
-    // Footer buttons
+    // Footer buttons: ☆, 官网, 获取全文 / 下载 PDF
     const huddleBtn = $('#drawerHuddleToggleBtn');
     if (huddleBtn) {
-      huddleBtn.textContent = isHuddled ? '已在精选清单 ✓' : '加入精选清单';
-      huddleBtn.className = `text-btn ${isHuddled ? 'active' : ''}`;
+      huddleBtn.innerHTML = huddleStarSvg(isHuddled);
+      huddleBtn.className = `card-icon-btn card-star${isHuddled ? ' active' : ''}`;
+      huddleBtn.setAttribute('aria-pressed', String(!!isHuddled));
+      huddleBtn.setAttribute('aria-label', isHuddled ? '移出精选' : '加入精选');
+      huddleBtn.title = isHuddled ? '已精选，点击移出' : '加入精选';
     }
 
     const shareBtn = $('#drawerCopyShareBtn');
@@ -2678,22 +2726,21 @@
     }
     const institutionLogin = $('#drawerInstitutionLoginLink');
     if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
-    const ftSectionNow = $('#drawerFulltext');
+    const ftSlot = $('#drawerFtSlot');
+    const ftAction = $('#drawerFtAction');
     const pdfLink = $('#drawerPdfLink');
     const pdfForm = $('#drawerPdfForm');
+    const footerAction = fulltextFooterActionHtml(paper);
+    if (ftAction && ftAction.dataset.ftHtml !== footerAction) {
+      ftAction.innerHTML = footerAction;
+      ftAction.dataset.ftHtml = footerAction;
+    }
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
-      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
       if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
-      if (ftSectionNow) {
-        const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
-        const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
-        const linkTarget = primarySlot || ftSectionNow;
-        const formTarget = formSlot || ftSectionNow;
-        if (pdfLink.parentElement !== linkTarget) linkTarget.appendChild(pdfLink);
-        if (pdfForm && pdfForm.parentElement !== formTarget) formTarget.appendChild(pdfForm);
-      }
+      if (ftSlot && pdfLink.parentElement !== ftSlot) ftSlot.appendChild(pdfLink);
+      if (ftSlot && pdfForm && pdfForm.parentElement !== ftSlot) ftSlot.appendChild(pdfForm);
     }
 
     if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
@@ -3471,31 +3518,31 @@
     return byDoi;
   }
   function weeklyCard(p, date, readingId) {
-    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
-    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh;
+    const line = cardTakeaway(p);
     const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
-    const read = hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息';
-    return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-body"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
+    return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-body"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(cardJournalName(p))}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
       publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${esc(zh || p.title)}</button>${deep}</div>` +
       (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
       (line ? `<div class="weekly-auto-line">${esc(line)}</div>` : '') +
-      `</div><div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${read}</button><button class="btn-sm ${huddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${huddled ? '已入精选 ✓' : '加入精选清单'}</button></div></div></article>`;
+      `</div>${cardSideActionsHtml(p)}</div></article>`;
   }
   // One line per paper: rank, title, source line and the AI one-liner, with a star to collect.
   function weeklyRow(p, date, readingId) {
-    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
-    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh;
+    const line = cardTakeaway(p);
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const design = p.publicationStatus?.label || p.studyDesign || '';
     return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${esc(zh || p.title)}</button>${deep}</div>` +
-      publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(p.cleanJournal || p.journal)}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
+      publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(cardJournalName(p))}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
       (line ? `<div class="weekly-row-line">${esc(line)}</div>` : '') +
-      `</div><div class="weekly-row-actions"><button type="button" class="weekly-star${huddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${huddled}" aria-label="${huddled ? '移出精选清单' : '加入精选清单'}" title="${huddled ? '已入精选清单' : '加入精选清单'}">${huddled ? '★' : '☆'}</button></div></li>`;
+      `</div>${cardSideActionsHtml(p)}</li>`;
   }
 
   function renderWeeklyAuto() {
     const el = $('#weeklyAuto'); if (!el) return;
+    if (typeof renderQuickFilters === 'function') renderQuickFilters();
     const now = Date.now(), boardWindow = weeklyPublicationWindow(FEEDS.items, now);
     const reports = FEEDS.items.filter(p => p.weeklyPick).map(p => p.weeklyAt)
       .filter(value => typeof value === 'string' && value.includes('T') && weeklyPublicationDate({ date: value }, now))
@@ -3504,22 +3551,24 @@
     const validUpdate = typeof updatedAt === 'string' && updatedAt.includes('T') && weeklyPublicationDate({ date: updatedAt }, now);
     const stale = validUpdate && now - Date.parse(updatedAt) > 6 * 3600000;
     const timing = validUpdate ? `${reports.length ? '榜单' : '来源'}更新于 ${esc(contentDate(updatedAt))}` : '更新时间暂无有效记录，时效待确认';
-    const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper));
+    const entries = boardWindow.entries.filter(({paper}) => matchesQuery(paper) && (typeof matchesQuickFilters === 'function' ? matchesQuickFilters(paper) : true));
     const groups = WEEKLY_CATEGORIES.map(([id, name]) => ({ id, name, entries: entries.filter(({ paper }) => (['cardio', 'general', 'aimed', 'aitech'].includes(paper.weeklyCategory) ? paper.weeklyCategory : laneOf(paper)) === id) }));
     const boardCount = $('#weeklyPaneBoardCount'); if (boardCount) boardCount.textContent = entries.length || '';
     const preparedTranslations = entries.filter(({paper:p})=>validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)])).length;
     const preparedQuicklooks = entries.filter(({paper:p})=>quicklookOf(p)).length;
     const infoOpen = !!el.querySelector?.('.weekly-info[open]');
-    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` +
+    const compactEarly = state.viewMode === 'compact';
+    const viewToggle = `<div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compactEarly ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compactEarly}">详细</button><button type="button" class="view-toggle-btn${compactEarly ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compactEarly}">列表</button></div>`;
+    const heading = `<div class="weekly-head"><h3 class="next-title">近 7 天文献榜 <span class="weekly-total">${state.search ? `匹配 ${entries.length} / ${boardWindow.entries.length}` : boardWindow.entries.length} 篇</span></h3>` + viewToggle +
       `<div class="weekly-meta"><span>发表于 ${boardWindow.start.slice(5)} 至 ${boardWindow.end.slice(5)}（北京时间，含今天）· ${timing}</span>${stale ? '<b class="weekly-stale">更新已超过 6 小时，时效待确认</b>' : ''}` +
       `<details class="weekly-info"${infoOpen ? ' open' : ''}><summary>榜单说明</summary><div class="weekly-info-body"><p>收录北京时间 ${boardWindow.start}–${boardWindow.end} 发表的入榜文献。分类与排序为自动规则，未经逐篇质量评审。</p><p class="weekly-preparation">摘要内容准备：中文摘要 ${preparedTranslations}/${entries.length} · AI 速览 ${preparedQuicklooks}/${entries.length}。仅依据公开摘要，不代表全文精读。</p><p>点题名打开阅读台看摘要；出版商原文链接在阅读台底部。</p></div></details></div></div>`
       + specialSearchStatus('近7天榜（只筛当前入榜文献，不改变选文；其他栏目筛选不影响榜单）', entries.length, boardWindow.entries.length, '篇');
     if (!entries.length) { el.innerHTML = heading + `<p class="text-muted" role="status">${state.search ? '当前榜内没有匹配文献，可清除关键词；更大范围请到文献雷达检索。' : '近7天暂无入榜条目'}</p>`; return; }
     const cat = groups.some(g => g.id === state.weeklyCat) ? state.weeklyCat : '';
-    const compact = state.viewMode === 'compact';
+    const compact = compactEarly;
     const bar = `<div class="weekly-bar"><div class="weekly-category-nav" role="group" aria-label="文献榜分类"><button type="button" data-weekly-cat="" aria-pressed="${!cat}">全部 <span>${entries.length}</span></button>` +
       groups.map(g => `<button type="button" data-weekly-cat="${g.id}" aria-pressed="${cat === g.id}"${g.entries.length || cat === g.id ? '' : ' disabled'}>${g.name} <span>${g.entries.length}</span></button>`).join('') +
-      `</div><div class="view-toggle weekly-view-toggle" role="group" aria-label="显示方式"><button type="button" class="view-toggle-btn${compact ? '' : ' active'}" data-weekly-view="cards" aria-pressed="${!compact}">详细</button><button type="button" class="view-toggle-btn${compact ? ' active' : ''}" data-weekly-view="compact" aria-pressed="${compact}">列表</button></div></div>`;
+      `</div></div>`;
     const readings = weeklyReadingIds();
     const shown = cat ? groups.filter(g => g.id === cat) : groups.filter(g => g.entries.length);
     el.innerHTML = heading + bar + `<div class="weekly-board ${compact ? 'weekly-board-compact' : ''}">` + shown.map(g => `<section class="weekly-group" id="weekly-group-${g.id}" aria-labelledby="weekly-title-${g.id}"><h4 id="weekly-title-${g.id}" class="weekly-group-title">${g.name}<span>${g.entries.length} 篇</span></h4>` + (g.entries.length ?
@@ -3547,6 +3596,716 @@
       list.map(p => `<div class="next-item"><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div><div class="next-item-title">${esc(p.title)}</div><div class="next-item-actions"><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入精选 ✓' : '加入精选清单'}</button><a class="btn-sm" target="_blank" rel="noopener" href="${esc(p.url || (p.doi ? 'https://doi.org/' + p.doi : '#'))}">出版商 / 题录 ↗</a></div></div>`).join('');
   }
 
+  // ==== src/app/09z-quick-filters.js · 列表顶栏快捷筛选条 ====
+  const QF_RECENT_KEY = 'xz_recent_journals';
+  const QF_PRESET_KEY = 'xz_filter_presets';
+  const QF_DESIGN_OPTS = [
+    ['', '全部设计'],
+    ['RCT', 'RCT 随机对照'],
+    ['RCT 二次分析', 'RCT 二次分析'],
+    ['二次分析', '二次分析（母研究待核验）'],
+    ['已撤稿', '已撤稿'],
+    ['存在关注声明', '存在关注声明'],
+    ['撤稿声明', '撤稿声明'],
+    ['关注声明', '关注声明'],
+    ['更正声明', '更正声明'],
+    ['队列研究', '队列研究'],
+    ['病例对照研究', '病例对照研究'],
+    ['Meta/综述', 'Meta/系统综述'],
+    ['方法/模型验证', '方法/模型验证'],
+    ['指南共识', '指南共识'],
+    ['述评观点', '述评观点'],
+    ['叙述综述', '叙述综述'],
+    ['研究方案', '研究方案'],
+    ['横断面研究', '横断面研究'],
+    ['病例报告', '病例报告'],
+    ['研究类型待核验', '研究类型待核验']
+  ];
+
+  let qfOpen = null; // { kind, query }
+
+  function loadRecentJournals() {
+    try {
+      const a = JSON.parse(safeGet(QF_RECENT_KEY) || '[]');
+      return Array.isArray(a) ? a.filter(x => typeof x === 'string') : [];
+    } catch (e) { return []; }
+  }
+  function rememberJournal(name) {
+    if (!name) return;
+    const list = loadRecentJournals().filter(j => j !== name);
+    list.unshift(name);
+    safeSet(QF_RECENT_KEY, JSON.stringify(list.slice(0, 8)));
+  }
+  function loadFilterPresets() {
+    try {
+      const a = JSON.parse(safeGet(QF_PRESET_KEY) || '[]');
+      return Array.isArray(a) ? a.filter(x => x && typeof x === 'object') : [];
+    } catch (e) { return []; }
+  }
+  function qfSnapshot() {
+    return {
+      lane: state.lane,
+      range: state.range,
+      ftFilter: state.ftFilter,
+      reading: state.reading,
+      favoritesOnly: state.favoritesOnly,
+      excludeCaseReports: state.excludeCaseReports,
+      journals: selectedJournals().slice(),
+      journalTier: state.journalTier || '',
+      clinicalTier: state.clinicalTier,
+      publisher: state.publisher,
+      studyDesign: state.studyDesign,
+      tag: state.tag,
+      minor: state.minor
+    };
+  }
+  function qfRestore(data) {
+    if (!data || typeof data !== 'object') return;
+    ['lane', 'range', 'ftFilter', 'reading', 'favoritesOnly', 'excludeCaseReports',
+      'clinicalTier', 'publisher', 'studyDesign', 'tag', 'minor'].forEach(k => {
+      if (k in data) state[k] = data[k];
+    });
+    state.journals = Array.isArray(data.journals) ? data.journals.slice() : [];
+    state.journalTier = data.journalTier || '';
+    state.journal = state.journals[0] || '';
+  }
+  function saveFilterPreset(name) {
+    const presets = loadFilterPresets();
+    const label = String(name || '').trim() || ('预设 ' + (presets.length + 1));
+    presets.push({ id: Date.now(), name: label, data: qfSnapshot() });
+    safeSet(QF_PRESET_KEY, JSON.stringify(presets.slice(-20)));
+    if (typeof showToast === 'function') showToast('已保存「' + label + '」，可在 ⋯ 中取用；不会自动套用');
+  }
+  function applyFilterPreset(id) {
+    const p = loadFilterPresets().find(x => String(x.id) === String(id));
+    if (!p) return;
+    qfRestore(p.data);
+    qfApply();
+  }
+  function deleteFilterPreset(id) {
+    safeSet(QF_PRESET_KEY, JSON.stringify(loadFilterPresets().filter(x => String(x.id) !== String(id))));
+  }
+
+  function qfPapers() {
+    if (state.mode === 'weekly') {
+      try { return weeklyPublicationWindow(FEEDS.items, Date.now()).entries.map(e => e.paper); }
+      catch (e) { return (FEEDS && FEEDS.items) || []; }
+    }
+    if (state.mode === 'sources') return [];
+    return getCurrentDataset();
+  }
+  function matchesQuickFilters(p) {
+    if (state.favoritesOnly && !state.favoriteJournals.includes(p.cleanJournal || p.journal || '')) return false;
+    if (state.excludeCaseReports && isCaseReport(p)) return false;
+    if (!matchesSidebarFilters(p)) return false;
+    return true;
+  }
+
+  const JT = () => (typeof window !== 'undefined' && window.XINZHI_JOURNAL_TIERS) || null;
+  function normJournal(name) {
+    const api = JT();
+    return api ? api.normalizeJournalName(name) : String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+  function paperJournalKey(p) {
+    const name = typeof cardJournalName === 'function' ? cardJournalName(p) : (p && (p.cleanJournal || p.journal)) || '';
+    if (!name || name === '期刊待补') return '';
+    if (typeof isInternalSourceName === 'function' && isInternalSourceName(name)) return '';
+    const api = JT();
+    return api ? api.canonName(name) : name;
+  }
+  function paperTierId(p) {
+    const name = paperJournalKey(p);
+    if (!name) return '';
+    const api = JT();
+    return api ? api.tierOfName(name) : 'other';
+  }
+  function paperMatchesJournalFilter(p) {
+    if (!state.journalTier && !(selectedJournals().length)) return true;
+    const name = paperJournalKey(p);
+    if (!name) return false;
+    const js = selectedJournals();
+    if (js.length) {
+      const set = new Set(js.map(normJournal));
+      return set.has(normJournal(name));
+    }
+    if (!state.journalTier) return true;
+    return paperTierId(p) === state.journalTier;
+  }
+  function journalNamesInColumn() {
+    const counts = new Map();
+    qfPapers().forEach(p => {
+      const name = paperJournalKey(p);
+      if (!name) return;
+      const canon = name;
+      counts.set(normJournal(canon), { name: canon, n: (counts.get(normJournal(canon)) || { n: 0 }).n + 1 });
+    });
+    return counts;
+  }
+  function tierJournalRows(tierId) {
+    const api = JT();
+    const counts = journalNamesInColumn();
+    if (tierId === 'other') {
+      return Array.from(counts.values())
+        .filter(row => !api || api.tierOfName(row.name) === 'other')
+        .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'zh'))
+        .map(row => Object.assign(row, { suggested: false }));
+    }
+    const names = api ? api.namesInTier(tierId, true) : [];
+    const seen = new Set();
+    const rows = [];
+    names.forEach(n => {
+      const k = normJournal(n);
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      const hit = counts.get(k);
+      rows.push({ name: (hit && hit.name) || (api && api.canonName(n)) || n, n: hit ? hit.n : 0, suggested: !!(api && api.isSuggestedName(n)) });
+    });
+    // 当前栏目里规范名落入本档、但不在表中的刊（不应出现，除非 other）
+    return rows;
+  }
+  function tierHasPapers(tierId) {
+    return qfPapers().some(p => {
+      const name = paperJournalKey(p);
+      if (!name) return false;
+      const id = paperTierId(p);
+      return tierId === 'other' ? (id === 'other' || !id) : id === tierId;
+    });
+  }
+  function currentTierSubset(tierId) {
+    if (state.journalTier !== tierId) return [];
+    return selectedJournals();
+  }
+  function tierIsOn(tierId) {
+    return state.journalTier === tierId;
+  }
+  function selectWholeTier(tierId) {
+    if (state.journalTier === tierId && !selectedJournals().length) {
+      state.journalTier = '';
+      state.journals = [];
+      state.journal = '';
+    } else {
+      state.journalTier = tierId;
+      state.journals = [];
+      state.journal = '';
+      state.publisher = '';
+    }
+  }
+  function toggleJournalInTier(tierId, name) {
+    const rows = tierJournalRows(tierId);
+    const present = rows.filter(r => r.n > 0 || currentTierSubset(tierId).some(j => normJournal(j) === normJournal(r.name)));
+    let list = (state.journalTier === tierId ? selectedJournals() : []).slice();
+    const key = normJournal(name);
+    if (list.some(j => normJournal(j) === key)) list = list.filter(j => normJournal(j) !== key);
+    else list.push(name);
+    // 若选中本档全部已出现的刊，视为整档
+    const presentKeys = new Set(present.map(r => normJournal(r.name)));
+    const selectedKeys = new Set(list.map(normJournal));
+    const allOn = presentKeys.size && [...presentKeys].every(k => selectedKeys.has(k));
+    state.journalTier = list.length ? tierId : '';
+    state.journals = (list.length && !allOn) ? list : [];
+    state.journal = state.journals[0] || '';
+    state.publisher = '';
+    if (name && typeof rememberJournal === 'function') rememberJournal(name);
+  }
+  function tierDef(id) {
+    const api = JT();
+    return (api && api.tiers || []).find(t => t.id === id) || { id, short: id, title: id };
+  }
+
+  function qfChipVis() {
+    const papers = qfPapers();
+    const has = pred => papers.some(pred);
+    const doi = typeof exactDoi === 'function' && exactDoi(state.search);
+    const api = JT();
+    const tiers = {};
+    (api && api.tiers || []).forEach(tier => { tiers[tier.id] = tierHasPapers(tier.id); });
+    return {
+      bar: !doi && state.mode !== 'sources',
+      scope: usesLane() && !doi,
+      star: has(p => paperJournalKey(p)),
+      tiers,
+      specialty: has(p => p.clinicalTier),
+      nocase: has(isCaseReport),
+      design: has(p => p.studyDesign),
+      more: has(p => p.publisher) || has(p => p.clinicalTier) || has(isCaseReport) || has(p => p.studyDesign) || usesLane() || state.mode === 'library'
+    };
+  }
+  function journalNameOf(p) { return paperJournalKey(p); }
+  function columnJournalCounts() {
+    const counts = new Map();
+    journalNamesInColumn().forEach(row => counts.set(row.name, row.n));
+    return counts;
+  }
+  function qfHasActive() {
+    const vis = qfChipVis();
+    if (state.favoritesOnly || state.excludeCaseReports || selectedJournals().length || state.journalTier) return true;
+    if (state.clinicalTier || state.publisher || state.studyDesign || state.tag) return true;
+    if (vis.scope && (state.lane !== 'core' || state.range !== defaultRange(state.mode))) return true;
+    if (state.mode === 'library' && state.ftFilter) return true;
+    if (usesLane() && (state.minor || state.reading)) return true;
+    return false;
+  }
+  function clearQuickFilters() {
+    state.favoritesOnly = false;
+    state.excludeCaseReports = false;
+    state.journals = [];
+    state.journal = '';
+    if (typeof clearSidebarFilters === 'function') clearSidebarFilters();
+    if (usesLane()) {
+      state.lane = 'core';
+      state.range = defaultRange(state.mode);
+      state.reading = '';
+      state.minor = false;
+    }
+    if (state.mode === 'library') state.ftFilter = '';
+  }
+  function qfApply() {
+    state.page = 1;
+    if (state.mode === 'weekly') {
+      if (typeof renderWeeklyAuto === 'function') renderWeeklyAuto();
+      if (typeof renderNextCandidates === 'function') renderNextCandidates();
+      if (typeof syncUrl === 'function') syncUrl();
+    } else if (typeof renderStream === 'function') {
+      if (typeof renderSidebarFilters === 'function' && state.mode !== 'sources') renderSidebarFilters();
+      renderStream();
+    }
+    renderQuickFilters();
+  }
+
+  function scopeLabel() {
+    const lane = (typeof LANES !== 'undefined' ? LANES : []).find(l => l.id === state.lane);
+    const laneName = (lane && (lane.short || lane.name)) || '领域';
+    const rangeName = state.range === 'all' ? '全部时间' : ('近 ' + state.range + ' 天');
+    if (state.mode === 'library' && state.ftFilter) {
+      const ft = (typeof FT_FILTERS !== 'undefined' ? FT_FILTERS : []).find(([v]) => v === state.ftFilter);
+      return laneName + ' · ' + rangeName + ' · ' + ((ft && ft[1]) || '全文');
+    }
+    return laneName + ' · ' + rangeName;
+  }
+
+  function renderQuickFilters() {
+    const bar = $('#quickBar');
+    const row = $('#qfChipRow');
+    const scopeBtn = $('#qfScopeBtn');
+    const summary = $('#qfSummary');
+    if (!bar || !row) return;
+    const vis = qfChipVis();
+    bar.hidden = !vis.bar;
+    if (scopeBtn) {
+      scopeBtn.hidden = !vis.scope;
+      if (vis.scope) {
+        scopeBtn.textContent = scopeLabel();
+        scopeBtn.classList.toggle('is-on', state.lane !== 'core' || state.range !== defaultRange(state.mode) || !!(state.mode === 'library' && state.ftFilter));
+        scopeBtn.setAttribute('aria-expanded', String(!!(qfOpen && qfOpen.kind === 'scope')));
+      }
+    }
+    if (!vis.bar) {
+      if (summary) summary.hidden = true;
+      if (qfOpen) closeQfPop();
+      return;
+    }
+    const chip = (kind, label, on, extra) =>
+      `<button type="button" class="qf-chip${on ? ' is-on' : ''}" data-qf="${kind}" aria-pressed="${on}"${extra || ''}>${label}</button>`;
+    const parts = [];
+    if (vis.star) parts.push(chip('star', state.favoritesOnly ? '★' : '☆', !!state.favoritesOnly, ' aria-label="只看关注期刊" title="只看关注期刊"'));
+    (JT() && JT().tiers || []).forEach(tier => {
+      if (!vis.tiers[tier.id]) return;
+      const subset = currentTierSubset(tier.id);
+      const on = tierIsOn(tier.id);
+      const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
+      const openKind = 'jtier:' + tier.id;
+      parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
+        <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}">${esc(label)}</button>
+        <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
+      </span>`);
+    });
+    if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
+    row.innerHTML = parts.join('');
+    renderQfSummary();
+    if (qfOpen) openQfPop(qfOpen.kind, true);
+  }
+  function qfMoreActive() {
+    return !!(state.publisher || state.clinicalTier || state.excludeCaseReports || state.studyDesign || (usesLane() && (state.minor || state.reading)) || (state.mode === 'library' && state.ftFilter && !qfChipVis().scope));
+  }
+
+  function renderQfSummary() {
+    const el = $('#qfSummary');
+    if (!el) return;
+    if (!qfHasActive()) { el.hidden = true; el.innerHTML = ''; return; }
+    const item = (label, key, value) =>
+      `<button type="button" class="qf-sum-item" data-qf-clear="${esc(key)}"${value != null ? ` data-qf-clear-value="${esc(value)}"` : ''} aria-label="清除${esc(label)}">${esc(label)} <span aria-hidden="true">×</span></button>`;
+    const bits = [];
+    if (state.favoritesOnly) bits.push(item('只看关注期刊', 'favorites'));
+    if (state.journalTier && !selectedJournals().length) {
+      bits.push(item(tierDef(state.journalTier).title || state.journalTier, 'jtier'));
+    } else if (selectedJournals().length) {
+      const prefix = state.journalTier ? (tierDef(state.journalTier).short + '：') : '';
+      selectedJournals().forEach(j => bits.push(item(prefix + j, 'journal', j)));
+    }
+    if (state.clinicalTier) bits.push(item(state.clinicalTier, 'tier'));
+    if (state.excludeCaseReports) bits.push(item('已排除病例报告', 'nocase'));
+    if (state.studyDesign) bits.push(item(state.studyDesign, 'design'));
+    if (state.publisher && !selectedJournals().length) bits.push(item(state.publisher, 'pub'));
+    if (state.tag) bits.push(item(state.tag, 'tag'));
+    if (usesLane() && state.minor) bits.push(item('含更正/来信', 'minor'));
+    if (usesLane() && state.reading) bits.push(item('可读内容', 'reading'));
+    if (state.mode === 'library' && state.ftFilter) bits.push(item('全文状态', 'ft'));
+    if (usesLane() && state.lane !== 'core') bits.push(item((LANES.find(l => l.id === state.lane) || {}).short || '领域', 'lane'));
+    if (usesLane() && state.range !== defaultRange(state.mode)) bits.push(item(state.range === 'all' ? '全部时间' : ('近 ' + state.range + ' 天'), 'range'));
+    el.hidden = false;
+    el.innerHTML = bits.join('<span class="qf-dot" aria-hidden="true">·</span>')
+      + '<span class="qf-dot" aria-hidden="true">·</span>'
+      + '<button type="button" class="qf-sum-action" data-qf-clear="all">清除</button>'
+      + '<span class="qf-dot" aria-hidden="true">·</span>'
+      + '<button type="button" class="qf-sum-action" data-qf-save="1" title="把当前条件存成预设，仅此浏览器，不会自动套用">☆保存</button>';
+  }
+
+  function closeQfPop() {
+    qfOpen = null;
+    const pop = $('#qfPop'), back = $('#qfBackdrop');
+    if (pop) { pop.hidden = true; pop.innerHTML = ''; pop.classList.remove('is-sheet'); }
+    if (back) back.hidden = true;
+    $$('.qf-chip[aria-expanded="true"], #qfScopeBtn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  }
+  function placeQfPop(anchor) {
+    const pop = $('#qfPop');
+    if (!pop) return;
+    const narrow = window.innerWidth <= 600;
+    pop.classList.toggle('is-sheet', narrow);
+    pop.hidden = false;
+    const back = $('#qfBackdrop');
+    if (back) back.hidden = false;
+    if (narrow || !anchor) {
+      pop.style.left = '';
+      pop.style.top = '';
+      pop.style.width = '';
+      pop.style.maxWidth = '';
+      return;
+    }
+    const r = anchor.getBoundingClientRect();
+    const w = Math.min(420, Math.max(280, window.innerWidth - 16));
+    let left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+    pop.style.width = w + 'px';
+    pop.style.maxWidth = w + 'px';
+    pop.style.left = left + 'px';
+    pop.style.top = (r.bottom + 6) + 'px';
+    const ph = pop.getBoundingClientRect().height;
+    if (r.bottom + 6 + ph > window.innerHeight - 8) {
+      const up = r.top - ph - 6;
+      pop.style.top = Math.max(8, up) + 'px';
+    }
+  }
+  function openQfPop(kind, keepQuery) {
+    const pop = $('#qfPop');
+    if (!pop) return;
+    const query = keepQuery && qfOpen ? (qfOpen.query || '') : '';
+    qfOpen = { kind, query };
+    pop.innerHTML = qfPopHtml(kind, query);
+    let anchor;
+    if (kind === 'scope') anchor = $('#qfScopeBtn');
+    else if (kind && kind.slice(0, 6) === 'jtier:') anchor = $(`.qf-chip-caret[data-qf-jtier-menu="${kind.slice(6)}"]`);
+    else anchor = $(`.qf-chip[data-qf="${kind}"]`);
+    $$('.qf-chip, #qfScopeBtn').forEach(b => b.setAttribute('aria-expanded', String(b === anchor)));
+    placeQfPop(anchor);
+    const input = $('#qfJournalSearch');
+    if (input) {
+      input.value = query;
+      if (!keepQuery) setTimeout(() => { try { input.focus(); } catch (e) {} }, 0);
+    }
+  }
+
+  function qfPopHtml(kind, query) {
+    if (kind && kind.slice(0, 6) === 'jtier:') return journalPopHtml(kind.slice(6), query);
+    if (kind === 'journal') return journalPopHtml('other', query);
+    if (kind === 'specialty') return specialtyPopHtml();
+    if (kind === 'design') return designPopHtml();
+    if (kind === 'scope') return scopePopHtml();
+    if (kind === 'more') return morePopHtml();
+    return '';
+  }
+
+  function journalPopHtml(tierId, query) {
+    const def = tierDef(tierId);
+    return `<div class="qf-pop-head"><strong>${esc(def.title)}</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <div class="qf-pop-actions"><button type="button" class="qf-opt${state.journalTier === tierId && !selectedJournals().length ? ' is-on' : ''}" data-qf-jtier-all="${esc(tierId)}">查看整档</button></div>
+      <div class="qf-search-wrap"><input type="search" id="qfJournalSearch" class="qf-search" placeholder="搜索刊名…" value="${esc(query || '')}" autocomplete="off" aria-label="搜索期刊"></div>
+      <div class="qf-journal-list" id="qfJournalList">${journalListHtml(query || '', tierId)}</div>`;
+  }
+  function journalListHtml(query, tierId) {
+    const id = tierId || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
+    const q = String(query || '').trim().toLowerCase();
+    const rows = tierJournalRows(id);
+    const subset = currentTierSubset(id);
+    const whole = state.journalTier === id && !subset.length;
+    const fav = new Set((state.favoriteJournals || []).map(normJournal));
+    const filtered = rows.filter(r => !q || r.name.toLowerCase().includes(q));
+    if (!filtered.length) return '<p class="qf-empty">没有匹配的期刊</p>';
+    return filtered.map(r => {
+      const on = whole || subset.some(j => normJournal(j) === normJournal(r.name));
+      const starred = fav.has(normJournal(r.name));
+      const sug = r.suggested ? '<small class="qf-suggested">建议</small>' : '';
+      return `<div class="qf-jrow${on ? ' is-on' : ''}${r.n ? '' : ' is-empty'}" data-qf-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}">
+        <button type="button" class="qf-jstar${starred ? ' is-starred' : ''}" data-qf-follow="${esc(r.name)}" aria-label="${starred ? '取消关注' : '关注期刊'}" aria-pressed="${starred}">${starred ? '★' : '☆'}</button>
+        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}">${esc(r.name)}${sug}<small>${r.n}</small></button>
+      </div>`;
+    }).join('');
+  }
+  function refreshJournalList() {
+    const list = $('#qfJournalList');
+    if (!list || !qfOpen || !qfOpen.kind) return;
+    if (qfOpen.kind !== 'journal' && qfOpen.kind.slice(0, 6) !== 'jtier:') return;
+    const tierId = qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '';
+    list.innerHTML = journalListHtml(qfOpen.query || '', tierId);
+  }
+
+  function specialtyPopHtml() {
+    const counts = {};
+    qfPapers().filter(p => matchesFilters(p, false, 'tier')).forEach(p => {
+      const t = p.clinicalTier || '综合医学与其他';
+      counts[t] = (counts[t] || 0) + 1;
+    });
+    const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b, 'zh'));
+    const opts = ['<button type="button" class="qf-opt' + (!state.clinicalTier ? ' is-on' : '') + '" data-qf-tier="" aria-pressed="' + (!state.clinicalTier) + '">全部分组</button>']
+      .concat(keys.filter(k => counts[k] || k === state.clinicalTier).map(k =>
+        `<button type="button" class="qf-opt${state.clinicalTier === k ? ' is-on' : ''}" data-qf-tier="${esc(k)}" aria-pressed="${state.clinicalTier === k}">${esc(k)} <small>${counts[k] || 0}</small></button>`
+      ));
+    return `<div class="qf-pop-head"><strong>专科来源</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <p class="qf-hint">按来源期刊分组，不是每篇文章的临床主题。</p>
+      <div class="qf-opt-list">${opts.join('')}</div>`;
+  }
+
+  function designPopHtml() {
+    const counts = {};
+    qfPapers().filter(p => matchesFilters(p, false, 'design')).forEach(p => {
+      const d = p.studyDesign || '研究类型待核验';
+      counts[d] = (counts[d] || 0) + 1;
+    });
+    const pending = counts['研究类型待核验'] || 0;
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const seen = new Set();
+    const keys = QF_DESIGN_OPTS.map(([k, n]) => {
+      seen.add(k);
+      return [k, n, k ? (counts[k] || 0) : total];
+    });
+    Object.keys(counts).forEach(k => { if (!seen.has(k)) keys.splice(keys.length - 1, 0, [k, k, counts[k]]); });
+    const opts = keys.filter(([k, , n]) => !k || n || k === '病例报告' || k === state.studyDesign || k === '研究类型待核验').map(([k, name, n]) => {
+      const on = k ? state.studyDesign === k : !state.studyDesign;
+      const mark = k === '研究类型待核验' ? ` <small>待核验 ${pending} 篇${total ? '（' + Math.round(pending * 100 / total) + '%）' : ''}</small>`
+        : (k ? ` <small>${n}</small>` : '');
+      return `<button type="button" class="qf-opt${on ? ' is-on' : ''}" data-qf-design="${esc(k)}" aria-pressed="${on}">${esc(name)}${mark}</button>`;
+    });
+    return `<div class="qf-pop-head"><strong>研究设计</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <p class="qf-hint">筛选只作用于已标注文献。当前栏目研究类型待核验 ${pending} 篇${total ? '，约占 ' + Math.round(pending * 100 / total) + '%' : ''}。</p>
+      <div class="qf-opt-list">${opts.join('')}</div>`;
+  }
+
+  function scopePopHtml() {
+    const lanes = (typeof LANES !== 'undefined' ? LANES : []).map(l =>
+      `<button type="button" class="qf-opt${state.lane === l.id ? ' is-on' : ''}" data-qf-lane="${esc(l.id)}" aria-pressed="${state.lane === l.id}">${esc(l.short || l.name)}</button>`
+    ).join('');
+    const ranges = ((typeof RANGES_BY_MODE !== 'undefined' && RANGES_BY_MODE[state.mode]) || []).map(([v, n]) =>
+      `<button type="button" class="qf-opt${state.range === v ? ' is-on' : ''}" data-qf-range="${esc(v)}" aria-pressed="${state.range === v}">${esc(n)}</button>`
+    ).join('');
+    let ft = '';
+    if (state.mode === 'library' && typeof FT_FILTERS !== 'undefined') {
+      ft = '<h4>全文状态</h4><div class="qf-opt-list">' + FT_FILTERS.map(([v, n]) =>
+        `<button type="button" class="qf-opt${(state.ftFilter || '') === v ? ' is-on' : ''}" data-qf-ft="${esc(v)}" aria-pressed="${(state.ftFilter || '') === v}">${esc(v === '' ? '全部全文' : n)}</button>`
+      ).join('') + '</div>';
+    }
+    return `<div class="qf-pop-head"><strong>领域与时间</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <h4>领域</h4><div class="qf-opt-list">${lanes}</div>
+      <h4>发表时间</h4><div class="qf-opt-list">${ranges}</div>${ft}`;
+  }
+
+  function morePopHtml() {
+    const pubCounts = {};
+    qfPapers().forEach(p => {
+      if (!matchesQuery(p)) return;
+      const pub = p.publisher || '其他学术刊物';
+      pubCounts[pub] = (pubCounts[pub] || 0) + 1;
+    });
+    const pubs = Object.keys(pubCounts).sort((a, b) => pubCounts[b] - pubCounts[a] || a.localeCompare(b, 'zh'));
+    const pubHtml = pubs.map(name =>
+      `<button type="button" class="qf-opt${state.publisher === name && !selectedJournals().length ? ' is-on' : ''}" data-qf-pub="${esc(name)}" aria-pressed="${state.publisher === name && !selectedJournals().length}">${esc(name)} <small>${pubCounts[name]}</small></button>`
+    ).join('') || '<p class="qf-empty">暂无出版方</p>';
+    let extra = '';
+    if (usesLane()) {
+      extra += `<h4>文章类型</h4><div class="qf-opt-list">
+        <button type="button" class="qf-opt${!state.minor ? ' is-on' : ''}" data-qf-minor="0" aria-pressed="${!state.minor}">不含更正/来信（默认）</button>
+        <button type="button" class="qf-opt${state.minor ? ' is-on' : ''}" data-qf-minor="1" aria-pressed="${!!state.minor}">含更正/来信</button>
+      </div>`;
+      extra += `<h4>可读内容</h4><div class="qf-opt-list">
+        <button type="button" class="qf-opt${!state.reading ? ' is-on' : ''}" data-qf-reading="" aria-pressed="${!state.reading}">全部内容</button>
+        <button type="button" class="qf-opt${state.reading === 'abstract' ? ' is-on' : ''}" data-qf-reading="abstract" aria-pressed="${state.reading === 'abstract'}">有公开摘要</button>
+        <button type="button" class="qf-opt${state.reading === 'guide' ? ' is-on' : ''}" data-qf-reading="guide" aria-pressed="${state.reading === 'guide'}">已核对导读</button>
+        <button type="button" class="qf-opt${state.reading === 'quicklook' ? ' is-on' : ''}" data-qf-reading="quicklook" aria-pressed="${state.reading === 'quicklook'}">AI 速览</button>
+      </div>`;
+    }
+    const visMore = qfChipVis();
+    let moved = '';
+    if (visMore.nocase) {
+      moved += `<h4>病例报告</h4><div class="qf-opt-list"><button type="button" class="qf-opt${state.excludeCaseReports ? ' is-on' : ''}" data-qf="nocase" aria-pressed="${!!state.excludeCaseReports}">不看病例</button></div>`;
+    }
+    if (visMore.specialty) moved += specialtyPopHtml().replace(/<div class="qf-pop-head">[\s\S]*?<\/div>/, '');
+    if (visMore.design) moved += designPopHtml().replace(/<div class="qf-pop-head">[\s\S]*?<\/div>/, '');
+    const presets = loadFilterPresets();
+    const presetHtml = presets.length
+      ? `<h4>已保存的预设</h4><p class="qf-hint">仅此浏览器保存，不会自动套用。</p><div class="qf-opt-list">` +
+        presets.map(p => `<div class="qf-preset-row"><button type="button" class="qf-opt" data-qf-preset="${esc(String(p.id))}">${esc(p.name || '未命名预设')}</button><button type="button" class="qf-preset-del" data-qf-del-preset="${esc(String(p.id))}" aria-label="删除预设">×</button></div>`).join('') +
+        `</div>`
+      : '<p class="qf-hint">用列表上方的 ☆保存，可以把当前条件存成预设。仅此浏览器保存，打开站点时不会自动套用。</p>';
+    return `<div class="qf-pop-head"><strong>更多筛选</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>${moved}
+      <h4>出版方</h4><p class="qf-hint">可选的浏览方式。选刊不会自动带上出版方。</p>
+      <div class="qf-opt-list">${pubHtml}</div>${extra}${presetHtml}`;
+  }
+
+  function toggleJournal(name) {
+    if (!name) return;
+    let list = selectedJournals().slice();
+    if (list.includes(name)) list = list.filter(j => j !== name);
+    else { list.push(name); rememberJournal(name); }
+    state.journals = list;
+    state.journal = list[0] || '';
+    // 选刊不自动带上出版方
+    if (list.length) state.publisher = '';
+    qfApply();
+  }
+  function toggleFollow(name) {
+    if (!name) return;
+    const f = state.favoriteJournals || [];
+    state.favoriteJournals = f.includes(name) ? f.filter(j => j !== name) : [...f, name];
+    safeSet('xz_favorite_journals', JSON.stringify(state.favoriteJournals));
+    if (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:') refreshJournalList();
+    else renderQuickFilters();
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
+    if (!t) {
+      if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop();
+      return;
+    }
+    if (t.hasAttribute('data-qf-close')) { closeQfPop(); return; }
+    if (t.id === 'qfScopeBtn') { qfOpen && qfOpen.kind === 'scope' ? closeQfPop() : openQfPop('scope'); return; }
+    const kind = t.getAttribute('data-qf');
+    if (kind === 'star') { state.favoritesOnly = !state.favoritesOnly; closeQfPop(); qfApply(); return; }
+    if (kind === 'nocase') {
+      state.excludeCaseReports = !state.excludeCaseReports;
+      if (state.excludeCaseReports && state.studyDesign === '病例报告') state.studyDesign = '';
+      closeQfPop(); qfApply(); return;
+    }
+    if (kind === 'journal' || kind === 'specialty' || kind === 'design' || kind === 'more') {
+      qfOpen && qfOpen.kind === kind ? closeQfPop() : openQfPop(kind);
+      return;
+    }
+    if (t.hasAttribute('data-qf-jtier-menu')) {
+      const id = t.getAttribute('data-qf-jtier-menu');
+      const k = 'jtier:' + id;
+      qfOpen && qfOpen.kind === k ? closeQfPop() : openQfPop(k);
+      return;
+    }
+    if (t.hasAttribute('data-qf-jtier-all')) {
+      const id = t.getAttribute('data-qf-jtier-all');
+      state.journalTier = id;
+      state.journals = [];
+      state.journal = '';
+      state.publisher = '';
+      qfApply();
+      return;
+    }
+    if (t.hasAttribute('data-qf-jtier')) {
+      selectWholeTier(t.getAttribute('data-qf-jtier'));
+      closeQfPop();
+      qfApply();
+      return;
+    }
+    const follow = t.getAttribute('data-qf-follow');
+    if (follow) { e.preventDefault(); e.stopPropagation(); toggleFollow(follow); return; }
+    if (t.hasAttribute('data-qf-pick-journal') || t.hasAttribute('data-qf-journal')) {
+      const name = t.getAttribute('data-qf-pick-journal') || t.getAttribute('data-qf-journal');
+      const tierId = t.getAttribute('data-qf-journal-tier') || (t.closest('[data-qf-journal-tier]') && t.closest('[data-qf-journal-tier]').getAttribute('data-qf-journal-tier')) || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
+      if (tierId) toggleJournalInTier(tierId, name);
+      else toggleJournal(name);
+      qfApply();
+      return;
+    }
+    if (t.hasAttribute('data-qf-tier')) {
+      const v = t.getAttribute('data-qf-tier');
+      state.clinicalTier = state.clinicalTier === v ? '' : v;
+      closeQfPop(); qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-design')) {
+      const v = t.getAttribute('data-qf-design');
+      state.studyDesign = state.studyDesign === v ? '' : v;
+      if (state.studyDesign === '病例报告') state.excludeCaseReports = false;
+      closeQfPop(); qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-lane')) { state.lane = t.getAttribute('data-qf-lane') || 'core'; qfApply(); return; }
+    if (t.hasAttribute('data-qf-range')) { state.range = t.getAttribute('data-qf-range') || defaultRange(state.mode); qfApply(); return; }
+    if (t.hasAttribute('data-qf-ft')) { state.ftFilter = t.getAttribute('data-qf-ft') || ''; qfApply(); return; }
+    if (t.hasAttribute('data-qf-pub')) {
+      const v = t.getAttribute('data-qf-pub');
+      if (state.publisher === v && !selectedJournals().length) state.publisher = '';
+      else { state.publisher = v; state.journals = []; state.journal = ''; }
+      qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }
+    if (t.hasAttribute('data-qf-reading')) { state.reading = t.getAttribute('data-qf-reading') || ''; qfApply(); return; }
+    if (t.hasAttribute('data-qf-tag')) {
+      const v = t.getAttribute('data-qf-tag');
+      state.tag = state.tag === v ? '' : v;
+      qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-preset')) { closeQfPop(); applyFilterPreset(t.getAttribute('data-qf-preset')); return; }
+    if (t.hasAttribute('data-qf-del-preset')) { deleteFilterPreset(t.getAttribute('data-qf-del-preset')); openQfPop('more', true); return; }
+    if (t.hasAttribute('data-qf-save')) {
+      const n = loadFilterPresets().length + 1;
+      saveFilterPreset('预设 ' + n);
+      renderQfSummary();
+      return;
+    }
+    if (t.hasAttribute('data-qf-clear')) {
+      const key = t.getAttribute('data-qf-clear');
+      const val = t.getAttribute('data-qf-clear-value');
+      if (key === 'all') clearQuickFilters();
+      else if (key === 'jtier') { state.journalTier = ''; state.journals = []; state.journal = ''; }
+      else if (key === 'favorites') state.favoritesOnly = false;
+      else if (key === 'nocase') state.excludeCaseReports = false;
+      else if (key === 'journal') {
+        state.journals = selectedJournals().filter(j => j !== val);
+        state.journal = state.journals[0] || '';
+        if (!state.journals.length) state.journalTier = '';
+      }
+      else if (key === 'tier') state.clinicalTier = '';
+      else if (key === 'design') state.studyDesign = '';
+      else if (key === 'pub') state.publisher = '';
+      else if (key === 'tag') state.tag = '';
+      else if (key === 'minor') state.minor = false;
+      else if (key === 'reading') state.reading = '';
+      else if (key === 'ft') state.ftFilter = '';
+      else if (key === 'lane') state.lane = 'core';
+      else if (key === 'range') state.range = defaultRange(state.mode);
+      closeQfPop(); qfApply(); return;
+    }
+  });
+  document.addEventListener('input', e => {
+    if (e.target && e.target.id === 'qfJournalSearch') {
+      if (!qfOpen) qfOpen = { kind: 'journal', query: '' };
+      qfOpen.query = e.target.value;
+      refreshJournalList();
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && qfOpen) { closeQfPop(); e.preventDefault(); }
+  });
+  window.addEventListener('resize', () => {
+    if (!qfOpen) return;
+    let anchor;
+    if (qfOpen.kind === 'scope') anchor = $('#qfScopeBtn');
+    else if (qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:') anchor = $(`.qf-chip-caret[data-qf-jtier-menu="${qfOpen.kind.slice(6)}"]`);
+    else anchor = $(`.qf-chip[data-qf="${qfOpen.kind}"]`);
+    placeQfPop(anchor);
+  });
   // ==== src/app/10-browse-events.js · Browse controls, event wiring and start-up ====
   // 筛选 panel: a right-hand drawer on wide screens and a bottom sheet on phones. Its groups share state with the
   // filter row (领域, 全文); picking an option applies at once and "查看 N 篇" only closes the panel.
@@ -4060,7 +4819,8 @@
       if (type === 'search') { state.search = ''; if (searchInput) searchInput.value = ''; }
       if (type === 'sidebar') clearSidebarFilters();
       if (type === 'tier') state.clinicalTier = '';
-      if (['pub', 'publisher', 'journal'].includes(type)) { state.publisher = ''; state.journal = ''; }
+      if (['pub', 'publisher'].includes(type)) { state.publisher = ''; if (!selectedJournals().length && !state.journalTier) state.journal = ''; }
+      if (['journal', 'journals', 'jtier'].includes(type)) { state.journal = ''; state.journals = []; state.journalTier = ''; }
       if (type === 'range') state.range = defaultRange(state.mode);
       if (type === 'lane') state.lane = 'core';
       if (type === 'minor') state.minor = false;
@@ -4068,6 +4828,7 @@
       if (type === 'tag') state.tag = '';
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
+      if (type === 'nocase') state.excludeCaseReports = false;
       if (type === 'ft') state.ftFilter = '';
       state.page = 1;
       refreshFilterResults(clearBtn);
@@ -4111,6 +4872,20 @@
       const selector = abstractJump.dataset.column === 'translation' ? '.abstract-translation' : '.abstract-original';
       const heading = $('#drawerBody')?.querySelector(selector + ' .abstract-column-title');
       if (heading) { heading.focus({ preventScroll: true }); heading.scrollIntoView({ block: 'start' }); }
+      return;
+    }
+    const absTab = e.target.closest('[data-abs-tab]');
+    if (absTab) {
+      const wrap = absTab.closest('.abstract-reader') || absTab.parentElement;
+      const key = absTab.getAttribute('data-abs-tab');
+      wrap.querySelectorAll('[data-abs-tab]').forEach(btn => {
+        const on = btn.getAttribute('data-abs-tab') === key;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      wrap.querySelectorAll('[data-abs-panel]').forEach(panel => {
+        panel.hidden = panel.getAttribute('data-abs-panel') !== key;
+      });
       return;
     }
     const studyAction = e.target.closest('[data-action="ai-study"]');

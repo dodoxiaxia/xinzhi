@@ -511,7 +511,8 @@
       if (type === 'search') { state.search = ''; if (searchInput) searchInput.value = ''; }
       if (type === 'sidebar') clearSidebarFilters();
       if (type === 'tier') state.clinicalTier = '';
-      if (['pub', 'publisher', 'journal'].includes(type)) { state.publisher = ''; state.journal = ''; }
+      if (['pub', 'publisher'].includes(type)) { state.publisher = ''; if (!selectedJournals().length && !state.journalTier) state.journal = ''; }
+      if (['journal', 'journals', 'jtier'].includes(type)) { state.journal = ''; state.journals = []; state.journalTier = ''; }
       if (type === 'range') state.range = defaultRange(state.mode);
       if (type === 'lane') state.lane = 'core';
       if (type === 'minor') state.minor = false;
@@ -519,6 +520,7 @@
       if (type === 'tag') state.tag = '';
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
+      if (type === 'nocase') state.excludeCaseReports = false;
       if (type === 'ft') state.ftFilter = '';
       state.page = 1;
       refreshFilterResults(clearBtn);
@@ -562,6 +564,20 @@
       const selector = abstractJump.dataset.column === 'translation' ? '.abstract-translation' : '.abstract-original';
       const heading = $('#drawerBody')?.querySelector(selector + ' .abstract-column-title');
       if (heading) { heading.focus({ preventScroll: true }); heading.scrollIntoView({ block: 'start' }); }
+      return;
+    }
+    const absTab = e.target.closest('[data-abs-tab]');
+    if (absTab) {
+      const wrap = absTab.closest('.abstract-reader') || absTab.parentElement;
+      const key = absTab.getAttribute('data-abs-tab');
+      wrap.querySelectorAll('[data-abs-tab]').forEach(btn => {
+        const on = btn.getAttribute('data-abs-tab') === key;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      wrap.querySelectorAll('[data-abs-panel]').forEach(panel => {
+        panel.hidden = panel.getAttribute('data-abs-panel') !== key;
+      });
       return;
     }
     const studyAction = e.target.closest('[data-action="ai-study"]');

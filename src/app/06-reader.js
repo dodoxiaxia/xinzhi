@@ -10,7 +10,7 @@
 
     const pubClass = getPublisherClass(paper.publisher);
     const designClass = getDesignClass(paper.studyDesign);
-    const journalName = paper.cleanJournal || paper.journal || '期刊';
+    const journalName = cardJournalName(paper);
     const dateStr = dateLabel(paper);
     const doiUrl = officialArticleUrl(paper) || '#';
     const isHuddled = state.huddle.includes(paper.id);
@@ -33,41 +33,17 @@
       const draft = paper.draftData;
 
       let editorialSection = '';
-      if (draft) {
+      if (draft && (draft.limitations || draft.learning_question)) {
         editorialSection = `
-          <div class="drawer-section">
-            <div class="drawer-section-title">${draft.source_checked === true ? '已核对导读 <small>对照公开摘要核对</small>' : '速览'}</div>
-            <div class="editorial-box">
-              <p>${esc(draft.summary)}</p>
-              ${draft.limitations ? `<p style="margin-top:8px; font-size:12px; color:var(--rose);"><b>证据边界：</b>${esc(draft.limitations)}</p>` : ''}
-            </div>
-            ${draft.learning_question ? `
-              <div class="clinical-question-box">
-                <b>共读问题：</b>
-                <p>${esc(draft.learning_question)}</p>
-              </div>
-            ` : ''}
+          <div class="drawer-section drawer-editorial-extra">
+            ${draft.source_checked === true ? '<div class="drawer-section-title">已核对导读 <small>对照公开摘要核对</small></div>' : ''}
+            ${draft.limitations ? `<details class="drawer-extra"><summary>证据边界</summary><p>${esc(draft.limitations)}</p></details>` : ''}
+            ${draft.learning_question ? `<div class="clinical-question-box"><b>共读问题</b><p>${esc(draft.learning_question)}</p></div>` : ''}
           </div>
         `;
       }
 
-      // Authors & Affiliations Box
-      let authorBox = '';
-      if (paper.authors && paper.authors.length) {
-        authorBox = `
-          <div class="drawer-authors-box">
-            <div class="drawer-authors-line">
-              <span style="color:var(--text-muted); font-size:11.5px;">研究团队：</span>
-              <span>${esc(paper.authors.slice(0, 5).join(', '))}${paper.authors.length > 5 ? ' 等' : ''}</span>
-            </div>
-            ${paper.affiliations && paper.affiliations.length ? `
-              <div class="drawer-affiliations-line">
-                <span style="color:var(--text-muted);">收录机构：</span>${esc(paper.affiliations[0])}
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }
+      const authorBox = authorAffilHtml(paper);
 
       // Quantitative Metrics Grid
       let quantBox = '';
@@ -114,7 +90,7 @@
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
           <div class="drawer-section-title">速览</div>
-          <p class="ql-line"><strong>${esc(ql.one_line)}</strong></p>
+          ${ql.one_line && ql.one_line.trim() !== cardTakeaway(paper) ? `<p class="ql-line"><strong>${esc(ql.one_line)}</strong></p>` : ''}
           <p class="ql-meta"><span>${esc(prioritizedDesign(paper) || ql.design)}</span></p>
           <ul class="ql-findings">${ql.findings.map(f => `<li>${esc(f.text)}<blockquote>${esc(f.quote)}</blockquote></li>`).join('')}</ul>
           <p class="ql-meta"><b>局限：</b>${esc(ql.limits)}</p>
@@ -162,8 +138,6 @@
       const absSource = (paper.abstractSections && paper.abstractSections.length && paper._absFetched)
         ? '<p class="text-muted" style="font-size:11.5px;margin-top:8px;">摘要来自 Europe PMC / PubMed 公开数据，版权归原出版商；此处未做 AI 加工。</p>' : '';
       const hasAbstract = !!(paper.summary || (paper.abstractSections && paper.abstractSections.length));
-      const translationReady = hasAbstract && validTranslation(LIVE_TR[trKeyOf(paper)]);
-      const translationHtml = hasAbstract ? `<div class="abstract-translation" lang="zh-CN"><h3 class="abstract-column-title" tabindex="-1">${translationReady ? '中文译文' : '中文译文状态'}</h3>${trBoxHtml(paper)}</div>` : '';
 
       // Citation helpers (built from real fields only; no invented authors)
       const cites = buildCitations(paper);
@@ -185,61 +159,61 @@
 
       const tagsHtml = (paper.tags || []).map(t => `<span class="tag-chip active">${esc(t)}</span>`).join('');
 
+      const zhTitle = (draft && draft.title_zh) || (ql && ql.title_zh) || paper.titleZh || '';
+      const takeaway = cardTakeaway(paper);
       const head = `
         ${publicationStatusHtml(paper)}
         ${paper.media && paper.media.length ? `<div class="drawer-media">${paper.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('')}</div>` : ''}
 
-        ${!draft && ql?.title_zh ? `<div class="drawer-title-zh">${esc(ql.title_zh)}</div>` : ''}
-        ${!draft && !ql?.title_zh && paper.titleZh ? `<div class="drawer-title-zh">${esc(paper.titleZh)}</div>` : ''}
-        ${draft?.title_zh ? `<div class="drawer-title-zh">${esc(draft.title_zh)}</div>` : ''}
         <h2 class="drawer-title-en">${esc(paper.title)}</h2>
-
+        ${zhTitle ? `<div class="drawer-title-zh">${esc(zhTitle)}</div>` : ''}
+        ${takeaway ? `<p class="drawer-takeaway">${esc(takeaway)}</p>` : ''}
         ${journalMetricDetails(paper).replace(/<summary>[^<]*<\/summary>/, '<summary>指标来源与核对说明</summary>')}
-
-        ${authorBox}
-
-        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">${tagsHtml}</div>` : ''}
-
-        ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字（请对照下方原文核验）</summary>${quantBox}</details>` : ''}
       `;
+      const tr = LIVE_TR[trKeyOf(paper)];
+      const zhAbs = (hasAbstract && validTranslation(tr)) ? tr.abstract_zh.split(/\n+/).map(s => `<p>${esc(s)}</p>`).join('') : '';
+      const translationReady = !!(hasAbstract && zhAbs);
       const abstractSection = `
-        <section class="drawer-section abstract-reader" aria-label="公开摘要阅读">
-          <div class="drawer-section-title">公开摘要 <small class="abstract-translation-status" role="status">${hasAbstract ? abstractTranslationStatus(paper) : '原文'}</small></div>
-          ${hasAbstract ? `<nav class="abstract-jump-nav" aria-label="摘要阅读位置"><button type="button" class="btn-sm" data-action="abstract-jump" data-column="original">原始摘要</button><button type="button" class="btn-sm" data-action="abstract-jump" data-column="translation">${validTranslation(LIVE_TR[trKeyOf(paper)]) ? '中文译文' : '译文状态'}</button></nav>` : ''}
-          <div class="abstract-columns${!hasAbstract ? ' abstract-only' : translationReady ? ' abstract-paired' : ' abstract-pending'}">
-            ${!translationReady ? translationHtml : ''}
-            <div class="abstract-original" lang="en"><h3 class="abstract-column-title" tabindex="-1">英文原文</h3><div class="structured-abstract">${abstractHtml}</div></div>
-            ${translationReady ? translationHtml : ''}
-          </div>
+        <section class="drawer-section abstract-reader" aria-label="摘要">
+          <div class="drawer-section-title">摘要</div>
+          ${translationReady ? `
+            <div class="abs-tabs" role="tablist" aria-label="摘要语言">
+              <button type="button" class="abs-tab is-active" role="tab" data-abs-tab="zh" aria-selected="true">中文</button>
+              <button type="button" class="abs-tab" role="tab" data-abs-tab="en" aria-selected="false">原文</button>
+            </div>
+            <div class="abs-panel" data-abs-panel="zh" role="tabpanel">${zhAbs}</div>
+            <div class="abs-panel" data-abs-panel="en" role="tabpanel" hidden lang="en"><div class="structured-abstract">${abstractHtml}</div></div>
+          ` : `<div class="structured-abstract">${abstractHtml}</div>`}
           ${absSource}
         </section>
+        ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字</summary>${quantBox}</details>` : ''}
+        ${authorBox}
+        ${tagsHtml ? `<div class="drawer-tags">${tagsHtml}</div>` : ''}
       `;
       // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
-      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
+      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFtSlot input[name="passphrase"], .drawer-footer input[name="passphrase"]') ? document.activeElement : null;
       var typingSel = typingEl ? [typingEl.selectionStart, typingEl.selectionEnd] : null;
       const ftSection = $('#drawerFulltext');
-      const pdfLinkEl = $('#drawerPdfLink');
-      const pdfFormEl = $('#drawerPdfForm');
       ftSection.remove();
-      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ''], ['editorial', editorialSection], ['abstract', abstractSection],
+      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
       bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
-      if (ftStatus.dataset.ftHtml !== ftHtml) {
-        // 先把挂载在状态块里的持久节点挪回 #drawerFulltext，避免被 innerHTML 覆盖销毁。
-        if (pdfLinkEl && pdfLinkEl.parentElement !== ftSection) ftSection.appendChild(pdfLinkEl);
-        if (pdfFormEl && pdfFormEl.parentElement !== ftSection) ftSection.appendChild(pdfFormEl);
+      if (ftStatus && ftStatus.dataset.ftHtml !== ftHtml) {
         ftStatus.innerHTML = ftHtml;
         ftStatus.dataset.ftHtml = ftHtml;
       }
     }
 
-    // Footer buttons
+    // Footer buttons: ☆, 官网, 获取全文 / 下载 PDF
     const huddleBtn = $('#drawerHuddleToggleBtn');
     if (huddleBtn) {
-      huddleBtn.textContent = isHuddled ? '已在精选清单 ✓' : '加入精选清单';
-      huddleBtn.className = `text-btn ${isHuddled ? 'active' : ''}`;
+      huddleBtn.innerHTML = huddleStarSvg(isHuddled);
+      huddleBtn.className = `card-icon-btn card-star${isHuddled ? ' active' : ''}`;
+      huddleBtn.setAttribute('aria-pressed', String(!!isHuddled));
+      huddleBtn.setAttribute('aria-label', isHuddled ? '移出精选' : '加入精选');
+      huddleBtn.title = isHuddled ? '已精选，点击移出' : '加入精选';
     }
 
     const shareBtn = $('#drawerCopyShareBtn');
@@ -255,22 +229,21 @@
     }
     const institutionLogin = $('#drawerInstitutionLoginLink');
     if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
-    const ftSectionNow = $('#drawerFulltext');
+    const ftSlot = $('#drawerFtSlot');
+    const ftAction = $('#drawerFtAction');
     const pdfLink = $('#drawerPdfLink');
     const pdfForm = $('#drawerPdfForm');
+    const footerAction = fulltextFooterActionHtml(paper);
+    if (ftAction && ftAction.dataset.ftHtml !== footerAction) {
+      ftAction.innerHTML = footerAction;
+      ftAction.dataset.ftHtml = footerAction;
+    }
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
-      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
       if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
-      if (ftSectionNow) {
-        const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
-        const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
-        const linkTarget = primarySlot || ftSectionNow;
-        const formTarget = formSlot || ftSectionNow;
-        if (pdfLink.parentElement !== linkTarget) linkTarget.appendChild(pdfLink);
-        if (pdfForm && pdfForm.parentElement !== formTarget) formTarget.appendChild(pdfForm);
-      }
+      if (ftSlot && pdfLink.parentElement !== ftSlot) ftSlot.appendChild(pdfLink);
+      if (ftSlot && pdfForm && pdfForm.parentElement !== ftSlot) ftSlot.appendChild(pdfForm);
     }
 
     if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
