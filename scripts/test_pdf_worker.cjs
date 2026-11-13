@@ -6,7 +6,12 @@ const library = {
   article: '10.1000/exact',
   titled: { doi:'', title:'  Clinical, "quoted"\nSTRASSE study  ' },
   both: { doi:'10.1000/exact', title:'Do not use this fallback' },
-  invalid: { doi:'not-a-doi', title:'Clinical, "quoted" STRASSE study' }
+  invalid: { doi:'not-a-doi', title:'Clinical, "quoted" STRASSE study' },
+  columnPrefixed: { doi:'', title:'AI IN MEDICINE  Column Test Article' },
+  columnPlain: { doi:'', title:'Column Test Article' },
+  columnLowercase: { doi:'', title:'Ai in medicine Column Test Article' },
+  columnUnknown: { doi:'', title:'NEWS Column Test Article' },
+  columnDoi: { doi:'10.1000/exact', title:'AI IN MEDICINE Whatever the title says' }
 };
 const defaultPassphrase = 'synthetic-default-passphrase';
 // The repository is public: no passphrase or digest may be baked into the Worker.
@@ -183,6 +188,21 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
   h = harness({ pdfResponse:() => new Response(null, { status:302, headers:{ location:'https://raw.githubusercontent.com/dodoxiaxia/AI-/' + commit + '/' + pdfPath.split('/').map(encodeURIComponent).join('/') } }), rawResponse:() => new Response(null, { status:302, headers:{ location:'https://attacker.example' } }) });
   await error(await h.request(valid), 502, 'pdf_upstream'); assert.equal(h.calls.length, 4);
 
+  {
+    // A known uppercase column label in front of a title is ignored on either side, only while exactly one row matches.
+    const row = title => [title, '', 'fixture', '', '', pdfPath, sha256(pdf)];
+    const get = async (id, rows) => { const run = harness({ csv:csv(rows) }); return run.request(valid, {}, 'https://site.test/api/pdf?id=' + id); };
+    assert.equal((await get('columnPrefixed', [row('Column Test Article')])).status, 200, 'site title carries the column label, index title does not');
+    assert.equal((await get('columnPlain', [row('AI IN MEDICINE Column Test Article')])).status, 200, 'index title carries the column label');
+    assert.equal((await get('columnPrefixed', [row('AI IN MEDICINE Column Test Article')])).status, 200, 'both carry it');
+    await error(await get('columnPrefixed', [row('Column Test Article'), row('AI IN MEDICINE Column Test Article')]), 409, 'pdf_ambiguous');
+    await error(await get('columnPrefixed', [row('Column Test Article'), row('Column  test article')]), 409, 'pdf_ambiguous');
+    await error(await get('columnLowercase', [row('Column Test Article')]), 404, 'pdf_not_found');
+    await error(await get('columnUnknown', [row('Column Test Article')]), 404, 'pdf_not_found');
+    await error(await get('columnPrefixed', [row('Other Article')]), 404, 'pdf_not_found');
+    await error(await get('columnDoi', [row('Whatever the title says')]), 404, 'pdf_not_found');
+    assert.equal((await get('columnDoi', [normalRow])).status, 200, 'with a DOI only the DOI decides');
+  }
   h = harness({ csv:csv([noDoiRow]) }); const fallback = await h.request(valid, {}, undefined, { accept:'text/html' });
   assert.equal(fallback.status, 404); const page = await fallback.text(); assert(page.includes('https://doi.org/10.1000/exact')); assert(!page.includes(pdfPath)); assert(!page.includes(env.GITHUB_LIBRARY_TOKEN));
   const method = await h.context.worker.fetch(new Request('https://site.test/api/pdf?id=article', { method:'PUT' }), env); await error(method, 405, 'pdf_method');

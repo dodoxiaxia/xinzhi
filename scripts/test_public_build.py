@@ -2,6 +2,7 @@ import contextlib,io,json,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 import build_public as b
+import pdf_identity as pi
 from editorial_review import content_sha256
 
 def write_legacy(root,draft,date='2026-09-29'):
@@ -253,4 +254,66 @@ class PublicBuildTests(unittest.TestCase):
    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),patch.dict(os.environ,env),self.assertRaisesRegex(ValueError,'构建停止'):
     b.main()
    self.assertEqual((dest/'public.js').read_text(),'// previous published bytes')
+ def test_download_button_only_where_exactly_one_index_row_matches(self):
+  row=lambda title,doi='',sha='a'*64,path='期刊/a.pdf':{'题名':title,'DOI':doi,'当前路径':path,'SHA256':sha}
+  rows=[row('Exact DOI paper','https://doi.org/10.1000/ONE'),row('Title only paper'),row('Twice DOI','10.1000/dup'),row('Twice DOI again','10.1000/dup'),
+   row('Same title'),row('Same title'),row('Broken sha','10.1000/bad',sha='nothex'),row('Unsafe path','10.1000/path',path='../x.pdf'),
+   row('Column paper'),row('AI IN MEDICINE Indexed with label'),row('Wrong DOI paper','10.1001/right')]
+  snap=pi.build_snapshot(rows)
+  papers=[{'id':'doi-ok','doi':'10.1000/one','title':'whatever'},{'id':'title-ok','title':'title  ONLY paper'},{'id':'doi-dup','doi':'10.1000/dup'},
+   {'id':'title-dup','title':'Same title'},{'id':'sha-bad','doi':'10.1000/bad'},{'id':'path-bad','doi':'10.1000/path'},
+   {'id':'prefixed','title':'AI IN MEDICINE Column paper'},{'id':'index-prefixed','title':'Indexed with label'},
+   {'id':'lowercase-label','title':'Ai in medicine Column paper'},{'id':'other-label','title':'NEWS Column paper'},
+   {'id':'wrong-doi','doi':'10.1097/acm.0000000000001323','title':'Wrong DOI paper'},{'id':'bad-doi-format','doi':'not-a-doi','title':'Title only paper'},
+   {'id':'unknown','title':'Not in the index'},{'id':'empty'},{'id':'held','doi':'10.1000/one'},{'id':'doi-title-ignored','doi':'10.1000/one','title':'Different'}]
+  self.assertEqual(pi.downloadable_ids(papers,snap,{'held'}),sorted(['doi-ok','title-ok','prefixed','index-prefixed','doi-title-ignored']))
+ def test_prefix_removal_keeps_a_unique_match_requirement(self):
+  rows=[{'题名':'Column paper','DOI':'','当前路径':'a.pdf','SHA256':'a'*64},{'题名':'AI IN MEDICINE Column paper','DOI':'','当前路径':'b.pdf','SHA256':'b'*64}]
+  self.assertEqual(pi.downloadable_ids([{'id':'p','title':'AI IN MEDICINE Column paper'},{'id':'q','title':'Column paper'}],pi.build_snapshot(rows)),[])
+  self.assertEqual(pi.title_key('AI IN MEDICINE'),'ai in medicine')
+  self.assertEqual(pi.title_key('AI IN MEDICINE: A study'),'ai in medicine: a study')
+  self.assertEqual(pi.title_key('  AI IN MEDICINE \u3000 Will   it?'),'will it?')
+ def test_snapshot_keeps_titles_paths_and_checksums_private(self):
+  rows=[{'题名':'Very private title','DOI':'10.1000/secret','当前路径':'私有/路径.pdf','SHA256':'c'*64}]
+  text=json.dumps(pi.build_snapshot(rows),ensure_ascii=False)
+  for word in ('private','secret','私有','路径','c'*64,'10.1000'):self.assertNotIn(word,text)
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);(root/'config').mkdir()
+   with self.assertRaisesRegex(ValueError,'missing'):pi.load_snapshot(root)
+   for bad in ({'schema':2,'generatedOn':'2026-11-13','rowCount':0,'rows':[]},{'schema':1,'generatedOn':'2026-11-13','rowCount':1,'rows':[]},
+     {'schema':1,'generatedOn':'2026-11-13','rowCount':1,'rows':[['x','','1']]},{'schema':1,'generatedOn':'later','rowCount':0,'rows':[]}):
+    (root/'config/pdf_index_keys.json').write_text(json.dumps(bad))
+    with self.assertRaises(ValueError):pi.load_snapshot(root)
+   (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)))
+   self.assertEqual(pi.load_snapshot(root)['rowCount'],1)
+ def test_committed_snapshot_is_valid_and_complete(self):
+  snap=pi.load_snapshot(Path(__file__).resolve().parents[1])
+  self.assertGreater(snap['rowCount'],1000)
+  self.assertTrue(all(r[2]==1 for r in snap['rows']))
+ def test_python_and_worker_normalise_identically(self):
+  import shutil,subprocess
+  node=shutil.which('node')
+  if not node:self.skipTest('node is not installed')
+  worker=(Path(__file__).resolve().parents[1]/'edge/src/00-header-pdf.js').read_text(encoding='utf-8')
+  start,end=worker.index('const pdfDoi = '),worker.index('const pdfEscape = ')
+  samples=['AI IN MEDICINE Will Autonomous AI?','AI IN MEDICINE  Two  spaces','AI IN MEDICINE','AI IN MEDICINE: colon','ai in medicine lower',' \u00a0AI IN MEDICINE\u3000Nbsp title\ufeff',
+   'Straße ΣΊΣΥΦΟΣ ŉ ǰ','İstanbul ǅ','Tabs\tand\nnewlines','中文题名 AI IN MEDICINE','','  ','https://doi.org/10.1001/JAMA.2026.1','doi: 10.1000/x y','10.1000/'+'a'*201,'10.123/short','DOI:10.1001/ok']
+  script=worker[start:end]+'\nconst samples=JSON.parse(process.argv[1]);console.log(JSON.stringify(samples.map(v=>[pdfDoi(v),pdfTitle(v),pdfTitleKey(v)])));'
+  out=subprocess.run([node,'-e',script,json.dumps(samples)],capture_output=True,text=True,check=True).stdout
+  self.assertEqual(json.loads(out),[[pi.pdf_doi(v),pi.pdf_title(v),pi.title_key(v)] for v in samples])
+ def test_build_lists_download_ids_and_restricts_worker_allowlist(self):
+  from test_release_build import synthetic_root
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir()
+   rows=[{'题名':'Synthetic clinical trial','DOI':'10.1234/synthetic','当前路径':'a.pdf','SHA256':'a'*64}]
+   with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),contextlib.redirect_stdout(io.StringIO()):
+    (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot([])));b.main()
+    bundle=(dest/'public.js').read_text();worker=(dest/'_worker.js').read_text()
+    self.assertIn('"pdfIds":[]',bundle);self.assertIn('const PDF_LIBRARY = {};',worker)
+    for f in dest.iterdir():
+     if f.is_file():f.unlink()
+    (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)));b.main()
+    bundle=(dest/'public.js').read_text();worker=(dest/'_worker.js').read_text()
+    ids=json.loads(bundle[bundle.index('"pdfIds":')+9:].split(']')[0]+']')
+    self.assertEqual(len(ids),1);self.assertIn('"'+ids[0]+'":{"doi":"10.1234/synthetic"',worker)
 if __name__=='__main__':unittest.main()
