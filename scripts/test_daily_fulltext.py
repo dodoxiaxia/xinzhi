@@ -263,6 +263,92 @@ class ScopeTests(unittest.TestCase):
         self.assertEqual([i['pmcid'] for i in data['items']], ['PMC2'])
         self.assertTrue(all('PMC1' not in u for u in fetched))
 
+class SamePmcidTests(unittest.TestCase):
+    """The same article stored twice (first without a DOI, then with one) must not stop the public build."""
+    def pair(self):
+        old = item(1)
+        old.update(doi='', pmid='', publishedOn='2026-10-02', generatedAt='2026-10-02T12:00:00+00:00', date='2026-10-01')
+        new = item(1)
+        new.update(publishedOn='2026-10-09', generatedAt='2026-10-09T02:00:00+00:00')
+        self.assertEqual(old['pmcid'], new['pmcid'])
+        self.assertNotEqual(d.identity(old), d.identity(new))
+        return old, new
+
+    def test_the_stored_pair_passes_the_store_check_so_only_the_build_saw_it(self):
+        raw = d.empty_data()
+        raw['items'] += self.pair()
+        d.check_store(raw, d.empty_ledger())
+
+    def test_public_build_keeps_one_reading_and_warns(self):
+        import io
+        from contextlib import redirect_stderr
+        from build_public import split_deep_readings
+        old, new = self.pair()
+        for order in ((old, new), (new, old)):
+            raw = d.empty_data()
+            raw['items'] += list(order)
+            before = copy.deepcopy(raw)
+            err = io.StringIO()
+            with redirect_stderr(err):
+                public = d.public_readings(raw)
+                index, shards = split_deep_readings(public)  # raised ValueError before the fix
+            self.assertEqual([r['pmcid'] for r in index['items']], [old['pmcid']])
+            kept = index['items'][0]
+            self.assertEqual((kept['generatedAt'], kept['publishedOn']), (old['generatedAt'], '2026-10-02'))
+            self.assertEqual((kept['doi'], kept['pmid']), (new['doi'], new['pmid']))
+            self.assertIn(old['pmcid'], err.getvalue())
+            self.assertEqual(raw, before)  # the private store is never rewritten
+
+    def test_the_choice_is_deterministic_and_ties_break_on_source_hash(self):
+        a, b = item(1), item(1)
+        b['sourceHash'] = 'f' * 64
+        a['sourceHash'] = '0' * 64
+        for order in ((a, b), (b, a)):
+            self.assertEqual(d.dedupe_by_pmcid(list(order))[0]['sourceHash'], '0' * 64)
+
+    def test_other_articles_and_their_order_are_untouched(self):
+        old, new = self.pair()
+        rows = [item(2), old, item(3), new]
+        self.assertEqual([r['pmcid'] for r in d.dedupe_by_pmcid(rows)], ['PMC2', 'PMC1', 'PMC3'])
+
+    def test_exported_count_follows_the_deduplicated_items(self):
+        old, new = self.pair()
+        raw = d.empty_data()
+        raw['items'] += [old, new]
+        raw['status'] = {'day': '2026-10-09', 'target': 12, 'completed': 1, 'state': 'complete', 'reason': ''}
+        import io
+        from contextlib import redirect_stderr
+        with redirect_stderr(io.StringIO()):
+            status = d.public_readings(raw)['status']
+        self.assertEqual((status['state'], status['completed']), ('complete', 0))  # the kept reading is dated 10-02
+
+    def test_generation_does_not_pay_again_for_a_pmcid_already_stored_without_a_doi(self):
+        old, _ = self.pair()
+        data = d.empty_data()
+        data['items'].append(old)
+        again = paper(1)  # same PMCID, now with a DOI
+        fetched = []
+        def fetch(url):
+            fetched.append(url)
+            return xml(again)
+        calls = []
+        d.generate(data, d.empty_ledger(), [again], WHEN, lambda *_: None, {}, fetch=fetch,
+                   model=lambda *args: calls.append(True) or output(args[-1][0]['id']))
+        self.assertEqual((len(data['items']), calls, fetched), (1, [], []))
+
+    def test_draft_recovery_skips_a_pmcid_already_stored_without_a_doi(self):
+        old, _ = self.pair()
+        p = paper(1)
+        paras, sha = d.parse_fulltext(xml(p), p)
+        units = d.evidence_units(paras)
+        data = d.empty_data()
+        data['items'].append(old)
+        data['drafts'] = {d.identity(p): {'paper': p, 'output': output(units[0]['id']), 'sourceParagraphs': units, 'sourceHash': sha, 'createdAt': WHEN.isoformat()}}
+        ledger = d.empty_ledger()
+        ledger['days'][d.day_of(WHEN)] = [{'identity': d.identity(p), 'sourceHash': sha, 'state': 'invalid'}]
+        self.assertEqual(d.recover_drafts(data, ledger, WHEN, lambda *_: None), 0)
+        self.assertEqual(len(data['items']), 1)
+
 class RunExitCodeTests(unittest.TestCase):
     """`--run` has no minimum count: few or no readings exit 0; only a real generation error exits non-zero."""
     def run_main(self, papers, model=None, model_config=None):
