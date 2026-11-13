@@ -26,6 +26,8 @@ async function routeRequest(request, env) {
     if (url.pathname === '/api/machine/tasks') return handleMachineTasks(request, env);
     if (url.pathname === '/api/machine/abandoned') return handleMachineAbandoned(request, env);
     if (url.pathname === '/api/machine/claim') return handleMachineClaim(request, env);
+    if (url.pathname === '/api/machine/renew') return handleMachineRenew(request, env);
+    if (url.pathname === '/api/machine/return') return handleMachineReturn(request, env);
     if (url.pathname === '/api/machine/requeue') return handleMachineRequeue(request, env);
     if (url.pathname === '/api/machine/register') return handleMachineRegister(request, env);
     if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);

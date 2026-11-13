@@ -4,12 +4,15 @@
 const MACHINE_FAILURE_REASONS = ['not_oa','han_login','han_quota','source_blocked','wrong_paper','other'];
 const MACHINE_SOFT_RETRY_REASONS = ['lease_expired','source_blocked'];
 const MACHINE_SOFT_RETRY_LIMIT = 2;
+const MACHINE_LEASE_EXTEND_MS = MUSE_LEASE_MS;
+const MACHINE_LEASE_MAX_MS = 7200000;
+const MACHINE_RETURN_LIMIT = 3;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 const MACHINE_ROLE_CAPS = {
-  downloader:['upload','replace','status','claim','list','requeue','register','abandoned','protocol'],
-  fallback:['upload','replace','status','abandon','claim','list','abandoned','protocol'],
+  downloader:['upload','replace','status','claim','renew','return','list','requeue','register','abandoned','protocol'],
+  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol'],
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
@@ -253,6 +256,7 @@ function machineListItem(job) {
     ...(claimedAt ? {claimedAt:new Date(claimedAt).toISOString()} : {}),
     ...(claimedAt && receivedAt && receivedAt >= claimedAt ? {claimDurationSeconds:Math.round((receivedAt - claimedAt) / 1000)} : {}),
     ...(job.supersededFrom && typeof job.supersededFrom.taskId === 'string' && job.supersededFrom.taskId ? {supersededFrom:job.supersededFrom} : {}),
+    ...(Number.isInteger(job.returnCount) && job.returnCount > 0 ? {returnCount:job.returnCount} : {}),
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
@@ -316,7 +320,9 @@ function handleMachineProtocol(request, env) {
       note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'每个 DOI 只有一把 library:muse-job:<doi>。museIntake 只要覆盖这把键上的任何现有任务，就会先把旧记录原样写到上述键（含旧 sha256 与旧状态），带 supersededBy 为新 taskId、supersededAt，以及原来的 reason / previousReason，不设过期。这包括失败/review/尚未完成的任务，以及用 X-Machine-Replace 替换已是 done/available 的原件。新任务立即带 supersededFrom。若新任务后来核验失败进入 review 再重新上传，链会接续。旧客户端可忽略。'},
-    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
+    lease:{extendMinutes:20,maxMinutesFromClaim:120,returnLimit:MACHINE_RETURN_LIMIT,
+      note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。下载端退回不是失败，任务回到待下载并保留原 FIFO，同一篇最多 3 次，超过后拒绝（machine_return_limit），只能改报失败。兜底角色退回（以及带 previousReason 的条目）回到失败待兜底并保留原原因，不会回到待下载。旧客户端不调用这两个接口即可。'},
+    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
   // Exempt from librarySoftGate (30/day site-wide and 20/IP). Only the per-token counter applies.
@@ -646,6 +652,70 @@ async function handleMachineClaim(request, env) {
     return json({ok:true,task:null,retryAfterSeconds:wait}, 200, {'retry-after':String(wait)});
   } catch (error) { return machineError(error); }
 }
+
+function machineReturnCount(job) {
+  return job && Number.isInteger(job.returnCount) && job.returnCount > 0 ? job.returnCount : 0;
+}
+function machineRequireLease(job, caller, input) {
+  if (!job) libraryFail('machine_not_found', 404);
+  if (job.state === 'available') libraryFail('machine_done', 409);
+  if (job.state === 'abandoned') libraryFail('machine_closed', 409);
+  if (job.state === 'verifying') libraryFail('machine_conflict', 409);
+  if (!['running','uploading'].includes(job.state) || museExpired(job) || job.claimant !== caller.id) libraryFail('machine_lease_required', 409);
+  if (input && input.leaseId && input.leaseId !== job.leaseId) libraryFail('machine_lease_required', 409);
+}
+async function handleMachineRenew(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    const caller = await machineAuthorize(request, env, 'renew');
+    const input = await fulltextReadJson(request, 256, 'machine_bad_request');
+    if (Object.keys(input).some(key => !['doi','leaseId'].includes(key))) libraryFail('machine_bad_request', 400);
+    const doi = libraryDoi(input.doi);
+    if (!doi || doi !== input.doi) libraryFail('machine_bad_request', 400);
+    const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    machineRequireLease(job, caller, input);
+    const now = Date.now();
+    const started = Number.isSafeInteger(job.acquisitionStartedAt) && job.acquisitionStartedAt > 0 ? job.acquisitionStartedAt : job.createdAt;
+    const cap = started + MACHINE_LEASE_MAX_MS;
+    if (now >= cap || job.leaseUntil >= cap) libraryFail('machine_lease_limit', 409);
+    const leaseUntil = Math.min(job.leaseUntil + MACHINE_LEASE_EXTEND_MS, cap);
+    if (leaseUntil <= job.leaseUntil) libraryFail('machine_lease_limit', 409);
+    const next = {...job,leaseUntil,updatedAt:now};
+    await musePut(env, next);
+    return json({ok:true,task:{...machineClaimPayload(next, null),claimant:caller.id,leaseUntil:new Date(leaseUntil).toISOString(),leaseExpiresAt:new Date(cap).toISOString()}});
+  } catch (error) { return machineError(error); }
+}
+async function handleMachineReturn(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    const caller = await machineAuthorize(request, env, 'return');
+    const input = await fulltextReadJson(request, 256, 'machine_bad_request');
+    if (Object.keys(input).some(key => !['doi','leaseId'].includes(key))) libraryFail('machine_bad_request', 400);
+    const doi = libraryDoi(input.doi);
+    if (!doi || doi !== input.doi) libraryFail('machine_bad_request', 400);
+    const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    machineRequireLease(job, caller, input);
+    const now = Date.now();
+    const {leaseId:_leaseId,leaseUntil:_leaseUntil,reviewOwner:_ro,reviewLeaseId:_rl,reviewLeaseUntil:_ru,stage:_stage, ...kept} = job;
+    // Fallback (and any task already claimed from failed-awaiting-fallback) must not land in to-download.
+    // Return the job to failed, keeping reason / previousReason and the claim identity.
+    if (caller.role === 'fallback' || machineHasHardFailureHistory(job)) {
+      const keptReason = job.previousReason || job.reason || 'other';
+      const next = {...kept,state:keptReason === 'han_login' ? 'login_required' : 'failed',reason:keptReason,updatedAt:now,
+        ...(job.previousReason ? {previousReason:job.previousReason} : {})};
+      await musePut(env, next);
+      if (job.queueKey) await museDelete(env, job.queueKey);
+      return json({ok:true,task:machineListItem(next)});
+    }
+    if (machineReturnCount(job) >= MACHINE_RETURN_LIMIT) libraryFail('machine_return_limit', 409);
+    const {claimant:_c,acquisitionStartedAt:_a,reason:_reason,previousReason:_prev, ...rest} = kept;
+    const next = {...rest,state:'queued',updatedAt:now,returnCount:machineReturnCount(job) + 1};
+    await musePut(env, next);
+    if (next.queueKey) await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:next.doi,id:next.id}), {expirationTtl:604800});
+    try { await machineStatsBump(env, caller, 'release'); } catch {}
+    return json({ok:true,task:machineListItem(next)});
+  } catch (error) { return machineError(error); }
+}
 function machineRequeueCandidate(job) {
   if (!job || ['review','available','abandoned','verifying'].includes(job.state)) return false;
   if (job.state === 'failed' || job.state === 'login_required') return true;
@@ -656,7 +726,8 @@ async function machineRequeueOne(env, job, changes) {
   const next = {version:1,id,doi:job.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,
     ...(job.registration ? {registration:job.registration} : {}),
     ...(Number.isInteger(job.softFailCount) && job.softFailCount > 0 ? {softFailCount:job.softFailCount} : {}),
-    ...(job.lastSoftFailReason ? {lastSoftFailReason:job.lastSoftFailReason} : {})};
+    ...(job.lastSoftFailReason ? {lastSoftFailReason:job.lastSoftFailReason} : {}),
+    ...(Number.isInteger(job.returnCount) && job.returnCount > 0 ? {returnCount:job.returnCount} : {})};
   await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:job.doi,id}), {expirationTtl:604800});
   await musePut(env, next, {indexChanges:changes});
   if (job.queueKey && job.queueKey !== next.queueKey) await museDelete(env, job.queueKey);
