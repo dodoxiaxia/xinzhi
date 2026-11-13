@@ -321,7 +321,7 @@ function handleMachineProtocol(request, env) {
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'同一 DOI 的新任务核验通过变成 done 时，若先前有失败待兜底（或从失败待兜底领走后尚未完成）的旧任务，会把旧记录写到上述键，带 supersededBy 为新 taskId，不设过期。旧任务不再出现在失败待兜底列表，也不能再被领取。完成记录可带 supersededFrom。旧客户端可忽略。'},
     lease:{extendMinutes:20,maxMinutesFromClaim:120,returnLimit:MACHINE_RETURN_LIMIT,
-      note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。退回不是失败，任务回到待下载并保留原 FIFO；同一篇最多退回 3 次，超过后拒绝（machine_return_limit），只能改报失败。旧客户端不调用这两个接口即可。'},
+      note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。下载端退回不是失败，任务回到待下载并保留原 FIFO，同一篇最多 3 次，超过后拒绝（machine_return_limit），只能改报失败。兜底角色退回（以及带 previousReason 的条目）回到失败待兜底并保留原原因，不会回到待下载。旧客户端不调用这两个接口即可。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
@@ -695,9 +695,20 @@ async function handleMachineReturn(request, env) {
     if (!doi || doi !== input.doi) libraryFail('machine_bad_request', 400);
     const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
     machineRequireLease(job, caller, input);
-    if (machineReturnCount(job) >= MACHINE_RETURN_LIMIT) libraryFail('machine_return_limit', 409);
     const now = Date.now();
-    const {claimant,leaseId,leaseUntil,acquisitionStartedAt,reason:_reason,stage:_stage,previousReason:_prev,reviewOwner:_ro,reviewLeaseId:_rl,reviewLeaseUntil:_ru, ...rest} = job;
+    const {leaseId:_leaseId,leaseUntil:_leaseUntil,reviewOwner:_ro,reviewLeaseId:_rl,reviewLeaseUntil:_ru,stage:_stage, ...kept} = job;
+    // Fallback (and any task already claimed from failed-awaiting-fallback) must not land in to-download.
+    // Return the job to failed, keeping reason / previousReason and the claim identity.
+    if (caller.role === 'fallback' || machineHasHardFailureHistory(job)) {
+      const keptReason = job.previousReason || job.reason || 'other';
+      const next = {...kept,state:keptReason === 'han_login' ? 'login_required' : 'failed',reason:keptReason,updatedAt:now,
+        ...(job.previousReason ? {previousReason:job.previousReason} : {})};
+      await musePut(env, next);
+      if (job.queueKey) await museDelete(env, job.queueKey);
+      return json({ok:true,task:machineListItem(next)});
+    }
+    if (machineReturnCount(job) >= MACHINE_RETURN_LIMIT) libraryFail('machine_return_limit', 409);
+    const {claimant:_c,acquisitionStartedAt:_a,reason:_reason,previousReason:_prev, ...rest} = kept;
     const next = {...rest,state:'queued',updatedAt:now,returnCount:machineReturnCount(job) + 1};
     await musePut(env, next);
     if (next.queueKey) await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:next.doi,id:next.id}), {expirationTtl:604800});

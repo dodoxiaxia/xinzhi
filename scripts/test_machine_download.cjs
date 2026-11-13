@@ -814,6 +814,37 @@ async function review(h, body) {
   assert.equal(failInstead.status, 200);
   assert.equal((await failInstead.json()).task.state, 'failed-awaiting-fallback');
 
+  // fallbackReturnKeepsHardFailure: fallback return goes to failed-awaiting-fallback, not to-download.
+  h = await create();
+  const fbRetDoi = '10.1000/fb-return-hard';
+  putJob(h, fbRetDoi, 'failed', Date.now() - 3000, {reason:'not_oa'});
+  seedPaper(h, fbRetDoi);
+  await reindex(h);
+  const fbRetClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+  assert.equal(fbRetClaim.task.doi, fbRetDoi);
+  const fbHeldJob = stored(h, 'library:muse-job:' + fbRetDoi);
+  assert.equal(fbHeldJob.previousReason, 'not_oa');
+  const fbStartedAt = fbHeldJob.acquisitionStartedAt;
+  const beforeRelease = stored(h, 'library:machine-rate:stats:fallback:' + dayOf(h));
+  const fbReturned = await call(h, '/api/machine/return', fallback, {doi:fbRetDoi});
+  assert.equal(fbReturned.status, 200);
+  const fbReturnedBody = await fbReturned.json();
+  assert.equal(fbReturnedBody.task.state, 'failed-awaiting-fallback');
+  assert.equal(fbReturnedBody.task.reason, 'not_oa');
+  const fbAfter = stored(h, 'library:muse-job:' + fbRetDoi);
+  assert.equal(fbAfter.state, 'failed');
+  assert.equal(fbAfter.reason, 'not_oa');
+  assert.equal(fbAfter.previousReason, 'not_oa');
+  assert.equal(fbAfter.claimant, 'fallback');
+  assert.equal(fbAfter.acquisitionStartedAt, fbStartedAt);
+  assert.equal(fbAfter.returnCount, undefined);
+  const afterRelease = stored(h, 'library:machine-rate:stats:fallback:' + dayOf(h));
+  assert.equal(afterRelease && afterRelease.release, beforeRelease && beforeRelease.release);
+  const fbRetQueued = await (await call(h, '/api/machine/tasks?state=to-download', reader, null, {method:'GET'})).json();
+  assert(!fbRetQueued.tasks.some(task => task.doi === fbRetDoi));
+  const fbRetAgain = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+  assert.equal(fbRetAgain.task.doi, fbRetDoi);
+
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_machine_index.cjs').run();
