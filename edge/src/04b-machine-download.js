@@ -2,6 +2,8 @@
 // Machine callers (a downloader, a fallback bot, a read-only caller) use their own tokens.
 // They never enter the human daily gate. Legacy Muse claim/receipt/upload/retry stay as they are.
 const MACHINE_FAILURE_REASONS = ['not_oa','han_login','han_quota','source_blocked','wrong_paper','other'];
+const MACHINE_SOFT_RETRY_REASONS = ['lease_expired','source_blocked'];
+const MACHINE_SOFT_RETRY_LIMIT = 2;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
@@ -166,15 +168,43 @@ async function machineReadUpload(request) {
   }
   libraryFail('machine_bad_request', 415);
 }
+function machineSoftFailCount(job) {
+  return job && Number.isInteger(job.softFailCount) && job.softFailCount > 0 ? job.softFailCount : 0;
+}
+function machineWouldSoftRetry(job, reason) {
+  return MACHINE_SOFT_RETRY_REASONS.includes(reason) && machineSoftFailCount(job) + 1 < MACHINE_SOFT_RETRY_LIMIT;
+}
 function machinePublicState(job) {
   if (!job) return '';
   if (job.state === 'abandoned') return 'confirmed-abandoned';
   if (job.state === 'available') return 'done';
   if (job.state === 'verifying') return 'uploaded-awaiting-verification';
-  if (['queued','running','uploading'].includes(job.state) && museExpired(job)) return 'failed-awaiting-fallback';
+  // A queued task that waited six days is still a hard failure. A lease expiry is a soft retry until the second time.
+  if (job.state === 'queued' && museExpired(job)) return 'failed-awaiting-fallback';
+  if (['running','uploading'].includes(job.state) && museExpired(job)) {
+    return machineWouldSoftRetry(job, 'lease_expired') ? 'to-download' : 'failed-awaiting-fallback';
+  }
   if (job.state === 'queued') return 'to-download';
   if (job.state === 'running' || job.state === 'uploading') return 'downloading';
   return 'failed-awaiting-fallback';
+}
+function machineSoftRetryPlan(job, reason, now) {
+  const softFailCount = machineSoftFailCount(job) + 1;
+  const {claimant,leaseId,leaseUntil,acquisitionStartedAt,reason:_reason,stage:_stage,previousReason:_prev,reviewOwner:_ro,reviewLeaseId:_rl,reviewLeaseUntil:_ru, ...rest} = job;
+  if (softFailCount < MACHINE_SOFT_RETRY_LIMIT) {
+    return {queued:true,next:{...rest,state:'queued',updatedAt:now,softFailCount,lastSoftFailReason:reason}};
+  }
+  return {queued:false,next:{...rest,state:'failed',reason,updatedAt:now,softFailCount,lastSoftFailReason:reason}};
+}
+async function machineCommitSoftRetry(env, job, reason, now, options = {}) {
+  const plan = machineSoftRetryPlan(job, reason, now);
+  await musePut(env, plan.next, options);
+  if (plan.queued) {
+    if (plan.next.queueKey) await libraryPut(env.QL_KV, plan.next.queueKey, JSON.stringify({doi:plan.next.doi,id:plan.next.id}), {expirationTtl:604800});
+  } else if (job.queueKey) {
+    await museDelete(env, job.queueKey);
+  }
+  return plan.next;
 }
 function machineReason(job) {
   if (MACHINE_FAILURE_REASONS.includes(job.reason)) return job.reason;
@@ -212,6 +242,7 @@ function machineListItem(job) {
     ...(claimable ? {} : {unclaimableReason:'verification_failed'}),
     ...(claimedAt ? {claimedAt:new Date(claimedAt).toISOString()} : {}),
     ...(claimedAt && receivedAt && receivedAt >= claimedAt ? {claimDurationSeconds:Math.round((receivedAt - claimedAt) / 1000)} : {}),
+    ...(job.supersededFrom && typeof job.supersededFrom.taskId === 'string' && job.supersededFrom.taskId ? {supersededFrom:job.supersededFrom} : {}),
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {})};
@@ -271,6 +302,10 @@ function handleMachineProtocol(request, env) {
     identityReasons:MACHINE_IDENTITY_REASONS,
     claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
       note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
+    softRetry:{reasons:MACHINE_SOFT_RETRY_REASONS,limit:MACHINE_SOFT_RETRY_LIMIT,
+      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
+    supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
+      note:'同一 DOI 的新任务核验通过变成 done 时，若先前有失败待兜底（或从失败待兜底领走后尚未完成）的旧任务，会把旧记录写到上述键，带 supersededBy 为新 taskId，不设过期。旧任务不再出现在失败待兜底列表，也不能再被领取。完成记录可带 supersededFrom。旧客户端可忽略。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
@@ -349,11 +384,19 @@ async function handleMachineStatus(request, env) {
     if ((failing || abandoning) && job.state === 'verifying') libraryFail('machine_conflict', 409);
     if (!abandoning && job.state === 'abandoned') libraryFail('machine_closed', 409);
     const now = Date.now();
-    let next = job;
+    let next = job, queuedBack = false;
     if (failing) {
       const stage = MACHINE_STAGE_TAGS.includes(input.stage) ? input.stage : (input.reason === 'han_login' || input.reason === 'han_quota' ? 'han' : '');
-      next = {...job,state:input.reason === 'han_login' ? 'login_required' : 'failed',reason:input.reason,updatedAt:now,
-        ...(stage ? {stage} : {}),...(input.driveFileId ? {driveFileId:input.driveFileId} : {})};
+      if (MACHINE_SOFT_RETRY_REASONS.includes(input.reason)) {
+        const plan = machineSoftRetryPlan(job, input.reason, now);
+        next = plan.next;
+        queuedBack = plan.queued;
+        if (!queuedBack && stage) next = {...next,stage};
+        if (input.driveFileId) next = {...next,driveFileId:input.driveFileId};
+      } else {
+        next = {...job,state:input.reason === 'han_login' ? 'login_required' : 'failed',reason:input.reason,updatedAt:now,
+          ...(stage ? {stage} : {}),...(input.driveFileId ? {driveFileId:input.driveFileId} : {})};
+      }
     } else if (abandoning) {
       next = {...job,state:'abandoned',updatedAt:now,abandonedBy:caller.id,
         ...(input.reason ? {reason:input.reason} : {}),...(input.stage ? {stage:input.stage} : {}),...(input.driveFileId ? {driveFileId:input.driveFileId} : {})};
@@ -361,7 +404,8 @@ async function handleMachineStatus(request, env) {
       next = {...job,driveFileId:input.driveFileId,updatedAt:now};
     }
     await musePut(env, next);
-    if ((failing || abandoning) && job.queueKey) await museDelete(env, job.queueKey);
+    if (queuedBack && next.queueKey) await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:next.doi,id:next.id}), {expirationTtl:604800});
+    else if ((failing || abandoning) && job.queueKey) await museDelete(env, job.queueKey);
     if (next.state === 'available' && next.sha256 && input.driveFileId && !await libraryGet(env.QL_KV, DRIVE_ARCHIVE_PREFIX + next.sha256)) {
       await libraryPut(env.QL_KV, DRIVE_ARCHIVE_PREFIX + next.sha256, JSON.stringify({version:1,doi,sha256:next.sha256,driveFileId:input.driveFileId,source:'machine',archivedAt:now}));
     }
@@ -504,8 +548,7 @@ async function machineClaimQueued(env, caller) {
       if (!job) continue;
       if (['available','review','failed','login_required','verifying','abandoned'].includes(job.state)) { await museDelete(env, job.queueKey); continue; }
       if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
-        await musePut(env, {...job,state:'failed',reason:'lease_expired',updatedAt:Date.now()}, {indexChanges:changes});
-        await museDelete(env, job.queueKey);
+        await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
         continue;
       }
       if (job.state !== 'queued') continue;
@@ -536,10 +579,20 @@ async function machineClaimFailed(env, caller) {
       const [doi, entry] = candidates[examined];
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
-      if (!job || machinePublicState(job) !== 'failed-awaiting-fallback') continue;
+      if (!job) continue;
+      if (['running','uploading'].includes(job.state) && job.leaseUntil <= Date.now()) {
+        await machineCommitSoftRetry(env, job, 'lease_expired', Date.now(), {indexChanges:changes});
+        continue;
+      }
+      if (machinePublicState(job) !== 'failed-awaiting-fallback') continue;
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       if (attempt && attempt.paused) continue;
       if (['running','uploading'].includes(job.state) && job.leaseUntil > Date.now()) continue;
+      if (job.state === 'queued' && museExpired(job)) {
+        await musePut(env, {...job,state:'failed',reason:'queue_expired',updatedAt:Date.now()}, {indexChanges:changes});
+        if (job.queueKey) await museDelete(env, job.queueKey);
+        continue;
+      }
       const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), paper = libraryPaper(record, doi);
       if (paper && paper.fulltextStatus === 'available') { await musePut(env, {...job,state:'available',updatedAt:Date.now()}, {indexChanges:changes}); continue; }
       if (paper && paper.fulltextStatus === 'review') continue;
@@ -591,7 +644,9 @@ function machineRequeueCandidate(job) {
 async function machineRequeueOne(env, job, changes) {
   const now = Date.now(), id = crypto.randomUUID();
   const next = {version:1,id,doi:job.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,
-    ...(job.registration ? {registration:job.registration} : {})};
+    ...(job.registration ? {registration:job.registration} : {}),
+    ...(Number.isInteger(job.softFailCount) && job.softFailCount > 0 ? {softFailCount:job.softFailCount} : {}),
+    ...(job.lastSoftFailReason ? {lastSoftFailReason:job.lastSoftFailReason} : {})};
   await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:job.doi,id}), {expirationTtl:604800});
   await musePut(env, next, {indexChanges:changes});
   if (job.queueKey && job.queueKey !== next.queueKey) await museDelete(env, job.queueKey);
