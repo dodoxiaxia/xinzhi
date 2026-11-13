@@ -1201,17 +1201,31 @@
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
-      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(view.headline) + '">可下载</span>' + primary + form;
-      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
-        + esc(view.short) + '</span><span class="ft-summary">' + esc(view.headline + '。' + view.eta) + '</span>' + primary + '</span>' + form;
+      const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
+      const badgeAria = view.short + '：' + badgeTitle;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">'
+        + esc(view.short) + '</span><span class="ft-summary">' + esc(badgeTitle) + '</span>' + primary + '</span>' + form;
     }
     const steps = FT_STEPS.map((label, i) => {
       const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
       return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
     }).join('');
+    if (drawer) {
+      const secondary = (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '')
+        + ((view.action !== 'official' && official) || upload ? '<span class="ft-actions">' + (view.action === 'official' ? '' : official) + upload + '</span>' : '');
+      return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">'
+        + '<div class="ft-head"><span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>'
+        + '<p class="ft-line" role="status"><b title="' + esc(view.headline) + '">' + esc(view.headline) + '</b></p>'
+        + '<span class="ft-head-action" data-drawer-ft-primary>' + (view.action === 'download' ? '' : primary) + '</span></div>'
+        + (view.action === 'download' ? '<div class="ft-dl-slot" data-drawer-ft-form-slot></div>' : form)
+        + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+        + (secondary ? '<div class="ft-sub">' + secondary + '</div>' : '')
+        + maint + '</div>';
+    }
     return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + '<span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
-      + '<div class="ft-actions">' + (drawer && view.action === 'download' ? '' : primary) + (view.action === 'official' ? '' : official) + upload + '</div>' + (drawer && view.action === 'download' ? '' : form) + maint + '</div>';
+      + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
   }
   function pdfDownloadLink(p) {
     // In the DOI search view the card carries the full status block instead, so it is never repeated.
@@ -1874,11 +1888,14 @@
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
     const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
 
+    const sourceUrl = safeSourceUrl(p);
+    const doiBlock = doiStatusBlock(p);
     return `
       <article class="article-card" data-paper-id="${esc(p.id)}">
         <div class="card-top">
           <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
           <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+          ${pdfDownloadLink(p)}
         </div>
 
         ${publicationStatusHtml(p)}
@@ -1887,15 +1904,12 @@
         ${gistHtml}
 
         <div class="card-actions">
-          <div class="card-source-actions">
-            ${pdfDownloadLink(p)}
-          </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${safeSourceUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(safeSourceUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${sourceUrl && !doiBlock ? `<a class="text-btn" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
-        ${doiStatusBlock(p)}
+        ${doiBlock}
       </article>
     `;
   }
@@ -2282,7 +2296,7 @@
 
         ${authorBox}
 
-        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;">${tagsHtml}</div>` : ''}
+        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">${tagsHtml}</div>` : ''}
 
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字（请对照下方原文核验）</summary>${quantBox}</details>` : ''}
       `;
@@ -2299,13 +2313,21 @@
         </section>
       `;
       const ftSection = $('#drawerFulltext');
+      const pdfLinkEl = $('#drawerPdfLink');
+      const pdfFormEl = $('#drawerPdfForm');
       ftSection.remove();
       renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ''], ['editorial', editorialSection], ['abstract', abstractSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
       bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
-      if (ftStatus.innerHTML !== ftHtml) ftStatus.innerHTML = ftHtml;
+      if (ftStatus.dataset.ftHtml !== ftHtml) {
+        // 先把挂载在状态块里的持久节点挪回 #drawerFulltext，避免被 innerHTML 覆盖销毁。
+        if (pdfLinkEl && pdfLinkEl.parentElement !== ftSection) ftSection.appendChild(pdfLinkEl);
+        if (pdfFormEl && pdfFormEl.parentElement !== ftSection) ftSection.appendChild(pdfFormEl);
+        ftStatus.innerHTML = ftHtml;
+        ftStatus.dataset.ftHtml = ftHtml;
+      }
     }
 
     // Footer buttons
@@ -2328,12 +2350,22 @@
     }
     const institutionLogin = $('#drawerInstitutionLoginLink');
     if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
+    const ftSectionNow = $('#drawerFulltext');
     const pdfLink = $('#drawerPdfLink');
+    const pdfForm = $('#drawerPdfForm');
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
       // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
-      if (!pdfUrl || changedPaper) resetDlForm($('#drawerPdfForm'));
+      if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
+      if (ftSectionNow) {
+        const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
+        const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
+        const linkTarget = primarySlot || ftSectionNow;
+        const formTarget = formSlot || ftSectionNow;
+        if (pdfLink.parentElement !== linkTarget) linkTarget.appendChild(pdfLink);
+        if (pdfForm && pdfForm.parentElement !== formTarget) formTarget.appendChild(pdfForm);
+      }
     }
 
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }

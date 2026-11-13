@@ -199,7 +199,7 @@
 
         ${authorBox}
 
-        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;">${tagsHtml}</div>` : ''}
+        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">${tagsHtml}</div>` : ''}
 
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字（请对照下方原文核验）</summary>${quantBox}</details>` : ''}
       `;
@@ -216,13 +216,21 @@
         </section>
       `;
       const ftSection = $('#drawerFulltext');
+      const pdfLinkEl = $('#drawerPdfLink');
+      const pdfFormEl = $('#drawerPdfForm');
       ftSection.remove();
       renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ''], ['editorial', editorialSection], ['abstract', abstractSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
       bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
-      if (ftStatus.innerHTML !== ftHtml) ftStatus.innerHTML = ftHtml;
+      if (ftStatus.dataset.ftHtml !== ftHtml) {
+        // 先把挂载在状态块里的持久节点挪回 #drawerFulltext，避免被 innerHTML 覆盖销毁。
+        if (pdfLinkEl && pdfLinkEl.parentElement !== ftSection) ftSection.appendChild(pdfLinkEl);
+        if (pdfFormEl && pdfFormEl.parentElement !== ftSection) ftSection.appendChild(pdfFormEl);
+        ftStatus.innerHTML = ftHtml;
+        ftStatus.dataset.ftHtml = ftHtml;
+      }
     }
 
     // Footer buttons
@@ -245,12 +253,22 @@
     }
     const institutionLogin = $('#drawerInstitutionLoginLink');
     if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
+    const ftSectionNow = $('#drawerFulltext');
     const pdfLink = $('#drawerPdfLink');
+    const pdfForm = $('#drawerPdfForm');
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
       // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
-      if (!pdfUrl || changedPaper) resetDlForm($('#drawerPdfForm'));
+      if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
+      if (ftSectionNow) {
+        const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
+        const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
+        const linkTarget = primarySlot || ftSectionNow;
+        const formTarget = formSlot || ftSectionNow;
+        if (pdfLink.parentElement !== linkTarget) linkTarget.appendChild(pdfLink);
+        if (pdfForm && pdfForm.parentElement !== formTarget) formTarget.appendChild(pdfForm);
+      }
     }
 
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }

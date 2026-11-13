@@ -106,17 +106,31 @@
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
-      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(view.headline) + '">可下载</span>' + primary + form;
-      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
-        + esc(view.short) + '</span><span class="ft-summary">' + esc(view.headline + '。' + view.eta) + '</span>' + primary + '</span>' + form;
+      const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
+      const badgeAria = view.short + '：' + badgeTitle;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">'
+        + esc(view.short) + '</span><span class="ft-summary">' + esc(badgeTitle) + '</span>' + primary + '</span>' + form;
     }
     const steps = FT_STEPS.map((label, i) => {
       const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
       return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
     }).join('');
+    if (drawer) {
+      const secondary = (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '')
+        + ((view.action !== 'official' && official) || upload ? '<span class="ft-actions">' + (view.action === 'official' ? '' : official) + upload + '</span>' : '');
+      return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">'
+        + '<div class="ft-head"><span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>'
+        + '<p class="ft-line" role="status"><b title="' + esc(view.headline) + '">' + esc(view.headline) + '</b></p>'
+        + '<span class="ft-head-action" data-drawer-ft-primary>' + (view.action === 'download' ? '' : primary) + '</span></div>'
+        + (view.action === 'download' ? '<div class="ft-dl-slot" data-drawer-ft-form-slot></div>' : form)
+        + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+        + (secondary ? '<div class="ft-sub">' + secondary + '</div>' : '')
+        + maint + '</div>';
+    }
     return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + '<span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
-      + '<div class="ft-actions">' + (drawer && view.action === 'download' ? '' : primary) + (view.action === 'official' ? '' : official) + upload + '</div>' + (drawer && view.action === 'download' ? '' : form) + maint + '</div>';
+      + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
   }
   function pdfDownloadLink(p) {
     // In the DOI search view the card carries the full status block instead, so it is never repeated.
