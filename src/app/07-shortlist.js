@@ -78,7 +78,7 @@
       body.innerHTML = `
         <div class="empty-state" style="padding:30px;">
           <p id="huddleEmptyHelp" role="status">精选清单当前为空，添加文献后可清空、复制或导出。</p>
-          <small style="color:var(--text-muted);">从文献列表中点击“加入精选清单”，即可将心仪文献加入讨论清单。</small>
+          <small style="color:var(--text-muted);">在文献列表中点卡片上的“精选”加入精选清单。</small>
         </div>
       `;
     } else {
