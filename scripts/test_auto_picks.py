@@ -34,19 +34,6 @@ class DailyPickRuleTests(unittest.TestCase):
         comment = auto_picks.score(paper('[Comment] Tailored ablation for atrial fibrillation'), {})
         self.assertEqual(research - comment, 2)
 
-    def test_scope_excluded_paper_scores_zero(self):
-        mouse_rct = paper('Mouse model of atrial fibrillation: randomized evaluation', clinicalTier='心律失常与电生理')
-        self.assertEqual(auto_picks.score(mouse_rct, {}), 0)
-        oncology = paper('Adjuvant chemotherapy in triple-negative breast cancer', cleanJournal='JAMA Oncology', clinicalTier='顶级综合与科学')
-        self.assertEqual(auto_picks.score(oncology, {}), 0)
-
-
-def load_tests(loader, tests, pattern):
-    suite = unittest.TestSuite()
-    suite.addTests(tests)
-    suite.addTests(loader.loadTestsFromName('test_scope_filter'))
-    return suite
-
 
 if __name__ == '__main__':
     unittest.main()

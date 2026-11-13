@@ -20,7 +20,6 @@ import xml.etree.ElementTree as ET
 
 from build_data import clean, classify
 from abstract_quality import abstract_fields, normalize_paper
-from scope_filter import scope_decision
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BYTES = 3_000_000
@@ -436,7 +435,7 @@ def parse_feed(raw, source, *, checked_at=None):
         error.metadata = metadata
         raise
     checked_at = checked_at or utcnow().isoformat()
-    output, links, abstracts, scope_excluded, scope_reasons = [], 0, 0, [], Counter()
+    output, links, abstracts = [], 0, 0
     for entry in entries:
         title = clean(text(entry, 'title'))
         link = text(entry, 'link') if kind != 'atom' else ''
@@ -484,26 +483,10 @@ def parse_feed(raw, source, *, checked_at=None):
             if record['date']:
                 meta = {k: v for k, v in meta.items() if k not in ('date', 'datePrecision', 'dateBasis')}
             record.update(meta)
-        normalized = normalize_paper(record)
-        decision = scope_decision(normalized)
-        if decision['action'] == 'exclude':
-            scope_reasons[decision['reason']] += 1
-            scope_excluded.append({
-                'title': normalized.get('title', ''),
-                'doi': normalized.get('doi', ''),
-                'url': normalized.get('url', ''),
-                'reason': decision['reason'],
-                'detail': decision['detail'],
-            })
-            continue
-        output.append(normalized)
+        output.append(normalize_paper(record))
     return {'items': output, 'rawItems': len(entries), 'classifiedItems': len(output),
             'itemsWithLinks': links, 'itemsWithAbstracts': abstracts,
-            'feedType': kind, 'parser': parser, 'parserWarnings': warnings,
-            'scopeExcludedCount': len(scope_excluded),
-            'scopeExcludedReasons': dict(scope_reasons),
-            'scopeExcluded': scope_excluded,
-            **metadata}
+            'feedType': kind, 'parser': parser, 'parserWarnings': warnings, **metadata}
 
 
 def parse(raw, source):
@@ -586,8 +569,6 @@ def fetch(source):
         checked = utcnow().isoformat()
         details = parse_feed(raw, source, checked_at=checked)
         items = details.pop('items')
-        for exc in details.pop('scopeExcluded', []):
-            print(f"[scope_filter] RSS excluded ({source['name']}): {exc['reason']} | {exc['detail']} | {exc['title'][:120]}")
         return _report(source, ok=True, status='empty_feed' if details['rawItems'] == 0 else 'ok',
                        items=len(items), startedAt=started, checkedAt=checked, httpStatus=code,
                        attempted=True, **response_meta, **details), items
@@ -720,9 +701,7 @@ def build_results(sources, fetched, *, previous_feeds=None, previous_health=None
             excluded[reason] += 1
     output.sort(key=lambda item: dateval(item['date']), reverse=True)
     feeds = {'updatedAt': now.isoformat(), 'windowDays': WINDOW_DAYS, 'reports': reports,
-             'candidateCount': len(output), 'excluded': dict(excluded),
-             'scopeExcludedCount': sum((r.get('scopeExcludedCount') or 0) for r in reports),
-             'items': output,
+             'candidateCount': len(output), 'excluded': dict(excluded), 'items': output,
              'allFetchedCount': len(allitems), 'currentFetchedCount': len(fresh),
              'cachedItemCount': sum(item.get('cacheStatus') == 'retained_after_source_failure' for item in output),
              'allFetchedCountBasis': 'Current classified items plus prior eligible cache retained for failed endpoints'}

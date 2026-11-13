@@ -18,12 +18,10 @@ from publication_status import annotate_publication, checked_records
 from public_content_corrections import (load_corrections, corrected_title,
                                         corrected_quicklook,
                                         corrected_quicklook_map)
-from scope_filter import load_scope_keep_dois
-from scope_uncertain_export import build_scope_uncertain_list, load_topic_hide_filters
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 # Outputs of earlier releases that a restored public/ may still hold; removed before building.
-OBSOLETE_PUBLIC = {'icon.svg', 'scope-uncertain.json'}
+OBSOLETE_PUBLIC = {'icon.svg'}
 # Cloudflare Pages rejects a single asset at 25 MiB. Warn at 70% and stop the build at 90%.
 ASSET_LIMIT_BYTES = 25 * 1024 * 1024
 ASSET_WARN_RATIO = 0.70
@@ -632,12 +630,6 @@ def main():
     if worker.count(abstract_placeholder)!=1:raise ValueError('Public abstract snapshot placeholder missing')
     sources=public_abstract_sources(weekly,editorial_catalog,candidates['items'])
     worker=worker.replace(abstract_placeholder,'const PUBLIC_ABSTRACT_SOURCES = '+json.dumps(sources,ensure_ascii=False,separators=(',',':'))+';')
-    scope_uncertain_placeholder='const SCOPE_UNCERTAIN_LIST = /* scope-uncertain-list */ null;'
-    if worker.count(scope_uncertain_placeholder)!=1:raise ValueError('Scope uncertain list placeholder missing')
-    hidden_ids,hidden_dois=load_topic_hide_filters(ROOT/'config/public_library_topic_hides.json')
-    keep_dois=load_scope_keep_dois(ROOT/'config/public_library_scope_keeps.json')
-    scope_uncertain=build_scope_uncertain_list(library['papers']+candidates['items'],pdf_ids=pdf_ids,hidden_ids=hidden_ids,hidden_dois=hidden_dois,keep_dois=keep_dois,generated_at=built_at)
-    worker=worker.replace(scope_uncertain_placeholder,'const SCOPE_UNCERTAIN_LIST = '+json.dumps(scope_uncertain,ensure_ascii=False,separators=(',',':'))+';')
     files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'feed.xml':make_feed(candidates['items'],ql,built_at),'style.css':(ROOT/'style.css').read_text(),'demo-reading.html':(ROOT/'demo-reading.html').read_text(),'_headers':headers,'_worker.js':worker}
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}

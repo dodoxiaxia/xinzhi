@@ -6,10 +6,8 @@ esearch result without idlist) is retried a bounded number of times. The previou
 data/pubmed.json is replaced only after a complete search and fetch succeed.
 """
 import argparse, datetime, hashlib, http.client, json, os, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
-from collections import Counter
 from pathlib import Path
 from build_data import clean, classify
-from scope_filter import scope_decision
 from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -137,14 +135,14 @@ def load_esearch(params, attempts=REQUEST_ATTEMPTS):
         time.sleep(0.5 * (attempt + 1))
     raise last
 
-def parse_fetch(raw, excluded_out=None):
+def parse_fetch(raw):
     try:
         root = ET.fromstring(raw)
     except ET.ParseError as exc:
         raise PubmedError('pubmed_efetch_invalid') from exc
     if root.tag == 'ERROR' or root.find('.//ERROR') is not None:
         raise PubmedError('pubmed_efetch_error')
-    return parse(root, excluded_out=excluded_out)
+    return parse(root)
 
 def commit_output(path, data):
     """Replace path only after the full JSON text exists. A failure leaves the previous file."""
@@ -158,7 +156,7 @@ def commit_output(path, data):
         tmp.unlink(missing_ok=True)
         raise
 
-def parse(root, excluded_out=None):
+def parse(root):
     items = []
     for row in root.findall('.//PubmedArticle'):
         article = row.find('./MedlineCitation/Article')
@@ -220,7 +218,7 @@ def parse(root, excluded_out=None):
             else:
                 date = ad.findtext('MedlineDate', '')
 
-        item = {
+        items.append({
             'id': 'pmid-' + pmid,
             'pmid': pmid,
             'title': title,
@@ -245,20 +243,7 @@ def parse(root, excluded_out=None):
             'abstractSections': abstract_sections,
             'sourceId': 'pubmed-journal-fallback',
             'fetchedAt': datetime.datetime.now(datetime.timezone.utc).isoformat()
-        }
-        decision = scope_decision(item)
-        if decision['action'] == 'exclude':
-            if excluded_out is not None:
-                excluded_out.append({
-                    'pmid': pmid,
-                    'title': title,
-                    'doi': item['doi'],
-                    'url': item['url'],
-                    'reason': decision['reason'],
-                    'detail': decision['detail'],
-                })
-            continue
-        items.append(item)
+        })
     return items
 
 def refresh(path, days, limit, now=None):
@@ -270,22 +255,17 @@ def refresh(path, days, limit, now=None):
     found = load_esearch({'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': limit, 'sort': 'pub date'})
     ids = found['idlist']
     time.sleep(0.4)
-    items, excluded_scope = [], []
+    items = []
     for offset in range(0, len(ids), 150):
         time.sleep(0.4)
-        items.extend(parse_fetch(request('efetch.fcgi', {'db': 'pubmed', 'id': ','.join(ids[offset:offset+150]), 'retmode': 'xml'}), excluded_out=excluded_scope))
-    for exc in excluded_scope:
-        print(f"[scope_filter] PubMed excluded (pmid:{exc['pmid']}): {exc['reason']} | {exc['detail']} | {exc['title'][:120]}")
+        items.extend(parse_fetch(request('efetch.fcgi', {'db': 'pubmed', 'id': ','.join(ids[offset:offset+150]), 'retmode': 'xml'})))
     data = {
         'updatedAt': now.isoformat(),
         'query': term,
         'totalHits': int(found['count']),
-        'fetched': len(items) + len(excluded_scope),
+        'fetched': len(items),
         'truncated': int(found['count']) > len(ids),
         'journals': JOURNALS,
-        'excludedScopeCount': len(excluded_scope),
-        'excludedScopeReasons': dict(Counter(e['reason'] for e in excluded_scope)),
-        'excludedScope': excluded_scope,
         'items': items,
         'note': 'Indexing may lag publisher publication; zero hits does not prove the journal has no new articles. Structured XML parsed.'
     }
