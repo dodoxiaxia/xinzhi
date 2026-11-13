@@ -2604,7 +2604,8 @@
       const aiBox = (!ql && !draft) ? (() => {
         if (paper.weeklyPick) return '';
         const s = paper._aiState;
-        const hasPubAbs = typeof hasAbstract === 'function' ? hasAbstract(paper) : !!(paper.summary || (paper.abstractSections || []).some(sec => sec && sec.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
+        // Do not name this hasAbstract: openReaderDrawer later declares a local const hasAbstract (TDZ).
+        const hasPubAbs = !!(paper.summary || (paper.abstractSections || []).some(sec => sec && sec.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
         if (!hasPubAbs && (s === 'none' || s === 'error' || s === 'noabs' || !s)) {
           return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div>
           ${s === 'error' ? `<p class="ql-meta" style="color:#b45309;">${esc(paper._aiMsg || '')}</p>` : ''}
