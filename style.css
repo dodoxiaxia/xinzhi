@@ -1554,8 +1554,25 @@ body:has(aside.sidebar.open) { overflow: hidden; }
 /* 手机端「下载 PDF」触控高度不低于 44px（放在文件末尾，盖过上面 .btn-sm 的 40px） */
 @media (max-width: 640px) {
   .ft-dl-form.ft-dl-form button[type="submit"], .ft-dl-form.ft-dl-form input { min-height: 44px; }
-  .card-actions .card-source-actions a[data-ft-download]:not([hidden]), .ft-actions a[data-ft-download]:not([hidden]), .drawer-footer a[data-ft-download]:not([hidden]) { min-height: 44px; }
+  .card-actions .card-source-actions a[data-ft-download]:not([hidden]), .ft-actions a[data-ft-download]:not([hidden]), .drawer-footer a[data-ft-download]:not([hidden]), .drawer-fulltext a[data-ft-download]:not([hidden]) { min-height: 44px; }
 }
 /* 口令框展开时：整行归下载区，☆精选、官网原文落到下一行 */
 .card-actions:has(.ft-dl-form:not([hidden])) { flex-wrap: wrap !important; }
 .card-actions .card-source-actions:has(> .ft-dl-form:not([hidden])) { flex: 1 1 100%; width: 100% !important; }
+
+/* 全文状态与信源状态使用同一组主题色。 */
+.ft-badge { display: inline-flex; flex: 0 0 auto; padding: 3px 8px; border-radius: var(--radius-full); background: var(--bg-secondary); color: var(--text-muted); font-size: 12px; font-weight: 600; line-height: 1.5; }
+.ft-badge-ready { color: var(--emerald); background: var(--emerald-light); }
+.ft-badge-queued, .ft-badge-running, .ft-badge-verifying { color: var(--amber); background: var(--amber-light); }
+.ft-badge-failed, .ft-badge-review { color: var(--rose); background: var(--rose-light); }
+.ft-status.ft-full { border-left: 1px solid var(--border); box-shadow: inset 3px 0 0 var(--text-muted); }
+.ft-status.ft-ready { box-shadow: inset 3px 0 0 var(--emerald); }
+.ft-full.ft-queued, .ft-full.ft-running, .ft-full.ft-verifying { box-shadow: inset 3px 0 0 var(--amber); }
+.ft-full.ft-failed, .ft-full.ft-review { box-shadow: inset 3px 0 0 var(--rose); }
+.ft-summary { flex-basis: 100%; font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+.ft-link { border: 0; background: none; }
+.drawer-fulltext { margin-bottom: 20px; }
+.drawer-fulltext .ft-status { margin-bottom: 8px; }
+@media (max-width: 768px) {
+  .drawer-footer .text-btn, .ft-link { display: inline-flex; align-items: center; min-height: 44px; }
+}

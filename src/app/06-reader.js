@@ -215,16 +215,21 @@
           ${absSource}
         </section>
       `;
-      const ftView = fulltextView(paper), ftProgress = ftView && ['verifying', 'queued', 'running', 'failed', 'review'].includes(ftView.kind) ? fulltextStatusHtml(paper, true).replace(/<a class="ft-link" href="https:\/\/doi\.org[^>]*>官网原文 ↗<\/a>/, '') : '';
-      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ftProgress], ['editorial', editorialSection], ['abstract', abstractSection],
+      const ftSection = $('#drawerFulltext');
+      ftSection.remove();
+      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ''], ['editorial', editorialSection], ['abstract', abstractSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
+      bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
+      const ftHtml = fulltextStatusHtml(paper, true, true);
+      const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
+      if (ftStatus.innerHTML !== ftHtml) ftStatus.innerHTML = ftHtml;
     }
 
     // Footer buttons
     const huddleBtn = $('#drawerHuddleToggleBtn');
     if (huddleBtn) {
       huddleBtn.textContent = isHuddled ? '已在精选清单 ✓' : '加入精选清单';
-      huddleBtn.className = `btn-sm ${isHuddled ? 'active' : ''}`;
+      huddleBtn.className = `text-btn ${isHuddled ? 'active' : ''}`;
     }
 
     const shareBtn = $('#drawerCopyShareBtn');
