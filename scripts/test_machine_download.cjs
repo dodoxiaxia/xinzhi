@@ -118,6 +118,10 @@ async function review(h, body) {
   assert.equal(protocol.claimable.field, 'claimable');
   assert.equal(protocol.claimable.unclaimableReasonField, 'unclaimableReason');
   assert.deepEqual(protocol.claimable.unclaimableReasons, ['verification_failed']);
+  assert.equal(protocol.statusDetail.field, 'detail');
+  assert.equal(protocol.statusDetail.maxChars, 500);
+  assert.deepEqual(protocol.statusDetail.allowed, ['just_accepted']);
+  assert.deepEqual(protocol.statusDetail.reasons, ['source_blocked']);
   assert(!JSON.stringify(protocol).includes(dsh));
   assert(!JSON.stringify(protocol).includes(museKey));
   const museProtocol = await (await h.context.worker.fetch(new Request(base + '/api/muse/protocol'), h.env)).json();
@@ -279,6 +283,53 @@ async function review(h, body) {
   assert.equal(weekly.tasks.length, 1);
   assert.equal(weekly.tasks[0].doi, doi);
   assert.equal(weekly.tasks[0].state, 'confirmed-abandoned');
+
+  h = await create();
+  const detailDoi = '10.1000/just-accepted';
+  putJob(h, detailDoi, 'queued', Date.now(), {});
+  seedPaper(h, detailDoi);
+  await reindex(h);
+  async function assertDetailRejected(response) {
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.equal(body.error, 'machine_bad_request');
+    assert(String(body.message || '').includes('just_accepted'), body.message);
+    return body;
+  }
+  await assertDetailRejected(await call(h, '/api/machine/status', dsh, {doi:detailDoi,state:'failed-awaiting-fallback',reason:'not_oa',detail:'just_accepted'}));
+  assert.equal(stored(h, 'library:muse-job:' + detailDoi).state, 'queued');
+  assert.equal(stored(h, 'library:muse-job:' + detailDoi).detail, undefined);
+  await assertDetailRejected(await call(h, '/api/machine/status', dsh, {doi:detailDoi,state:'failed-awaiting-fallback',reason:'source_blocked',detail:'sciencedirect'}));
+  await assertDetailRejected(await call(h, '/api/machine/status', dsh, {doi:detailDoi,state:'failed-awaiting-fallback',reason:'source_blocked',detail:'x'.repeat(501)}));
+  const firstNoted = await call(h, '/api/machine/status', dsh, {doi:detailDoi,state:'failed-awaiting-fallback',reason:'source_blocked',detail:'\u0007just_accepted\n'});
+  assert.equal(firstNoted.status, 200);
+  const firstNotedBody = await firstNoted.json();
+  assert.equal(firstNotedBody.task.state, 'to-download');
+  assert.equal(firstNotedBody.task.detail, undefined);
+  assert.equal(stored(h, 'library:muse-job:' + detailDoi).detail, 'just_accepted');
+  const queuedWithNote = await (await call(h, '/api/machine/tasks?state=to-download', reader, null, {method:'GET'})).json();
+  const queuedItem = queuedWithNote.tasks.find(task => task.doi === detailDoi);
+  assert(queuedItem);
+  assert.equal(queuedItem.detail, undefined);
+  const secondNoted = await call(h, '/api/machine/status', dsh, {doi:detailDoi,state:'failed-awaiting-fallback',reason:'source_blocked'});
+  assert.equal(secondNoted.status, 200);
+  const secondNotedBody = await secondNoted.json();
+  assert.equal(secondNotedBody.task.state, 'failed-awaiting-fallback');
+  assert.equal(secondNotedBody.task.reason, 'source_blocked');
+  assert.equal(secondNotedBody.task.detail, 'just_accepted');
+  const failedWithNote = await (await call(h, '/api/machine/tasks?state=failed-awaiting-fallback', fallback, null, {method:'GET'})).json();
+  const failedItemNoted = failedWithNote.tasks.find(task => task.doi === detailDoi);
+  assert(failedItemNoted);
+  assert.equal(failedItemNoted.detail, 'just_accepted');
+  await assertDetailRejected(await call(h, '/api/machine/status', fallback, {doi:detailDoi,state:'confirmed-abandoned',reason:'other',detail:'just_accepted'}));
+  const abandonedNoted = await call(h, '/api/machine/status', fallback, {doi:detailDoi,state:'confirmed-abandoned',reason:'other'});
+  assert.equal(abandonedNoted.status, 200);
+  assert.equal((await abandonedNoted.json()).task.detail, 'just_accepted');
+  const weeklyNoted = await (await call(h, '/api/machine/abandoned', reader, null, {method:'GET'})).json();
+  const abandonedItem = weeklyNoted.tasks.find(task => task.doi === detailDoi);
+  assert(abandonedItem);
+  assert.equal(abandonedItem.detail, 'just_accepted');
 
   h = await create();
   capList(h);

@@ -2981,6 +2981,8 @@ const MACHINE_RETURN_LIMIT = 3;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
+const MACHINE_STATUS_DETAIL_MAX = 500;
+const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
   downloader:['upload','replace','status','claim','renew','return','list','requeue','register','abandoned','protocol'],
   fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol'],
@@ -3002,9 +3004,17 @@ function machineError(error) {
   const known = error instanceof LibraryFailure || error instanceof PdfFailure;
   const body = {ok:false,error:known ? error.code : 'machine_server'};
   if (error instanceof MachineIdentityFailure) { body.reason = error.reason; if (error.checks) body.checks = error.checks; }
+  if (typeof error.explain === 'string' && error.explain) body.message = error.explain;
+  if (error.extra && typeof error.extra === 'object') Object.assign(body, error.extra);
   const retry = known && error.retryAfter ? libraryRetryInfo(error.retryAfter) : {};
   Object.assign(body, retry);
   return json(body, known ? error.status : 500, retry.retryAfterSeconds ? {'retry-after':String(retry.retryAfterSeconds)} : {});
+}
+function machineFail(code, status, explain, extra) {
+  const error = new LibraryFailure(code, status);
+  if (explain) error.explain = explain;
+  if (extra) error.extra = extra;
+  throw error;
 }
 function machineLimit(env, name, fallback) {
   const raw = env[name];
@@ -3230,7 +3240,8 @@ function machineListItem(job) {
     ...(Number.isInteger(job.returnCount) && job.returnCount > 0 ? {returnCount:job.returnCount} : {}),
     ...(machineOaRejected(job).length ? {oaRejected:machineOaRejected(job)} : {}),
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
-      ? {registeredSource:registration.source,section:registration.section} : {})};
+      ? {registeredSource:registration.source,section:registration.section} : {}),
+    ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
@@ -3295,6 +3306,8 @@ function handleMachineProtocol(request, env) {
     oaVerify:{source:'open_access',limit:2,note:'开放获取来源核验未通过时，第一次把任务退回待下载，候选文件只留记录不删，并记入 oaRejected。同一篇第二次核验未通过则留在 review，claimable 为 false。机器或读者上传核验未通过仍直接进 review。旧客户端可忽略新计数字段。'},
     lease:{extendMinutes:20,maxMinutesFromClaim:120,returnLimit:MACHINE_RETURN_LIMIT,
       note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。下载端退回不是失败，任务回到待下载并保留原 FIFO，同一篇最多 3 次，超过后拒绝（machine_return_limit），只能改报失败。兜底角色退回（以及带 previousReason 的条目）回到失败待兜底并保留原原因，不会回到待下载。旧客户端不调用这两个接口即可。'},
+    statusDetail:{field:'detail',maxChars:MACHINE_STATUS_DETAIL_MAX,allowed:MACHINE_STATUS_DETAILS,reasons:['source_blocked'],
+      note:'POST /api/machine/status 的可选字段 detail。目前只允许在 reason 为 source_blocked 时写入 just_accepted（例如期刊仍是 Just Accepted、排版尚未完成，要等正式出版后再处理）。其他原因或状态带 detail 返回 400，并在 message 里说明。写入后出现在失败待兜底和确认放弃列表里。旧客户端可忽略。'},
     endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
 }
 async function handleMachineUpload(request, env) {
@@ -3348,12 +3361,22 @@ async function handleMachineUpload(request, env) {
     return machineError(error);
   }
 }
+function machineStatusDetail(input, allowed) {
+  if (!Object.hasOwn(input, 'detail')) return undefined;
+  if (!allowed) machineFail('machine_bad_request', 400, 'detail 只允许在 just_accepted 结果下使用（reason 须为 source_blocked）');
+  if (typeof input.detail !== 'string') machineFail('machine_bad_request', 400, 'detail 必须是字符串，最长 ' + MACHINE_STATUS_DETAIL_MAX + ' 字，且目前只允许 just_accepted');
+  const text = input.detail.replace(/[\x00-\x1f\x7f]/g, '').trim();
+  if (!text || text.length > MACHINE_STATUS_DETAIL_MAX || !MACHINE_STATUS_DETAILS.includes(text)) {
+    machineFail('machine_bad_request', 400, 'detail 目前只允许 just_accepted（最长 ' + MACHINE_STATUS_DETAIL_MAX + ' 字，已去除控制字符）');
+  }
+  return text;
+}
 async function handleMachineStatus(request, env) {
   try {
     if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
     const caller = await machineAuthorize(request, env, 'status');
     const input = await fulltextReadJson(request, 2048, 'machine_bad_request');
-    if (Object.keys(input).some(key => !['doi','state','reason','stage','driveFileId'].includes(key))) libraryFail('machine_bad_request', 400);
+    if (Object.keys(input).some(key => !['doi','state','reason','stage','driveFileId','detail'].includes(key))) libraryFail('machine_bad_request', 400);
     const doi = libraryDoi(input.doi);
     if (!doi || doi !== input.doi) libraryFail('machine_bad_request', 400);
     const abandoning = input.state === 'confirmed-abandoned';
@@ -3366,6 +3389,7 @@ async function handleMachineStatus(request, env) {
     if (Object.hasOwn(input,'stage') && !MACHINE_STAGE_TAGS.includes(input.stage)) libraryFail('machine_bad_request', 400);
     if (backfill && (Object.hasOwn(input,'reason') || Object.hasOwn(input,'stage'))) libraryFail('machine_bad_request', 400);
     if (Object.hasOwn(input,'driveFileId') && (typeof input.driveFileId !== 'string' || !/^[A-Za-z0-9_-]{10,200}$/.test(input.driveFileId))) libraryFail('machine_bad_request', 400);
+    const incomingDetail = machineStatusDetail(input, failing && input.reason === 'source_blocked');
     const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
     if (!job) libraryFail('machine_not_found', 404);
     if (abandoning && job.state === 'abandoned') return json({ok:true,idempotent:true,task:{...machineListItem(job),abandonedBy:job.abandonedBy || ''}});
@@ -3392,6 +3416,8 @@ async function handleMachineStatus(request, env) {
     } else {
       next = {...job,driveFileId:input.driveFileId,updatedAt:now};
     }
+    const detail = incomingDetail !== undefined ? incomingDetail : (job.detail === 'just_accepted' ? job.detail : '');
+    next = detail ? {...next,detail} : next;
     await musePut(env, next);
     if (queuedBack && next.queueKey) await libraryPut(env.QL_KV, next.queueKey, JSON.stringify({doi:next.doi,id:next.id}), {expirationTtl:604800});
     else if ((failing || abandoning) && job.queueKey) await museDelete(env, job.queueKey);
