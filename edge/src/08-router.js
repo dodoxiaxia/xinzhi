@@ -2,6 +2,8 @@
 export default {
   async fetch(request, env, ctx) {
     pdfArchiveBind(env);
+    const shadow = d1ShadowBind(env);
+    env = shadow.env;
     const startedAt = Date.now();
     let response;
     try {
@@ -12,6 +14,7 @@ export default {
       throw error;
     } finally {
       pdfArchiveFlush(env, ctx);
+      shadow.flush(ctx);
     }
     metricsRecord(request, env, ctx, response, startedAt, false);
     return response;
