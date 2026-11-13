@@ -1267,7 +1267,7 @@ async function review(h, body) {
 
     // Direct static asset requests must return 404 without hitting ASSETS, with or without token
     for (const headers of [{}, {authorization:'Bearer ' + reader}, {authorization:'Bearer ' + dsh}]) {
-      h = await create();
+      h = await create({scopeUncertain:sampleDoc});
       let assetHits = 0;
       h.env.ASSETS = {fetch:async () => { assetHits += 1; return new Response(bodyText, {status:200}); }};
       const directStatic = await h.context.worker.fetch(new Request(base + '/scope-uncertain.json', {method:'GET',headers}), h.env);
@@ -1278,9 +1278,8 @@ async function review(h, body) {
       assert.equal(assetHits, 0);
     }
 
-    // Auth failures -> 401
+    // Auth failures -> 401 (even when SCOPE_UNCERTAIN_LIST is null; must not depend on list content)
     h = await create();
-    h.env.ASSETS = {fetch:async () => new Response(bodyText, {status:200})};
     await error(await h.context.worker.fetch(new Request(base + '/api/machine/scope-uncertain', {method:'GET'}), h.env), 401, 'machine_unauthorized');
     await error(await call(h, '/api/machine/scope-uncertain', unknown, null, {method:'GET'}), 401, 'machine_unauthorized');
     await error(await call(h, '/api/machine/scope-uncertain', revoked, null, {method:'GET'}), 401, 'machine_revoked');
@@ -1289,26 +1288,23 @@ async function review(h, body) {
     await error(await call(h, '/api/machine/scope-uncertain', reader, {}), 405, 'machine_bad_request');
     await error(await call(h, '/api/machine/scope-uncertain?limit=10', reader, null, {method:'GET'}), 400, 'machine_bad_request');
 
-    // Missing/bad ASSETS -> 503 library_storage
-    h = await create();
-    await error(await call(h, '/api/machine/scope-uncertain', reader, null, {method:'GET'}), 503, 'library_storage');
-    for (const badRes of [
-      () => new Response('missing', {status:404}),
-      () => new Response('not-json', {status:200}),
-      () => new Response(JSON.stringify([]), {status:200}),
-      () => new Response(JSON.stringify({generatedAt:'2026-11-13T08:00:00Z',count:1,items:[]}), {status:200}),
-      () => new Response(JSON.stringify({generatedAt:'2026-11-13T08:00:00Z',count:1,items:[{doi:'10.1/a',title:'T'}]}), {status:200})
+    // Missing/malformed in-memory SCOPE_UNCERTAIN_LIST -> 503 library_storage
+    for (const badDoc of [
+      null,
+      'not-an-object',
+      [],
+      {generatedAt:'2026-11-13T08:00:00Z',count:1,items:[]},
+      {generatedAt:'2026-11-13T08:00:00Z',count:1,items:[{doi:'10.1/a',title:'T'}]}
     ]) {
-      h = await create();
-      h.env.ASSETS = {fetch:async () => badRes()};
+      h = await create({scopeUncertain:badDoc});
       await error(await call(h, '/api/machine/scope-uncertain', reader, null, {method:'GET'}), 503, 'library_storage');
     }
 
-    // Success for reader & downloader, zero KV reads/writes/lists, no-store cache-control
+    // Success for reader & downloader from in-memory SCOPE_UNCERTAIN_LIST: zero ASSETS hits, zero KV reads/writes/lists
     for (const secret of [reader, dsh]) {
-      h = await create();
-      const assetRequests = [];
-      h.env.ASSETS = {fetch:async req => { assetRequests.push(new URL(req.url).pathname); return new Response(bodyText, {status:200,headers:{'content-type':'application/json'}}); }};
+      h = await create({scopeUncertain:sampleDoc});
+      let assetHits = 0;
+      h.env.ASSETS = {fetch:async () => { assetHits += 1; return new Response('unexpected', {status:500}); }};
       const res = await call(h, '/api/machine/scope-uncertain', secret, null, {method:'GET'});
       assert.equal(res.status, 200);
       assert.equal(res.headers.get('cache-control'), 'no-store');
@@ -1317,10 +1313,213 @@ async function review(h, body) {
       assert.equal(body.generatedAt, sampleDoc.generatedAt);
       assert.equal(body.count, 1);
       assert.deepEqual(body.items, sampleDoc.items);
-      assert.deepEqual(assetRequests, ['/scope-uncertain.json']);
+      assert.equal(assetHits, 0);
       assert.equal(h.reads.length, 0);
       assert.equal(h.writes.length, 0);
       assert.equal(h.lists.length, 0);
+    }
+  }
+
+  // ---- no-DOI papers stay off the claim index and are not auto-dispatched
+  {
+    h = await create();
+    const baseTs = Date.now();
+    // 1) museIndexEntry rejects jobs without a valid DOI.
+    for (const badDoi of ['', null, undefined, 'not-a-doi']) {
+      assert.equal(h.context.museIndexEntry({
+        version:1,
+        id:crypto.randomUUID(),
+        doi:badDoi,
+        state:'queued',
+        createdAt:baseTs,
+        updatedAt:baseTs,
+        queueKey:'library:muse-queue:' + String(baseTs).padStart(13, '0') + ':' + crypto.randomUUID()
+      }), null);
+    }
+
+    // 2) Queued uncertain no-DOI paper (non-DOI key) + later valid CV keep paper:
+    //    reindex keeps the no-DOI paper off library:machine-index:v1, claim picks the keep paper,
+    //    and the no-DOI job & queue pointer remain untouched.
+    const noDoiKey = 'no-doi-uncertain-1';
+    const noDoiJob = putJob(h, noDoiKey, 'queued', baseTs, {doi:''});
+    const noDoiPaperRaw = {
+      version:1,
+      paper:{
+        id:'cand-no-doi-1',
+        doi:'',
+        title:'Clinical perspectives on modern healthcare delivery',
+        journal:'JAMA',
+        ingestedAt:'2026-11-12T04:00:00.000Z',
+        metadataStatus:'external_bibliography_checked',
+        fulltextStatus:'manual_needed'
+      }
+    };
+    h.values.set('library:paper:' + noDoiKey, JSON.stringify(noDoiPaperRaw));
+    const keepAfterNoDoi = '10.1000/keep-after-nodoi';
+    putJob(h, keepAfterNoDoi, 'queued', baseTs + 10);
+    seedPaper(h, keepAfterNoDoi, 'Empagliflozin in patients with HFrEF: a randomized trial', 'manual_needed', 'Heart');
+    await reindex(h);
+    const idxAfterReindex = stored(h, 'library:machine-index:v1');
+    assert.equal(idxAfterReindex.entries[noDoiKey], undefined);
+    assert(idxAfterReindex.entries[keepAfterNoDoi]);
+    const noDoiClaim = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json();
+    assert.equal(noDoiClaim.task.doi, keepAfterNoDoi);
+    const noDoiJobAfter = stored(h, 'library:muse-job:' + noDoiKey);
+    assert.equal(noDoiJobAfter.state, 'queued');
+    assert.equal(noDoiJobAfter.scopeExcluded, undefined);
+    assert.equal(h.values.has(noDoiJob.queueKey), true);
+    assert.equal(stored(h, 'library:machine-index:v1').entries[noDoiKey], undefined);
+
+    // 3) Also guard when a DOI-keyed job has a paper record missing a valid DOI (both queued & failed):
+    //    claim skips it without changing job state or setting scopeExcluded, and claims the later keep paper.
+    for (const [mode, role, state, jobState, reason] of [
+      ['to-download', dsh, 'to-download', 'queued', undefined],
+      ['failed-awaiting-fallback', fallback, 'failed-awaiting-fallback', 'failed', 'not_oa']
+    ]) {
+      h = await create();
+      const ts = Date.now();
+      const orphanDoi = '10.1000/paper-missing-doi-' + mode;
+      const orphanJob = putJob(h, orphanDoi, jobState, ts, reason ? {reason} : {});
+      h.values.set('library:paper:' + orphanDoi, JSON.stringify({
+        version:1,
+        paper:{
+          id:'doi-' + hash(orphanDoi).slice(0, 16),
+          doi:'',
+          title:'Clinical perspectives on modern healthcare delivery',
+          journal:'JAMA',
+          fulltextStatus:'manual_needed'
+        }
+      }));
+      const laterKeep = '10.1000/later-keep-' + mode;
+      putJob(h, laterKeep, jobState, ts + 10, reason ? {reason} : {});
+      seedPaper(h, laterKeep, 'Catheter ablation for atrial fibrillation: a randomized trial', 'manual_needed', 'Heart');
+      await reindex(h);
+      const claimed = await (await call(h, '/api/machine/claim', role, {state})).json();
+      assert.equal(claimed.task.doi, laterKeep);
+      const orphanAfter = stored(h, 'library:muse-job:' + orphanDoi);
+      assert.equal(orphanAfter.state, jobState);
+      assert.equal(orphanAfter.reason, reason);
+      assert.equal(orphanAfter.scopeExcluded, undefined);
+      assert.equal(h.values.has(orphanJob.queueKey), true);
+    }
+  }
+
+  // ---- exclude removes only the claim index entry; done / available / stored fulltext records stay unchanged
+  {
+    const excludeTitle = 'Therapeutic angiogenesis in a mouse model of myocardial infarction';
+    const excludeJournal = 'Circulation Research';
+
+    // 1) Job already available + paper fulltextStatus:'available' + pdf bytes seeded + stale index entry
+    for (const [claimRole, claimState] of [[dsh, 'to-download'], [fallback, 'failed-awaiting-fallback']]) {
+      h = await create();
+      const ts = Date.now();
+      const doneExcludeDoi = '10.1000/exclude-already-done-' + claimState;
+      const donePdfBytes = paperPdf(doneExcludeDoi, excludeTitle);
+      const doneSha = hash(donePdfBytes);
+      const doneJob = putJob(h, doneExcludeDoi, 'available', ts, {sha256:doneSha,bytes:donePdfBytes.length,source:'dsh',caller:'dsh'});
+      const donePaperRec = {
+        version:1,
+        paper:{
+          id:'doi-' + hash(doneExcludeDoi).slice(0, 16),
+          doi:doneExcludeDoi,
+          title:excludeTitle,
+          journal:excludeJournal,
+          authors:['Jane Doe'],
+          date:'2026-10-07',
+          datePrecision:'day',
+          dateBasis:'Crossref published-online',
+          ingestedAt:'2026-10-07T04:00:00.000Z',
+          metadataStatus:'external_bibliography_checked',
+          fulltextStatus:'available'
+        },
+        pdf:{key:'library:pdf:' + doneSha,sha256:doneSha,size:donePdfBytes.length,source:'machine'}
+      };
+      h.values.set('library:paper:' + doneExcludeDoi, JSON.stringify(donePaperRec));
+      h.values.set('library:pdf:' + doneSha, donePdfBytes);
+      const keepDoi = '10.1000/keep-after-done-' + claimState;
+      const keepState = claimState === 'to-download' ? 'queued' : 'failed';
+      putJob(h, keepDoi, keepState, ts + 10, keepState === 'failed' ? {reason:'not_oa'} : {});
+      seedPaper(h, keepDoi, 'Empagliflozin in patients with HFrEF: a randomized trial', 'manual_needed', 'Heart');
+      await reindex(h);
+      // Deliberately plant a stale index entry for the already-done excluded paper.
+      const idx = stored(h, 'library:machine-index:v1');
+      idx.entries[doneExcludeDoi] = {
+        i:doneJob.id,
+        s:keepState,
+        c:ts,
+        u:ts,
+        e:keepState === 'queued' ? ts + 6 * 86400000 : 0,
+        w:ts
+      };
+      h.values.set('library:machine-index:v1', JSON.stringify(idx));
+
+      const res = await (await call(h, '/api/machine/claim', claimRole, {state:claimState})).json();
+      assert.equal(res.task.doi, keepDoi);
+      const jobAfter = stored(h, 'library:muse-job:' + doneExcludeDoi);
+      assert.equal(jobAfter.state, 'available');
+      assert.equal(jobAfter.reason, undefined);
+      assert.equal(jobAfter.scopeExcluded, undefined);
+      const paperAfter = stored(h, 'library:paper:' + doneExcludeDoi);
+      assert.equal(paperAfter.paper.fulltextStatus, 'available');
+      assert.deepEqual(paperAfter.pdf, donePaperRec.pdf);
+      assert.deepEqual(Buffer.from(h.values.get('library:pdf:' + doneSha)), donePdfBytes);
+      assert.equal(stored(h, 'library:machine-index:v1').entries[doneExcludeDoi], undefined);
+    }
+
+    // 2) Stale queued/failed jobs whose paper record already has fulltextStatus:'available', localAvailable:true,
+    //    or a stored pdf object — plus abandoned jobs — only lose their index entry; job, paper, and pdf bytes stay untouched.
+    for (const [claimRole, claimState] of [[dsh, 'to-download'], [fallback, 'failed-awaiting-fallback']]) {
+      const baseState = claimState === 'to-download' ? 'queued' : 'failed';
+      const baseExtra = baseState === 'failed' ? {reason:'not_oa'} : {};
+      for (const variant of ['abandoned', 'paper_available', 'local_available', 'record_pdf']) {
+        h = await create();
+        const ts = Date.now();
+        const protectedDoi = '10.1000/protected-' + variant + '-' + claimState;
+        const pdfBytes = paperPdf(protectedDoi, excludeTitle);
+        const pdfSha = hash(pdfBytes);
+        const jobState = variant === 'abandoned' ? 'abandoned' : baseState;
+        const job = putJob(h, protectedDoi, jobState, ts, variant === 'abandoned' ? {reason:'other'} : baseExtra);
+        const paperObj = {
+          id:'doi-' + hash(protectedDoi).slice(0, 16),
+          doi:protectedDoi,
+          title:excludeTitle,
+          journal:excludeJournal,
+          authors:['Jane Doe'],
+          date:'2026-10-07',
+          datePrecision:'day',
+          dateBasis:'Crossref published-online',
+          ingestedAt:'2026-10-07T04:00:00.000Z',
+          metadataStatus:'external_bibliography_checked',
+          fulltextStatus:variant === 'paper_available' ? 'available' : 'manual_needed',
+          ...(variant === 'local_available' ? {localAvailable:true} : {})
+        };
+        const recordObj = {
+          version:1,
+          paper:paperObj,
+          ...(variant === 'paper_available' || variant === 'record_pdf'
+            ? {pdf:{key:'library:pdf:' + pdfSha,sha256:pdfSha,size:pdfBytes.length,source:'machine'}}
+            : {})
+        };
+        const originalPaperJson = JSON.stringify(recordObj);
+        h.values.set('library:paper:' + protectedDoi, originalPaperJson);
+        if (recordObj.pdf) h.values.set('library:pdf:' + pdfSha, pdfBytes);
+        await reindex(h);
+        if (variant === 'abandoned') {
+          const idx = stored(h, 'library:machine-index:v1');
+          idx.entries[protectedDoi] = {i:job.id,s:baseState,c:ts,u:ts,e:baseState === 'queued' ? ts + 6 * 86400000 : 0,w:ts};
+          h.values.set('library:machine-index:v1', JSON.stringify(idx));
+        }
+
+        const res = await (await call(h, '/api/machine/claim', claimRole, {state:claimState})).json();
+        assert.equal(res.task, null);
+        const jobAfter = stored(h, 'library:muse-job:' + protectedDoi);
+        assert.equal(jobAfter.state, jobState);
+        assert.equal(jobAfter.reason, variant === 'abandoned' ? 'other' : baseExtra.reason);
+        assert.equal(jobAfter.scopeExcluded, undefined);
+        assert.equal(h.values.get('library:paper:' + protectedDoi), originalPaperJson);
+        if (recordObj.pdf) assert.deepEqual(Buffer.from(h.values.get('library:pdf:' + pdfSha)), pdfBytes);
+        assert.equal(stored(h, 'library:machine-index:v1').entries[protectedDoi], undefined);
+      }
     }
   }
 

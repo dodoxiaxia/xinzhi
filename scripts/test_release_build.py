@@ -44,7 +44,7 @@ def synthetic_root(root):
     for name, text in {
         'index.html': '<script src="data/library.js"></script>\n<script src="app.js"></script>',
         'app.js': '// synthetic application', 'style.css': 'body{color:black}',
-        'demo-reading.html': '<p>synthetic example reading</p>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; const DOI_ADJUDICATIONS = {}; const FULLTEXT_OIDC_BUILD_KEYS = {}; const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null; // synthetic worker',
+        'demo-reading.html': '<p>synthetic example reading</p>', 'edge/_worker.js': 'const PDF_LIBRARY = {}; const DOI_ADJUDICATIONS = {}; const FULLTEXT_OIDC_BUILD_KEYS = {}; const PUBLIC_ABSTRACT_SOURCES = /* public-abstract-sources */ null; const SCOPE_UNCERTAIN_LIST = /* scope-uncertain-list */ null; // synthetic worker',
     }.items():
         (root / name).write_text(text)
     (root / 'icon.png').write_bytes(b'\x89PNG\r\n\x1a\nsynthetic icon')
@@ -67,9 +67,11 @@ class ReleaseBuildTests(unittest.TestCase):
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
             self.assertEqual(set(public_payloads(root)), PUBLIC)
-            uncertain_doc = json.loads((root / 'public/scope-uncertain.json').read_text(encoding='utf-8'))
-            self.assertEqual(uncertain_doc['count'], 0)
-            self.assertEqual(uncertain_doc['items'], [])
+            self.assertFalse((root / 'public/scope-uncertain.json').exists())
+            worker_text = (root / 'public/_worker.js').read_text(encoding='utf-8')
+            self.assertNotIn('/* scope-uncertain-list */ null', worker_text)
+            self.assertIn('const SCOPE_UNCERTAIN_LIST = {"generatedAt":', worker_text)
+            self.assertNotIn(b'scope-uncertain', (root / 'public/public.js').read_bytes())
             self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
             self.assertNotIn(b'citation-export.js', (root / 'public/index.html').read_bytes())
             manifest = json.loads((root / 'docs/public-manifest.json').read_text())

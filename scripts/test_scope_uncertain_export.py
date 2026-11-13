@@ -196,10 +196,49 @@ class ScopeUncertainExportTests(unittest.TestCase):
             self.assertEqual(ids, frozenset({'hide-1', 'hide-2'}))
             self.assertEqual(dois, frozenset({'10.1000/h1'}))
 
-    def test_build_public_writes_uncertain_manifest_without_embedding_into_public_js(self):
+    def test_export_keeps_items_without_doi_for_manual_review(self):
+        papers = [
+            {
+                'id': 'no-doi-empty',
+                'doi': '',
+                'title': 'Hospital workflow consensus in general care',
+                'journal': 'JAMA',
+                'ingestedAt': '2026-11-12T04:00:00Z',
+            },
+            {
+                'id': 'no-doi-null',
+                'doi': None,
+                'title': 'General inpatient safety perspectives',
+                'journal': 'BMJ',
+                'ingestedAt': '2026-11-12T03:00:00Z',
+            },
+            {
+                'id': 'no-doi-missing',
+                'title': 'Outpatient care coordination review',
+                'journal': 'Lancet',
+            },
+        ]
+        # Force-keep is strictly DOI-based; an empty entry in keep_dois never force-keeps no-DOI papers.
+        out = build_scope_uncertain_list(
+            papers,
+            hidden_ids=set(),
+            hidden_dois=set(),
+            keep_dois={'', '   ', '10.1000/other-keep'},
+            generated_at='2026-11-13T08:00:00Z',
+        )
+        self.assertEqual(out['count'], 3)
+        self.assertEqual([item['id'] for item in out['items']], ['no-doi-empty', 'no-doi-null', 'no-doi-missing'])
+        for item in out['items']:
+            self.assertEqual(item['doi'], '')
+            self.assertEqual(item['reason'], 'uncertain_scope')
+
+    def test_public_package_does_not_include_scope_uncertain_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             synthetic_root(root)
+            # Even if an older state left public/scope-uncertain.json behind, build removes it.
+            (root / 'public').mkdir()
+            (root / 'public/scope-uncertain.json').write_text('{"stale":true}', encoding='utf-8')
             hides = json.loads((root / 'config/public_library_topic_hides.json').read_text(encoding='utf-8'))
             hidden_rec = next(r for r in hides['records'] if r.get('doi'))
             (root / 'data/candidates.json').write_text(json.dumps({
@@ -237,7 +276,15 @@ class ScopeUncertainExportTests(unittest.TestCase):
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
 
-            out = json.loads((root / 'public/scope-uncertain.json').read_text(encoding='utf-8'))
+            self.assertNotIn('scope-uncertain.json', builder.PUBLIC)
+            self.assertFalse((root / 'public/scope-uncertain.json').exists())
+            self.assertNotIn('scope-uncertain', (root / 'public/_headers').read_text(encoding='utf-8'))
+            worker_text = (root / 'public/_worker.js').read_text(encoding='utf-8')
+            self.assertNotIn('/* scope-uncertain-list */ null', worker_text)
+            prefix = 'const SCOPE_UNCERTAIN_LIST = '
+            suffix = '; // synthetic worker'
+            raw_json = worker_text.split(prefix, 1)[1].rsplit(suffix, 1)[0]
+            out = json.loads(raw_json)
             self.assertEqual(out['count'], 1)
             self.assertEqual(len(out['items']), 1)
             self.assertEqual(out['items'][0]['doi'], '10.1000/cand-unc-1')
@@ -246,6 +293,7 @@ class ScopeUncertainExportTests(unittest.TestCase):
             bundle = (root / 'public/public.js').read_text(encoding='utf-8')
             self.assertNotIn('scope-uncertain', bundle)
             self.assertNotIn('"uncertain_scope"', bundle)
+            self.assertNotIn('SCOPE_UNCERTAIN_LIST', bundle)
 
 
 if __name__ == '__main__':
