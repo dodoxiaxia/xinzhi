@@ -133,7 +133,7 @@ async function run() {
     h.values.set('library:muse-job:' + doi, original[doi] = JSON.stringify({version:1,id,doi,state,createdAt:created,updatedAt:created,queueKey}));
   });
   const paperOnly = '10.1000/paper-only';
-  h.values.set('library:paper:' + paperOnly, original[paperOnly] = JSON.stringify({version:1,paper:{id:'doi-' + hash(paperOnly).slice(0, 16),doi:paperOnly,title:'Paper without any task record',journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',ingestedAt:'2026-10-07T04:00:00.000Z',metadataStatus:'external_bibliography_checked',fulltextStatus:'manual_needed'}}));
+  h.values.set('library:paper:' + paperOnly, original[paperOnly] = JSON.stringify({version:1,paper:{id:'doi-' + hash(paperOnly).slice(0, 16),doi:paperOnly,title:'Paper without any task record',journal:'Heart',authors:[],date:'',datePrecision:'',dateBasis:'',ingestedAt:'2026-10-07T04:00:00.000Z',metadataStatus:'external_bibliography_checked',fulltextStatus:'manual_needed'}}));
   const legacy = '10.1000/legacy-job';
   h.values.set('library:job:' + legacy, original[legacy] = JSON.stringify({version:1,doi:legacy,state:'queued'}));
   const corrupt = '10.1000/corrupt';
@@ -144,13 +144,28 @@ async function run() {
   const skippedAll = await (await register(h, dsh, items)).json();
   assert.deepEqual(skippedAll.counts, {registered:0,skipped:items.length,overQuota:0,rejected:0});
   assert.deepEqual(skippedAll.results.map(r => r.state), ['to-download','failed-awaiting-fallback','failed-awaiting-fallback','failed-awaiting-fallback','confirmed-abandoned','no-task','legacy-task','unknown']);
-  assert.equal(h.writes.length, writesAtStart);
-  assert.deepEqual([...h.values], [...keysBefore]);
+  // No task, paper, queue or quota record is written for an existing DOI. The only write is the candidate index: a replay puts the
+  // tasks that belong in it (waiting, failed, login_required, review) back, which is what repairs a batch that was cut off.
+  const INDEX_KEY = 'library:machine-index:v1';
+  assert.deepEqual(h.writes.slice(writesAtStart).map(write => write.key), [INDEX_KEY]);
+  assert.deepEqual([...h.values].filter(([key]) => key !== INDEX_KEY), [...keysBefore].filter(([key]) => key !== INDEX_KEY));
+  assert.deepEqual(Object.keys(stored(h, INDEX_KEY).entries).sort(), ['10.1000/state.failed','10.1000/state.login_required','10.1000/state.queued','10.1000/state.review']);
   // an available paper reports done
   h.values.set('library:paper:10.1000/avail', JSON.stringify({version:1,paper:{id:'doi-' + hash('10.1000/avail').slice(0, 16),doi:'10.1000/avail',title:'Already available paper',journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',ingestedAt:'2026-10-07T04:00:00.000Z',metadataStatus:'external_bibliography_checked',fulltextStatus:'available'},pdf:{key:'library:pdf:' + 'a'.repeat(64),sha256:'a'.repeat(64),size:100000,source:'github'}}));
   const avail = await (await register(h, dsh, [item(0,{doi:'10.1000/avail'})])).json();
   assert.equal(avail.results[0].result, 'skipped');
   assert.equal(avail.results[0].state, 'done');
+
+  // ---- a registration cut off after the paper write (no job, no register record) is registered again; with a register record or a journal it is left alone
+  h = await create();
+  const halfPaper = doi => ({version:1,paper:{id:'doi-' + hash(doi).slice(0, 16),doi,title:'Synthetic registration title number 7',journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',ingestedAt:'2026-11-14T01:28:51.000Z',metadataStatus:'external_bibliography_checked',fulltextStatus:'manual_needed'}});
+  h.values.set('library:paper:10.1000/reg.7', JSON.stringify(halfPaper('10.1000/reg.7')));
+  h.values.set('library:paper:10.1000/reg.8', JSON.stringify(halfPaper('10.1000/reg.8')));
+  h.values.set('library:machine-register:10.1000/reg.8', JSON.stringify({version:1,doi:'10.1000/reg.8',title:'Synthetic registration title number 8',source:'x',section:'MAIN',registeredBy:'dsh',registeredAt:1,taskId:crypto.randomUUID()}));
+  const healed = await (await register(h, dsh, [item(7), item(8)])).json();
+  assert.deepEqual(healed.results.map(r => r.result + ':' + (r.state || '')), ['registered:to-download','skipped:no-task']);
+  assert.equal(stored(h, 'library:muse-job:10.1000/reg.7').state, 'queued');
+  assert(!h.values.has('library:muse-job:10.1000/reg.8'));
 
   // ---- batch limit: 50 ok, 51 rejected before any write
   h = await create();
@@ -207,14 +222,17 @@ async function run() {
   let failing = true;
   h = await create({putError:key => failing && key === 'library:muse-job:10.1000/reg.3'});
   await error(await register(h, dsh, [item(1), item(2), item(3), item(4)]), 503, 'library_storage');
-  assert.equal(stored(h, quotaKey('dsh', h)), 2);
+  // Items of one group are written in parallel, so the ones next to the failing DOI finish too; they are counted and indexed.
+  assert.equal(stored(h, quotaKey('dsh', h)), 3);
   assert(h.values.has('library:muse-job:10.1000/reg.2'));
   for (const key of ['library:muse-job:10.1000/reg.3','library:paper:10.1000/reg.3','library:attempt:10.1000/reg.3','library:machine-register:10.1000/reg.3']) assert(!h.values.has(key), key);
-  assert.equal([...h.values.keys()].filter(key => key.startsWith('library:muse-queue:')).length, 2);
+  assert.equal([...h.values.keys()].filter(key => key.startsWith('library:muse-queue:')).length, 3);
+  assert.deepEqual(Object.keys(stored(h, 'library:machine-index:v1').entries).sort(), ['10.1000/reg.1','10.1000/reg.2','10.1000/reg.4']);
   failing = false;
   const retry = await (await register(h, dsh, [item(1), item(2), item(3), item(4)])).json();
-  assert.deepEqual(retry.results.map(r => r.result), ['skipped','skipped','registered','registered']);
+  assert.deepEqual(retry.results.map(r => r.result), ['skipped','skipped','registered','skipped']);
   assert.equal(stored(h, quotaKey('dsh', h)), 4);
+  assert.equal(Object.keys(stored(h, 'library:machine-index:v1').entries).length, 4);
 
   // ---- protocol and registered metadata survive a requeue
   h = await create();

@@ -1055,9 +1055,18 @@ function machineRegisterItem(raw) {
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
   const raw = await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi);
-  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown'}; }
+  if (raw) { const job = museRecord(raw, doi); return {where:'ledger',state:job ? machinePublicState(job) : 'unknown',job}; }
   const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
-  if (record) { const paper = libraryPaper(record, doi); return {where:'paper',state:paper && paper.fulltextStatus === 'available' ? 'done' : 'no-task'}; }
+  if (record) {
+    const paper = libraryPaper(record, doi);
+    if (paper && paper.fulltextStatus === 'available') return {where:'paper',state:'done'};
+    // A registration cut off between the paper write and the job write leaves exactly this shape and no register record
+    // (written last): such a DOI was never queued, so it is registered again instead of being skipped for good.
+    const halfWritten = !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
+      && Array.isArray(paper.authors) && !paper.authors.length && paper.metadataStatus === 'external_bibliography_checked'
+      && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
+    if (!halfWritten) return {where:'paper',state:'no-task'};
+  }
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
@@ -1083,11 +1092,15 @@ async function machineRegisterOne(env, caller, item, changes) {
     throw error;
   }
   // KV is not atomic: if another writer created the ledger entry first, report skipped and leave their record alone.
-  // The index entry is recorded once per batch (see handleMachineRegister), only for a task that was really written.
+  // The index entry is saved after each group of the batch (see handleMachineRegister).
   changes.push(...local);
   const observed = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + item.doi), item.doi);
   return observed && observed.id === id;
 }
+// A batch is written in groups of MACHINE_REGISTER_GROUP DOIs, each group in parallel. After every group the index
+// entries and the daily quota count are saved, so a request cut off by the client (a 60 second curl timeout) loses at
+// most one group's bookkeeping instead of the whole batch; the next claim or list puts those few back (museIndexHeal).
+const MACHINE_REGISTER_GROUP = 5;
 async function handleMachineRegister(request, env) {
   // Exempt from librarySoftGate. Only a downloader may register; the daily budget counts newly registered DOIs per caller.
   try {
@@ -1101,27 +1114,58 @@ async function handleMachineRegister(request, env) {
     const limit = machineLimit(env, 'MACHINE_REGISTER_DAILY_LIMIT', MACHINE_REGISTER_DAILY_DEFAULT);
     const usedBefore = await libraryGet(env.QL_KV, machineRateKey(caller, 'register'));
     const used = Number.isInteger(usedBefore) && usedBefore >= 0 ? usedBefore : 0;
-    const results = [], seen = new Set(), changes = [];
-    let registered = 0, failure = null;
+    const results = new Array(input.items.length), seen = new Set(), changes = [], todo = [];
+    let registered = 0, consumed = 0, failure = null;
+    // Validation and in-batch duplicates need no storage access; they are settled first, in input order.
+    input.items.forEach((raw, n) => {
+      const item = machineRegisterItem(raw);
+      if (item.error) { results[n] = {doi:item.doi || null,result:'rejected',error:item.error}; return; }
+      if (seen.has(item.doi)) { results[n] = {doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}; return; }
+      seen.add(item.doi);
+      todo.push({n,item});
+    });
+    // Save this batch's index entries and quota count so far. A failure keeps the unsaved entries for the next attempt.
+    const flush = async () => {
+      const pending = changes.slice(), fresh = registered - consumed;
+      let error = null;
+      try {
+        // Read the index back; entries a concurrent writer overwrote are written again. Still missing after three rounds: the client retries (idempotent).
+        const missing = await museIndexApplyVerified(env, pending);
+        if (missing) libraryFail('library_sync_pending', 503);
+        changes.splice(0, pending.length);
+      } catch (e) { error = e; }
+      try { if (fresh > 0) { await machineConsume(env, caller, 'register', fresh); consumed += fresh; } } catch (e) { error = error || e; }
+      if (error) throw error;
+    };
     try {
-      for (const raw of input.items) {
-        const item = machineRegisterItem(raw);
-        if (item.error) { results.push({doi:item.doi || null,result:'rejected',error:item.error}); continue; }
-        if (seen.has(item.doi)) { results.push({doi:item.doi,result:'skipped',reason:'duplicate_in_batch'}); continue; }
-        seen.add(item.doi);
-        const existing = await machineRegisterExisting(env, item.doi);
-        if (existing) { results.push({doi:item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where}); continue; }
-        if (used + registered >= limit) { results.push({doi:item.doi,result:'over_quota'}); continue; }
-        if (await machineRegisterOne(env, caller, item, changes)) { registered++; results.push({doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}); }
-        else results.push({doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'});
+      for (let g = 0; g < todo.length; g += MACHINE_REGISTER_GROUP) {
+        const group = todo.slice(g, g + MACHINE_REGISTER_GROUP);
+        const found = await Promise.all(group.map(entry => machineRegisterExisting(env, entry.item.doi)));
+        const fresh = [];
+        group.forEach((entry, k) => {
+          const existing = found[k];
+          if (existing) {
+            results[entry.n] = {doi:entry.item.doi,result:'skipped',reason:'exists',state:existing.state,where:existing.where};
+            // A replay after a cut-off batch must also put the task back into the index: the record wins, nothing else is written.
+            if (existing.job) changes.push({doi:entry.item.doi,entry:museIndexEntry(existing.job)});
+          } else if (used + registered + fresh.length >= limit) results[entry.n] = {doi:entry.item.doi,result:'over_quota'};
+          else fresh.push(entry);
+        });
+        const outcomes = await Promise.allSettled(fresh.map(entry => machineRegisterOne(env, caller, entry.item, changes)));
+        fresh.forEach((entry, k) => {
+          const outcome = outcomes[k], item = entry.item;
+          if (outcome.status === 'rejected') { failure = failure || outcome.reason; return; }
+          if (outcome.value) { registered++; results[entry.n] = {doi:item.doi,result:'registered',state:'to-download',section:item.section,source:item.source}; }
+          else results[entry.n] = {doi:item.doi,result:'skipped',reason:'exists',state:'unknown',where:'ledger'};
+        });
+        if (failure) break;
+        await flush();
       }
-    } catch (error) { failure = error; }
+    } catch (error) { failure = failure || error; }
     // Count what really got written, even when a later item failed; a retry then sees those DOIs as skipped.
-    // The candidate index gets the whole batch in one write.
-    try { await museIndexApply(env, changes); } catch (error) { failure = failure || error; }
-    await machineConsume(env, caller, 'register', registered);
+    try { await flush(); } catch (error) { failure = failure || error; }
     if (failure) throw failure;
-    const count = name => results.filter(entry => entry.result === name).length;
+    const count = name => results.filter(entry => entry && entry.result === name).length;
     return json({ok:true,counts:{registered,skipped:count('skipped'),overQuota:count('over_quota'),rejected:count('rejected')},results,
       quota:{limit,used:used + registered,remaining:Math.max(0, limit - used - registered),resetsAt:new Date(Date.parse(new Date().toISOString().slice(0, 10)) + 86400000).toISOString()}});
   } catch (error) { return machineError(error); }
