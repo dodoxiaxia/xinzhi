@@ -64,10 +64,11 @@ async function run() {
   assert.equal(empty.result.headers.get('retry-after'), '300');
   const emptyBody = await empty.result.json();
   assert.equal(emptyBody.ok, true); assert.equal(emptyBody.task, null); assert.equal(emptyBody.retryAfterSeconds, 300);
-  assert.deepEqual([empty.lists, empty.reads, empty.writes], [0, 1, 0]);
+  // Empty claim: one index read plus one stats-key read and one stats-key write (same UTC-day JSON document).
+  assert.deepEqual([empty.lists, empty.reads, empty.writes], [0, 2, 1]);
   const emptyFailed = await measure(h, () => call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'}));
   assert.equal((await emptyFailed.result.json()).task, null);
-  assert.deepEqual([emptyFailed.lists, emptyFailed.reads, emptyFailed.writes], [0, 1, 0]);
+  assert.deepEqual([emptyFailed.lists, emptyFailed.reads, emptyFailed.writes], [0, 2, 1]);
   const emptyRequeue = await measure(h, () => call(h, '/api/machine/requeue', dsh, {dryRun:true}));
   assert.equal((await emptyRequeue.result.json()).requeued.length, 0);
   assert.equal(emptyRequeue.lists, 0); assert(emptyRequeue.reads <= 2);
@@ -85,7 +86,7 @@ async function run() {
   for (const [state, token] of [['to-download', dsh], ['failed-awaiting-fallback', fallback]]) {
     const steady = await measure(h, () => call(h, '/api/machine/claim', token, {state}));
     assert.equal((await steady.result.json()).task, null);
-    assert.deepEqual([steady.lists, steady.reads], [0, 1]);
+    assert.deepEqual([steady.lists, steady.reads, steady.writes], [0, 2, 1]);
   }
 
   // ---- one-time backfill over several requests, bounded per request; lists and requests wait until it is complete
@@ -114,7 +115,7 @@ async function run() {
   assert(requests > 1 && requests <= 6, 'a 1000-key ledger is rebuilt in a few requests: ' + requests);
   const total = {lists:h.lists.length,reads:h.reads.length,writes:h.writes.length};
   assert.equal(total.lists, 10, '1000 keys at 100 per page');
-  assert.equal(total.reads, 1000 + 2 * requests, 'one record read per key, plus two index reads per backfill request');
+  assert.equal(total.reads, 1000 + 2 * requests + steps.length, 'one record read per key, two index reads per backfill request, plus one stats-key read per claim');
   const done = stored(h, INDEX);
   assert.equal(Object.keys(done.entries).length, 10, 'only the ten queued tasks are candidates');
   const after = await measure(h, () => call(h, '/api/machine/tasks?state=to-download&limit=50', reader, null, 'GET'));

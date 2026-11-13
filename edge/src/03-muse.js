@@ -276,8 +276,13 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (!stored) libraryFail('muse_sync_pending',503);
   if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== sha256) libraryFail('library_integrity',502);
   const now = Date.now(), id = crypto.randomUUID(), callerName = machineCallerSource(source) ? source : '';
+  // Keep the claim identity and start time on the new verifying/done record so duration can be read later.
+  const inherited = {};
+  if (previous && typeof previous.claimant === 'string' && previous.claimant) inherited.claimant = previous.claimant;
+  if (previous && Number.isSafeInteger(previous.acquisitionStartedAt) && previous.acquisitionStartedAt > 0) inherited.acquisitionStartedAt = previous.acquisitionStartedAt;
+  if (previous && previous.registration) inherited.registration = previous.registration;
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
-    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...extra};
+    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
   await musePut(env,job);
   await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
   if (previous) await museDelete(env,previous.queueKey);
