@@ -45,7 +45,7 @@ Actions 中使用 `node scripts/test_doi_library_ui.cjs --helpers-only` 运行�
 
 以下是独立任务 `01a1152b-e819-73bf-9934-bf37086780f5` 的队列设计，不是已上线运行状态。PR6 / main `12701e17` 在更新 `xinzhi-cron` 时遭遇“ No access to the specified service ”，Pages/state 均 skipped。v14.2.1 候选移除 daily-refresh 中的调度器部署步骤，保留既有 Pages 发布权限和日更调度；不修改或部署现网 Cloudflare 调度器。原 daily 兜底仍不得被本候选悄然替换。
 
-提交后立即保存 `library:job:` 任务及 `library:queue:` 指针，不等待外部文献源。仓库里的 `workers/cron-dispatch` 源码仍读取只含有无任务信号的 `/api/fulltext-pending`，仅在有待执行任务且没有正在运行的下载工作流时派发 `fulltext.yml`（派发正文仍是 `{ref:'main'}`，不带 mode）。定时表达式已与线上对齐为 `7 */2 * * *`；Actions 不部署这个 Worker，合并不会改线上定时器。空队列不启动 GitHub runner；也可在 GitHub Actions 手动运行。实际启动可能延迟。每批最多 5 篇，工作流串行执行，不与网站日更共享并发组。
+提交后立即保存 `library:job:` 任务及 `library:queue:` 指针，不等待外部文献源。下面这句是当时未启用的队列方案，不是当前源码：方案曾打算让 Cloudflare `xinzhi-cron` 读取 `/api/fulltext-pending`，再触发 `fulltext.yml`。仓库里的 `workers/cron-dispatch` 已与线上脚本对齐：`7 */2 * * *` 派发 `daily.yml`（正文 `{ref:'main', inputs:{mode:'fast'}}`），不再先查 `/api/fulltext-pending`，也不再派发 `fulltext.yml`；Actions 不部署这个 Worker，合并不会改线上定时器。全文工作流仍可在 GitHub Actions 手动运行。实际启动可能延迟。每批最多 5 篇，工作流串行执行，不与网站日更共享并发组。
 
 任务状态为排队、获取中、已取得全文、无可用全文、需核验或失败。获取页每 15 秒通过 GET 更新；原网站精确 DOI 搜索也只读轮询，在页面隐藏时暂停，返回后恢复，连续轮询最多 1 小时。关闭页面不取消任务。取得文件后沿用题录合并、文件校验和口令下载接口；补录不改既有题录 ID、已审日期、HOLD、导读或医生审核字段。
 
