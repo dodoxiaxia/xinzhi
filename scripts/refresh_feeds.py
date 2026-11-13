@@ -24,6 +24,9 @@ from scope_filter import scope_decision
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BYTES = 3_000_000
+# Feeds added from the repository (the library catalogue lives in the private state branch).
+EXTRA_FEEDS_PATH = ROOT / 'config/extra_feeds.json'
+EXTRA_FALLBACK_CATEGORIES = frozenset({'心血管', 'AI医疗', '综合医学'})
 WINDOW_DAYS = 14
 PILOT = ['BMJ Digital Health & AI current issue', 'Heart Online First', 'Nature Medicine',
          'NPJ Digital Medicine', 'Nature Reviews Cardiology', 'JAMA Cardiology Online First',
@@ -459,6 +462,10 @@ def parse_feed(raw, source, *, checked_at=None):
         description = abstract['summary']
         abstracts += bool(description) and abstract.get('abstractStatus') != 'unverified'
         category = classify(title, source['name'])
+        if category == '待分类' and source.get('fallbackCategory') in EXTRA_FALLBACK_CATEGORIES:
+            # Specialty journals declared in config/extra_feeds.json whose name carries no
+            # classifier keyword (e.g. "Atherosclerosis"); the scope filter still applies below.
+            category = source['fallbackCategory']
         if category == '待分类':
             continue
         ids = feed_identifiers(entry)
@@ -510,10 +517,52 @@ def parse(raw, source):
     return parse_feed(raw, source)['items']
 
 
-def select_sources(library, *, all_sources=False):
+def source_id(url):
+    """Same id rule as build_data.py: first 12 hex of the endpoint URL's sha256."""
+    return hashlib.sha256(url.encode()).hexdigest()[:12]
+
+
+def extra_sources(known_urls=(), path=None):
+    """Enabled feeds from config/extra_feeds.json, deduplicated by URL against the catalogue.
+
+    The catalogue (data/library.json) is restored from the state branch, so feeds that
+    must survive a catalogue rebuild are declared here. A missing file means no extras;
+    a malformed one raises rather than silently dropping sources."""
+    path = path or EXTRA_FEEDS_PATH
+    if not path.is_file():
+        return []
+    rows = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(rows, list):
+        raise ValueError('extra_feeds.json must be a list')
+    seen, out = set(known_urls), []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError('extra_feeds.json: each feed must be an object')
+        url, name = row.get('url', ''), row.get('name', '')
+        if not name or urlsplit(url).scheme != 'https' or has_credentials(url):
+            raise ValueError('extra_feeds.json: every feed needs a name and a credential-free https url')
+        fallback = row.get('fallbackCategory')
+        if fallback is not None and fallback not in EXTRA_FALLBACK_CATEGORIES:
+            raise ValueError('extra_feeds.json: unknown fallbackCategory for ' + name)
+        if url in seen or row.get('enabled') is not True:
+            continue
+        seen.add(url)
+        entry = {'id': source_id(url), 'name': name, 'url': url, 'originalUrl': url,
+                 'category': row.get('category', '待分类'), 'sourceType': row.get('sourceType', '出版商/学术平台'),
+                 'enabled': True, 'origin': 'config/extra_feeds.json'}
+        if fallback:
+            entry['fallbackCategory'] = fallback
+        out.append(entry)
+    return out
+
+
+def select_sources(library, *, all_sources=False, extra_path=None):
     # Health is observational evidence. It never permanently removes a source.
-    return [source for source in library['feeds'] if (source.get('enabled') is True or source['name'] == 'OpenAI News')
-            and (all_sources or source['name'] in PILOT)]
+    chosen = [source for source in library['feeds'] if (source.get('enabled') is True or source['name'] == 'OpenAI News')
+              and (all_sources or source['name'] in PILOT)]
+    if all_sources:
+        chosen += extra_sources({source['url'] for source in library['feeds']}, extra_path)
+    return chosen
 
 
 def _report(source, **fields):
