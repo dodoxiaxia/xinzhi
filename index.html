@@ -47,7 +47,7 @@
         <button class="nav-tab-btn" data-mode="candidates">文献雷达 <span class="badge" id="candCountBadge">0</span></button>
         <button class="nav-tab-btn" data-mode="library">文献库 <span class="badge" id="libCountBadge">0</span></button>
       </nav>
-
+      <button type="button" class="tool-btn search-toggle" id="searchToggleBtn" aria-label="搜索" aria-expanded="false" aria-controls="searchPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
     </div>
   </header>
 
@@ -59,14 +59,20 @@
         <button type="button" class="search-clear" data-clear="search" aria-label="清除搜索">&times;</button>
       </div>
     </div>
-    <div class="tool-row" id="toolRow">
-      <button type="button" class="tool-btn search-toggle" id="searchToggleBtn" aria-label="搜索" aria-expanded="false" aria-controls="searchPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
+    <div class="tool-row" id="toolRow" hidden>
       <div id="streamLaneSlot"><div class="lane-bar" id="laneBar" role="group" aria-label="内容分类"></div></div>
       <div class="lane-bar range-bar" id="rangeBar" role="group" aria-label="发表时间" hidden></div>
       <div class="lane-bar range-bar" id="ftBar" role="group" aria-label="全文状态" hidden></div>
-      <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" aria-expanded="false" aria-controls="appSidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">筛选</span></button>
+      <button class="btn-sm filter-toggle-btn" id="filterToggleBtn" hidden aria-expanded="false" aria-controls="appSidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="filter-label">筛选</span></button>
     </div>
+    <div class="quick-bar" id="quickBar" hidden>
+      <button type="button" class="qf-scope" id="qfScopeBtn" hidden aria-haspopup="dialog" aria-label="领域与时间"></button>
+      <div class="qf-chips" id="qfChipRow" role="toolbar" aria-label="快捷筛选"></div>
+    </div>
+    <div class="qf-summary" id="qfSummary" hidden></div>
   </div>
+  <div class="qf-backdrop" id="qfBackdrop" hidden></div>
+  <div class="qf-pop" id="qfPop" hidden role="dialog" aria-modal="true" aria-label="筛选"></div>
 
   <!-- App Main Layout -->
   <div class="app-container">
@@ -203,10 +209,9 @@
     </div>
 
     <div class="drawer-footer">
-
       <button class="text-btn" id="drawerCopyShareBtn">微信群文案</button>
-      <button class="text-btn" id="drawerHuddleToggleBtn">加入精选清单</button>
-      <a href="#" target="_blank" rel="noopener" class="text-btn" id="drawerExternalLink">官网原文 ↗</a>
+      <button type="button" class="card-icon-btn card-star" id="drawerHuddleToggleBtn" aria-pressed="false" aria-label="加入精选" title="加入精选"></button>
+      <a href="#" target="_blank" rel="noopener" class="text-btn card-source" id="drawerExternalLink" title="在期刊官网打开原文">官网<span aria-hidden="true">&thinsp;↗</span></a>
       <a href="https://login.emedien3.sub.uni-hamburg.de/han/ScienceDirectElsevierJournalBackfiles" target="_blank" rel="noopener noreferrer" class="text-btn" id="drawerInstitutionLoginLink" title="如需登录先打开此入口；登录页未出现时可再点击一次，在新标签打开" hidden>汉堡登录入口 ↗</a>
       <a href="#" target="_blank" rel="noopener noreferrer" class="text-btn" id="drawerInstitutionLink" title="需在打开的浏览器中正常登录汉堡机构入口" hidden>通过汉堡访问 ↗</a>
     </div>
@@ -266,6 +271,7 @@
   <script src="data/curated.js"></script>
   <script src="data/quicklooks.js"></script>
   <script src="citation-export.js"></script>
+  <script src="journal-tiers.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

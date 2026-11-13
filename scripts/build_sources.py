@@ -20,7 +20,7 @@ BUNDLES = {'app.js': 'src/app', 'edge/_worker.js': 'edge/src'}
 
 
 def parts(root, directory):
-    files = sorted(p for p in (Path(root) / directory).glob('*.js') if p.is_file())
+    files = sorted(p for p in (Path(root) / directory).glob('*.js') if p.is_file() and p.name != 'journal-tiers.js')
     if not files:
         raise ValueError('No source parts in ' + directory)
     return files

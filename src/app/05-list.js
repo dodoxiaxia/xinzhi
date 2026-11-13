@@ -4,50 +4,42 @@
   function renderArticleCard(p) {
     const isHuddled = state.huddle.includes(p.id);
     const pubClass = getPublisherClass(p.publisher);
-    const journalName = p.cleanJournal || p.journal || '期刊';
+    const journalName = cardJournalName(p);
     const dateStr = dateLabel(p);
 
     const titleEn = esc(p.title);
-    const titleZh = p.draftData?.title_zh ? esc(p.draftData.title_zh) : '';
+    const reviewedZh = p.draftData?.title_zh || '';
+    const machineZh = !p.hasDraft ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
+    const zh = reviewedZh || machineZh;
+    const pid = esc(p.id);
 
-    const qlc = quicklookOf(p);
-    // One calm card: journal and date, one title (the Chinese title when there is one), one status, the actions.
-    // Everything else (impact factor, study type, tags, abstract, evidence limits, second links) lives in the reader.
-    const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
-    const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
-    const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
-      : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
+    const titleBlock = `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${pid}">${zh ? esc(zh) : titleEn}</button></h3>`;
 
-    // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
-    const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
-    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
-    // The English title comes back when an English search hit it.
+    // 有中文标题时，英文原题作为一行弱化副标题；英文检索命中时完整显示
     const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
-    const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
-    const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
+    const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
+    const enLine = zh ? `<p class="article-title-en${enHit ? ' is-hit' : ''}" lang="en" title="${titleEn}">${titleEn}</p>` : '';
 
-    const sourceUrl = officialArticleUrl(p);
+    const gist = p.hasDraft ? (p.draftData?.summary || '') : (quicklookOf(p)?.one_line || '');
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
+
     const doiBlock = doiStatusBlock(p);
+
     return `
-      <article class="article-card has-side-actions" data-paper-id="${esc(p.id)}">
+      <article class="article-card has-side-actions" data-paper-id="${pid}">
         <div class="card-main">
           <div class="card-top">
             <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
-            <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+            <span class="date-badge">${esc(dateStr)}</span>
+            ${designBadgeHtml(p)}
           </div>
-
           ${publicationStatusHtml(p)}
           ${titleBlock}
           ${enLine}
           ${gistHtml}
         </div>
 
-        <div class="card-side-actions" role="group" aria-label="操作">
-          ${pdfDownloadLink(p)}
-          <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-          ${sourceUrl && !doiBlock ? `<a class="text-btn" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
-        </div>
+        ${cardSideActionsHtml(p)}
         ${doiBlock}
       </article>
     `;
@@ -55,38 +47,28 @@
 
   // Render Compact Row
   function renderCompactRow(p) {
-    const isHuddled = state.huddle.includes(p.id);
     const pubClass = getPublisherClass(p.publisher);
-    const designClass = getDesignClass(p.studyDesign);
-    const journalName = p.cleanJournal || p.journal || '期刊';
+    const journalName = cardJournalName(p);
     const dateStr = dateLabel(p);
-    const doiUrl = officialArticleUrl(p) || '#';
-    const draftTitle = p.draftData?.title_zh || '';
-    const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
-    const title = draftTitle
-      ? `[导读] ${esc(draftTitle)}`
-      : machineZh
-        ? esc(machineZh)
-        : esc(p.title);
+    const pid = esc(p.id);
+    const titleEn = esc(p.title);
+    const zh = p.draftData?.title_zh || (!p.hasDraft ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '');
+    const doiBlock = doiStatusBlock(p);
 
     return `
-      <div class="compact-row" data-paper-id="${esc(p.id)}">
+      <div class="compact-row" data-paper-id="${pid}">
         <div class="compact-main">
-          <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${title}</button>
+          <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${pid}" title="${titleEn}">${zh ? esc(zh) : titleEn}</button>
+          ${zh ? `<p class="article-title-en" lang="en" title="${titleEn}">${titleEn}</p>` : ''}
           ${publicationStatusHtml(p)}
-          ${doiStatusBlock(p)}
+          ${doiBlock}
           <div class="compact-meta">
             <span class="journal-badge ${pubClass}" title="${esc(journalName)}">${esc(journalName)}</span>
-            <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+            <span class="date-badge">${esc(dateStr)}</span>
+            ${designBadgeHtml(p)}
           </div>
         </div>
-        <div class="compact-actions">
-          ${pdfDownloadLink(p)}
-          <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-          ${doiStatusBlock(p) ? '' : doiUrl!=='#' ? `<a class="text-btn" href="${esc(doiUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : '<span class="text-muted" title="原文链接待补">—</span>'}
-          <button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">阅读摘要</button>
-          ${p.hasDraft ? `<button class="btn-sm btn-share" data-action="share-wechat" data-paper-id="${esc(p.id)}" title="复制微信文案">文案</button>` : ''}
-        </div>
+        ${cardSideActionsHtml(p)}
       </div>
     `;
   }

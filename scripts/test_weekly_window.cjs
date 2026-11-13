@@ -10,7 +10,11 @@ let node={innerHTML:'',querySelector:()=>null};
 const ctx=vm.createContext({Date:FixedDate,Intl,$:()=>node,FEEDS:{items:[]},state:{huddle:[],search:''},queryMatches:(text,q)=>text.includes(q),
  esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
  contentDate:value=>value,quicklookOf:()=>null,getPublisherClass:()=>'',getDesignClass:()=>'',hasAbstract:()=>true,
- journalMetricBadge:()=>'',dailyReadingList:()=>[],preGeneratedOf:()=>null,validTranslation:tr=>!!tr?.abstract_zh,LIVE_TR:{},trKeyOf:()=>''});
+ journalMetricBadge:()=>'',dailyReadingList:()=>[],preGeneratedOf:()=>null,validTranslation:tr=>!!tr?.abstract_zh,LIVE_TR:{},trKeyOf:()=>'',
+ cardTakeaway:p=>(p&&(p.takeaway||p.brief||(p.draftData&&p.draftData.summary)))||'',
+ cardJournalName:p=>(p&&(p.cleanJournal||p.journal))||'',
+ cardSideActionsHtml:p=>'<div class="card-side-actions" role="group" aria-label="操作"><button type="button" class="card-icon-btn card-star" data-action="toggle-huddle" data-paper-id="'+(p&&p.id||'')+'" aria-label="加入精选" title="加入精选">☆</button></div>',
+ publicationStatusHtml:()=>'',officialArticleUrl:()=>'',doiStatusBlock:()=>'',pdfDownloadLink:()=>''});
 const designStart=src.indexOf('  // Study design badge class');
 const designEnd=src.indexOf('  //',designStart+5);
 vm.runInContext(src.slice(designStart,designEnd),ctx);
@@ -60,9 +64,9 @@ eq(ctx.designBadgeHtml({studyDesign:'RCT',hasDraft:true,draftData:{source_checke
 eq(html.includes('<span class="date-badge">2026-10-01</span>'),true,'display normalized publication date');
 eq(html.includes('榜单更新于 2026-10-06T00:00:00Z'),true,'pick metadata wins over fresher source');
 eq(html.includes('更新已超过 6 小时，时效待确认'),true,'six-hour stale board warning');
-eq(html.includes('阅读原摘要'),true,'original reader button preserved');
+eq(html.includes('data-action="open-drawer"'),true,'weekly card title still opens the reader');
 eq(html.includes('阅读摘要 · 中英对照'),false,'missing translation is not advertised as bilingual');
-eq(html.includes('加入精选清单'),true,'saved selection button preserved with updated visible name');
+eq(html.includes('data-action="toggle-huddle"')&&html.includes('加入精选'),true,'saved selection control remains on the weekly card');
 eq(html.includes('weekly-prep-note'),false,'no per-card missing AI placeholder');
 eq(html.includes('中文摘要 0/1'),true,'missing translation coverage is still transparently reported once');
 html=render([paper('2026-10-07',{weeklyAt:'2026-10-06T20:00:00Z'})]);
