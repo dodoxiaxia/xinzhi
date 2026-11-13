@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "baseline": [
+    "docs/screenshots/**",
+    "docs/manual-assets/*",
+    "docs/使用说明.pdf",
+    "scripts/fixtures/machine-identity/*.pdf",
+    "icon.png"
+  ],
+  "added_allow": [
+    "scripts/fixtures/machine-identity/*.pdf",
+    "icon.png"
+  ],
+  "allow": [
+    {
+      "check": "secrets",
+      "path": "docs/archive/history/20261001-同步前-其他Agent维护交接.md",
+      "reason": "历史交接中的外部资源定位符，不是认证凭据；保留历史证据。",
+      "line_regex": "1TKp"
+    },
+    {
+      "check": "secrets",
+      "path": "docs/archive/history/20261002-维护前/其他Agent维护交接.md",
+      "reason": "历史交接中的外部资源定位符，不是认证凭据；保留历史证据。",
+      "line_regex": "1TKp"
+    },
+    {
+      "check": "secrets",
+      "path": "docs/archive/history/20261003-维护前/其他Agent维护交接.md",
+      "reason": "历史交接中的外部资源定位符，不是认证凭据；保留历史证据。",
+      "line_regex": "1TKp"
+    },
+    {
+      "check": "secrets",
+      "path": "docs/archive/history/20261004-维护前/其他Agent维护交接.md",
+      "reason": "历史交接中的外部资源定位符，不是认证凭据；保留历史证据。",
+      "line_regex": "1TKp"
+    },
+    {
+      "check": "secrets",
+      "path": "docs/archive/history/20261005-维护前/其他Agent维护交接.md",
+      "reason": "历史交接中的外部资源定位符，不是认证凭据；保留历史证据。",
+      "line_regex": "1TKp"
+    },
+    {
+      "check": "hex32",
+      "path": "docs/archive/journal-public-batch6-report-20261007.json",
+      "reason": "历史批次审计记录的原始标识，保留历史证据。",
+      "line_regex": "8275"
+    },
+    {
+      "check": "secrets",
+      "path": "edge/_worker.js",
+      "reason": "Base64 编码字母表常量，不是随机凭据。",
+      "line_regex": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    },
+    {
+      "check": "secrets",
+      "path": "edge/src/00-header-pdf.js",
+      "reason": "Base64 编码字母表常量，不是随机凭据。",
+      "line_regex": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    },
+    {
+      "check": "secrets",
+      "path": "scripts/test_d1_kv_reconcile.py",
+      "reason": "测试用哨兵字符串，用于断言敏感值不会输出。",
+      "line_regex": "present_secret ="
+    },
+    {
+      "check": "secrets",
+      "path": "scripts/test_doi_library_worker.cjs",
+      "reason": "测试中的动态认证表达式，值由合成环境提供。",
+      "line_regex": "baseEnv.GITHUB_LIBRARY_TOKEN"
+    },
+    {
+      "check": "secrets",
+      "path": "scripts/test_pdf_worker.cjs",
+      "reason": "Base64 编码字母表常量，不是随机凭据。",
+      "line_regex": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    },
+    {
+      "check": "secrets",
+      "path": "scripts/test_public_library_quality.py",
+      "reason": "测试中明确命名的 fixture 占位凭据。",
+      "line_regex": "fixture-private-credential"
+    },
+    {
+      "check": "ui-banned-labels",
+      "path": "src/app/03-ai.js",
+      "reason": "现有研究结构复制文本；本任务仅登记既有文案，不改 UI。",
+      "line_regex": "study|公开摘要研究结构"
+    }
+  ]
+}

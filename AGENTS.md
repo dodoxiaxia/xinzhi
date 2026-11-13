@@ -91,18 +91,20 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 
 ## 4. 约定与禁区
 
-- **公开仓库**：不提交口令、API key、token、Cookie、个人邮箱、内部文档 ID/链接、私人索引原始文件或未授权全文。已经进入历史的内容删不掉，提交前先检查 diff。
-- **PDF 下载口令**只存在于 Cloudflare Secret `PDF_DOWNLOAD_PASSPHRASE`。代码、测试、文档、提交信息里都不写口令值；测试用明显的假值。其他凭据（`LLM_API_KEY`、`GITHUB_LIBRARY_TOKEN`、GitHub Actions 的 `XINZHI_LLM_API_KEY`、`CLOUDFLARE_API_TOKEN` 等）同理，只在 Cloudflare/GitHub 的 Secret 中配置。
-- **站上不显示“未经人工核对 / 未经人工审核 / 未经医生终审”这类标签**（Donald 2026-11-13 的决定）。AI 速览、机器翻译、AI 综述、AI 全文精读的卡片、列表、阅读台里都不再带这类标签或提示句；AI 速览小节的标题只写“速览”。AI 结果仍然不能显示成“已核对导读”（只有对照公开摘要核对过的才叫“已核对导读”）。
+- **公开仓库**：不提交口令、API key、token、Cookie、个人邮箱、内部文档 ID/链接、私人索引原始文件或未授权全文。已经进入历史的内容删不掉，提交前先检查 diff。密钥样式字符串、32 位十六进制 ID、禁用词由 `check_guardrails.py` 的 `secrets`、`hex32`、`banned-words` 检查保证；检查抓不到的内部链接和个人信息仍靠人。
+- **凭据只在 Secret 里**：PDF 下载口令是 Cloudflare Secret `PDF_DOWNLOAD_PASSPHRASE`，其他凭据（`LLM_API_KEY`、`GITHUB_LIBRARY_TOKEN`、`XINZHI_LLM_API_KEY`、`CLOUDFLARE_API_TOKEN` 等）同理。代码、测试、文档、提交信息里不写值，测试用明显的假值。
+- **站上不显示“未经人工核对”类标签**（Donald 2026-11-13 的决定；由 `ui-banned-labels` 检查保证）。AI 速览小节的标题只写“速览”。AI 结果仍然不能显示成“已核对导读”（只有对照公开摘要核对过的才叫“已核对导读”）。
 - **不要用旧导入脚本覆盖公开题录**：`scripts/build_data.py`、`service/import_data.py` 等早期导入工具不能用来重建文献库。文献库只能通过审核后的快照（`editorial/public_library_snapshot.json` + manifest，由 `apply_public_library.py` 应用）更新，构建守卫会阻止旧状态覆盖已批准条目。也不要恢复旧前端模板。
-- **公开文件白名单**：只发布第 1 节列出的 9 个固定文件，以及 `shards/readings-年-月.内容哈希.js` 这种全文精读分片。不上传 PDF、数据库、`.local/`、凭据或内部记录。
-- **`app.js` 与 `edge/_worker.js` 是拼接产物**：源码在 `src/app/*.js` 与 `edge/src/*.js`（按文件名顺序逐字拼接）。改源文件后运行 `python3 scripts/build_sources.py`，并把拼接结果一起提交；不要直接编辑 `app.js` 或 `_worker.js`（`build_public.py` 与测试会检查两者是否一致）。
+- **公开文件白名单**：只发布第 1 节列出的 9 个固定文件，以及 `shards/readings-年-月.内容哈希.js` 分片；已审文献 ID 不得进入 Worker，Worker 新增的构建期注入必须先登记（`public-ids` 检查保证）。
+- **`app.js` 与 `edge/_worker.js` 是拼接产物**：改 `src/app/*.js`、`edge/src/*.js` 后运行 `python3 scripts/build_sources.py` 并一起提交，不要直接编辑拼接结果（`sources-fresh` 检查保证两者一致）。
 - **界面只有一套风格 + 深浅色**：「临床期刊」风格（`data-style="a"` 固定），旧链接里的 `?style=` 会被忽略。筛选区为「领域 + 时间 + 搜索」常显，其余在「更多筛选」里；期刊只有出版方/期刊树一个入口。
-- **改界面要同步更新 UI 测试**：改 `index.html`、`src/app/`、`style.css` 时，运行浏览器测试，并在同一提交里更新失效的断言（保持断言原意）。
+- **改界面要同步更新 UI 测试和功能地图**：改 `index.html`、`src/app/`、`style.css` 时，运行浏览器测试，并在同一提交里更新失效的断言（保持断言原意）；新增或改动的控件、状态登记到 [docs/feature-map.json](docs/feature-map.md)，`node scripts/feature_map_walk.cjs --viewport all` 会按地图逐项核对。
+- **界面 PR 要附验证产物**：运行 `node scripts/ui_evidence.cjs` 生成三个宽度的截图和关键交互录屏（输出在仓库外），把位置填进 [PR 模板](.github/pull_request_template.md)；不要把截图、录屏、PDF 提交进仓库（`forbidden-files` 检查保证）。
 - **维护者模式**：汉堡菜单（登录、按 DOI 获取全文等）只对维护者显示。在浏览器访问一次 `?maintainer=1` 开启（存在 localStorage），`?maintainer=0` 关闭。普通读者看不到这些入口。
 - **历史与返回键**：切换栏目会 `pushState`，返回键回到上一个栏目；打开阅读面板/精选清单会压入一条历史，返回键先关闭面板（见 `scripts/test_reader_overlays_ui.py`）。
 - **模型调用要有边界**：打开页面不触发付费生成；网络中断后进入“完成状态尚未确认”等待态，只允许只读查询，不自动重新提交。
-- **分支**：不要直接推 main；不要删除别人的远程分支。
+- **分支**：不要直接推 main；不要删除别人的远程分支。不改 `.github/workflows`，要改 CI 先在 `docs/` 写方案（`workflows-untouched` 检查对 PR 差异生效）。
+- **能机检的规矩写成检查，不写成提醒**：每纠正 agent 一次，就把那条纠正加成 `scripts/check_guardrails.py` 的检查或测试，报错里写清文件、行号、违反的规矩和修法，不要往本文件加提醒。清单与例外写法见 [docs/guardrails.md](docs/guardrails.md)；PR 前运行 `python3 scripts/check_guardrails.py --base origin/main --commit-range origin/main..HEAD PR_BODY.md`。CI 通过 `test_public_build.py` 运行这些检查。
 
 ## 5. 术语表
 

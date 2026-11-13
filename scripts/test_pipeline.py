@@ -3,6 +3,7 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parent))
 from refresh_feeds import parse,dateval
 from build_data import clean,classify
+from release_integrity import PUBLIC,is_published_file,published_files
 ROOT=Path(__file__).resolve().parents[1]
 class PipelineTests(unittest.TestCase):
  def test_rss_namespaced_date(self):
@@ -23,8 +24,9 @@ class PipelineTests(unittest.TestCase):
   data=json.loads((ROOT/'data/library.json').read_text());ids=[p['id'] for p in data['papers']]
   self.assertEqual(len(ids),len(set(ids)));self.assertNotIn('/Users/',json.dumps(data));self.assertEqual(data['stats']['papers'],len(ids))
  def test_public_allowlist(self):
-  files={p.name for p in (ROOT/'public').iterdir()}
-  self.assertEqual(files,{'index.html','style.css','public.js','radar.js','feed.xml','icon.png','demo-reading.html','_headers','_worker.js'})
+  files=set(published_files(ROOT/'public'))
+  self.assertTrue(PUBLIC.issubset(files))
+  self.assertTrue(all(is_published_file(p) for p in files))
   source=(ROOT/'public/index.html').read_text()
   # v14 reads saved theme/style before paint. Preferences are allowed; private
   # library data and credentials still must not appear in the static page.

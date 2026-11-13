@@ -23,6 +23,14 @@ def originals():
 
 
 class DoiReviewTests(unittest.TestCase):
+    def test_worker_injection_registry_is_finite_and_public_only(self):
+        from check_guardrails import INJECTED_WORKER_CONSTANTS, run_checks
+        self.assertEqual(INJECTED_WORKER_CONSTANTS, {
+            'PDF_LIBRARY', 'DOI_ADJUDICATIONS', 'PUBLIC_ABSTRACT_SOURCES',
+            'FULLTEXT_OIDC_BUILD_KEYS',
+        })
+        self.assertEqual(run_checks(ROOT, only='public-ids'), [])
+
     def test_each_registered_wrong_doi_is_corrected_without_changing_journal_or_unverified_online_date(self):
         raw = originals()
         projected, review, _ = quality.reviewed_doi_projection(raw)

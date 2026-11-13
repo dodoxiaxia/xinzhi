@@ -1,0 +1,5562 @@
+{
+  "version": 1,
+  "site": "https://learn.dryz.info/",
+  "viewports": {
+    "mobile": {
+      "width": 390,
+      "height": 844
+    },
+    "tablet": {
+      "width": 884,
+      "height": 900
+    },
+    "desktop": {
+      "width": 1280,
+      "height": 800
+    }
+  },
+  "sections": [
+    {
+      "id": "curated",
+      "title": "每日精选",
+      "mode": "curated",
+      "url": "/?mode=curated",
+      "entries": [
+        {
+          "id": "curated-streamsection",
+          "label": "文献结果",
+          "selector": "#streamSection",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-articlesstream",
+          "label": "文献列表",
+          "selector": "#articlesStream",
+          "kind": "list",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-listtotal",
+          "label": "结果篇数",
+          "selector": "#listTotal",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-viewcardsbtn",
+          "label": "详细",
+          "selector": "#viewCardsBtn",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-viewcompactbtn",
+          "label": "列表",
+          "selector": "#viewCompactBtn",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-card",
+          "label": "文献卡片",
+          "selector": ".article-card",
+          "kind": "card",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": "重复卡片检查首张；随数据更新"
+        },
+        {
+          "id": "curated-read",
+          "label": "打开阅读面板",
+          "selector": "#articlesStream [data-action=\"open-drawer\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-star",
+          "label": "加入精选",
+          "selector": "#articlesStream [data-action=\"toggle-huddle\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-source",
+          "label": "官网原文",
+          "selector": "#articlesStream .card-source",
+          "kind": "link",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-reset-empty",
+          "label": "重置所有条件",
+          "selector": "#clearAllFiltersBtn",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=curated&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-quick",
+          "label": "快捷筛选",
+          "selector": "#quickBar",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-chip-row",
+          "label": "快捷条",
+          "selector": "#qfChipRow",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-favorites",
+          "label": "只看关注期刊",
+          "selector": "[data-qf=\"star\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "curated-more",
+          "label": "更多筛选",
+          "selector": "[data-qf=\"more\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "day-strip",
+          "label": "精选日期",
+          "selector": "#curatedDayBar",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "all-days",
+          "label": "全部日期",
+          "selector": "[data-day=\"all\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "latest-day",
+          "label": "最新日期",
+          "selector": "[data-day=\"\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        }
+      ],
+      "states": [
+        {
+          "id": "curated-selected",
+          "label": "每日精选已选中",
+          "selector": "[data-mode=\"curated\"].active",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [],
+          "expect": "visible"
+        },
+        {
+          "id": "curated-compact",
+          "label": "紧凑列表",
+          "selector": ".compact-row",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#viewCompactBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "curated-cards",
+          "label": "详细卡片",
+          "selector": ".article-card",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#viewCompactBtn"
+            },
+            {
+              "click": "#viewCardsBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "curated-empty",
+          "label": "没有匹配文献",
+          "selector": ".empty-state",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "goto": "/?mode=curated&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "all-days-selected",
+          "label": "全部日期已选中",
+          "selector": "[data-day=\"all\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "[data-day=\"all\"]"
+            }
+          ],
+          "expect": "visible"
+        }
+      ]
+    },
+    {
+      "id": "weekly",
+      "title": "近7天榜",
+      "mode": "weekly",
+      "url": "/?mode=weekly",
+      "entries": [
+        {
+          "id": "weekly-section",
+          "label": "近7天榜",
+          "selector": "#weeklySection",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-board",
+          "label": "榜单",
+          "selector": "#weeklyAuto",
+          "kind": "list",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-cards",
+          "label": "详细",
+          "selector": "[data-weekly-view=\"cards\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-compact",
+          "label": "列表",
+          "selector": "[data-weekly-view=\"compact\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weeklypaneswitch",
+          "label": "近7天榜内容",
+          "selector": "#weeklyPaneSwitch",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "进入本栏目；仅在mobile/tablet视口显示",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weeklypaneboardtab",
+          "label": "榜单",
+          "selector": "#weeklyPaneBoardTab",
+          "kind": "tab",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "进入本栏目；仅在mobile/tablet视口显示",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weeklypanereadingtab",
+          "label": "全文精读",
+          "selector": "#weeklyPaneReadingTab",
+          "kind": "tab",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "进入本栏目；仅在mobile/tablet视口显示",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-cat-all",
+          "label": "全部",
+          "selector": "[data-weekly-cat=\"\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-cat-cardio",
+          "label": "心血管",
+          "selector": "[data-weekly-cat=\"cardio\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-cat-general",
+          "label": "综合医学",
+          "selector": "[data-weekly-cat=\"general\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-cat-aimed",
+          "label": "AI 医疗",
+          "selector": "[data-weekly-cat=\"aimed\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-cat-aitech",
+          "label": "AI 行业",
+          "selector": "[data-weekly-cat=\"aitech\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-pane-small",
+          "label": "全文精读目录",
+          "selector": "#weeklyReadingPane",
+          "kind": "panel",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            }
+          ],
+          "stable": true,
+          "notes": "桌面并列展示；窄屏切换页签"
+        },
+        {
+          "id": "daily-reading-small",
+          "label": "AI 全文精读",
+          "selector": "#dailyDeepRead",
+          "kind": "list",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            }
+          ],
+          "stable": true,
+          "notes": "桌面并列展示；窄屏切换页签"
+        },
+        {
+          "id": "reading-demo-small",
+          "label": "人工精读示范",
+          "selector": "[data-reading-id=\"demo-tailored-af\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            }
+          ],
+          "stable": true,
+          "notes": "桌面并列展示；窄屏切换页签"
+        },
+        {
+          "id": "deepreader-small",
+          "label": "全文精读阅读面板",
+          "selector": "#deepReader",
+          "kind": "panel",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreadertitle-small",
+          "label": "精读题名",
+          "selector": "#deepReaderTitle",
+          "kind": "text",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreaderbody-small",
+          "label": "精读正文",
+          "selector": "#deepReaderBody",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreadertoc-small",
+          "label": "本篇目录",
+          "selector": "#deepReaderToc",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreaderclose-small",
+          "label": "关闭精读",
+          "selector": "#deepReaderClose",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreaderlinks-small",
+          "label": "原文链接",
+          "selector": "#deepReaderLinks",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ],
+          "condition": "完成所列操作后显示；仅在mobile/tablet视口显示",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-pane-wide",
+          "label": "全文精读目录",
+          "selector": "#weeklyReadingPane",
+          "kind": "panel",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "进入本栏目；仅在desktop视口显示",
+          "setup": [],
+          "stable": true,
+          "notes": "桌面并列展示；窄屏切换页签"
+        },
+        {
+          "id": "daily-reading-wide",
+          "label": "AI 全文精读",
+          "selector": "#dailyDeepRead",
+          "kind": "list",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "进入本栏目；仅在desktop视口显示",
+          "setup": [],
+          "stable": true,
+          "notes": "桌面并列展示；窄屏切换页签"
+        },
+        {
+          "id": "reading-demo-wide",
+          "label": "人工精读示范",
+          "selector": "[data-reading-id=\"demo-tailored-af\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "进入本栏目；仅在desktop视口显示",
+          "setup": [],
+          "stable": true,
+          "notes": "桌面并列展示；窄屏切换页签"
+        },
+        {
+          "id": "deepreader-wide",
+          "label": "全文精读阅读面板",
+          "selector": "#deepReader",
+          "kind": "panel",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示；仅在desktop视口显示",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreadertitle-wide",
+          "label": "精读题名",
+          "selector": "#deepReaderTitle",
+          "kind": "text",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示；仅在desktop视口显示",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreaderbody-wide",
+          "label": "精读正文",
+          "selector": "#deepReaderBody",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示；仅在desktop视口显示",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreadertoc-wide",
+          "label": "本篇目录",
+          "selector": "#deepReaderToc",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示；仅在desktop视口显示",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreaderclose-wide",
+          "label": "关闭精读",
+          "selector": "#deepReaderClose",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示；仅在desktop视口显示",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "deepreaderlinks-wide",
+          "label": "原文链接",
+          "selector": "#deepReaderLinks",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示；仅在desktop视口显示",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-history",
+          "label": "往期精读",
+          "selector": ".deep-reading-history summary",
+          "kind": "toggle",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            }
+          ],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "reading-current",
+          "label": "最新批次全文精读",
+          "selector": "#dailyDeepRead [data-action=\"open-deep-reading\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-previous",
+          "label": "上一篇",
+          "selector": "#deepReaderPrev",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            },
+            {
+              "click": "#dailyDeepRead [data-action=\"open-deep-reading\"]"
+            },
+            {
+              "wait": "#deepReaderBody [data-toc]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-next",
+          "label": "下一篇",
+          "selector": "#deepReaderNext",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            },
+            {
+              "click": "#dailyDeepRead [data-action=\"open-deep-reading\"]"
+            },
+            {
+              "wait": "#deepReaderBody [data-toc]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-position",
+          "label": "篇目位置",
+          "selector": "#deepReaderPos",
+          "kind": "text",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            },
+            {
+              "click": "#dailyDeepRead [data-action=\"open-deep-reading\"]"
+            },
+            {
+              "wait": "#deepReaderBody [data-toc]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-toc",
+          "label": "本篇目录导航",
+          "selector": "[data-toc-target]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            },
+            {
+              "click": "#dailyDeepRead [data-action=\"open-deep-reading\"]"
+            },
+            {
+              "wait": "#deepReaderBody [data-toc]"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "reading-evidence",
+          "label": "查看原文证据",
+          "selector": ".deep-reading-evidence summary",
+          "kind": "toggle",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=reading"
+            },
+            {
+              "click": "#dailyDeepRead [data-action=\"open-deep-reading\"]"
+            },
+            {
+              "wait": "#deepReaderBody [data-toc]"
+            }
+          ],
+          "stable": false,
+          "notes": ""
+        }
+      ],
+      "states": [
+        {
+          "id": "weekly-selected",
+          "label": "近7天榜已选中",
+          "selector": "[data-mode=\"weekly\"].active",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [],
+          "expect": "visible"
+        },
+        {
+          "id": "weekly-compact-selected",
+          "label": "列表已选中",
+          "selector": "[data-weekly-view=\"compact\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "[data-weekly-view=\"compact\"]"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "weekly-search-empty",
+          "label": "当前榜没有匹配文献",
+          "selector": "#weeklyAuto > p.text-muted[role=\"status\"]",
+          "trigger": "在榜单页检索无匹配关键词；核验空结果段落，排除检索范围状态行",
+          "setup": [
+            {
+              "goto": "/?mode=weekly&pane=board&q=feature-map-no-match-zzzz"
+            },
+            {
+              "wait": "#weeklyAuto > p.text-muted[role=\"status\"]"
+            }
+          ],
+          "expect": "text:没有匹配"
+        },
+        {
+          "id": "deep-open-small",
+          "label": "全文精读已打开",
+          "selector": "#deepReader[aria-hidden=\"false\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#weeklyPaneReadingTab"
+            },
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "expect": "visible",
+          "viewports": [
+            "mobile",
+            "tablet"
+          ]
+        },
+        {
+          "id": "deep-open-wide",
+          "label": "全文精读已打开",
+          "selector": "#deepReader[aria-hidden=\"false\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "[data-reading-id=\"demo-tailored-af\"]"
+            },
+            {
+              "wait": "#deepReaderToc [data-toc-target]"
+            }
+          ],
+          "expect": "visible",
+          "viewports": [
+            "desktop"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "candidates",
+      "title": "文献雷达",
+      "mode": "candidates",
+      "url": "/?mode=candidates",
+      "entries": [
+        {
+          "id": "candidates-streamsection",
+          "label": "文献结果",
+          "selector": "#streamSection",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-articlesstream",
+          "label": "文献列表",
+          "selector": "#articlesStream",
+          "kind": "list",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-listtotal",
+          "label": "结果篇数",
+          "selector": "#listTotal",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-sortselector",
+          "label": "排序方式",
+          "selector": "#sortSelector",
+          "kind": "select",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-viewcardsbtn",
+          "label": "详细",
+          "selector": "#viewCardsBtn",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-viewcompactbtn",
+          "label": "列表",
+          "selector": "#viewCompactBtn",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-card",
+          "label": "文献卡片",
+          "selector": ".article-card",
+          "kind": "card",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": "重复卡片检查首张；随数据更新"
+        },
+        {
+          "id": "candidates-read",
+          "label": "打开阅读面板",
+          "selector": "#articlesStream [data-action=\"open-drawer\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-star",
+          "label": "加入精选",
+          "selector": "#articlesStream [data-action=\"toggle-huddle\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-source",
+          "label": "官网原文",
+          "selector": "#articlesStream .card-source",
+          "kind": "link",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-reset-empty",
+          "label": "重置所有条件",
+          "selector": "#clearAllFiltersBtn",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=candidates&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-quick",
+          "label": "快捷筛选",
+          "selector": "#quickBar",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-chip-row",
+          "label": "快捷条",
+          "selector": "#qfChipRow",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-favorites",
+          "label": "只看关注期刊",
+          "selector": "[data-qf=\"star\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-more",
+          "label": "更多筛选",
+          "selector": "[data-qf=\"more\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope",
+          "label": "领域与时间",
+          "selector": "#qfScopeBtn",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-core",
+          "label": "心血管+AI",
+          "selector": "[data-qf-lane=\"core\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-crossai",
+          "label": "心血管×AI",
+          "selector": "[data-qf-lane=\"crossai\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-cardio",
+          "label": "心血管",
+          "selector": "[data-qf-lane=\"cardio\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-aimed",
+          "label": "AI 医疗",
+          "selector": "[data-qf-lane=\"aimed\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-general",
+          "label": "综合医学",
+          "selector": "[data-qf-lane=\"general\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-aitech",
+          "label": "AI 行业",
+          "selector": "[data-qf-lane=\"aitech\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-scope-all",
+          "label": "全部领域",
+          "selector": "[data-qf-lane=\"all\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-range-7",
+          "label": "近 7 天",
+          "selector": "[data-qf-range=\"7\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-range-14",
+          "label": "近 14 天",
+          "selector": "[data-qf-range=\"14\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-range-30",
+          "label": "近 30 天",
+          "selector": "[data-qf-range=\"30\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-range-90",
+          "label": "近 90 天",
+          "selector": "[data-qf-range=\"90\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "candidates-range-365",
+          "label": "近 365 天",
+          "selector": "[data-qf-range=\"365\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        }
+      ],
+      "states": [
+        {
+          "id": "candidates-selected",
+          "label": "文献雷达已选中",
+          "selector": "[data-mode=\"candidates\"].active",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [],
+          "expect": "visible"
+        },
+        {
+          "id": "candidates-sort-date-desc",
+          "label": "最新在前",
+          "selector": "#sortSelector option[value=\"date-desc\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "date-desc"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-sort-date-asc",
+          "label": "最早在前",
+          "selector": "#sortSelector option[value=\"date-asc\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "date-asc"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-sort-journal-date",
+          "label": "按期刊分组",
+          "selector": "#sortSelector option[value=\"journal-date\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "journal-date"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-sort-smart",
+          "label": "导读与摘要优先",
+          "selector": "#sortSelector option[value=\"smart\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "smart"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-compact",
+          "label": "紧凑列表",
+          "selector": ".compact-row",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#viewCompactBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "candidates-cards",
+          "label": "详细卡片",
+          "selector": ".article-card",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#viewCompactBtn"
+            },
+            {
+              "click": "#viewCardsBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "candidates-empty",
+          "label": "没有匹配文献",
+          "selector": ".empty-state",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "goto": "/?mode=candidates&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "candidates-scope-open",
+          "label": "展开领域与时间",
+          "selector": "#qfPop",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "candidates-scope-selected",
+          "label": "领域已选中",
+          "selector": "[data-qf-lane=\"core\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "candidates-lane-retired",
+          "label": "领域（旧入口，当前样式隐藏）",
+          "selector": "#laneBar",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-range-retired",
+          "label": "发表时间（旧入口，当前样式隐藏）",
+          "selector": "#rangeBar",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-lane-select-retired",
+          "label": "领域选择（旧入口，当前样式隐藏）",
+          "selector": "[data-lane-select]",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-range-select-retired",
+          "label": "发表时间选择（旧入口，当前样式隐藏）",
+          "selector": "[data-range-select]",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "candidates-filter-retired",
+          "label": "筛选（旧入口，当前样式隐藏）",
+          "selector": "#filterToggleBtn",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        }
+      ]
+    },
+    {
+      "id": "library",
+      "title": "文献库",
+      "mode": "library",
+      "url": "/?mode=library",
+      "entries": [
+        {
+          "id": "library-streamsection",
+          "label": "文献结果",
+          "selector": "#streamSection",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-articlesstream",
+          "label": "文献列表",
+          "selector": "#articlesStream",
+          "kind": "list",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-listtotal",
+          "label": "结果篇数",
+          "selector": "#listTotal",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-sortselector",
+          "label": "排序方式",
+          "selector": "#sortSelector",
+          "kind": "select",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-viewcardsbtn",
+          "label": "详细",
+          "selector": "#viewCardsBtn",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-viewcompactbtn",
+          "label": "列表",
+          "selector": "#viewCompactBtn",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-card",
+          "label": "文献卡片",
+          "selector": ".article-card",
+          "kind": "card",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": "重复卡片检查首张；随数据更新"
+        },
+        {
+          "id": "library-read",
+          "label": "打开阅读面板",
+          "selector": "#articlesStream [data-action=\"open-drawer\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-star",
+          "label": "加入精选",
+          "selector": "#articlesStream [data-action=\"toggle-huddle\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-source",
+          "label": "官网原文",
+          "selector": "#articlesStream .card-source",
+          "kind": "link",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-reset-empty",
+          "label": "重置所有条件",
+          "selector": "#clearAllFiltersBtn",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=library&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-quick",
+          "label": "快捷筛选",
+          "selector": "#quickBar",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-chip-row",
+          "label": "快捷条",
+          "selector": "#qfChipRow",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-favorites",
+          "label": "只看关注期刊",
+          "selector": "[data-qf=\"star\"]",
+          "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-more",
+          "label": "更多筛选",
+          "selector": "[data-qf=\"more\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope",
+          "label": "领域与时间",
+          "selector": "#qfScopeBtn",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-core",
+          "label": "心血管+AI",
+          "selector": "[data-qf-lane=\"core\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-crossai",
+          "label": "心血管×AI",
+          "selector": "[data-qf-lane=\"crossai\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-cardio",
+          "label": "心血管",
+          "selector": "[data-qf-lane=\"cardio\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-aimed",
+          "label": "AI 医疗",
+          "selector": "[data-qf-lane=\"aimed\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-general",
+          "label": "综合医学",
+          "selector": "[data-qf-lane=\"general\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-aitech",
+          "label": "AI 行业",
+          "selector": "[data-qf-lane=\"aitech\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-scope-all",
+          "label": "全部领域",
+          "selector": "[data-qf-lane=\"all\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-range-all",
+          "label": "全部时间",
+          "selector": "[data-qf-range=\"all\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-range-30",
+          "label": "近 30 天",
+          "selector": "[data-qf-range=\"30\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-range-90",
+          "label": "近 90 天",
+          "selector": "[data-qf-range=\"90\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-range-365",
+          "label": "近 365 天",
+          "selector": "[data-qf-range=\"365\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "ft-all",
+          "label": "全部全文",
+          "selector": "[data-qf-ft=\"\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "ft-ready",
+          "label": "可阅读",
+          "selector": "[data-qf-ft=\"ready\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "ft-verifying",
+          "label": "核验中",
+          "selector": "[data-qf-ft=\"verifying\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "ft-queued",
+          "label": "排队下载",
+          "selector": "[data-qf-ft=\"queued\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "ft-failed",
+          "label": "未取得",
+          "selector": "[data-qf-ft=\"failed\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "ft-none",
+          "label": "未申请",
+          "selector": "[data-qf-ft=\"none\"]",
+          "kind": "chip",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "doi-match",
+          "label": "DOI 全站匹配",
+          "selector": "#articlesStream",
+          "kind": "list",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=library&q=10.1111/jce.70522"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "doi-badge",
+          "label": "完整 DOI 检索",
+          "selector": ".doi-filter-badge",
+          "kind": "text",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=library&q=10.1111/jce.70522"
+            }
+          ],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "doi-miss",
+          "label": "按 DOI 全站检索",
+          "selector": ".doi-search-notice",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=library&q=10.9999/feature-map-unlisted"
+            }
+          ],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "download-pdf",
+          "label": "下载 PDF",
+          "selector": "a[data-ft-download]",
+          "kind": "link",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=library&lane=all&ft=ready"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "load-more",
+          "label": "显示更多",
+          "selector": "#loadMoreBtn",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=library&lane=all"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        }
+      ],
+      "states": [
+        {
+          "id": "library-selected",
+          "label": "文献库已选中",
+          "selector": "[data-mode=\"library\"].active",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [],
+          "expect": "visible"
+        },
+        {
+          "id": "library-sort-date-desc",
+          "label": "最新在前",
+          "selector": "#sortSelector option[value=\"date-desc\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "date-desc"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "library-sort-date-asc",
+          "label": "最早在前",
+          "selector": "#sortSelector option[value=\"date-asc\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "date-asc"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "library-sort-journal-date",
+          "label": "按期刊分组",
+          "selector": "#sortSelector option[value=\"journal-date\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "journal-date"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "library-sort-smart",
+          "label": "导读与摘要优先",
+          "selector": "#sortSelector option[value=\"smart\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "select": [
+                "#sortSelector",
+                "smart"
+              ]
+            }
+          ],
+          "expect": "attached"
+        },
+        {
+          "id": "library-compact",
+          "label": "紧凑列表",
+          "selector": ".compact-row",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#viewCompactBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "library-cards",
+          "label": "详细卡片",
+          "selector": ".article-card",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#viewCompactBtn"
+            },
+            {
+              "click": "#viewCardsBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "library-empty",
+          "label": "没有匹配文献",
+          "selector": ".empty-state",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "goto": "/?mode=library&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "library-scope-open",
+          "label": "展开领域与时间",
+          "selector": "#qfPop",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "library-scope-selected",
+          "label": "领域已选中",
+          "selector": "[data-qf-lane=\"core\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#qfScopeBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "library-lane-retired",
+          "label": "领域（旧入口，当前样式隐藏）",
+          "selector": "#laneBar",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "library-range-retired",
+          "label": "发表时间（旧入口，当前样式隐藏）",
+          "selector": "#rangeBar",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "library-lane-select-retired",
+          "label": "领域选择（旧入口，当前样式隐藏）",
+          "selector": "[data-lane-select]",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "library-range-select-retired",
+          "label": "发表时间选择（旧入口，当前样式隐藏）",
+          "selector": "[data-range-select]",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "library-filter-retired",
+          "label": "筛选（旧入口，当前样式隐藏）",
+          "selector": "#filterToggleBtn",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "ftbar-retired",
+          "label": "全文状态（旧入口，当前样式隐藏）",
+          "selector": "#ftBar",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        },
+        {
+          "id": "ftselect-retired",
+          "label": "全文状态选择（旧入口，当前样式隐藏）",
+          "selector": "[data-ft-select]",
+          "trigger": "进入本栏目；当前入口为快捷条",
+          "setup": [],
+          "expect": "attached"
+        }
+      ]
+    },
+    {
+      "id": "sources",
+      "title": "信源状态",
+      "mode": "sources",
+      "url": "/?mode=sources",
+      "entries": [
+        {
+          "id": "sources-region",
+          "label": "信源状态",
+          "selector": "#sourcesSection",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-summary",
+          "label": "信源检查概况",
+          "selector": "#sourcesHealthSummary",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-meta",
+          "label": "检查时间",
+          "selector": "#sourcesHealthMeta",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-list",
+          "label": "订阅信源",
+          "selector": "#sourcesHealthGrid",
+          "kind": "list",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-card",
+          "label": "信源卡片",
+          "selector": ".source-item",
+          "kind": "card",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "source-counts",
+          "label": "条目统计",
+          "selector": ".source-counts",
+          "kind": "region",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "source-status",
+          "label": "获取状态",
+          "selector": ".source-status-badge",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "source-link",
+          "label": "查看订阅源",
+          "selector": ".source-item-foot a",
+          "kind": "link",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "source-filter-all",
+          "label": "订阅信源",
+          "selector": "[data-source-filter=\"\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-filter-ok",
+          "label": "本轮获取成功",
+          "selector": "[data-source-filter=\"ok\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-filter-attention",
+          "label": "需要关注",
+          "selector": "[data-source-filter=\"attention\"]",
+          "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-clear-search",
+          "label": "清除关键词",
+          "selector": ".special-search-status [data-clear=\"search\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "完成所列操作后显示",
+          "setup": [
+            {
+              "goto": "/?mode=sources&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "source-success",
+          "label": "获取成功",
+          "selector": ".source-status-ok",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": ""
+        },
+        {
+          "id": "source-attention",
+          "label": "获取异常",
+          "selector": ".source-status-err",
+          "kind": "text",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": false,
+          "notes": ""
+        }
+      ],
+      "states": [
+        {
+          "id": "source-selected-all",
+          "label": "订阅信源已选中",
+          "selector": "[data-source-filter=\"\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "[data-source-filter=\"\"]"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "source-selected-ok",
+          "label": "本轮获取成功已选中",
+          "selector": "[data-source-filter=\"ok\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "[data-source-filter=\"ok\"]"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "source-selected-attention",
+          "label": "需要关注已选中",
+          "selector": "[data-source-filter=\"attention\"][aria-pressed=\"true\"]",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "[data-source-filter=\"attention\"]"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
+          "id": "sources-empty",
+          "label": "没有匹配的信源",
+          "selector": ".special-search-empty",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "goto": "/?mode=sources&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "expect": "text:没有匹配的信源"
+        }
+      ]
+    }
+  ],
+  "global": {
+    "entries": [
+      {
+        "id": "nav-curated",
+        "label": "每日精选",
+        "selector": "[data-mode=\"curated\"]",
+        "kind": "tab",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "nav-weekly",
+        "label": "近7天榜",
+        "selector": "[data-mode=\"weekly\"]",
+        "kind": "tab",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "nav-candidates",
+        "label": "文献雷达",
+        "selector": "[data-mode=\"candidates\"]",
+        "kind": "tab",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "nav-library",
+        "label": "文献库",
+        "selector": "[data-mode=\"library\"]",
+        "kind": "tab",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "search-toggle-btn",
+        "label": "搜索",
+        "selector": "#searchToggleBtn",
+        "kind": "toggle",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "theme-toggle",
+        "label": "切换深色/浅色",
+        "selector": "#themeToggle",
+        "kind": "toggle",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "source-status-btn",
+        "label": "信源状态",
+        "selector": "#sourceStatusBtn",
+        "kind": "button",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "open-huddle-btn",
+        "label": "精选清单",
+        "selector": "#openHuddleBtn",
+        "kind": "button",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "huddle-counter",
+        "label": "精选清单篇数",
+        "selector": "#huddleCounter",
+        "kind": "text",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "searchpanel",
+        "label": "搜索面板",
+        "selector": "#searchPanel",
+        "kind": "panel",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#searchToggleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "globalsearch",
+        "label": "搜索题名、DOI",
+        "selector": "#globalSearch",
+        "kind": "input",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#searchToggleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "clear-search",
+        "label": "清除搜索",
+        "selector": "#searchPanel [data-clear=\"search\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#searchToggleBtn"
+          },
+          {
+            "fill": [
+              "#globalSearch",
+              "房颤"
+            ]
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "global-panel-journal",
+        "label": "选择期刊",
+        "selector": "[data-qf-pick-journal]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入文献库，打开快捷筛选的期刊档位菜单后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf-jtier-menu]"
+          }
+        ],
+        "stable": true,
+        "notes": "旧侧栏和筛选按钮由当前样式隐藏；使用快捷筛选中的期刊选择按钮。"
+      },
+      {
+        "id": "more-pop",
+        "label": "更多筛选",
+        "selector": "#qfPop",
+        "kind": "dialog",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "more-close",
+        "label": "关闭",
+        "selector": "[data-qf-close]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "publisher-options",
+        "label": "出版方",
+        "selector": "[data-qf-pub]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "specialty-options",
+        "label": "专科来源",
+        "selector": "[data-qf-tier]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "design-options",
+        "label": "研究设计",
+        "selector": "[data-qf-design]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "minor-0",
+        "label": "不含更正/来信",
+        "selector": "[data-qf-minor=\"0\"]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "minor-1",
+        "label": "含更正/来信",
+        "selector": "[data-qf-minor=\"1\"]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-all",
+        "label": "全部内容",
+        "selector": "[data-qf-reading=\"\"]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-abstract",
+        "label": "有公开摘要",
+        "selector": "[data-qf-reading=\"abstract\"]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-guide",
+        "label": "已核对导读",
+        "selector": "[data-qf-reading=\"guide\"]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-quicklook",
+        "label": "AI 速览",
+        "selector": "[data-qf-reading=\"quicklook\"]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"more\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-tier",
+        "label": "期刊分档",
+        "selector": "[data-qf-jtier]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-menu",
+        "label": "打开期刊清单",
+        "selector": "[data-qf-jtier-menu]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-search",
+        "label": "搜索刊名",
+        "selector": "#qfJournalSearch",
+        "kind": "input",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf-jtier-menu]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-list",
+        "label": "期刊清单",
+        "selector": "#qfJournalList",
+        "kind": "list",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf-jtier-menu]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-all",
+        "label": "查看整档",
+        "selector": "[data-qf-jtier-all]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf-jtier-menu]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-follow",
+        "label": "关注期刊",
+        "selector": "[data-qf-follow]",
+        "kind": "toggle",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf-jtier-menu]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "journal-pick",
+        "label": "选择期刊",
+        "selector": "[data-qf-pick-journal]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf-jtier-menu]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "summary",
+        "label": "已选筛选",
+        "selector": "#qfSummary",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "summary-clear",
+        "label": "清除全部筛选",
+        "selector": "[data-qf-clear=\"all\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "summary-remove",
+        "label": "清除单个筛选",
+        "selector": ".qf-sum-item",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "summary-save",
+        "label": "保存筛选预设",
+        "selector": "[data-qf-save]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-readerdrawer",
+        "label": "阅读面板",
+        "selector": "#readerDrawer",
+        "kind": "panel",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-drawerclosebtn",
+        "label": "关闭",
+        "selector": "#drawerCloseBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-drawerbody",
+        "label": "阅读正文",
+        "selector": "#drawerBody",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-drawerjournalbadges",
+        "label": "期刊信息",
+        "selector": "#drawerJournalBadges",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-drawercopysharebtn",
+        "label": "微信群文案",
+        "selector": "#drawerCopyShareBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "从任意文献卡片打开阅读面板后挂载；仅有已核对导读的文献显示此按钮",
+        "setup": [
+          {
+            "goto": "/?mode=curated&day=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "离线数据不保证含已核对导读，检查挂载状态；按钮显示条件为 paper.hasDraft。",
+        "expect": "attached"
+      },
+      {
+        "id": "reader-drawerhuddletogglebtn",
+        "label": "加入精选",
+        "selector": "#drawerHuddleToggleBtn",
+        "kind": "toggle",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-drawerexternallink",
+        "label": "官网原文",
+        "selector": "#drawerExternalLink",
+        "kind": "link",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-region-head",
+        "label": "题名与期刊信息",
+        "selector": "[data-drawer-region=\"head\"]",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-region-abstract",
+        "label": "原摘要",
+        "selector": "[data-drawer-region=\"abstract\"]",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-region-study",
+        "label": "研究结构与核对清单",
+        "selector": "[data-drawer-region=\"study\"]",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "服务关闭时仍显示研究结构状态说明"
+      },
+      {
+        "id": "reader-region-cite",
+        "label": "引用",
+        "selector": "[data-drawer-region=\"cite\"]",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reader-cite-menu",
+        "label": "复制引用",
+        "selector": ".cite-menu summary",
+        "kind": "toggle",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "reader-abstract",
+        "label": "原摘要",
+        "selector": ".structured-abstract",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "maintainer-login",
+        "label": "汉堡登录入口",
+        "selector": "#drawerInstitutionLoginLink",
+        "kind": "link",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all&maintainer=1"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "维护者模式；当前源码没有独立汉堡菜单按钮"
+      },
+      {
+        "id": "shortlist-huddlemodalbackdrop",
+        "label": "精选清单",
+        "selector": "#huddleModalBackdrop",
+        "kind": "dialog",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-huddlemodalbody",
+        "label": "精选文献清单",
+        "selector": "#huddleModalBody",
+        "kind": "list",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-closehuddlemodalbtn",
+        "label": "关闭",
+        "selector": "#closeHuddleModalBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-clearhuddlebtn",
+        "label": "清空清单",
+        "selector": "#clearHuddleBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-copyhuddlesummarybtn",
+        "label": "复制精选汇总",
+        "selector": "#copyHuddleSummaryBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-exporthuddlemdbtn",
+        "label": "导出 Markdown",
+        "selector": "#exportHuddleMdBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-item",
+        "label": "已选文献",
+        "selector": ".huddle-item",
+        "kind": "card",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-remove",
+        "label": "移出",
+        "selector": "[data-action=\"remove-huddle\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "compare-selection",
+        "label": "纳入证据对照",
+        "selector": "[data-action=\"compare-select\"]",
+        "kind": "toggle",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "compare-help",
+        "label": "证据对照选择说明",
+        "selector": "#compareSelectionHelp",
+        "kind": "text",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "citation-export",
+        "label": "引用导出",
+        "selector": "[data-citation-export] summary",
+        "kind": "toggle",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "export-subset",
+        "label": "导出子集",
+        "selector": "[data-citation-id]",
+        "kind": "toggle",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "[data-citation-export] summary"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "export-format",
+        "label": "批量引用格式",
+        "selector": "[aria-label=\"批量引用格式\"]",
+        "kind": "select",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "[data-citation-export] summary"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "export-copy",
+        "label": "批量复制引用草稿",
+        "selector": "[data-citation-copy]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "[data-citation-export] summary"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "export-ris",
+        "label": "导出所选 RIS",
+        "selector": "[data-citation-ris]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "[data-citation-export] summary"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "export-warnings",
+        "label": "逐条题录核对提示",
+        "selector": "[aria-label=\"逐条题录核对提示\"]",
+        "kind": "list",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "[data-citation-export] summary"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "download-form",
+        "label": "全文口令",
+        "selector": "#drawerPdfForm",
+        "kind": "panel",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "translation-zh",
+        "label": "中文摘要",
+        "selector": "[data-abs-tab=\"zh\"]",
+        "kind": "tab",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开已有预生成中文摘要的文献",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框"
+      },
+      {
+        "id": "translation-en",
+        "label": "原摘要",
+        "selector": "[data-abs-tab=\"en\"]",
+        "kind": "tab",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开已有预生成中文摘要的文献",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框"
+      },
+      {
+        "id": "digest",
+        "label": "综述速读",
+        "selector": "[data-action=\"ai-brief\"][data-mode=\"digest\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "discussion",
+        "label": "讨论提纲",
+        "selector": "[data-action=\"ai-brief\"][data-mode=\"huddle\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "ai-wait",
+        "label": "读取已有 AI 速览",
+        "selector": "[data-action=\"ai-check\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "translation-wait",
+        "label": "读取已有译文",
+        "selector": "[data-action=\"tr-check\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "brief-wait",
+        "label": "读取已有综述",
+        "selector": "[data-action=\"brief-check\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "reader-cite-gb",
+        "label": "GB/T 7714",
+        "selector": "[data-cite*=\"[J]\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          },
+          {
+            "click": ".cite-menu summary"
+          }
+        ],
+        "stable": true,
+        "notes": "GB/T 7714、AMA、BibTeX 三种格式"
+      },
+      {
+        "id": "reader-cite-ama",
+        "label": "AMA",
+        "selector": "[data-cite*=\"doi:\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          },
+          {
+            "click": ".cite-menu summary"
+          }
+        ],
+        "stable": true,
+        "notes": "GB/T 7714、AMA、BibTeX 三种格式"
+      },
+      {
+        "id": "reader-cite-bibtex",
+        "label": "BibTeX",
+        "selector": "[data-cite^=\"@\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          },
+          {
+            "click": ".cite-menu summary"
+          }
+        ],
+        "stable": true,
+        "notes": "GB/T 7714、AMA、BibTeX 三种格式"
+      },
+      {
+        "id": "request-fulltext",
+        "label": "获取全文",
+        "selector": "[data-ft-action=\"open-form\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=10.9999/feature-map-unlisted"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "request-form",
+        "label": "全文申请",
+        "selector": "[data-ft-form]",
+        "kind": "panel",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=10.9999/feature-map-unlisted"
+          },
+          {
+            "click": "[data-ft-action=\"open-form\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "request-passphrase",
+        "label": "全文口令",
+        "selector": "[data-ft-form] input[name=\"passphrase\"]",
+        "kind": "input",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=10.9999/feature-map-unlisted"
+          },
+          {
+            "click": "[data-ft-action=\"open-form\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "request-submit",
+        "label": "提交全文申请",
+        "selector": "[data-ft-form] button[type=\"submit\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=10.9999/feature-map-unlisted"
+          },
+          {
+            "click": "[data-ft-action=\"open-form\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "back-top",
+        "label": "回到页面顶部",
+        "selector": "#backToTopBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "press": [
+              "body",
+              "End"
+            ]
+          },
+          {
+            "wait": "#backToTopBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "translation-chinese-panel",
+        "label": "中文摘要正文",
+        "selector": "[data-abs-panel=\"zh\"]",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "translation-english-panel",
+        "label": "原摘要正文",
+        "selector": "[data-abs-panel=\"en\"]",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "[data-abs-tab=\"en\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "maintainer-institution",
+        "label": "通过汉堡访问",
+        "selector": "#drawerInstitutionLink",
+        "kind": "link",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all&maintainer=1"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "empty-favorites",
+        "label": "尚未关注期刊",
+        "selector": ".empty-state",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "[data-qf=\"star\"]"
+          }
+        ],
+        "stable": false,
+        "notes": ""
+      },
+      {
+        "id": "cached-quicklook",
+        "label": "速览",
+        "selector": ".quicklook",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开已有预生成结果的文献",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": false,
+        "notes": "读取离线预生成结果，不调用模型"
+      },
+      {
+        "id": "quicklook-findings",
+        "label": "速览要点与摘要原句",
+        "selector": ".ql-findings",
+        "kind": "list",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开已有预生成结果的文献",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": false,
+        "notes": "读取离线预生成结果，不调用模型"
+      },
+      {
+        "id": "cached-study",
+        "label": "研究结构与全文核对",
+        "selector": ".study-box",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开已有预生成结果的文献",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": false,
+        "notes": "读取离线预生成结果，不调用模型"
+      },
+      {
+        "id": "study-copy",
+        "label": "复制研究结构与核对清单",
+        "selector": "[data-action=\"study-copy\"]",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开已有预生成结果的文献",
+        "setup": [
+          {
+            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "读取离线预生成结果，不调用模型"
+      }
+    ],
+    "states": [
+      {
+        "id": "search-expanded",
+        "label": "展开搜索",
+        "selector": "#searchToggleBtn[aria-expanded=\"true\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "click": "#searchToggleBtn"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "dark-theme",
+        "label": "深色模式",
+        "selector": "html[data-theme=\"dark\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=curated&theme=light"
+          },
+          {
+            "click": "#themeToggle"
+          }
+        ],
+        "expect": "attached"
+      },
+      {
+        "id": "light-theme",
+        "label": "浅色模式",
+        "selector": "html[data-theme=\"light\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=curated&theme=dark"
+          },
+          {
+            "click": "#themeToggle"
+          }
+        ],
+        "expect": "attached"
+      },
+      {
+        "id": "reader-open",
+        "label": "阅读面板已打开",
+        "selector": "#readerDrawer[aria-hidden=\"false\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "cite-expanded",
+        "label": "引用菜单已展开",
+        "selector": ".cite-menu[open]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          },
+          {
+            "click": ".cite-menu summary"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "reader-closed",
+        "label": "关闭阅读面板",
+        "selector": "#readerDrawer[aria-hidden=\"true\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          },
+          {
+            "click": "#drawerCloseBtn"
+          }
+        ],
+        "expect": "attached"
+      },
+      {
+        "id": "shortlist-empty",
+        "label": "精选清单为空",
+        "selector": "#huddleEmptyHelp",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "expect": "text:精选清单当前为空"
+      },
+      {
+        "id": "shortlist-selected",
+        "label": "文献已加入精选",
+        "selector": "#articlesStream [data-action=\"toggle-huddle\"][aria-pressed=\"true\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "shortlist-cleared",
+        "label": "清空后的精选清单",
+        "selector": "#huddleEmptyHelp",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "#clearHuddleBtn"
+          },
+          {
+            "click": "#clearHuddleBtn"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "toast-added",
+        "label": "加入精选提示",
+        "selector": "#toast",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          }
+        ],
+        "expect": "text:已加入精选清单"
+      },
+      {
+        "id": "download-queued",
+        "label": "排队下载",
+        "selector": ".ft-queued",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "download-running",
+        "label": "正在获取全文",
+        "selector": ".ft-running",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "download-verifying",
+        "label": "核验中",
+        "selector": ".ft-verifying",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "download-ready",
+        "label": "全文可下载",
+        "selector": ".ft-badge-ready",
+        "trigger": "按全文可下载筛选；徽标可能处于隐藏容器中，仅检查挂载状态",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all&ft=ready"
+          }
+        ],
+        "expect": "attached"
+      },
+      {
+        "id": "download-failed",
+        "label": "全文未取得",
+        "selector": ".ft-failed",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "download-review",
+        "label": "核验未通过",
+        "selector": ".ft-review",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
+      },
+      {
+        "id": "legacy-filter-sheet",
+        "label": "旧筛选面板节点保留，入口已隐藏",
+        "selector": "#appSidebar",
+        "trigger": "进入文献库；使用快捷条“更多筛选”",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          }
+        ],
+        "expect": "attached"
+      },
+      {
+        "id": "fulltext-form-expanded",
+        "label": "展开全文口令框",
+        "selector": "[data-ft-form]:not([hidden])",
+        "trigger": "按 setup 顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=10.9999/feature-map-unlisted"
+          },
+          {
+            "click": "[data-ft-action=\"open-form\"]"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "card-hover-actions",
+        "label": "卡片悬停时的操作区",
+        "selector": ".card-side-actions",
+        "trigger": "按 setup 顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "hover": ".article-card"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "shortlist-clear-armed",
+        "label": "再次确认清空",
+        "selector": "#clearHuddleBtn[data-armed=\"1\"]",
+        "trigger": "按 setup 顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"toggle-huddle\"]"
+          },
+          {
+            "click": "#openHuddleBtn"
+          },
+          {
+            "click": "#clearHuddleBtn"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "ai-progress",
+        "label": "速览读取中或完成状态尚未确认",
+        "selector": ".quicklook.ai-ask [role=\"status\"]",
+        "trigger": "用户明确生成，或查询远程已有结果后出现",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
+      },
+      {
+        "id": "brief-generating",
+        "label": "正在生成综述或讨论提纲",
+        "selector": ".brief-box[aria-busy=\"true\"]",
+        "trigger": "用户明确生成，或查询远程已有结果后出现",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
+      },
+      {
+        "id": "brief-completed",
+        "label": "已生成综述或讨论提纲",
+        "selector": ".brief-done",
+        "trigger": "用户明确生成，或查询远程已有结果后出现",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
+      },
+      {
+        "id": "translation-error",
+        "label": "译文生成失败",
+        "selector": ".translation-error",
+        "trigger": "用户明确生成，或查询远程已有结果后出现",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
+      },
+      {
+        "id": "translation-progress",
+        "label": "译文读取或等待状态",
+        "selector": ".tr-box [role=\"status\"]",
+        "trigger": "用户明确生成，或查询远程已有结果后出现",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "wait": "#readerDrawer[aria-hidden=\"false\"]"
+          }
+        ],
+        "expect": "visible",
+        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
+      }
+    ]
+  }
+}
