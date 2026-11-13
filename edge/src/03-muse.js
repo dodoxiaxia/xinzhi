@@ -267,6 +267,43 @@ function museReviewConfigured(env) {
 }
 // Bytes that did not come through Muse (reader upload, open access) enter the same private candidate
 // area; the GitHub dual-parser verifier still has to confirm DOI, title and every page before download.
+const MUSE_SUPERSEDED_PREFIX = 'library:muse-superseded:';
+function museSupersededKey(doi, taskId) {
+  return MUSE_SUPERSEDED_PREFIX + doi + ':' + taskId;
+}
+function museShouldSupersedePrevious(job) {
+  // Each DOI has one library:muse-job:{doi} key. Any overwrite of an existing task is archived first,
+  // including a failed/review/not-done job and an already done/available original replaced via
+  // X-Machine-Replace (for example swapping an early publication for the official version).
+  return !!(job && typeof job.id === 'string' && job.id);
+}
+function museSupersedeSnapshot(job) {
+  const skip = new Set(['candidateKey','replace','replaceRejected']);
+  const snap = {};
+  for (const [key, value] of Object.entries(job)) if (!skip.has(key)) snap[key] = value;
+  return snap;
+}
+function museSupersededFrom(snapshot) {
+  if (!snapshot || typeof snapshot.id !== 'string' || !snapshot.id) return null;
+  const reason = snapshot.reason || snapshot.previousReason || snapshot.verificationReason || '';
+  let prior = null;
+  if (snapshot.supersededFrom && typeof snapshot.supersededFrom.taskId === 'string' && snapshot.supersededFrom.taskId && snapshot.supersededFrom.taskId !== snapshot.id) {
+    prior = snapshot.supersededFrom;
+  } else if (snapshot.supersedes && snapshot.supersedes.id && snapshot.supersedes.id !== snapshot.id) {
+    prior = museSupersededFrom(snapshot.supersedes);
+  }
+  return {taskId:snapshot.id,...(reason ? {reason} : {}),...(snapshot.state ? {previousState:snapshot.state} : {}),...(prior ? {supersedes:prior} : {})};
+}
+async function museArchiveSuperseded(env, previous, newId, doi, now) {
+  if (!previous || !newId || !doi || previous.id === newId) return null;
+  const snapshot = museSupersedeSnapshot(previous);
+  const pointer = museSupersededFrom(snapshot);
+  if (!pointer) return null;
+  const record = {...snapshot,supersededBy:newId,supersededAt:now};
+  await libraryPut(env.QL_KV, museSupersededKey(doi, snapshot.id), JSON.stringify(record));
+  return pointer;
+}
+
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
@@ -281,6 +318,15 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   if (previous && typeof previous.claimant === 'string' && previous.claimant) inherited.claimant = previous.claimant;
   if (previous && Number.isSafeInteger(previous.acquisitionStartedAt) && previous.acquisitionStartedAt > 0) inherited.acquisitionStartedAt = previous.acquisitionStartedAt;
   if (previous && previous.registration) inherited.registration = previous.registration;
+  if (previous && Number.isInteger(previous.softFailCount) && previous.softFailCount > 0) inherited.softFailCount = previous.softFailCount;
+  if (previous && previous.lastSoftFailReason) inherited.lastSoftFailReason = previous.lastSoftFailReason;
+  if (previous && Number.isInteger(previous.returnCount) && previous.returnCount > 0) inherited.returnCount = previous.returnCount;
+  // Archive the old same-DOI record before overwriting library:muse-job:{doi}, so the previous task is
+  // not lost if this new one is still verifying or later fails review.
+  if (previous && museShouldSupersedePrevious(previous)) {
+    const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
+    if (pointer) inherited.supersededFrom = pointer;
+  }
   const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
     leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
   await musePut(env,job);

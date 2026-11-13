@@ -317,9 +317,11 @@ async function handleMuseReview(request, env) {
     await libraryStoredPdf(env.QL_KV,saved);
     // Muse already stored this original in its Drive inbox; record it so the archive workflow does not upload it twice.
     if (job.driveFileId) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + job.sha256,JSON.stringify({version:1,doi:job.doi,sha256:job.sha256,driveFileId:job.driveFileId,source:'muse',archivedAt:Date.now()}));
-    const {replace:replaced, ...kept} = job;
+    const {replace:replaced, supersedes:_supersedes, ...kept} = job;
     const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes},
       ...(replaced ? {replacedFrom:{by:replaced.by,at:replaced.at,oldSha256:replaced.oldSha256,newSha256:replaced.newSha256,verifiedAt:Date.now()}} : {})};
+    // The superseded archive was written at museIntake, before this job overwrote library:muse-job:{doi}.
+    // Keep supersededFrom on the done record; do not look the old task up from that single key.
     await musePut(env,done); await museDelete(env,MUSE_REVIEW_PREFIX + job.id);
     return json({ok:true,job:musePublicJob(done),downloadUrl:'/api/fulltext?doi=' + encodeURIComponent(job.doi),archive:{...libraryArchiveStatus(),sides:{github:'pending',drive:job.driveFileId ? 'reported' : 'pending',mac:'pending'}}});
   } catch (error) { return museError(error); }
