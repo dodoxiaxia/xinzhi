@@ -20,8 +20,10 @@ GOOD = {"doi": "10.1093/eurheartj/ehag570", "title": "Example article title", "s
 class Harness(object):
     """一个假的 run_curl：记录请求头与正文，按预设返回 (状态码, 正文)。"""
 
-    def __init__(self, code=200, body=None):
+    def __init__(self, code=200, body=None, sequence=None):
         self.code, self.body, self.calls = code, body if body is not None else {}, []
+        # sequence: 逐次返回 (状态码, 正文) 或抛出的异常；用完后重复最后一项
+        self.sequence = list(sequence) if sequence else None
 
     def __call__(self, args, header_lines, timeout):
         sent = None
@@ -29,6 +31,11 @@ class Harness(object):
             if a.startswith("@"):
                 sent = json.loads(open(a[1:], "rb").read().decode("utf-8"))
         self.calls.append({"args": list(args), "headers": list(header_lines), "body": sent})
+        if self.sequence:
+            step = self.sequence.pop(0) if len(self.sequence) > 1 else self.sequence[0]
+            if isinstance(step, Exception):
+                raise step
+            return step[0], json.dumps(step[1])
         return self.code, json.dumps(self.body)
 
 
@@ -43,6 +50,11 @@ class ClientTestCase(unittest.TestCase):
         env = mock.patch.dict(os.environ, {"XINZHI_MACHINE_TOKEN_FILE": self.token_file})
         env.start()
         self.addCleanup(env.stop)
+        # 退避等待一律打桩：测试不真等，只记录每次要等多少秒。
+        self.pauses = []
+        wait = mock.patch.object(mc, "pause", self.pauses.append)
+        wait.start()
+        self.addCleanup(wait.stop)
 
     def write(self, name, text):
         path = os.path.join(self.tmp.name, name)
@@ -191,10 +203,13 @@ class RegisterTests(ClientTestCase):
         for code, err_code, expect_rc in [(401, "machine_revoked", 3), (403, "machine_forbidden", 3),
                                           (400, "machine_batch_too_large", 3), (429, "rate_limited", 3),
                                           (503, "library_storage", 4)]:
+            self.pauses[:] = []
             h = Harness(code, {"ok": False, "error": err_code})
             rc, out, err, h = self.run_cli(["register", "--file", self.write("a.json", json.dumps([GOOD]))], h)
             self.assertEqual(rc, expect_rc, code)
-            self.assertEqual(len(h.calls), 1, "no retry")
+            # 4xx 不重试；5xx 按 30/60/120 秒退避共重发 3 次（见 RegisterRetryTests）
+            self.assertEqual(len(h.calls), 1 if code < 500 else 4)
+            self.assertEqual(self.pauses, [] if code < 500 else [30, 60, 120])
             self.assertIn("HTTP %d" % code, err)
             self.assertIn(err_code, err)
 
@@ -344,6 +359,72 @@ class TasksPaginationTests(ClientTestCase):
         self.assertEqual(payload.get("http"), 409)
         self.assertNotIn(FAKE_TOKEN, out)
         self.assertNotIn(FAKE_TOKEN, err)
+
+
+class RegisterRetryTests(ClientTestCase):
+    """register：5xx（含 503 library_sync_pending）、超时和连不上，按 30/60/120 秒退避把同一批原样重发 3 次。"""
+
+    def args(self, items=None):
+        return ["register", "--file", self.write("a.json", json.dumps(items or [GOOD]))]
+
+    def test_default_delays_are_30_60_120(self):
+        self.assertEqual(tuple(mc.REGISTER_RETRY_DELAYS), (30, 60, 120))
+
+    def test_sync_pending_twice_then_success_resends_identical_batch(self):
+        pending = (503, {"ok": False, "error": "library_sync_pending"})
+        done = (200, self.ok_body([{"doi": GOOD["doi"], "result": "skipped", "reason": "exists"}]))
+        rc, out, err, h = self.run_cli(self.args(), Harness(sequence=[pending, pending, done]))
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(h.calls), 3)
+        self.assertEqual(self.pauses, [30, 60])
+        self.assertTrue(all(c["body"] == h.calls[0]["body"] for c in h.calls), "原样重发同一批")
+        self.assertEqual(h.calls[0]["body"], {"items": [GOOD]})
+        payload = json.loads(out)
+        self.assertEqual((payload["http"], payload["attempts"]), (200, 3))
+        self.assertIn("library_sync_pending", err)
+        self.assertNotIn("::warning::", err)
+
+    def test_every_5xx_is_retried_with_the_full_schedule(self):
+        steps = [(500, {"ok": False, "error": "job_server"}), (502, None), (503, {"ok": False, "error": "library_storage"}),
+                 (200, self.ok_body([{"doi": GOOD["doi"], "result": "registered"}]))]
+        rc, out, err, h = self.run_cli(self.args(), Harness(sequence=steps))
+        self.assertEqual((rc, len(h.calls), self.pauses), (0, 4, [30, 60, 120]))
+
+    def test_three_retries_then_warning_and_non_zero_exit(self):
+        rc, out, err, h = self.run_cli(self.args(), Harness(503, {"ok": False, "error": "library_sync_pending"}))
+        self.assertEqual(rc, 4)
+        self.assertEqual(len(h.calls), 4, "第一次加 3 次重发")
+        self.assertEqual(self.pauses, [30, 60, 120])
+        self.assertIn("::warning::", err)
+        self.assertIn("library_sync_pending", err)
+        self.assertEqual(json.loads(out)["attempts"], 4)
+
+    def test_timeouts_and_connection_failures_are_retried(self):
+        timeout = mc.TransientError("curl 调用失败（未拿到 HTTP 状态码）", 5)
+        done = (200, self.ok_body([{"doi": GOOD["doi"], "result": "registered"}]))
+        rc, out, err, h = self.run_cli(self.args(), Harness(sequence=[timeout, timeout, done]))
+        self.assertEqual((rc, len(h.calls), self.pauses), (0, 3, [30, 60]))
+        self.pauses[:] = []
+        rc, out, err, h = self.run_cli(self.args(), Harness(sequence=[timeout]))
+        self.assertEqual((rc, len(h.calls), self.pauses), (5, 4, [30, 60, 120]))
+        self.assertIn("::warning::", err)
+
+    def test_client_errors_are_never_retried(self):
+        for code, error in [(400, "machine_bad_request"), (401, "machine_unauthorized"), (403, "machine_forbidden"), (409, "muse_owner_conflict"), (429, "rate_limited")]:
+            rc, out, err, h = self.run_cli(self.args(), Harness(code, {"ok": False, "error": error}))
+            self.assertEqual((rc, len(h.calls)), (3, 1), code)
+        self.assertEqual(self.pauses, [])
+
+    def test_success_and_dry_run_never_wait(self):
+        rc, out, err, h = self.run_cli(self.args(), Harness(200, self.ok_body([{"doi": GOOD["doi"], "result": "registered"}])))
+        self.assertEqual((rc, len(h.calls), self.pauses), (0, 1, []))
+        rc, out, err, h = self.run_cli(["register", "--dry-run", "--file", self.write("b.json", json.dumps([GOOD]))])
+        self.assertEqual((rc, h.calls, self.pauses), (0, [], []))
+
+    def test_other_commands_do_not_retry(self):
+        rc, out, err, h = self.run_cli(["tasks", "--state", "to-download"], Harness(503, {"ok": False, "error": "library_storage"}))
+        self.assertEqual(rc, 4)
+        self.assertEqual((len(h.calls), self.pauses), (1, []))
 
 
 if __name__ == "__main__":

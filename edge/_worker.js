@@ -2217,14 +2217,21 @@ async function museIndexApplyVerified(env, changes, rounds = 3) {
 // stale = entry that disagrees with its record; extra = entry whose record is no candidate. With repair on, all three are
 // corrected (the record wins). The caller passes the returned cursor back until done is true.
 const MACHINE_INDEX_AUDIT_OPS = 300;
+// After the job records, the audit walks the paper records (cursor prefix 'p:') looking for orphans: a paper that a cut-off
+// registration wrote (machineOrphanPaper) with no job, no register record and no legacy job. Report only: the audit never creates
+// a task, because source and section of a registration are known only to the client that sent it; a repeat registration of the
+// DOI creates the task. At most MACHINE_AUDIT_ORPHAN_LIST DOIs are listed per request; orphans is always the exact count.
+const MACHINE_AUDIT_PAPER_PHASE = 'p:';
+const MACHINE_AUDIT_ORPHAN_LIST = 20;
 async function museIndexAuditChunk(env, cursor, repair) {
+  if (cursor.startsWith(MACHINE_AUDIT_PAPER_PHASE)) return museIndexAuditOrphans(env, cursor.slice(MACHINE_AUDIT_PAPER_PHASE.length), repair);
   const doc = await museIndexRead(env);
   if (!doc || !doc.ready) {
     const next = await museIndexBackfillChunk(env, doc);
-    return {ready:false,done:true,cursor:'',repair,scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0,indexed:Object.keys(next.entries).length};
+    return {ready:false,phase:'jobs',done:true,cursor:'',repair,scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0,indexed:Object.keys(next.entries).length,orphans:0,orphanDois:[],papers:0};
   }
   const changes = [];
-  let ops = 0, scanned = 0, candidates = 0, missing = 0, stale = 0, extra = 0, done = false;
+  let ops = 0, scanned = 0, candidates = 0, missing = 0, stale = 0, extra = 0;
   while (ops < MACHINE_INDEX_AUDIT_OPS) {
     const listing = await machineListKeys(env, MUSE_JOB_PREFIX, cursor, 100);
     ops++;
@@ -2240,12 +2247,12 @@ async function museIndexAuditChunk(env, cursor, repair) {
         else if (!museIndexSame(old, entry)) { stale++; changes.push({doi,entry}); }
       } else if (old) { extra++; changes.push({doi,entry:null}); }
     }
-    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { done = true; cursor = ''; break; }
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { cursor = MACHINE_AUDIT_PAPER_PHASE; break; }
     cursor = listing.cursor;
   }
   let repaired = 0;
   if (repair && changes.length) { await museIndexApplyVerified(env, changes); repaired = changes.length; }
-  return {ready:true,done,cursor,repair,scanned,candidates,missing,stale,extra,repaired,indexed:Object.keys(doc.entries).length};
+  return {ready:true,phase:'jobs',done:false,cursor,repair,scanned,candidates,missing,stale,extra,repaired,indexed:Object.keys(doc.entries).length,orphans:0,orphanDois:[],papers:0};
 }
 // Scan one op-bounded slice of the job keys into the index and save the progress. The slice length is bounded by
 // the KV operation budget, not by the table size, so a large ledger is backfilled over several requests.
@@ -2326,6 +2333,28 @@ async function museIndexHeal(env, doc) {
     if (healed.length) await museIndexApplyVerified(env, healed);
   } catch { /* healing is best effort; the next run tries again */ }
   return healed.length;
+}
+async function museIndexAuditOrphans(env, cursor, repair) {
+  let ops = 0, papers = 0, orphans = 0, done = false;
+  const orphanDois = [];
+  while (ops < MACHINE_INDEX_AUDIT_OPS) {
+    const listing = await machineListKeys(env, LIBRARY_PREFIX, cursor, 100);
+    ops++;
+    for (const listed of listing.keys) {
+      if (typeof listed.name !== 'string' || !listed.name.startsWith(LIBRARY_PREFIX)) continue;
+      const doi = listed.name.slice(LIBRARY_PREFIX.length);
+      const record = await libraryGet(env.QL_KV, listed.name);
+      ops++; papers++;
+      if (!libraryDoi(doi) || libraryDoi(doi) !== doi || !machineOrphanPaper(record, libraryPaper(record, doi))) continue;
+      if (await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi)
+          || await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) { ops += 4; continue; }
+      ops += 4; orphans++;
+      if (orphanDois.length < MACHINE_AUDIT_ORPHAN_LIST) orphanDois.push(doi);
+    }
+    if (listing.list_complete || typeof listing.cursor !== 'string' || !listing.cursor) { done = true; cursor = ''; break; }
+    cursor = listing.cursor;
+  }
+  return {ready:true,phase:'papers',done,cursor:done ? '' : MACHINE_AUDIT_PAPER_PHASE + cursor,repair,scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0,indexed:0,papers,orphans,orphanDois};
 }
 // The index for this request. A missing or unfinished index advances the one-time backfill by one slice.
 async function museIndexOpen(env) {
@@ -4423,6 +4452,13 @@ function machineRegisterItem(raw) {
   if (typeof raw.section !== 'string' || !MACHINE_REGISTER_SECTIONS.includes(raw.section)) return {doi,error:'bad_section'};
   return {doi,title,source:raw.source,section:raw.section};
 }
+// The record a registration writes first (see machineRegisterOne): no journal, no authors, no publication date, no PDF, full text
+// still needed (libraryPaper always reports the bibliography as checked, so that field cannot tell records apart). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
+// The caller must still confirm that no job and no register record exist; the register record is written last, after the job.
+function machineOrphanPaper(record, paper) {
+  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
+    && Array.isArray(paper.authors) && !paper.authors.length && !paper.date;
+}
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
   const raw = await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi);
@@ -4431,11 +4467,9 @@ async function machineRegisterExisting(env, doi) {
   if (record) {
     const paper = libraryPaper(record, doi);
     if (paper && paper.fulltextStatus === 'available') return {where:'paper',state:'done'};
-    // A registration cut off between the paper write and the job write leaves exactly this shape and no register record
-    // (written last): such a DOI was never queued, so it is registered again instead of being skipped for good.
-    const halfWritten = !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
-      && Array.isArray(paper.authors) && !paper.authors.length && paper.metadataStatus === 'external_bibliography_checked'
-      && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
+    // Orphan rule (machineOrphanPaper): a paper written by a registration that was cut off before its job and register record.
+    // Such a DOI was never queued, so a repeat registration creates the task; it is not reported as already existing.
+    const halfWritten = machineOrphanPaper(record, paper) && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
     if (!halfWritten) return {where:'paper',state:'no-task'};
   }
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};

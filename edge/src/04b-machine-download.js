@@ -1000,6 +1000,13 @@ function machineRegisterItem(raw) {
   if (typeof raw.section !== 'string' || !MACHINE_REGISTER_SECTIONS.includes(raw.section)) return {doi,error:'bad_section'};
   return {doi,title,source:raw.source,section:raw.section};
 }
+// The record a registration writes first (see machineRegisterOne): no journal, no authors, no publication date, no PDF, full text
+// still needed (libraryPaper always reports the bibliography as checked, so that field cannot tell records apart). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
+// The caller must still confirm that no job and no register record exist; the register record is written last, after the job.
+function machineOrphanPaper(record, paper) {
+  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
+    && Array.isArray(paper.authors) && !paper.authors.length && !paper.date;
+}
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
   const raw = await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi);
@@ -1008,11 +1015,9 @@ async function machineRegisterExisting(env, doi) {
   if (record) {
     const paper = libraryPaper(record, doi);
     if (paper && paper.fulltextStatus === 'available') return {where:'paper',state:'done'};
-    // A registration cut off between the paper write and the job write leaves exactly this shape and no register record
-    // (written last): such a DOI was never queued, so it is registered again instead of being skipped for good.
-    const halfWritten = !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
-      && Array.isArray(paper.authors) && !paper.authors.length && paper.metadataStatus === 'external_bibliography_checked'
-      && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
+    // Orphan rule (machineOrphanPaper): a paper written by a registration that was cut off before its job and register record.
+    // Such a DOI was never queued, so a repeat registration creates the task; it is not reported as already existing.
+    const halfWritten = machineOrphanPaper(record, paper) && !(await libraryGet(env.QL_KV, MACHINE_REGISTER_PREFIX + doi));
     if (!halfWritten) return {where:'paper',state:'no-task'};
   }
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};

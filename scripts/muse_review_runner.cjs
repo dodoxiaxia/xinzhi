@@ -83,8 +83,9 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
 // action answers 400 muse_bad_request: that is a warning only, because a push run can start before the new code is deployed.
 async function runIndexAudit(env = process.env, http = fetch, log = console.log) {
   const totals = {scanned:0,candidates:0,missing:0,stale:0,extra:0,repaired:0};
-  let cursor = '', chunks = 0, indexed = null, building = false, repair = true;
-  for (; chunks < 20; ) {
+  const orphanDois = [];
+  let cursor = '', chunks = 0, indexed = null, building = false, repair = true, orphans = 0, papers = 0;
+  for (; chunks < 40; ) {
     const token = await identityToken(env,http,ENDPOINT);
     const response = await http(ENDPOINT,{method:'POST',redirect:'error',signal:AbortSignal.timeout(90000),
       headers:{authorization:'Bearer ' + token,'content-type':'application/json','user-agent':'XinZhiMuseVerifier/1.0'},body:JSON.stringify(cursor ? {action:'index-audit',cursor} : {action:'index-audit'})});
@@ -93,6 +94,11 @@ async function runIndexAudit(env = process.env, http = fetch, log = console.log)
     if (!response.ok || body.ok !== true) throw serviceError('index_audit_unavailable',response,body,token,ENDPOINT,'muse-review.yml');
     chunks++;
     for (const key of Object.keys(totals)) if (!Number.isSafeInteger(body[key]) || body[key] < 0) throw new Error('invalid_index_audit'); else totals[key] += body[key];
+    // Orphans: papers a cut-off registration left without a task. Reported only; the website never creates the task from here.
+    if (!Number.isSafeInteger(body.orphans) || body.orphans < 0 || !Number.isSafeInteger(body.papers) || body.papers < 0
+        || !Array.isArray(body.orphanDois) || body.orphanDois.length > 20 || body.orphanDois.some(doi => typeof doi !== 'string' || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(doi))) throw new Error('invalid_index_audit');
+    orphans += body.orphans; papers += body.papers;
+    for (const doi of body.orphanDois) if (orphanDois.length < 20) orphanDois.push(doi);
     if (indexed === null) indexed = body.indexed;
     repair = body.repair === true;
     if (body.ready === false) { building = true; break; }
@@ -101,10 +107,11 @@ async function runIndexAudit(env = process.env, http = fetch, log = console.log)
     cursor = body.cursor;
   }
   const mismatch = totals.missing + totals.stale + totals.extra;
-  const summary = {indexAudit:{...totals,indexedBefore:indexed,requests:chunks,repair,...(building ? {building:true} : {}),mismatch}};
+  const summary = {indexAudit:{...totals,indexedBefore:indexed,requests:chunks,repair,...(building ? {building:true} : {}),mismatch,papers,orphans,orphanDois}};
   log(JSON.stringify(summary));
   if (building) log('::warning::索引核对：索引还在重建，本次未核对完');
   if (mismatch > 0) log('::warning::索引核对：索引条数与可领任务数对不上（漏 ' + totals.missing + '、过期 ' + totals.stale + '、多余 ' + totals.extra + '），已修复 ' + totals.repaired + ' 条');
+  if (orphans > 0) log('::warning::索引核对：有 ' + orphans + ' 条只有题录、没有任务的孤儿记录（' + orphanDois.slice(0,10).join('、') + (orphans > 10 ? ' 等' : '') + '）。重发含它们的登记批次即可补建任务；核对本身不补建。');
   if (mismatch > 0 && totals.repaired < mismatch) { const error = new Error('index_mismatch'); error.counts = totals; throw error; }
   return summary.indexAudit;
 }
