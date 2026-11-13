@@ -688,7 +688,7 @@
 
   // Initialize
   // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.
-  try { if (history.state && history.state.overlay) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
+  try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
