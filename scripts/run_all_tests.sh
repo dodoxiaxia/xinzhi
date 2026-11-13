@@ -66,7 +66,7 @@ fi
 run "service-unittest" python3 -m unittest discover -s service/tests -t .
 
 # Browser-driven Node tests (need Playwright + Chromium).
-NODE_BROWSER="test_boot_url_ui test_citation_export_ui test_doi_direct_download test_doi_library_ui test_download_inline_ui test_grok_fulltext test_mode_toolrow_ui test_popstate_restore_ui test_range_bar_ui"
+NODE_BROWSER="test_boot_url_ui test_citation_export_ui test_doi_direct_download test_doi_library_ui test_download_inline_ui test_grok_fulltext"
 echo "== Node tests"
 for f in scripts/test_*.cjs; do
   name="$(basename "$f" .cjs)"
