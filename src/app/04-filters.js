@@ -1,5 +1,22 @@
   // ==== src/app/04-filters.js · Dates, full-text links, lane/range bars, URL sync, filtering, sidebar facets ====
   function hasAbstract(p) { return !!(p.summary || (p.abstractSections||[]).some(x=>x.text) || quicklookOf(p)?.abstract); }
+  // 摘要明显不完整（只有结论）：保守判定，只在下面两种情况成立，其余一律不提示。
+  // 1) 有分段：所有分段的标题都是 Conclusion(s) / 结论，没有 Background、Methods、Results 等其他段。
+  // 2) 无分段（单段无标题，或只有 summary）：全文不超过 600 字，且以 Conclusion(s): / In conclusion, 开头，
+  //    或以 “These/Our findings|results support|suggest|indicate|show|demonstrate|highlight” 这类结论句型开头。
+  function abstractMayBeIncomplete(p) {
+    if (!p) return false;
+    const concluding = t => {
+      t = String(t || '').trim();
+      return t.length > 0 && t.length <= 600 && (/^(conclusions?|in conclusion)\s*[:：.,]/i.test(t) || /^(these|our) (findings|results) (support|suggest|indicate|show|demonstrate|highlight)\b/i.test(t));
+    };
+    const secs = (p.abstractSections || []).filter(x => x && String(x.text || '').trim());
+    if (secs.length) {
+      if (secs.every(x => /^(conclusions?|结论)\s*[:：]?$/i.test(String(x.label || '').trim()))) return true;
+      return secs.length === 1 && !String(secs[0].label || '').trim() && concluding(secs[0].text);
+    }
+    return concluding(p.summary);
+  }
   function datePrecision(p) {
     if (p.datePrecision) return p.datePrecision;
     if (!p.date) return 'unknown';

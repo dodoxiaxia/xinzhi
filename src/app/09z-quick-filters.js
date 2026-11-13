@@ -25,7 +25,6 @@
   ];
 
   let qfOpen = null; // { kind, query }
-
   function loadRecentJournals() {
     try {
       const a = JSON.parse(safeGet(QF_RECENT_KEY) || '[]');
@@ -121,8 +120,15 @@
     const api = JT();
     return api ? api.tierOfName(name) : 'other';
   }
+  // 近7天榜里「AI」档按分类条的口径：AI 医疗 + AI 前沿，不按期刊名单；其他栏目仍按 AI 期刊档。
+  function weeklyAiTier() { return state.mode === 'weekly'; }
+  function paperIsWeeklyAi(p) {
+    const c = typeof weeklyCategoryOf === 'function' ? weeklyCategoryOf(p) : '';
+    return c === 'aimed' || c === 'aitech';
+  }
   function paperMatchesJournalFilter(p) {
     if (!state.journalTier && !(selectedJournals().length)) return true;
+    if (weeklyAiTier() && state.journalTier === 'ai' && !selectedJournals().length) return paperIsWeeklyAi(p);
     const name = paperJournalKey(p);
     if (!name) return false;
     const js = selectedJournals();
@@ -166,6 +172,7 @@
     return rows;
   }
   function tierHasPapers(tierId) {
+    if (tierId === 'ai' && weeklyAiTier()) return qfPapers().some(paperIsWeeklyAi);
     return qfPapers().some(p => {
       const name = paperJournalKey(p);
       if (!name) return false;
@@ -285,6 +292,21 @@
     return laneName + ' · ' + rangeName;
   }
 
+  let qfLastMode = null;
+  // 右侧渐隐：条超出一屏且还没滚到尽头时才显示，滚到尽头去掉，最后一个芯片完整可见。
+  function qfSyncFade(row) {
+    if (!row) return;
+    const overflow = row.scrollWidth > row.clientWidth + 2;
+    const atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 2;
+    row.classList.toggle('qf-fade', overflow && !atEnd);
+  }
+  function qfBindFade(row) {
+    if (!row.dataset || row.dataset.qfFadeBound || typeof row.addEventListener !== 'function') return;
+    row.dataset.qfFadeBound = '1';
+    row.addEventListener('scroll', () => qfSyncFade(row), { passive: true });
+    if (typeof window.addEventListener === 'function') window.addEventListener('resize', () => qfSyncFade(row));
+  }
+
   function renderQuickFilters() {
     const bar = $('#quickBar');
     const row = $('#qfChipRow');
@@ -316,6 +338,10 @@
       const on = tierIsOn(tier.id);
       const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
       const openKind = 'jtier:' + tier.id;
+      if (tier.id === 'ai' && weeklyAiTier()) {
+        parts.push(`<button type="button" class="qf-chip qf-chip-ai${on ? ' is-on' : ''}" data-qf-jtier="ai" aria-pressed="${on}" aria-label="筛选 AI 医疗 / AI 前沿" title="与榜内分类条的「AI 医疗」「AI 前沿」口径一致">${esc(tier.short)}</button>`);
+        return;
+      }
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
         <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}">${esc(label)}</button>
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
@@ -323,6 +349,10 @@
     });
     if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
     row.innerHTML = parts.join('');
+    // 换栏目（页签）时快捷条横向位置归零，避免上一栏滑出去的位置留在新栏目里。
+    if (qfLastMode !== state.mode) { row.scrollLeft = 0; qfLastMode = state.mode; }
+    qfBindFade(row);
+    qfSyncFade(row);
     renderQfSummary();
     if (qfOpen) openQfPop(qfOpen.kind, true);
   }
@@ -339,7 +369,7 @@
     const bits = [];
     if (state.favoritesOnly) bits.push(item('只看关注期刊', 'favorites'));
     if (state.journalTier && !selectedJournals().length) {
-      bits.push(item(tierDef(state.journalTier).title || state.journalTier, 'jtier'));
+      bits.push(item(state.journalTier === 'ai' && weeklyAiTier() ? 'AI 医疗 / AI 前沿' : (tierDef(state.journalTier).title || state.journalTier), 'jtier'));
     } else if (selectedJournals().length) {
       const prefix = state.journalTier ? (tierDef(state.journalTier).short + '：') : '';
       selectedJournals().forEach(j => bits.push(item(prefix + j, 'journal', j)));
