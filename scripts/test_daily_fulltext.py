@@ -130,12 +130,24 @@ class ScopeTests(unittest.TestCase):
         ('skin', 'Deep learning for skin lesion classification in dermatology clinics.'),
         ('lymphovascular', 'Machine learning to predict lymphovascular invasion in gastric cancer.'),
         ('astronomy', 'Deep learning for astronomy'),
+        ('lung-cancer', 'Deep learning for early detection of lung cancer on chest CT'),
+        ('lung-nodule', 'Machine learning classification of pulmonary nodules in screening CT'),
+        ('lung-cancer-zh', '肺癌筛查中的深度学习'),
+        ('heat-stroke', 'Heat stroke risk prediction with machine learning'),
     )
     IN_CARDIO = (
         ('ecg-af', 'Deep learning electrocardiogram analysis for atrial fibrillation detection'),
         ('acs-triage', 'Machine learning triage of chest pain and acute coronary syndrome in the emergency department'),
         ('10.1177/1753495x261499121', 'Evaluation of a postpartum cardiovascular risk clinic after hypertensive disorder of pregnancy: First-year experience.'),
         ('hf', 'Artificial intelligence for heart failure risk prediction'),
+        ('pert', 'Real-world implementation of an AI-assisted PERT workflow for pulmonary embolism response teams'),
+        ('pe', 'Machine learning for risk stratification in acute pulmonary embolism'),
+        ('pah-ct', 'Deep learning CT measurement of pulmonary arterial hypertension severity'),
+        ('pulm-vascular', 'Absolute and lung volume-normalized deep learning-derived pulmonary vascular measures'),
+        ('aorta', 'Automated aorta segmentation and aortic dissection detection with deep learning'),
+        ('pad', 'Machine learning for peripheral artery disease detection'),
+        ('stroke', 'Deep learning prediction of outcomes after acute ischemic stroke'),
+        ('zh', '肺栓塞应急团队流程；肺动脉高压CT测量；主动脉夹层；外周动脉疾病；脑卒中'),
         ('cardio-onc', 'Cardiotoxicity prediction in breast cancer patients treated with anthracyclines'),
     )
     IN_GENERAL = (
@@ -194,6 +206,20 @@ class ScopeTests(unittest.TestCase):
         result = d.public_readings(raw)
         self.assertEqual([r['pmcid'] for r in result['items']], [keep['pmcid']])
         self.assertEqual(raw, before)
+
+    def test_published_count_equals_the_items_the_column_shows(self):
+        raw = d.empty_data()
+        day = '2026-10-09'
+        keep, drop, other_day = item(1), item(2), item(3)
+        drop['title'] = 'Machine learning prediction of ankle reinjury in chronic ankle instability'
+        other_day['publishedOn'] = '2026-10-08'
+        raw['items'] += [keep, drop, other_day]
+        raw['status'] = {'day': day, 'target': 12, 'completed': 2, 'state': 'complete', 'reason': ''}
+        result = d.public_readings(raw)
+        shown = [r for r in result['items'] if r['publishedOn'] == result['status']['day']]
+        self.assertEqual(result['status']['completed'], len(shown))
+        self.assertEqual(result['status']['completed'], 1)
+        self.assertEqual(raw['status']['completed'], 2)  # private store keeps its own generation count
 
     def test_generation_never_pays_for_off_scope_papers(self):
         bad = dict(paper(1, 'AI 医疗'), title='Machine learning prediction of ankle reinjury')

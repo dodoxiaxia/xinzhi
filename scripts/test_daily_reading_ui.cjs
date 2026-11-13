@@ -10,11 +10,11 @@ esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','
 vm.runInContext(src.slice(start,end),ctx);
 const p=(n,day)=>({pmcid:'PMC'+n,title:'Original title',titleZh:'中文精读题名',journal:'Journal',date:'2026-10-07',publishedOn:day,generatedAt:day+'T01:00:00Z',scope:'public-fulltext-body',humanReviewed:false,
 sections:Object.fromEntries(['question','design','findings','limitations','practice'].map(k=>[k,{text:'离线测试内容。',evidence:[{quote:'Original evidence quote.',section:'Methods',paragraph:'p1'}]}]))});
-ctx.window.DEEP_READINGS={items:[p(1,'2026-10-09'),p(2,'2026-10-08'),p(3,'2026-10-10'),{...p(4,'2026-10-09'),scope:'public-abstract'}],status:{day:'2026-10-09',reason:'model_unavailable'},updatedAt:'2026-10-09T01:17:00Z'};
+ctx.window.DEEP_READINGS={items:[p(1,'2026-10-09'),p(2,'2026-10-08'),p(3,'2026-10-10'),{...p(4,'2026-10-09'),scope:'public-abstract'}],status:{day:'2026-10-09',target:12,reason:'model_unavailable'},updatedAt:'2026-10-09T01:17:00Z'};
 const groups=ctx.dailyReadingGroups(ctx.window.DEEP_READINGS);
 assert.equal(groups.todayCount,1);assert.equal(groups.latest.length,1);assert.equal(groups.history.length,1);
 ctx.renderDailyDeepRead();
-assert(node.innerHTML.includes('今日已更新 <b>1</b> 篇'));assert(node.innerHTML.includes('往期精读 · 1 篇'));assert(node.innerHTML.includes('暂时不可用'));
+assert(node.innerHTML.includes('今日已更新 <b>1</b> 篇'));assert(!/目标/.test(node.innerHTML),'page must not state a daily target');assert(!node.innerHTML.includes('每天目标'));assert(node.innerHTML.includes('往期精读 · 1 篇'));assert(node.innerHTML.includes('暂时不可用'));
 assert(!node.innerHTML.includes('data-deep-reading="PMC3"'));assert(!node.innerHTML.includes('data-deep-reading="PMC4"'));
 assert(!node.innerHTML.includes('AI 全文精读 · 未经人工审核'));assert(node.innerHTML.includes('data-action="open-deep-reading" data-reading-id="PMC1"'));
 // The rail lists readings only; the text, evidence and source links render in the reading panel.

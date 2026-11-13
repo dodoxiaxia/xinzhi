@@ -129,7 +129,7 @@ def date_valid(value, today, days=90):
 # The decision reads the title only: the public store keeps no abstract, so export and selection
 # must reach the same verdict for a paper that was already paid for.
 SCOPE_NOT_CARDIAC = re.compile(r'lympho-?vascular|vascular invasion|vascular endothelial|portal hypertension|intracranial hypertension|ocular hypertension|heat ?stroke|chemoembol', re.I)
-SCOPE_CARDIO = re.compile(r'cardio|\bheart|cardiac|atrial|coronary|hypertensi|aort|ventric|arrhyth|fibrillation|anticoagul|myocard|blood pressure|vascular|stroke|atheroscl|dyslipid|cholesterol|\bLDL\b|thromboemb|pulmonary embol|infarct|angina|chest pain|\bECG\b|\bEKG\b|electrocardio|photoplethysmo|\bstatins?\b|valvular|\bTAV[IR]\b', re.I)
+SCOPE_CARDIO = re.compile(r'cardio|\bheart|cardiac|atrial|coronary|hypertensi|aort|ventric|arrhyth|fibrillation|anticoagul|myocard|blood pressure|vascular|stroke|atheroscl|dyslipid|cholesterol|\bLDL\b|thromboemb|pulmonary embol|infarct|angina|chest pain|\bECG\b|\bEKG\b|electrocardio|photoplethysmo|\bstatins?\b|valvular|\bTAV[IR]\b|\bPERT\b|pulmonary (?:arterial )?hypertension|pulmonary vascul|peripheral (?:arter|vascul)|肺栓塞|肺动脉|肺血管|主动脉|外周动脉|外周血管|卒中', re.I)
 SCOPE_LLM = re.compile(r'large language model|language model|\bLLMs?\b|chatgpt|\bgpt-?\d|generative (?:ai|artificial)|foundation model|chatbot', re.I)
 SCOPE_AI = re.compile(r'artificial intelligence|machine learning|deep learning|neural network|\bAI\b', re.I)
 SCOPE_EVALUATION = re.compile(r'benchmark|reasoning|evaluat|assess|accuracy|performance|compar|capabilit|diagnos|validat|safety|reliab', re.I)
@@ -693,6 +693,9 @@ def public_readings(raw):
         out['items'].append(clean)
     status = raw.get('status', {})
     out['status'] = {k: status[k] for k in ('day', 'target', 'completed', 'state', 'reason') if k in status}
+    if 'completed' in out['status']:
+        # The count must match what the column shows: only items that survive the scope rule, for the batch day.
+        out['status']['completed'] = sum(p['publishedOn'] == status.get('day') for p in out['items'])
     out['updatedAt'] = raw.get('updatedAt', '')
     return out
 
