@@ -255,6 +255,7 @@ async function run() {
   const rebuild = [];
   for (let n = 0; n < 5; n++) { const body = await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json(); rebuild.push(body); if (body.task) break; }
   assert(rebuild.at(-1).task, 'the claim finds the task after the index was rebuilt');
+  await require('./test_stale_queued_fallback.cjs').run();
   console.log('machine index tests passed');
 }
 module.exports = {run};
