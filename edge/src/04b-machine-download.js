@@ -251,9 +251,11 @@ function machineReason(job) {
 // exactly the public state failed-awaiting-fallback. Where it runs: lazily, inside a fallback claim and inside the
 // to-download / failed-awaiting-fallback list. There is no cron path for the machine queue, and a downloader claim
 // never sweeps, so a downloader that is polling still gets first pick.
-// Config is two plain environment variables, like the other Pages switches (MUSE_LEGACY_ENDPOINTS_DISABLED and the
+// Config is four plain environment variables, like the other Pages switches (MUSE_LEGACY_ENDPOINTS_DISABLED and the
 // feature flags): STALE_QUEUED_FALLBACK_ENABLED must be exactly 'true' (anything else, or unset, is off and costs no KV
-// operation at all), and STALE_QUEUED_FALLBACK_HOURS is an integer 1-144 (missing or invalid means 6).
+// operation at all); STALE_QUEUED_FALLBACK_HOURS is an integer 1-144 (missing or invalid means 6);
+// STALE_QUEUED_FALLBACK_MAX_PER_WINDOW is an integer 1-25 (default 5) and STALE_QUEUED_FALLBACK_WINDOW_MINUTES is an
+// integer 5-60 (default 10): at most that many conversions per window. They only take effect on a new deployment.
 const STALE_QUEUED_HOURS_DEFAULT = 6, STALE_QUEUED_HOURS_MAX = 144;
 const STALE_QUEUED_REASON = 'queue_unclaimed';
 // Hint for fallback clients to try open access before the Hamburg quota, not a guarantee.
@@ -281,8 +283,24 @@ function machineJournalRank(journal) {
   }
   return 0;
 }
-// One request reads at most this many task records for the sweep and converts at most this many tasks.
-const STALE_QUEUED_READ_MAX = 60, STALE_QUEUED_MOVE_MAX = 25;
+// Per request: at most STALE_QUEUED_SCAN_READ_MAX KV reads of task records and pause marks while looking for eligible tasks,
+// at most STALE_QUEUED_POOL_MAX eligible tasks ranked (one paper read each), and at most STALE_QUEUED_MOVE_MAX conversions.
+const STALE_QUEUED_SCAN_READ_MAX = 60, STALE_QUEUED_POOL_MAX = 30, STALE_QUEUED_MOVE_MAX = 25;
+// Negative cache, per isolate and in memory (no KV write): a stale queued task that is not eligible (claimed before, paused, or
+// its record disagrees) is skipped without any KV read until its index entry changes (the entry's updatedAt is part of the match)
+// or the time-to-live runs out. A claimed task stays ineligible until the record changes, so its time-to-live is long; a pause can
+// be lifted without touching the task record, so that one is short.
+const STALE_QUEUED_SKIP_CLAIMED_MS = 3600000, STALE_QUEUED_SKIP_SHORT_MS = 600000, STALE_QUEUED_SKIP_CACHE_MAX = 500;
+const machineStaleSkip = new Map();
+function machineStaleSkipped(doi, entry, now) {
+  const hit = machineStaleSkip.get(doi);
+  return !!hit && hit.u === entry.u && hit.until > now;
+}
+function machineStaleSkipMark(doi, entry, now, ms) {
+  if (!entry) return;
+  if (machineStaleSkip.size >= STALE_QUEUED_SKIP_CACHE_MAX) machineStaleSkip.clear();
+  machineStaleSkip.set(doi, {u:entry.u,until:now + ms});
+}
 function machineStaleQueuedConfig(env) {
   if (!env || env.STALE_QUEUED_FALLBACK_ENABLED !== 'true') return {on:false,hours:STALE_QUEUED_HOURS_DEFAULT};
   const raw = typeof env.STALE_QUEUED_FALLBACK_HOURS === 'string' ? env.STALE_QUEUED_FALLBACK_HOURS.trim() : '';
@@ -315,29 +333,54 @@ async function machineStaleQueuedSweep(env, doc, changes) {
     const cfg = machineStaleQueuedConfig(env);
     if (!cfg.on || !doc || !doc.ready) return 0;
     const now = Date.now(), limitMs = cfg.hours * 3600000;
-    const candidates = Object.entries(doc.entries).filter(([, e]) => e.s === 'queued' && e.c > 0 && now - e.c >= limitMs).sort(museIndexOrder);
+    // Stale queued entries in the index, oldest first, minus the ones already known to be ineligible.
+    const candidates = Object.entries(doc.entries).filter(([doi, e]) => e.s === 'queued' && e.c > 0 && now - e.c >= limitMs && !machineStaleSkipped(doi, e, now)).sort(museIndexOrder);
     if (!candidates.length) return 0;
-    const windowKey = 'library:stale-fallback-window:' + Math.floor(now / (cfg.windowMinutes * 60000));
+    const windowNumber = Math.floor(now / (cfg.windowMinutes * 60000));
+    const windowKey = 'library:stale-fallback-window:' + windowNumber;
     const counter = await libraryGet(env.QL_KV, windowKey);
     const used = Number.isInteger(counter) && counter >= 0 ? counter : 0;
     const limit = Math.min(cfg.maxPerWindow - used, STALE_QUEUED_MOVE_MAX);
     if (limit <= 0) return 0;
+    // Step 1: find eligible tasks from the task records themselves (the record wins), before reading any paper record.
+    // A task that was claimed before, is paused, or is too young is skipped and remembered, and does not use up a pool slot,
+    // so a long run of ineligible old tasks can never hide the eligible ones behind them.
+    const pool = [];
+    let scanReads = 0;
+    for (const [doi, entry] of candidates) {
+      if (pool.length >= STALE_QUEUED_POOL_MAX || scanReads >= STALE_QUEUED_SCAN_READ_MAX) break;
+      scanReads++;
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      const actual = museIndexEntry(job);
+      if (!museIndexSame(actual, entry)) {
+        changes.push({doi,entry:actual});
+        if (actual) doc.entries[doi] = actual; else delete doc.entries[doi];
+      }
+      if (!job) continue;
+      if (!machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) { machineStaleSkipMark(doi, actual, now, STALE_QUEUED_SKIP_CLAIMED_MS); continue; }
+      if (scanReads >= STALE_QUEUED_SCAN_READ_MAX) break;
+      scanReads++;
+      let attempt = null;
+      try { attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi); } catch { console.log('stale queued fallback: pause mark unreadable, task skipped this request'); continue; }
+      if (attempt && attempt.paused) { machineStaleSkipMark(doi, actual, now, STALE_QUEUED_SKIP_SHORT_MS); continue; }
+      pool.push({doi,entry:actual});
+    }
+    if (!pool.length) return 0;
+    // Step 2: only the eligible tasks get a paper read (journal name for ranking).
     const ranked = [];
-    for (const [doi, entry] of candidates.slice(0, STALE_QUEUED_READ_MAX)) {
+    for (const {doi, entry} of pool) {
       let journal = '';
       try {
         const paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
         journal = paper && paper.journal || '';
-      } catch { journal = ''; }
+      } catch { journal = ''; console.log('stale queued fallback: paper record unreadable, journal left empty'); }
       const openAccess = MACHINE_OA_DOI_HINTS.some(([prefix]) => doi.toLowerCase().startsWith(prefix)) ? 'yes' : 'unknown';
       ranked.push({doi,entry,journal,openAccess,rank:machineJournalRank(journal)});
     }
     ranked.sort((a,b) => Number(b.openAccess === 'yes') - Number(a.openAccess === 'yes') || b.rank - a.rank || museIndexOrder([a.doi,a.entry],[b.doi,b.entry]));
-    let reads = 0;
     try {
       for (const {doi, entry, journal, openAccess} of ranked) {
-        if (reads >= STALE_QUEUED_READ_MAX || moved >= limit) break;
-        reads++;
+        if (moved >= limit) break;
         const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
         const actual = museIndexEntry(job);
         if (!museIndexSame(actual, entry)) {
@@ -354,12 +397,16 @@ async function machineStaleQueuedSweep(env, doc, changes) {
         moved++;
       }
     } finally {
-      // KV is eventually consistent: concurrent requests may slightly overshoot this budget.
-      if (moved > 0) try {
-        await libraryPut(env.QL_KV, windowKey, JSON.stringify(used + moved), {expirationTtl:cfg.windowMinutes * 60 * 2});
-      } catch { /* counter persistence must never break the request */ }
+      // The counter is read, then overwritten: KV has no atomic increment, so concurrent requests may lose an update
+      // and slightly overshoot this budget (known, see the pull request text).
+      if (moved > 0) {
+        try {
+          await libraryPut(env.QL_KV, windowKey, JSON.stringify(used + moved), {expirationTtl:cfg.windowMinutes * 60 * 2});
+        } catch { console.log('stale queued fallback: window counter write failed, budget not recorded'); }
+        console.log('stale queued fallback: moved ' + moved + ' task(s) to the fallback queue in window ' + windowNumber);
+      }
     }
-  } catch { /* the sweep is best effort; the next request tries again */ }
+  } catch { console.log('stale queued fallback: sweep failed, next request retries'); }
   return moved;
 }
 function machineStage(job) {
@@ -455,7 +502,7 @@ function handleMachineProtocol(request, env) {
     claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
       note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
     softRetry:{reasons:MACHINE_SOFT_RETRY_REASONS,limit:MACHINE_SOFT_RETRY_LIMIT,
-      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 仍是硬失败。同一次领取不会把刚退回的篇再领走。'},
+      note:'lease_expired 与 source_blocked 第一次把任务退回待下载并记 softFailCount；同一篇累计两次才进失败待兜底，失败记录保留 claimant 与领取时间。带 previousReason 的条目（从失败待兜底领走的硬失败，如 not_oa）租约到期仍回失败待兜底，并保留原原因，不会回到待下载。not_oa、wrong_paper、han_login、han_quota、other 仍直接进失败待兜底。queue_expired 与 queue_unclaimed（排队超时无人领取转兜底）仍是硬失败，不走软重试。同一次领取不会把刚退回的篇再领走。'},
     supersede:{field:'supersededFrom',archiveKeyPattern:'library:muse-superseded:<doi>:<old-task-id>',
       note:'每个 DOI 只有一把 library:muse-job:<doi>。museIntake 只要覆盖这把键上的任何现有任务，就会先把旧记录原样写到上述键（含旧 sha256 与旧状态），带 supersededBy 为新 taskId、supersededAt，以及原来的 reason / previousReason，不设过期。这包括失败/review/尚未完成的任务，以及用 X-Machine-Replace 替换已是 done/available 的原件。新任务立即带 supersededFrom。若新任务后来核验失败进入 review 再重新上传，链会接续。旧客户端可忽略。'},
     oaVerify:{source:'open_access',limit:2,note:'开放获取来源核验未通过时，第一次把任务退回待下载，候选文件只留记录不删，并记入 oaRejected。同一篇第二次核验未通过则留在 review，claimable 为 false。机器或读者上传核验未通过仍直接进 review。旧客户端可忽略新计数字段。'},

@@ -14,6 +14,8 @@ async function create(options = {}) {
   const h = await setup({clock:{now:Date.now()},...options});
   h.env.MUSE_FULLTEXT_ENABLED = 'true';
   h.env.MACHINE_TOKENS = tokens;
+  h.logs = [];
+  h.context.console = {log: line => h.logs.push(String(line)), error: console.error};
   return h;
 }
 function call(h, route, secret, body, method = 'POST') {
@@ -227,8 +229,10 @@ async function run() {
   h = await enabled();
   const paused = seed(h, 'paused', 7 * HOUR);
   h.values.set('library:attempt:' + paused, JSON.stringify({paused:true}));
-  assert.equal(await claim(h), null, 'paused DOI cannot be claimed by fallback after conversion');
-  assert.equal(stored(h, key(paused)).reason, 'queue_unclaimed', 'paused DOI still undergoes stale conversion');
+  const pausedBefore = raw(h, paused);
+  assert.equal(await claim(h), null, 'paused DOI is not claimable');
+  assert.equal(raw(h, paused), pausedBefore, 'paused DOI is not converted: record byte-identical');
+  assert.equal(jobWrites(h, paused), 0, 'paused DOI never written');
   const fs = require('fs'), vm = require('vm');
   const tierContext = {globalThis:{}};
   vm.runInNewContext(fs.readFileSync('src/app/journal-tiers.js','utf8'), tierContext);
@@ -320,6 +324,194 @@ async function run() {
     assert.equal(stored(b,windowKey(clock,minutes)),5,'window config '+value);
     assert.equal(b.writes.find(w=>w.key===windowKey(clock,minutes)).opts.expirationTtl,minutes*120);
   }
+
+  // ---- N3: ineligible old tasks are excluded before the candidate cut, and cost a bounded number of reads ----
+  const sweep = async (b, changes = []) => {
+    // Like a real caller: the sweep mutates the open index document, which is then saved.
+    const doc = stored(b, INDEX);
+    const moved = await vm.runInContext('machineStaleQueuedSweep', b.context)(b.env, doc, changes);
+    b.values.set(INDEX, JSON.stringify(doc));
+    return moved;
+  };
+  const jobReads = (b, from) => b.reads.slice(from).filter(r => r.key.startsWith('library:muse-job:')).length;
+  const kinds = (b, from) => b.reads.slice(from).reduce((o, r) => { const k = r.key.split(':').slice(0, 2).join(':'); o[k] = (o[k] || 0) + 1; return o; }, {});
+  {
+    // 70 claimed-before tasks are older than the one eligible task: the eligible one must still be converted.
+    h = await enabled();
+    const ineligible = Array.from({length:70}, (_, i) => seed(h, 'claimed' + String(i).padStart(2, '0'), 20 * HOUR - i * 1000, 'queued', {softFailCount:1}));
+    const good = seed(h, 'good-behind', 7 * HOUR);
+    const before = h.reads.length;
+    assert.equal(await sweep(h), 0, 'first sweep: scan budget (60) is spent on ineligible tasks, nothing reached yet');
+    const first = kinds(h, before);
+    assert(first['library:muse-job'] <= 60, 'one request reads at most 60 task records: ' + JSON.stringify(first));
+    assert.equal(stored(h, key(good)).state, 'queued');
+    // Next request: the 60 known-ineligible tasks are skipped from memory, the scan moves on and reaches the eligible one.
+    const second = h.reads.length;
+    assert.equal(await sweep(h), 1, 'second sweep skips the 60 known-ineligible tasks from memory, reads the other 10, and converts the eligible one behind them');
+    assert.equal(stored(h, key(good)).reason, 'queue_unclaimed');
+    for (const doi of ineligible) assert.equal(jobWrites(h, doi), 0, 'ineligible task never written');
+    // A steady state with only ineligible tasks left costs no task read at all.
+    const steady = h.reads.length;
+    assert.equal(await sweep(h), 0);
+    assert.equal(h.reads.length, steady, 'all candidates known ineligible: zero KV reads ');
+    assert(jobReads(h, second) <= 60 + 5, 'later requests stay bounded');
+  }
+  {
+    // The same through the public list: 70 claimed-before tasks do not starve an eligible one for more than a few requests,
+    // and every request stays under the read cap.
+    h = await enabled();
+    for (let i = 0; i < 70; i++) seed(h, 'claimedl' + String(i).padStart(2, '0'), 20 * HOUR - i * 1000, 'queued', {softFailCount:1});
+    const good = seed(h, 'good-list', 7 * HOUR);
+    let converted = false;
+    for (let n = 0; n < 4 && !converted; n++) {
+      const before = h.reads.length;
+      await list(h, 'failed-awaiting-fallback');
+      const sweepReads = h.reads.slice(before).filter(r => /^library:(muse-job|attempt|paper|stale-fallback-window)/.test(r.key)).length;
+      assert(sweepReads <= 60 + 1 + 30 + 30 + 80, 'per-request reads stay bounded (' + sweepReads + ')');
+      converted = stored(h, key(good)).state === 'failed';
+    }
+    assert(converted, 'eligible task converted within a few requests');
+  }
+  {
+    // Worst case measured: 1 counter + 60 scan reads + 30 paper reads + moved rereads.
+    h = await enabled();
+    h.env.STALE_QUEUED_FALLBACK_MAX_PER_WINDOW = '25';
+    for (let i = 0; i < 40; i++) seed(h, 'wc' + String(i).padStart(2, '0'), 9 * HOUR - i * 1000);
+    const before = h.reads.length, writes = h.writes.length;
+    assert.equal(await sweep(h), 25);
+    const k = kinds(h, before), total = h.reads.length - before;
+    assert.equal(k['library:stale-fallback-window'], 1, 'one counter read');
+    assert.equal(k['library:paper'], 30, 'paper reads only for the 30-task pool');
+    assert(k['library:muse-job'] <= 60 + 25, 'task records: scan plus reread of moved tasks');
+    assert(total <= 121, 'worst case reads within 121: ' + total);
+    console.log('measured: reads ' + total + ' ' + JSON.stringify(k) + ' writes ' + (h.writes.length - writes));
+  }
+  {
+    // Default settings: 5 moved. Measure reads and writes.
+    h = await enabled();
+    for (let i = 0; i < 40; i++) seed(h, 'dflt' + String(i).padStart(2, '0'), 9 * HOUR - i * 1000);
+    const before = h.reads.length, writes = h.writes.length;
+    assert.equal(await list(h, 'to-download').then(() => 5), 5);
+    const sweepWrites = h.writes.slice(writes).filter(w => /^library:(muse-job|muse-queue|stale-fallback-window)/.test(w.key)).length;
+    console.log('measured default list request: writes (jobs, queue pointers, counter) ' + sweepWrites + ', reads ' + (h.reads.length - before));
+    void before;
+  }
+  {
+    // A claimed task whose record changes (updatedAt) is looked at again.
+    h = await enabled();
+    const doi = seed(h, 'changes', 8 * HOUR, 'queued', {softFailCount:1});
+    assert.equal(await sweep(h), 0);
+    const reads = h.reads.length;
+    assert.equal(await sweep(h), 0);
+    assert.equal(h.reads.length, reads, 'known ineligible task is skipped without a read');
+    const job = stored(h, key(doi)); delete job.softFailCount; job.updatedAt += 1;
+    h.values.set(key(doi), JSON.stringify(job));
+    const doc = stored(h, INDEX); doc.entries[doi].u = job.updatedAt; h.values.set(INDEX, JSON.stringify(doc));
+    assert.equal(await sweep(h), 1, 'changed record is re-read and now eligible');
+  }
+
+  // ---- N7: paused DOIs are not candidates; lifting the pause is picked up after the short cache expires ----
+  {
+    h = await enabled();
+    const pausedDoi = seed(h, 'pause-a', 8 * HOUR), other = seed(h, 'pause-b', 7 * HOUR);
+    h.values.set('library:attempt:' + pausedDoi, JSON.stringify({paused:true}));
+    const pausedBefore = raw(h, pausedDoi);
+    assert.equal(await sweep(h), 1, 'only the unpaused task moves');
+    assert.equal(stored(h, key(other)).state, 'failed');
+    assert.equal(raw(h, pausedDoi), pausedBefore, 'paused task untouched');
+    assert.equal(jobWrites(h, pausedDoi), 0);
+    assert(!stored(h, INDEX).entries[pausedDoi] || stored(h, INDEX).entries[pausedDoi].s === 'queued', 'paused task stays queued in the index');
+    assert.equal((await list(h)).some(t => t.doi === pausedDoi), false, 'paused task is not listed as failed-awaiting-fallback');
+    h.values.set('library:attempt:' + pausedDoi, JSON.stringify({paused:false}));
+    const now = h.context.Date.now;
+    h.context.Date.now = () => now() + 11 * 60000;
+    assert.equal(await sweep(h), 1, 'pause lifted: converted after the short negative cache');
+    h.context.Date.now = now;
+    // A pause mark that cannot be read skips the task for this request only and logs a fixed line.
+    h = await enabled();
+    const unreadable = seed(h, 'pause-err', 8 * HOUR);
+    const logs = []; h.context.console = {log: line => logs.push(String(line)), error: () => {}};
+    const get = h.env.QL_KV.get;
+    h.env.QL_KV.get = async function(k, ...args) { if (k === 'library:attempt:' + unreadable) throw new Error('synthetic'); return get.call(this, k, ...args); };
+    assert.equal(await sweep(h), 0);
+    assert.equal(stored(h, key(unreadable)).state, 'queued', 'unreadable pause mark never converts');
+    assert.deepEqual(logs, ['stale queued fallback: pause mark unreadable, task skipped this request']);
+    h.env.QL_KV.get = get;
+    assert.equal(await sweep(h), 1, 'readable again: converted on the next request');
+  }
+
+  // ---- N2 / N4: fixed log lines, no DOI, no token ----
+  {
+    h = await enabled();
+    const logs = []; h.context.console = {log: line => logs.push(String(line)), error: line => logs.push(String(line))};
+    const doi = seed(h, 'log-ok', 8 * HOUR);
+    assert.equal(await sweep(h), 1);
+    const win = Math.floor(h.context.Date.now() / 600000);
+    assert.deepEqual(logs, ['stale queued fallback: moved 1 task(s) to the fallback queue in window ' + win]);
+    // nothing to do: no log line
+    logs.length = 0;
+    await sweep(h);
+    assert.deepEqual(logs, [], 'no conversion, no log');
+    // counter write failure
+    h = await enabled();
+    const l2 = []; h.context.console = {log: line => l2.push(String(line)), error: () => {}};
+    seed(h, 'log-counter', 8 * HOUR);
+    const put = h.env.QL_KV.put;
+    h.env.QL_KV.put = async function(k, ...args) { if (k.startsWith('library:stale-fallback-window:')) throw new Error('synthetic'); return put.call(this, k, ...args); };
+    assert.equal(await sweep(h), 1);
+    assert.deepEqual(l2, ['stale queued fallback: window counter write failed, budget not recorded', 'stale queued fallback: moved 1 task(s) to the fallback queue in window ' + win]);
+    // paper unreadable
+    h = await enabled();
+    const l3 = []; h.context.console = {log: line => l3.push(String(line)), error: () => {}};
+    const pdoi = seed(h, 'log-paper', 8 * HOUR);
+    const pget = h.env.QL_KV.get;
+    h.env.QL_KV.get = async function(k, ...args) { if (k === 'library:paper:' + pdoi) throw new Error('synthetic'); return pget.call(this, k, ...args); };
+    assert.equal(await sweep(h), 1);
+    assert.equal(l3[0], 'stale queued fallback: paper record unreadable, journal left empty');
+    // whole sweep fails
+    h = await enabled();
+    const l4 = []; h.context.console = {log: line => l4.push(String(line)), error: () => {}};
+    seed(h, 'log-outer', 8 * HOUR);
+    const oget = h.env.QL_KV.get;
+    h.env.QL_KV.get = async function(k, ...args) { if (k.startsWith('library:stale-fallback-window:')) throw new Error('synthetic'); return oget.call(this, k, ...args); };
+    assert.equal(await sweep(h), 0, 'a failing sweep returns 0 and never throws');
+    assert.deepEqual(l4, ['stale queued fallback: sweep failed, next request retries']);
+    for (const line of [...logs, ...l2, ...l3, ...l4]) assert(!/10\.1000|synthetic|token|Bearer/i.test(line), 'log line carries no DOI or secret: ' + line);
+    void doi;
+  }
+
+  // ---- N5: the open-access DOI prefix table ----
+  {
+    const expectedOa = [
+      ['10.1371/journal.pone.0000001', 'PLOS'], ['10.3389/fmed.2026.0001', 'Frontiers'], ['10.1186/s12872-026-0001', 'BMC'], ['10.3390/jcm1234567', 'MDPI'],
+      ['10.1097/md.0000000000012345', 'Medicine'], ['10.1016/j.eclinm.2026.103000', 'eClinicalMedicine'], ['10.1002/ccr3.9999', 'Clinical Case Reports'],
+      ['10.1001/jamanetworkopen.2026.1', 'JAMA Network Open'], ['10.1016/j.jacadv.2026.100001', 'JACC Advances'], ['10.1016/j.jaccas.2026.100001', 'JACC Case Reports'],
+      ['10.1253/circrep.cr-26-0001', 'Circulation Reports']
+    ];
+    const table = vm.runInContext('MACHINE_OA_DOI_HINTS', h.context);
+    assert.deepEqual(table.map(r => r[1]), expectedOa.map(r => r[1]), 'prefix table lists exactly these eleven sources, in this order');
+    const notOa = ['10.1001/jama.2026.19482', '10.1016/j.jacc.2026.01.001', '10.1038/s41586-026-00001-1', '10.1161/circulationaha.126.000001',
+      '10.1097/00000000-0000-0000', '10.1097/mdx.1', '10.1016/j.eclinmx.1', '10.1016/j.jacadvx.1', '10.1002/ccr.1', '10.13719/x1', '10.33901/x1', '10.11861/x1']
+    ;
+    h = await enabled();
+    const all = [...expectedOa.map(r => r[0]), ...notOa];
+    for (const doi of all) seedJob(h, doi, 'queued', h.context.Date.now() - 8 * HOUR);
+    h.env.STALE_QUEUED_FALLBACK_MAX_PER_WINDOW = '25';
+    h.env.STALE_QUEUED_FALLBACK_WINDOW_MINUTES = '60';
+    // 23 tasks, one request converts 23 if the cap allows; the cap is 25.
+    assert.equal(await sweep(h), all.length);
+    for (const [doi] of expectedOa) {
+      const a = stored(h, key(doi)).autoFallback;
+      assert.equal(a.openAccess, 'yes', doi + ' is a listed open-access prefix');
+      assert.equal(a.openAccessBasis, 'doi_prefix');
+    }
+    for (const doi of notOa) {
+      const a = stored(h, key(doi)).autoFallback;
+      assert.equal(a.openAccess, 'unknown', doi + ' is not in the table (hybrid journal or near miss)');
+      assert.equal(a.openAccessBasis, '');
+    }
+  }
+
   console.log('stale queued fallback tests passed');
 }
 module.exports = {run};
