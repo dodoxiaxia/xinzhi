@@ -63,7 +63,7 @@ async function run() {
   assert.equal(empty.result.status, 200);
   assert.equal(empty.result.headers.get('retry-after'), '300');
   const emptyBody = await empty.result.json();
-  assert.equal(emptyBody.ok, true); assert.equal(emptyBody.task, null); assert.equal(emptyBody.retryAfterSeconds, 300);
+  assert.equal(emptyBody.ok, true); assert.equal(emptyBody.task, null); assert.equal(emptyBody.retryAfterSeconds, 300); assert.equal(emptyBody.retryAfter, 300);
   // Empty claim: one index read plus one stats-key read and one stats-key write (same UTC-day JSON document).
   assert.deepEqual([empty.lists, empty.reads, empty.writes], [0, 2, 1]);
   const emptyFailed = await measure(h, () => call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'}));
@@ -103,7 +103,7 @@ async function run() {
     const doc = stored(h, INDEX);
     building = !doc.ready;
     if (building) {
-      assert.equal(body.retryAfterSeconds, 60);
+      assert.equal(body.retryAfterSeconds, 60); assert.equal(body.retryAfter, 60);
       assert.equal(step.result.headers.get('retry-after'), '60');
       const blocked = await call(h, '/api/machine/tasks?state=to-download', reader, null, 'GET');
       requests++;
@@ -202,7 +202,7 @@ async function run() {
   assert(h.writes.filter(write => write.key === INDEX).length >= 1);
   assert.deepEqual(failed.map(doi => stored(h, INDEX).entries[doi].s), ['queued','queued','queued','queued','queued']);
   const fallbackClaim = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
-  assert.equal(fallbackClaim.task, null); assert.equal(fallbackClaim.retryAfterSeconds, 300);
+  assert.equal(fallbackClaim.task, null); assert.equal(fallbackClaim.retryAfterSeconds, 300); assert.equal(fallbackClaim.retryAfter, 300);
   // a first lease expiry returns to to-download; fallback must not take it in that same request
   const leased = (await (await call(h, '/api/machine/claim', dsh, {state:'to-download'})).json()).task;
   const leasedJob = stored(h, 'library:muse-job:' + leased.doi);

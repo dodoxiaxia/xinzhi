@@ -1794,8 +1794,12 @@ const MACHINE_INDEX_ENTRY_MAX_AGE_MS = 604800000 + 3600000;
 // One backfill request spends at most about this many KV operations (list pages plus record reads)
 // before it saves its progress; the platform allows 1000 KV operations per request.
 const MACHINE_INDEX_CHUNK_OPS = 400;
-// A claim or requeue reads at most this many task records looking for a usable one.
-const MACHINE_CLAIM_EXAMINE_MAX = 20;
+// Skipped entries — paused, stale index, already available, review, a first lease-expiry soft retry,
+// and other unusable records — do not consume a claim slot; the request keeps scanning until it finds
+// a claimable task or hits the scan cap below. MACHINE_CLAIM_SCAN_MAX is how many task records one
+// claim request may read, so a long run of skips cannot blow the KV read budget.
+const MACHINE_CLAIM_SCAN_MAX = 80;
+const MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS = 60;
 const MACHINE_REQUEUE_EXAMINE_MAX = 150;
 const MACHINE_EMPTY_CLAIM_RETRY_SECONDS = 300;
 const MACHINE_INDEX_BUILDING_RETRY_SECONDS = 60;
@@ -3273,8 +3277,9 @@ function handleMachineProtocol(request, env) {
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
-    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,
+    limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS},
+    emptyClaimRetry:{bodyField:'retryAfter',legacyBodyField:'retryAfterSeconds',header:'Retry-After',emptyQueueSeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,scanLimitSeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,indexBuildingSeconds:MACHINE_INDEX_BUILDING_RETRY_SECONDS,note:'空领取（task 为 null）时，响应体同时带 retryAfter 与 retryAfterSeconds，单位都是秒，与 Retry-After 响应头相同。现有客户端若读不到响应头，请读 retryAfter。队列真空 300 秒，claim_scan_limit 与索引回填中各 60 秒。'},
     stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
       note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
@@ -3522,11 +3527,14 @@ function machineClaimPayload(job, paper) {
 async function machineClaimQueued(env, caller) {
   const doc = await museIndexOpen(env);
   const changes = [];
-  let task = null;
+  let task = null, scanLimited = false;
   try {
     const candidates = museIndexQueuedCandidates(doc, Date.now());
-    for (let examined = 0; examined < candidates.length && examined < MACHINE_CLAIM_EXAMINE_MAX && !task; examined++) {
-      const [doi, entry] = candidates[examined];
+    let scanned = 0;
+    for (let i = 0; i < candidates.length && !task; i++) {
+      if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
+      scanned++;
+      const [doi, entry] = candidates[i];
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
       if (!job) continue;
@@ -3551,16 +3559,19 @@ async function machineClaimQueued(env, caller) {
       task = machineClaimPayload(claimed, paper);
     }
   } finally { await machineIndexFlush(env, changes); }
-  return {task,building:!doc.ready};
+  return {task,building:!doc.ready,scanLimited};
 }
 async function machineClaimFailed(env, caller) {
   const doc = await museIndexOpen(env);
   const changes = [];
-  let task = null;
+  let task = null, scanLimited = false;
   try {
     const candidates = museIndexFailedCandidates(doc, Date.now());
-    for (let examined = 0; examined < candidates.length && examined < MACHINE_CLAIM_EXAMINE_MAX && !task; examined++) {
-      const [doi, entry] = candidates[examined];
+    let scanned = 0;
+    for (let i = 0; i < candidates.length && !task; i++) {
+      if (scanned >= MACHINE_CLAIM_SCAN_MAX) { scanLimited = true; break; }
+      scanned++;
+      const [doi, entry] = candidates[i];
       const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
       if (!museIndexSame(museIndexEntry(job), entry)) changes.push({doi,entry:museIndexEntry(job)});
       if (!job) continue;
@@ -3594,7 +3605,7 @@ async function machineClaimFailed(env, caller) {
       task = machineClaimPayload(claimed, paper);
     }
   } finally { await machineIndexFlush(env, changes); }
-  return {task,building:!doc.ready};
+  return {task,building:!doc.ready,scanLimited};
 }
 // Applies the collected index changes. Never hides the error that ended the request: a failed flush only leaves
 // stale entries behind, which the next claim corrects from the records.
@@ -3615,9 +3626,13 @@ async function handleMachineClaim(request, env) {
       return json({ok:true,task:result.task});
     }
     // Nothing to claim: tell the caller how long to wait before asking again (the same value in the Retry-After header).
-    try { await machineStatsBump(env, caller, 'emptyClaim'); } catch {}
-    const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
-    return json({ok:true,task:null,retryAfterSeconds:wait}, 200, {'retry-after':String(wait)});
+    const scanLimited = !!result.scanLimited;
+    const wait = result.building ? MACHINE_INDEX_BUILDING_RETRY_SECONDS : scanLimited ? MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS : MACHINE_EMPTY_CLAIM_RETRY_SECONDS;
+    // claim_scan_limit is a short retry, not a true empty queue, so it does not bump the daily emptyClaim counter.
+    if (!scanLimited) {
+      try { await machineStatsBump(env, caller, 'emptyClaim'); } catch {}
+    }
+    return json({ok:true,task:null,retryAfterSeconds:wait,retryAfter:wait,...(scanLimited ? {reason:'claim_scan_limit'} : {})}, 200, {'retry-after':String(wait)});
   } catch (error) { return machineError(error); }
 }
 
