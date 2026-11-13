@@ -245,6 +245,14 @@ class PublicBuildTests(unittest.TestCase):
    self.assertEqual(manifest['assetLimit']['failRatio'],0.90)
    self.assertEqual(manifest['assetLimit']['warnings'],[])
    self.assertIn('/shards/*',(dest/'_headers').read_text())
+   rules={};current=None
+   for line in (dest/'_headers').read_text().splitlines():
+    if line and not line[0].isspace():current=line.strip();rules[current]={}
+    elif current and ':' in line:
+     name,value=line.split(':',1);self.assertNotIn(name.strip().lower(),rules[current],current+' repeats '+name.strip());rules[current][name.strip().lower()]=value.strip()
+   for path,mime in (('/public.js','application/javascript'),('/radar.js','application/javascript'),('/feed.xml','application/xml'),('/shards/*','application/javascript')):
+    self.assertEqual(rules[path]['content-type'],mime+'; charset=utf-8',path)
+   self.assertEqual(rules['/shards/*']['cache-control'],'public, max-age=31536000, immutable')
  def test_oversized_asset_stops_before_replacing_public_files(self):
   with tempfile.TemporaryDirectory() as d:
    from test_release_build import synthetic_root
