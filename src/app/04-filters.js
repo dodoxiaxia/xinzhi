@@ -34,9 +34,15 @@
   const FT_STEPS = ['排队下载', '核验中', '可阅读'];
   function ftMaintainerMode() { return typeof MAINTAINER !== 'undefined' && MAINTAINER === true; }
   function fulltextView(p) {
+    const view = fulltextState(p);
+    view.headline = (view.kind === 'ready' ? '' : '暂无 PDF：') + view.headline;
+    view.eta = '下一步：' + (view.action === 'refresh' ? '稍后点「查看进度」；' : '') + view.eta;
+    return view;
+  }
+  function fulltextState(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
-    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '', eta: '', action: 'download', url };
-    if (!doi) return null;
+    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    if (!doi) return { kind: 'none', step: -1, short: '未申请', headline: '这篇没有 DOI，无法向站内申请全文', eta: '到官网原文查看', action: 'official' };
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
       if (job.stage === 'verifying') {
@@ -52,7 +58,7 @@
         : { kind: 'review', step: 1, stopped: true, stopLabel: '未取得', short: '未取得 · 来源核对中', headline: '这篇文献的全文来源还在核对中', eta: '暂时没有可下载的 PDF，可以先看官网原文', action: 'official' };
     if ((job && ['failed', 'manual_needed'].includes(job.state)) || (record && record.fulltextStatus === 'manual_needed'))
       return { kind: 'failed', step: 0, stopped: true, stopLabel: '未取得', short: '未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
-    return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
+    return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '点「获取全文」提交，通常数小时内；也可以直接上传已有 PDF', action: job ? 'retry' : 'submit', upload: true };
   }
   // 卡片内口令下载：表单标记写在 fulltextStatusHtml 里（卡片、DOI 搜索视图共用）；阅读台在 index.html 里有同样结构的 #drawerPdfForm。
   const DL_BTN_LABEL = '下载';
@@ -85,37 +91,49 @@
     delete form.dataset.busy;
     form.hidden = true;
   }
-  function fulltextStatusHtml(p, full) {
+  function fulltextStatusHtml(p, full, drawer = false) {
     const conflict = fulltextConflict(p);
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
     const view = fulltextView(p), doi = p && exactDoi(p.doi);
     if (!view) return '';
     const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
-    const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
+    const sourceUrl = safeSourceUrl(p);
+    const official = sourceUrl ? '<a class="ft-link" href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
     const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download title="输入全文口令即可下载">下载 PDF</a>'
-      : view.action === 'refresh' ? (full ? '' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
+      : view.action === 'refresh' ? (full ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">查看进度</button>' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
-      : view.action === 'official' ? (full ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
+      : view.action === 'official' ? (sourceUrl ? '<a class="btn-sm btn-primary" href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
     // 已可下载：口令框默认隐藏；仅当服务端开关 pdfSignedLink 打开时，点「下载 PDF」才会原位展开（见 10-browse-events.js）。
     const form = view.action === 'download' ? '<form class="ft-form ft-dl-form" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>' : view.action === 'submit' || view.action === 'retry'
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
-      if (view.action === 'download') return primary + form;
-      // Only the two actions that move a paper towards a PDF (apply, apply again) stand out; refresh and upload are plain links.
-      const strong = view.action === 'submit' || view.action === 'retry' || view.action === 'refresh';
-      const lead = strong ? primary : primary.replace('btn-sm btn-primary', 'ft-link').replace(/ class="btn-sm btn-primary"/, ' class="ft-link"');
-      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="fulltext-state" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
-        + esc(view.short) + '</span>' + lead + '</span>' + form;
+      const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
+      const badgeAria = view.short + '：' + badgeTitle;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">'
+        + esc(view.short) + '</span><span class="ft-summary">' + esc(badgeTitle) + '</span>' + primary + '</span>' + form;
     }
     const steps = FT_STEPS.map((label, i) => {
       const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
       return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
     }).join('');
-    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+    if (drawer) {
+      const secondary = (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '')
+        + ((view.action !== 'official' && official) || upload ? '<span class="ft-actions">' + (view.action === 'official' ? '' : official) + upload + '</span>' : '');
+      return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">'
+        + '<div class="ft-head"><span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>'
+        + '<p class="ft-line" role="status"><b title="' + esc(view.headline) + '">' + esc(view.headline) + '</b></p>'
+        + '<span class="ft-head-action" data-drawer-ft-primary>' + (view.action === 'download' ? '' : primary) + '</span></div>'
+        + (view.action === 'download' ? '<div class="ft-dl-slot" data-drawer-ft-form-slot></div>' : form)
+        + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+        + (secondary ? '<div class="ft-sub">' + secondary + '</div>' : '')
+        + maint + '</div>';
+    }
+    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + '<span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
       + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
   }

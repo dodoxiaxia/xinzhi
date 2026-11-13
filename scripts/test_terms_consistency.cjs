@@ -59,13 +59,18 @@ const makeNode = () => ({
   innerHTML: '',
   dataset: {},
   disabled: false,
+  hidden: false,
+  href: '',
+  parentElement: null,
   classList: { contains: () => false, add: () => {}, remove: () => {} },
   contains: () => false,
   querySelector: () => null,
   querySelectorAll: () => [],
   setAttribute: () => {},
   removeAttribute: () => {},
-  focus: () => {}
+  focus: () => {},
+  remove: () => {},
+  appendChild: () => {}
 });
 const huddleBody = makeNode();
 const huddleNodes = {
@@ -106,6 +111,11 @@ ok(!huddleBody.innerHTML.includes('点击“加入精选清单”'), 'empty shor
 
 // 4. Reader drawer uses "已核对导读" only for source_checked drafts and "AI 速览" for unverified / on-demand entries.
 const drawerBody = makeNode();
+const ftStatus = makeNode();
+const ftRegion = makeNode();
+const ftSection = makeNode();
+ftSection.querySelector = sel => String(sel).includes('data-drawer-ft-status') ? ftStatus : null;
+drawerBody.querySelector = sel => (String(sel).includes('fulltext') || String(sel).includes('data-drawer-region')) ? ftRegion : null;
 const drawerNodes = {
   '#readerDrawer': makeNode(),
   '#drawerBackdrop': makeNode(),
@@ -118,7 +128,8 @@ const drawerNodes = {
   '#drawerInstitutionLoginLink': makeNode(),
   '#drawerPdfLink': makeNode(),
   '#drawerPdfForm': makeNode(),
-  '#drawerCloseBtn': makeNode()
+  '#drawerCloseBtn': makeNode(),
+  '#drawerFulltext': ftSection
 };
 const readerCtx = vm.createContext({
   $: sel => drawerNodes[sel] || null,

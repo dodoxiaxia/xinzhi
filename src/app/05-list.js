@@ -30,11 +30,14 @@
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
     const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
 
+    const sourceUrl = officialArticleUrl(p);
+    const doiBlock = doiStatusBlock(p);
     return `
       <article class="article-card" data-paper-id="${esc(p.id)}">
         <div class="card-top">
           <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
           <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+          ${pdfDownloadLink(p)}
         </div>
 
         ${publicationStatusHtml(p)}
@@ -43,15 +46,12 @@
         ${gistHtml}
 
         <div class="card-actions">
-          <div class="card-source-actions">
-            ${pdfDownloadLink(p)}
-          </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${officialArticleUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(officialArticleUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${sourceUrl && !doiBlock ? `<a class="text-btn" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
-        ${doiStatusBlock(p)}
+        ${doiBlock}
       </article>
     `;
   }

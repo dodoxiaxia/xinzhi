@@ -175,6 +175,7 @@
   // DOIs whose full-text page the reader opened in another tab; rechecked when they come back.
   const DOI_TOUCHED = new Set();
   const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
+  const LIBRARY_REFRESH_TTL_MS = 60000;
 
   function exactDoi(value) {
     if (typeof value !== 'string' || value.length > 500) return '';
@@ -309,53 +310,293 @@
   }
   // Submitting a request, retrying and refreshing all happen inside the status block, so there is no second page
   // to visit and come back from. The passphrase goes in the POST body of a same-origin request, never in a URL.
+  function liveFtForm(doi, form, inDrawer) {
+    if (form && form.isConnected) return form;
+    const forms = [...document.querySelectorAll('form[data-ft-form]')].filter(f => exactDoi(f.dataset.doi) === doi);
+    if (inDrawer) {
+      const df = forms.find(f => f.closest('#drawerFulltext'));
+      if (df) return df;
+    }
+    return forms.find(f => !f.hidden && !f.closest('#drawerFulltext')) || forms.find(f => !f.hidden) || forms[0] || null;
+  }
+  function setFtRecheckButton(form, doi, show, disabled = false) {
+    if (!form) return;
+    let recheck = form.querySelector('[data-ft-action="refresh"]');
+    if (!show) { if (recheck) recheck.remove(); return; }
+    if (!recheck) {
+      recheck = document.createElement('button');
+      recheck.type = 'button';
+      recheck.className = 'btn-sm ft-recheck-btn';
+      recheck.dataset.ftAction = 'refresh';
+      recheck.dataset.doi = doi;
+      recheck.textContent = '刷新状态';
+      form.appendChild(recheck);
+    }
+    recheck.disabled = !!disabled;
+  }
+  async function reconcileFtFormAfterLookup(doi, form, inDrawer, prev = null) {
+    if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
+    await lookupSupplementalDoi(doi, true);
+    if (exactDoi(state.search) !== doi && !DOI_TOUCHED.has(doi)) refreshSupplementalView();
+    const lookup = DOI_LOOKUPS.get(doi);
+    const job = DOI_JOBS.get(doi);
+    const paper = exactDoiPapers(doi)[0] || DOI_FULLTEXT.get(doi) || { doi };
+    const view = fulltextState(paper);
+    const hasProgress = doiJobActive(job) || ['ready', 'verifying', 'queued', 'running', 'review'].includes(view.kind)
+      || (!!job && (!prev || prev.mode === 'submit' || job.id !== prev.jobId || job.state !== prev.jobState));
+    const live = liveFtForm(doi, form, inDrawer);
+    if (hasProgress) {
+      if (live) {
+        const inp = live.querySelector('input[name="passphrase"]'), btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
+        if (inp) inp.value = '';
+        if (err) err.textContent = '已提交，正在处理';
+        if (btn) btn.disabled = true;
+        delete live.dataset.busy;
+        delete live.dataset.ftUncertain;
+        setFtRecheckButton(live, doi, false);
+        live.hidden = true;
+      }
+      showToast('已提交，正在处理');
+      return;
+    }
+    if (lookup && lookup.state === 'complete') {
+      if (live) {
+        const btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
+        if (err) err.textContent = '核对后确认没有提交上，可以重试';
+        if (btn) btn.disabled = false;
+        delete live.dataset.busy;
+        delete live.dataset.ftUncertain;
+        setFtRecheckButton(live, doi, false);
+        live.hidden = false;
+      }
+      return;
+    }
+    if (live) {
+      const btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
+      if (err) err.textContent = '仍无法确认是否已提交，请稍后再点“刷新状态”核对，先不要重复提交';
+      if (btn) btn.disabled = true;
+      delete live.dataset.busy;
+      live.dataset.ftUncertain = '1';
+      setFtRecheckButton(live, doi, true, false);
+      live.hidden = false;
+    }
+  }
   async function submitFulltextForm(form) {
+    if (!form || form.dataset.busy === '1' || form.dataset.ftUncertain === '1') return;
     const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
-    if (!doi || !input || !input.value) return;
+    if (!doi || !input || !input.value || (button && button.disabled)) return;
+    const inDrawer = !!(form.closest && form.closest('#drawerFulltext'));
     const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
+    const prevJob = DOI_JOBS.get(doi);
+    const prev = { mode: mode || 'submit', jobId: prevJob ? prevJob.id : '', jobState: prevJob ? prevJob.state : '' };
     const messages = { pdf_passphrase_invalid: '全文口令不正确，请重新输入。', pdf_rate_limited: '口令错误次数过多，请一小时后再试。', library_paused: '这篇暂时停止获取，请稍后再试。', library_identity: '这篇的全文来源还在核对中，暂时不能重新提交。', muse_owner_conflict: '这篇已有任务在进行，请刷新状态。' };
     if (error) error.textContent = ''; if (button) button.disabled = true;
+    form.dataset.busy = '1';
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await fetch(route + '?doi=' + encodeURIComponent(doi), { method: 'POST', cache: 'no-store', signal: controller.signal,
         headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ passphrase: input.value }).toString() });
       let result = null; try { result = await response.json(); } catch (e) { result = null; }
-      if (!response.ok && response.status !== 202) { const code = result && result.error; throw Object.assign(new Error(code || 'submit_failed'), { code }); }
+      if (!response.ok && response.status !== 202) {
+        const code = result && typeof result.error === 'string' ? result.error : '';
+        if (code && (Object.prototype.hasOwnProperty.call(messages, code) || (response.status >= 400 && response.status < 500 && result.ok === false))) {
+          throw Object.assign(new Error(code), { code, knownError: true });
+        }
+        throw Object.assign(new Error(code || 'submit_failed'), { code, uncertain: true });
+      }
+      if (!result || result.ok !== true) {
+        throw Object.assign(new Error('submit_unconfirmed'), { uncertain: true });
+      }
+      const liveNow = liveFtForm(doi, form, inDrawer);
+      const liveNowInput = liveNow && liveNow.querySelector('input[name="passphrase"]');
+      if (liveNowInput) liveNowInput.value = '';
       input.value = '';
       if (result && result.job) mergeDoiJob(doi, result.job);
       if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
       await lookupSupplementalDoi(doi, true);
-      refreshSupplementalView();
+      if (exactDoi(state.search) !== doi && !DOI_TOUCHED.has(doi)) refreshSupplementalView();
+      const live = liveFtForm(doi, form, inDrawer);
+      if (live) {
+        const liveInput = live.querySelector('input[name="passphrase"]'), liveBtn = live.querySelector('button[type="submit"]');
+        if (liveInput) liveInput.value = '';
+        if (liveBtn) liveBtn.disabled = false;
+        delete live.dataset.busy;
+        delete live.dataset.ftUncertain;
+        setFtRecheckButton(live, doi, false);
+      }
     } catch (e) {
-      if (error) error.textContent = messages[e.code] || (e.name === 'AbortError' ? '请求超时，请稍后刷新状态确认是否已提交。' : '提交没有成功，请稍后再试。');
-      if (button) button.disabled = false;
+      if (e && e.knownError) {
+        const live = liveFtForm(doi, form, inDrawer);
+        if (live) {
+          const liveErr = live.querySelector('.ft-error'), liveBtn = live.querySelector('button[type="submit"]');
+          if (liveErr) liveErr.textContent = messages[e.code] || '提交没有成功，请稍后再试。';
+          if (liveBtn) liveBtn.disabled = false;
+          delete live.dataset.busy;
+          delete live.dataset.ftUncertain;
+          setFtRecheckButton(live, doi, false);
+        }
+        return;
+      }
+      const live = liveFtForm(doi, form, inDrawer);
+      if (live) {
+        const liveErr = live.querySelector('.ft-error'), liveBtn = live.querySelector('button[type="submit"]');
+        if (liveErr) liveErr.textContent = '不确定是否已提交，正在核对状态…';
+        if (liveBtn) liveBtn.disabled = true;
+        live.dataset.busy = '1';
+      }
+      await reconcileFtFormAfterLookup(doi, form, inDrawer, prev);
     } finally { clearTimeout(timer); }
   }
+  function captureFtFormSnapshots() {
+    if (typeof document === 'undefined') return [];
+    const snaps = [];
+    const drawerOpen = !!$('#readerDrawer.open');
+    const drawerPaperId = state.activeDrawerPaper ? String(state.activeDrawerPaper.id) : '';
+    document.querySelectorAll('form[data-ft-form]:not([hidden]), form[data-ft-dl-form]:not([hidden])').forEach(form => {
+      const inDrawer = !!form.closest('#drawerFulltext');
+      if (inDrawer && !drawerOpen) return;
+      const isDl = form.hasAttribute('data-ft-dl-form');
+      const paperEl = form.closest('[data-paper-id]');
+      const paperId = inDrawer ? drawerPaperId : (paperEl ? String(paperEl.dataset.paperId || '') : '');
+      const doi = isDl ? '' : exactDoi(form.dataset.doi);
+      if (!isDl && !doi) return;
+      if (isDl && form.id !== 'drawerPdfForm' && !paperId) return;
+      const input = form.querySelector('input[name="passphrase"]');
+      const btn = form.querySelector('button[type="submit"]');
+      const err = form.querySelector('.ft-error');
+      const recheck = form.querySelector('[data-ft-action="refresh"]');
+      const inputFocused = !!(input && document.activeElement === input);
+      const btnFocused = !!(btn && document.activeElement === btn);
+      const recheckFocused = !!(recheck && document.activeElement === recheck);
+      snaps.push({
+        isDl,
+        inDrawer,
+        isDrawerPdfForm: form.id === 'drawerPdfForm',
+        paperId,
+        doi,
+        value: input ? input.value : '',
+        inputDisabled: !!(input && input.disabled),
+        btnDisabled: !!(btn && btn.disabled),
+        btnText: btn ? btn.textContent : '',
+        errorText: err ? err.textContent : '',
+        busy: form.dataset.busy || '',
+        uncertain: form.dataset.ftUncertain || '',
+        isBusyClass: form.classList.contains('is-busy'),
+        ariaBusy: form.getAttribute('aria-busy'),
+        hasRecheck: !!recheck,
+        recheckDisabled: !!(recheck && recheck.disabled),
+        inputFocused,
+        btnFocused,
+        recheckFocused,
+        selStart: inputFocused && typeof input.selectionStart === 'number' ? input.selectionStart : null,
+        selEnd: inputFocused && typeof input.selectionEnd === 'number' ? input.selectionEnd : null,
+        selDir: inputFocused ? (input.selectionDirection || 'none') : null
+      });
+    });
+    return snaps;
+  }
+  function findFtSnapshotTarget(snap) {
+    if (snap.isDrawerPdfForm) {
+      const drawer = $('#readerDrawer.open');
+      const form = $('#drawerPdfForm');
+      const link = $('#drawerPdfLink');
+      if (!drawer || !form || !link || link.hidden) return null;
+      if (snap.paperId && String(state.activeDrawerPaper?.id || '') !== snap.paperId) return null;
+      return form;
+    }
+    if (snap.isDl) {
+      if (!snap.paperId) return null;
+      const cards = [...document.querySelectorAll('#articlesStream [data-paper-id]')].filter(el => String(el.dataset.paperId || '') === snap.paperId);
+      for (const card of cards) {
+        const form = card.querySelector('form[data-ft-dl-form]');
+        if (form) return form;
+      }
+      return null;
+    }
+    if (snap.inDrawer) {
+      if (!$('#readerDrawer.open')) return null;
+      if (snap.paperId && String(state.activeDrawerPaper?.id || '') !== snap.paperId) return null;
+      return [...document.querySelectorAll('#drawerFulltext form[data-ft-form]')].find(f => exactDoi(f.dataset.doi) === snap.doi) || null;
+    }
+    const streamForms = [...document.querySelectorAll('#articlesStream form[data-ft-form]')].filter(f => exactDoi(f.dataset.doi) === snap.doi);
+    if (snap.paperId) {
+      const exact = streamForms.find(f => String(f.closest('[data-paper-id]')?.dataset.paperId || '') === snap.paperId);
+      if (exact) return exact;
+    }
+    return streamForms[0] || null;
+  }
+  function restoreFtFormSnapshots(snaps) {
+    if (!snaps || !snaps.length) return;
+    for (const snap of snaps) {
+      const form = findFtSnapshotTarget(snap);
+      if (!form) continue;
+      form.hidden = false;
+      const input = form.querySelector('input[name="passphrase"]');
+      const btn = form.querySelector('button[type="submit"]');
+      const err = form.querySelector('.ft-error');
+      if (input) {
+        input.value = snap.value;
+        input.disabled = snap.inputDisabled;
+      }
+      if (btn) {
+        btn.disabled = snap.btnDisabled;
+        if (snap.btnText) btn.textContent = snap.btnText;
+      }
+      if (err) err.textContent = snap.errorText;
+      if (snap.busy) form.dataset.busy = snap.busy; else delete form.dataset.busy;
+      if (snap.uncertain) form.dataset.ftUncertain = snap.uncertain; else delete form.dataset.ftUncertain;
+      form.classList.toggle('is-busy', snap.isBusyClass);
+      if (snap.ariaBusy) form.setAttribute('aria-busy', snap.ariaBusy); else form.removeAttribute('aria-busy');
+      if (!snap.isDl) setFtRecheckButton(form, snap.doi, snap.hasRecheck, snap.recheckDisabled);
+      if (snap.inputFocused && input && !input.disabled) {
+        try {
+          input.focus({ preventScroll: true });
+          if (snap.selStart !== null && snap.selEnd !== null) {
+            input.setSelectionRange(snap.selStart, snap.selEnd, snap.selDir || 'none');
+          }
+        } catch (e) { /* ignore */ }
+      } else if (snap.btnFocused && btn && !btn.disabled) {
+        try { btn.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      } else if (snap.recheckFocused) {
+        const recheck = form.querySelector('[data-ft-action="refresh"]');
+        if (recheck && !recheck.disabled) { try { recheck.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+      }
+    }
+  }
   function refreshSupplementalView() {
+    const snapshots = captureFtFormSnapshots();
     updateHeaderBadges();
     if (!exactDoi(state.search) && state.mode !== 'weekly' && state.mode !== 'sources') renderSidebarFilters();
     renderStream();
     if (state.activeDrawerPaper) openReaderDrawer(allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper);
     if ($('#huddleModalBackdrop.open')) openHuddleModal();
+    restoreFtFormSnapshots(snapshots);
   }
   async function lookupSupplementalDoi(doi, retry = false) {
-    if (!doi || (!retry && DOI_LOOKUPS.has(doi)) || DOI_LOOKUPS.get(doi)?.state === 'loading') return;
-    DOI_LOOKUPS.set(doi, { state: 'loading' });
-    try {
-      const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
-      mergeDoiJob(doi, result.job);
-      if (result.found === true) {
-        if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
-      } else if (result.found === false) {
-        const previous = DOI_FULLTEXT.get(doi);
-        if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
-        DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
-      }
-      else throw new Error('library_unavailable');
-    } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
-    if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
-    // Only the searched DOI owns the polling timer; a background recheck must not cancel it.
-    if (exactDoi(state.search) === doi || DOI_JOB_WATCH.doi === doi) watchDoiJob(doi);
+    if (!doi) return;
+    const current = DOI_LOOKUPS.get(doi);
+    if (!retry && current) return current.promise;
+    if (current?.state === 'loading' && current.promise) await current.promise;
+    if (DOI_LOOKUPS.get(doi)?.state === 'loading') return DOI_LOOKUPS.get(doi).promise;
+    const run = (async () => {
+      try {
+        const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
+        mergeDoiJob(doi, result.job);
+        if (result.found === true) {
+          if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
+        } else if (result.found === false) {
+          const previous = DOI_FULLTEXT.get(doi);
+          if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
+          DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
+        }
+        else throw new Error('library_unavailable');
+      } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
+      if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
+      // Only the searched DOI owns the polling timer; a background recheck must not cancel it.
+      if (exactDoi(state.search) === doi || DOI_JOB_WATCH.doi === doi) watchDoiJob(doi);
+    })();
+    DOI_LOOKUPS.set(doi, { state: 'loading', promise: run });
+    return run;
   }
   function loadSupplementalLibrary(refresh = false) {
     if (SUPPLEMENTAL_LIBRARY.promise) return SUPPLEMENTAL_LIBRARY.promise;
@@ -1184,9 +1425,15 @@
   const FT_STEPS = ['排队下载', '核验中', '可阅读'];
   function ftMaintainerMode() { return typeof MAINTAINER !== 'undefined' && MAINTAINER === true; }
   function fulltextView(p) {
+    const view = fulltextState(p);
+    view.headline = (view.kind === 'ready' ? '' : '暂无 PDF：') + view.headline;
+    view.eta = '下一步：' + (view.action === 'refresh' ? '稍后点「查看进度」；' : '') + view.eta;
+    return view;
+  }
+  function fulltextState(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
-    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '', eta: '', action: 'download', url };
-    if (!doi) return null;
+    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    if (!doi) return { kind: 'none', step: -1, short: '未申请', headline: '这篇没有 DOI，无法向站内申请全文', eta: '到官网原文查看', action: 'official' };
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
       if (job.stage === 'verifying') {
@@ -1202,7 +1449,7 @@
         : { kind: 'review', step: 1, stopped: true, stopLabel: '未取得', short: '未取得 · 来源核对中', headline: '这篇文献的全文来源还在核对中', eta: '暂时没有可下载的 PDF，可以先看官网原文', action: 'official' };
     if ((job && ['failed', 'manual_needed'].includes(job.state)) || (record && record.fulltextStatus === 'manual_needed'))
       return { kind: 'failed', step: 0, stopped: true, stopLabel: '未取得', short: '未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
-    return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
+    return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '点「获取全文」提交，通常数小时内；也可以直接上传已有 PDF', action: job ? 'retry' : 'submit', upload: true };
   }
   // 卡片内口令下载：表单标记写在 fulltextStatusHtml 里（卡片、DOI 搜索视图共用）；阅读台在 index.html 里有同样结构的 #drawerPdfForm。
   const DL_BTN_LABEL = '下载';
@@ -1235,37 +1482,49 @@
     delete form.dataset.busy;
     form.hidden = true;
   }
-  function fulltextStatusHtml(p, full) {
+  function fulltextStatusHtml(p, full, drawer = false) {
     const conflict = fulltextConflict(p);
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
     const view = fulltextView(p), doi = p && exactDoi(p.doi);
     if (!view) return '';
     const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
-    const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
+    const sourceUrl = safeSourceUrl(p);
+    const official = sourceUrl ? '<a class="ft-link" href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
     const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download title="输入全文口令即可下载">下载 PDF</a>'
-      : view.action === 'refresh' ? (full ? '' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
+      : view.action === 'refresh' ? (full ? '<button type="button" class="btn-sm btn-primary" data-ft-action="refresh" data-doi="' + safeDoi + '">查看进度</button>' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
-      : view.action === 'official' ? (full ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
+      : view.action === 'official' ? (sourceUrl ? '<a class="btn-sm btn-primary" href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
     // 已可下载：口令框默认隐藏；仅当服务端开关 pdfSignedLink 打开时，点「下载 PDF」才会原位展开（见 10-browse-events.js）。
     const form = view.action === 'download' ? '<form class="ft-form ft-dl-form" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>' : view.action === 'submit' || view.action === 'retry'
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
-      if (view.action === 'download') return primary + form;
-      // Only the two actions that move a paper towards a PDF (apply, apply again) stand out; refresh and upload are plain links.
-      const strong = view.action === 'submit' || view.action === 'retry' || view.action === 'refresh';
-      const lead = strong ? primary : primary.replace('btn-sm btn-primary', 'ft-link').replace(/ class="btn-sm btn-primary"/, ' class="ft-link"');
-      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="fulltext-state" title="' + esc(view.headline + (view.eta ? '。' + view.eta : '')) + '">'
-        + esc(view.short) + '</span>' + lead + '</span>' + form;
+      const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
+      const badgeAria = view.short + '：' + badgeTitle;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '"><span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">'
+        + esc(view.short) + '</span><span class="ft-summary">' + esc(badgeTitle) + '</span>' + primary + '</span>' + form;
     }
     const steps = FT_STEPS.map((label, i) => {
       const stop = view.stopped && i === view.step, done = !stop && (i < view.step || (i === view.step && view.kind === 'ready'));
       return '<li class="' + (stop ? 'stop' : done ? 'done' : i === view.step ? 'current' : '') + '"' + (i === view.step ? ' aria-current="step"' : '') + '>' + esc(stop ? view.stopLabel : label) + '</li>';
     }).join('');
-    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+    if (drawer) {
+      const secondary = (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '')
+        + ((view.action !== 'official' && official) || upload ? '<span class="ft-actions">' + (view.action === 'official' ? '' : official) + upload + '</span>' : '');
+      return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">'
+        + '<div class="ft-head"><span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>'
+        + '<p class="ft-line" role="status"><b title="' + esc(view.headline) + '">' + esc(view.headline) + '</b></p>'
+        + '<span class="ft-head-action" data-drawer-ft-primary>' + (view.action === 'download' ? '' : primary) + '</span></div>'
+        + (view.action === 'download' ? '<div class="ft-dl-slot" data-drawer-ft-form-slot></div>' : form)
+        + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
+        + (secondary ? '<div class="ft-sub">' + secondary + '</div>' : '')
+        + maint + '</div>';
+    }
+    return '<div class="ft-status ft-full ft-' + view.kind + '" data-ft-doi="' + safeDoi + '">' + '<span class="ft-badge ft-badge-' + view.kind + '">' + esc(view.short) + '</span>' + (view.kind === 'ready' ? '' : '<ol class="ft-steps">' + steps + '</ol>')
       + '<p class="ft-line" role="status"><b>' + esc(view.headline) + '</b>' + (view.eta ? '<span class="ft-eta">' + esc(view.eta) + '</span>' : '') + '</p>'
       + '<div class="ft-actions">' + primary + (view.action === 'official' ? '' : official) + upload + '</div>' + form + maint + '</div>';
   }
@@ -1949,11 +2208,14 @@
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
     const enLine = enHit ? `<p class="article-title-en-hit" lang="en">${titleEn}</p>` : '';
 
+    const sourceUrl = officialArticleUrl(p);
+    const doiBlock = doiStatusBlock(p);
     return `
       <article class="article-card" data-paper-id="${esc(p.id)}">
         <div class="card-top">
           <span class="journal-badge ${pubClass}">${esc(journalName)}</span>
           <span class="date-badge" title="${esc(p.dateBasis || '来源记录日期，未经逐篇核验')}">${esc(dateStr)}</span>
+          ${pdfDownloadLink(p)}
         </div>
 
         ${publicationStatusHtml(p)}
@@ -1962,15 +2224,12 @@
         ${gistHtml}
 
         <div class="card-actions">
-          <div class="card-source-actions">
-            ${pdfDownloadLink(p)}
-          </div>
           <div class="action-buttons-group">
             <button type="button" class="text-btn card-star${isHuddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${isHuddled}" title="${isHuddled ? '已在精选清单，点击移出' : '加入精选清单'}"><span aria-hidden="true">${isHuddled ? '★' : '☆'}</span> ${isHuddled ? '已精选' : '精选'}</button>
-            ${officialArticleUrl(p) && !doiStatusBlock(p) ? `<a class="text-btn" href="${esc(officialArticleUrl(p))}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
+            ${sourceUrl && !doiBlock ? `<a class="text-btn" href="${esc(sourceUrl)}" target="_blank" rel="noopener" title="官网原文">官网原文 ↗</a>` : ''}
           </div>
         </div>
-        ${doiStatusBlock(p)}
+        ${doiBlock}
       </article>
     `;
   }
@@ -2365,7 +2624,7 @@
 
         ${authorBox}
 
-        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;">${tagsHtml}</div>` : ''}
+        ${tagsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">${tagsHtml}</div>` : ''}
 
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字（请对照下方原文核验）</summary>${quantBox}</details>` : ''}
       `;
@@ -2381,16 +2640,32 @@
           ${absSource}
         </section>
       `;
-      const ftView = fulltextView(paper), ftProgress = ftView && ['verifying', 'queued', 'running', 'failed', 'review'].includes(ftView.kind) ? fulltextStatusHtml(paper, true).replace(/<a class="ft-link" href="https:\/\/doi\.org[^>]*>官网原文 ↗<\/a>/, '') : '';
-      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ftProgress], ['editorial', editorialSection], ['abstract', abstractSection],
+      // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
+      var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
+      var typingSel = typingEl ? [typingEl.selectionStart, typingEl.selectionEnd] : null;
+      const ftSection = $('#drawerFulltext');
+      const pdfLinkEl = $('#drawerPdfLink');
+      const pdfFormEl = $('#drawerPdfForm');
+      ftSection.remove();
+      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['fulltext', ''], ['editorial', editorialSection], ['abstract', abstractSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
+      bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
+      const ftHtml = fulltextStatusHtml(paper, true, true);
+      const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
+      if (ftStatus.dataset.ftHtml !== ftHtml) {
+        // 先把挂载在状态块里的持久节点挪回 #drawerFulltext，避免被 innerHTML 覆盖销毁。
+        if (pdfLinkEl && pdfLinkEl.parentElement !== ftSection) ftSection.appendChild(pdfLinkEl);
+        if (pdfFormEl && pdfFormEl.parentElement !== ftSection) ftSection.appendChild(pdfFormEl);
+        ftStatus.innerHTML = ftHtml;
+        ftStatus.dataset.ftHtml = ftHtml;
+      }
     }
 
     // Footer buttons
     const huddleBtn = $('#drawerHuddleToggleBtn');
     if (huddleBtn) {
       huddleBtn.textContent = isHuddled ? '已在精选清单 ✓' : '加入精选清单';
-      huddleBtn.className = `btn-sm ${isHuddled ? 'active' : ''}`;
+      huddleBtn.className = `text-btn ${isHuddled ? 'active' : ''}`;
     }
 
     const shareBtn = $('#drawerCopyShareBtn');
@@ -2406,14 +2681,27 @@
     }
     const institutionLogin = $('#drawerInstitutionLoginLink');
     if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
+    const ftSectionNow = $('#drawerFulltext');
     const pdfLink = $('#drawerPdfLink');
+    const pdfForm = $('#drawerPdfForm');
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
       // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
-      if (!pdfUrl || changedPaper) resetDlForm($('#drawerPdfForm'));
+      if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
+      if (ftSectionNow) {
+        const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
+        const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
+        const linkTarget = primarySlot || ftSectionNow;
+        const formTarget = formSlot || ftSectionNow;
+        if (pdfLink.parentElement !== linkTarget) linkTarget.appendChild(pdfLink);
+        if (pdfForm && pdfForm.parentElement !== formTarget) formTarget.appendChild(pdfForm);
+      }
     }
 
+    if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
+      try { typingEl.focus({ preventScroll: true }); if (typingSel && typingSel[0] !== null) typingEl.setSelectionRange(typingSel[0], typingSel[1]); } catch (e) { /* ignore */ }
+    }
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
     drawer.classList.add('open');
     backdrop.classList.add('open');
@@ -3691,7 +3979,18 @@
       if (ft.dataset.ftAction === 'open-form') {
         const form = (box.querySelector('[data-ft-form]') || (box.parentElement && box.parentElement.querySelector('[data-ft-form]')));
         if (form) { form.hidden = false; form.querySelector('input')?.focus(); }
-      } else if (ft.dataset.ftAction === 'refresh') { ft.disabled = true; lookupSupplementalDoi(doi, true).then(refreshSupplementalView); }
+      } else if (ft.dataset.ftAction === 'refresh') {
+        ft.disabled = true;
+        const form = ft.closest('form[data-ft-form]');
+        if (form) {
+          const inDrawer = !!form.closest('#drawerFulltext');
+          const err = form.querySelector('.ft-error');
+          if (err) err.textContent = '正在核对状态…';
+          reconcileFtFormAfterLookup(doi, form, inDrawer);
+        } else {
+          lookupSupplementalDoi(doi, true).then(refreshSupplementalView);
+        }
+      }
       return;
     }
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
@@ -3985,9 +4284,14 @@
   switchMode(state.mode, true);
   loadSupplementalLibrary();
   const refreshLibraryAfterReturn = () => {
-    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < 2000) return;
+    if (SUPPLEMENTAL_LIBRARY.promise) return;
+    const doi = exactDoi(state.search);
+    if (Date.now() - SUPPLEMENTAL_LIBRARY.refreshedAt < LIBRARY_REFRESH_TTL_MS) {
+      if (doi && doiJobActive(DOI_JOBS.get(doi))) lookupSupplementalDoi(doi, true);
+      return;
+    }
     loadSupplementalLibrary(true);
-    const doi = exactDoi(state.search); if (doi) lookupSupplementalDoi(doi, true);
+    if (doi) lookupSupplementalDoi(doi, true);
     DOI_TOUCHED.forEach(touched => { if (touched !== doi) lookupSupplementalDoi(touched, true); });
   };
   document.addEventListener('click', e => {

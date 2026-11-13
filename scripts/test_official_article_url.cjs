@@ -15,11 +15,21 @@ const el = (extra = {}) => ({
   setAttribute() {}, focus() {}, contains() { return false; }, querySelector() { return null; },
   ...extra
 });
+const ftStatus = el();
+const ftRegion = el({ appendChild() {} });
 const nodes = {
-  readerDrawer: el(), drawerBackdrop: el(), drawerJournalBadges: el(), drawerBody: el(),
+  readerDrawer: el(), drawerBackdrop: el(), drawerJournalBadges: el(), drawerBody: el({
+    querySelector(sel) { return String(sel).includes('fulltext') || String(sel).includes('data-drawer-region') ? ftRegion : null; }
+  }),
   drawerHuddleToggleBtn: el(), drawerCopyShareBtn: el(), drawerExternalLink: el(),
-  drawerInstitutionLink: el(), drawerInstitutionLoginLink: el(), drawerPdfLink: el(), drawerPdfForm: el(),
-  drawerCloseBtn: el()
+  drawerInstitutionLink: el(), drawerInstitutionLoginLink: el(),
+  drawerPdfLink: el({ parentElement: null }), drawerPdfForm: el({ parentElement: null }),
+  drawerCloseBtn: el(),
+  drawerFulltext: el({
+    remove() {},
+    appendChild() {},
+    querySelector(sel) { return String(sel).includes('data-drawer-ft-status') ? ftStatus : null; }
+  })
 };
 const c = vm.createContext({
   URL, encodeURIComponent, decodeURIComponent, esc,
