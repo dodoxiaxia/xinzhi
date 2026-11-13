@@ -3132,11 +3132,20 @@
     if (p) {
       if (p.status === 'records_observed') parts.push(`PubMed 备用快照 ${p.observedItems} 条，近14天 ${p.eligibleItems} 条${p.stale || olderThan(p.checkedAt,6) ? '（快照已过期）' : ''}。`);
       else parts.push(p.configured ? 'PubMed 备用查询尚无匹配记录。' : 'PubMed 备用查询尚未覆盖此来源。');
+      if (p.fetchStatus === 'failed') parts.push(pubmedFetchNotice(p));
       if (p.checkedAt && (p.configured || p.status === 'records_observed')) parts.push(`备用检查：${contentDate(p.checkedAt)}（北京时间）。`);
       if (p.queryScope === 'cardiovascular_or_ai' && p.configured) parts.push('备用检索限心血管或 AI 主题。');
       if (p.queryTruncated && p.configured) parts.push('备用检索达到结果上限，不能据此判断完整覆盖。');
     }
     return parts.join(' ');
+  }
+
+  function pubmedFetchNotice(fetch) {
+    if (!fetch || (fetch.status !== 'failed' && fetch.fetchStatus !== 'failed')) return '';
+    const category = typeof fetch.errorCategory === 'string' ? fetch.errorCategory : '';
+    const http = Number.isInteger(fetch.httpStatus) ? `，HTTP ${fetch.httpStatus}` : '';
+    const reused = fetch.reusedPrevious ? '，已沿用上一轮条目' : '';
+    return `PubMed 备用源本轮失败（${category}${http}）${reused}。`;
   }
 
   function renderSourcesHealth() {
@@ -3154,8 +3163,9 @@
     if (summary) summary.innerHTML = tile('', sources.length, '订阅信源') + tile('ok', okCount, '本轮获取成功') + tile('attention', sources.length - okCount, '需要关注', sources.length > okCount ? ' source-summary-attention' : '');
 
     if (meta) {
-      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}`;
-      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6));
+      const pubmedNotice = pubmedFetchNotice(HEALTH.pubmedFetch).replace(/。$/, '');
+      meta.textContent = `检查时间：${contentDate(HEALTH.checkedAt)}（北京时间）${olderThan(HEALTH.checkedAt,6) ? ' · 报告已过期，不能代表当前可用率' : ''}${pubmedNotice ? ' · ' + pubmedNotice : ''}`;
+      meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6) || (HEALTH.pubmedFetch && HEALTH.pubmedFetch.status === 'failed'));
     }
 
     const q = state.search.trim().toLowerCase();

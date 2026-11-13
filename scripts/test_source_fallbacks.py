@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 import build_public
 import fetch_pubmed
-from source_fallbacks import ADDITIONAL_JOURNALS, TOPIC_TERM, coverage, journal_query
+from source_fallbacks import ADDITIONAL_JOURNALS, TOPIC_TERM, apply_pubmed_fetch, coverage, journal_query, public_pubmed_fetch
 
 NOW = datetime.datetime(2026, 10, 7, 8, tzinfo=datetime.timezone.utc)
 
@@ -147,6 +147,47 @@ class SourceFallbackTests(unittest.TestCase):
         self.assertNotIn('password', out['responseUrl'])
         self.assertNotIn('private-secret', out['responseUrl'])
         self.assertEqual(out['pubmedFallback']['eligibleItems'], 1)
+
+    def test_pubmed_fetch_record_keeps_status_code_and_fixed_category_without_secrets(self):
+        raw = {
+            'status': 'failed',
+            'httpStatus': 400,
+            'errorCategory': 'pubmed_upstream_timeout',
+            'checkedAt': '2026-11-05T02:00:00+00:00',
+            'reusedPrevious': True,
+            'cachedItems': 12,
+            'previousUpdatedAt': '2026-11-05T01:00:00+00:00',
+            'api_key': 'must-not-leak',
+            'query': 'secret-term',
+            'upstreamError': 'Error with id 12345678',
+        }
+        out = public_pubmed_fetch(raw)
+        self.assertEqual(out['status'], 'failed')
+        self.assertEqual(out['httpStatus'], 400)
+        self.assertEqual(out['errorCategory'], 'pubmed_upstream_timeout')
+        self.assertTrue(out['reusedPrevious'])
+        self.assertNotIn('api_key', out)
+        self.assertNotIn('query', out)
+        self.assertNotIn('upstreamError', out)
+        self.assertIsNone(public_pubmed_fetch({'status': 'mystery', 'errorCategory': 'pubmed_upstream_timeout'}))
+        self.assertEqual(public_pubmed_fetch({'status': 'ok', 'checkedAt': '2026-11-05T02:00:00+00:00', 'api_key': 'x'})['status'], 'ok')
+        self.assertEqual(public_pubmed_fetch({'status': 'failed', 'errorCategory': 'pubmed_time_budget_exceeded'})['errorCategory'], 'pubmed_time_budget_exceeded')
+
+    def test_failed_fetch_marks_reused_fallback_stale_and_survives_public_health(self):
+        fetch = {'status': 'failed', 'httpStatus': 503, 'errorCategory': 'pubmed_http_5xx',
+                 'reusedPrevious': True, 'checkedAt': '2026-11-05T02:00:00+00:00'}
+        pubmed = snapshot([{'pmid': '1', 'journal': 'Nature Medicine', 'date': '2026-10-07'}], ['Nature Medicine'])
+        self.assertFalse(coverage(source('Nature Medicine'), pubmed, NOW)['stale'])
+        out = apply_pubmed_fetch(coverage(source('Nature Medicine'), pubmed, NOW), fetch)
+        self.assertTrue(out['stale'])
+        self.assertEqual(out['fetchStatus'], 'failed')
+        self.assertEqual(out['httpStatus'], 503)
+        self.assertEqual(out['errorCategory'], 'pubmed_http_5xx')
+        public = build_public.public_health(source('Nature Medicine'), pubmed, NOW, fetch)
+        self.assertTrue(public['pubmedFallback']['stale'])
+        self.assertEqual(public['pubmedFallback']['httpStatus'], 503)
+        self.assertEqual(public['pubmedFallback']['errorCategory'], 'pubmed_http_5xx')
+        self.assertNotIn('api_key', public['pubmedFallback'])
 
 
 if __name__ == '__main__':
