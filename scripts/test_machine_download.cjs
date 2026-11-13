@@ -766,6 +766,36 @@ async function review(h, body) {
   assert.equal(chainArchiveB.supersededFrom.taskId, chainA);
   assertKept(h.writes.filter(write => write.key === 'library:muse-superseded:' + chainDoi + ':' + chainB).at(-1));
 
+  // replaceAvailableLeavesSupersedeRecord: X-Machine-Replace of a done/available job archives the old record first.
+  h = await create();
+  const replaceDoi = '10.1000/supersede-replace';
+  const firstPdf = paperPdf(replaceDoi);
+  const firstSha = hash(firstPdf);
+  const oldReplaceId = crypto.randomUUID();
+  seedPaper(h, replaceDoi, title, 'available');
+  const replacePaper = stored(h, 'library:paper:' + replaceDoi);
+  replacePaper.paper.fulltextStatus = 'available';
+  replacePaper.pdf = {key:'library:pdf:' + firstSha,sha256:firstSha,size:firstPdf.length,source:'machine'};
+  h.values.set('library:paper:' + replaceDoi, JSON.stringify(replacePaper));
+  h.values.set('library:pdf:' + firstSha, firstPdf);
+  putJob(h, replaceDoi, 'available', Date.now() - 5000, {id:oldReplaceId,sha256:firstSha,bytes:firstPdf.length,source:'dsh',caller:'dsh',verification:{method:'dual_parser_all_pages_title_doi',pages:4,sha256:firstSha,bytes:firstPdf.length}});
+  const officialPdf = paperPdf(replaceDoi, title, 'official-version');
+  assert.notEqual(hash(officialPdf), firstSha);
+  const replaceUp = await upload(h, officialPdf, replaceDoi, dsh, {'x-machine-replace':'1'});
+  assert.equal(replaceUp.status, 202);
+  const replaceJob = stored(h, 'library:muse-job:' + replaceDoi);
+  assert.notEqual(replaceJob.id, oldReplaceId);
+  assert.equal(replaceJob.supersededFrom.taskId, oldReplaceId);
+  assert.equal(replaceJob.supersededFrom.previousState, 'available');
+  const replaceArchive = stored(h, 'library:muse-superseded:' + replaceDoi + ':' + oldReplaceId);
+  assert.equal(replaceArchive.id, oldReplaceId);
+  assert.equal(replaceArchive.state, 'available');
+  assert.equal(replaceArchive.sha256, firstSha);
+  assert.equal(replaceArchive.supersededBy, replaceJob.id);
+  assert(Number.isInteger(replaceArchive.supersededAt));
+  assertKept(h.writes.filter(write => write.key === 'library:muse-superseded:' + replaceDoi + ':' + oldReplaceId).at(-1));
+  assert.equal(stored(h, 'library:paper:' + replaceDoi).pdf.sha256, firstSha);
+
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_machine_index.cjs').run();

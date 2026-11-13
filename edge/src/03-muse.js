@@ -272,13 +272,10 @@ function museSupersededKey(doi, taskId) {
   return MUSE_SUPERSEDED_PREFIX + doi + ':' + taskId;
 }
 function museShouldSupersedePrevious(job) {
-  // Each DOI has one library:muse-job:{doi} key. museIntake overwrites it, so a failed/review/not-done
-  // record must be archived first. A clean in-lease claim that is just uploading the PDF is the same
-  // piece of work, not a replacement, and is not archived.
-  if (!job || typeof job.id !== 'string' || !job.id) return false;
-  if (job.state === 'available' || job.state === 'abandoned') return false;
-  if (['running','uploading'].includes(job.state) && !job.previousReason && !job.supersededFrom && !job.supersedes && !museExpired(job)) return false;
-  return true;
+  // Each DOI has one library:muse-job:{doi} key. Any overwrite of an existing task is archived first,
+  // including a failed/review/not-done job and an already done/available original replaced via
+  // X-Machine-Replace (for example swapping an early publication for the official version).
+  return !!(job && typeof job.id === 'string' && job.id);
 }
 function museSupersedeSnapshot(job) {
   const skip = new Set(['candidateKey','replace','replaceRejected']);
