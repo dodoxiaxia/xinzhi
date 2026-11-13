@@ -93,7 +93,7 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 
 - **公开仓库**：不提交口令、API key、token、Cookie、个人邮箱、内部文档 ID/链接、私人索引原始文件或未授权全文。已经进入历史的内容删不掉，提交前先检查 diff。
 - **PDF 下载口令**只存在于 Cloudflare Secret `PDF_DOWNLOAD_PASSPHRASE`。代码、测试、文档、提交信息里都不写口令值；测试用明显的假值。其他凭据（`LLM_API_KEY`、`GITHUB_LIBRARY_TOKEN`、GitHub Actions 的 `XINZHI_LLM_API_KEY`、`CLOUDFLARE_API_TOKEN` 等）同理，只在 Cloudflare/GitHub 的 Secret 中配置。
-- **AI 内容必须标注“未经人工核对”**（或同义的“未经人工审核”“未经人工医学终审”）。AI 速览、机器翻译、AI 综述、AI 全文精读都要带标注；不要把 AI 结果显示成“已核对导读”。
+- **站上不显示“未经人工核对 / 未经人工审核 / 未经医生终审”这类标签**（Donald 2026-11-13 的决定）。AI 速览、机器翻译、AI 综述、AI 全文精读的卡片、列表、阅读台里都不再带这类标签或提示句；AI 速览小节的标题只写“速览”。AI 结果仍然不能显示成“已核对导读”（只有对照公开摘要核对过的才叫“已核对导读”）。
 - **不要用旧导入脚本覆盖公开题录**：`scripts/build_data.py`、`service/import_data.py` 等早期导入工具不能用来重建文献库。文献库只能通过审核后的快照（`editorial/public_library_snapshot.json` + manifest，由 `apply_public_library.py` 应用）更新，构建守卫会阻止旧状态覆盖已批准条目。也不要恢复旧前端模板。
 - **公开文件白名单**：只发布第 1 节列出的 9 个固定文件，以及 `shards/readings-年-月.内容哈希.js` 这种全文精读分片。不上传 PDF、数据库、`.local/`、凭据或内部记录。
 - **`app.js` 与 `edge/_worker.js` 是拼接产物**：源码在 `src/app/*.js` 与 `edge/src/*.js`（按文件名顺序逐字拼接）。改源文件后运行 `python3 scripts/build_sources.py`，并把拼接结果一起提交；不要直接编辑 `app.js` 或 `_worker.js`（`build_public.py` 与测试会检查两者是否一致）。
@@ -119,8 +119,8 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 | 讨论提纲 | 基于精选清单生成的 AI 提纲 | 晨会提纲、`brief`（mode=huddle） |
 | 综述速读 | 基于当前结果生成的 AI 综述 | AI 综述、digest、`brief`（mode=digest） |
 | 全文精读 | 读全文后写的长篇解读；AI 生成的叫“AI 全文精读”，人工写的叫“人工精读示范” | 每日全文精读、深读、deep reading（代码：`deepReading*`、`daily_fulltext.py`） |
-| AI 速览 | 模型根据公开摘要生成的要点，未经人工核对 | AI 解读、一键 AI 解读、quicklook（代码：`quicklook*`、`/api/ql`） |
-| 已核对导读 | 对照期刊公开摘要核对过的中文导读，未经医生终审 | 导读、摘要核对导读、摘要核对、guide（代码：`draftData`、`reading=guide`） |
+| 速览（AI 速览） | 模型根据公开摘要生成的要点，界面小节标题只写“速览” | AI 解读、一键 AI 解读、quicklook（代码：`quicklook*`、`/api/ql`） |
+| 已核对导读 | 对照期刊公开摘要核对过的中文导读 | 导读、摘要核对导读、摘要核对、guide（代码：`draftData`、`reading=guide`） |
 | 原摘要 / 中英对照 | 期刊公开摘要及机器翻译 | 摘要翻译、translation |
 | 阅读面板 | 点开文献后右侧（手机为全屏）的阅读区 | 抽屉、drawer、速读（按钮文字） |
 | 关注期刊 / 我的期刊 | 收藏的期刊及按收藏筛选（仅存本浏览器） | favorites |

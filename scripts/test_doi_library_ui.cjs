@@ -67,7 +67,7 @@ async function helpers() {
   assert.equal(c.LIBRARY.papers.filter(p => p.doi === '10.1234/new').length, 1, 'Aliases and repeated pages deduplicate');
   const pending = c.LIBRARY.papers.find(p => p.doi === '10.1234/new');
   const none = c.pdfDownloadLink(pending);
-  assert(none.includes('未申请')); assert(none.includes('data-ft-action="open-form"') && none.includes('>获取全文<')); assert(none.includes('data-mode="submit"') && none.includes('type="password"'));
+  assert(!none.includes('未申请') && !none.includes('ft-badge-none')); assert(none.includes('data-ft-action="open-form"') && none.includes('>获取全文<')); assert(none.includes('data-mode="submit"') && none.includes('type="password"'));
   assert(!none.includes('/api/acquire?doi='), 'the request is made in place; the card no longer links to another page'); assert.equal(c.pdfDownloadUrl(pending), '');
   c.mergeSupplementalPaper(apiPaper('10.1234/manual', 'Manual clinical title', 'manual_needed'));
   const manual = c.LIBRARY.papers.find(p => p.doi === '10.1234/manual');
@@ -97,7 +97,7 @@ async function helpers() {
   for (const [kind, task] of Object.entries({ none: null, queued: { state: 'queued', stage: 'queued' }, running: { state: 'running', stage: 'running' }, verifying: { state: 'pending', stage: 'verifying' }, failed: { state: 'failed', stage: 'failed' }, review: { state: 'review', stage: 'review' } })) {
     c.mergeDoiJob(pending.doi, task && { ...job, ...task });
     const html = c.fulltextStatusHtml(pending, true);
-    assert(html.includes('ft-badge-' + kind), kind + ' badge');
+    if (kind === 'none') assert(!html.includes('ft-badge-none'), 'none omits ft-badge-none'); else assert(html.includes('ft-badge-' + kind), kind + ' badge');
     assert(html.includes('暂无 PDF：') && html.includes('下一步：'), kind + ' reason and next action');
     assert.equal(primaryCount(html), 1, kind + ' has one primary action');
   }
@@ -366,7 +366,8 @@ async function searchFill(page, text) {
     assert.equal(new URL(page.url()).searchParams.get('ft'), 'none');
     const noneText = await page.locator('#articlesStream').innerText();
     assert(noneText.includes('Unrequested filter title'));
-    assert(noneText.includes('未申请'));
+    assert(!noneText.includes('未申请'), '「未申请」灰标不再显示（筛选仍可用）');
+    assert(noneText.includes('获取全文'), '申请全文的入口仍是「获取全文」');
     assert(!noneText.includes('Failed filter title'));
     assert.equal(await page.locator('#ftBar select').inputValue(), 'none');
     await page.locator('#ftBar select').selectOption('');

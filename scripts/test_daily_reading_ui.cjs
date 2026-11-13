@@ -16,7 +16,7 @@ assert.equal(groups.todayCount,1);assert.equal(groups.latest.length,1);assert.eq
 ctx.renderDailyDeepRead();
 assert(node.innerHTML.includes('今日已更新 <b>1</b> 篇'));assert(node.innerHTML.includes('往期精读 · 1 篇'));assert(node.innerHTML.includes('暂时不可用'));
 assert(!node.innerHTML.includes('data-deep-reading="PMC3"'));assert(!node.innerHTML.includes('data-deep-reading="PMC4"'));
-assert(node.innerHTML.includes('AI 全文精读 · 未经人工审核'));assert(node.innerHTML.includes('data-action="open-deep-reading" data-reading-id="PMC1"'));
+assert(!node.innerHTML.includes('AI 全文精读 · 未经人工审核'));assert(node.innerHTML.includes('data-action="open-deep-reading" data-reading-id="PMC1"'));
 // The rail lists readings only; the text, evidence and source links render in the reading panel.
 assert(!node.innerHTML.includes('deep-reading-section'));
 assert.deepEqual(ctx.dailyReadingList(ctx.window.DEEP_READINGS).map(p=>p.pmcid),['PMC1','PMC2']);

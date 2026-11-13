@@ -3,23 +3,31 @@ name: daily-refresh
 on:
   push:
     branches: [main]
+    # Only changes that can alter the published site or the offline pre-publish checks start a run.
+    # Not listed on purpose (no script, test or build step reads them): docs/ except the three
+    # entries below, AGENTS.md, CLAUDE.md, README.md, .gitignore, start.command, service/, editor/,
+    # and the workflows drive-archive.yml and muse-checks.yml.
     paths:
       - 'index.html'
       - 'app.js'
-      - 'src/**'
-      - 'citation-export.js'
       - 'style.css'
       - 'icon.png'
       - 'demo-reading.html'
-      - 'journal-metrics.js'
+      - 'citation-export.js'
+      - 'journal-metrics.*'
+      - 'src/**'
       - 'edge/**'
-      - 'workers/cron-dispatch/**'
+      - 'workers/**'
+      - 'd1/**'
       - 'scripts/**'
       - 'editorial/**'
-      - 'config/public_library_adjudications.json'
-      - 'config/journal-metrics.json'
-      - 'config/publication-status.json'
+      - 'config/**'
+      # Read by the pre-publish checks (test_journal_public_*.py) and by release_integrity.validate_release.
+      - 'docs/public-manifest.json'
+      - 'docs/journal-public-observations-*.json'
+      # release_integrity.INPUTS hashes these three; test_workflow.py reads daily-reading-checks.yml.
       - '.github/workflows/daily.yml'
+      - '.github/workflows/daily-reading-checks.yml'
       - '.github/workflows/fulltext.yml'
       - '.github/workflows/fulltext-import.yml'
       - '.github/workflows/muse-review.yml'
@@ -43,9 +51,14 @@ on:
         default: false
         type: boolean
 
+# Push runs share one group and a newer push cancels the older one still running (push runs are
+# model-free). Scheduled and manual runs share a second group and are never cancelled. The group
+# name depends on the new run's own event, and cancel-in-progress is read from the new run, so a
+# push can never cancel a scheduled or manual run. Writes to the state branch and Pages are
+# serialised across both groups by the job-level group on `refresh` below.
 concurrency:
-  group: daily-refresh
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'push' && 'daily-refresh-push' || 'daily-refresh-timed' }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 permissions:
   contents: write
@@ -87,8 +100,12 @@ jobs:
             || echo run=true >> "$GITHUB_OUTPUT"
 
   refresh:
-    # The concurrency group serialises overlapping runs, and an unchanged fast run does not deploy.
+    # An unchanged fast run does not deploy. Push runs and timed runs sit in different workflow-level
+    # groups, so this job-level group keeps their refresh jobs from running at the same time.
     needs: gate
+    concurrency:
+      group: daily-refresh-state
+      cancel-in-progress: false
     if: github.ref == 'refs/heads/main' && needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     # Covers ci_daily's 150-minute full budget plus tests, deploy and state save.

@@ -212,7 +212,7 @@
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
       fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
-      basis: '官方题录 · 非全文精读，未经医生终审', tags: [], studyDesign: '研究类型待核验', quantitativeMetrics: {}
+      basis: '官方题录 · 非全文精读', tags: [], studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
     p.cleanJournal = p.journal;

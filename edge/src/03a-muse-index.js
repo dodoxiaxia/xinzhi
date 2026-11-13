@@ -27,7 +27,7 @@ const MACHINE_INDEXED_PUBLIC_STATES = ['to-download','downloading','uploaded-awa
 // Index entry for one task record, or null when the task is no longer a machine candidate.
 // i: task id, s: state, c: createdAt, u: updatedAt, e: when the task counts as expired (0 = never), w: when the entry was written.
 function museIndexEntry(job) {
-  if (!job || !libraryDoi(job.doi) || !MACHINE_INDEX_STATES.includes(job.state)) return null;
+  if (!job || !MACHINE_INDEX_STATES.includes(job.state)) return null;
   let expires = 0;
   if (job.state === 'queued') expires = job.createdAt + MUSE_QUEUE_MS;
   else if (job.state === 'running' || job.state === 'uploading') expires = Math.min(job.leaseUntil, (job.acquisitionStartedAt || job.createdAt) + 86400000);

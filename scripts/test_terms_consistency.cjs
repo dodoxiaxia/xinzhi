@@ -41,7 +41,6 @@ const listCtx = vm.createContext({
   exactDoi: () => false
 });
 vm.runInContext(fn('officialArticleUrl'), listCtx);
-vm.runInContext(fn('machineContentLabel'), listCtx);
 vm.runInContext(fn('renderArticleCard'), listCtx);
 const cardHtml = listCtx.renderArticleCard({ id: 'p1', title: 'Test Paper', journal: 'Circulation' });
 ok(cardHtml.includes('class="title-open" data-action="open-drawer"'), 'card title button opens reader drawer');
@@ -183,14 +182,14 @@ const checkedDraftHtml = renderDrawer({
   hasDraft: true, draftData: { summary: '导读正文', source_checked: true }
 });
 ok(checkedDraftHtml.includes('已核对导读'), 'source_checked draft shows "已核对导读"');
-ok(checkedDraftHtml.includes('未经医生终审'), 'source_checked draft states review boundary');
+ok(checkedDraftHtml.includes('对照公开摘要核对') && !checkedDraftHtml.includes('未经医生终审'), 'source_checked draft states abstract check without unreviewed disclaimer');
 
 const uncheckedDraftHtml = renderDrawer({
   id: 'd2', title: 'Unchecked draft', doi: '10.1/d2', summary: 'Abstract',
   hasDraft: true, draftData: { summary: '未核对正文', source_checked: false }
 });
 ok(!uncheckedDraftHtml.includes('已核对导读'), 'unchecked draft is never labelled "已核对导读"');
-ok(uncheckedDraftHtml.includes('AI 速览') && uncheckedDraftHtml.includes('未经人工核对'), 'unchecked draft is labelled as unverified AI 速览');
+ok(!uncheckedDraftHtml.includes('未经人工核对') && uncheckedDraftHtml.includes('<div class="drawer-section-title">速览</div>'), 'unchecked draft uses plain 速览 title without unverified disclaimer');
 
 const onDemandNoneHtml = renderDrawer({
   id: 'q1', title: 'No quicklook yet', doi: '10.1/q1', summary: 'Abstract', _aiState: 'none'

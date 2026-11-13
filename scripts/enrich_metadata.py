@@ -6,7 +6,6 @@ Paper-specific interpretation belongs only to source-checked editorial content.
 import datetime, json, re, unicodedata
 from pathlib import Path
 from urllib.parse import urlsplit
-from scope_filter import scope_decision
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -593,23 +592,14 @@ def main():
     cand_file = ROOT / 'data/candidates.json'
     if cand_file.exists():
         cand = json.loads(cand_file.read_text())
-        enriched_items, dropped_scope = [], 0
-        for raw_p in cand.get('items', []):
-            p = enrich_paper(raw_p, drafts_by_doi, drafts_by_url)
-            decision = scope_decision(p)
-            if decision['action'] == 'exclude':
-                dropped_scope += 1
-                print(f"[scope_filter] Enrich dropped: {decision['reason']} | {decision['detail']} | {p.get('doi', '')} | {p.get('title', '')[:120]}")
-                continue
-            enriched_items.append(p)
+        enriched_items = [enrich_paper(p, drafts_by_doi, drafts_by_url) for p in cand.get('items', [])]
         cand['items'] = enriched_items
-        cand['candidateCount'] = len(enriched_items)
         cand['enrichedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         cand_file.write_text(json.dumps(cand, ensure_ascii=False, indent=2))
         (ROOT / 'data/candidates.js').write_text(
             'window.FEEDS=' + json.dumps(cand, ensure_ascii=False).replace('</', '<\\/') + ';'
         )
-        print(f"Enriched {len(enriched_items)} candidates with tentative source metadata (scope dropped {dropped_scope}).")
+        print(f"Enriched {len(enriched_items)} candidates with tentative source metadata.")
 
     # 2. Enrich library
     lib_file = ROOT / 'data/library.json'

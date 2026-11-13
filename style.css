@@ -1613,3 +1613,36 @@ body:has(aside.sidebar.open) { overflow: hidden; }
 @media (max-width: 480px) {
   html[data-style] .search-panel .search-input, .search-input { min-height: 44px; height: 44px; font-size: 16px; }
 }
+
+/* 列表改版（前端）：机器内容标签、近7天榜说明行、「未申请」灰标、AI 综述入口不再显示；☆精选 / 官网原文 / 获取全文并到右侧操作列 */
+.content-label, .ql-flag, .deep-reading-label, .weekly-meta, .ft-badge-none, #aiDigest, .ai-digest { display: none !important; }
+.article-card.has-side-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: start; }
+.article-card.has-side-actions > .card-main { grid-column: 1; min-width: 0; }
+.article-card.has-side-actions > .doi-status, .article-card.has-side-actions > .ft-status.ft-full { grid-column: 1 / -1; }
+.card-side-actions { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
+.card-side-actions .ft-status.ft-compact { display: contents; }
+.card-side-actions > .btn-sm, .card-side-actions > .ft-status > .btn-sm { margin: 0; }
+.card-side-actions > .ft-form { flex-basis: auto; width: min(320px, 70vw); }
+.card-side-actions .text-btn { justify-content: flex-end; white-space: nowrap; }
+@media (max-width: 720px) { .article-card.has-side-actions { column-gap: 10px; } .card-side-actions .btn-sm, .card-side-actions .text-btn { min-height: 44px; } }
+
+/* 列表右列（紧凑视图、近7天榜） */
+.compact-row > .compact-main { grid-column: 1; grid-row: 1; min-width: 0; }
+.compact-main .compact-title { overflow-wrap: anywhere; max-width: 100%; }
+.compact-row > .compact-actions { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; flex-wrap: nowrap; gap: 4px; min-width: 0; }
+.compact-actions .ft-status.ft-compact { display: contents; }
+.compact-actions > .btn-sm, .compact-actions > .ft-status > .btn-sm { margin: 0; white-space: nowrap; }
+.compact-actions .text-btn { justify-content: flex-end; white-space: nowrap; }
+.compact-actions:has(> .ft-form:not([hidden]), > .ft-dl-form:not([hidden])) { grid-column: 1 / -1; grid-row: 2; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 8px; }
+.compact-actions:has(> .ft-form:not([hidden]), > .ft-dl-form:not([hidden])) > .ft-form,
+.compact-actions:has(> .ft-form:not([hidden]), > .ft-dl-form:not([hidden])) > .ft-dl-form { flex: 1 1 100%; width: 100%; min-width: 0; max-width: 100%; }
+.compact-actions > .ft-form input { min-width: 0; max-width: 100%; }
+.weekly-card-content { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: start; }
+.weekly-card-body { min-width: 0; }
+.weekly-card-actions { flex-direction: column; align-items: flex-end; flex-wrap: nowrap; margin-top: 0; padding-top: 0; min-width: 0; max-width: 7.5em; }
+.weekly-card-actions .btn-sm { max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: center; line-height: 1.35; padding-top: 6px; padding-bottom: 6px; }
+.weekly-row-actions { display: flex; flex-direction: column; align-items: flex-end; justify-self: end; }
+@media (max-width: 720px) {
+  .compact-row { grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; }
+  .compact-actions .btn-sm, .compact-actions .text-btn, .weekly-card-actions .btn-sm { min-height: 44px; }
+}
