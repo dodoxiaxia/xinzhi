@@ -1,6 +1,7 @@
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {
   async fetch(request, env, ctx) {
+    pdfArchiveBind(env);
     const startedAt = Date.now();
     let response;
     try {
@@ -9,6 +10,8 @@ export default {
     } catch (error) {
       metricsRecord(request, env, ctx, null, startedAt, true);
       throw error;
+    } finally {
+      pdfArchiveFlush(env, ctx);
     }
     metricsRecord(request, env, ctx, response, startedAt, false);
     return response;
