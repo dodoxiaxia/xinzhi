@@ -228,6 +228,7 @@ async function run() {
   await register(h, dsh, [item(1,{section:'CARDIO'})]);
   const stale = stored(h, 'library:muse-job:10.1000/reg.1');
   h.values.set('library:muse-job:10.1000/reg.1', JSON.stringify({...stale,state:'failed',reason:'other'}));
+  for (let n = 0; n < 20; n++) if ((await (await post(h, '/api/machine/requeue', dsh, {reindex:true})).json()).reindex.ready) break; // the record was edited behind the index
   const requeued = await (await post(h, '/api/machine/requeue', dsh, {})).json();
   assert.equal(requeued.requeued.length, 1);
   assert.equal(stored(h, 'library:muse-job:10.1000/reg.1').registration.section, 'CARDIO');

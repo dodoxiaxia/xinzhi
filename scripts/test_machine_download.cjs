@@ -81,6 +81,11 @@ function pdfPages(pages) {
 }
 function paperPdf(paperDoi, paperTitle = title, extra = '') { return pdfPages([paperDoi + ' ' + paperTitle + (extra ? ' ' + extra : '')]); }
 function plainPdf() { return Buffer.from('%PDF-1.7\nSynthetic reader copy\n' + 'x'.repeat(52000) + '\n%%EOF\n'); }
+// Tasks seeded straight into KV bypass the code that keeps the candidate index current; rebuild it from the keys.
+async function reindex(h) {
+  for (let n = 0; n < 50; n++) { const body = await (await call(h, '/api/machine/requeue', dsh, {reindex:true})).json(); if (body.reindex.ready) return; }
+  throw new Error('index did not become ready');
+}
 function capList(h, max = 10) {
   const original = h.kv.list.bind(h.kv);
   h.kv.list = opts => original({...opts,limit:Math.min(Number(opts.limit) || max, max)});
@@ -277,6 +282,7 @@ async function review(h, body) {
   const queuedDoi = '10.1000/c99';
   putJob(h, queuedDoi, 'queued', baseTime + 100000);
   seedPaper(h, queuedDoi);
+  await reindex(h);
   const oldClaim = await h.context.worker.fetch(new Request(base + '/api/muse/claim', {method:'POST',headers:authHeaders(museKey),body:'{}'}), h.env);
   assert.equal(oldClaim.status, 200);
   assert.equal((await oldClaim.json()).task, null);
@@ -288,7 +294,7 @@ async function review(h, body) {
   assert.equal(foundTask.claimant, 'dsh');
   assert.equal(foundTask.title, title);
   assert(foundTask.leaseId);
-  assert(h.lists.some(opts => opts.prefix === 'library:muse-queue:' && opts.cursor));
+  // The 12th task is found without paging through the first ten: the claim read the index, not the queue keys.
   assert.equal(stored(h, 'library:muse-job:' + queuedDoi).claimant, 'dsh');
 
   h = await create();
@@ -301,10 +307,10 @@ async function review(h, body) {
   const openDoi = '10.1000/z-open';
   putJob(h, openDoi, 'failed', baseTime + 50, {reason:'source_blocked',stage:'yiigle'});
   seedPaper(h, openDoi);
+  await reindex(h);
   const fallbackClaim = await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'});
   assert.equal((await fallbackClaim.json()).task.doi, openDoi);
   assert.equal(stored(h, 'library:muse-job:' + openDoi).claimant, 'fallback');
-  assert(h.lists.some(opts => opts.prefix === 'library:muse-job:' && opts.cursor));
 
   h = await create();
   capList(h);
@@ -315,6 +321,7 @@ async function review(h, body) {
     expected.push(paperDoi);
     putJob(h, paperDoi, 'queued', baseTime + index);
   }
+  await reindex(h);
   const seen = [];
   let cursor = '';
   for (let page = 0; page < 8; page++) {
@@ -337,6 +344,7 @@ async function review(h, body) {
   putJob(h, requeueDois[3], 'review', baseTime + 3, {verificationReason:'identity_mismatch',reason:'identity_mismatch'});
   putJob(h, requeueDois[11], 'login_required', baseTime + 11, {reason:'han_login',stage:'han'});
   h.values.set('library:attempt:' + requeueDois[0], JSON.stringify({paused:true}));
+  await reindex(h);
   const writesBeforeDry = h.writes.length;
   const dry = await (await call(h, '/api/machine/requeue', dsh, {dryRun:true,limit:50})).json();
   assert.equal(dry.dryRun, true);
@@ -359,10 +367,10 @@ async function review(h, body) {
   assert.equal(stored(h, 'library:muse-job:' + requeueDois[3]).state, 'review');
   assert.equal(stored(h, 'library:muse-job:' + requeueDois[0]).state, 'failed');
   assert.equal(stored(h, rateKey('dsh', 'requeue', dayOf(h))), applied.requeued.length);
-  assert(h.lists.some(opts => opts.prefix === 'library:muse-job:' && opts.cursor));
 
   h = await create();
   putJob(h, '10.1000/budget', 'failed', baseTime, {reason:'other'});
+  await reindex(h);
   h.values.set(rateKey('dsh', 'requeue', dayOf(h)), '200');
   const dryAtLimit = await (await call(h, '/api/machine/requeue', dsh, {dryRun:true,limit:5})).json();
   assert.equal(dryAtLimit.requeued.length, 1);
@@ -451,4 +459,5 @@ async function review(h, body) {
 
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
+  await require('./test_machine_index.cjs').run();
 })().catch(error => { console.error(error); process.exitCode = 1; });

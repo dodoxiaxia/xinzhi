@@ -40,6 +40,11 @@ function upload(h, bytes, doi, secret = dsh, headers = {}) {
 function post(h, route, secret, body) {
   return h.context.worker.fetch(new Request(base + route, {method:'POST', headers:{authorization:'Bearer ' + secret, 'content-type':'application/json'}, body:JSON.stringify(body)}), h.env);
 }
+// Tasks seeded straight into KV bypass the code that keeps the candidate index current; rebuild it from the keys.
+async function reindex(h) {
+  for (let n = 0; n < 20; n++) { const body = await (await post(h, '/api/machine/requeue', dsh, {reindex:true})).json(); if (body.reindex.ready) return; }
+  throw new Error('index did not become ready');
+}
 async function review(h, body) {
   const auth = await token(h, reviewUrl, 'muse-review.yml');
   return h.context.worker.fetch(new Request(reviewUrl, {method:'POST', headers:{authorization:'Bearer ' + auth, 'content-type':'application/json'}, body:JSON.stringify(body)}), h.env);
@@ -139,7 +144,7 @@ async function verifyNext(h, doi, result, reason) {
   // A claimed task no longer shows the failure that made it claimable; list and claim agree.
   const failedDoi = '10.9999/synthetic.failed';
   seedPaper(h, failedDoi, 'Synthetic paper queued then reported failed by an agent');
-  putJob(h, failedDoi, 'failed', {reason:'agent_failed'});
+  putJob(h, failedDoi, 'failed', {reason:'agent_failed'}); await reindex(h);
   const listed = await (await h.context.worker.fetch(new Request(base + '/api/machine/tasks?state=failed-awaiting-fallback', {headers:{authorization:'Bearer ' + reader}}), h.env)).json();
   assert.equal(listed.tasks.find(task => task.doi === failedDoi).reason, 'agent_failed');
   const picked = await (await post(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
@@ -150,12 +155,12 @@ async function verifyNext(h, doi, result, reason) {
   assert.equal(downloading.tasks.find(task => task.doi === failedDoi).reason, '');
   const queuedDoi = '10.9999/synthetic.queued';
   seedPaper(h, queuedDoi, 'Synthetic paper waiting for download');
-  putJob(h, queuedDoi, 'queued', {reason:'agent_failed'});
+  putJob(h, queuedDoi, 'queued', {reason:'agent_failed'}); await reindex(h);
   const queuedList = await (await h.context.worker.fetch(new Request(base + '/api/machine/tasks?state=to-download', {headers:{authorization:'Bearer ' + reader}}), h.env)).json();
   assert.equal(queuedList.tasks.find(task => task.doi === queuedDoi).reason, '');
   const expiredDoi = '10.9999/synthetic.expired';
   seedPaper(h, expiredDoi, 'Synthetic paper whose lease ran out');
-  putJob(h, expiredDoi, 'running', {leaseUntil:Date.now() - 1000});
+  putJob(h, expiredDoi, 'running', {leaseUntil:Date.now() - 1000}); await reindex(h);
   const expiredList = await (await h.context.worker.fetch(new Request(base + '/api/machine/tasks?state=failed-awaiting-fallback', {headers:{authorization:'Bearer ' + reader}}), h.env)).json();
   assert.equal(expiredList.tasks.find(task => task.doi === expiredDoi).reason, 'lease_expired');
 
