@@ -104,6 +104,7 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 - **历史与返回键**：切换栏目会 `pushState`，返回键回到上一个栏目；打开阅读面板/精选清单会压入一条历史，返回键先关闭面板（见 `scripts/test_reader_overlays_ui.py`）。
 - **模型调用要有边界**：打开页面不触发付费生成；网络中断后进入“完成状态尚未确认”等待态，只允许只读查询，不自动重新提交。
 - **分支**：不要直接推 main；不要删除别人的远程分支。不改 `.github/workflows`，要改 CI 先在 `docs/` 写方案（`workflows-untouched` 检查对 PR 差异生效）。
+- **测试不写死 state 里的数量**：源数、条目数、feed 数、题录数等期望值要从同一份数据推出来，不能写成硬编码整数（由 `state-counts` 检查保证）。
 - **能机检的规矩写成检查，不写成提醒**：每纠正 agent 一次，就把那条纠正加成 `scripts/check_guardrails.py` 的检查或测试，报错里写清文件、行号、违反的规矩和修法，不要往本文件加提醒。清单与例外写法见 [docs/guardrails.md](docs/guardrails.md)；PR 前运行 `python3 scripts/check_guardrails.py --base origin/main --commit-range origin/main..HEAD PR_BODY.md`。CI 通过 `test_public_build.py` 运行这些检查。
 
 ## 5. 术语表

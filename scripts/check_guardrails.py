@@ -20,7 +20,7 @@ import sys
 
 ENCODED_WORDS = ('YmVhY29u', '54O954Gr5Y+w', '5b+D5ZCJ5bq3', 'eGluamlrYW5n', 'eGpr', '5LqS6IGU572R5Yy76Zmi', 'QUnljLvnlJ8=')
 BANNED_WORDS = tuple(base64.b64decode(w).decode() for w in ENCODED_WORDS)
-CHECKS = ('banned-words', 'public-ids', 'secrets', 'hex32', 'sources-fresh', 'forbidden-files', 'workflows-untouched', 'ui-banned-labels', 'feature-map-selectors')
+CHECKS = ('banned-words', 'public-ids', 'secrets', 'hex32', 'sources-fresh', 'forbidden-files', 'workflows-untouched', 'ui-banned-labels', 'feature-map-selectors', 'state-counts')
 INJECTED_WORKER_CONSTANTS = frozenset(('PDF_LIBRARY', 'DOI_ADJUDICATIONS', 'PUBLIC_ABSTRACT_SOURCES', 'FULLTEXT_OIDC_BUILD_KEYS', 'SCOPE_UNCERTAIN_LIST'))
 BASELINE = ('docs/screenshots/**', 'docs/manual-assets/*', 'docs/使用说明.pdf', 'scripts/fixtures/machine-identity/*.pdf', 'icon.png')
 ADDED_ALLOW = ('scripts/fixtures/machine-identity/*.pdf', 'icon.png')
@@ -115,6 +115,511 @@ def ui_file(path):
     return path in ('index.html', 'style.css') or fnmatch.fnmatch(path, 'src/app/*.js') or fnmatch.fnmatch(path, 'edge/src/*.js')
 
 
+# --- state-counts: tests must not hard-code inventory sizes loaded from state ---
+STATE_FILES = frozenset((
+    'data/library.json', 'data/library.js',
+    'data/candidates.json', 'data/candidates.js',
+    'data/feeds.json', 'data/feeds.js',
+    'data/source-health.json', 'data/source-health.js',
+    'data/weekly-board.json', 'data/weekly-board.js',
+    'data/picks.json', 'data/picks.js',
+    'data/radar-archive.json', 'data/pubmed.json',
+    'data/curated-archive.json',
+    'public/public.js', 'public/radar.js',
+))
+COUNT_FIELDS = frozenset((
+    'enabledFeeds', 'feedCount', 'enabledSources', 'sourceCount',
+    'paperCount', 'itemCount', 'nFeeds', 'nSources', 'nPapers',
+))
+# Collections whose *length* is an inventory count when the value is state-tainted
+# or, in a function that already loaded live state, when indexed as these keys.
+COLLECTION_FIELDS = frozenset(('feeds', 'sources', 'papers'))
+STATS_PARENTS = frozenset(('stats', 'counts', 'summary'))
+STATS_FIELDS = frozenset(('papers', 'feedCount', 'enabledFeeds', 'feeds', 'sources', 'library', 'empty_feed'))
+SMALL = frozenset((0, 1, 2))
+ASSERT_EQ = frozenset((
+    'assertEqual', 'assertEquals', 'assertNotEqual',
+    'equal', 'strictEqual', 'deepEqual', 'deepStrictEqual',
+))
+TEMP_CTORS = frozenset(('TemporaryDirectory', 'mkdtemp', 'TemporaryFile', 'NamedTemporaryFile'))
+SELF_TEMP_ATTRS = frozenset(('root', 'tmpdir', 'tempdir', 'directory', 'temp'))
+TEST_PATH = re.compile(
+    r'(?:^|/)tests?/|(?:^|/)scripts/test_|/test_[^/]+$|'
+    r'test_[^/]+\.(?:py|cjs|js|mjs)$|_test\.(?:py|cjs|js|mjs)$|\.test\.(?:py|cjs|js|mjs)$'
+)
+
+
+def is_test_path(path):
+    posix = path.replace('\\', '/')
+    if not posix.endswith(('.py', '.cjs', '.js', '.mjs')):
+        return False
+    name = posix.rsplit('/', 1)[-1]
+    return bool(TEST_PATH.search(posix) or name.startswith('test_') or '.test.' in name)
+
+
+def normalize_rel(parts):
+    bits = [p.replace('\\', '/').strip('/') for p in parts if p]
+    joined = '/'.join(bits)
+    while '//' in joined:
+        joined = joined.replace('//', '/')
+    return joined.lstrip('./')
+
+
+def is_state_rel(rel):
+    return (rel or '').lstrip('./') in STATE_FILES
+
+
+def lit_int(node):
+    if isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(node.value, bool):
+        return node.value
+    return None
+
+
+def lit_str(node):
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def call_name(node):
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return ''
+
+
+class PathRef:
+    __slots__ = ('kind', 'rel')
+
+    def __init__(self, kind, rel=''):
+        self.kind = kind  # 'root' | 'temp'
+        self.rel = rel or ''
+
+
+def dict_has_hardcoded_count(node):
+    if not isinstance(node, ast.Dict):
+        return False
+    for value in node.values:
+        number = lit_int(value)
+        if number is not None and number not in SMALL:
+            return True
+        if dict_has_hardcoded_count(value):
+            return True
+    return False
+
+
+def inventory_chain(node):
+    names = []
+    current = node
+    while True:
+        if isinstance(current, ast.Subscript):
+            key = current.slice
+            name = lit_str(key) if not isinstance(key, ast.Attribute) else None
+            if name is None and isinstance(key, ast.Constant) and isinstance(key.value, str):
+                name = key.value
+            if name:
+                names.append(name)
+            current = current.value
+        elif isinstance(current, ast.Attribute):
+            names.append(current.attr)
+            current = current.value
+        elif isinstance(current, ast.Call) and isinstance(current.func, ast.Attribute) and current.func.attr == 'get' and current.args:
+            name = lit_str(current.args[0])
+            if name:
+                names.append(name)
+            current = current.func.value
+        else:
+            break
+    return names, current
+
+
+def is_len(node):
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'len'
+
+
+class Analyzer(ast.NodeVisitor):
+    def __init__(self, path, text):
+        self.path = path
+        self.text = text
+        self.hits = []
+        self.roots = set()
+        self.temps = set()
+
+    def record(self, lineno):
+        self.hits.append((self.path, lineno))
+
+    def is_file_anchor(self, node):
+        if node is None:
+            return False
+        if isinstance(node, ast.Call):
+            name = call_name(node)
+            if name == 'Path' and node.args and isinstance(node.args[0], ast.Name) and node.args[0].id == '__file__':
+                return True
+            if name == 'resolve' and isinstance(node.func, ast.Attribute):
+                return self.is_file_anchor(node.func.value)
+        if isinstance(node, ast.Attribute) and node.attr in ('resolve', 'absolute'):
+            return self.is_file_anchor(node.value)
+        return False
+
+    def is_checkout_root(self, node, roots):
+        if isinstance(node, ast.Name) and node.id in roots:
+            return True
+        if isinstance(node, ast.Attribute) and node.attr == 'ROOT':
+            return True
+        if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Attribute) and node.value.attr == 'parents':
+            return self.is_file_anchor(node.value.value)
+        if isinstance(node, ast.Attribute) and node.attr == 'parent':
+            return self.is_file_anchor(node.value) or self.is_checkout_root(node.value, roots)
+        return False
+
+    def is_temp_ctor(self, node):
+        if isinstance(node, ast.Call) and call_name(node) in TEMP_CTORS:
+            return True
+        if isinstance(node, ast.Attribute) and node.attr in ('name',) and self.is_temp_ctor(node.value):
+            return True
+        return False
+
+    def is_self_temp(self, node, temps):
+        return (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == 'self'
+            and ('self.' + node.attr) in temps
+        )
+
+    def path_ref(self, node, roots, temps):
+        if node is None:
+            return None
+        if isinstance(node, ast.Name):
+            if node.id in roots:
+                return PathRef('root')
+            if node.id in temps:
+                return PathRef('temp')
+            return None
+        if self.is_self_temp(node, temps):
+            return PathRef('temp')
+        if self.is_checkout_root(node, roots):
+            return PathRef('root')
+        if self.is_temp_ctor(node):
+            return PathRef('temp')
+        if isinstance(node, ast.Call):
+            name = call_name(node)
+            if name in ('Path', 'joinpath', 'join'):
+                args = list(node.args)
+                if name in ('joinpath', 'join') and isinstance(node.func, ast.Attribute):
+                    args = [node.func.value] + args
+                if not args:
+                    return None
+                base = self.path_ref(args[0], roots, temps)
+                parts = []
+                for arg in args[1:]:
+                    text = lit_str(arg)
+                    if text is None:
+                        return base
+                    parts.append(text)
+                rel = normalize_rel(parts)
+                if base and base.kind in ('root', 'temp'):
+                    return PathRef(base.kind, normalize_rel([base.rel, rel] if base.rel else [rel]))
+                return None
+            if name in ('read_text', 'read_bytes', 'open', 'read') and isinstance(node.func, ast.Attribute):
+                return self.path_ref(node.func.value, roots, temps)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+            base = self.path_ref(node.left, roots, temps)
+            text = lit_str(node.right)
+            if text is None:
+                return base
+            if base and base.kind in ('root', 'temp'):
+                return PathRef(base.kind, normalize_rel([base.rel, text] if base.rel else [text]))
+        if isinstance(node, ast.Attribute) and node.attr in ('name',):
+            return self.path_ref(node.value, roots, temps)
+        return None
+
+    def load_kind(self, node, roots, temps):
+        if node is None:
+            return None
+        if isinstance(node, ast.Call):
+            ref = self.path_ref(node, roots, temps)
+            if ref and is_state_rel(ref.rel):
+                return ref.kind
+            for arg in list(node.args) + [kw.value for kw in node.keywords]:
+                kind = self.load_kind(arg, roots, temps)
+                if kind:
+                    return kind
+            return None
+        ref = self.path_ref(node, roots, temps)
+        if ref and is_state_rel(ref.rel):
+            return ref.kind
+        return None
+
+    def visit_Module(self, node):
+        for stmt in node.body:
+            if isinstance(stmt, ast.Assign):
+                if self.is_checkout_root(stmt.value, self.roots) or (
+                    self.path_ref(stmt.value, self.roots, self.temps)
+                    and self.path_ref(stmt.value, self.roots, self.temps).kind == 'root'
+                    and not self.path_ref(stmt.value, self.roots, self.temps).rel
+                ):
+                    for target in stmt.targets:
+                        if isinstance(target, ast.Name):
+                            self.roots.add(target.id)
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node):
+        setup_temps = set(self.temps)
+        for item in node.body:
+            if isinstance(item, ast.FunctionDef) and item.name in ('setUp', 'setUpClass'):
+                chunk = ast.get_source_segment(self.text, item) or ''
+                if any(name in chunk for name in TEMP_CTORS):
+                    setup_temps.update('self.' + attr for attr in SELF_TEMP_ATTRS)
+        for item in node.body:
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                self.scan_function(item, set(self.roots), set(setup_temps))
+            elif isinstance(item, ast.ClassDef):
+                self.visit_ClassDef(item)
+
+    def visit_FunctionDef(self, node):
+        self.scan_function(node, set(self.roots), set(self.temps))
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def scan_function(self, fn, roots, temps):
+        tainted = set()
+        has_live = False
+
+        def mark_name(target, kind):
+            if isinstance(target, ast.Name):
+                if kind == 'root':
+                    roots.add(target.id)
+                    temps.discard(target.id)
+                elif kind == 'temp':
+                    temps.add(target.id)
+                    roots.discard(target.id)
+            elif isinstance(target, ast.Attribute) and isinstance(target.value, ast.Name) and target.value.id == 'self':
+                key = 'self.' + target.attr
+                if kind == 'temp':
+                    temps.add(key)
+                elif kind == 'root':
+                    temps.discard(key)
+
+        def taint(target):
+            if isinstance(target, ast.Name):
+                tainted.add(target.id)
+            elif isinstance(target, (ast.Tuple, ast.List)):
+                for elt in target.elts:
+                    taint(elt)
+
+        def tainted_expr(node, depth=0):
+            nonlocal has_live
+            if node is None or depth > 40:
+                return False
+            if isinstance(node, ast.Name):
+                return node.id in tainted
+            if self.load_kind(node, roots, temps) == 'live' or self.load_kind(node, roots, temps) == 'root':
+                # load_kind returns 'root' for live checkout reads
+                if self.load_kind(node, roots, temps) == 'root':
+                    has_live = True
+                    return True
+            if is_len(node):
+                return False
+            if isinstance(node, (ast.Attribute, ast.Subscript)):
+                _, base = inventory_chain(node)
+                return tainted_expr(base, depth + 1)
+            if isinstance(node, ast.Call):
+                kind = self.load_kind(node, roots, temps)
+                if kind == 'root':
+                    has_live = True
+                    return True
+                name = call_name(node)
+                if name in ('len', 'print', 'repr', 'str', 'bool', 'id', 'type', 'isinstance', 'hasattr'):
+                    return False
+                if any(tainted_expr(arg, depth + 1) for arg in node.args):
+                    return True
+                return False
+            if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)):
+                return any(tainted_expr(gen.iter, depth + 1) for gen in node.generators)
+            if isinstance(node, ast.List):
+                return any(tainted_expr(elt, depth + 1) for elt in node.elts)
+            if isinstance(node, ast.Dict):
+                return any(tainted_expr(v, depth + 1) for v in node.values if v is not None)
+            if isinstance(node, ast.BinOp):
+                kind = self.load_kind(node, roots, temps)
+                if kind == 'root':
+                    has_live = True
+                    return True
+                return tainted_expr(node.left, depth + 1) or tainted_expr(node.right, depth + 1)
+            if isinstance(node, ast.UnaryOp):
+                return tainted_expr(node.operand, depth + 1)
+            if isinstance(node, ast.IfExp):
+                return tainted_expr(node.body, depth + 1) or tainted_expr(node.orelse, depth + 1)
+            if isinstance(node, ast.Starred):
+                return tainted_expr(node.value, depth + 1)
+            if isinstance(node, (ast.Tuple, ast.Set)):
+                return any(tainted_expr(elt, depth + 1) for elt in node.elts)
+            return False
+
+        def secondary_len(node):
+            if not has_live:
+                return False
+            names, _ = inventory_chain(node)
+            return bool(names) and names[0] in COLLECTION_FIELDS
+
+        def secondary_field(node):
+            if not has_live:
+                return False
+            names, _ = inventory_chain(node)
+            if names and names[0] in COUNT_FIELDS:
+                return True
+            if names and names[0] in STATS_PARENTS:
+                # health['summary'] == {'empty_feed': 82} or stats/counts objects
+                return True
+            if len(names) >= 2 and names[1] in STATS_PARENTS and names[0] in STATS_FIELDS:
+                return True
+            if names and names[0] in STATS_FIELDS and names[0] in COUNT_FIELDS:
+                return True
+            return False
+
+        def consider(left, right, lineno):
+            literal = lit_int(left)
+            other = right
+            if literal is None:
+                literal = lit_int(right)
+                other = left
+            dict_node = left if dict_has_hardcoded_count(left) else (right if dict_has_hardcoded_count(right) else None)
+            dict_other = right if dict_node is left else (left if dict_node is right else None)
+            if literal is not None and literal in SMALL and dict_node is None:
+                return
+            flag = False
+            if literal is not None and literal not in SMALL:
+                if is_len(other):
+                    collection = other.args[0] if other.args else None
+                    if collection is not None and (tainted_expr(collection) or secondary_len(collection)):
+                        flag = True
+                elif secondary_field(other) or (tainted_expr(other) and secondary_field(other)):
+                    flag = True
+                else:
+                    names, base = inventory_chain(other)
+                    if tainted_expr(base) and names and names[0] in COUNT_FIELDS | STATS_FIELDS:
+                        flag = True
+            if dict_node is not None and (tainted_expr(dict_other) or secondary_field(dict_other)):
+                flag = True
+            if flag:
+                self.record(lineno)
+
+        def handle_value(target, value):
+            nonlocal has_live
+            ref = self.path_ref(value, roots, temps)
+            if ref and ref.kind == 'root' and not is_state_rel(ref.rel):
+                mark_name(target, 'root')
+            elif ref and ref.kind == 'temp':
+                mark_name(target, 'temp')
+            kind = self.load_kind(value, roots, temps)
+            if kind == 'root':
+                has_live = True
+                taint(target)
+            elif tainted_expr(value):
+                taint(target)
+
+        def visit_stmt(stmt):
+            nonlocal has_live
+            if isinstance(stmt, ast.Assign):
+                for target in stmt.targets:
+                    handle_value(target, stmt.value)
+            elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                handle_value(stmt.target, stmt.value)
+            elif isinstance(stmt, ast.AugAssign):
+                handle_value(stmt.target, stmt.value)
+            elif isinstance(stmt, ast.With):
+                for item in stmt.items:
+                    ctx = item.context_expr
+                    if self.is_temp_ctor(ctx) or (
+                        isinstance(ctx, ast.Call) and call_name(ctx) in TEMP_CTORS
+                    ):
+                        if item.optional_vars is not None:
+                            mark_name(item.optional_vars, 'temp')
+                for inner in stmt.body:
+                    visit_stmt(inner)
+            elif isinstance(stmt, ast.For):
+                if self.load_kind(stmt.iter, roots, temps) == 'root' or tainted_expr(stmt.iter):
+                    if self.load_kind(stmt.iter, roots, temps) == 'root':
+                        has_live = True
+                    taint(stmt.target)
+                for inner in stmt.body + stmt.orelse:
+                    visit_stmt(inner)
+            elif isinstance(stmt, ast.If):
+                for inner in stmt.body + stmt.orelse:
+                    visit_stmt(inner)
+            elif isinstance(stmt, ast.While):
+                for inner in stmt.body + stmt.orelse:
+                    visit_stmt(inner)
+            elif isinstance(stmt, ast.Try):
+                blocks = list(stmt.body) + list(stmt.orelse) + list(stmt.finalbody)
+                for handler in stmt.handlers:
+                    blocks.extend(handler.body)
+                for inner in blocks:
+                    visit_stmt(inner)
+            elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                # nested defs are scanned separately if visited; treat as isolated
+                return
+
+            for node in ast.walk(stmt):
+                if self.load_kind(node, roots, temps) == 'root':
+                    has_live = True
+                if isinstance(node, ast.Compare) and any(isinstance(op, (ast.Eq, ast.NotEq)) for op in node.ops):
+                    consider(node.left, node.comparators[0], node.lineno)
+                elif isinstance(node, ast.Call) and call_name(node) in ASSERT_EQ and len(node.args) >= 2:
+                    consider(node.args[0], node.args[1], node.lineno)
+
+        for stmt in fn.body:
+            visit_stmt(stmt)
+
+
+def py_hits(path, text):
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+    analyzer = Analyzer(path, text)
+    analyzer.visit(tree)
+    return analyzer.hits
+
+
+JS_LIVE = re.compile(
+    r"""(?:readFileSync|readFile)\s*\([^;]{0,200}?(?:data/(?:library|candidates|feeds|source-health|weekly-board|picks|radar-archive|pubmed|curated-archive)\.(?:json|js)|public/(?:public|radar)\.js)""",
+    re.I,
+)
+JS_LIVE_JOIN = re.compile(
+    r"""(?:join|joinpath)\s*\([^;]{0,200}?['\"]data['\"][^;]{0,80}?['\"](?:library|candidates|feeds|source-health)\.(?:json|js)['\"]""",
+    re.I,
+)
+JS_CMP = re.compile(
+    r"""(?:assert\.(?:equal|strictEqual|deepEqual)\s*\(\s*(?:[^,]*\.(?:length|size)\s*,\s*(\d+)|(\d+)\s*,\s*[^)]*\.(?:length|size))"""
+    r"""|(?:enabledFeeds|feedCount|sourceCount|enabledSources|paperCount)\s*[=,]+\s*(\d+)"""
+    r"""|\.(?:length|size)\s*===?\s*(\d+))"""
+)
+
+
+def js_hits(path, text):
+    if not (JS_LIVE.search(text) or JS_LIVE_JOIN.search(text)):
+        return []
+    found = []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        for match in JS_CMP.finditer(line):
+            number = next((int(g) for g in match.groups() if g is not None), None)
+            if number is not None and number not in SMALL:
+                found.append((path, lineno))
+    return found
+
+
+def hits_for(path, text):
+    if path.endswith('.py'):
+        return py_hits(path, text)
+    if path.endswith(('.cjs', '.js', '.mjs')):
+        return js_hits(path, text)
+    return []
+
+
 def run_checks(root, only=None, base=None, public=None, extra_files=(), commit_range=None, config=None, include_untracked=False):
     root = Path(root).resolve()
     try:
@@ -205,7 +710,16 @@ def run_checks(root, only=None, base=None, public=None, extra_files=(), commit_r
                 for label in UI_LABELS:
                     if label in line:
                         emit('ui-banned-labels', path, number, 'prohibited reader-facing review label', 'remove the label from the UI')
+    if 'state-counts' in selected:
+        for path, text in texts.items():
+            if not is_test_path(path):
+                continue
+            for _, number in hits_for(path, text):
+                emit('state-counts', path, number,
+                     'test hard-codes a state inventory count instead of deriving it from the same data',
+                     'compute the expected count from the same loaded data; or add guardrails:allow state-counts with a reason if this is fixture data')
     if commit_range and 'banned-words' in selected:
+
         scan_words('<commit-messages>', git(root, 'log', '--format=%B', commit_range))
     if 'sources-fresh' in selected:
         try:

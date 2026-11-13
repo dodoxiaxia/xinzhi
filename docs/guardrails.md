@@ -67,3 +67,13 @@ Worker 注入点及顶层构建占位符必须登记在 `INJECTED_WORKER_CONSTAN
 存在 docs/feature-map.json 时递归检查 selector；缺文件时明确 SKIP。
 检查 ID、属性名和类名在界面源码中的证据，以发现地图与实现脱节。
 更新地图或修正源码，`scripts/feature_map_walk.cjs` 展示在线状态；动态构造的例外应解释来源。
+
+## state-counts
+
+扫描 `scripts/test_*`、`tests/`、`service/tests/` 中的测试，找出把 state 库存数量
+（源数、条目数、feed 数、题录数等）和大于 2 的整数字面量做相等比较的写法。
+只跟踪从仓库根目录读取的 state 文件（如 `data/library.json`、`data/source-health.json`、
+`public/public.js`），再检查 `len(...)==82`、`assertEqual(count, 79)`、
+`enabledFeeds` / `feedCount` / `sources` 等字段等于字面量，或 `{'empty_feed': 82}` 这类摘要。
+0、1、2 以及测试自己在临时目录里构造的夹具数据不报。期望值应从同一份数据推导（见 #161）。
+行内或配置例外必须写明理由。

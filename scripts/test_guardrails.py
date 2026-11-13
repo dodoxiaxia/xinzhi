@@ -207,6 +207,77 @@ class GuardrailMutationTests(unittest.TestCase):
         self.assertEqual(self.run_check('hex32'), [])
         self.assertEqual(self.run_check('hex32', include_untracked=True)[0].path, 'new.md')
 
+    def test_state_counts_catches_hardcoded_inventory_and_allows_derived_or_fixture_data(self):
+        # The anti-pattern that stalled daily-refresh: a live state inventory
+        # count compared with a hard-coded integer.
+        bad = (
+            "from pathlib import Path\nimport json\n"
+            "ROOT = Path(__file__).resolve().parents[1]\n"
+            "def test_scope():\n"
+            "    library = json.loads((ROOT / 'data/library.json').read_text())\n"
+            "    chosen = [row for row in library['feeds'] if row['enabled']]\n"
+            "    assert len(chosen) == 82\n"
+            "    self.assertEqual(len(library['feeds']), 79)\n"
+            "    self.assertEqual(health['enabledFeeds'], 79)\n"
+            "    self.assertEqual(output['summary'], {'empty_feed': 82})\n"
+        )
+        self.write('scripts/test_bad_counts.py', bad)
+        found = [item for item in self.run_check('state-counts') if item.path == 'scripts/test_bad_counts.py']
+        self.assertGreaterEqual(len(found), 3, found)
+        self.assertTrue(all(item.check == 'state-counts' for item in found))
+        self.assertTrue({7, 8, 9, 10} <= {item.line for item in found}, found)
+        # Deriving the expected count from the same loaded data is the fix.
+        derived = (
+            "from pathlib import Path\nimport json\n"
+            "ROOT = Path(__file__).resolve().parents[1]\n"
+            "def test_scope():\n"
+            "    library = json.loads((ROOT / 'data/library.json').read_text())\n"
+            "    expected = sum(1 for row in library['feeds'] if row['enabled'])\n"
+            "    chosen = [row for row in library['feeds'] if row['enabled']]\n"
+            "    self.assertGreater(expected, 1)\n"
+            "    self.assertEqual(len(chosen), expected)\n"
+            "    self.assertEqual(len(output['sources']), expected)\n"
+            "    self.assertEqual(output['summary'], {'empty_feed': expected})\n"
+        )
+        self.write('scripts/test_bad_counts.py', derived)
+        self.assertEqual(self.run_check('state-counts'), [])
+        # Fixture data written under a temporary directory is allowed,
+        # as are the small constants 0, 1 and 2 against live state.
+        fixture = (
+            "from pathlib import Path\nimport json, tempfile\n"
+            "ROOT = Path(__file__).resolve().parents[1]\n"
+            "def test_scope():\n"
+            "    with tempfile.TemporaryDirectory() as directory:\n"
+            "        root = Path(directory)\n"
+            "        (root / 'data').mkdir()\n"
+            "        (root / 'data/library.json').write_text(json.dumps({'feeds': [1, 2, 3, 4, 5]}))\n"
+            "        library = json.loads((root / 'data/library.json').read_text())\n"
+            "        self.assertEqual(len(library['feeds']), 5)\n"
+            "    live = json.loads((ROOT / 'data/library.json').read_text())\n"
+            "    self.assertEqual(sum(1 for row in live['feeds'] if row['name'] == 'OpenAI News'), 1)\n"
+        )
+        self.write('scripts/test_bad_counts.py', fixture)
+        self.assertEqual(self.run_check('state-counts'), [])
+        # An inline exemption must sit on the same line or the previous line
+        # and must include a reason.
+        allowed = bad.replace(
+            'assert len(chosen) == 82',
+            'assert len(chosen) == 82  # guardrails:allow state-counts frozen demo count',
+        ).replace(
+            "self.assertEqual(len(library['feeds']), 79)",
+            "self.assertEqual(len(library['feeds']), 79)  # guardrails:allow state-counts frozen demo count",
+        ).replace(
+            "self.assertEqual(health['enabledFeeds'], 79)",
+            "self.assertEqual(health['enabledFeeds'], 79)  # guardrails:allow state-counts frozen demo count",
+        ).replace(
+            "self.assertEqual(output['summary'], {'empty_feed': 82})",
+            "self.assertEqual(output['summary'], {'empty_feed': 82})  # guardrails:allow state-counts frozen demo count",
+        )
+        self.write('scripts/test_bad_counts.py', allowed)
+        self.assertEqual(self.run_check('state-counts'), [])
+        self.write('scripts/test_bad_counts.py', bad.replace('== 82', '== 82  # guardrails:allow state-counts'))
+        self.assertTrue(self.run_check('state-counts'))
+
 
 class GuardrailsOnThisCheckoutTests(unittest.TestCase):
     def test_checkout_passes(self):
