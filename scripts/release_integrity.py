@@ -59,7 +59,7 @@ INPUTS = (
     'workers/cron-dispatch/index.js', 'workers/cron-dispatch/wrangler.toml',
     'scripts/check_fulltext_dispatcher.py',
     'scripts/publication_dates.py',
-    'scripts/public_library_quality.py',
+    'scripts/public_library_quality.py', 'scripts/pdf_identity.py', 'config/pdf_index_keys.json',
     'scripts/apply_public_library.py',
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.png', 'demo-reading.html', 'edge/_worker.js',

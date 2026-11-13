@@ -13,6 +13,7 @@ from publication_dates import DATE_CORRECTIONS, canonical_publication_date
 from journal_metrics import public_registry
 from build_sources import require_fresh as require_fresh_sources
 from public_library_quality import QUALITY_FIELDS, project_public_library
+import pdf_identity
 from publication_status import annotate_publication, checked_records
 from public_content_corrections import (load_corrections, corrected_title,
                                         corrected_quicklook,
@@ -517,6 +518,13 @@ def main():
     editorial_drafts={article_key(d):d for d in load('editorial/source_checked_drafts.json')['articles']}
     library={'generatedAt':l.get('generatedAt'),'papers':[public_paper(p,editorial_drafts) for p in l['papers']]}
     library['papers'],library_quality=project_public_library(library['papers'])
+    # A download button exists only where the Worker can find exactly one usable file in the private index
+    # (hashed snapshot in config/pdf_index_keys.json); the same ids feed the Worker's allowlist below.
+    pdf_keys=pdf_identity.load_snapshot(ROOT)
+    pdf_age=pdf_identity.snapshot_age_days(pdf_keys)
+    if pdf_age>pdf_identity.STALE_AFTER_DAYS:print('PDF index snapshot is',pdf_age,'days old; run scripts/refresh_pdf_index_keys.py so newly indexed PDFs get a download button')
+    library['pdfIds']=pdf_identity.downloadable_ids(library['papers'],pdf_keys,set(library_quality['pdfBindingHoldIds']))
+    print('papers with a download button:',len(library['pdfIds']),'of',len(library['papers']))
     candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p,editorial_drafts) for p in c['items']]}
     pubmed=load('data/pubmed.json') if (ROOT/'data/pubmed.json').is_file() else {}
     now=datetime.datetime.now(datetime.timezone.utc)
@@ -612,7 +620,8 @@ def main():
     placeholder='const PDF_LIBRARY = {};'
     if worker.count(placeholder)!=1:raise ValueError('PDF download allowlist placeholder missing')
     # A public DOI correction is not evidence for rebinding a private PDF.
-    pdf_papers=[p for p in library['papers'] if p['id'] not in library_quality['pdfBindingHoldIds']]
+    pdf_ids=set(library['pdfIds'])
+    pdf_papers=[p for p in library['papers'] if p['id'] in pdf_ids and p['id'] not in library_quality['pdfBindingHoldIds']]
     worker=worker.replace(placeholder,'const PDF_LIBRARY = '+json.dumps(pdf_library_registry(pdf_papers),ensure_ascii=False,separators=(',',':'))+';')
     doi_placeholder='const DOI_ADJUDICATIONS = {};'
     if worker.count(doi_placeholder)!=1:raise ValueError('DOI adjudication placeholder missing')

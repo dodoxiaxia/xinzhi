@@ -12,7 +12,8 @@
   // Global Data
   const FEEDS = window.FEEDS || { items: [] };
   const LIBRARY = window.LIBRARY || { papers: [] };
-  const PDF_LIBRARY_IDS = new Set(LIBRARY.papers.filter(p => p.doi || p.title).map(p => String(p.id)));
+  // The build lists the papers whose file the server can find in the literature index; local preview data has no list and keeps the old rule.
+  const PDF_LIBRARY_IDS = new Set(Array.isArray(LIBRARY.pdfIds) ? LIBRARY.pdfIds.map(String) : LIBRARY.papers.filter(p => p.doi || p.title).map(p => String(p.id)));
   const CURATED = window.CURATED || [];
   const HEALTH = window.SOURCE_HEALTH || { sources: [] };
   const CONTENT_STATUS = window.CONTENT_STATUS || {};
