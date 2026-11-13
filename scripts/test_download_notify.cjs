@@ -190,4 +190,4 @@ const jobOf = async result => (await result.response.json()).job;
   result = await ask(h); assert.equal(result.early.status, 202); assert.equal(h.hooks.length, 0);
 
   console.log('Download notice webhook: switch, secrets, payload, de-duplication, hourly cap and failure isolation passed');
-})().catch(error => {console.error(error); process.exitCode = 1;});
+})().catch(error => {console.error(error); process.exitCode = 1;}).then(() => { require('./test_reconcile_done.cjs'); }); // hooked here: this file already runs from test_muse_reader_upload.cjs

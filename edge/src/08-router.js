@@ -46,6 +46,7 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/api/machine/return') return handleMachineReturn(request, env);
     if (url.pathname === '/api/machine/requeue') return handleMachineRequeue(request, env);
     if (url.pathname === '/api/machine/register') return handleMachineRegister(request, env);
+    if (url.pathname === '/api/machine/reconcile-done') return handleMachineReconcileDone(request, env);
     if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);
     if (url.pathname === '/api/grok-fulltext-receipt') return handleGrokReceipt(request, env);
