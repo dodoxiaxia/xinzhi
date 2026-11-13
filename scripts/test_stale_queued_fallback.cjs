@@ -112,6 +112,64 @@ async function run() {
   assert.equal(raw(h, over), first, 'repeated list sweeps preserve record and autoFallback.at');
   assert.equal(jobWrites(h, over), count, 'repeated sweeps do not rewrite converted key');
 
+  // Every moved task reads its paper once; disabled-switch read counts above stay unchanged.
+  for (const [doi, mode, oa] of [
+    ['10.1000/hints-heart', 'normal', 'unknown'],
+    ['10.1371/journal.pone.synthetic', 'normal', 'yes'],
+    ['10.1097/md.synthetic', 'normal', 'yes'],
+    ['10.1016/j.eclinm.synthetic', 'normal', 'yes'],
+    ['10.1001/jamanetworkopen.synthetic', 'normal', 'yes'],
+    ['10.1000/hints-empty', 'empty', 'unknown'],
+    ['10.1000/hints-missing', 'missing', 'unknown'],
+    ['10.1000/hints-read-error', 'error', 'unknown']
+  ]) {
+    h = await enabled();
+    seedJob(h, doi, 'queued', h.context.Date.now() - 7 * HOUR);
+    const paperKey = 'library:paper:' + doi;
+    if (mode === 'empty') {
+      const record = stored(h, paperKey); record.paper.journal = '';
+      h.values.set(paperKey, JSON.stringify(record));
+    }
+    if (mode === 'missing') h.values.delete(paperKey);
+    const originalGet = h.env.QL_KV.get;
+    let paperReads = 0;
+    h.env.QL_KV.get = async function(k, ...args) {
+      if (k === paperKey) {
+        paperReads++;
+        if (mode === 'error') throw new Error('synthetic storage failure');
+      }
+      return originalGet.call(this, k, ...args);
+    };
+    const entries = await list(h);
+    h.env.QL_KV.get = originalGet;
+    assert.equal(paperReads, 1, 'one paper read per moved task');
+    const job = stored(h, key(doi));
+    assert.equal(job.state, 'failed', 'missing or unreadable paper never prevents conversion');
+    const expected = {journal:mode === 'normal' ? 'Heart' : '',openAccess:oa,openAccessBasis:oa === 'yes' ? 'doi_prefix' : ''};
+    // Claim requires a valid paper; restoring it must not change the saved transition hints.
+    if (mode === 'missing') h.values.set(paperKey, paperRecord(doi));
+    const claimed = await claim(h);
+    assert(claimed, 'converted task remains claimable');
+    for (const metadata of [job.autoFallback, entries.find(t => t.doi === doi).autoFallback, claimed.autoFallback]) {
+      assert(metadata, 'stored record, list and claim carry metadata');
+      for (const [field, value] of Object.entries(expected)) assert.equal(metadata[field], value, field + ' for ' + doi);
+      assert(!Object.values(metadata).some(value => value === 'no' || value === false), 'hints never assert closed access');
+    }
+  }
+
+  // Legacy records and malformed hints are normalised by the public sanitiser.
+  for (const hints of [{}, {journal:42,openAccess:false,openAccessBasis:'invalid'}, {journal:'a'.repeat(250),openAccess:'no'}]) {
+    h = await enabled();
+    const doi = seed(h, 'legacy', 7 * HOUR, 'failed', {
+      reason:'queue_unclaimed',autoFallback:{at:new Date().toISOString(),hours:6,reason:'synthetic',...hints}
+    });
+    for (const item of [(await list(h)).find(t => t.doi === doi), await claim(h)]) {
+      assert.equal(item.autoFallback.journal, typeof hints.journal === 'string' ? hints.journal.slice(0,200) : '');
+      assert.equal(item.autoFallback.openAccess, 'unknown');
+      assert.equal(item.autoFallback.openAccessBasis, '');
+    }
+  }
+
   h = await enabled(); h.env.STALE_QUEUED_FALLBACK_HOURS = '12';
   const seven = seed(h, 'seven', 7 * HOUR), thirteen = seed(h, 'thirteen', 13 * HOUR), sevenBefore = raw(h, seven);
   await list(h, 'to-download');

@@ -256,6 +256,15 @@ function machineReason(job) {
 // operation at all), and STALE_QUEUED_FALLBACK_HOURS is an integer 1-144 (missing or invalid means 6).
 const STALE_QUEUED_HOURS_DEFAULT = 6, STALE_QUEUED_HOURS_MAX = 144;
 const STALE_QUEUED_REASON = 'queue_unclaimed';
+// Hint for fallback clients to try open access before the Hamburg quota, not a guarantee.
+// The claim path still verifies the file.
+const MACHINE_OA_DOI_HINTS = [
+  ['10.1371/', 'PLOS'], ['10.3389/', 'Frontiers'], ['10.1186/', 'BMC'], ['10.3390/', 'MDPI'],
+  ['10.1097/md.', 'Medicine'], ['10.1016/j.eclinm.', 'eClinicalMedicine'],
+  ['10.1002/ccr3.', 'Clinical Case Reports'], ['10.1001/jamanetworkopen.', 'JAMA Network Open'],
+  ['10.1016/j.jacadv.', 'JACC Advances'], ['10.1016/j.jaccas.', 'JACC Case Reports'],
+  ['10.1253/circrep.', 'Circulation Reports']
+];
 // One request reads at most this many task records for the sweep and converts at most this many tasks.
 const STALE_QUEUED_READ_MAX = 60, STALE_QUEUED_MOVE_MAX = 25;
 function machineStaleQueuedConfig(env) {
@@ -273,7 +282,9 @@ function machineNeverClaimed(job) {
 function machineAutoFallback(job) {
   const f = job && job.autoFallback;
   if (!f || typeof f !== 'object' || typeof f.reason !== 'string' || typeof f.at !== 'string') return null;
-  return {reason:f.reason.slice(0,120),at:f.at,hours:Number.isInteger(f.hours) ? f.hours : STALE_QUEUED_HOURS_DEFAULT};
+  return {reason:f.reason.slice(0,120),at:f.at,hours:Number.isInteger(f.hours) ? f.hours : STALE_QUEUED_HOURS_DEFAULT,
+    journal:typeof f.journal === 'string' ? f.journal.slice(0,200) : '',
+    openAccess:f.openAccess === 'yes' ? 'yes' : 'unknown',openAccessBasis:f.openAccessBasis === 'doi_prefix' ? 'doi_prefix' : ''};
 }
 // Converts eligible stale queued tasks found in the already-open index. Mutates doc.entries and appends to changes so
 // the caller's candidate list and its single index write see the result. Never throws: a failed sweep must not break a claim or a list.
@@ -296,8 +307,15 @@ async function machineStaleQueuedSweep(env, doc, changes) {
       }
       // The record wins: re-check everything on the record itself before touching it.
       if (!job || !machineNeverClaimed(job) || !(now - job.createdAt >= limitMs)) continue;
+      let journal = '';
+      try {
+        const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
+        const paper = libraryPaper(record, doi);
+        journal = paper && paper.journal || '';
+      } catch { journal = ''; }
+      const openAccess = MACHINE_OA_DOI_HINTS.some(([prefix]) => doi.toLowerCase().startsWith(prefix)) ? 'yes' : 'unknown';
       const next = {...job,state:'failed',reason:STALE_QUEUED_REASON,updatedAt:now,
-        autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
+        autoFallback:{at:new Date(now).toISOString(),hours:cfg.hours,journal,openAccess,openAccessBasis:openAccess === 'yes' ? 'doi_prefix' : '',reason:'排队超过 ' + cfg.hours + ' 小时无人领取（attempts=0），自动转兜底'}};
       await musePut(env, next, {indexChanges:changes});
       if (job.queueKey) await museDelete(env, job.queueKey);
       doc.entries[doi] = museIndexEntry(next);
@@ -339,7 +357,7 @@ function machineListItem(job) {
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {}),
     ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
-    ...(state === 'failed-awaiting-fallback' && machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {})};
+    ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
