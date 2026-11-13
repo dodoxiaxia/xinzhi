@@ -60,11 +60,14 @@ async function libraryPut(kv, key, value, options) {
 function libraryQuery(request) {
   const url = new URL(request.url), values = url.searchParams.getAll('doi');
   const downloads = url.searchParams.getAll('download');
-  if (values.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'doi' && !(key === 'download' && url.pathname === '/api/acquire'))
-      || (downloads.length && (downloads.length !== 1 || downloads[0] !== '1'))) libraryFail('library_bad_doi', 400);
+  // /api/fulltext alone also takes link=1 (POST, issue a signed link) or t (GET, use one).
+  const fulltext = url.pathname === '/api/fulltext', links = url.searchParams.getAll('link'), linkTokens = url.searchParams.getAll('t');
+  const linkKey = fulltext && request.method === 'POST' ? 'link' : fulltext && request.method === 'GET' ? 't' : '';
+  if (values.length !== 1 || [...url.searchParams.keys()].some(key => key !== 'doi' && !(key === 'download' && url.pathname === '/api/acquire') && !(linkKey && key === linkKey))
+      || (downloads.length && (downloads.length !== 1 || downloads[0] !== '1')) || links.length > 1 || (links.length && links[0] !== '1') || linkTokens.length > 1) libraryFail('library_bad_doi', 400);
   const doi = libraryDoi(values[0]);
   if (!doi) libraryFail('library_bad_doi', 400);
-  return { url, doi, download:downloads.length === 1 };
+  return { url, doi, download:downloads.length === 1, link:links.length === 1, linkToken:linkTokens.length === 1 ? linkTokens[0] : null };
 }
 function libraryConfig(env) {
   if (!env.QL_KV) libraryFail('library_not_configured', 503);

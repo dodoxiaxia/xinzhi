@@ -220,5 +220,159 @@ const githubCalls = h => h.calls.filter(call => call.url.hostname === 'api.githu
   assert.equal(fallback.status, 404); const page = await fallback.text(); assert(page.includes('https://doi.org/10.1000/exact')); assert(!page.includes(pdfPath)); assert(!page.includes(env.GITHUB_LIBRARY_TOKEN));
   const method = await h.context.worker.fetch(new Request('https://site.test/api/pdf?id=article', { method:'PUT' }), env); await error(method, 405, 'pdf_method');
 
+  {
+    // Signed download links: off unless PDF_SIGNED_LINK is exactly 'true'. Synthetic secrets only.
+    const on = { PDF_SIGNED_LINK:'true' }, linkUrl = 'https://site.test/api/pdf?id=article&link=1';
+    const linkPattern = /^\/api\/pdf\?id=article&t=([1-9]\d*\.[A-Za-z0-9_-]{43})$/;
+    const nowSeconds = () => Math.floor(Date.now() / 1000);
+    const writes = [], reads = [];
+    const kv = { get:async key => { reads.push(key); return null; }, put:async (...args) => { writes.push(args); }, delete:async (...args) => { writes.push(args); }, list:async () => ({ keys:[], list_complete:true }) };
+    const sign = async (kind, subject, exp, changes = {}) => {
+      const secrets = { ...env, ...changes }, encoder = new TextEncoder();
+      const material = await webcrypto.subtle.importKey('raw', encoder.encode(secrets.GITHUB_LIBRARY_TOKEN + '\0' + secrets.PDF_DOWNLOAD_PASSPHRASE), 'HKDF', false, ['deriveBits']);
+      const bits = await webcrypto.subtle.deriveBits({ name:'HKDF', hash:'SHA-256', salt:encoder.encode('xinzhi/download-link/v1'), info:encoder.encode('pdf-link-v1') }, material, 256);
+      const key = await webcrypto.subtle.importKey('raw', bits, { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+      return exp + '.' + Buffer.from(await webcrypto.subtle.sign('HMAC', key, encoder.encode(kind + '|' + subject + '|' + exp))).toString('base64url');
+    };
+    const tokenUrl = (token, id = 'article') => 'https://site.test/api/pdf?id=' + id + '&t=' + encodeURIComponent(token);
+
+    // Off (unset or anything but 'true'): both new forms stop with pdf_link_disabled before the passphrase, its rate limit or any secret is read.
+    for (const flag of [undefined, 'false', 'TRUE', '1', 'true ', 'yes']) {
+      let cacheOps = 0;
+      h = harness({ caches:{ default:{ match:async () => { cacheOps++; }, put:async () => { cacheOps++; } } } });
+      await error(await h.request(valid, { PDF_SIGNED_LINK:flag }, linkUrl), 404, 'pdf_link_disabled');
+      await error(await h.request('wrong', { PDF_SIGNED_LINK:flag, PDF_DOWNLOAD_PASSPHRASE:undefined }, linkUrl), 404, 'pdf_link_disabled');
+      await error(await h.request(valid, { PDF_SIGNED_LINK:flag }, linkUrl, {}, 'not-a-form'), 404, 'pdf_link_disabled');
+      await error(await h.get({ PDF_SIGNED_LINK:flag, GITHUB_LIBRARY_TOKEN:undefined }, tokenUrl(await sign('pdf', 'article', nowSeconds() + 200))), 404, 'pdf_link_disabled');
+      const disabledPage = await h.get({ PDF_SIGNED_LINK:flag }, tokenUrl('1.x'), { accept:'text/html' });
+      assert.equal(disabledPage.status, 404); assert(disabledPage.headers.get('content-type').startsWith('text/html')); assert(!(await disabledPage.text()).includes('1.x'));
+      assert.equal(cacheOps, 0); assert.equal(h.calls.length, 0);
+      // Today's paths are unchanged while the switch is off.
+      assert.equal((await h.get({ PDF_SIGNED_LINK:flag })).status, 200);
+      assert.equal((await h.request(valid, { PDF_SIGNED_LINK:flag })).status, 200);
+    }
+
+    // Runtime status tells the page whether the in-card passphrase may be used.
+    for (const [flag, expected] of [[undefined, false], ['false', false], ['TRUE', false], ['true', true]]) {
+      const status = await h.context.worker.fetch(new Request('https://site.test/api/ai?task=status'), { ...env, LLM_ENDPOINT:'https://model.test/api', PDF_SIGNED_LINK:flag });
+      assert.equal(status.status, 200); const body = await status.text();
+      assert.strictEqual(JSON.parse(body).pdfSignedLink, expected); assert(!body.includes(valid)); assert(!body.includes(env.GITHUB_LIBRARY_TOKEN));
+    }
+
+    // Issue: passphrase checked, no PDF read, JSON only with url and 300 s lifetime.
+    h = harness();
+    const issued = await h.request(valid, { ...on, QL_KV:kv }, linkUrl);
+    assert.equal(issued.status, 200); assert(issued.headers.get('content-type').startsWith('application/json'));
+    assert.equal(issued.headers.get('cache-control'), 'no-store'); assert.equal(issued.headers.get('referrer-policy'), 'no-referrer');
+    const link = await issued.json();
+    assert.deepEqual(Object.keys(link).sort(), ['expiresIn', 'ok', 'url']); assert.strictEqual(link.ok, true); assert.strictEqual(link.expiresIn, 300);
+    const matched = linkPattern.exec(link.url); assert(matched, 'signed link format');
+    const token = matched[1], exp = Number(token.split('.')[0]);
+    assert(exp >= nowSeconds() + 295 && exp <= nowSeconds() + 301, 'five-minute lifetime');
+    assert(!JSON.stringify(link).includes(valid)); assert(!JSON.stringify(link).includes(env.GITHUB_LIBRARY_TOKEN));
+    assert.equal(h.calls.length, 0, 'issuing a link makes no GitHub request');
+
+    // Download with the link: no passphrase, same bytes and attachment headers as the POST download.
+    const linked = await h.get({ ...on, QL_KV:kv }, 'https://site.test' + link.url);
+    assert.equal(linked.status, 200); assert.equal(linked.headers.get('content-type'), 'application/pdf');
+    assert.equal(linked.headers.get('content-disposition'), success.headers.get('content-disposition'));
+    assert.equal(linked.headers.get('cache-control'), 'private, no-store'); assert.equal(linked.headers.get('referrer-policy'), 'no-referrer');
+    assert.deepEqual(Buffer.from(await linked.arrayBuffer()), pdf); assert.equal(githubCalls(h).length, 3);
+    assert(!h.calls.some(call => call.url.href.includes(token) || call.url.href.includes(token.split('.')[1]) || JSON.stringify(call.init.headers).includes(token.split('.')[1])), 'the link never reaches upstream requests');
+    assert(!h.calls.some(call => call.url.href.includes(valid) || JSON.stringify(call.init.headers).includes(valid)));
+    // The key is derived exactly as documented (HKDF-SHA256 over token + NUL + passphrase, fixed salt and info).
+    h = harness(); assert.equal((await h.get(on, tokenUrl(await sign('pdf', 'article', nowSeconds() + 200)))).status, 200);
+
+    // Issue failures.
+    h = harness(); await error(await h.request('wrong', on, linkUrl), 403, 'pdf_passphrase_invalid'); assert.equal(h.calls.length, 0);
+    h = harness(); await error(await h.request(valid, on, linkUrl, { origin:'https://attacker.example' }), 403, 'pdf_origin');
+    h = harness(); await error(await h.request(valid, { ...on, GITHUB_LIBRARY_TOKEN:undefined }, linkUrl), 503, 'pdf_not_configured');
+    h = harness(); await error(await h.request(valid, { ...on, GITHUB_LIBRARY_TOKEN:'  ' }, linkUrl), 503, 'pdf_not_configured');
+    h = harness(); await error(await h.request(valid, { ...on, PDF_DOWNLOAD_ENABLED:undefined }, linkUrl), 503, 'pdf_disabled');
+    h = harness(); await error(await h.request(valid, { ...on, PDF_DOWNLOAD_PASSPHRASE:undefined }, linkUrl), 503, 'pdf_not_configured');
+    assert.equal(h.calls.length, 0);
+
+    // Rejected links: other paper, tampered exp or signature, wrong kind, changed secrets, malformed. None reaches GitHub or KV writes.
+    const [expPart, signaturePart] = token.split('.');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const flipped = (signaturePart[0] === 'A' ? 'B' : 'A') + signaturePart.slice(1);
+    const nonCanonical = signaturePart.slice(0, -1) + alphabet[alphabet.indexOf(signaturePart.slice(-1)) ^ 1];
+    h = harness();
+    await error(await h.get({ ...on, QL_KV:kv }, tokenUrl(token, 'titled')), 403, 'pdf_link_invalid');
+    for (const bad of [(Number(expPart) + 1) + '.' + signaturePart, (Number(expPart) - 1) + '.' + signaturePart, (Number(expPart) + 100000) + '.' + signaturePart,
+      expPart + '.' + flipped, expPart + '.' + nonCanonical, expPart + '.' + signaturePart.slice(0, -1), token + 'A', '0' + token, expPart, '', '.', 'x.' + signaturePart,
+      await sign('ft', 'article', nowSeconds() + 200), await sign('pdf', 'titled', nowSeconds() + 200),
+      await sign('pdf', 'article', nowSeconds() + 200, { PDF_DOWNLOAD_PASSPHRASE:'synthetic-other-passphrase' }),
+      await sign('pdf', 'article', nowSeconds() + 200, { GITHUB_LIBRARY_TOKEN:'synthetic-other-token' }),
+      await sign('pdf', 'article', nowSeconds() + 3600)]) {
+      await error(await h.get({ ...on, QL_KV:kv }, tokenUrl(bad)), 403, 'pdf_link_invalid');
+    }
+    const invalidPage = await h.get(on, tokenUrl(token, 'titled'), { accept:'text/html' });
+    assert.equal(invalidPage.status, 403); const invalidHtml = await invalidPage.text();
+    assert(invalidHtml.includes('下载链接无效')); assert(!invalidHtml.includes(signaturePart)); assert(!invalidHtml.includes(valid));
+    await error(await h.get({ ...on, GITHUB_LIBRARY_TOKEN:undefined }, 'https://site.test' + link.url), 503, 'pdf_not_configured');
+    assert.equal(h.calls.length, 0);
+
+    // Expired: a correctly signed past exp, and a real link after the clock moves past five minutes (Chinese HTML page).
+    await error(await h.get(on, tokenUrl(await sign('pdf', 'article', nowSeconds() - 1))), 410, 'pdf_link_expired');
+    h = harness();
+    const fresh = (await (await h.request(valid, on, linkUrl)).json()).url;
+    vm.runInContext('{ const realNow = Date.now; Date.now = () => realNow() + 301000; }', h.context);
+    const expired = await h.get({ ...on, QL_KV:kv }, 'https://site.test' + fresh, { accept:'text/html' });
+    assert.equal(expired.status, 410); assert(expired.headers.get('content-type').startsWith('text/html'));
+    const expiredHtml = await expired.text();
+    assert(expiredHtml.includes('下载链接已过期（5 分钟内有效）')); assert(!expiredHtml.includes(fresh.split('t=')[1].split('.')[1])); assert(!expiredHtml.includes(valid));
+    assert.equal(h.calls.length, 0);
+
+    // Query whitelist: link only on POST, t only on GET, each at most once, nothing else.
+    h = harness();
+    await error(await h.request(valid, on, tokenUrl(token)), 400, 'pdf_bad_id');
+    await error(await h.get(on, 'https://site.test/api/pdf?id=article&link=1'), 400, 'pdf_bad_id');
+    for (const query of ['link=2', 'link=1&link=1', 'link=', 'link=1&t=' + token, 'link=1&repo=other']) await error(await h.request(valid, on, 'https://site.test/api/pdf?id=article&' + query), 400, 'pdf_bad_id');
+    for (const query of ['t=' + token + '&t=' + token, 't=' + token + '&repo=other', 't=' + token + '&passphrase=' + valid]) await error(await h.get(on, 'https://site.test/api/pdf?id=article&' + query), 400, 'pdf_bad_id');
+    assert.equal(h.calls.length, 0);
+    assert.equal(writes.length, 0, 'signed links never write KV');
+  }
+
+  {
+    // /api/fulltext signed links, with the DOI library harness and its fake KV.
+    const { harness:doiHarness, doi:ftDoi, pdf:ftPdf, seed, error:ftError } = require('./test_doi_library_worker.cjs');
+    const linkEnv = { PDF_SIGNED_LINK:'true' }, ftQuery = 'doi=' + encodeURIComponent(ftDoi);
+    let d = doiHarness(); seed(d);
+    await ftError(await d.request('/api/fulltext', { query:ftQuery + '&link=1' }), 404, 'pdf_link_disabled');
+    await ftError(await d.request('/api/fulltext', { query:ftQuery + '&link=1', env:{ PDF_SIGNED_LINK:'false' } }), 404, 'pdf_link_disabled');
+    await ftError(await d.request('/api/fulltext', { method:'GET', query:ftQuery + '&t=1.x' }), 404, 'pdf_link_disabled');
+    assert.equal(d.reads.length, 0);
+    const ftIssued = await d.request('/api/fulltext', { query:ftQuery + '&link=1', env:linkEnv });
+    assert.equal(ftIssued.status, 200); assert.equal(ftIssued.headers.get('cache-control'), 'no-store'); assert.equal(ftIssued.headers.get('referrer-policy'), 'no-referrer');
+    const ftLink = await ftIssued.json();
+    assert.deepEqual(Object.keys(ftLink).sort(), ['expiresIn', 'ok', 'url']); assert.strictEqual(ftLink.expiresIn, 300);
+    const ftMatched = /^\/api\/fulltext\?doi=10\.1000%2Fexact&t=([1-9]\d*\.[A-Za-z0-9_-]{43})$/.exec(ftLink.url); assert(ftMatched, 'fulltext signed link format');
+    assert(!d.reads.some(read => read.key.startsWith('library:pdf:')), 'issuing reads the record only, never the PDF');
+    const ftDownload = await d.request('/api/fulltext', { method:'GET', query:ftLink.url.split('?')[1], env:linkEnv });
+    assert.equal(ftDownload.status, 200); assert.equal(ftDownload.headers.get('content-type'), 'application/pdf'); assert(ftDownload.headers.get('content-disposition').startsWith('attachment;'));
+    assert.deepEqual(Buffer.from(await ftDownload.arrayBuffer()), ftPdf);
+    await ftError(await d.request('/api/fulltext', { method:'GET', query:'doi=' + encodeURIComponent('10.1000/other') + '&t=' + ftMatched[1], env:linkEnv }), 403, 'pdf_link_invalid');
+    const crossKind = doiHarness({ registry:{ article:ftDoi } });
+    await ftError(await crossKind.request('/api/pdf', { method:'GET', query:'id=article&t=' + ftMatched[1], env:linkEnv }), 403, 'pdf_link_invalid');
+    assert.equal(crossKind.calls.length, 0, 'a fulltext link is not a /api/pdf link, even for the same paper');
+    await ftError(await d.request('/api/fulltext', { query:ftQuery + '&link=1', passphrase:'wrong', env:linkEnv }), 403, 'pdf_passphrase_invalid');
+    await ftError(await d.request('/api/fulltext', { query:ftQuery + '&t=' + ftMatched[1], env:linkEnv }), 400, 'library_bad_doi');
+    await ftError(await d.request('/api/fulltext', { method:'GET', query:ftQuery + '&link=1', env:linkEnv }), 400, 'library_bad_doi');
+    await ftError(await d.request('/api/acquire', { query:ftQuery + '&link=1', env:linkEnv }), 400, 'library_bad_doi');
+    await ftError(await d.request('/api/library', { method:'GET', query:ftQuery + '&t=' + ftMatched[1], env:linkEnv }), 400, 'library_bad_doi');
+    const ftForm = await d.request('/api/fulltext', { method:'GET', env:linkEnv, headers:{ accept:'text/html' } });
+    assert.equal(ftForm.status, 200); assert((await ftForm.text()).includes('method="post"'));
+    assert.equal(d.calls.length, 0); assert.equal(d.writes.length, 0, 'fulltext links never write KV');
+    d = doiHarness(); await ftError(await d.request('/api/fulltext', { query:ftQuery + '&link=1', env:linkEnv }), 404, 'library_not_found'); assert.equal(d.writes.length, 0);
+    const clock = { now:Date.now() }; d = doiHarness({ clock }); seed(d);
+    const late = await (await d.request('/api/fulltext', { query:ftQuery + '&link=1', env:linkEnv })).json();
+    clock.now += 301000;
+    const lateResponse = await d.request('/api/fulltext', { method:'GET', query:late.url.split('?')[1], env:linkEnv, headers:{ accept:'text/html' } });
+    assert.equal(lateResponse.status, 410); assert((await lateResponse.text()).includes('下载链接已过期'));
+    assert.equal(d.writes.length, 0);
+  }
+
+  console.log('Signed download links passed: off by default (pdf_link_disabled before the passphrase), status flag, issue/verify for /api/pdf and /api/fulltext, binding to kind/subject/exp, tampering, expiry, query whitelist, no KV writes.');
   console.log('PDF offline boundaries passed: GET password form, bounded POST password verification, no unauthorized GitHub access, commit pinning, exact DOI/title, CSV, paths, PDF/SHA/size/blob, safe redirects, downloads and HTML errors.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

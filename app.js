@@ -1144,6 +1144,37 @@
       return { kind: 'failed', step: 0, stopped: true, stopLabel: '未取得', short: '未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
     return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
   }
+  // 卡片内口令下载：表单标记写在 fulltextStatusHtml 里（卡片、DOI 搜索视图共用）；阅读台在 index.html 里有同样结构的 #drawerPdfForm。
+  const DL_BTN_LABEL = '下载';
+  // 下载链接 ↔ 口令表单：卡片里表单紧跟在链接后面；全文状态块里在同一个 .ft-status 内；阅读台用固定 id。
+  function dlFormFor(link) {
+    if (!link) return null;
+    if (link.id === 'drawerPdfLink') return document.getElementById('drawerPdfForm');
+    const next = link.nextElementSibling;
+    if (next && next.matches('form[data-ft-dl-form]')) return next;
+    const box = link.closest('.ft-status');
+    return box ? box.querySelector('form[data-ft-dl-form]') : null;
+  }
+  function dlLinkFor(form) {
+    if (!form) return null;
+    if (form.id === 'drawerPdfForm') return document.getElementById('drawerPdfLink');
+    const prev = form.previousElementSibling;
+    if (prev && prev.matches('a[data-ft-download]')) return prev;
+    const box = form.closest('.ft-status');
+    return box ? box.querySelector('a[data-ft-download]') : null;
+  }
+  // 收起并清空：口令不留在页面上。
+  function resetDlForm(form) {
+    if (!form) return;
+    const input = form.querySelector('input[name="passphrase"]'), btn = form.querySelector('button[type="submit"]'), err = form.querySelector('.ft-error');
+    if (input) { input.value = ''; input.disabled = false; }
+    if (btn) { btn.disabled = false; btn.textContent = DL_BTN_LABEL; }
+    if (err) err.textContent = '';
+    form.classList.remove('is-busy');
+    form.removeAttribute('aria-busy');
+    delete form.dataset.busy;
+    form.hidden = true;
+  }
   function fulltextStatusHtml(p, full) {
     const conflict = fulltextConflict(p);
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
@@ -1153,16 +1184,17 @@
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
     const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
-    const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>'
+    const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download title="输入全文口令即可下载">下载 PDF</a>'
       : view.action === 'refresh' ? (full ? '' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
       : view.action === 'official' ? (full ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
-    const form = view.action === 'submit' || view.action === 'retry'
+    // 已可下载：口令框默认隐藏；仅当服务端开关 pdfSignedLink 打开时，点「下载 PDF」才会原位展开（见 10-browse-events.js）。
+    const form = view.action === 'download' ? '<form class="ft-form ft-dl-form" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>' : view.action === 'submit' || view.action === 'retry'
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
-      if (view.action === 'download') return primary;
+      if (view.action === 'download') return primary + form;
       // Only the two actions that move a paper towards a PDF (apply, apply again) stand out; refresh and upload are plain links.
       const strong = view.action === 'submit' || view.action === 'retry' || view.action === 'refresh';
       const lead = strong ? primary : primary.replace('btn-sm btn-primary', 'ft-link').replace(/ class="btn-sm btn-primary"/, ' class="ft-link"');
@@ -2291,6 +2323,8 @@
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
+      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
+      if (!pdfUrl || changedPaper) resetDlForm($('#drawerPdfForm'));
     }
 
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
@@ -3454,11 +3488,88 @@
   // Sidebar Filter Reset buttons
 
   // Global Document Clicks Delegation
+  // 卡片内口令下载：服务端 /api/ai?task=status 返回 pdfSignedLink:true 才启用；默认 false，此时「下载 PDF」照旧新开标签。
+  let PDF_SIGNED_LINK = false;
+  const DL_MSG = {
+    invalid: '口令不正确，请重新输入。',
+    limited: '口令错误次数过多，请一小时后再试。',
+    network: '网络异常，请稍后重试。',
+    other: '暂时无法下载，请稍后重试，或到官网原文获取。',
+    empty: '请输入全文口令。'
+  };
+  function dlSetBusy(form, busy, label) {
+    const input = form.querySelector('input[name="passphrase"]'), btn = form.querySelector('button[type="submit"]');
+    if (input) input.disabled = busy;
+    if (btn) { btn.disabled = busy; btn.textContent = label; }
+    form.classList.toggle('is-busy', busy);
+    if (busy) form.setAttribute('aria-busy', 'true'); else form.removeAttribute('aria-busy');
+  }
+  // 提交口令换取签名链接：口令只放在 POST 正文里，不写 console / localStorage / URL。
+  async function submitDownloadForm(form) {
+    if (form.dataset.busy === '1') return;
+    const link = dlLinkFor(form), input = form.querySelector('input[name="passphrase"]'), err = form.querySelector('.ft-error');
+    const showError = msg => { if (err) err.textContent = msg; };
+    const passphrase = input ? input.value : '';
+    showError('');
+    if (!passphrase.trim()) { showError(DL_MSG.empty); if (input) input.focus(); return; }
+    const href = link ? (link.getAttribute('href') || '') : '';
+    if (!/^\/api\/(pdf|fulltext)\?/.test(href)) { showError(DL_MSG.other); return; }
+    form.dataset.busy = '1';
+    dlSetBusy(form, true, '正在验证口令…');
+    const restore = () => { delete form.dataset.busy; dlSetBusy(form, false, DL_BTN_LABEL); };
+    const fail = msg => { restore(); showError(msg); if (input) input.focus(); };
+    let status = 0, data = null;
+    try {
+      const resp = await fetch(href + '&link=1', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+        body: 'passphrase=' + encodeURIComponent(passphrase),
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      status = resp.status;
+      data = await resp.json().catch(() => null);
+    } catch (e) { data = null; }
+    if (!data || typeof data !== 'object') { fail(DL_MSG.network); return; }
+    if (data.ok === true) {
+      const url = typeof data.url === 'string' ? data.url : '';
+      if (!/^\/api\/(pdf|fulltext)\?/.test(url)) { fail(DL_MSG.other); return; }
+      if (input) input.value = '';
+      dlSetBusy(form, true, '正在取回 PDF…');
+      location.assign(url);
+      setTimeout(() => { resetDlForm(form); showToast('已开始下载'); }, 2000);
+      return;
+    }
+    const code = typeof data.error === 'string' ? data.error : '';
+    if (code === 'pdf_link_disabled') {
+      // 服务端关闭了签名链接：退回旧行为，新开标签到服务端口令页。
+      PDF_SIGNED_LINK = false;
+      resetDlForm(form);
+      window.open(href, '_blank', 'noopener');
+      return;
+    }
+    if (code === 'pdf_rate_limited' || status === 429) { fail(DL_MSG.limited); return; }
+    if (code === 'pdf_passphrase_invalid' || code === 'library_passphrase_invalid' || status === 403) { fail(DL_MSG.invalid); return; }
+    fail(DL_MSG.other);
+  }
   document.addEventListener('submit', e => {
+    const dlForm = e.target.closest && e.target.closest('form[data-ft-dl-form]');
+    if (dlForm) { e.preventDefault(); submitDownloadForm(dlForm); return; }
     const form = e.target.closest && e.target.closest('form[data-ft-form]');
     if (form) { e.preventDefault(); submitFulltextForm(form); }
   });
   document.addEventListener('click', e => {
+    const dl = e.target.closest('a[data-ft-download]');
+    if (dl && PDF_SIGNED_LINK && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) {
+      const dlForm = dlFormFor(dl);
+      if (dlForm) {
+        e.preventDefault();
+        if (dlForm.dataset.busy === '1') return;
+        if (dlForm.hidden) { dlForm.hidden = false; dlForm.querySelector('input')?.focus(); }
+        else resetDlForm(dlForm);
+        return;
+      }
+    }
     const ft = e.target.closest('[data-ft-action]');
     if (ft) {
       const doi = exactDoi(ft.dataset.doi), box = ft.closest('[data-ft-doi]') || ft.parentElement;
@@ -3764,8 +3875,8 @@
   window.addEventListener('pageshow', event => { if (event.persisted) refreshLibraryAfterReturn(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && doiJobActive(DOI_JOBS.get(exactDoi(state.search)))) lookupSupplementalDoi(exactDoi(state.search), true); });
   aiRequest('/api/ai?task=status', { headers: { accept: 'application/json' } })
-    .then(j => { AI_AVAIL = !!(j && j.canGenerate); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
-    .catch(() => { AI_AVAIL = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
+    .then(j => { AI_AVAIL = !!(j && j.canGenerate); PDF_SIGNED_LINK = !!(j && j.pdfSignedLink === true); renderDigestBar(); if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); })
+    .catch(() => { AI_AVAIL = false; PDF_SIGNED_LINK = false; if (state.activeDrawerPaper) openReaderDrawer(state.activeDrawerPaper); });
 
   if (state.mode === 'weekly' && urlParams.get('read')) openDeepReading(urlParams.get('read'), { push: false });
 

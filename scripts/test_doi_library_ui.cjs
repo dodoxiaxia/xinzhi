@@ -50,6 +50,7 @@ async function helpers() {
   c.mergeSupplementalPaper(apiPaper('10.1234/keep', 'Kept clinical title'));
   assert.equal(c.LIBRARY.papers.find(p => p.doi === kept.doi), kept, 'Radar/curated identity is reused in library');
   assert.equal(c.pdfDownloadUrl(kept), '/api/fulltext?doi=10.1234%2Fkeep');
+  { const ready = c.pdfDownloadLink(kept); assert(ready.includes('data-ft-download') && ready.includes('data-ft-dl-form') && ready.includes('下载 PDF'), 'ready cards carry the download link plus its hidden in-place passphrase form'); }
   c.mergeSupplementalPaper(apiPaper('10.1234/hold', 'Correct official title'));
   assert.equal(c.pdfDownloadUrl(held), '', 'A new PDF cannot bind to the wrong static title');
   assert.equal(c.pdfDownloadLink(held), '', 'Ordinary readers never see the bibliography-conflict wording');
@@ -226,7 +227,7 @@ async function searchFill(page, text) {
     assert.equal(await page.locator('.ft-actions .btn-primary:visible').count(), 1, 'exactly one primary button');
     assert.equal(posts.length, 0, 'nothing is sent before the reader submits the passphrase');
     await page.getByRole('button', { name: '获取全文', exact: true }).click();
-    await page.locator('.ft-form input[type="password"]').fill('test-pass'); await page.locator('.ft-form button[type="submit"]').click();
+    await page.locator('.ft-form[data-ft-form] input[type="password"]').fill('test-pass'); await page.locator('.ft-form[data-ft-form] button[type="submit"]').click();
     await page.locator('.ft-status.ft-queued').waitFor();
     assert.equal(posts.length, 1); assert.deepEqual(posts[0], { pathname: '/api/acquire', doi: '10.1234/pending', body: 'passphrase=test-pass' });
     assert.equal(new URL(page.url()).searchParams.get('q'), '10.1234/pending', 'submitting happens in place, with no navigation');
@@ -241,7 +242,7 @@ async function searchFill(page, text) {
     jobs.set('10.1234/mfail', { id: '00000000-0000-4000-8000-000000000002', doi: '10.1234/mfail', state: 'failed', stage: 'failed' });
     await searchFill(page, '10.1234/mfail'); await page.locator('.doi-empty .ft-status.ft-failed').waitFor();
     await page.getByRole('button', { name: '重新获取全文', exact: true }).click();
-    await page.locator('.ft-form input[type="password"]').fill('test-pass'); await page.locator('.ft-form button[type="submit"]').click();
+    await page.locator('.ft-form[data-ft-form] input[type="password"]').fill('test-pass'); await page.locator('.ft-form[data-ft-form] button[type="submit"]').click();
     await page.locator('.ft-status.ft-queued').waitFor();
     assert.deepEqual(posts[1], { pathname: '/api/muse/retry', doi: '10.1234/mfail', body: 'passphrase=test-pass' }, 'a Muse-mode retry goes to /api/muse/retry');
     jobs.delete('10.1234/mfail');

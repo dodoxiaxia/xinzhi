@@ -246,7 +246,7 @@ async function runtimeStatus(env) {
     hasEndpoint:!!env.LLM_ENDPOINT, hasModel:!!env.LLM_MODEL, hasApiKey:!!env.LLM_API_KEY,
     endpointValid:!problem, configurationError:problem ? safeModelError(Error(problem)) : null,
     canGenerate:!!(env.QL_KV && env.LLM_API_KEY && env.LLM_MODEL && !problem) && env.AI_ENABLED !== 'off',
-    lastDiagnostic, note:'Configuration presence and the last provider attempt do not prove a valid generated answer.' };
+    lastDiagnostic, pdfSignedLink:env.PDF_SIGNED_LINK === 'true', note:'Configuration presence and the last provider attempt do not prove a valid generated answer.' };
 }
 async function reserveModelAttempt(env) {
   // KV is eventually consistent: this is a soft daily attempt limit, not an atomic billing cap.

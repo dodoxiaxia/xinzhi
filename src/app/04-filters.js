@@ -49,6 +49,37 @@
       return { kind: 'failed', step: 0, stopped: true, stopLabel: '未取得', short: '未取得', headline: '这次没能取得全文', eta: '可以重新提交；已有 PDF 也可以直接上传', action: 'retry', upload: true };
     return { kind: 'none', step: -1, short: '未申请', headline: '站内还没有这篇的全文', eta: '提交后进入下载队列，通常数小时内；已有 PDF 可以直接上传', action: job ? 'retry' : 'submit', upload: true };
   }
+  // 卡片内口令下载：表单标记写在 fulltextStatusHtml 里（卡片、DOI 搜索视图共用）；阅读台在 index.html 里有同样结构的 #drawerPdfForm。
+  const DL_BTN_LABEL = '下载';
+  // 下载链接 ↔ 口令表单：卡片里表单紧跟在链接后面；全文状态块里在同一个 .ft-status 内；阅读台用固定 id。
+  function dlFormFor(link) {
+    if (!link) return null;
+    if (link.id === 'drawerPdfLink') return document.getElementById('drawerPdfForm');
+    const next = link.nextElementSibling;
+    if (next && next.matches('form[data-ft-dl-form]')) return next;
+    const box = link.closest('.ft-status');
+    return box ? box.querySelector('form[data-ft-dl-form]') : null;
+  }
+  function dlLinkFor(form) {
+    if (!form) return null;
+    if (form.id === 'drawerPdfForm') return document.getElementById('drawerPdfLink');
+    const prev = form.previousElementSibling;
+    if (prev && prev.matches('a[data-ft-download]')) return prev;
+    const box = form.closest('.ft-status');
+    return box ? box.querySelector('a[data-ft-download]') : null;
+  }
+  // 收起并清空：口令不留在页面上。
+  function resetDlForm(form) {
+    if (!form) return;
+    const input = form.querySelector('input[name="passphrase"]'), btn = form.querySelector('button[type="submit"]'), err = form.querySelector('.ft-error');
+    if (input) { input.value = ''; input.disabled = false; }
+    if (btn) { btn.disabled = false; btn.textContent = DL_BTN_LABEL; }
+    if (err) err.textContent = '';
+    form.classList.remove('is-busy');
+    form.removeAttribute('aria-busy');
+    delete form.dataset.busy;
+    form.hidden = true;
+  }
   function fulltextStatusHtml(p, full) {
     const conflict = fulltextConflict(p);
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
@@ -58,16 +89,17 @@
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
     const official = doi ? '<a class="ft-link" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '';
     const mode = job && job.stage ? 'muse' : 'legacy';
-    const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" title="输入全文口令即可下载">下载 PDF</a>'
+    const primary = view.action === 'download' ? '<a href="' + esc(view.url) + '" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download title="输入全文口令即可下载">下载 PDF</a>'
       : view.action === 'refresh' ? (full ? '' : '<button type="button" class="btn-sm btn-primary" data-action="open-drawer" data-paper-id="' + esc(p.id) + '">查看进度</button>')
       : view.action === 'upload' ? '<a class="btn-sm btn-primary" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">直接上传 PDF</a>'
       : view.action === 'official' ? (full ? '<a class="btn-sm btn-primary" href="' + esc('https://doi.org/' + doi) + '" target="_blank" rel="noopener">官网原文 ↗</a>' : '')
       : '<button type="button" class="btn-sm btn-primary" data-ft-action="open-form" data-doi="' + safeDoi + '">' + (view.action === 'retry' ? '重新获取全文' : '获取全文') + '</button>';
-    const form = view.action === 'submit' || view.action === 'retry'
+    // 已可下载：口令框默认隐藏；仅当服务端开关 pdfSignedLink 打开时，点「下载 PDF」才会原位展开（见 10-browse-events.js）。
+    const form = view.action === 'download' ? '<form class="ft-form ft-dl-form" data-ft-dl-form hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>' : view.action === 'submit' || view.action === 'retry'
       ? '<form class="ft-form" data-ft-form data-doi="' + safeDoi + '" data-mode="' + (view.action === 'retry' ? mode + '-retry' : 'submit') + '" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">提交</button><span class="ft-error" role="alert"></span></form>' : '';
     const maint = ftMaintainerMode() && job ? '<small class="ft-maint">维护者：任务状态 ' + esc(job.state) + (job.stage ? ' / ' + esc(job.stage) : '') + (job.reason ? ' / ' + esc(job.reason) : '') + '</small>' : '';
     if (!full) {
-      if (view.action === 'download') return primary;
+      if (view.action === 'download') return primary + form;
       // Only the two actions that move a paper towards a PDF (apply, apply again) stand out; refresh and upload are plain links.
       const strong = view.action === 'submit' || view.action === 'retry' || view.action === 'refresh';
       const lead = strong ? primary : primary.replace('btn-sm btn-primary', 'ft-link').replace(/ class="btn-sm btn-primary"/, ' class="ft-link"');
