@@ -99,3 +99,62 @@ def coverage(source, pubmed, now):
             'stale': stale, 'queryScope': snapshot_query_scope(journal, query),
             'queryHash': hashlib.sha256(query.encode()).hexdigest() if isinstance(query, str) and query.strip() else None,
             'status': 'records_observed' if rows else 'no_records_observed' if configured else 'not_configured'}
+
+
+PUBMED_FETCH_FIELDS = {'status', 'httpStatus', 'errorCategory', 'checkedAt',
+                       'reusedPrevious', 'cachedItems', 'previousUpdatedAt'}
+PUBMED_FETCH_STATUSES = {'ok', 'failed'}
+PUBMED_FETCH_ERROR_CATEGORIES = {
+    'pubmed_upstream_timeout',
+    'pubmed_http_429',
+    'pubmed_http_5xx',
+    'pubmed_network_error',
+    'pubmed_upstream_error',
+    'pubmed_client_error',
+}
+
+
+def public_pubmed_fetch(record):
+    """Allowlisted PubMed fetch outcome for source-health. No query, IDs or keys."""
+    if not isinstance(record, dict):
+        return None
+    status = record.get('status')
+    if status not in PUBMED_FETCH_STATUSES:
+        return None
+    out = {'status': status}
+    checked = record.get('checkedAt')
+    if isinstance(checked, str) and checked.strip():
+        out['checkedAt'] = checked
+    if status != 'failed':
+        return out
+    category = record.get('errorCategory')
+    if category in PUBMED_FETCH_ERROR_CATEGORIES:
+        out['errorCategory'] = category
+    http_status = record.get('httpStatus')
+    if type(http_status) is int and 100 <= http_status <= 599:
+        out['httpStatus'] = http_status
+    if record.get('reusedPrevious') is True:
+        out['reusedPrevious'] = True
+    if type(record.get('cachedItems')) is int and record['cachedItems'] >= 0:
+        out['cachedItems'] = record['cachedItems']
+    previous = record.get('previousUpdatedAt')
+    if isinstance(previous, str) and previous.strip():
+        out['previousUpdatedAt'] = previous
+    return out
+
+
+def apply_pubmed_fetch(fallback, pubmed_fetch):
+    """Mark reused fallback evidence stale when this round's PubMed fetch failed."""
+    public = public_pubmed_fetch(pubmed_fetch)
+    if not public or public.get('status') != 'failed':
+        return fallback
+    out = dict(fallback)
+    out['stale'] = True
+    out['fetchStatus'] = 'failed'
+    if 'errorCategory' in public:
+        out['errorCategory'] = public['errorCategory']
+    if 'httpStatus' in public:
+        out['httpStatus'] = public['httpStatus']
+    if public.get('reusedPrevious') is True:
+        out['reusedPrevious'] = True
+    return out

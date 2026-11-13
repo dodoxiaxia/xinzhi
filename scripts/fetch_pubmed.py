@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """Public PubMed metadata fallback for watched journals. Never downloads PDFs.
 
-An error or partial E-utilities payload (HTTP 5xx, timeout, ERROR field, or an
-esearch result without idlist) is retried a bounded number of times. The previous
-data/pubmed.json is replaced only after a complete search and fetch succeed.
+An error or partial E-utilities payload is retried a bounded number of times
+with exponential backoff that stays at or above the NCBI E-utilities rate limit
+(3 requests/second without a key). Retryable failures include HTTP 429 and 5xx,
+network timeouts, incomplete reads, and HTTP 400 bodies that report Timeout,
+Empty Response, or External viewer error. A genuine HTTP 400 parameter error is
+not retried. The previous data/pubmed.json is replaced only after a complete
+search and fetch succeed. After retries are exhausted, a transient failure
+keeps that previous snapshot, records a public source-health entry with an
+HTTP status and a fixed error category, and lets the rest of the daily
+refresh publish. A genuine parameter error, or a missing previous snapshot,
+still fails the step.
 """
 import argparse, datetime, hashlib, http.client, json, os, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
 from collections import Counter
@@ -31,8 +39,13 @@ JOURNALS = [
 ]
 JOURNALS += list(ADDITIONAL_JOURNALS)
 TRANSIENT_HTTP = {429, 500, 502, 503, 504}
+TRANSIENT_400_MARKERS = ('timeout', 'empty response', 'external viewer error')
 REQUEST_ATTEMPTS = 3
 REQUEST_TIMEOUT = 30
+# E-utilities allows 3 requests/second without a key. Batch spacing and retry
+# backoff both stay at or above this interval. This module does not send a key.
+NCBI_MIN_INTERVAL = 0.4
+RETRY_BACKOFF_BASE = 0.5
 
 class PubmedError(RuntimeError):
     """A complete public metadata response was not obtained. The previous file stays."""
@@ -41,7 +54,56 @@ class PubmedError(RuntimeError):
         self.code = code
         super().__init__(code)
 
-def request(action, params, attempts=REQUEST_ATTEMPTS):
+def retry_delay(attempt):
+    """Exponential backoff for attempt 0, 1, ...; never faster than NCBI_MIN_INTERVAL."""
+    return max(NCBI_MIN_INTERVAL, RETRY_BACKOFF_BASE * (2 ** attempt))
+
+
+def public_error_detail(body):
+    """Return a short public upstream message. Never include the request query."""
+    text = ' '.join((body or '').split())
+    message = ''
+    try:
+        parsed = json.loads(body)
+        if isinstance(parsed, dict):
+            message = parsed.get('error', '')
+    except (ValueError, AttributeError, TypeError):
+        try:
+            xml = ET.fromstring(body)
+            match = xml if xml.tag == 'ERROR' else xml.find('.//ERROR')
+            message = ''.join(match.itertext()) if match is not None else ''
+        except ET.ParseError:
+            message = text
+    if not isinstance(message, str) or not message.strip():
+        message = text
+    return ' '.join(message.split())[:200]
+
+
+def is_transient_http(code, detail=''):
+    if code in TRANSIENT_HTTP:
+        return True
+    if code == 400:
+        text = (detail or '').lower()
+        return any(marker in text for marker in TRANSIENT_400_MARKERS)
+    return False
+
+
+def http_error_detail(exc):
+    detail = getattr(exc, 'pubmed_detail', '')
+    if detail:
+        return detail
+    for note in getattr(exc, '__notes__', ()):
+        try:
+            data = json.loads(note)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(data, dict) and 'upstreamError' in data:
+            return str(data.get('upstreamError') or '')
+    return ''
+
+
+def request(action, params, attempts=REQUEST_ATTEMPTS, wait=None):
+    wait = time.sleep if wait is None else wait
     endpoint = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/' + action
     encoded = urllib.parse.urlencode(params)
     headers = {'User-Agent': 'XinZhiLearningPilot/0.1 (public journal metadata)'}
@@ -58,34 +120,29 @@ def request(action, params, attempts=REQUEST_ATTEMPTS):
                 return r.read(10_000_000)
         except urllib.error.HTTPError as exc:
             # CI retains only the tail of stderr. Keep the failed public action
-            # identifiable there, without logging query/IDs/headers. A client
-            # error is not retried. 429 and 5xx are bounded and then re-raised.
+            # identifiable there, without logging query/IDs/headers. A genuine
+            # client error is not retried. 429, 5xx, and HTTP 400 timeout
+            # bodies are bounded and then re-raised.
             detail = ''
             try:
                 body = exc.read(4096).decode('utf-8', 'replace')
-                try:
-                    message = json.loads(body).get('error', '')
-                except (ValueError, AttributeError):
-                    xml = ET.fromstring(body)
-                    match = xml if xml.tag == 'ERROR' else xml.find('.//ERROR')
-                    message = ''.join(match.itertext()) if match is not None else ''
-                if isinstance(message, str):
-                    detail = ' '.join(message.split())[:200]
-            except (OSError, AttributeError, ET.ParseError):
+                detail = public_error_detail(body)
+            except (OSError, AttributeError):
                 pass
+            exc.pubmed_detail = detail
             exc.add_note(json.dumps({'publicPubmedRequest': action,
                                      'method': req.get_method(),
                                      'httpStatus': exc.code,
                                      'upstreamError': detail}, ensure_ascii=False))
             last = exc
-            if exc.code not in TRANSIENT_HTTP or attempt == attempts - 1:
+            if not is_transient_http(exc.code, detail) or attempt == attempts - 1:
                 raise
         except (http.client.IncompleteRead, TimeoutError, urllib.error.URLError, OSError) as exc:
             # Discard partial bytes and retry the same public metadata request.
             last = exc
             if attempt == attempts - 1:
                 raise
-        time.sleep(0.5 * (attempt + 1))
+        wait(retry_delay(attempt))
     raise last
 
 def _error_text(value):
@@ -116,25 +173,26 @@ def parse_esearch(payload):
         raise PubmedError('pubmed_count_missing')
     return found
 
-def load_esearch(params, attempts=REQUEST_ATTEMPTS):
+def load_esearch(params, attempts=REQUEST_ATTEMPTS, wait=None):
     """Search once per attempt. Transport and error payloads share one retry budget."""
+    wait = time.sleep if wait is None else wait
     last = None
     for attempt in range(attempts):
         try:
-            return parse_esearch(json.loads(request('esearch.fcgi', params, attempts=1)))
+            return parse_esearch(json.loads(request('esearch.fcgi', params, attempts=1, wait=wait)))
         except PubmedError as exc:
             last = exc
         except (json.JSONDecodeError, UnicodeError):
             last = PubmedError('pubmed_response_invalid')
         except urllib.error.HTTPError as exc:
             last = exc
-            if exc.code not in TRANSIENT_HTTP:
+            if not is_transient_http(exc.code, http_error_detail(exc)):
                 raise
         except (http.client.IncompleteRead, TimeoutError, urllib.error.URLError, OSError) as exc:
             last = exc
         if attempt == attempts - 1:
             raise last
-        time.sleep(0.5 * (attempt + 1))
+        wait(retry_delay(attempt))
     raise last
 
 def parse_fetch(raw, excluded_out=None):
@@ -261,19 +319,20 @@ def parse(root, excluded_out=None):
         items.append(item)
     return items
 
-def refresh(path, days, limit, now=None):
+def refresh(path, days, limit, now=None, wait=None):
     """Fetch a complete PubMed snapshot. On any incomplete response, path is left unchanged."""
+    wait = time.sleep if wait is None else wait
     now = now or datetime.datetime.now(datetime.timezone.utc)
     start = (now - datetime.timedelta(days=days)).strftime('%Y/%m/%d')
     end = now.strftime('%Y/%m/%d')
     term = '(' + ' OR '.join(journal_query(j) for j in JOURNALS) + ') AND ("' + start + '"[Date - Publication] : "' + end + '"[Date - Publication])'
-    found = load_esearch({'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': limit, 'sort': 'pub date'})
+    found = load_esearch({'db': 'pubmed', 'term': term, 'retmode': 'json', 'retmax': limit, 'sort': 'pub date'}, wait=wait)
     ids = found['idlist']
-    time.sleep(0.4)
+    wait(NCBI_MIN_INTERVAL)
     items, excluded_scope = [], []
     for offset in range(0, len(ids), 150):
-        time.sleep(0.4)
-        items.extend(parse_fetch(request('efetch.fcgi', {'db': 'pubmed', 'id': ','.join(ids[offset:offset+150]), 'retmode': 'xml'}), excluded_out=excluded_scope))
+        wait(NCBI_MIN_INTERVAL)
+        items.extend(parse_fetch(request('efetch.fcgi', {'db': 'pubmed', 'id': ','.join(ids[offset:offset+150]), 'retmode': 'xml'}, wait=wait), excluded_out=excluded_scope))
     for exc in excluded_scope:
         print(f"[scope_filter] PubMed excluded (pmid:{exc['pmid']}): {exc['reason']} | {exc['detail']} | {exc['title'][:120]}")
     data = {
@@ -292,6 +351,101 @@ def refresh(path, days, limit, now=None):
     commit_output(path, data)
     return data
 
+def classify_failure(exc):
+    """Return (httpStatus or None, fixed error category). Never include a query or key."""
+    if isinstance(exc, urllib.error.HTTPError):
+        detail = http_error_detail(exc)
+        if exc.code == 429:
+            return exc.code, 'pubmed_http_429'
+        if exc.code in TRANSIENT_HTTP:
+            return exc.code, 'pubmed_http_5xx'
+        if is_transient_http(exc.code, detail):
+            return exc.code, 'pubmed_upstream_timeout'
+        return exc.code, 'pubmed_client_error'
+    if isinstance(exc, TimeoutError):
+        return None, 'pubmed_upstream_timeout'
+    if isinstance(exc, urllib.error.URLError):
+        reason = exc.reason
+        if isinstance(reason, TimeoutError) or 'timed out' in str(reason).lower():
+            return None, 'pubmed_upstream_timeout'
+        return None, 'pubmed_network_error'
+    if isinstance(exc, PubmedError):
+        return None, 'pubmed_upstream_error'
+    return None, 'pubmed_network_error'
+
+
+def load_previous_snapshot(path):
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if isinstance(data, dict) and isinstance(data.get('items'), list):
+        return data
+    return None
+
+
+def can_reuse_previous(exc, snapshot):
+    if snapshot is None:
+        return False
+    _status, category = classify_failure(exc)
+    return category != 'pubmed_client_error'
+
+
+def record_pubmed_fetch(health_path, record):
+    """Merge a public PubMed fetch record into source-health; keep existing feed rows."""
+    from refresh_feeds import write_json_js
+    from source_fallbacks import public_pubmed_fetch
+    public = public_pubmed_fetch(record)
+    if not public:
+        raise ValueError('pubmed fetch record is not publishable')
+    try:
+        health = json.loads(health_path.read_text())
+        if not isinstance(health, dict):
+            health = {}
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        health = {'checkedAt': public.get('checkedAt'), 'sources': []}
+    if not isinstance(health.get('sources'), list):
+        health['sources'] = []
+    health['pubmedFetch'] = public
+    health_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json_js(health_path, 'SOURCE_HEALTH', health)
+    return public
+
+
+def run(path, days, limit, now=None, wait=None, health_path=None):
+    """Refresh PubMed metadata, or reuse the previous snapshot after a transient failure."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    health_path = Path(health_path) if health_path else path.parent / 'source-health.json'
+    degradable = (urllib.error.HTTPError, TimeoutError, urllib.error.URLError,
+                  http.client.IncompleteRead, OSError, PubmedError)
+    try:
+        data = refresh(path, days, limit, now=now, wait=wait)
+    except degradable as exc:
+        if isinstance(exc, urllib.error.HTTPError) and classify_failure(exc)[1] == 'pubmed_client_error':
+            raise
+        snapshot = load_previous_snapshot(path)
+        if not can_reuse_previous(exc, snapshot):
+            raise
+        http_status, category = classify_failure(exc)
+        record = {
+            'status': 'failed',
+            'errorCategory': category,
+            'checkedAt': now.isoformat(),
+            'reusedPrevious': True,
+            'cachedItems': len(snapshot.get('items') or []),
+        }
+        if http_status is not None:
+            record['httpStatus'] = http_status
+        previous = snapshot.get('updatedAt')
+        if isinstance(previous, str) and previous.strip():
+            record['previousUpdatedAt'] = previous
+        public = record_pubmed_fetch(health_path, record)
+        print(json.dumps({'degraded': True, **public}, ensure_ascii=False))
+        return {'degraded': True, 'pubmedFetch': public, 'items': snapshot['items']}
+    record_pubmed_fetch(health_path, {'status': 'ok', 'checkedAt': now.isoformat()})
+    return data
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--days', type=int, default=30)
@@ -299,7 +453,9 @@ def main():
     a = p.parse_args()
     if not 1 <= a.days <= 90 or not 1 <= a.limit <= 2500:
         p.error('days 1..90; limit 1..2500')
-    data = refresh(ROOT / 'data/pubmed.json', a.days, a.limit)
+    data = run(ROOT / 'data/pubmed.json', a.days, a.limit)
+    if data.get('degraded'):
+        return
     print(json.dumps({k: v for k, v in data.items() if k != 'items'}, ensure_ascii=False))
 
 if __name__ == '__main__':
