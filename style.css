@@ -1402,7 +1402,6 @@ html[data-style] .article-card .journal-badge { color: var(--text-muted); font-s
 .article-title-zh, .article-title-zh.ql-title, .article-title { font-size: 16px; line-height: 1.45; margin: 0 0 4px; }
 .article-title-en-hit { margin: 0 0 4px; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
 .article-gist { margin: 0 0 4px; font-size: 13.5px; line-height: 1.55; color: var(--text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.article-gist.gist-ai::before { content: "AI 速览 · "; color: var(--text-muted); }
 .card-actions { flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0 12px; margin-top: 2px; }
 .card-actions > div:last-child, .card-actions .action-buttons-group { width: auto; flex: 0 0 auto; display: flex; align-items: center; gap: 2px 6px; flex-wrap: wrap; }
 .card-actions > div.card-source-actions:last-child { flex-basis: auto; }
@@ -1443,7 +1442,8 @@ html[data-style] .article-card .btn-sm.btn-primary:hover { background: var(--acc
 }
 html[data-style] .article-card { background: none; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none; margin: 0; padding: 10px 0; }
 html[data-style] .article-card:hover { box-shadow: none; transform: none; }
-.article-card .content-label { border: 0; padding: 0; margin-right: 4px; background: none; color: var(--text-muted); font-size: 11px; font-weight: 400; }
+.article-card .content-label { border: 0; padding: 0; margin-right: 6px; background: none; color: var(--text-muted); font-size: 11px; font-weight: 400; vertical-align: 1px; }
+.compact-title .content-label, .weekly-auto-title .content-label, .weekly-row-title .content-label { vertical-align: 1px; margin-right: 6px; }
 html[data-style] .day-heading { margin: 14px 0 4px; }
 @media (max-width: 720px) {
   html[data-style] .article-card { padding: 8px 0; }

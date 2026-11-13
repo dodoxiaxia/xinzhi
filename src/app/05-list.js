@@ -1,4 +1,8 @@
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
+  function machineContentLabel(kind = 'AI 速览') {
+    return `<span class="content-label">${esc(kind)} · 未经人工核对</span>`;
+  }
+
   // Render Article Card
   function renderArticleCard(p) {
     const isHuddled = state.huddle.includes(p.id);
@@ -15,12 +19,12 @@
     const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
     const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
     const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${!titleZh && machineZh ? machineContentLabel('机器翻译') : ''}${zhHtml}</button></h3>`
       : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
 
     // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
-    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(gist)}</p>` : '';
     // The English title comes back when an English search hit it.
     const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
@@ -60,8 +64,13 @@
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
     const doiUrl = safeSourceUrl(p) || '#';
-    const translatedTitle = p.draftData?.title_zh || quicklookOf(p)?.title_zh || p.titleZh;
-    const title = esc(p.draftData?.title_zh ? `[导读] ${p.draftData.title_zh}` : translatedTitle || p.title);
+    const draftTitle = p.draftData?.title_zh || '';
+    const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
+    const title = draftTitle
+      ? `[导读] ${esc(draftTitle)}`
+      : machineZh
+        ? `${machineContentLabel('机器翻译')}${esc(machineZh)}`
+        : esc(p.title);
 
     return `
       <div class="compact-row" data-paper-id="${esc(p.id)}">

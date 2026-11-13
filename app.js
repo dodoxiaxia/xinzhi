@@ -511,15 +511,17 @@
     return `<span class="design-pill ${checked ? getDesignClass(type) + ' design-checked' : 'design-unverified'}" title="${checked ? '已根据公开摘要核对研究类型；不是全文终审' : '来源或规则标注；尚未逐篇核对研究类型'}">${esc(type)}</span>`;
   }
   function publicationStatusHtml(paper) {
-    const status = paper.publicationStatus;
+    const status = paper?.publicationStatus;
     if (!status) return '';
+    const label = String(status.label ?? '').trim();
     const pubmedUrl = url => /^https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/[1-9]\d*\/$/.test(url || '');
     const links = [];
     if (pubmedUrl(status.sourceUrl)) links.push(`<a href="${esc(status.sourceUrl)}" target="_blank" rel="noopener noreferrer">PubMed 状态来源 ↗</a>`);
     (status.related || []).forEach(r => {
-      if (pubmedUrl(r.url)) links.push(`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}（PMID ${esc(r.pmid)}）↗</a>`);
+      if (r && pubmedUrl(r.url)) links.push(`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}（PMID ${esc(r.pmid)}）↗</a>`);
     });
-    return `<div class="publication-status" role="note"><strong>${esc(status.label)}</strong>${links.join(' · ')}</div>`;
+    if (!label && !links.length) return '';
+    return `<div class="publication-status" role="note">${label ? `<strong>${esc(label)}</strong>` : ''}${links.join(' · ')}</div>`;
   }
   function publicationStatusText(paper) {
     const s = paper.publicationStatus;
@@ -554,17 +556,32 @@
   // Clipboard copy helper
   async function copyToClipboard(text, successMsg = '已复制到剪贴板') {
     try {
-      await navigator.clipboard.writeText(text);
-      showToast(successMsg);
-    } catch (e) {
-      const ta = document.createElement('textarea');
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        showToast(successMsg);
+        return true;
+      }
+    } catch (e) {}
+    let ta = null;
+    let ok = false;
+    try {
+      ta = document.createElement('textarea');
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showToast(successMsg);
+      ok = document.execCommand('copy') === true;
+    } catch (e) {
+      ok = false;
+    } finally {
+      if (ta) {
+        try {
+          if (ta.parentNode) ta.parentNode.removeChild(ta);
+          else document.body.removeChild(ta);
+        } catch (e) {}
+      }
     }
+    showToast(ok ? successMsg : '复制失败，请手动复制');
+    return ok;
   }
 
   // Setup Theme
@@ -1843,6 +1860,10 @@
   }
 
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
+  function machineContentLabel(kind = 'AI 速览') {
+    return `<span class="content-label">${esc(kind)} · 未经人工核对</span>`;
+  }
+
   // Render Article Card
   function renderArticleCard(p) {
     const isHuddled = state.huddle.includes(p.id);
@@ -1859,12 +1880,12 @@
     const machineZh = !p.hasDraft ? (qlc?.title_zh || p.titleZh || '') : '';
     const zhHtml = titleZh || (machineZh ? esc(machineZh) : '');
     const titleBlock = zhHtml
-      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${zhHtml}</button></h3>`
+      ? `<h3 class="article-title article-title-zh${titleZh ? '' : ' ql-title'}"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${!titleZh && machineZh ? machineContentLabel('机器翻译') : ''}${zhHtml}</button></h3>`
       : `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${titleEn}</button></h3>`;
 
     // Two or three lines of the reviewed Chinese guide, or the AI quick-look line, when there is one.
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (qlc?.one_line || '');
-    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
+    const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(gist)}</p>` : '';
     // The English title comes back when an English search hit it.
     const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
     const enHit = zhHtml && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
@@ -1904,8 +1925,13 @@
     const journalName = p.cleanJournal || p.journal || '期刊';
     const dateStr = dateLabel(p);
     const doiUrl = safeSourceUrl(p) || '#';
-    const translatedTitle = p.draftData?.title_zh || quicklookOf(p)?.title_zh || p.titleZh;
-    const title = esc(p.draftData?.title_zh ? `[导读] ${p.draftData.title_zh}` : translatedTitle || p.title);
+    const draftTitle = p.draftData?.title_zh || '';
+    const machineZh = !p.hasDraft && !draftTitle ? (quicklookOf(p)?.title_zh || p.titleZh || '') : '';
+    const title = draftTitle
+      ? `[导读] ${esc(draftTitle)}`
+      : machineZh
+        ? `${machineContentLabel('机器翻译')}${esc(machineZh)}`
+        : esc(p.title);
 
     return `
       <div class="compact-row" data-paper-id="${esc(p.id)}">
@@ -3089,24 +3115,26 @@
     return byDoi;
   }
   function weeklyCard(p, date, readingId) {
-    const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '', huddled = state.huddle.includes(p.id);
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
+    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
     const med = (p.media || []).slice(0, 1).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('');
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const read = hasAbstract(p) ? (validTranslation(preGeneratedOf(p)?.translation || LIVE_TR[trKeyOf(p)]) ? '阅读摘要 · 中英对照' : '阅读原摘要') : '查看文献信息';
     return `<article class="next-item weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-card-content"><div class="weekly-card-meta"><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} ${med} <span class="date-badge">${esc(date)}</span></div>` +
-      publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${esc(zh || p.title)}</button>${deep}</div>` +
+      publicationStatusHtml(p) + `<div class="weekly-auto-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}">${machineZh ? machineContentLabel('机器翻译') : ''}${esc(zh || p.title)}</button>${deep}</div>` +
       (zh ? `<div class="weekly-auto-en">${esc(p.title)}</div>` : '') +
-      (q && q.one_line ? `<div class="weekly-auto-line"><span class="content-label">AI 速览 · 未经人工核验</span>${esc(q.one_line)}</div>` : '') +
+      (line ? `<div class="weekly-auto-line">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(line)}</div>` : '') +
       `<div class="weekly-card-actions"><button class="btn-sm" data-action="open-drawer" data-paper-id="${esc(p.id)}">${read}</button><button class="btn-sm ${huddled ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${huddled ? '已入精选 ✓' : '加入精选清单'}</button></div></div></article>`;
   }
   // One line per paper: rank, title, source line and the AI one-liner, with a star to collect.
   function weeklyRow(p, date, readingId) {
-    const q = quicklookOf(p), zh = (q && q.title_zh) || p.titleZh || '', huddled = state.huddle.includes(p.id);
+    const q = quicklookOf(p), draftZh = p.draftData?.title_zh || '', machineZh = !p.hasDraft && !draftZh ? ((q && q.title_zh) || p.titleZh || '') : '', zh = draftZh || machineZh, huddled = state.huddle.includes(p.id);
+    const line = p.hasDraft ? (p.draftData?.summary || '') : (q && q.one_line ? q.one_line : '');
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const design = p.publicationStatus?.label || p.studyDesign || '';
-    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${esc(zh || p.title)}</button>${deep}</div>` +
+    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${machineZh ? machineContentLabel('机器翻译') : ''}${esc(zh || p.title)}</button>${deep}</div>` +
       publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(p.cleanJournal || p.journal)}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
-      (q && q.one_line ? `<div class="weekly-row-line"><span class="content-label">AI 速览</span>${esc(q.one_line)}</div>` : '') +
+      (line ? `<div class="weekly-row-line">${p.hasDraft ? '' : machineContentLabel('AI 速览')}${esc(line)}</div>` : '') +
       `</div><button type="button" class="weekly-star${huddled ? ' active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}" aria-pressed="${huddled}" aria-label="${huddled ? '移出精选清单' : '加入精选清单'}" title="${huddled ? '已入精选清单' : '加入精选清单'}">${huddled ? '★' : '☆'}</button></li>`;
   }
 

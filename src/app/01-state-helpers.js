@@ -131,15 +131,17 @@
     return `<span class="design-pill ${checked ? getDesignClass(type) + ' design-checked' : 'design-unverified'}" title="${checked ? '已根据公开摘要核对研究类型；不是全文终审' : '来源或规则标注；尚未逐篇核对研究类型'}">${esc(type)}</span>`;
   }
   function publicationStatusHtml(paper) {
-    const status = paper.publicationStatus;
+    const status = paper?.publicationStatus;
     if (!status) return '';
+    const label = String(status.label ?? '').trim();
     const pubmedUrl = url => /^https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/[1-9]\d*\/$/.test(url || '');
     const links = [];
     if (pubmedUrl(status.sourceUrl)) links.push(`<a href="${esc(status.sourceUrl)}" target="_blank" rel="noopener noreferrer">PubMed 状态来源 ↗</a>`);
     (status.related || []).forEach(r => {
-      if (pubmedUrl(r.url)) links.push(`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}（PMID ${esc(r.pmid)}）↗</a>`);
+      if (r && pubmedUrl(r.url)) links.push(`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}（PMID ${esc(r.pmid)}）↗</a>`);
     });
-    return `<div class="publication-status" role="note"><strong>${esc(status.label)}</strong>${links.join(' · ')}</div>`;
+    if (!label && !links.length) return '';
+    return `<div class="publication-status" role="note">${label ? `<strong>${esc(label)}</strong>` : ''}${links.join(' · ')}</div>`;
   }
   function publicationStatusText(paper) {
     const s = paper.publicationStatus;
@@ -174,17 +176,32 @@
   // Clipboard copy helper
   async function copyToClipboard(text, successMsg = '已复制到剪贴板') {
     try {
-      await navigator.clipboard.writeText(text);
-      showToast(successMsg);
-    } catch (e) {
-      const ta = document.createElement('textarea');
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        showToast(successMsg);
+        return true;
+      }
+    } catch (e) {}
+    let ta = null;
+    let ok = false;
+    try {
+      ta = document.createElement('textarea');
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      showToast(successMsg);
+      ok = document.execCommand('copy') === true;
+    } catch (e) {
+      ok = false;
+    } finally {
+      if (ta) {
+        try {
+          if (ta.parentNode) ta.parentNode.removeChild(ta);
+          else document.body.removeChild(ta);
+        } catch (e) {}
+      }
     }
+    showToast(ok ? successMsg : '复制失败，请手动复制');
+    return ok;
   }
 
   // Setup Theme
