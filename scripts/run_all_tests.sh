@@ -67,6 +67,7 @@ run "service-unittest" python3 -m unittest discover -s service/tests -t .
 
 # Browser-driven Node tests (need Playwright + Chromium).
 NODE_BROWSER="test_boot_url_ui test_citation_export_ui test_deep_reader_history_ui test_doi_direct_download test_doi_library_ui test_doi_radar_archive_ui test_download_inline_ui test_filter_panel_toggle_ui test_fulltext_resilience_ui test_doi_miss_form_persist_ui test_grok_fulltext test_mode_toolrow_ui test_popstate_restore_ui test_range_bar_ui test_ux_ce5de25_ui test_mobile_chipbar"
+run "feature-map-doc" node scripts/feature_map_md.cjs --check
 echo "== Node tests"
 for f in scripts/test_*.cjs; do
   name="$(basename "$f" .cjs)"
@@ -80,6 +81,7 @@ for f in scripts/test_*.cjs; do
 done
 
 if [ "$BROWSER" = 1 ]; then
+  run "feature-map-walk" node scripts/feature_map_walk.cjs --viewport all
   echo "== Reading shard loading"
   run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
   echo "== Browser tests (Python + Playwright)"

@@ -23,6 +23,14 @@ def originals():
 
 
 class DoiReviewTests(unittest.TestCase):
+    def test_worker_injection_registry_is_finite_and_public_only(self):
+        from check_guardrails import INJECTED_WORKER_CONSTANTS, run_checks
+        self.assertEqual(INJECTED_WORKER_CONSTANTS, {
+            'PDF_LIBRARY', 'DOI_ADJUDICATIONS', 'PUBLIC_ABSTRACT_SOURCES',
+            'FULLTEXT_OIDC_BUILD_KEYS', 'SCOPE_UNCERTAIN_LIST',
+        })
+        self.assertEqual(run_checks(ROOT, only='public-ids'), [])
+
     def test_each_registered_wrong_doi_is_corrected_without_changing_journal_or_unverified_online_date(self):
         raw = originals()
         projected, review, _ = quality.reviewed_doi_projection(raw)
@@ -195,6 +203,34 @@ class ReviewBuildTests(unittest.TestCase):
             self.assertEqual((root / 'data/library.json').read_bytes(), library_before)
             self.assertNotIn('old_doi_identifies_unrelated', bundle)
             public_payloads(root)
+
+    def test_scope_uncertain_worker_injection_carries_no_reviewed_hold_or_hidden_ids(self):
+        from check_guardrails import INJECTED_WORKER_CONSTANTS
+        self.assertIn('SCOPE_UNCERTAIN_LIST', INJECTED_WORKER_CONSTANTS)
+        hidden_ids = {
+            row['id']
+            for row in json.loads((ROOT / 'config/public_library_topic_hides.json').read_text()).get('records', [])
+            if isinstance(row, dict) and row.get('id')
+        }
+        blocked = set(quality.DOI_REVIEW) | set(quality.PDF_BINDING_HOLDS) | hidden_ids
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); synthetic_root(root)
+            for name in ('editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json'):
+                (root / name).write_bytes((ROOT / name).read_bytes())
+            (root / 'data/library.json').write_bytes((ROOT / 'editorial/public_library_snapshot.json').read_bytes())
+            with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
+                builder.main()
+            self.assertFalse((root / 'public/scope-uncertain.json').exists())
+            worker = (root / 'public/_worker.js').read_text()
+            prefix = 'const SCOPE_UNCERTAIN_LIST = '
+            self.assertEqual(worker.count(prefix), 1)
+            payload, _ = json.JSONDecoder().raw_decode(worker.split(prefix, 1)[1])
+            self.assertIsInstance(payload, dict)
+            self.assertIn('items', payload)
+            for item in payload['items']:
+                self.assertNotIn('id', item)
+            for identifier in blocked:
+                self.assertNotIn(identifier, worker)
 
 
 if __name__ == '__main__':
