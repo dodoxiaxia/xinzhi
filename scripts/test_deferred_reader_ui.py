@@ -7,11 +7,28 @@ import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_PART_RE = re.compile(r'^/assets/data-([a-z]+)\.[0-9a-f]{12}\.js$')
+
+
+def premature_ai_calls(calls):
+    """Return sanitized descriptions for disallowed /api/ql or /api/ai calls."""
+    bad = []
+    for call in calls:
+        parsed = urlparse(call['url'])
+        if not (parsed.path.startswith('/api/ql') or parsed.path.startswith('/api/ai')):
+            continue
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        # Normal page boot checks AI availability with GET /api/ai?task=status.
+        if call['method'] == 'GET' and parsed.path == '/api/ai' and query == {'task': ['status']}:
+            continue
+        task = ','.join(query.get('task', [])) or '-'
+        bad.append(f"{call['method']} {parsed.path} task={task}")
+    return bad
 
 
 class ControlledHandler(SimpleHTTPRequestHandler):
@@ -58,6 +75,7 @@ def main():
 
     checks = []
     api_calls = []
+    post_calls = []
     errors = []
 
     def check(cond, label):
@@ -68,10 +86,12 @@ def main():
         url = route.request.url
         if '/api/' in url:
             api_calls.append({'url': url, 'method': route.request.method})
+            if route.request.method == 'POST':
+                post_calls.append(url)
             if '/api/ql?' in url:
                 return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
             if '/api/ai?' in url:
-                return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
+                return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True, 'pdfSignedLink': True})
             return route.fulfill(json={'ok': False, 'error': 'offline_test'})
         if 'ebi.ac.uk' in url or not url.startswith(base):
             return route.abort('blockedbyclient')
@@ -178,14 +198,39 @@ def main():
             expect(page.locator('#readerDrawer')).to_have_class(re.compile(r'\bopen\b'))
             expect(page.locator('#drawerBody')).to_contain_text('加载中')
             page.wait_for_timeout(100)
-            premature_ai = [c for c in api_calls if '/api/ql' in c['url'] or '/api/ai' in c['url']]
-            check(len(premature_ai) == 0, 'early-open drawer suppresses premature /api/ql and /api/ai calls')
+            premature_ai = premature_ai_calls(api_calls)
+            check(
+                len(premature_ai) == 0,
+                'early-open drawer suppresses premature /api/ql and /api/ai calls'
+                + (f': {premature_ai}' if premature_ai else ''),
+            )
 
+            def open_applicable_passphrase(secret):
+                pdf_link = page.locator('#drawerPdfLink')
+                pdf_form = page.locator('#drawerPdfForm')
+                if pdf_link.is_visible():
+                    pdf_link.click()
+                    expect(pdf_form).to_be_visible()
+                    inp = pdf_form.locator('input[name="passphrase"]')
+                    expect(inp).to_be_visible()
+                    inp.fill(secret)
+                    return inp, 'pdf'
+                check(not pdf_form.is_visible(), 'hidden #drawerPdfLink keeps #drawerPdfForm hidden')
+                open_form_btn = page.locator('#drawerFulltext [data-ft-action="open-form"]').first
+                if open_form_btn.count() > 0 and open_form_btn.is_visible():
+                    open_form_btn.click()
+                    ft_form = page.locator('#drawerFulltext form[data-ft-form]').first
+                    expect(ft_form).to_be_visible()
+                    inp = ft_form.locator('input[name="passphrase"]')
+                    expect(inp).to_be_visible()
+                    inp.fill(secret)
+                    return inp, 'fulltext'
+                return None, ''
+
+            early_pass_input, early_pass_kind = open_applicable_passphrase('early-secret')
             scrolled = page.evaluate('''() => {
                 const body = document.getElementById('drawerBody');
                 body.scrollTop = 100;
-                const inp = document.querySelector('#drawerPdfForm input[name="passphrase"]');
-                if (inp) inp.value = 'early-secret';
                 return body.scrollTop;
             }''')
             check(scrolled > 0, 'drawer body scrolled before deferred parts finish')
@@ -194,16 +239,17 @@ def main():
             gate['event'].set()
             page.wait_for_function('() => window.XINZHI_DATA_READY === true')
             wait_drawer_settled()
-            after_scroll, after_pass = page.evaluate('''() => [
-                document.getElementById('drawerBody')?.scrollTop || 0,
-                document.querySelector('#drawerPdfForm input[name="passphrase"]')?.value || '',
-            ]''')
+            after_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
             check(after_scroll == scrolled, f'drawer scroll preserved after deferred merge ({after_scroll} == {scrolled})')
-            check(after_pass == 'early-secret', 'drawer passphrase input preserved after deferred merge')
+            if early_pass_input is not None:
+                check(
+                    early_pass_input.is_visible() and early_pass_input.input_value() == 'early-secret',
+                    f'drawer {early_pass_kind} passphrase input preserved after deferred merge',
+                )
             converged = snapshot_drawer()
             check(converged == baseline, 'early-open drawer converges to exact baseline content')
 
-            # 4. Failed quicklooks/pregenerated -> retry inside drawer preserves scroll + input & succeeds.
+            # 4. Failed quicklooks/pregenerated -> retry inside drawer preserves scroll + applicable input & succeeds.
             api_calls.clear()
             gate['hold'] = set()
             gate['fail'] = {'quicklooks', 'pregenerated'}
@@ -215,14 +261,17 @@ def main():
             expect(page.locator('#readerDrawer')).to_have_class(re.compile(r'\bopen\b'))
             drawer_retry = page.locator('#readerDrawer [data-action="retry-part"]').first
             expect(drawer_retry).to_be_visible()
-            premature_on_err = [c for c in api_calls if '/api/ql' in c['url'] or '/api/ai' in c['url']]
-            check(len(premature_on_err) == 0, 'failed deferred parts do not trigger /api/ql or /api/ai calls')
+            premature_on_err = premature_ai_calls(api_calls)
+            check(
+                len(premature_on_err) == 0,
+                'failed deferred parts do not trigger /api/ql or /api/ai calls'
+                + (f': {premature_on_err}' if premature_on_err else ''),
+            )
 
+            retry_pass_input, retry_pass_kind = open_applicable_passphrase('retry-secret')
             err_scrolled = page.evaluate('''() => {
                 const body = document.getElementById('drawerBody');
                 body.scrollTop = 90;
-                const inp = document.querySelector('#drawerPdfForm input[name="passphrase"]');
-                if (inp) inp.value = 'retry-secret';
                 return body.scrollTop;
             }''')
             check(err_scrolled > 0, 'drawer body scrolled before clicking retry-part')
@@ -230,15 +279,114 @@ def main():
             drawer_retry.click()
             page.wait_for_function('() => window.XINZHI_DATA_READY === true')
             wait_drawer_settled()
-            after_retry_scroll, after_retry_pass = page.evaluate('''() => [
-                document.getElementById('drawerBody')?.scrollTop || 0,
-                document.querySelector('#drawerPdfForm input[name="passphrase"]')?.value || '',
-            ]''')
+            after_retry_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
             check(after_retry_scroll == err_scrolled, f'drawer scroll preserved on retry ({after_retry_scroll} == {err_scrolled})')
-            check(after_retry_pass == 'retry-secret', 'drawer passphrase preserved on retry')
+            if retry_pass_input is not None:
+                check(
+                    retry_pass_input.is_visible() and retry_pass_input.input_value() == 'retry-secret',
+                    f'drawer {retry_pass_kind} passphrase preserved on retry',
+                )
             check(snapshot_drawer() == baseline, 'retry-part converges drawer to baseline content')
 
-            check(not any(c['method'] == 'POST' for c in api_calls), 'no paid POST calls emitted')
+            # 5. Downloadable library paper with visible #drawerPdfForm preserves passphrase + scroll across deferred merge/retry.
+            page.goto(base + '?mode=library', wait_until='networkidle')
+            page.wait_for_function('() => window.XINZHI_DATA_READY === true')
+            lib_paper_id = page.evaluate('''() => {
+                const pdfIds = new Set((window.LIBRARY?.pdfIds || []).map(String));
+                const cards = [...document.querySelectorAll('#articlesStream .article-card')];
+                const pick = cards.find(c => !c.querySelector('.gist-ai') && pdfIds.has(String(c.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '')))
+                    || cards.find(c => pdfIds.has(String(c.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '')));
+                return pick?.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '';
+            }''')
+            check(bool(lib_paper_id), 'library page rendered a downloadable paper dynamically')
+            lib_base_btn = page.locator(f'#articlesStream [data-action="open-drawer"][data-paper-id="{lib_paper_id}"]').first
+            expect(lib_base_btn).to_be_visible()
+            lib_base_btn.click()
+            expect(page.locator('#readerDrawer')).to_have_class(re.compile(r'\bopen\b'))
+            wait_drawer_settled()
+            lib_baseline = snapshot_drawer()
+            check(bool(lib_baseline['title']), 'baseline downloadable library drawer loaded title')
+
+            api_calls.clear()
+            gate['event'].clear()
+            gate['hold'] = {'quicklooks', 'pregenerated'}
+            gate['fail'] = set()
+            page.goto(base + '?mode=library', wait_until='domcontentloaded')
+            page.wait_for_function('() => window.XINZHI_DATA_STATE?.library === "loaded"')
+            lib_early_btn = page.locator(f'#articlesStream [data-action="open-drawer"][data-paper-id="{lib_paper_id}"]').first
+            expect(lib_early_btn).to_be_visible()
+            lib_early_btn.click()
+            expect(page.locator('#readerDrawer')).to_have_class(re.compile(r'\bopen\b'))
+            page.wait_for_timeout(100)
+            lib_premature_ai = premature_ai_calls(api_calls)
+            check(
+                len(lib_premature_ai) == 0,
+                'early-open library drawer suppresses premature /api/ql and /api/ai calls'
+                + (f': {lib_premature_ai}' if lib_premature_ai else ''),
+            )
+            expect(page.locator('#drawerPdfLink')).to_be_visible()
+            lib_early_pass, lib_early_kind = open_applicable_passphrase('early-secret')
+            check(lib_early_kind == 'pdf' and lib_early_pass is not None, 'downloadable library drawer opened #drawerPdfForm')
+            lib_scrolled = page.evaluate('''() => {
+                const body = document.getElementById('drawerBody');
+                body.scrollTop = 100;
+                return body.scrollTop;
+            }''')
+            check(lib_scrolled > 0, 'library drawer body scrolled before deferred parts finish')
+
+            gate['hold'] = set()
+            gate['event'].set()
+            page.wait_for_function('() => window.XINZHI_DATA_READY === true')
+            wait_drawer_settled()
+            lib_after_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
+            check(lib_after_scroll == lib_scrolled, f'library drawer scroll preserved after deferred merge ({lib_after_scroll} == {lib_scrolled})')
+            check(
+                page.locator('#drawerPdfForm').is_visible() and lib_early_pass.input_value() == 'early-secret',
+                'library #drawerPdfForm passphrase preserved after deferred merge',
+            )
+            check(snapshot_drawer() == lib_baseline, 'early-open library drawer converges to exact baseline content')
+
+            api_calls.clear()
+            gate['hold'] = set()
+            gate['fail'] = {'quicklooks', 'pregenerated'}
+            page.goto(base + '?mode=library', wait_until='domcontentloaded')
+            page.wait_for_function(
+                '() => window.XINZHI_DATA_STATE?.library === "loaded" && window.XINZHI_DATA_STATE?.quicklooks === "error" && window.XINZHI_DATA_STATE?.pregenerated === "error"'
+            )
+            lib_retry_btn = page.locator(f'#articlesStream [data-action="open-drawer"][data-paper-id="{lib_paper_id}"]').first
+            expect(lib_retry_btn).to_be_visible()
+            lib_retry_btn.click()
+            expect(page.locator('#readerDrawer')).to_have_class(re.compile(r'\bopen\b'))
+            lib_err_premature_ai = premature_ai_calls(api_calls)
+            check(
+                len(lib_err_premature_ai) == 0,
+                'failed library drawer suppresses premature /api/ql and /api/ai calls'
+                + (f': {lib_err_premature_ai}' if lib_err_premature_ai else ''),
+            )
+            expect(page.locator('#drawerPdfLink')).to_be_visible()
+            lib_retry_pass, lib_retry_kind = open_applicable_passphrase('retry-secret')
+            check(lib_retry_kind == 'pdf' and lib_retry_pass is not None, 'failed library drawer opened #drawerPdfForm')
+            lib_err_scrolled = page.evaluate('''() => {
+                const body = document.getElementById('drawerBody');
+                body.scrollTop = 90;
+                return body.scrollTop;
+            }''')
+            check(lib_err_scrolled > 0, 'library drawer body scrolled before retry')
+            lib_drawer_retry = page.locator('#readerDrawer [data-action="retry-part"]').first
+            gate['fail'] = set()
+            if lib_drawer_retry.count() > 0 and lib_drawer_retry.is_visible():
+                lib_drawer_retry.click()
+                page.wait_for_function('() => window.XINZHI_DATA_READY === true')
+                wait_drawer_settled()
+                lib_after_retry_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
+                check(lib_after_retry_scroll == lib_err_scrolled, f'library drawer scroll preserved on retry ({lib_after_retry_scroll} == {lib_err_scrolled})')
+                check(
+                    page.locator('#drawerPdfForm').is_visible() and lib_retry_pass.input_value() == 'retry-secret',
+                    'library #drawerPdfForm passphrase preserved on retry',
+                )
+                check(snapshot_drawer() == lib_baseline, 'library retry-part converges drawer to baseline content')
+
+            check(len(post_calls) == 0, f'no paid POST calls emitted: {post_calls}' if post_calls else 'no paid POST calls emitted')
             check(not errors, f'no page JavaScript errors: {errors}')
             browser.close()
     finally:

@@ -10,6 +10,7 @@ const fn = n => {
 class Clock extends Date { static now() { return Date.parse('2026-10-07T08:00:00Z'); } }
 const nodes = {sourcesHealthGrid: {}, sourcesHealthMeta: {classList:{toggle(){}}}, sourcesHealthSummary:{}};
 const c = vm.createContext({Date: Clock, URL, window: {JournalMetrics: journalMetrics}, HEALTH: {checkedAt: '2026-10-07T07:22:33Z', sources: []},
+  DEFERRED: false, partsReady: () => true, PART_STATE: {},
   state: {search: ''}, queryMatches: (text, q) => text.includes(q),
   $: selector => nodes[selector.slice(1)],
   esc: text => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]))});

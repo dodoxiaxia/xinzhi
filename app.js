@@ -3261,10 +3261,12 @@
       const ftSection = $('#drawerFulltext');
       const pdfLinkEl = $('#drawerPdfLink');
       const pdfFormEl = $('#drawerPdfForm');
-      ftSection.remove();
+      const ftRegion = bodyEl.querySelector('[data-drawer-region="fulltext"]');
+      const keepFtMounted = !changedPaper && bodyEl.dataset.paperId === String(paper.id) && !!(ftRegion && ftSection && ftSection.parentElement === ftRegion);
+      if (!keepFtMounted) ftSection.remove();
       renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
-      bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
+      if (!keepFtMounted) bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
       if (ftStatus && ftStatus.dataset.ftHtml !== ftHtml) {
@@ -3305,8 +3307,8 @@
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
-      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
-      if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
+      // 口令框跟着下载链接走：换了一篇，或同篇确已无可用下载链接且口令框正展开时才收起并清空口令。
+      if (changedPaper || (!pdfUrl && pdfForm && !pdfForm.hidden && partsReady('library'))) resetDlForm(pdfForm);
       if (ftSectionNow) {
         const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
         const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
