@@ -22,6 +22,7 @@ on:
       - 'scripts/**'
       - 'editorial/**'
       - 'config/**'
+      - 'requirements-ci.txt'
       # Read by the pre-publish checks (test_journal_public_*.py) and by release_integrity.validate_release.
       - 'docs/public-manifest.json'
       - 'docs/journal-public-observations-*.json'
@@ -165,6 +166,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install Python CI dependencies
+        run: |
+          python3 -m pip install -r requirements-ci.txt
+          python3 -c "import brotli; assert brotli.__version__ == '1.2.0', brotli.__version__; print(brotli.__version__)"
 
       - name: 刷新 GitHub 公共签名密钥（不读取凭据）
         continue-on-error: true
