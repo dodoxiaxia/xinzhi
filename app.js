@@ -625,6 +625,341 @@
     return SUPPLEMENTAL_LIBRARY.promise;
   }
 
+  // ==== src/app/00z-deferred-parts.js · Deferred data parts loader and in-place merger ====
+  const DEFERRED = !!(window.XINZHI_PARTS && window.XINZHI_PARTS.parts);
+  const PART_ORDER = DEFERRED ? Object.keys(window.XINZHI_PARTS.parts) : [];
+  const PART_STATE = {};
+  PART_ORDER.forEach(name => { PART_STATE[name] = 'idle'; });
+
+  const TIER1_FEEDS = DEFERRED ? FEEDS.items.slice() : null;
+  let pendingRadar = null;
+  const partQueue = [];
+  let inFlight = 0;
+  const MAX_IN_FLIGHT = 2;
+
+  function syncDataState() {
+    if (!DEFERRED) return;
+    window.XINZHI_DATA_STATE = { ...PART_STATE };
+    if (PART_ORDER.every(n => PART_STATE[n] === 'loaded')) {
+      window.XINZHI_DATA_READY = true;
+    }
+  }
+  if (DEFERRED) {
+    window.XINZHI_DATA_READY = false;
+    syncDataState();
+  }
+
+  function partsReady(...names) {
+    return !DEFERRED || names.every(n => !(n in PART_STATE) || PART_STATE[n] === 'loaded');
+  }
+
+  function partsSettled(...names) {
+    return !DEFERRED || names.every(n => !(n in PART_STATE) || PART_STATE[n] === 'loaded' || PART_STATE[n] === 'error');
+  }
+
+  function neededParts() {
+    if (!DEFERRED) return [];
+    if (typeof exactDoi === 'function' && exactDoi(state.search)) return ['feeds', 'library', 'quicklooks', 'radar'];
+    if (state.mode === 'sources') return ['health'];
+    if (state.mode === 'weekly') return state.weeklyPane === 'reading' ? ['readings'] : [];
+    if (state.search && state.search.trim()) return ['feeds', 'library', 'quicklooks', 'radar'];
+    if (state.mode === 'candidates') return ['feeds', 'radar'];
+    if (state.mode === 'library') return ['library', 'quicklooks'];
+    return [];
+  }
+
+  function registerPaper(p) {
+    if (!p) return;
+    if (p.id && !allPapersMap.has(p.id)) allPapersMap.set(p.id, p);
+    STATIC_DOI_PAPERS.push(p);
+  }
+
+  function clearAllDerivedCache() {
+    allPapersMap.forEach(forgetPaper);
+    CURATED.forEach(forgetPaper);
+    FEEDS.items.forEach(forgetPaper);
+    LIBRARY.papers.forEach(forgetPaper);
+  }
+
+  function mergeFeedsPart(payload) {
+    const incoming = Array.isArray(payload && payload.items) ? payload.items : [];
+    const at = Array.isArray(payload && payload.at) ? payload.at : [];
+    incoming.forEach(normalizePaper);
+    const tier1 = TIER1_FEEDS || [];
+    const tier1Set = new Set(tier1);
+    const tier1At = (FEEDS.order && Array.isArray(FEEDS.order.at)) ? FEEDS.order.at : [];
+    const trailing = FEEDS.items.filter(p => !tier1Set.has(p));
+    const total = Math.max(
+      (FEEDS.order && Number.isInteger(FEEDS.order.total)) ? FEEDS.order.total : 0,
+      tier1.length + incoming.length
+    );
+    const rebuilt = new Array(total);
+    tier1.forEach((p, idx) => {
+      const pos = tier1At[idx];
+      if (Number.isInteger(pos) && pos >= 0) rebuilt[pos] = p;
+      else rebuilt.push(p);
+    });
+    incoming.forEach((p, idx) => {
+      const pos = at[idx];
+      if (Number.isInteger(pos) && pos >= 0) rebuilt[pos] = p;
+      else rebuilt.push(p);
+    });
+    FEEDS.items.length = 0;
+    for (let i = 0; i < rebuilt.length; i++) {
+      if (rebuilt[i]) FEEDS.items.push(rebuilt[i]);
+    }
+    incoming.forEach(registerPaper);
+    if (trailing.length) {
+      const seen = new Set();
+      FEEDS.items.forEach(p => {
+        if (p.doi) seen.add(String(p.doi).toLowerCase());
+        if (p.pmid) seen.add('pmid:' + p.pmid);
+      });
+      trailing.forEach(p => {
+        const d = p.doi ? String(p.doi).toLowerCase() : '';
+        const pm = p.pmid ? 'pmid:' + p.pmid : '';
+        if ((d && seen.has(d)) || (pm && seen.has(pm))) return;
+        FEEDS.items.push(p);
+        if (d) seen.add(d);
+        if (pm) seen.add(pm);
+      });
+    }
+    if (pendingRadar) {
+      const held = pendingRadar;
+      pendingRadar = null;
+      expandRadar(held, registerPaper);
+    }
+  }
+
+  function mergeLibraryPart(payload) {
+    const papers = Array.isArray(payload && payload.papers) ? payload.papers : [];
+    const seenIds = new Set(LIBRARY.papers.map(p => p && p.id).filter(Boolean));
+    papers.forEach(p => {
+      normalizePaper(p);
+      const doi = exactDoi(p.doi);
+      if (doi && DOI_FULLTEXT.has(doi)) {
+        const sup = DOI_FULLTEXT.get(doi);
+        if (sameDoiTitle(p.title, sup.title)) {
+          for (let i = LIBRARY.papers.length - 1; i >= 0; i--) {
+            const item = LIBRARY.papers[i];
+            if (!STATIC_DOI_PAPERS.includes(item) && exactDoi(item.doi) === doi) {
+              LIBRARY.papers.splice(i, 1);
+            }
+          }
+        }
+      }
+      if (!p.id || !seenIds.has(p.id)) {
+        LIBRARY.papers.push(p);
+        if (p.id) seenIds.add(p.id);
+      }
+      if (p.id && (!allPapersMap.has(p.id) || !STATIC_DOI_PAPERS.includes(allPapersMap.get(p.id)))) {
+        allPapersMap.set(p.id, p);
+      }
+      STATIC_DOI_PAPERS.push(p);
+    });
+    if (Array.isArray(payload && payload.pdfIds)) {
+      LIBRARY.pdfIds = payload.pdfIds;
+      PDF_LIBRARY_IDS.clear();
+      payload.pdfIds.forEach(id => PDF_LIBRARY_IDS.add(String(id)));
+    } else {
+      papers.filter(p => p.doi || p.title).forEach(p => PDF_LIBRARY_IDS.add(String(p.id)));
+    }
+    delete LIBRARY.deferred;
+  }
+
+  function afterPartMerged(name) {
+    _maxDateCache = null;
+    updateHeaderBadges();
+    updateHuddleCounter();
+
+    const snapshots = captureFtFormSnapshots();
+    const doi = exactDoi(state.search);
+
+    if (doi) {
+      if (['feeds', 'library', 'quicklooks', 'radar'].includes(name)) {
+        renderStream();
+      }
+    } else if (state.mode === 'weekly') {
+      if (name === 'readings') {
+        renderDailyDeepRead();
+        renderWeeklyAuto();
+        const readId = urlParams.get('read');
+        if (readId && !activeDeepReadingId) openDeepReading(readId, { push: false });
+      } else if (name === 'library') {
+        renderNextCandidates();
+      } else if (['quicklooks', 'pregenerated', 'board'].includes(name)) {
+        renderWeeklyAuto();
+      }
+    } else if (state.mode === 'sources') {
+      if (name === 'health') renderSourcesHealth();
+    } else if (state.mode === 'candidates') {
+      if (['feeds', 'radar', 'quicklooks'].includes(name)) {
+        renderSidebarFilters();
+        renderStream();
+      }
+    } else if (state.mode === 'library') {
+      if (['library', 'quicklooks'].includes(name)) {
+        renderSidebarFilters();
+        renderStream();
+      }
+    } else if (state.mode === 'curated') {
+      const relevant = (state.search && state.search.trim())
+        ? ['feeds', 'library', 'quicklooks', 'radar'].includes(name)
+        : ['quicklooks', 'library'].includes(name);
+      if (relevant) {
+        renderSidebarFilters();
+        renderStream();
+      }
+    }
+
+    if (state.activeDrawerPaper && $('#readerDrawer.open')) {
+      const livePaper = allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper;
+      if (['quicklooks', 'pregenerated'].includes(name) || livePaper !== state.activeDrawerPaper) {
+        openReaderDrawer(livePaper);
+      }
+    }
+    if ($('#huddleModalBackdrop.open')) {
+      openHuddleModal();
+    }
+    restoreFtFormSnapshots(snapshots);
+  }
+
+  function mergePart(name, payload) {
+    if (!DEFERRED) return;
+    const idx = partQueue.indexOf(name);
+    if (idx >= 0) partQueue.splice(idx, 1);
+    if (name === 'feeds') {
+      mergeFeedsPart(payload);
+    } else if (name === 'radar') {
+      if (PART_STATE.feeds === 'loaded' || !('feeds' in PART_STATE)) expandRadar(payload, registerPaper);
+      else pendingRadar = payload;
+    } else if (name === 'library') {
+      mergeLibraryPart(payload);
+    } else if (name === 'quicklooks') {
+      const items = payload && typeof payload.items === 'object' ? payload.items : (payload || {});
+      Object.assign(window.QUICKLOOKS || (window.QUICKLOOKS = {}), items);
+      clearAllDerivedCache();
+    } else if (name === 'pregenerated') {
+      const items = payload && typeof payload.items === 'object' ? payload.items : (payload || {});
+      Object.assign(window.PREGENERATED || (window.PREGENERATED = {}), items);
+      clearAllDerivedCache();
+    } else if (name === 'health') {
+      if (Array.isArray(payload && payload.sources)) {
+        HEALTH.sources.length = 0;
+        payload.sources.forEach(s => HEALTH.sources.push(s));
+      }
+      if (payload && 'pubmedFetch' in payload) HEALTH.pubmedFetch = payload.pubmedFetch;
+      delete HEALTH.deferred;
+    } else if (name === 'readings') {
+      window.DEEP_READINGS = payload;
+    } else if (name === 'board') {
+      window.WEEKLY_BOARD = payload;
+    }
+    PART_STATE[name] = 'loaded';
+    syncDataState();
+    afterPartMerged(name);
+  }
+
+  function onPartError(name) {
+    const doi = exactDoi(state.search);
+    if (doi && ['feeds', 'library', 'quicklooks', 'radar'].includes(name)) {
+      renderStream();
+    } else if (state.mode === 'sources' && name === 'health') {
+      renderSourcesHealth();
+    } else if (state.mode === 'weekly' && name === 'readings') {
+      renderDailyDeepRead();
+    } else if (neededParts().includes(name)) {
+      renderStream();
+    }
+    if ($('#huddleModalBackdrop.open')) {
+      openHuddleModal();
+    }
+  }
+
+  function prioritizeParts() {
+    if (!DEFERRED || !partQueue.length) return;
+    const needed = new Set(neededParts());
+    partQueue.sort((a, b) => {
+      const an = needed.has(a) ? 0 : 1;
+      const bn = needed.has(b) ? 0 : 1;
+      if (an !== bn) return an - bn;
+      return PART_ORDER.indexOf(a) - PART_ORDER.indexOf(b);
+    });
+  }
+
+  function loadPart(name) {
+    if (!DEFERRED || !window.XINZHI_PARTS.parts[name]) return;
+    if (PART_STATE[name] === 'loading' || PART_STATE[name] === 'loaded') return;
+    const info = window.XINZHI_PARTS.parts[name];
+    if (!info || !info.src) {
+      PART_STATE[name] = 'error';
+      syncDataState();
+      onPartError(name);
+      return;
+    }
+    PART_STATE[name] = 'loading';
+    syncDataState();
+    inFlight++;
+    const script = document.createElement('script');
+    script.src = info.src;
+    script.async = true;
+    let settled = false;
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      inFlight = Math.max(0, inFlight - 1);
+      if (!ok && PART_STATE[name] === 'loading') {
+        PART_STATE[name] = 'error';
+        syncDataState();
+        script.remove();
+        onPartError(name);
+      }
+      pumpPartQueue();
+    };
+    script.onload = () => {
+      if (PART_STATE[name] !== 'loaded') finish(false);
+      else finish(true);
+    };
+    script.onerror = () => finish(false);
+    document.head.appendChild(script);
+  }
+
+  function pumpPartQueue() {
+    if (!DEFERRED) return;
+    while (inFlight < MAX_IN_FLIGHT && partQueue.length) {
+      const next = partQueue.shift();
+      if (PART_STATE[next] === 'idle') loadPart(next);
+    }
+  }
+
+  function retryParts(names) {
+    if (!DEFERRED) return;
+    const list = (names && names.length ? names : PART_ORDER).filter(n => PART_STATE[n] === 'error');
+    const targets = list.length ? list : PART_ORDER.filter(n => PART_STATE[n] === 'error');
+    if (!targets.length) return;
+    targets.forEach(n => {
+      PART_STATE[n] = 'idle';
+      if (!partQueue.includes(n)) partQueue.push(n);
+    });
+    syncDataState();
+    prioritizeParts();
+    pumpPartQueue();
+  }
+
+  function startDeferredParts() {
+    if (!DEFERRED) return;
+    PART_ORDER.forEach(n => {
+      if (PART_STATE[n] === 'idle' && !partQueue.includes(n)) partQueue.push(n);
+    });
+    prioritizeParts();
+    pumpPartQueue();
+  }
+
+  if (DEFERRED) {
+    window.XINZHI_PART = function (name, payload) {
+      mergePart(name, payload);
+    };
+  }
   // ==== src/app/01-state-helpers.js · Storage, URL state, DOM/format helpers, share text, theme ====
   // Safe storage (private mode / blocked storage must not break the page)
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -1732,14 +2067,36 @@
     return FEEDS.items.filter(p => !p.minor && datePrecision(p) === 'day' && p.date.slice(0, 10) >= s0 && p.date.slice(0, 10) <= t0).length;
   }
   function updateHeaderBadges() {
-    const cb = $('#candCountBadge'); if (cb) cb.textContent = radarDefaultCount();
-    const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
-    const lb = $('#libCountBadge'); if (lb) {
-      lb.textContent = LIBRARY.papers.length;
-      lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
-      lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+    const cb = $('#candCountBadge');
+    if (cb) {
+      if (DEFERRED && !partsReady('feeds', 'radar')) {
+        cb.textContent = '…';
+        cb.title = '加载中';
+        cb.setAttribute('aria-label', '加载中');
+      } else {
+        cb.textContent = radarDefaultCount();
+        cb.removeAttribute('title');
+        cb.removeAttribute('aria-label');
+      }
     }
-
+    const cub = $('#curatedCountBadge');
+    if (cub) {
+      cub.textContent = getCuratedList().length;
+      cub.removeAttribute('title');
+      cub.removeAttribute('aria-label');
+    }
+    const lb = $('#libCountBadge');
+    if (lb) {
+      if (DEFERRED && !partsReady('library')) {
+        lb.textContent = '…';
+        lb.title = '加载中';
+        lb.setAttribute('aria-label', '加载中');
+      } else {
+        lb.textContent = LIBRARY.papers.length;
+        lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
+        lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+      }
+    }
   }
 
   function contentDate(value) {
@@ -2052,6 +2409,13 @@
 
   // Render Sidebar Filters with dynamic counts
   function renderSidebarFilters() {
+    if (DEFERRED && !partsReady(...neededParts())) {
+      ['#tierFilterList', '#publisherAccordion', '#designFilterList', '#tagsCloud'].forEach(sel => {
+        const el = $(sel);
+        if (el) el.innerHTML = '';
+      });
+      return;
+    }
     const all = getCurrentDataset();
     const base = all.filter(p => matchesFilters(p, false, 'sidebar'));
     // One pass: a paper belongs to a group's facet when it fails no other group.
@@ -2395,6 +2759,19 @@
     return '';
   }
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
+    if (DEFERRED && !partsReady('feeds', 'library', 'quicklooks', 'radar')) {
+      ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#ftBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+      const filters = $('#activeFiltersBar');
+      if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · 加载中</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
+      const failed = ['feeds', 'library', 'quicklooks', 'radar'].filter(n => PART_STATE[n] === 'error');
+      streamEl.className = state.viewMode === 'compact' ? 'articles-compact-list' : 'articles-stream';
+      streamEl.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed.length ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '')
+        + '</p>';
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      if (!DOI_LOOKUPS.get(doi)) lookupSupplementalDoi(doi);
+      return;
+    }
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
     ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
@@ -2422,6 +2799,7 @@
     if (!lookup) lookupSupplementalDoi(doi);
   }
   function renderStream() {
+    if (DEFERRED) prioritizeParts();
     if (DOI_JOB_WATCH.doi && exactDoi(state.search) !== DOI_JOB_WATCH.doi) watchDoiJob(DOI_JOB_WATCH.doi);
     const streamEl = $('#articlesStream');
     const loadMoreBtn = $('#loadMoreBtn');
@@ -2433,6 +2811,25 @@
     if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
     if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
     if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
+
+    const req = neededParts();
+    if (DEFERRED && !partsReady(...req)) {
+      ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#ftBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+      const filters = $('#activeFiltersBar');
+      if (filters) filters.innerHTML = '';
+      const total = $('#listTotal');
+      if (total) total.textContent = '加载中';
+      const apply = $('#panelApplyBtn');
+      if (apply) { apply.textContent = '加载中'; apply.dataset.empty = ''; }
+      const failed = req.filter(n => PART_STATE[n] === 'error');
+      streamEl.className = state.viewMode === 'compact' ? 'articles-compact-list' : 'articles-stream';
+      streamEl.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed.length ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '')
+        + '</p>';
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      syncUrl();
+      return;
+    }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
@@ -2973,7 +3370,11 @@
     const missing = state.huddle.filter(id => !huddlePaper(id));
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
-    state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
+    if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
+      state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
+    } else {
+      state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id));
+    }
     const selected = selectedComparePapers();
     ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn'].forEach(id => {
       const button = $('#' + id);
@@ -2982,11 +3383,18 @@
       if (button.disabled) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
       else button.removeAttribute('aria-describedby');
     });
+    const pendingParts = DEFERRED && ['feeds', 'library', 'radar'].some(n => PART_STATE[n] === 'idle' || PART_STATE[n] === 'loading');
+    const erroredParts = DEFERRED && !pendingParts && ['feeds', 'library', 'radar'].some(n => PART_STATE[n] === 'error');
+    const missingMsg = pendingParts ? '加载中… '
+      : RADAR_LOAD.state === 'loading' ? '正在载入题录存档…'
+      : erroredParts ? '部分题录加载失败。'
+      : '这条可能已超出站内收录范围。';
+    const missingRetry = erroredParts ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '';
     const missingHtml = missing.map(id => `
         <div class="huddle-item huddle-item-missing">
           <div class="huddle-item-content">
             <h4>文献信息暂未载入</h4>
-            <p class="huddle-original-title">${RADAR_LOAD.state === 'loading' ? '正在载入题录存档…' : '这条可能已超出站内收录范围。'}编号 ${esc(id)}</p>
+            <p class="huddle-original-title">${missingMsg}编号 ${esc(id)}${missingRetry}</p>
           </div>
           <button class="btn-sm" data-action="remove-huddle" data-paper-id="${esc(id)}">移出</button>
         </div>`).join('');
@@ -3300,6 +3708,15 @@
   }
   function renderDailyDeepRead() {
     const el = $('#dailyDeepRead'); if (!el) return;
+    if (DEFERRED && !partsReady('readings')) {
+      prioritizeParts();
+      const failed = PART_STATE.readings === 'error';
+      el.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed ? ' <button type="button" class="btn-sm" data-action="retry-part" data-part="readings">重试</button>' : '')
+        + '</p>';
+      const count = $('#weeklyPaneReadingCount'); if (count) count.textContent = '';
+      return;
+    }
     const data = window.DEEP_READINGS || {}, status = data.status || {}, groups = dailyReadingGroups(data);
     const historyOpen = !!el.querySelector('.deep-reading-history[open]');
     const reason = {
@@ -4526,6 +4943,7 @@
       // A new entry per tab, so the phone Back button returns to the previous tab.
       try { history.pushState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
       switchMode(btn.dataset.mode);
+      if (DEFERRED) prioritizeParts();
     });
   });
 
@@ -4666,6 +5084,7 @@
     if (weeklyPane) {
       state.weeklyPane = weeklyPane.dataset.weeklyPane;
       renderWeeklyPane();
+      if (DEFERRED) prioritizeParts();
       syncUrl();
       const section = $('#weeklySection');
       if (section && section.getBoundingClientRect().top < 0) window.scrollTo({ top: section.getBoundingClientRect().top + window.scrollY - 70, behavior: 'instant' });
@@ -4853,6 +5272,16 @@
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
     if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
     if (e.target.closest('[data-action="retry-radar-archive"]')) { RADAR_LOAD.state = 'idle'; renderStream(); return; }
+    const retryPartBtn = e.target.closest('[data-action="retry-part"]');
+    if (retryPartBtn) {
+      const part = retryPartBtn.dataset.part;
+      retryParts(part ? [part] : neededParts());
+      if (state.mode === 'sources' && !exactDoi(state.search)) renderSourcesHealth();
+      else if (state.mode === 'weekly' && !exactDoi(state.search)) renderDailyDeepRead();
+      else renderStream();
+      if ($('#huddleModalBackdrop.open')) openHuddleModal();
+      return;
+    }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
     if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
     const browseBtn = e.target.closest('[data-browse-only]');
@@ -5081,6 +5510,7 @@
     $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
     syncSearchPanel();
     switchMode(next.mode, true);
+    if (DEFERRED) prioritizeParts();
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
@@ -5185,6 +5615,7 @@
     const list = getFilteredArticles();
     if (list.length > 0) openReaderDrawer(list[0]);
   }
+  if (DEFERRED) startDeferredParts();
 
 })();
 

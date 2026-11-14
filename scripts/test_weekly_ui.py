@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline weekly-board QA. Expanded picks and AI output are test fixtures only."""
+from public_bundle import bundle_text
 import functools
 import os
 import json
@@ -23,7 +24,7 @@ def main():
     out = ROOT / '.local/weekly-v14-qa'
     out.mkdir(parents=True, exist_ok=True)
     source = (ROOT / 'app.js').read_text()
-    bundle = (ROOT / 'public/public.js').read_text()
+    bundle = bundle_text(ROOT / "public")
     assert bundle.count(source) == 1
     controls = {'count': 24, 'ready': True}
     calls, checks = [], []
@@ -66,7 +67,7 @@ def main():
 
     def mock(route):
         path = route.request.url
-        if path.endswith('/public.js'):
+        if ('/assets/app.' in path and path.endswith('.js')):
             data = fixture.replace('COUNT', str(controls['count'])).replace('READY', str(controls['ready']).lower())
             return route.fulfill(content_type='application/javascript', body=bundle.replace(source, data + source))
         if '/api/' in path:

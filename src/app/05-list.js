@@ -100,6 +100,19 @@
     return '';
   }
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
+    if (DEFERRED && !partsReady('feeds', 'library', 'quicklooks', 'radar')) {
+      ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#ftBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+      const filters = $('#activeFiltersBar');
+      if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · 加载中</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
+      const failed = ['feeds', 'library', 'quicklooks', 'radar'].filter(n => PART_STATE[n] === 'error');
+      streamEl.className = state.viewMode === 'compact' ? 'articles-compact-list' : 'articles-stream';
+      streamEl.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed.length ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '')
+        + '</p>';
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      if (!DOI_LOOKUPS.get(doi)) lookupSupplementalDoi(doi);
+      return;
+    }
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
     ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
@@ -127,6 +140,7 @@
     if (!lookup) lookupSupplementalDoi(doi);
   }
   function renderStream() {
+    if (DEFERRED) prioritizeParts();
     if (DOI_JOB_WATCH.doi && exactDoi(state.search) !== DOI_JOB_WATCH.doi) watchDoiJob(DOI_JOB_WATCH.doi);
     const streamEl = $('#articlesStream');
     const loadMoreBtn = $('#loadMoreBtn');
@@ -138,6 +152,25 @@
     if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
     if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
     if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
+
+    const req = neededParts();
+    if (DEFERRED && !partsReady(...req)) {
+      ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#ftBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+      const filters = $('#activeFiltersBar');
+      if (filters) filters.innerHTML = '';
+      const total = $('#listTotal');
+      if (total) total.textContent = '加载中';
+      const apply = $('#panelApplyBtn');
+      if (apply) { apply.textContent = '加载中'; apply.dataset.empty = ''; }
+      const failed = req.filter(n => PART_STATE[n] === 'error');
+      streamEl.className = state.viewMode === 'compact' ? 'articles-compact-list' : 'articles-stream';
+      streamEl.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed.length ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '')
+        + '</p>';
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      syncUrl();
+      return;
+    }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);

@@ -37,7 +37,7 @@ class TestPublicPackaging(unittest.TestCase):
   self.assertEqual(set(public_payloads(self.root)),PUBLIC)
  def test_private_file_symlink_is_rejected(self):
   private=self.root/'private-secret';private.write_text('synthetic')
-  file=self.root/'public/public.js';file.unlink();file.symlink_to(private)
+  file=self.root/'public/index.html';file.unlink();file.symlink_to(private)
   with self.assertRaises(ValueError):public_payloads(self.root)
  def test_public_directory_symlink_is_rejected(self):
   public=self.root/'public';public.rename(self.root/'elsewhere');public.symlink_to(self.root/'elsewhere')
@@ -46,7 +46,7 @@ class TestPublicPackaging(unittest.TestCase):
   (self.root/'public/unexpected.pdf').write_bytes(b'%PDF-synthetic')
   with self.assertRaises(ValueError):public_payloads(self.root)
  def test_directory_with_allowed_filename_is_rejected(self):
-  file=self.root/'public/public.js';file.unlink();file.mkdir()
+  file=self.root/'public/index.html';file.unlink();file.mkdir()
   with self.assertRaises(ValueError):public_payloads(self.root)
  def test_missing_manifest_is_rejected(self):
   self.manifest.unlink()
@@ -146,7 +146,7 @@ class TestPublicPackaging(unittest.TestCase):
   snapshot={}
   def change_after_preflight(root):
    snapshot.update(real_payloads(root))
-   (root/'public/public.js').write_bytes(b'changed after preflight')
+   (root/'public/index.html').write_bytes(b'changed after preflight')
    return dict(snapshot)
   with patch.object(packaging,'ROOT',self.root),patch.object(packaging,'OUT',self.root),patch.object(packaging,'public_payloads',change_after_preflight),contextlib.redirect_stdout(io.StringIO()):
    packaging.main()

@@ -80,12 +80,19 @@ for f in scripts/test_*.cjs; do
   run "$name" node "$f"
 done
 
+echo "== First-screen budget"
+if [ -f public/index.html ] && [ -d public/assets ]; then
+  run "first-screen-budget" python3 scripts/check_first_screen_budget.py public
+else
+  skip "first-screen-budget" "public/ not built (python3 scripts/build_public.py)"
+fi
+
 if [ "$BROWSER" = 1 ]; then
   run "feature-map-walk" node scripts/feature_map_walk.cjs --viewport all
   echo "== Reading shard loading"
   run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
   echo "== Browser tests (Python + Playwright)"
-  if [ ! -f public/public.js ]; then
+  if [ ! -f public/index.html ] || [ ! -d public/assets ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"
   else
     # Standalone scripts, not unittest modules.

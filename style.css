@@ -2613,3 +2613,7 @@ html[data-style="a"] .qf-split.is-on .qf-chip {
 
 /* 摘要明显不完整时的提示（只在判定为只有结论段时出现） */
 .abs-incomplete-note { margin: 6px 0 0; font-size: 11.5px; color: var(--text-muted); }
+
+/* Deferred data loading status */
+.data-loading-note { padding: 24px 0; color: var(--text-muted); font-size: 14px; }
+.data-loading-note .btn-sm { margin-left: 8px; }

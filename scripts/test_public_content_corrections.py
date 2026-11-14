@@ -1,4 +1,5 @@
 """Public-source terminology, semantic boundaries and cache isolation regressions."""
+from public_bundle import bundle_text, radar_text
 import copy
 import contextlib
 import hashlib
@@ -221,8 +222,8 @@ class SourceBoundCorrections(unittest.TestCase):
             untouched = {name:(root / name).read_bytes() for name in ('data/translations.json','data/quicklooks.json')}
             with patch.object(build, 'ROOT', root), patch.object(build, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 build.main()
-            text = (root / 'public/public.js').read_text()
-            archive_text = (root / 'public/radar.js').read_text()
+            text = bundle_text(root / "public")
+            archive_text = radar_text(root / "public")
             def payload(name, source=None):
                 source = text if source is None else source
                 m = re.search(r'window\.' + name + r'=', source)

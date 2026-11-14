@@ -35,7 +35,7 @@ def main():
     args = parser.parse_args()
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
-    if not (ROOT / 'public/public.js').is_file():
+    if not (ROOT / 'public/index.html').is_file():
         parser.error('Build public first: python3 scripts/build_public.py')
     server = ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(ROOT / 'public')))
     threading.Thread(target=server.serve_forever, daemon=True).start()

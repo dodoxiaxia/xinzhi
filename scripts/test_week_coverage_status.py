@@ -74,7 +74,7 @@ class PipelineCoverageTests(PipelineFixture):
     def install(self, mutate=None):
         b,m,c=fixture()
         if mutate:mutate(b,m,c)
-        (self.root/"public/public.js").write_text(bundle(b,m))
+        (self.root/"public/assets/app.0123456789ab.js").write_text(bundle(b,m))
         (self.root/"docs/public-manifest.json").write_text(json.dumps({"counts":c}))
     def test_optional_model_failure_publishes_valid_partial_with_pending_artifact(self):
         self.install()

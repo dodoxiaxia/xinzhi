@@ -35,6 +35,15 @@
   }
   function renderDailyDeepRead() {
     const el = $('#dailyDeepRead'); if (!el) return;
+    if (DEFERRED && !partsReady('readings')) {
+      prioritizeParts();
+      const failed = PART_STATE.readings === 'error';
+      el.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed ? ' <button type="button" class="btn-sm" data-action="retry-part" data-part="readings">重试</button>' : '')
+        + '</p>';
+      const count = $('#weeklyPaneReadingCount'); if (count) count.textContent = '';
+      return;
+    }
     const data = window.DEEP_READINGS || {}, status = data.status || {}, groups = dailyReadingGroups(data);
     const historyOpen = !!el.querySelector('.deep-reading-history[open]');
     const reason = {

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 """Reproducible, allowlisted public build. No credentials, PDFs or private paths."""
-import datetime, hashlib, json, os, re, shutil, sys
+import gzip, datetime, hashlib, json, os, re, shutil, sys
 from pathlib import Path
+from public_split import build_assets, check_first_screen_budget
 from apply_public_library import require_snapshot
-from release_integrity import (PUBLIC, input_hashes, is_reading_shard, ordinary_file,
+from release_integrity import (PUBLIC, input_hashes, is_reading_shard, is_published_file, ordinary_file,
                                provenance, published_files, replace_unchanged_input)
 from daily_fulltext import public_readings
 from editorial_review import article_key, publication_date
@@ -24,7 +25,7 @@ from scope_uncertain_export import (build_scope_uncertain_list, load_topic_hide_
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / 'public'
 # Outputs of earlier releases that a restored public/ may still hold; removed before building.
-OBSOLETE_PUBLIC = {'icon.svg', 'scope-uncertain.json'}
+OBSOLETE_PUBLIC = {'icon.svg', 'scope-uncertain.json', 'public.js', 'radar.js', 'style.css'}
 # Cloudflare Pages rejects a single asset at 25 MiB. Warn at 70% and stop the build at 90%.
 ASSET_LIMIT_BYTES = 25 * 1024 * 1024
 ASSET_WARN_RATIO = 0.70
@@ -509,7 +510,7 @@ def main():
     legacy_guides()  # Required publication registry, even when article lists are empty.
     checked_records(str(ROOT))  # Missing official-status evidence blocks a complete release.
     DEST.mkdir(exist_ok=True)
-    extra=[rel for rel in published_files(DEST) if rel not in PUBLIC and rel not in OBSOLETE_PUBLIC and not is_reading_shard(rel)]
+    extra=[rel for rel in published_files(DEST) if not is_published_file(rel) and rel not in OBSOLETE_PUBLIC]
     if extra:raise ValueError('Unexpected public files: '+','.join(extra))
     c=load('data/candidates.json');l=load('data/library.json');h=load('data/source-health.json')
     require_snapshot(l, ROOT)
@@ -608,16 +609,52 @@ def main():
             if key in ql:
                 try:validate_week_task('quicklook',ql[key],row)
                 except ValueError:ql.pop(key)  # Preserve original cache; hide stale evidence from this board.
-    public_index=re.sub(r'<script src="data/library\.js"></script>.*?<script src="app\.js"></script>','<script src="public.js"></script>',(ROOT/'index.html').read_text(),flags=re.DOTALL)
-    if 'data/library.js' in public_index or 'public.js' not in public_index:raise ValueError('Script bundling failed')
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
     readings,reading_shards=split_deep_readings(public_readings(load('data/deep-readings.json') if (ROOT/'data/deep-readings.json').exists() else None))
     radar_recent,radar_archive=split_radar(radar)
     radar_js=js('RADAR_ARCHIVE',radar_archive if radar else {'rows':[]})+'\n;window.XINZHI_RADAR_READY&&window.XINZHI_RADAR_READY();\n'
-    bundle='\n;\n'.join([js('LIBRARY',library),js('FEEDS',candidates),js('SOURCE_HEALTH',health),js('CURATED',archive),js('QUICKLOOKS',ql),js('CONTENT_STATUS',status),js('JOURNAL_METRICS',metrics),js('DEEP_READINGS',readings)]+([js('WEEKLY_BOARD',weekly)] if weekly else [])+([js('PREGENERATED',prepared)] if prepared else [])+([js('RADAR',radar_recent),js('RADAR_SRC','radar.js')] if radar else [])+[(ROOT/'journal-metrics.js').read_text(),(ROOT/'citation-export.js').read_text(),(ROOT/'journal-tiers.js').read_text(),(ROOT/'app.js').read_text()])
-    headers="/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\n/icon.png\n  Cache-Control: public, max-age=86400\n/public.js\n  Content-Type: application/javascript; charset=utf-8\n/radar.js\n  Content-Type: application/javascript; charset=utf-8\n/feed.xml\n  Content-Type: application/xml; charset=utf-8\n/shards/*\n  Cache-Control: public, max-age=31536000, immutable\n  Content-Type: application/javascript; charset=utf-8\n"
+    data=dict(LIBRARY=library,FEEDS=candidates,SOURCE_HEALTH=health,CURATED=archive,QUICKLOOKS=ql,CONTENT_STATUS=status,JOURNAL_METRICS=metrics,DEEP_READINGS=readings,WEEKLY_BOARD=weekly,PREGENERATED=prepared,RADAR=radar_recent)
+    assets,app_path,style_path=build_assets(data,radar_js,[(ROOT/name).read_text() for name in ('journal-metrics.js','citation-export.js','journal-tiers.js','app.js')],(ROOT/'style.css').read_text())
+    # Reuse time only when all hashed assets match, even after restoring docs.
+    from public_bundle import app_file, _global
+    try:
+        old_app=app_file(DEST)
+        old_text=(DEST/old_app).read_text()
+        old_time=_global(old_text,'CONTENT_STATUS')['builtAt']
+        age=datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(old_time.replace('Z','+00:00'))
+        if datetime.timedelta(0) <= age < datetime.timedelta(hours=6):
+            old_status={**status,'builtAt':old_time}
+            trial_data={**data,'CONTENT_STATUS':old_status}
+            trial,trial_app,trial_style=build_assets(trial_data,radar_js,[(ROOT/name).read_text() for name in ('journal-metrics.js','citation-export.js','journal-tiers.js','app.js')],(ROOT/'style.css').read_text())
+            if trial_app==old_app and all((DEST/name).is_file() and (DEST/name).read_text()==content for name,content in trial.items()):
+                built_at,status,assets,app_path,style_path=old_time,old_status,trial,trial_app,trial_style
+    except (OSError, ValueError, KeyError, IndexError):
+        pass
+    public_index=re.sub(r'<script src="data/library\.js"></script>.*?<script src="app\.js"></script>','<script src="'+app_path+'"></script>',(ROOT/'index.html').read_text(),flags=re.DOTALL)
+    public_index=public_index.replace('href="style.css"','href="'+style_path+'"')
+    if 'data/library.js' in public_index or app_path not in public_index:raise ValueError('Script bundling failed')
+    headers="""/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.ebi.ac.uk; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+/icon.png
+  Cache-Control: public, max-age=86400
+/feed.xml
+  Content-Type: application/xml; charset=utf-8
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/*.js
+  Content-Type: application/javascript; charset=utf-8
+/assets/*.css
+  Content-Type: text/css; charset=utf-8
+/shards/*
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/javascript; charset=utf-8
+"""
+    for route in ('/', '/index.html', '/demo-reading.html'):
+        headers+=route+'\n  Cache-Control: public, max-age=0, must-revalidate\n'
     worker=(ROOT/'edge/_worker.js').read_text()
     from github_oidc_keys import build_keys
     key_placeholder='const FULLTEXT_OIDC_BUILD_KEYS = {};'
@@ -642,7 +679,8 @@ def main():
     keep_dois=load_scope_keep_dois(ROOT/'config/public_library_scope_keeps.json')
     scope_uncertain=build_scope_uncertain_list(library['papers']+candidates['items'],pdf_ids=pdf_ids,hidden_ids=hidden_ids,hidden_dois=hidden_dois,keep_dois=keep_dois,generated_at=built_at)
     worker=worker.replace(scope_uncertain_placeholder,'const SCOPE_UNCERTAIN_LIST = '+json.dumps(worker_scope_uncertain_payload(scope_uncertain),ensure_ascii=False,separators=(',',':'))+';')
-    files={'index.html':public_index,'public.js':bundle,'radar.js':radar_js,'feed.xml':make_feed(candidates['items'],ql,built_at),'style.css':(ROOT/'style.css').read_text(),'demo-reading.html':(ROOT/'demo-reading.html').read_text(),'_headers':headers,'_worker.js':worker}
+    files={'index.html':public_index,'feed.xml':make_feed(candidates['items'],ql,built_at),'demo-reading.html':(ROOT/'demo-reading.html').read_text(),'_headers':headers,'_worker.js':worker}
+    files.update(assets)
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
     for name,content in reading_shards.items():
@@ -651,9 +689,26 @@ def main():
     icon=(ROOT/'icon.png').read_bytes()
     if not icon.startswith(b'\x89PNG\r\n\x1a\n') or len(icon)>65536:raise ValueError('icon.png must be a small PNG')
     payloads['icon.png']=icon
+    try:
+        import brotli
+    except ImportError:
+        brotli=None
+    for name in ('index.html',app_path,style_path,'icon.png'):
+        raw=payloads[name]
+        print('asset sizes',name,'raw',len(raw),'gzip(9)',len(gzip.compress(raw,compresslevel=9,mtime=0)),'brotli(11)',len(brotli.compress(raw,quality=11)) if brotli else 'unavailable')
     thresholds=asset_thresholds()
     size_warnings=asset_size_findings(payloads,thresholds)
     for line in size_warnings:print(line,file=sys.stderr)
+    budget_report=check_first_screen_budget(payloads)
+    if not budget_report['brotliAvailable']:
+        print('first-screen budget: brotli module missing; skipped brotli(11) and checked gzip(9) only')
+    print('first-screen budget',
+          'data raw',budget_report['data']['raw'],
+          'gzip(9)',budget_report['data']['gzip'],'/',budget_report['budgets']['dataGz'],
+          'brotli(11)',budget_report['data']['br'] if budget_report['brotliAvailable'] else 'skipped','/',budget_report['budgets']['dataBr'],
+          'total raw',budget_report['total']['raw'],
+          'gzip(9)',budget_report['total']['gzip'],'/',budget_report['budgets']['totalGz'],
+          'brotli(11)',budget_report['total']['br'] if budget_report['brotliAvailable'] else 'skipped','/',budget_report['budgets']['totalBr'])
     if input_hashes(ROOT) != inputs_before:raise ValueError('Build inputs changed during construction; rebuild public')
     for name in OBSOLETE_PUBLIC:
         old=ordinary_file(ROOT,'public/'+name)
@@ -663,6 +718,8 @@ def main():
         path.parent.mkdir(parents=True,exist_ok=True)
         path.write_bytes(value)
     remove_stale_shards(DEST,payloads)
+    for path in (DEST/'assets').iterdir():
+        if path.relative_to(DEST).as_posix() not in payloads:path.unlink()
     # Local generated assets use the same sanitized archive/quicklooks as the public build.
     archive_text=json.dumps({'papers':archive},ensure_ascii=False,indent=2)
     replace_unchanged_input(ROOT,'data/curated-archive.json',archive_text.encode('utf-8'),inputs_before['data/curated-archive.json'])

@@ -4,6 +4,7 @@
 Heuristic flags are review candidates, not established bibliographic errors.
 No DOI resolution, model, private index or PDF access is performed here.
 """
+from public_bundle import bundle_text
 import argparse
 import hashlib
 import json
@@ -86,7 +87,7 @@ def scan(datasets):
 
 
 def read_public_bundle(path):
-    raw = path.read_bytes()
+    raw = bundle_text(path).encode('utf-8') if path.is_dir() else path.read_bytes()
     if len(raw) > 64 * 1024 * 1024:
         raise ValueError('public_bundle_too_large')
     text, datasets = raw.decode('utf-8'), {}
@@ -98,7 +99,7 @@ def read_public_bundle(path):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--bundle', type=Path, default=ROOT / 'public/public.js')
+    parser.add_argument('--bundle', type=Path, default=ROOT / 'public')
     args = parser.parse_args(argv)
     try:
         datasets, digest = read_public_bundle(args.bundle)

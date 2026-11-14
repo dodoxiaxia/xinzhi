@@ -1,4 +1,4 @@
-"""Offline build provenance and preflight for the six-file manual release."""
+"""Offline build provenance and preflight for the public release."""
 import ast
 import datetime
 import hashlib
@@ -9,8 +9,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-PUBLIC = {'index.html', 'style.css', 'public.js', 'radar.js', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
-# Month shards are content-addressed. The fixed nine files stay; only these extra names are publishable.
+PUBLIC = {'index.html', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
+# Month shards and assets are content-addressed; only matching names are publishable.
 READING_SHARD_RE = re.compile(r'^shards/readings-(?:\d{4}-\d{2}|undated)\.[0-9a-f]{12}\.js$')
 
 
@@ -18,8 +18,10 @@ def is_reading_shard(rel):
     return isinstance(rel, str) and READING_SHARD_RE.fullmatch(rel) is not None
 
 
+ASSET_RE = re.compile(r'^assets/(?:(?:app|radar|data-[a-z]+(?:-[0-9]+)?)\.[0-9a-f]{12}\.js|style\.[0-9a-f]{12}\.css)$')
+
 def is_published_file(rel):
-    return rel in PUBLIC or is_reading_shard(rel)
+    return rel in PUBLIC or is_reading_shard(rel) or ASSET_RE.fullmatch(rel) is not None
 
 
 def published_files(directory):
@@ -64,7 +66,7 @@ INPUTS = (
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.png', 'demo-reading.html', 'edge/_worker.js',
     'journal-metrics.js', 'journal-tiers.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
-    'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
+    'scripts/public_split.py', 'scripts/public_bundle.py', 'scripts/build_public.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/publication_status.py', 'config/publication-status.json',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
     'scripts/source_fallbacks.py', 'editorial/legacy_published_guides.json', 'data/pubmed.json',

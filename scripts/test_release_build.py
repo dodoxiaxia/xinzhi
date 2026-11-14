@@ -1,4 +1,5 @@
 """Exercise a complete offline build and manual-package preflight with synthetic data."""
+from public_bundle import bundle_text, app_file
 import contextlib
 import datetime
 import io
@@ -70,14 +71,14 @@ class ReleaseBuildTests(unittest.TestCase):
             synthetic_root(root)
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
-            self.assertEqual(set(public_payloads(root)), PUBLIC)
+            self.assertEqual(set(public_payloads(root)), {row['path'] for row in json.loads((root/'docs/public-manifest.json').read_text())['files']})
             self.assertFalse((root / 'public/scope-uncertain.json').exists())
             worker_text = (root / 'public/_worker.js').read_text(encoding='utf-8')
             self.assertNotIn('/* scope-uncertain-list */ null', worker_text)
             self.assertIn('const SCOPE_UNCERTAIN_LIST = {"generatedAt":', worker_text)
-            self.assertNotIn(b'scope-uncertain', (root / 'public/public.js').read_bytes())
-            self.assertIn(b'root.CITATION_EXPORT = api', (root / 'public/public.js').read_bytes())
-            public_js = (root / 'public/public.js').read_text()
+            self.assertNotIn(b'scope-uncertain', bundle_text(root / 'public').encode())
+            self.assertIn(b'root.CITATION_EXPORT = api', bundle_text(root / 'public').encode())
+            public_js = bundle_text(root / "public")
             self.assertIn('XINZHI_JOURNAL_TIERS', public_js)
             for short in ('顶刊', '心刊', '子刊', 'AI', '其他'):
                 self.assertIn("short: '" + short + "'", public_js)
@@ -86,7 +87,7 @@ class ReleaseBuildTests(unittest.TestCase):
             self.assertEqual(manifest['release'], builder.RELEASE)
             self.assertIsNotNone(manifest['buildProvenance']['inputs']['data/curated-archive.json'])
             # Provenance stays private in docs, outside the six-file public bundle.
-            self.assertNotIn(b'buildProvenance', (root / 'public/public.js').read_bytes())
+            self.assertNotIn(b'buildProvenance', bundle_text(root / 'public').encode())
             for name in ('app.js', 'citation-export.js', 'journal-tiers.js', 'data/candidates.json', 'editorial/source_checked_drafts.json',
                          'config/public_library_adjudications.json',
                          'config/public_library_topic_hides.json',
@@ -136,7 +137,7 @@ class ReleaseBuildTests(unittest.TestCase):
 
             def replace_during_local_write(path, text, *args, **kwargs):
                 if path == root / 'data/curated.js':
-                    original(root / 'public/public.js', '// concurrent replacement')
+                    original(root / 'public' / app_file(root/'public'), '// concurrent replacement')
                 return original(path, text, *args, **kwargs)
 
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), patch.object(Path, 'write_text', replace_during_local_write), contextlib.redirect_stdout(io.StringIO()):

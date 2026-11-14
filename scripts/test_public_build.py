@@ -1,7 +1,9 @@
+from public_bundle import bundle_text, app_file
 import contextlib,io,json,os,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 from test_guardrails import GuardrailMutationTests, GuardrailsOnThisCheckoutTests  # noqa: F401  # guardrails run through this file because workflows cannot be edited
+from test_first_screen_budget import FirstScreenBudgetTests  # noqa: F401  # budget tests run through this file because workflows cannot be edited
 import build_public as b
 import pdf_identity as pi
 from editorial_review import content_sha256
@@ -63,7 +65,7 @@ class PublicBuildTests(unittest.TestCase):
    from test_release_build import synthetic_root
    root=Path(d);synthetic_root(root);dest=root/'public';dest.mkdir();(dest/'icon.svg').write_text('<svg>old release</svg>')
    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),contextlib.redirect_stdout(io.StringIO()):b.main()
-   self.assertEqual({p.name for p in dest.iterdir()},b.PUBLIC)
+   self.assertEqual({p.name for p in dest.iterdir()},b.PUBLIC | {'assets'})
    self.assertTrue((dest/'icon.png').read_bytes().startswith(b'\x89PNG'))
    self.assertIn('/icon.png',(dest/'_headers').read_text())
  def test_snapshot_guard_holds_before_replacing_previous_public_build(self):
@@ -229,13 +231,13 @@ class PublicBuildTests(unittest.TestCase):
    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),patch.object(b,'public_readings',return_value=readings),contextlib.redirect_stdout(io.StringIO()):
     b.main()
    self.assertFalse(stale.exists())
-   text=(dest/'public.js').read_text()
+   text=bundle_text(dest)
    self.assertNotIn('只在分片',text)
    shard_files=list((dest/'shards').glob('readings-*.js'))
    self.assertEqual(len(shard_files),2)
    manifest=json.loads((root/'docs'/'public-manifest.json').read_text())
    paths={row['path']:row['bytes'] for row in manifest['files']}
-   self.assertEqual(paths['public.js'],(dest/'public.js').stat().st_size)
+   self.assertEqual(paths[app_file(dest)],(dest/app_file(dest)).stat().st_size)
    for shard in shard_files:
     rel='shards/'+shard.name
     self.assertEqual(paths[rel],shard.stat().st_size)
@@ -251,7 +253,7 @@ class PublicBuildTests(unittest.TestCase):
     if line and not line[0].isspace():current=line.strip();rules[current]={}
     elif current and ':' in line:
      name,value=line.split(':',1);self.assertNotIn(name.strip().lower(),rules[current],current+' repeats '+name.strip());rules[current][name.strip().lower()]=value.strip()
-   for path,mime in (('/public.js','application/javascript'),('/radar.js','application/javascript'),('/feed.xml','application/xml'),('/shards/*','application/javascript')):
+   for path,mime in (('/assets/*.js','application/javascript'),('/assets/*.css','text/css'),('/feed.xml','application/xml'),('/shards/*','application/javascript')):
     self.assertEqual(rules[path]['content-type'],mime+'; charset=utf-8',path)
    self.assertNotIn('/scope-uncertain.json',rules)
    self.assertFalse((dest/'scope-uncertain.json').exists())
@@ -372,12 +374,12 @@ class PublicBuildTests(unittest.TestCase):
    rows=[{'题名':'Synthetic clinical trial','DOI':'10.1234/synthetic','当前路径':'a.pdf','SHA256':'a'*64}]
    with patch.object(b,'ROOT',root),patch.object(b,'DEST',dest),contextlib.redirect_stdout(io.StringIO()):
     (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot([])));b.main()
-    bundle=(dest/'public.js').read_text();worker=(dest/'_worker.js').read_text()
+    bundle=bundle_text(dest);worker=(dest/'_worker.js').read_text()
     self.assertIn('"pdfIds":[]',bundle);self.assertIn('const PDF_LIBRARY = {};',worker)
     for f in dest.iterdir():
      if f.is_file():f.unlink()
     (root/'config/pdf_index_keys.json').write_text(json.dumps(pi.build_snapshot(rows)));b.main()
-    bundle=(dest/'public.js').read_text();worker=(dest/'_worker.js').read_text()
+    bundle=bundle_text(dest);worker=(dest/'_worker.js').read_text()
     ids=json.loads(bundle[bundle.index('"pdfIds":')+9:].split(']')[0]+']')
     self.assertEqual(len(ids),1);self.assertIn('"'+ids[0]+'":{"doi":"10.1234/synthetic"',worker)
 if __name__=='__main__':unittest.main()
