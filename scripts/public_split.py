@@ -259,7 +259,18 @@ def check_first_screen_budget(
         gzip_ratio = FIRST_SCREEN_GZIP_TO_BR_RATIO
     if data_budget_br <= 0 or total_budget_br <= 0 or gzip_ratio <= 0:
         raise ValueError('First-screen budgets and gzip ratio must be positive')
-    report = measure_first_screen(payloads, brotli_module=brotli_module)
+    br_mod = _resolve_brotli(brotli_module)
+    if br_mod is None:
+        raise ValueError(
+            'First-screen budget check requires Python brotli module for brotli(11) enforcement. '
+            'Fix: install brotli (e.g. `pip install brotli`).'
+        )
+    report = measure_first_screen(payloads, brotli_module=br_mod)
+    if not report['brotliAvailable'] or report['data']['br'] is None or report['total']['br'] is None:
+        raise ValueError(
+            'First-screen budget check requires Python brotli module for brotli(11) enforcement. '
+            'Fix: install brotli (e.g. `pip install brotli`).'
+        )
     data_budget_gz = int(round(data_budget_br * gzip_ratio))
     total_budget_gz = int(round(total_budget_br * gzip_ratio))
     report['budgets'] = {
@@ -269,23 +280,22 @@ def check_first_screen_budget(
         'totalGz': total_budget_gz,
         'gzipRatio': gzip_ratio,
     }
-    br_on = report['brotliAvailable']
     violations = []
     data = report['data']
-    if data['gzip'] > data_budget_gz or (br_on and data['br'] > data_budget_br):
-        br_msg = f", brotli(11)={data['br']}B (budget {data_budget_br}B)" if br_on else ', brotli(11)=skipped'
+    if data['gzip'] > data_budget_gz or data['br'] > data_budget_br:
         violations.append(
             f"First-screen tier-1 data budget exceeded in {report['appPath']}: "
-            f"measured raw={data['raw']}B, gzip(9)={data['gzip']}B (budget {data_budget_gz}B){br_msg}. "
+            f"measured raw={data['raw']}B, gzip(9)={data['gzip']}B (budget {data_budget_gz}B), "
+            f"brotli(11)={data['br']}B (budget {data_budget_br}B). "
             f"Fix: move data into a deferred part (assets/data-*.js in scripts/public_split.py)."
         )
     total = report['total']
-    if total['gzip'] > total_budget_gz or (br_on and total['br'] > total_budget_br):
+    if total['gzip'] > total_budget_gz or total['br'] > total_budget_br:
         names = ', '.join(row['path'] for row in report['criticalFiles'])
-        br_msg = f", brotli(11)={total['br']}B (budget {total_budget_br}B)" if br_on else ', brotli(11)=skipped'
         violations.append(
             f"First-screen total budget exceeded for [{names}]: "
-            f"measured raw={total['raw']}B, gzip(9)={total['gzip']}B (budget {total_budget_gz}B){br_msg}. "
+            f"measured raw={total['raw']}B, gzip(9)={total['gzip']}B (budget {total_budget_gz}B), "
+            f"brotli(11)={total['br']}B (budget {total_budget_br}B). "
             f"Fix: move data into a deferred part (assets/data-*.js in scripts/public_split.py) or trim synchronous critical assets."
         )
     if violations:

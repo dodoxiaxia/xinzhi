@@ -188,7 +188,7 @@ class FirstScreenBudgetTests(unittest.TestCase):
                 brotli_module=_FakeBrotli(ratio=0.1),
             )
 
-    def test_missing_brotli_degrades_to_gzip(self):
+    def test_missing_brotli_fails_closed_for_checker_while_measure_remains_valid(self):
         app_path = 'assets/app.0123456789ab.js'
         style_path = 'assets/style.0123456789ab.css'
         payloads = {
@@ -196,24 +196,29 @@ class FirstScreenBudgetTests(unittest.TestCase):
             style_path: 'body{color:black}',
             app_path: 'window.FEEDS={"items":[]};\n;\nconsole.log(1);',
         }
-        report = public_split.check_first_screen_budget(payloads, brotli_module=None)
+        report = public_split.measure_first_screen(payloads, brotli_module=None)
         self.assertFalse(report['brotliAvailable'])
         self.assertIsNone(report['data']['br'])
         self.assertIsNone(report['total']['br'])
-        with self.assertRaisesRegex(ValueError, 'brotli\\(11\\)=skipped'):
-            public_split.check_first_screen_budget(payloads, data_budget_br=1, total_budget_br=1, brotli_module=None)
+        self.assertGreater(report['data']['gzip'], 0)
+        self.assertGreater(report['total']['gzip'], 0)
 
-        # Verify build_public.main() degrades gracefully when `import brotli` raises ImportError.
+        with self.assertRaisesRegex(ValueError, 'brotli'):
+            public_split.check_first_screen_budget(payloads, brotli_module=None)
+        with patch.dict('sys.modules', {'brotli': None}):
+            with self.assertRaisesRegex(ValueError, 'brotli'):
+                public_split.check_first_screen_budget(payloads)
+
+        # Verify build_public.main() fails closed before writing public/ when `import brotli` fails.
         with tempfile.TemporaryDirectory() as d:
             from test_release_build import synthetic_root
             root = Path(d)
             synthetic_root(root)
             dest = root / 'public'
-            buf = io.StringIO()
-            with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', dest), patch.dict('sys.modules', {'brotli': None}), contextlib.redirect_stdout(buf):
-                builder.main()
-            self.assertIn('skipped brotli(11)', buf.getvalue())
-            self.assertTrue((dest / 'index.html').is_file())
+            with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', dest), patch.dict('sys.modules', {'brotli': None}), contextlib.redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError, 'brotli'):
+                    builder.main()
+            self.assertFalse((dest / 'index.html').exists())
 
     def test_tier1_has_no_bulk_and_round_trip_matches_original(self):
         original = _synthetic_full_data()
@@ -402,9 +407,9 @@ class FirstScreenBudgetTests(unittest.TestCase):
         payloads = {'index.html': f'<link rel="stylesheet" href="{style_path}"><script src="{app_path}"></script>'.encode('utf-8')}
         payloads.update({k: v.encode('utf-8') for k, v in files.items()})
         report = public_split.check_first_screen_budget(payloads)
+        self.assertTrue(report['brotliAvailable'])
         self.assertLessEqual(report['data']['gzip'], int(100_000 * 1.25))
-        if report['brotliAvailable']:
-            self.assertLessEqual(report['data']['br'], 100_000)
+        self.assertLessEqual(report['data']['br'], 100_000)
 
         with tempfile.TemporaryDirectory() as d:
             pub = Path(d)

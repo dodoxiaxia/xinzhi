@@ -55,6 +55,70 @@ class ControlledHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
 
+def reader_retry_diagnostics(page):
+    """Collect safe PART_STATE and #readerDrawer retry button diagnostics without secrets."""
+    return page.evaluate('''() => {
+        const drawer = document.getElementById('readerDrawer');
+        const body = document.getElementById('drawerBody');
+        const buttons = [...document.querySelectorAll('#readerDrawer [data-action="retry-part"]')].map(btn => {
+            const rect = btn.getBoundingClientRect();
+            const region = btn.closest('[data-drawer-region]')?.dataset.drawerRegion || '';
+            return {
+                dataPart: btn.getAttribute('data-part') || '',
+                region,
+                text: (btn.textContent || '').trim(),
+                visible: rect.width > 0 && rect.height > 0 && getComputedStyle(btn).visibility !== 'hidden',
+            };
+        });
+        return {
+            dataReady: window.XINZHI_DATA_READY,
+            partState: window.XINZHI_DATA_STATE ? { ...window.XINZHI_DATA_STATE } : null,
+            drawerOpen: Boolean(drawer && drawer.classList.contains('open')),
+            paperId: body?.dataset.paperId || '',
+            retryButtons: buttons,
+        };
+    }''')
+
+
+def wait_for_parts_settled(page, parts, label, timeout=10000):
+    """Wait for the specified deferred part names to settle and verify they loaded."""
+    try:
+        page.wait_for_function(
+            '''(targetParts) => {
+                const st = window.XINZHI_DATA_STATE || {};
+                return targetParts.every(name => st[name] === 'loaded' || st[name] === 'error');
+            }''',
+            arg=parts,
+            timeout=timeout,
+        )
+    except Exception as exc:
+        diag = reader_retry_diagnostics(page)
+        raise AssertionError(
+            f'{label}: timed out waiting for parts {parts} to settle; '
+            f'diagnostics={json.dumps(diag, ensure_ascii=False)}'
+        ) from exc
+    diag = reader_retry_diagnostics(page)
+    part_state = diag.get('partState') or {}
+    not_loaded = [p for p in parts if part_state.get(p) != 'loaded']
+    if not_loaded:
+        raise AssertionError(
+            f'{label}: retried parts {parts} settled without loading ({not_loaded}); '
+            f'diagnostics={json.dumps(diag, ensure_ascii=False)}'
+        )
+
+
+def wait_for_data_ready(page, label, timeout=10000):
+    """Wait for all deferred parts to load, reporting safe PART_STATE diagnostics on timeout."""
+    try:
+        page.wait_for_function('() => window.XINZHI_DATA_READY === true', timeout=timeout)
+    except Exception as exc:
+        diag = reader_retry_diagnostics(page)
+        raise AssertionError(
+            f'{label}: timed out waiting for window.XINZHI_DATA_READY === true; '
+            f'diagnostics={json.dumps(diag, ensure_ascii=False)}'
+        ) from exc
+
+
 def main():
     out = ROOT / '.local/deferred-reader-qa'
     out.mkdir(parents=True, exist_ok=True)
@@ -164,8 +228,13 @@ def main():
                     '() => !/加载中|正在读取|正在检查|正在从 Europe PMC/.test(document.querySelector("#drawerBody")?.innerText || "")'
                 )
 
+            non_gist_btn = page.locator('#articlesStream .article-card:not(:has(.article-gist)) [data-action="open-drawer"]').first
             non_ql_btn = page.locator('#articlesStream .article-card:not(:has(.gist-ai)) [data-action="open-drawer"]').first
-            first_btn = non_ql_btn if non_ql_btn.count() > 0 else page.locator('#articlesStream [data-action="open-drawer"]').first
+            first_btn = (
+                non_gist_btn if non_gist_btn.count() > 0
+                else non_ql_btn if non_ql_btn.count() > 0
+                else page.locator('#articlesStream [data-action="open-drawer"]').first
+            )
             expect(first_btn).to_be_visible()
             target_paper_id = first_btn.get_attribute('data-paper-id')
             first_btn.click()
@@ -249,6 +318,49 @@ def main():
             converged = snapshot_drawer()
             check(converged == baseline, 'early-open drawer converges to exact baseline content')
 
+            def retry_reader_parts(label):
+                visible_btns = page.locator('#readerDrawer [data-action="retry-part"]:visible')
+                expect(visible_btns.first).to_be_visible()
+                retried_parts = set()
+                clicks = 0
+                expected_scroll = None
+                max_clicks = 6
+                while visible_btns.count() > 0:
+                    if clicks >= max_clicks:
+                        diag = reader_retry_diagnostics(page)
+                        raise AssertionError(
+                            f'{label}: exceeded {max_clicks} retry clicks; '
+                            f'diagnostics={json.dumps(diag, ensure_ascii=False)}'
+                        )
+                    btn = visible_btns.first
+                    part_attr = (btn.get_attribute('data-part') or '').strip()
+                    target_parts = [p.strip() for p in part_attr.split(',') if p.strip()]
+                    if not target_parts:
+                        diag = reader_retry_diagnostics(page)
+                        raise AssertionError(
+                            f'{label}: visible retry button missing data-part; '
+                            f'diagnostics={json.dumps(diag, ensure_ascii=False)}'
+                        )
+                    btn.scroll_into_view_if_needed()
+                    pre_click_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
+                    check(
+                        pre_click_scroll > 0,
+                        f'{label} click #{clicks + 1}: drawer body scrolled before retry ({pre_click_scroll} > 0)',
+                    )
+                    btn.click()
+                    clicks += 1
+                    retried_parts.update(target_parts)
+                    wait_for_parts_settled(page, target_parts, f'{label} click #{clicks} (data-part={part_attr})')
+                    post_settle_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
+                    check(
+                        post_settle_scroll == pre_click_scroll,
+                        f'{label} click #{clicks} (data-part={part_attr}): drawer scroll preserved ({post_settle_scroll} == {pre_click_scroll})',
+                    )
+                    expected_scroll = pre_click_scroll
+                check(clicks >= 1, f'{label}: clicked retry-part UI button(s) ({clicks})')
+                check(len(retried_parts) > 0, f'{label}: retried explicit data-part set ({sorted(retried_parts)})')
+                return expected_scroll
+
             # 4. Failed quicklooks/pregenerated -> retry inside drawer preserves scroll + applicable input & succeeds.
             api_calls.clear()
             gate['hold'] = set()
@@ -259,8 +371,7 @@ def main():
             expect(retry_target).to_be_visible()
             retry_target.click()
             expect(page.locator('#readerDrawer')).to_have_class(re.compile(r'\bopen\b'))
-            drawer_retry = page.locator('#readerDrawer [data-action="retry-part"]').first
-            expect(drawer_retry).to_be_visible()
+            expect(page.locator('#readerDrawer [data-action="retry-part"]:visible').first).to_be_visible()
             premature_on_err = premature_ai_calls(api_calls)
             check(
                 len(premature_on_err) == 0,
@@ -276,11 +387,14 @@ def main():
             }''')
             check(err_scrolled > 0, 'drawer body scrolled before clicking retry-part')
             gate['fail'] = set()
-            drawer_retry.click()
-            page.wait_for_function('() => window.XINZHI_DATA_READY === true')
+            expected_retry_scroll = retry_reader_parts('candidates drawer retry')
+            wait_for_data_ready(page, 'candidates drawer retry')
             wait_drawer_settled()
             after_retry_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
-            check(after_retry_scroll == err_scrolled, f'drawer scroll preserved on retry ({after_retry_scroll} == {err_scrolled})')
+            check(
+                after_retry_scroll == expected_retry_scroll,
+                f'drawer scroll preserved on retry ({after_retry_scroll} == {expected_retry_scroll})',
+            )
             if retry_pass_input is not None:
                 check(
                     retry_pass_input.is_visible() and retry_pass_input.input_value() == 'retry-secret',
@@ -294,7 +408,8 @@ def main():
             lib_paper_id = page.evaluate('''() => {
                 const pdfIds = new Set((window.LIBRARY?.pdfIds || []).map(String));
                 const cards = [...document.querySelectorAll('#articlesStream .article-card')];
-                const pick = cards.find(c => !c.querySelector('.gist-ai') && pdfIds.has(String(c.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '')))
+                const pick = cards.find(c => !c.querySelector('.article-gist') && pdfIds.has(String(c.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '')))
+                    || cards.find(c => !c.querySelector('.gist-ai') && pdfIds.has(String(c.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '')))
                     || cards.find(c => pdfIds.has(String(c.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '')));
                 return pick?.querySelector('[data-action="open-drawer"]')?.dataset.paperId || '';
             }''')
@@ -372,19 +487,20 @@ def main():
                 return body.scrollTop;
             }''')
             check(lib_err_scrolled > 0, 'library drawer body scrolled before retry')
-            lib_drawer_retry = page.locator('#readerDrawer [data-action="retry-part"]').first
             gate['fail'] = set()
-            if lib_drawer_retry.count() > 0 and lib_drawer_retry.is_visible():
-                lib_drawer_retry.click()
-                page.wait_for_function('() => window.XINZHI_DATA_READY === true')
-                wait_drawer_settled()
-                lib_after_retry_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
-                check(lib_after_retry_scroll == lib_err_scrolled, f'library drawer scroll preserved on retry ({lib_after_retry_scroll} == {lib_err_scrolled})')
-                check(
-                    page.locator('#drawerPdfForm').is_visible() and lib_retry_pass.input_value() == 'retry-secret',
-                    'library #drawerPdfForm passphrase preserved on retry',
-                )
-                check(snapshot_drawer() == lib_baseline, 'library retry-part converges drawer to baseline content')
+            lib_expected_retry_scroll = retry_reader_parts('library drawer retry')
+            wait_for_data_ready(page, 'library drawer retry')
+            wait_drawer_settled()
+            lib_after_retry_scroll = page.evaluate('() => document.getElementById("drawerBody")?.scrollTop || 0')
+            check(
+                lib_after_retry_scroll == lib_expected_retry_scroll,
+                f'library drawer scroll preserved on retry ({lib_after_retry_scroll} == {lib_expected_retry_scroll})',
+            )
+            check(
+                page.locator('#drawerPdfForm').is_visible() and lib_retry_pass.input_value() == 'retry-secret',
+                'library #drawerPdfForm passphrase preserved on retry',
+            )
+            check(snapshot_drawer() == lib_baseline, 'library retry-part converges drawer to baseline content')
 
             check(len(post_calls) == 0, f'no paid POST calls emitted: {post_calls}' if post_calls else 'no paid POST calls emitted')
             check(not errors, f'no page JavaScript errors: {errors}')
