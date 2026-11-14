@@ -663,9 +663,19 @@
     if (state.mode === 'sources') return ['health'];
     if (state.mode === 'weekly') return state.weeklyPane === 'reading' ? ['readings'] : [];
     if (state.search && state.search.trim()) return ['feeds', 'library', 'quicklooks', 'radar'];
-    if (state.mode === 'candidates') return ['feeds', 'radar'];
-    if (state.mode === 'library') return ['library', 'quicklooks'];
+    const needQuicklooks = state.reading === 'quicklook';
+    if (state.mode === 'candidates') return needQuicklooks ? ['feeds', 'radar', 'quicklooks'] : ['feeds', 'radar'];
+    if (state.mode === 'library') return needQuicklooks ? ['library', 'quicklooks'] : ['library'];
     return [];
+  }
+
+  function priorityParts() {
+    const req = neededParts();
+    if (!DEFERRED) return req;
+    if ((state.mode === 'library' || state.mode === 'candidates') && !req.includes('quicklooks')) {
+      return req.concat('quicklooks');
+    }
+    return req;
   }
 
   function registerPaper(p) {
@@ -878,10 +888,12 @@
 
   function prioritizeParts() {
     if (!DEFERRED || !partQueue.length) return;
-    const needed = new Set(neededParts());
+    const priority = priorityParts();
     partQueue.sort((a, b) => {
-      const an = needed.has(a) ? 0 : 1;
-      const bn = needed.has(b) ? 0 : 1;
+      const ai = priority.indexOf(a);
+      const bi = priority.indexOf(b);
+      const an = ai >= 0 ? ai : priority.length;
+      const bn = bi >= 0 ? bi : priority.length;
       if (an !== bn) return an - bn;
       return PART_ORDER.indexOf(a) - PART_ORDER.indexOf(b);
     });
