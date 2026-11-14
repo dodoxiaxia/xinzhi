@@ -55,7 +55,7 @@ def _synthetic_full_data():
         '10.1000/bulk0': {'one_line': 'Bulk quicklook that must be deferred'},
     }
     pregenerated = {
-        'doi:10.1000/week3': {'translation': {'title_zh': '周榜译题'}},
+        'pmid:1003': {'translation': {'title_zh': '周榜译题'}},
         'doi:10.1000/offweek': {'translation': {'title_zh': '非周榜预生成'}},
     }
     source_health = {
@@ -224,7 +224,7 @@ class FirstScreenBudgetTests(unittest.TestCase):
         self.assertEqual(first['SOURCE_HEALTH'], {'checkedAt': original['SOURCE_HEALTH']['checkedAt'], 'sources': [], 'deferred': True})
         # Tier-1 QUICKLOOKS & PREGENERATED carry only default-view subsets.
         self.assertEqual(set(first['QUICKLOOKS']), {'10.1000/pick1'})
-        self.assertEqual(set(first['PREGENERATED']), {'doi:10.1000/week3'})
+        self.assertEqual(set(first['PREGENERATED']), {'pmid:1003'})
         # Deferred-only globals are absent from tier 1.
         for excluded in ('DEEP_READINGS', 'WEEKLY_BOARD', 'RADAR'):
             self.assertNotIn(excluded, first)

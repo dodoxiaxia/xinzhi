@@ -5,7 +5,7 @@ const src=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
 const start=src.indexOf('  let deepReadingHistoryLimit = 12;'), end=src.indexOf('  function renderWeeklyHeader() {',start);
 assert(start>=0&&end>start);
 const node={innerHTML:'',querySelectorAll:()=>[],querySelector:()=>null};
-const ctx=vm.createContext({window:{},$:(selector)=>selector==='#dailyDeepRead'?node:null,beijingToday:()=> '2026-10-09',contentDate:()=> '10/9 05:17',
+const ctx=vm.createContext({window:{},DEFERRED:false,partsReady:()=>true,neededParts:()=>[],$:(selector)=>selector==='#dailyDeepRead'?node:null,beijingToday:()=> '2026-10-09',contentDate:()=> '10/9 05:17',
 esc:x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))});
 vm.runInContext(src.slice(start,end),ctx);
 const p=(n,day)=>({pmcid:'PMC'+n,title:'Original title',titleZh:'中文精读题名',journal:'Journal',date:'2026-10-07',publishedOn:day,generatedAt:day+'T01:00:00Z',scope:'public-fulltext-body',humanReviewed:false,
