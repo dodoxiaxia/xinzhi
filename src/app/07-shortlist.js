@@ -56,7 +56,11 @@
     const missing = state.huddle.filter(id => !huddlePaper(id));
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
-    state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
+    if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
+      state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
+    } else {
+      state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id));
+    }
     const selected = selectedComparePapers();
     ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn'].forEach(id => {
       const button = $('#' + id);
@@ -65,11 +69,18 @@
       if (button.disabled) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
       else button.removeAttribute('aria-describedby');
     });
+    const pendingParts = DEFERRED && ['feeds', 'library', 'radar'].some(n => PART_STATE[n] === 'idle' || PART_STATE[n] === 'loading');
+    const erroredParts = DEFERRED && !pendingParts && ['feeds', 'library', 'radar'].some(n => PART_STATE[n] === 'error');
+    const missingMsg = pendingParts ? '加载中… '
+      : RADAR_LOAD.state === 'loading' ? '正在载入题录存档…'
+      : erroredParts ? '部分题录加载失败。'
+      : '这条可能已超出站内收录范围。';
+    const missingRetry = erroredParts ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '';
     const missingHtml = missing.map(id => `
         <div class="huddle-item huddle-item-missing">
           <div class="huddle-item-content">
             <h4>文献信息暂未载入</h4>
-            <p class="huddle-original-title">${RADAR_LOAD.state === 'loading' ? '正在载入题录存档…' : '这条可能已超出站内收录范围。'}编号 ${esc(id)}</p>
+            <p class="huddle-original-title">${missingMsg}编号 ${esc(id)}${missingRetry}</p>
           </div>
           <button class="btn-sm" data-action="remove-huddle" data-paper-id="${esc(id)}">移出</button>
         </div>`).join('');

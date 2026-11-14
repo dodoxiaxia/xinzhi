@@ -1,4 +1,5 @@
 'use strict';
+const {appFile} = require('./public_bundle.cjs');
 const fs = require('fs'), path = require('path'), assert = require('assert');
 const {execFileSync} = require('child_process');
 const {loadMap, startServer, runSteps} = require('./feature_map_walk.cjs');
@@ -92,10 +93,10 @@ async function main(argv = process.argv.slice(2)) {
   const flows = interactions.filter(i=>selectedFlows.includes(i.id) && viewports.includes(i.viewport));
   validate(interactions);
   if (options['dry-run']) { console.log(`定义校验通过：${interactions.length} 项交互；${selectedSections.length} 个栏目；${viewports.join(', ')}；输出目录已验证`); return; }
-  if (!fs.existsSync(path.join(directory,'public.js'))) { console.log('SKIP: public/ not built (python3 scripts/build_public.py)'); return; }
+  if (!fs.existsSync(path.join(directory,'index.html'))) { console.log('SKIP: public/ not built (python3 scripts/build_public.py)'); return; }
   fs.mkdirSync(out,{recursive:true});
   const started = Date.now();
-  const builtTime = fs.statSync(path.join(directory,'public.js')).mtime.toISOString();
+  const builtTime = fs.statSync(path.join(directory,appFile(directory))).mtime.toISOString();
   const evidence = {branch:safe(branch), head:execFileSync('git',['rev-parse','--short=7','HEAD'],{cwd:ROOT,encoding:'utf8'}).trim().slice(0,7), utc:new Date().toISOString(), viewports:Object.fromEntries(viewports.map(v=>[v,map.viewports[v]])), public:directory,builtTime,screenshots:[],interactions:[]};
   const host = await startServer(directory);
   let browser, deadline;

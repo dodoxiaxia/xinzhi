@@ -18,8 +18,9 @@ scripts/ci_daily.py 依次运行：
   generate_quicklooks.py（AI 速览）、week_precompute.py（近7天榜预生成）、daily_fulltext.py（AI 全文精读）
         │
         ▼
-scripts/build_public.py  →  public/ 9 个固定文件，外加按月的全文精读分片
-  index.html  public.js  radar.js  feed.xml  style.css  icon.png  demo-reading.html  _headers  _worker.js
+scripts/build_public.py  →  public/ 6 个固定文件，外加带内容哈希的 assets/ 与按月精读分片
+  固定：index.html  feed.xml  icon.png  demo-reading.html  _headers  _worker.js
+  assets/：style.<哈希>.css  app.<哈希>.js（首屏）  data-<名称>.<哈希>.js（延迟分片）  radar.<哈希>.js（365天存档）
   shards/readings-年-月.内容哈希.js   （打开某月精读时才加载）
         │  发布前离线测试（daily.yml 中的 node/unittest 列表）
         ▼
@@ -36,8 +37,8 @@ scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ �
   - **一次性迁移**：私有仓库还没有 `state` 时，`daily.yml` 的恢复步骤会先把本仓库的 `state` 复制过去；首次成功运行后可删除本仓库的 `state` 分支。
   - 本仓库仍是公开的：不要往 `data/` 以外的地方写不能公开的内容；在完成迁移前，`data/` 也要按公开对待。
 - **API**：`edge/_worker.js` 由构建复制为 `public/_worker.js`，在 Pages 上提供 `/api/*`：AI 速览/翻译/综述/研究结构（`/api/ql`、`/api/ai`）、DOI 查重与补录、PDF 下载、全文任务、Muse/Grok 回传。存储用 KV `QL_KV`。配置项名称（不含值）见 [docs/AI解读部署说明.md](docs/AI解读部署说明.md)、[docs/PDF下载接入.md](docs/PDF下载接入.md)、[docs/网站配置与外部状态清单.md](docs/网站配置与外部状态清单.md)。
-- **前端**：`index.html` + `app.js` + `citation-export.js` + `journal-metrics.js` + `style.css`；构建时把数据和脚本打包进 `public.js`。365 天雷达题录单独放在 `radar.js`，按需加载。AI 全文精读的目录留在 `public.js`，正文按发表月份放到 `shards/readings-年-月.内容哈希.js`，打开该月精读时才请求。分片文件名带内容哈希，某月正文没变就不会换地址。
-- **体积**：构建检查每个公开文件。单文件上限 25 MiB（26,214,400 字节，可用 `XINZHI_ASSET_LIMIT_BYTES` 改）。达到 70% 在构建日志里警告（`XINZHI_ASSET_WARN_RATIO`），达到 90% 停止构建且不替换已有公开文件（`XINZHI_ASSET_FAIL_RATIO`）。各文件字节数写入 `docs/public-manifest.json` 的 `files`，并在 `docs/last-refresh.json` 的 `publicFiles` 里再记一份。
+- **前端**：`index.html` + `style.css` + `journal-metrics.js` + `citation-export.js` + `journal-tiers.js` + `app.js`（由 `src/app/*.js` 拼接）。构建时按内容哈希生成 `assets/style.<哈希>.css` 与首屏脚本 `assets/app.<哈希>.js`（同步引用，内含 `XINZHI_PARTS` 清单、首屏所需最小数据与前端脚本）；其余数据拆入 `assets/data-<名称>.<哈希>.js` 延迟加载（`feeds`、`library`、`quicklooks`、`radar`、`pregenerated`、`readings`、`health`、`board`）。21 天前的 365 天雷达题录放在 `assets/radar.<哈希>.js`，按需加载；AI 全文精读目录在 `data-readings` 分片，正文按发表月份放到 `shards/readings-年-月.内容哈希.js`，打开该月精读时才请求。`_headers` 为 `/`、`index.html`、`demo-reading.html` 设短缓存（`public, max-age=0, must-revalidate`），为带内容哈希的 `/assets/*` 与 `/shards/*` 设长期不可变缓存（`public, max-age=31536000, immutable`）。详情见 [docs/首屏性能拆分说明.md](docs/首屏性能拆分说明.md)。
+- **体积**：构建检查每个公开文件，同时检查首屏关键路径预算（`scripts/public_split.py`）。单文件上限 25 MiB（26,214,400 字节，可用 `XINZHI_ASSET_LIMIT_BYTES` 改）；达到 70% 在构建日志里警告（`XINZHI_ASSET_WARN_RATIO`），达到 90% 停止构建且不替换已有公开文件（`XINZHI_ASSET_FAIL_RATIO`）。首屏预算统计 `index.html` 与同步引用的样式表和首屏脚本，按 `gzip` 9 级（`mtime=0`）和 `brotli` 11 级测量（缺少 `brotli` 模块时只测 `gzip` 并打印提示），分别受常量 `FIRST_SCREEN_DATA_BUDGET_BR`（100 KiB，首屏代码前各 `window.NAME=...;` 语句压缩后之和）和 `FIRST_SCREEN_TOTAL_BUDGET_BR`（200 KiB，关键路径总大小）约束，`gzip` 上限为 `brotli` 上限乘以 `FIRST_SCREEN_GZIP_TO_BR_RATIO`（1.25），两者取较严者；任一超限会抛出 `ValueError` 阻止发布。已有 `public/` 可用 `python3 scripts/check_first_screen_budget.py [public_dir]` 单独复测。各文件字节数写入 `docs/public-manifest.json` 的 `files`，并在 `docs/last-refresh.json` 的 `publicFiles` 里再记一份。
 - **四个栏目**（URL 参数 `mode`）：
 
   | 栏目 | `mode` | 内容 |
@@ -55,7 +56,7 @@ scripts/save_state.py：覆盖式写回 state 分支（data/、public/、docs/ �
 ```sh
 git fetch origin state                                # 迁移后改为：git fetch https://github.com/dodoxiaxia/xinzhi-state.git state（需有访问权）
 git archive FETCH_HEAD | tar -x -C . data public       # data/ 与 public/ 已在 .gitignore
-python3 scripts/build_public.py                        # 生成 public/ 9 个文件
+python3 scripts/build_public.py                        # 生成 public/ 6 个固定文件及 assets/、shards/
 python3 -m http.server 8765 --bind 127.0.0.1 --directory public   # http://127.0.0.1:8765/
 ```
 
@@ -95,7 +96,7 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 - **凭据只在 Secret 里**：PDF 下载口令是 Cloudflare Secret `PDF_DOWNLOAD_PASSPHRASE`，其他凭据（`LLM_API_KEY`、`GITHUB_LIBRARY_TOKEN`、`XINZHI_LLM_API_KEY`、`CLOUDFLARE_API_TOKEN` 等）同理。代码、测试、文档、提交信息里不写值，测试用明显的假值。
 - **站上不显示“未经人工核对”类标签**（Donald 2026-11-13 的决定；由 `ui-banned-labels` 检查保证）。AI 速览小节的标题只写“速览”。AI 结果仍然不能显示成“已核对导读”（只有对照公开摘要核对过的才叫“已核对导读”）。
 - **不要用旧导入脚本覆盖公开题录**：`scripts/build_data.py`、`service/import_data.py` 等早期导入工具不能用来重建文献库。文献库只能通过审核后的快照（`editorial/public_library_snapshot.json` + manifest，由 `apply_public_library.py` 应用）更新，构建守卫会阻止旧状态覆盖已批准条目。也不要恢复旧前端模板。
-- **公开文件白名单**：只发布第 1 节列出的 9 个固定文件，以及 `shards/readings-年-月.内容哈希.js` 分片；已审文献 ID 不得进入 Worker，Worker 新增的构建期注入必须先登记（`public-ids` 检查保证）。
+- **公开文件白名单**：只发布第 1 节列出的 6 个固定文件、`assets/` 下的内容哈希产物，以及 `shards/readings-年-月.内容哈希.js` 分片；已审文献 ID 不得进入 Worker，Worker 新增的构建期注入必须先登记（`public-ids` 检查保证）。
 - **`app.js` 与 `edge/_worker.js` 是拼接产物**：改 `src/app/*.js`、`edge/src/*.js` 后运行 `python3 scripts/build_sources.py` 并一起提交，不要直接编辑拼接结果（`sources-fresh` 检查保证两者一致）。
 - **界面只有一套风格 + 深浅色**：「临床期刊」风格（`data-style="a"` 固定），旧链接里的 `?style=` 会被忽略。筛选区为「领域 + 时间 + 搜索」常显，其余在「更多筛选」里；期刊只有出版方/期刊树一个入口。
 - **改界面要同步更新 UI 测试和功能地图**：改 `index.html`、`src/app/`、`style.css` 时，运行浏览器测试，并在同一提交里更新失效的断言（保持断言原意）；新增或改动的控件、状态登记到 [docs/feature-map.json](docs/feature-map.md)，`node scripts/feature_map_walk.cjs --viewport all` 会按地图逐项核对。

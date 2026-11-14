@@ -31,7 +31,7 @@ const initial = () => ({
 });
 const elements = Object.fromEntries(['tierFilterList', 'publisherAccordion', 'designFilterList', 'tagsCloud', 'activeFiltersBar'].map(id => [id, { innerHTML: '' }]));
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
-const context = vm.createContext({
+const context = vm.createContext({DEFERRED:false,partsReady:()=>true,neededParts:()=>[],
   state: initial(), expandedPublishers: new Set(), getCurrentDataset: () => papers,
   usesLane: () => true, inLane: (p, lane) => lane === 'all' || p.lane === lane,
   queryMatches: (text, query) => text.includes(query), quicklookOf: p => p.quicklook,

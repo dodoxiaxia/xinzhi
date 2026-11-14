@@ -271,14 +271,36 @@
     return FEEDS.items.filter(p => !p.minor && datePrecision(p) === 'day' && p.date.slice(0, 10) >= s0 && p.date.slice(0, 10) <= t0).length;
   }
   function updateHeaderBadges() {
-    const cb = $('#candCountBadge'); if (cb) cb.textContent = radarDefaultCount();
-    const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
-    const lb = $('#libCountBadge'); if (lb) {
-      lb.textContent = LIBRARY.papers.length;
-      lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
-      lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+    const cb = $('#candCountBadge');
+    if (cb) {
+      if (DEFERRED && !partsReady('feeds', 'radar')) {
+        cb.textContent = '加载中';
+        cb.title = '加载中';
+        cb.setAttribute('aria-label', '加载中');
+      } else {
+        cb.textContent = radarDefaultCount();
+        cb.removeAttribute('title');
+        cb.removeAttribute('aria-label');
+      }
     }
-
+    const cub = $('#curatedCountBadge');
+    if (cub) {
+      cub.textContent = getCuratedList().length;
+      cub.removeAttribute('title');
+      cub.removeAttribute('aria-label');
+    }
+    const lb = $('#libCountBadge');
+    if (lb) {
+      if (DEFERRED && !partsReady('library')) {
+        lb.textContent = '加载中';
+        lb.title = '加载中';
+        lb.setAttribute('aria-label', '加载中');
+      } else {
+        lb.textContent = LIBRARY.papers.length;
+        lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
+        lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+      }
+    }
   }
 
   function contentDate(value) {
@@ -591,6 +613,13 @@
 
   // Render Sidebar Filters with dynamic counts
   function renderSidebarFilters() {
+    if (DEFERRED && !partsReady(...neededParts())) {
+      ['#tierFilterList', '#publisherAccordion', '#designFilterList', '#tagsCloud'].forEach(sel => {
+        const el = $(sel);
+        if (el) el.innerHTML = '';
+      });
+      return;
+    }
     const all = getCurrentDataset();
     const base = all.filter(p => matchesFilters(p, false, 'sidebar'));
     // One pass: a paper belongs to a group's facet when it fails no other group.

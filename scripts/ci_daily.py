@@ -4,6 +4,7 @@
 Runs on GitHub Actions (no local sqlite / .local needed). Writes `deploy=true|false` to $GITHUB_OUTPUT.
 Required steps must succeed; optional steps may fail without blocking the day's update.
 """
+from public_bundle import bundle_text
 import datetime, hashlib, json, os, re, subprocess, sys, time
 from pathlib import Path
 
@@ -56,7 +57,7 @@ def deep_reading_needs_bootstrap(root):
     return json.loads(path.read_text()).get('generatorVersion', 0) < GENERATOR_VERSION
 MIN_COUNTS = {'radar': 300, 'library': 1000}  # refuse to publish a collapsed build
 VOLATILE_KEYS = {'createdAt', 'updatedAt', 'generatedAt', 'checkedAt', 'fetchedAt', 'weeklyAt', 'builtAt', 'radarUpdatedAt', 'healthCheckedAt', 'lastSuccessfulAt', 'lastCachedFetchAt'}
-BUNDLE_DATA = re.compile(r'\bwindow\.(?:LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR|RADAR_ARCHIVE|DEEP_READINGS)\s*=\s*')
+BUNDLE_DATA = re.compile(r'\bwindow\.(?:XINZHI_PARTS|RADAR_SRC|LIBRARY|FEEDS|SOURCE_HEALTH|CURATED|QUICKLOOKS|CONTENT_STATUS|JOURNAL_METRICS|WEEKLY_BOARD|PREGENERATED|RADAR|RADAR_ARCHIVE|DEEP_READINGS)\s*=\s*')
 
 
 def stable_data(value):
@@ -220,7 +221,7 @@ def public_file_sizes():
 
 def content_hash():
     """Hash every public asset, ignoring only known bundle refresh timestamps."""
-    if not (ROOT / 'public' / 'public.js').exists():
+    if not (ROOT / 'public' / 'index.html').exists():
         return ''
     digest = hashlib.sha256()
     try:
@@ -231,12 +232,23 @@ def content_hash():
     for name in names:
         path = ROOT / 'public' / name
         payload = path.read_bytes() if path.is_file() and not path.is_symlink() else b'<missing>'
-        if name in ('public.js', 'radar.js') or name.startswith('shards/'):
+        if name.startswith('assets/') or name.startswith('shards/'):
             try:
-                payload = stable_bundle(payload.decode('utf-8')).encode('utf-8')
+                text = payload.decode('utf-8')
+                if name.startswith('assets/data-'):
+                    prefix, raw = text.split('window.XINZHI_PART(', 1)
+                    part, raw = raw.split(',', 1)
+                    value, end = json.JSONDecoder().raw_decode(raw)
+                    text = prefix + 'window.XINZHI_PART(' + part + ',' + json.dumps(stable_data(value),ensure_ascii=False,separators=(',',':')) + raw[end:]
+                else:
+                    text = stable_bundle(text)
+                payload = re.sub(r'(assets/[^/"\s]+)\.[0-9a-f]{12}\.(js|css)', r'\1.HASH.\2', text).encode('utf-8')
             except UnicodeDecodeError:
                 pass
-        digest.update(name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
+        if name == 'index.html':
+            payload = re.sub(rb'(assets/[^/"\s]+)\.[0-9a-f]{12}\.(js|css)', rb'\1.HASH.\2', payload)
+        logical_name = re.sub(r'\.[0-9a-f]{12}\.(js|css)$', r'.HASH.\1', name) if name.startswith('assets/') else name
+        digest.update(logical_name.encode() + b'\0' + str(len(payload)).encode() + b'\0' + payload)
     return digest.hexdigest()
 
 
@@ -393,7 +405,7 @@ def main():
         print('SANITY FAILED:', problems, file=sys.stderr)
         return finish('failed', problems)
     try:
-        report['weeklyContent'] = weekly_content_status((ROOT / 'public/public.js').read_text(), counts, fast)
+        report['weeklyContent'] = weekly_content_status(bundle_text(ROOT / "public"), counts, fast)
     except (ValueError, TypeError, KeyError, OSError) as exc:
         return finish('failed', ['weekly coverage integrity failed: ' + str(exc)])
     if report['weeklyContent']['status'] != 'complete':

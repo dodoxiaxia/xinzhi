@@ -8,6 +8,11 @@
     const drawer = $('#readerDrawer');
     const backdrop = $('#drawerBackdrop');
     if (!drawer || !backdrop) return;
+    if (DEFERRED && !partsReady('pregenerated', 'quicklooks')) {
+      prioritizeParts();
+      pumpPartQueue();
+    }
+    const prevScrollTop = (!changedPaper && $('#drawerBody')) ? $('#drawerBody').scrollTop : 0;
 
     const pubClass = getPublisherClass(paper.publisher);
     const designClass = getDesignClass(paper.studyDesign);
@@ -82,6 +87,10 @@
 
       // AI 速览 (daily batch, labelled unreviewed) + its stored public abstract
       const ql = quicklookOf(paper);
+      const readerQlPending = partsPending('quicklooks', 'pregenerated');
+      const readerQlFailed = !readerQlPending && DEFERRED && (PART_STATE.quicklooks === 'error' || PART_STATE.pregenerated === 'error');
+      const readerPrePending = partsPending('pregenerated');
+      const readerPreFailed = !readerPrePending && DEFERRED && PART_STATE.pregenerated === 'error';
       if (ql && ql.abstract && !paper.summary && !(paper.abstractSections && paper.abstractSections.length)) {
         paper.abstractSections = [{ label: '', text: ql.abstract }];
         forgetPaper(paper);
@@ -90,7 +99,7 @@
       }
       // 公开摘要要去 Europe PMC 拉取时，先标成拉取中再渲染：速览和结构区在拉取期间显示「正在获取摘要…」，
       // 不抢跑写「暂无公开摘要」。拉取结束（含失败）后才按真实结果显示。
-      absFetchPlanned = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && !!(paper.doi || paper.pmid) && !paper._absTries;
+      absFetchPlanned = !paper.weeklyPick && partsReady('quicklooks', 'pregenerated') && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && !!(paper.doi || paper.pmid) && !paper._absTries;
       if (absFetchPlanned) { paper._absTries = 1; paper._absState = 'loading'; }
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
@@ -104,6 +113,13 @@
           ${(ql.abstractSource || ql.abstract_source) ? `<p class="text-muted" style="font-size:11.5px;">摘要来源：${esc(ql.abstractSource || ql.abstract_source)}${safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}) ? ` · <a href="${esc(safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}))}" target="_blank" rel="noopener">查看来源 ↗</a>` : ''}</p>` : ''}
         </div>` : '';
       const aiBox = (!ql && !draft) ? (() => {
+        if (readerQlPending) {
+          return '<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div><p class="ql-meta" role="status">加载中...</p></div>';
+        }
+        if (readerQlFailed) {
+          const failed = ['pregenerated', 'quicklooks'].filter(n => PART_STATE[n] === 'error').join(',');
+          return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div><p class="ql-meta" role="status">加载失败，请重试。<button type="button" class="btn-sm" data-action="retry-part" data-part="${failed}">重试</button></p></div>`;
+        }
         if (paper.weeklyPick) return '';
         const s = paper._aiState;
         // Do not name this hasAbstract: openReaderDrawer later declares a local const hasAbstract (TDZ).
@@ -142,6 +158,11 @@
         `).join('');
       } else if (paper.summary) {
         abstractHtml = `<p>${esc(paper.summary)}</p>`;
+      } else if (readerQlPending) {
+        abstractHtml = '<p class="text-muted" role="status">加载中...</p>';
+      } else if (readerQlFailed && !paper.weeklyPick) {
+        const failed = ['pregenerated', 'quicklooks'].filter(n => PART_STATE[n] === 'error').join(',');
+        abstractHtml = `<p class="text-muted" role="status">摘要数据加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="${failed}">重试</button></p>`;
       } else if (paper.weeklyPick) {
         abstractHtml = '<p class="text-muted">公开摘要尚未准备好，请查看官方原文。</p>';
       } else if (paper._absState === 'loading') {
@@ -189,6 +210,11 @@
       const tr = LIVE_TR[trKeyOf(paper)];
       const zhAbs = (hasAbstract && validTranslation(tr)) ? tr.abstract_zh.split(/\n+/).map(s => `<p>${esc(s)}</p>`).join('') : '';
       const translationReady = !!(hasAbstract && zhAbs);
+      const trDeferredNote = (hasAbstract && !translationReady && (paper.pmid || paper.doi) && readerPrePending)
+        ? '<p class="ql-meta drawer-deferred-status" role="status">加载中...</p>'
+        : (hasAbstract && !translationReady && (paper.pmid || paper.doi) && readerPreFailed)
+          ? '<p class="ql-meta drawer-deferred-status" role="status">中文摘要加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button></p>'
+          : '';
       const abstractSection = `
         <section class="drawer-section abstract-reader" aria-label="摘要">
           <div class="drawer-section-title">摘要</div>
@@ -199,7 +225,7 @@
             </div>
             <div class="abs-panel" data-abs-panel="zh" role="tabpanel">${zhAbs}</div>
             <div class="abs-panel" data-abs-panel="en" role="tabpanel" hidden lang="en"><div class="structured-abstract">${abstractHtml}</div></div>
-          ` : `<div class="structured-abstract">${abstractHtml}</div>`}
+          ` : `${trDeferredNote}<div class="structured-abstract">${abstractHtml}</div>`}
           ${abstractMayBeIncomplete(paper) ? '<p class="abs-incomplete-note">摘要可能不完整</p>' : ''}
           ${absSource}
         </section>
@@ -213,10 +239,12 @@
       const ftSection = $('#drawerFulltext');
       const pdfLinkEl = $('#drawerPdfLink');
       const pdfFormEl = $('#drawerPdfForm');
-      ftSection.remove();
+      const ftRegion = bodyEl.querySelector('[data-drawer-region="fulltext"]');
+      const keepFtMounted = !changedPaper && bodyEl.dataset.paperId === String(paper.id) && !!(ftRegion && ftSection && ftSection.parentElement === ftRegion);
+      if (!keepFtMounted) ftSection.remove();
       renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
-      bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
+      if (!keepFtMounted) bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
       if (ftStatus && ftStatus.dataset.ftHtml !== ftHtml) {
@@ -257,8 +285,8 @@
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
-      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
-      if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
+      // 口令框跟着下载链接走：换了一篇，或同篇确已无可用下载链接且口令框正展开时才收起并清空口令。
+      if (changedPaper || (!pdfUrl && pdfForm && !pdfForm.hidden && partsReady('library'))) resetDlForm(pdfForm);
       if (ftSectionNow) {
         const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
         const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
@@ -275,15 +303,17 @@
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
     drawer.classList.add('open');
     backdrop.classList.add('open');
-    if (changedPaper && bodyEl) bodyEl.scrollTop = 0;
+    if (bodyEl) bodyEl.scrollTop = changedPaper ? 0 : prevScrollTop;
     if (changedPaper || (lastFocus && !drawer.contains(document.activeElement))) $('#drawerCloseBtn')?.focus({ preventScroll: true });
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
 
     if (!paper.weeklyPick) {
-      if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
-      trCheck(paper);
-      studyCheck(paper);
+      if (!paper.hasDraft && !quicklookOf(paper) && partsReady('quicklooks', 'pregenerated')) aiApiCheck(paper);
+      if (partsReady('pregenerated')) {
+        trCheck(paper);
+        studyCheck(paper);
+      }
     }
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).

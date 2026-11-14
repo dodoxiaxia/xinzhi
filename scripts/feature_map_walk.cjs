@@ -1,4 +1,5 @@
 'use strict';
+const {bundleText, appFile} = require('./public_bundle.cjs');
 const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = path.resolve(__dirname, '..');
 function loadMap(file = path.join(ROOT, 'docs/feature-map.json')) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
@@ -38,9 +39,9 @@ function missing(section, item, viewport) {
 }
 async function walk(options = {}) {
   const map = options.map || loadMap(), directory = options.public || path.join(ROOT, 'public');
-  if (!fs.existsSync(path.join(directory, 'public.js'))) { console.log('SKIP: public/ not built (python3 scripts/build_public.py)'); return {results:[], failed:0, skippedPublic:true}; }
-  const source = fs.readFileSync(path.join(directory, 'public.js'), 'utf8');
-  const snapshotTime = source.match(/"builtAt":"([^"]+)"/)?.[1] || fs.statSync(path.join(directory, 'public.js')).mtime.toISOString();
+  if (!fs.existsSync(path.join(directory, 'index.html'))) { console.log('SKIP: public/ not built (python3 scripts/build_public.py)'); return {results:[], failed:0, skippedPublic:true}; }
+  const source = bundleText(directory);
+  const snapshotTime = source.match(/"builtAt":"([^"]+)"/)?.[1] || fs.statSync(path.join(directory, appFile(directory))).mtime.toISOString();
   const {chromium} = require('playwright');
   const host = await startServer(directory);
   let browser;

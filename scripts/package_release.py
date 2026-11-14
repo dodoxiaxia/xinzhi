@@ -19,7 +19,7 @@ def public_payloads(root=ROOT):
  for name in names:
   path=public/name
   parent=path.resolve().parent
-  if parent!=public.resolve() and parent!=(public/'shards').resolve():
+  if parent!=public.resolve() and parent!=(public/'shards').resolve() and parent!=(public/'assets').resolve():
    raise ValueError('Public files must be ordinary files inside the public directory')
  payloads={}
  for name in sorted(names):
@@ -55,6 +55,6 @@ def main():
   for path,target in staged:os.replace(path,target)
  finally:
   for path,_ in staged:path.unlink(missing_ok=True)
- print(f'Public: {len(PUBLIC)} files. Local package: no credentials or live database.')
+ print(f'Public: {len(payloads)} files. Local package: no credentials or live database.')
 
 if __name__=='__main__':main()

@@ -1,4 +1,5 @@
 """Regression coverage for the publisher-confirmed JAMA publication date."""
+from public_bundle import bundle_text
 import contextlib
 import datetime
 import io
@@ -89,7 +90,7 @@ class PublicationDateTests(unittest.TestCase):
             original_library = (root / 'data/library.json').read_bytes()
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
-            bundle = (root / 'public/public.js').read_text()
+            bundle = bundle_text(root / "public")
             feeds, _ = json.JSONDecoder().raw_decode(bundle.split('window.FEEDS=', 1)[1])
             self.assertEqual([p['date'] for p in feeds['items']], ['2026-10-05', '2026-10-04'])
             self.assertNotIn('sourceDate', bundle)

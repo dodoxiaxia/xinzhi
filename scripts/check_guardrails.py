@@ -166,7 +166,7 @@ def normalize_rel(parts):
 
 
 def is_state_rel(rel):
-    return (rel or '').lstrip('./') in STATE_FILES
+    return (rel or '').lstrip('./') in STATE_FILES or bool(re.fullmatch(r'public/assets/(?:app|radar|data-[a-z]+)\.[0-9a-f]{12}\.js', (rel or '').lstrip('./')))
 
 
 def lit_int(node):
@@ -306,6 +306,10 @@ class Analyzer(ast.NodeVisitor):
             return PathRef('temp')
         if isinstance(node, ast.Call):
             name = call_name(node)
+            if name in ('bundle_text', 'radar_text', 'bundle_files') and node.args:
+                base = self.path_ref(node.args[0], roots, temps)
+                if base and base.rel == 'public':
+                    return PathRef(base.kind, 'public/public.js')
             if name in ('Path', 'joinpath', 'join'):
                 args = list(node.args)
                 if name in ('joinpath', 'join') and isinstance(node.func, ast.Attribute):

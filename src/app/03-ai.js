@@ -140,6 +140,11 @@
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
     if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}</div>`;
+    if (DEFERRED && !partsReady('pregenerated') && (paper.pmid || paper.doi)) {
+      return PART_STATE.pregenerated === 'error'
+        ? '<div class="tr-box"><p class="ql-meta" role="status">加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button></p></div>'
+        : '<div class="tr-box"><p class="ql-meta" role="status">加载中...</p></div>';
+    }
     if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
     if (paper._trState === 'loading') return `<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…${paper._trSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
     if (paper._trState === 'waiting') return `<div class="tr-box"><p class="ql-meta" role="status">${esc(paper._trMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}"${paper._trLookupState === 'loading' ? ' disabled' : ''}>读取已有译文</button></div>`;
@@ -316,6 +321,10 @@
   function studyBoxHtml(paper) {
     const key = studyKey(paper); if (!key) return '';
     const rec = STUDY_RESULTS[key];
+    if (!rec && DEFERRED && !partsReady('pregenerated')) {
+      const failed = PART_STATE.pregenerated === 'error';
+      return `<section class="drawer-section study-box" aria-label="研究结构与全文核对"><div class="drawer-section-title">研究结构与全文核对 <small>公开摘要服务</small></div><p class="study-meta" role="status">${failed ? '加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button>' : '加载中...'}</p></section>`;
+    }
     if (!rec && paper.weeklyPick) return '';
     const hasPubAbs = typeof hasAbstract === 'function' ? hasAbstract(paper) : !!(paper.summary || (paper.abstractSections || []).some(s => s && s.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
     const noAbsMsg = '<p class="study-meta">暂无公开摘要，无法提取研究结构。请查看官方原文。</p>';

@@ -1,4 +1,5 @@
 """Finite v2 corrections, identity HOLDs, and offline audit privacy/normalization."""
+from public_bundle import bundle_text
 import contextlib
 import copy
 import io
@@ -194,7 +195,7 @@ class ReviewBuildTests(unittest.TestCase):
             library_before = (root / 'data/library.json').read_bytes()
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', root / 'public'), contextlib.redirect_stdout(io.StringIO()):
                 builder.main()
-            bundle = (root / 'public/public.js').read_text()
+            bundle = bundle_text(root / "public")
             library, _ = json.JSONDecoder().raw_decode(bundle.split('window.LIBRARY=', 1)[1])
             self.assertEqual(len(library['papers']), 1167)
             worker = (root / 'public/_worker.js').read_text()

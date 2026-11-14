@@ -25,6 +25,8 @@ class PipelineFixture(unittest.TestCase):
         self.data = {'updatedAt': 'old', 'items': [{'id': 'a', 'title': 'Cardiac AI', 'date': '2026-09-29', 'publication_date': '2026-09-29', 'publishedAt': '2026-09-29', 'draftData': {'published': '2026-09-30', 'source_date': '2026-09-28'}, 'weeklyAt': 'old'}]}
         for name in ci_daily.PUBLIC:
             (self.root / 'public' / name).write_text('asset: ' + name)
+        (self.root / 'public/assets').mkdir()
+        (self.root / 'public/index.html').write_text('<script src="assets/app.0123456789ab.js"></script>')
         self.write_bundle(self.data)
         (self.root / 'docs' / 'public-manifest.json').write_text(json.dumps({'release': 'v13.5', 'counts': {'radar': 350, 'library': 1300}}))
         self.root_patch = patch.object(ci_daily, 'ROOT', self.root)
@@ -32,7 +34,7 @@ class PipelineFixture(unittest.TestCase):
         self.addCleanup(self.root_patch.stop)
 
     def write_bundle(self, data, app='const application = 1;'):
-        (self.root / 'public' / 'public.js').write_text('window.FEEDS=' + json.dumps(data) + ';\n;\n' + app)
+        (self.root / 'public' / 'assets/app.0123456789ab.js').write_text('window.FEEDS=' + json.dumps(data) + ';\n;\n' + app)
 
     def invoke(self, *, fast=True, run=None, clock=None):
         outputs = []
@@ -113,14 +115,14 @@ class ContentHashTests(PipelineFixture):
         names = ('LIBRARY', 'FEEDS', 'SOURCE_HEALTH', 'CURATED', 'QUICKLOOKS', 'CONTENT_STATUS',
                  'JOURNAL_METRICS', 'WEEKLY_BOARD', 'PREGENERATED', 'RADAR', 'DEEP_READINGS')
         old = '\n;\n'.join('window.' + name + '={"generatedAt":"old","papers":[{"id":"a"}]};' for name in names)
-        (self.root / 'public' / 'public.js').write_text(old + '\n;\nconst app = 1;')
+        (self.root / 'public' / 'assets/app.0123456789ab.js').write_text(old + '\n;\nconst app = 1;')
         before = ci_daily.content_hash()
-        (self.root / 'public' / 'public.js').write_text(old.replace('"old"', '"new"') + '\n;\nconst app = 1;')
+        (self.root / 'public' / 'assets/app.0123456789ab.js').write_text(old.replace('"old"', '"new"') + '\n;\nconst app = 1;')
         self.assertEqual(before, ci_daily.content_hash())
 
     def test_metric_and_precomputed_content_changes_after_new_global_are_substantive(self):
         def write(value, translation):
-            (self.root / 'public' / 'public.js').write_text(
+            (self.root / 'public' / 'assets/app.0123456789ab.js').write_text(
                 'window.JOURNAL_METRICS=' + json.dumps({'journals': [{'jif': {'value': value}}]})
                 + ';\n;\nwindow.PREGENERATED=' + json.dumps({'pmid:1': {'translation': {'abstract_zh': translation}}})
                 + ';\n;\nconst app = 1;')
@@ -134,7 +136,7 @@ class ContentHashTests(PipelineFixture):
     def test_content_status_timestamps_and_coverage_have_distinct_meaning(self):
         status = {'release': 'v13.5', 'builtAt': 'old', 'radarUpdatedAt': 'old', 'healthCheckedAt': 'old', 'guideLatestPublishedAt': '2026-09-30', 'quicklookLatestAt': '2026-10-01', 'counts': {'guides': 12}}
         def write(value):
-            (self.root / 'public' / 'public.js').write_text('window.CONTENT_STATUS=' + json.dumps(value) + ';\n;\nconst app = 1;')
+            (self.root / 'public' / 'assets/app.0123456789ab.js').write_text('window.CONTENT_STATUS=' + json.dumps(value) + ';\n;\nconst app = 1;')
         write(status)
         before = ci_daily.content_hash()
         changed_times = dict(status, builtAt='new', radarUpdatedAt='new', healthCheckedAt='new')
@@ -173,7 +175,7 @@ class RefreshExecutionTests(PipelineFixture):
         self.assertIn('finishedAt', report)
         sizes = {row['path']: row['bytes'] for row in report['publicFiles']}
         self.assertTrue(ci_daily.PUBLIC <= set(sizes))
-        self.assertEqual(sizes['public.js'], (self.root / 'public' / 'public.js').stat().st_size)
+        self.assertEqual(sizes['assets/app.0123456789ab.js'], (self.root / 'public' / 'assets/app.0123456789ab.js').stat().st_size)
         self.assertEqual(outputs, [False])
 
     def test_refresh_report_includes_reading_shard_bytes(self):
@@ -256,7 +258,7 @@ class RefreshExecutionTests(PipelineFixture):
     def test_real_content_change_requests_fast_deploy(self):
         def run(argv, timeout):
             if argv == ci_daily.BUILD:
-                (self.root / 'public' / 'style.css').write_text('new style')
+                (self.root / 'public' / 'assets/style.0123456789ab.css').write_text('new style')
             return 0, '', ''
         result, report, outputs, _ = self.invoke(run=run)
         self.assertEqual(result, 0)

@@ -47,12 +47,25 @@
   function renderSourcesHealth() {
     const grid = $('#sourcesHealthGrid');
     const meta = $('#sourcesHealthMeta');
+    const summary = $('#sourcesHealthSummary');
     if (!grid) return;
+
+    if ((DEFERRED && !partsReady('health')) || HEALTH.deferred) {
+      if (summary) summary.innerHTML = '';
+      if (meta) {
+        meta.textContent = '检查时间：加载中';
+        meta.classList.remove('source-report-stale');
+      }
+      const failed = DEFERRED && PART_STATE.health === 'error';
+      grid.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed ? ' <button type="button" class="btn-sm" data-action="retry-part" data-part="health">重试</button>' : '')
+        + '</p>';
+      return;
+    }
 
     const sources = HEALTH.sources || [];
     const successful = s => ['ok','empty_feed','filtered_empty'].includes(s.status);
     const okCount = sources.filter(successful).length;
-    const summary = $('#sourcesHealthSummary');
     // The three totals double as filters; counts always describe the whole report.
     const view = ['ok', 'attention'].includes(state.sourceFilter) ? state.sourceFilter : '';
     const tile = (value, n, label, cls = '') => `<button type="button" class="source-filter${cls}" data-source-filter="${value}" aria-pressed="${view === value}"><strong>${n}</strong><span>${label}</span></button>`;
@@ -144,6 +157,7 @@
       if (newMode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); }
       renderStream();
     } else if (newMode === 'sources') {
+      if (DEFERRED) { prioritizeParts(); pumpPartQueue(); }
       syncToolRowVisibility();
       renderSourcesHealth();
       syncUrl();

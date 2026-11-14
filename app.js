@@ -625,6 +625,436 @@
     return SUPPLEMENTAL_LIBRARY.promise;
   }
 
+  // ==== src/app/00z-deferred-parts.js · Deferred data parts loader and in-place merger ====
+  const DEFERRED = !!(window.XINZHI_PARTS && window.XINZHI_PARTS.parts);
+  const PART_ORDER = DEFERRED ? Object.keys(window.XINZHI_PARTS.parts) : [];
+  const PART_STATE = {};
+  PART_ORDER.forEach(name => { PART_STATE[name] = 'idle'; });
+
+  const TIER1_FEEDS = DEFERRED ? FEEDS.items.slice() : null;
+  let pendingRadar = null;
+  const partQueue = [];
+  let inFlight = 0;
+  const MAX_IN_FLIGHT = 2;
+
+  function syncDataState() {
+    if (!DEFERRED) return;
+    window.XINZHI_DATA_STATE = { ...PART_STATE };
+    if (PART_ORDER.every(n => PART_STATE[n] === 'loaded')) {
+      window.XINZHI_DATA_READY = true;
+    }
+  }
+  if (DEFERRED) {
+    window.XINZHI_DATA_READY = false;
+    syncDataState();
+  }
+
+  function partsReady(...names) {
+    return !DEFERRED || names.every(n => !(n in PART_STATE) || PART_STATE[n] === 'loaded');
+  }
+
+  function partsSettled(...names) {
+    return !DEFERRED || names.every(n => !(n in PART_STATE) || PART_STATE[n] === 'loaded' || PART_STATE[n] === 'error');
+  }
+
+  function partsPending(...names) {
+    return DEFERRED && names.some(n => (n in PART_STATE) && (PART_STATE[n] === 'idle' || PART_STATE[n] === 'loading'));
+  }
+
+  function isPlainObject(v) {
+    return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  function deepMergeRecord(target, source) {
+    if (!isPlainObject(source)) return source;
+    const out = isPlainObject(target) ? { ...target } : {};
+    Object.keys(source).forEach(key => {
+      const val = source[key];
+      out[key] = isPlainObject(out[key]) && isPlainObject(val) ? deepMergeRecord(out[key], val) : val;
+    });
+    return out;
+  }
+
+  function controlStateKey(el, idx) {
+    const container = el.closest('[data-drawer-region], #huddleModal, #readerDrawer');
+    const scope = container ? (container.dataset.drawerRegion || container.id || 'root') : 'root';
+    if (el.id) return `${scope}#${el.id}`;
+    if (el.name) return `${scope}[name=${el.name}]`;
+    return `${scope}:${el.tagName}:${idx}`;
+  }
+
+  function captureControlStates() {
+    const root = document.querySelector('#readerDrawer.open, #huddleModalBackdrop.open');
+    if (!root) return [];
+    const active = document.activeElement;
+    return [...root.querySelectorAll('textarea, input:not([type="password"]), select')].map((el, idx) => ({
+      key: controlStateKey(el, idx),
+      value: el.value,
+      checked: el.checked,
+      focused: active === el,
+      selectionStart: typeof el.selectionStart === 'number' ? el.selectionStart : null,
+      selectionEnd: typeof el.selectionEnd === 'number' ? el.selectionEnd : null
+    }));
+  }
+
+  function restoreControlStates(states) {
+    if (!states || !states.length) return;
+    const root = document.querySelector('#readerDrawer.open, #huddleModalBackdrop.open');
+    if (!root) return;
+    const byKey = new Map();
+    root.querySelectorAll('textarea, input:not([type="password"]), select').forEach((el, idx) => {
+      byKey.set(controlStateKey(el, idx), el);
+    });
+    states.forEach(s => {
+      const el = byKey.get(s.key);
+      if (!el) return;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!s.checked;
+      else if (el.value !== s.value) el.value = s.value;
+      if (s.focused && el.focus) {
+        try {
+          el.focus({ preventScroll: true });
+          if (s.selectionStart !== null && el.setSelectionRange) el.setSelectionRange(s.selectionStart, s.selectionEnd);
+        } catch (e) { /* ignore */ }
+      }
+    });
+  }
+
+  function neededParts() {
+    if (!DEFERRED) return [];
+    if (typeof exactDoi === 'function' && exactDoi(state.search)) return ['feeds', 'library', 'quicklooks', 'radar'];
+    if (state.mode === 'sources') return ['health'];
+    if (state.mode === 'weekly') return state.weeklyPane === 'reading' ? ['readings'] : [];
+    if (state.search && state.search.trim()) return ['feeds', 'library', 'quicklooks', 'radar'];
+    const needQuicklooks = state.reading === 'quicklook';
+    if (state.mode === 'candidates') return needQuicklooks ? ['feeds', 'radar', 'quicklooks'] : ['feeds', 'radar'];
+    if (state.mode === 'library') return needQuicklooks ? ['library', 'quicklooks'] : ['library'];
+    return [];
+  }
+
+  function priorityParts() {
+    const req = neededParts();
+    if (!DEFERRED) return req;
+    const extra = [];
+    if ($('#readerDrawer.open') || state.activeDrawerPaper) {
+      extra.push('pregenerated', 'quicklooks');
+    } else if (state.mode === 'library' || state.mode === 'candidates') {
+      extra.push('quicklooks');
+    }
+    if (!extra.length) return req;
+    const combined = req.slice();
+    extra.forEach(p => { if (!combined.includes(p)) combined.push(p); });
+    return combined;
+  }
+
+  function registerPaper(p) {
+    if (!p) return;
+    if (p.id && !allPapersMap.has(p.id)) allPapersMap.set(p.id, p);
+    STATIC_DOI_PAPERS.push(p);
+  }
+
+  function clearAllDerivedCache() {
+    allPapersMap.forEach(forgetPaper);
+    CURATED.forEach(forgetPaper);
+    FEEDS.items.forEach(forgetPaper);
+    LIBRARY.papers.forEach(forgetPaper);
+  }
+
+  function mergeFeedsPart(payload) {
+    const incoming = Array.isArray(payload && payload.items) ? payload.items : [];
+    const at = Array.isArray(payload && payload.at) ? payload.at : [];
+    incoming.forEach(normalizePaper);
+    const tier1 = TIER1_FEEDS || [];
+    const tier1Set = new Set(tier1);
+    const tier1At = (FEEDS.order && Array.isArray(FEEDS.order.at)) ? FEEDS.order.at : [];
+    const trailing = FEEDS.items.filter(p => !tier1Set.has(p));
+    const total = Math.max(
+      (FEEDS.order && Number.isInteger(FEEDS.order.total)) ? FEEDS.order.total : 0,
+      tier1.length + incoming.length
+    );
+    const rebuilt = new Array(total);
+    tier1.forEach((p, idx) => {
+      const pos = tier1At[idx];
+      if (Number.isInteger(pos) && pos >= 0) rebuilt[pos] = p;
+      else rebuilt.push(p);
+    });
+    incoming.forEach((p, idx) => {
+      const pos = at[idx];
+      if (Number.isInteger(pos) && pos >= 0) rebuilt[pos] = p;
+      else rebuilt.push(p);
+    });
+    FEEDS.items.length = 0;
+    for (let i = 0; i < rebuilt.length; i++) {
+      if (rebuilt[i]) FEEDS.items.push(rebuilt[i]);
+    }
+    incoming.forEach(registerPaper);
+    if (trailing.length) {
+      const seen = new Set();
+      FEEDS.items.forEach(p => {
+        if (p.doi) seen.add(String(p.doi).toLowerCase());
+        if (p.pmid) seen.add('pmid:' + p.pmid);
+      });
+      trailing.forEach(p => {
+        const d = p.doi ? String(p.doi).toLowerCase() : '';
+        const pm = p.pmid ? 'pmid:' + p.pmid : '';
+        if ((d && seen.has(d)) || (pm && seen.has(pm))) return;
+        FEEDS.items.push(p);
+        if (d) seen.add(d);
+        if (pm) seen.add(pm);
+      });
+    }
+    if (pendingRadar) {
+      const held = pendingRadar;
+      pendingRadar = null;
+      expandRadar(held, registerPaper);
+    }
+  }
+
+  function mergeLibraryPart(payload) {
+    const papers = Array.isArray(payload && payload.papers) ? payload.papers : [];
+    const seenIds = new Set(LIBRARY.papers.map(p => p && p.id).filter(Boolean));
+    papers.forEach(p => {
+      normalizePaper(p);
+      const doi = exactDoi(p.doi);
+      if (doi && DOI_FULLTEXT.has(doi)) {
+        const sup = DOI_FULLTEXT.get(doi);
+        if (sameDoiTitle(p.title, sup.title)) {
+          for (let i = LIBRARY.papers.length - 1; i >= 0; i--) {
+            const item = LIBRARY.papers[i];
+            if (!STATIC_DOI_PAPERS.includes(item) && exactDoi(item.doi) === doi) {
+              LIBRARY.papers.splice(i, 1);
+            }
+          }
+        }
+      }
+      if (!p.id || !seenIds.has(p.id)) {
+        LIBRARY.papers.push(p);
+        if (p.id) seenIds.add(p.id);
+      }
+      if (p.id && (!allPapersMap.has(p.id) || !STATIC_DOI_PAPERS.includes(allPapersMap.get(p.id)))) {
+        allPapersMap.set(p.id, p);
+      }
+      STATIC_DOI_PAPERS.push(p);
+    });
+    if (Array.isArray(payload && payload.pdfIds)) {
+      LIBRARY.pdfIds = payload.pdfIds;
+      PDF_LIBRARY_IDS.clear();
+      payload.pdfIds.forEach(id => PDF_LIBRARY_IDS.add(String(id)));
+    } else {
+      papers.filter(p => p.doi || p.title).forEach(p => PDF_LIBRARY_IDS.add(String(p.id)));
+    }
+    delete LIBRARY.deferred;
+  }
+
+  function afterPartMerged(name) {
+    _maxDateCache = null;
+    updateHeaderBadges();
+    updateHuddleCounter();
+
+    const snapshots = captureFtFormSnapshots();
+    const fieldStates = captureControlStates();
+    const doi = exactDoi(state.search);
+
+    if (doi) {
+      if (['feeds', 'library', 'quicklooks', 'radar'].includes(name)) {
+        renderStream();
+      }
+    } else if (state.mode === 'weekly') {
+      if (name === 'readings') {
+        renderDailyDeepRead();
+        renderWeeklyAuto();
+        const readId = urlParams.get('read');
+        if (readId && !activeDeepReadingId) openDeepReading(readId, { push: false });
+      } else if (name === 'library') {
+        renderNextCandidates();
+      } else if (['quicklooks', 'pregenerated', 'board'].includes(name)) {
+        renderWeeklyAuto();
+      }
+    } else if (state.mode === 'sources') {
+      if (name === 'health') renderSourcesHealth();
+    } else if (state.mode === 'candidates') {
+      if (['feeds', 'radar', 'quicklooks'].includes(name)) {
+        renderSidebarFilters();
+        renderStream();
+      }
+    } else if (state.mode === 'library') {
+      if (['library', 'quicklooks'].includes(name)) {
+        renderSidebarFilters();
+        renderStream();
+      }
+    } else if (state.mode === 'curated') {
+      const relevant = (state.search && state.search.trim())
+        ? ['feeds', 'library', 'quicklooks', 'radar'].includes(name)
+        : ['quicklooks', 'library'].includes(name);
+      if (relevant) {
+        renderSidebarFilters();
+        renderStream();
+      }
+    }
+
+    if (state.activeDrawerPaper && $('#readerDrawer.open')) {
+      const livePaper = allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper;
+      if (['quicklooks', 'pregenerated'].includes(name) || livePaper !== state.activeDrawerPaper) {
+        openReaderDrawer(livePaper);
+      }
+    }
+    if ($('#huddleModalBackdrop.open')) {
+      openHuddleModal();
+    }
+    restoreFtFormSnapshots(snapshots);
+    restoreControlStates(fieldStates);
+  }
+
+  function mergePart(name, payload) {
+    if (!DEFERRED) return;
+    const idx = partQueue.indexOf(name);
+    if (idx >= 0) partQueue.splice(idx, 1);
+    if (name === 'feeds') {
+      mergeFeedsPart(payload);
+    } else if (name === 'radar') {
+      if (PART_STATE.feeds === 'loaded' || !('feeds' in PART_STATE)) expandRadar(payload, registerPaper);
+      else pendingRadar = payload;
+    } else if (name === 'library') {
+      mergeLibraryPart(payload);
+    } else if (name === 'quicklooks') {
+      const items = payload && typeof payload.items === 'object' ? payload.items : (payload || {});
+      Object.assign(window.QUICKLOOKS || (window.QUICKLOOKS = {}), items);
+      clearAllDerivedCache();
+    } else if (name === 'pregenerated') {
+      const items = payload && typeof payload.items === 'object' ? payload.items : (payload || {});
+      const store = window.PREGENERATED || (window.PREGENERATED = {});
+      Object.keys(items).forEach(k => {
+        store[k] = deepMergeRecord(store[k], items[k]);
+      });
+      clearAllDerivedCache();
+    } else if (name === 'health') {
+      if (Array.isArray(payload && payload.sources)) {
+        HEALTH.sources.length = 0;
+        payload.sources.forEach(s => HEALTH.sources.push(s));
+      }
+      if (payload && 'pubmedFetch' in payload) HEALTH.pubmedFetch = payload.pubmedFetch;
+      delete HEALTH.deferred;
+    } else if (name === 'readings') {
+      window.DEEP_READINGS = payload;
+    } else if (name === 'board') {
+      window.WEEKLY_BOARD = payload;
+    }
+    PART_STATE[name] = 'loaded';
+    syncDataState();
+    afterPartMerged(name);
+  }
+
+  function onPartError(name) {
+    const snapshots = captureFtFormSnapshots();
+    const fieldStates = captureControlStates();
+    const doi = exactDoi(state.search);
+    if (doi && ['feeds', 'library', 'quicklooks', 'radar'].includes(name)) {
+      renderStream();
+    } else if (state.mode === 'sources' && name === 'health') {
+      renderSourcesHealth();
+    } else if (state.mode === 'weekly' && name === 'readings') {
+      renderDailyDeepRead();
+    } else if (neededParts().includes(name)) {
+      renderStream();
+    }
+    if (state.activeDrawerPaper && $('#readerDrawer.open')) {
+      const livePaper = allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper;
+      if (['quicklooks', 'pregenerated'].includes(name) || livePaper !== state.activeDrawerPaper) {
+        openReaderDrawer(livePaper);
+      }
+    }
+    if ($('#huddleModalBackdrop.open')) {
+      openHuddleModal();
+    }
+    restoreFtFormSnapshots(snapshots);
+    restoreControlStates(fieldStates);
+  }
+
+  function prioritizeParts() {
+    if (!DEFERRED || !partQueue.length) return;
+    const priority = priorityParts();
+    partQueue.sort((a, b) => {
+      const ai = priority.indexOf(a);
+      const bi = priority.indexOf(b);
+      const an = ai >= 0 ? ai : priority.length;
+      const bn = bi >= 0 ? bi : priority.length;
+      if (an !== bn) return an - bn;
+      return PART_ORDER.indexOf(a) - PART_ORDER.indexOf(b);
+    });
+  }
+
+  function loadPart(name) {
+    if (!DEFERRED || !window.XINZHI_PARTS.parts[name]) return;
+    if (PART_STATE[name] === 'loading' || PART_STATE[name] === 'loaded') return;
+    const info = window.XINZHI_PARTS.parts[name];
+    if (!info || !info.src) {
+      PART_STATE[name] = 'error';
+      syncDataState();
+      onPartError(name);
+      return;
+    }
+    PART_STATE[name] = 'loading';
+    syncDataState();
+    inFlight++;
+    const script = document.createElement('script');
+    script.src = info.src;
+    script.async = true;
+    let settled = false;
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      inFlight = Math.max(0, inFlight - 1);
+      if (!ok && PART_STATE[name] === 'loading') {
+        PART_STATE[name] = 'error';
+        syncDataState();
+        script.remove();
+        onPartError(name);
+      }
+      pumpPartQueue();
+    };
+    script.onload = () => {
+      if (PART_STATE[name] !== 'loaded') finish(false);
+      else finish(true);
+    };
+    script.onerror = () => finish(false);
+    document.head.appendChild(script);
+  }
+
+  function pumpPartQueue() {
+    if (!DEFERRED) return;
+    while (inFlight < MAX_IN_FLIGHT && partQueue.length) {
+      const next = partQueue.shift();
+      if (PART_STATE[next] === 'idle') loadPart(next);
+    }
+  }
+
+  function retryParts(names) {
+    if (!DEFERRED) return;
+    const list = (names && names.length ? names : PART_ORDER).filter(n => PART_STATE[n] === 'error');
+    const targets = list.length ? list : PART_ORDER.filter(n => PART_STATE[n] === 'error');
+    if (!targets.length) return;
+    targets.forEach(n => {
+      PART_STATE[n] = 'idle';
+      if (!partQueue.includes(n)) partQueue.push(n);
+    });
+    syncDataState();
+    prioritizeParts();
+    pumpPartQueue();
+  }
+
+  function startDeferredParts() {
+    if (!DEFERRED) return;
+    PART_ORDER.forEach(n => {
+      if (PART_STATE[n] === 'idle' && !partQueue.includes(n)) partQueue.push(n);
+    });
+    prioritizeParts();
+    pumpPartQueue();
+  }
+
+  if (DEFERRED) {
+    window.XINZHI_PART = function (name, payload) {
+      mergePart(name, payload);
+    };
+  }
   // ==== src/app/01-state-helpers.js · Storage, URL state, DOM/format helpers, share text, theme ====
   // Safe storage (private mode / blocked storage must not break the page)
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -1143,6 +1573,11 @@
   function trBoxHtml(paper) {
     const tr = LIVE_TR[trKeyOf(paper)];
     if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}</div>`;
+    if (DEFERRED && !partsReady('pregenerated') && (paper.pmid || paper.doi)) {
+      return PART_STATE.pregenerated === 'error'
+        ? '<div class="tr-box"><p class="ql-meta" role="status">加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button></p></div>'
+        : '<div class="tr-box"><p class="ql-meta" role="status">加载中...</p></div>';
+    }
     if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
     if (paper._trState === 'loading') return `<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…${paper._trSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
     if (paper._trState === 'waiting') return `<div class="tr-box"><p class="ql-meta" role="status">${esc(paper._trMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}"${paper._trLookupState === 'loading' ? ' disabled' : ''}>读取已有译文</button></div>`;
@@ -1319,6 +1754,10 @@
   function studyBoxHtml(paper) {
     const key = studyKey(paper); if (!key) return '';
     const rec = STUDY_RESULTS[key];
+    if (!rec && DEFERRED && !partsReady('pregenerated')) {
+      const failed = PART_STATE.pregenerated === 'error';
+      return `<section class="drawer-section study-box" aria-label="研究结构与全文核对"><div class="drawer-section-title">研究结构与全文核对 <small>公开摘要服务</small></div><p class="study-meta" role="status">${failed ? '加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button>' : '加载中...'}</p></section>`;
+    }
     if (!rec && paper.weeklyPick) return '';
     const hasPubAbs = typeof hasAbstract === 'function' ? hasAbstract(paper) : !!(paper.summary || (paper.abstractSections || []).some(s => s && s.text) || (typeof quicklookOf === 'function' && quicklookOf(paper) && quicklookOf(paper).abstract));
     const noAbsMsg = '<p class="study-meta">暂无公开摘要，无法提取研究结构。请查看官方原文。</p>';
@@ -1732,14 +2171,36 @@
     return FEEDS.items.filter(p => !p.minor && datePrecision(p) === 'day' && p.date.slice(0, 10) >= s0 && p.date.slice(0, 10) <= t0).length;
   }
   function updateHeaderBadges() {
-    const cb = $('#candCountBadge'); if (cb) cb.textContent = radarDefaultCount();
-    const cub = $('#curatedCountBadge'); if (cub) cub.textContent = getCuratedList().length;
-    const lb = $('#libCountBadge'); if (lb) {
-      lb.textContent = LIBRARY.papers.length;
-      lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
-      lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+    const cb = $('#candCountBadge');
+    if (cb) {
+      if (DEFERRED && !partsReady('feeds', 'radar')) {
+        cb.textContent = '加载中';
+        cb.title = '加载中';
+        cb.setAttribute('aria-label', '加载中');
+      } else {
+        cb.textContent = radarDefaultCount();
+        cb.removeAttribute('title');
+        cb.removeAttribute('aria-label');
+      }
     }
-
+    const cub = $('#curatedCountBadge');
+    if (cub) {
+      cub.textContent = getCuratedList().length;
+      cub.removeAttribute('title');
+      cub.removeAttribute('aria-label');
+    }
+    const lb = $('#libCountBadge');
+    if (lb) {
+      if (DEFERRED && !partsReady('library')) {
+        lb.textContent = '加载中';
+        lb.title = '加载中';
+        lb.setAttribute('aria-label', '加载中');
+      } else {
+        lb.textContent = LIBRARY.papers.length;
+        lb.title = '已收录题录总数，含更正 / 来信；列表按当前筛选计数';
+        lb.setAttribute('aria-label', `已收录 ${LIBRARY.papers.length} 条题录，含更正 / 来信；列表按当前筛选计数`);
+      }
+    }
   }
 
   function contentDate(value) {
@@ -2052,6 +2513,13 @@
 
   // Render Sidebar Filters with dynamic counts
   function renderSidebarFilters() {
+    if (DEFERRED && !partsReady(...neededParts())) {
+      ['#tierFilterList', '#publisherAccordion', '#designFilterList', '#tagsCloud'].forEach(sel => {
+        const el = $(sel);
+        if (el) el.innerHTML = '';
+      });
+      return;
+    }
     const all = getCurrentDataset();
     const base = all.filter(p => matchesFilters(p, false, 'sidebar'));
     // One pass: a paper belongs to a group's facet when it fails no other group.
@@ -2395,6 +2863,19 @@
     return '';
   }
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
+    if (DEFERRED && !partsReady('feeds', 'library', 'quicklooks', 'radar')) {
+      ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#ftBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+      const filters = $('#activeFiltersBar');
+      if (filters) filters.innerHTML = `<span class="results-meta">按 DOI 全站检索 · 加载中</span><span class="filter-badge-active doi-filter-badge"><span class="doi-filter-value">${esc(doi)}</span><button class="filter-badge-remove" data-clear="search" aria-label="清除 DOI 检索">&times;</button></span>`;
+      const failed = ['feeds', 'library', 'quicklooks', 'radar'].filter(n => PART_STATE[n] === 'error');
+      streamEl.className = state.viewMode === 'compact' ? 'articles-compact-list' : 'articles-stream';
+      streamEl.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed.length ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '')
+        + '</p>';
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      if (!DOI_LOOKUPS.get(doi)) lookupSupplementalDoi(doi);
+      return;
+    }
     const papers = exactDoiPapers(doi), lookup = DOI_LOOKUPS.get(doi);
     const job = DOI_JOBS.get(doi), activeJob = doiJobActive(job);
     ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
@@ -2422,6 +2903,7 @@
     if (!lookup) lookupSupplementalDoi(doi);
   }
   function renderStream() {
+    if (DEFERRED) prioritizeParts();
     if (DOI_JOB_WATCH.doi && exactDoi(state.search) !== DOI_JOB_WATCH.doi) watchDoiJob(DOI_JOB_WATCH.doi);
     const streamEl = $('#articlesStream');
     const loadMoreBtn = $('#loadMoreBtn');
@@ -2433,6 +2915,25 @@
     if (doi) { renderDoiStream(doi, streamEl, loadMoreBtn); syncUrl(); return; }
     if (state.mode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); syncUrl(); return; }
     if (state.mode === 'sources') { renderSourcesHealth(); syncUrl(); return; }
+
+    const req = neededParts();
+    if (DEFERRED && !partsReady(...req)) {
+      ['#aiDigest', '#modeNote', '#laneBar', '#rangeBar', '#ftBar', '#curatedDayBar', '#sortSelector'].forEach(selector => { const el = $(selector); if (el) el.hidden = true; });
+      const filters = $('#activeFiltersBar');
+      if (filters) filters.innerHTML = '';
+      const total = $('#listTotal');
+      if (total) total.textContent = '加载中';
+      const apply = $('#panelApplyBtn');
+      if (apply) { apply.textContent = '加载中'; apply.dataset.empty = ''; }
+      const failed = req.filter(n => PART_STATE[n] === 'error');
+      streamEl.className = state.viewMode === 'compact' ? 'articles-compact-list' : 'articles-stream';
+      streamEl.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed.length ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '')
+        + '</p>';
+      if (loadMoreBtn) loadMoreBtn.hidden = true;
+      syncUrl();
+      return;
+    }
 
     const filtered = getFilteredArticles();
     renderDigestBar(filtered);
@@ -2529,6 +3030,11 @@
     const drawer = $('#readerDrawer');
     const backdrop = $('#drawerBackdrop');
     if (!drawer || !backdrop) return;
+    if (DEFERRED && !partsReady('pregenerated', 'quicklooks')) {
+      prioritizeParts();
+      pumpPartQueue();
+    }
+    const prevScrollTop = (!changedPaper && $('#drawerBody')) ? $('#drawerBody').scrollTop : 0;
 
     const pubClass = getPublisherClass(paper.publisher);
     const designClass = getDesignClass(paper.studyDesign);
@@ -2603,6 +3109,10 @@
 
       // AI 速览 (daily batch, labelled unreviewed) + its stored public abstract
       const ql = quicklookOf(paper);
+      const readerQlPending = partsPending('quicklooks', 'pregenerated');
+      const readerQlFailed = !readerQlPending && DEFERRED && (PART_STATE.quicklooks === 'error' || PART_STATE.pregenerated === 'error');
+      const readerPrePending = partsPending('pregenerated');
+      const readerPreFailed = !readerPrePending && DEFERRED && PART_STATE.pregenerated === 'error';
       if (ql && ql.abstract && !paper.summary && !(paper.abstractSections && paper.abstractSections.length)) {
         paper.abstractSections = [{ label: '', text: ql.abstract }];
         forgetPaper(paper);
@@ -2611,7 +3121,7 @@
       }
       // 公开摘要要去 Europe PMC 拉取时，先标成拉取中再渲染：速览和结构区在拉取期间显示「正在获取摘要…」，
       // 不抢跑写「暂无公开摘要」。拉取结束（含失败）后才按真实结果显示。
-      absFetchPlanned = !paper.weeklyPick && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && !!(paper.doi || paper.pmid) && !paper._absTries;
+      absFetchPlanned = !paper.weeklyPick && partsReady('quicklooks', 'pregenerated') && !paper.summary && !(paper.abstractSections && paper.abstractSections.length) && !!(paper.doi || paper.pmid) && !paper._absTries;
       if (absFetchPlanned) { paper._absTries = 1; paper._absState = 'loading'; }
       const quickBox = (ql && !draft) ? `
         <div class="drawer-section quicklook">
@@ -2625,6 +3135,13 @@
           ${(ql.abstractSource || ql.abstract_source) ? `<p class="text-muted" style="font-size:11.5px;">摘要来源：${esc(ql.abstractSource || ql.abstract_source)}${safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}) ? ` · <a href="${esc(safeSourceUrl({url:ql.abstractSourceUrl || ql.source_url}))}" target="_blank" rel="noopener">查看来源 ↗</a>` : ''}</p>` : ''}
         </div>` : '';
       const aiBox = (!ql && !draft) ? (() => {
+        if (readerQlPending) {
+          return '<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div><p class="ql-meta" role="status">加载中...</p></div>';
+        }
+        if (readerQlFailed) {
+          const failed = ['pregenerated', 'quicklooks'].filter(n => PART_STATE[n] === 'error').join(',');
+          return `<div class="drawer-section quicklook ai-ask"><div class="drawer-section-title">速览</div><p class="ql-meta" role="status">加载失败，请重试。<button type="button" class="btn-sm" data-action="retry-part" data-part="${failed}">重试</button></p></div>`;
+        }
         if (paper.weeklyPick) return '';
         const s = paper._aiState;
         // Do not name this hasAbstract: openReaderDrawer later declares a local const hasAbstract (TDZ).
@@ -2663,6 +3180,11 @@
         `).join('');
       } else if (paper.summary) {
         abstractHtml = `<p>${esc(paper.summary)}</p>`;
+      } else if (readerQlPending) {
+        abstractHtml = '<p class="text-muted" role="status">加载中...</p>';
+      } else if (readerQlFailed && !paper.weeklyPick) {
+        const failed = ['pregenerated', 'quicklooks'].filter(n => PART_STATE[n] === 'error').join(',');
+        abstractHtml = `<p class="text-muted" role="status">摘要数据加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="${failed}">重试</button></p>`;
       } else if (paper.weeklyPick) {
         abstractHtml = '<p class="text-muted">公开摘要尚未准备好，请查看官方原文。</p>';
       } else if (paper._absState === 'loading') {
@@ -2710,6 +3232,11 @@
       const tr = LIVE_TR[trKeyOf(paper)];
       const zhAbs = (hasAbstract && validTranslation(tr)) ? tr.abstract_zh.split(/\n+/).map(s => `<p>${esc(s)}</p>`).join('') : '';
       const translationReady = !!(hasAbstract && zhAbs);
+      const trDeferredNote = (hasAbstract && !translationReady && (paper.pmid || paper.doi) && readerPrePending)
+        ? '<p class="ql-meta drawer-deferred-status" role="status">加载中...</p>'
+        : (hasAbstract && !translationReady && (paper.pmid || paper.doi) && readerPreFailed)
+          ? '<p class="ql-meta drawer-deferred-status" role="status">中文摘要加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button></p>'
+          : '';
       const abstractSection = `
         <section class="drawer-section abstract-reader" aria-label="摘要">
           <div class="drawer-section-title">摘要</div>
@@ -2720,7 +3247,7 @@
             </div>
             <div class="abs-panel" data-abs-panel="zh" role="tabpanel">${zhAbs}</div>
             <div class="abs-panel" data-abs-panel="en" role="tabpanel" hidden lang="en"><div class="structured-abstract">${abstractHtml}</div></div>
-          ` : `<div class="structured-abstract">${abstractHtml}</div>`}
+          ` : `${trDeferredNote}<div class="structured-abstract">${abstractHtml}</div>`}
           ${abstractMayBeIncomplete(paper) ? '<p class="abs-incomplete-note">摘要可能不完整</p>' : ''}
           ${absSource}
         </section>
@@ -2734,10 +3261,12 @@
       const ftSection = $('#drawerFulltext');
       const pdfLinkEl = $('#drawerPdfLink');
       const pdfFormEl = $('#drawerPdfForm');
-      ftSection.remove();
+      const ftRegion = bodyEl.querySelector('[data-drawer-region="fulltext"]');
+      const keepFtMounted = !changedPaper && bodyEl.dataset.paperId === String(paper.id) && !!(ftRegion && ftSection && ftSection.parentElement === ftRegion);
+      if (!keepFtMounted) ftSection.remove();
       renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
         ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
-      bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
+      if (!keepFtMounted) bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
       if (ftStatus && ftStatus.dataset.ftHtml !== ftHtml) {
@@ -2778,8 +3307,8 @@
     if (pdfLink) {
       const pdfUrl = pdfDownloadUrl(paper);
       pdfLink.href = pdfUrl || '#'; pdfLink.hidden = !pdfUrl;
-      // 口令框跟着下载链接走：链接隐藏或换了一篇就收起并清空口令。
-      if (!pdfUrl || changedPaper) resetDlForm(pdfForm);
+      // 口令框跟着下载链接走：换了一篇，或同篇确已无可用下载链接且口令框正展开时才收起并清空口令。
+      if (changedPaper || (!pdfUrl && pdfForm && !pdfForm.hidden && partsReady('library'))) resetDlForm(pdfForm);
       if (ftSectionNow) {
         const primarySlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-primary]') : null;
         const formSlot = pdfUrl ? ftSectionNow.querySelector('[data-drawer-ft-form-slot]') : null;
@@ -2796,15 +3325,17 @@
     if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
     drawer.classList.add('open');
     backdrop.classList.add('open');
-    if (changedPaper && bodyEl) bodyEl.scrollTop = 0;
+    if (bodyEl) bodyEl.scrollTop = changedPaper ? 0 : prevScrollTop;
     if (changedPaper || (lastFocus && !drawer.contains(document.activeElement))) $('#drawerCloseBtn')?.focus({ preventScroll: true });
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
 
     if (!paper.weeklyPick) {
-      if (!paper.hasDraft && !quicklookOf(paper)) aiApiCheck(paper);
-      trCheck(paper);
-      studyCheck(paper);
+      if (!paper.hasDraft && !quicklookOf(paper) && partsReady('quicklooks', 'pregenerated')) aiApiCheck(paper);
+      if (partsReady('pregenerated')) {
+        trCheck(paper);
+        studyCheck(paper);
+      }
     }
 
     // No abstract in our data? Fetch the public one from Europe PMC (free, no API key).
@@ -2973,7 +3504,11 @@
     const missing = state.huddle.filter(id => !huddlePaper(id));
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
-    state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
+    if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
+      state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id) && huddlePaper(id));
+    } else {
+      state.huddleCompare = state.huddleCompare.filter(id => state.huddle.includes(id));
+    }
     const selected = selectedComparePapers();
     ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn'].forEach(id => {
       const button = $('#' + id);
@@ -2982,11 +3517,18 @@
       if (button.disabled) button.setAttribute('aria-describedby', 'huddleEmptyHelp');
       else button.removeAttribute('aria-describedby');
     });
+    const pendingParts = DEFERRED && ['feeds', 'library', 'radar'].some(n => PART_STATE[n] === 'idle' || PART_STATE[n] === 'loading');
+    const erroredParts = DEFERRED && !pendingParts && ['feeds', 'library', 'radar'].some(n => PART_STATE[n] === 'error');
+    const missingMsg = pendingParts ? '加载中… '
+      : RADAR_LOAD.state === 'loading' ? '正在载入题录存档…'
+      : erroredParts ? '部分题录加载失败。'
+      : '这条可能已超出站内收录范围。';
+    const missingRetry = erroredParts ? ' <button type="button" class="btn-sm" data-action="retry-part">重试</button>' : '';
     const missingHtml = missing.map(id => `
         <div class="huddle-item huddle-item-missing">
           <div class="huddle-item-content">
             <h4>文献信息暂未载入</h4>
-            <p class="huddle-original-title">${RADAR_LOAD.state === 'loading' ? '正在载入题录存档…' : '这条可能已超出站内收录范围。'}编号 ${esc(id)}</p>
+            <p class="huddle-original-title">${missingMsg}编号 ${esc(id)}${missingRetry}</p>
           </div>
           <button class="btn-sm" data-action="remove-huddle" data-paper-id="${esc(id)}">移出</button>
         </div>`).join('');
@@ -3151,12 +3693,25 @@
   function renderSourcesHealth() {
     const grid = $('#sourcesHealthGrid');
     const meta = $('#sourcesHealthMeta');
+    const summary = $('#sourcesHealthSummary');
     if (!grid) return;
+
+    if ((DEFERRED && !partsReady('health')) || HEALTH.deferred) {
+      if (summary) summary.innerHTML = '';
+      if (meta) {
+        meta.textContent = '检查时间：加载中';
+        meta.classList.remove('source-report-stale');
+      }
+      const failed = DEFERRED && PART_STATE.health === 'error';
+      grid.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed ? ' <button type="button" class="btn-sm" data-action="retry-part" data-part="health">重试</button>' : '')
+        + '</p>';
+      return;
+    }
 
     const sources = HEALTH.sources || [];
     const successful = s => ['ok','empty_feed','filtered_empty'].includes(s.status);
     const okCount = sources.filter(successful).length;
-    const summary = $('#sourcesHealthSummary');
     // The three totals double as filters; counts always describe the whole report.
     const view = ['ok', 'attention'].includes(state.sourceFilter) ? state.sourceFilter : '';
     const tile = (value, n, label, cls = '') => `<button type="button" class="source-filter${cls}" data-source-filter="${value}" aria-pressed="${view === value}"><strong>${n}</strong><span>${label}</span></button>`;
@@ -3248,6 +3803,7 @@
       if (newMode === 'weekly') { renderWeeklyHeader(); renderNextCandidates(); }
       renderStream();
     } else if (newMode === 'sources') {
+      if (DEFERRED) { prioritizeParts(); pumpPartQueue(); }
       syncToolRowVisibility();
       renderSourcesHealth();
       syncUrl();
@@ -3300,6 +3856,15 @@
   }
   function renderDailyDeepRead() {
     const el = $('#dailyDeepRead'); if (!el) return;
+    if (DEFERRED && !partsReady('readings')) {
+      prioritizeParts();
+      const failed = PART_STATE.readings === 'error';
+      el.innerHTML = '<p class="data-loading-note" role="status">加载中'
+        + (failed ? ' <button type="button" class="btn-sm" data-action="retry-part" data-part="readings">重试</button>' : '')
+        + '</p>';
+      const count = $('#weeklyPaneReadingCount'); if (count) count.textContent = '';
+      return;
+    }
     const data = window.DEEP_READINGS || {}, status = data.status || {}, groups = dailyReadingGroups(data);
     const historyOpen = !!el.querySelector('.deep-reading-history[open]');
     const reason = {
@@ -4526,6 +5091,7 @@
       // A new entry per tab, so the phone Back button returns to the previous tab.
       try { history.pushState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
       switchMode(btn.dataset.mode);
+      if (DEFERRED) prioritizeParts();
     });
   });
 
@@ -4666,6 +5232,7 @@
     if (weeklyPane) {
       state.weeklyPane = weeklyPane.dataset.weeklyPane;
       renderWeeklyPane();
+      if (DEFERRED) prioritizeParts();
       syncUrl();
       const section = $('#weeklySection');
       if (section && section.getBoundingClientRect().top < 0) window.scrollTo({ top: section.getBoundingClientRect().top + window.scrollY - 70, behavior: 'instant' });
@@ -4853,6 +5420,24 @@
     const refreshDoi = e.target.closest('[data-action="refresh-doi-status"]');
     if (refreshDoi) { lookupSupplementalDoi(exactDoi(refreshDoi.dataset.doi), true); renderStream(); return; }
     if (e.target.closest('[data-action="retry-radar-archive"]')) { RADAR_LOAD.state = 'idle'; renderStream(); return; }
+    const retryPartBtn = e.target.closest('[data-action="retry-part"]');
+    if (retryPartBtn) {
+      const snapshots = captureFtFormSnapshots();
+      const fieldStates = captureControlStates();
+      const part = retryPartBtn.dataset.part;
+      const parts = part ? part.split(',').map(s => s.trim()).filter(Boolean) : neededParts();
+      retryParts(parts);
+      if (state.mode === 'sources' && !exactDoi(state.search)) renderSourcesHealth();
+      else if (state.mode === 'weekly' && !exactDoi(state.search)) renderDailyDeepRead();
+      else renderStream();
+      if (state.activeDrawerPaper && $('#readerDrawer.open')) {
+        openReaderDrawer(state.activeDrawerPaper);
+      }
+      if ($('#huddleModalBackdrop.open')) openHuddleModal();
+      restoreFtFormSnapshots(snapshots);
+      restoreControlStates(fieldStates);
+      return;
+    }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
     if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
     const browseBtn = e.target.closest('[data-browse-only]');
@@ -5081,6 +5666,7 @@
     $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
     syncSearchPanel();
     switchMode(next.mode, true);
+    if (DEFERRED) prioritizeParts();
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {
@@ -5185,6 +5771,7 @@
     const list = getFilteredArticles();
     if (list.length > 0) openReaderDrawer(list[0]);
   }
+  if (DEFERRED) startDeferredParts();
 
 })();
 

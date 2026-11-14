@@ -3,7 +3,7 @@ const src=fs.readFileSync(require('path').join(__dirname,'../app.js'),'utf8');
 const fn=n=>{const m=src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'));if(!m)throw Error(n);return m[0];};
 const cs=n=>src.match(new RegExp('  const '+n+' =[^]*?;'))[0];
 const code=[cs('ZH_EN'),cs('zhTerms'),cs('CARDIO_TIERS'),cs('AI_RE'),cs('CARDIO_RE'),cs('_rs'),...['queryMatches','paperText','laneOf','isCrossAI','quicklookOf','hasAbstract','datePrecision','dateLabel','safeSourceUrl','rangeStart','getCuratedList','publishedDate'].map(fn)].join('\n');
-const c=vm.createContext({window:{QUICKLOOKS:{}},state:{range:'7'},beijingToday:()=> '2026-09-30',FEEDS:{items:[],updatedAt:'2026-10-01'},LIBRARY:{papers:[]},CURATED:[{id:'keep',doi:'10.1/keep',hasDraft:true,draftData:{published:'2026-09-29'}}]});vm.runInContext(code,c);
+const c=vm.createContext({window:{QUICKLOOKS:{}},DEFERRED:false,partsReady:()=>true,neededParts:()=>[],state:{range:'7'},beijingToday:()=> '2026-09-30',FEEDS:{items:[],updatedAt:'2026-10-01'},LIBRARY:{papers:[]},CURATED:[{id:'keep',doi:'10.1/keep',hasDraft:true,draftData:{published:'2026-09-29'}}]});vm.runInContext(code,c);
 // Install the fixture clock after extracted helpers have defined their functions.
 c.beijingToday=()=> '2026-09-30';
 assert(c.queryMatches('atrial fibrillation ablation','房颤消融'));assert(c.queryMatches('atrial fibrillation ablation','房颤 消融'));assert(!c.queryMatches('atrial fibrillation','房颤消融'));

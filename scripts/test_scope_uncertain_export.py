@@ -1,3 +1,4 @@
+from public_bundle import bundle_text
 import contextlib
 import copy
 import io
@@ -295,7 +296,7 @@ class ScopeUncertainExportTests(unittest.TestCase):
             self.assertEqual(out['items'][0]['doi'], '10.1000/cand-unc-1')
             self.assertEqual(out['items'][0]['reason'], 'uncertain_scope')
             self.assertEqual(out['items'][0]['ingestedAt'], '2026-11-13T01:00:00Z')
-            bundle = (root / 'public/public.js').read_text(encoding='utf-8')
+            bundle = bundle_text(root / "public")
             self.assertNotIn('scope-uncertain', bundle)
             self.assertNotIn('"uncertain_scope"', bundle)
             self.assertNotIn('SCOPE_UNCERTAIN_LIST', bundle)
