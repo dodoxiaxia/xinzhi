@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -55,8 +56,13 @@ def _synthetic_full_data():
         '10.1000/bulk0': {'one_line': 'Bulk quicklook that must be deferred'},
     }
     pregenerated = {
-        'pmid:1003': {'translation': {'title_zh': '周榜译题'}},
         'doi:10.1000/offweek': {'translation': {'title_zh': '非周榜预生成'}},
+        'pmid:1003': {
+            'translation': {'title_zh': '周榜译题', 'abstract_zh': '周榜中文摘要'},
+            'quicklook': {'one_line': '周榜一句话速览'},
+            'study': {'papers': [{'key': 'pmid:1003'}]},
+            'meta': {'builtAt': '2026-11-14'},
+        },
     }
     source_health = {
         'checkedAt': '2026-11-14T00:00:00Z',
@@ -224,7 +230,7 @@ class FirstScreenBudgetTests(unittest.TestCase):
         self.assertEqual(first['SOURCE_HEALTH'], {'checkedAt': original['SOURCE_HEALTH']['checkedAt'], 'sources': [], 'deferred': True})
         # Tier-1 QUICKLOOKS & PREGENERATED carry only default-view subsets.
         self.assertEqual(set(first['QUICKLOOKS']), {'10.1000/pick1'})
-        self.assertEqual(set(first['PREGENERATED']), {'pmid:1003'})
+        self.assertEqual(first['PREGENERATED'], {'pmid:1003': {'quicklook': {'one_line': '周榜一句话速览'}}})
         # Deferred-only globals are absent from tier 1.
         for excluded in ('DEEP_READINGS', 'WEEKLY_BOARD', 'RADAR'):
             self.assertNotIn(excluded, first)
@@ -234,7 +240,8 @@ class FirstScreenBudgetTests(unittest.TestCase):
         self.assertEqual(parts['feeds']['at'], [0, 2])
         self.assertEqual(parts['library'], {'papers': original['LIBRARY']['papers'], 'pdfIds': original['LIBRARY']['pdfIds']})
         self.assertEqual(set(parts['quicklooks']['items']), {'10.1000/week3', '10.1000/bulk0'})
-        self.assertEqual(set(parts['pregenerated']['items']), {'doi:10.1000/offweek'})
+        self.assertEqual(set(parts['pregenerated']['items']), {'doi:10.1000/offweek', 'pmid:1003'})
+        self.assertEqual(set(parts['pregenerated']['items']['pmid:1003']), {'translation', 'study', 'meta'})
 
         # Round-trip through built assets via public_bundle.bundle_text equals original globals.
         files, app_path, style_path = public_split.build_assets(
@@ -253,6 +260,16 @@ class FirstScreenBudgetTests(unittest.TestCase):
             reconstituted = public_bundle.bundle_text(pub)
             for name in ('CURATED', 'CONTENT_STATUS', 'JOURNAL_METRICS', 'FEEDS', 'LIBRARY', 'SOURCE_HEALTH', 'QUICKLOOKS', 'PREGENERATED', 'RADAR', 'DEEP_READINGS', 'WEEKLY_BOARD'):
                 self.assertEqual(public_bundle._global(reconstituted, name), original[name], name)
+            py_pre = public_bundle._global(reconstituted, 'PREGENERATED')
+            self.assertEqual(list(py_pre.keys()), list(original['PREGENERATED'].keys()))
+            self.assertEqual(list(py_pre['pmid:1003'].keys()), list(original['PREGENERATED']['pmid:1003'].keys()))
+
+            helper = Path(__file__).with_name('public_bundle.cjs')
+            node_out = subprocess.check_output(['node', '-e', 'process.stdout.write(require(process.argv[1]).bundleText(process.argv[2]))', str(helper), d], text=True)
+            node_pre = public_bundle._global(node_out, 'PREGENERATED')
+            self.assertEqual(node_pre, original['PREGENERATED'])
+            self.assertEqual(list(node_pre.keys()), list(original['PREGENERATED'].keys()))
+            self.assertEqual(list(node_pre['pmid:1003'].keys()), list(original['PREGENERATED']['pmid:1003'].keys()))
 
             # Also verify raw part decoding round-trip directly.
             manifest = public_bundle._global((pub / app_path).read_text(encoding='utf-8'), 'XINZHI_PARTS')
@@ -332,6 +349,81 @@ class FirstScreenBudgetTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'move data into a deferred part'):
                     builder.main()
             self.assertEqual((dest / 'index.html').read_bytes(), before_index)
+
+    def test_conservative_decimal_budget_and_production_shape_split(self):
+        self.assertEqual(public_split.FIRST_SCREEN_DATA_BUDGET_BR, 100_000)
+        self.assertEqual(public_split.FIRST_SCREEN_TOTAL_BUDGET_BR, 225 * 1024)
+        self.assertEqual(public_split.FIRST_SCREEN_GZIP_TO_BR_RATIO, 1.25)
+
+        data = _synthetic_full_data()
+        board_items = []
+        pregen = {'doi:10.1000/offweek-0': {'translation': {'abstract_zh': '非周榜译文' * 8}}}
+        for i in range(28):
+            pmid = str(5000 + i)
+            doi = f'10.1000/prod-{i}'
+            paper = {
+                'id': f'cand-w-{i}',
+                'pmid': pmid,
+                'doi': doi,
+                'title': f'Randomized Clinical Study {i} on Structural Heart Disease',
+                'journal': 'JACC' if i % 2 == 0 else 'European Heart Journal',
+                'date': '2026-11-14',
+                'weeklyPick': i + 1,
+                'summary': f'Background and methods summary sentence {i}. Results showed consistent benefit across subgroups. ',
+            }
+            data['FEEDS']['items'].append(paper)
+            board_items.append({**paper, 'paperID': 'pmid:' + pmid, 'rank': i + 1, 'category': '心血管', 'abstract': paper['summary']})
+            pregen['pmid:' + pmid] = {
+                'translation': {'title_zh': f'临床研究 {i}', 'abstract_zh': f'背景与方法中文摘要段落 {i}，主要终点呈现显著获益。' * 8},
+                'quicklook': {'one_line': f'一句话速览 {i}', 'why_read': f'临床要点 {i}', 'design': 'RCT'},
+                'study': {'schemaVersion': 1, 'papers': [{'key': 'pmid:' + pmid, 'question': {'text': f'临床问题 {i}', 'quote': 'quote'}}], 'checklist': [f'核对项 {i}']},
+                'meta': {'builtAt': '2026-11-14', 'version': i + 1},
+            }
+        for i in range(200):
+            data['FEEDS']['items'].append({'id': f'cand-extra-{i}', 'doi': f'10.1000/extra-{i}', 'title': f'Candidate {i}', 'summary': 'Bulk ' * 20})
+        data['WEEKLY_BOARD'] = {'schemaVersion': 1, 'items': board_items}
+        data['PREGENERATED'] = pregen
+
+        first, parts = public_split.split_parts(data)
+        self.assertEqual(set(first['PREGENERATED']), {'pmid:' + str(5000 + i) for i in range(28)})
+        for entry in first['PREGENERATED'].values():
+            self.assertEqual(set(entry), {'quicklook'})
+        for i in range(28):
+            deferred_entry = parts['pregenerated']['items']['pmid:' + str(5000 + i)]
+            self.assertNotIn('quicklook', deferred_entry)
+            self.assertEqual(set(deferred_entry), {'translation', 'study', 'meta'})
+
+        files, app_path, style_path = public_split.build_assets(
+            data,
+            'window.RADAR_ARCHIVE={"rows":[]};',
+            ['// production-shape app stub\nconsole.log("ok");\n'],
+            'body{margin:0;color:#111}',
+        )
+        payloads = {'index.html': f'<link rel="stylesheet" href="{style_path}"><script src="{app_path}"></script>'.encode('utf-8')}
+        payloads.update({k: v.encode('utf-8') for k, v in files.items()})
+        report = public_split.check_first_screen_budget(payloads)
+        self.assertLessEqual(report['data']['gzip'], int(100_000 * 1.25))
+        if report['brotliAvailable']:
+            self.assertLessEqual(report['data']['br'], 100_000)
+
+        with tempfile.TemporaryDirectory() as d:
+            pub = Path(d)
+            for rel, text in files.items():
+                target = pub / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text, encoding='utf-8')
+            (pub / 'index.html').write_bytes(payloads['index.html'])
+            py_bundle = public_bundle.bundle_text(pub)
+            py_pre = public_bundle._global(py_bundle, 'PREGENERATED')
+            self.assertEqual(py_pre, pregen)
+            self.assertEqual(list(py_pre.keys()), list(pregen.keys()))
+            self.assertEqual(list(py_pre['pmid:5000'].keys()), list(pregen['pmid:5000'].keys()))
+            helper = Path(__file__).with_name('public_bundle.cjs')
+            node_bundle = subprocess.check_output(['node', '-e', 'process.stdout.write(require(process.argv[1]).bundleText(process.argv[2]))', str(helper), d], text=True)
+            node_pre = public_bundle._global(node_bundle, 'PREGENERATED')
+            self.assertEqual(node_pre, pregen)
+            self.assertEqual(list(node_pre.keys()), list(pregen.keys()))
+            self.assertEqual(list(node_pre['pmid:5000'].keys()), list(pregen['pmid:5000'].keys()))
 
 
 if __name__ == '__main__':

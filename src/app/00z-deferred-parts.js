@@ -30,6 +30,68 @@
     return !DEFERRED || names.every(n => !(n in PART_STATE) || PART_STATE[n] === 'loaded' || PART_STATE[n] === 'error');
   }
 
+  function partsPending(...names) {
+    return DEFERRED && names.some(n => (n in PART_STATE) && (PART_STATE[n] === 'idle' || PART_STATE[n] === 'loading'));
+  }
+
+  function isPlainObject(v) {
+    return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  function deepMergeRecord(target, source) {
+    if (!isPlainObject(source)) return source;
+    const out = isPlainObject(target) ? { ...target } : {};
+    Object.keys(source).forEach(key => {
+      const val = source[key];
+      out[key] = isPlainObject(out[key]) && isPlainObject(val) ? deepMergeRecord(out[key], val) : val;
+    });
+    return out;
+  }
+
+  function controlStateKey(el, idx) {
+    const container = el.closest('[data-drawer-region], #huddleModal, #readerDrawer');
+    const scope = container ? (container.dataset.drawerRegion || container.id || 'root') : 'root';
+    if (el.id) return `${scope}#${el.id}`;
+    if (el.name) return `${scope}[name=${el.name}]`;
+    return `${scope}:${el.tagName}:${idx}`;
+  }
+
+  function captureControlStates() {
+    const root = document.querySelector('#readerDrawer.open, #huddleModalBackdrop.open');
+    if (!root) return [];
+    const active = document.activeElement;
+    return [...root.querySelectorAll('textarea, input:not([type="password"]), select')].map((el, idx) => ({
+      key: controlStateKey(el, idx),
+      value: el.value,
+      checked: el.checked,
+      focused: active === el,
+      selectionStart: typeof el.selectionStart === 'number' ? el.selectionStart : null,
+      selectionEnd: typeof el.selectionEnd === 'number' ? el.selectionEnd : null
+    }));
+  }
+
+  function restoreControlStates(states) {
+    if (!states || !states.length) return;
+    const root = document.querySelector('#readerDrawer.open, #huddleModalBackdrop.open');
+    if (!root) return;
+    const byKey = new Map();
+    root.querySelectorAll('textarea, input:not([type="password"]), select').forEach((el, idx) => {
+      byKey.set(controlStateKey(el, idx), el);
+    });
+    states.forEach(s => {
+      const el = byKey.get(s.key);
+      if (!el) return;
+      if (el.type === 'checkbox' || el.type === 'radio') el.checked = !!s.checked;
+      else if (el.value !== s.value) el.value = s.value;
+      if (s.focused && el.focus) {
+        try {
+          el.focus({ preventScroll: true });
+          if (s.selectionStart !== null && el.setSelectionRange) el.setSelectionRange(s.selectionStart, s.selectionEnd);
+        } catch (e) { /* ignore */ }
+      }
+    });
+  }
+
   function neededParts() {
     if (!DEFERRED) return [];
     if (typeof exactDoi === 'function' && exactDoi(state.search)) return ['feeds', 'library', 'quicklooks', 'radar'];
@@ -45,10 +107,16 @@
   function priorityParts() {
     const req = neededParts();
     if (!DEFERRED) return req;
-    if ((state.mode === 'library' || state.mode === 'candidates') && !req.includes('quicklooks')) {
-      return req.concat('quicklooks');
+    const extra = [];
+    if ($('#readerDrawer.open') || state.activeDrawerPaper) {
+      extra.push('pregenerated', 'quicklooks');
+    } else if (state.mode === 'library' || state.mode === 'candidates') {
+      extra.push('quicklooks');
     }
-    return req;
+    if (!extra.length) return req;
+    const combined = req.slice();
+    extra.forEach(p => { if (!combined.includes(p)) combined.push(p); });
+    return combined;
   }
 
   function registerPaper(p) {
@@ -156,6 +224,7 @@
     updateHuddleCounter();
 
     const snapshots = captureFtFormSnapshots();
+    const fieldStates = captureControlStates();
     const doi = exactDoi(state.search);
 
     if (doi) {
@@ -205,6 +274,7 @@
       openHuddleModal();
     }
     restoreFtFormSnapshots(snapshots);
+    restoreControlStates(fieldStates);
   }
 
   function mergePart(name, payload) {
@@ -224,7 +294,10 @@
       clearAllDerivedCache();
     } else if (name === 'pregenerated') {
       const items = payload && typeof payload.items === 'object' ? payload.items : (payload || {});
-      Object.assign(window.PREGENERATED || (window.PREGENERATED = {}), items);
+      const store = window.PREGENERATED || (window.PREGENERATED = {});
+      Object.keys(items).forEach(k => {
+        store[k] = deepMergeRecord(store[k], items[k]);
+      });
       clearAllDerivedCache();
     } else if (name === 'health') {
       if (Array.isArray(payload && payload.sources)) {
@@ -244,6 +317,8 @@
   }
 
   function onPartError(name) {
+    const snapshots = captureFtFormSnapshots();
+    const fieldStates = captureControlStates();
     const doi = exactDoi(state.search);
     if (doi && ['feeds', 'library', 'quicklooks', 'radar'].includes(name)) {
       renderStream();
@@ -254,9 +329,17 @@
     } else if (neededParts().includes(name)) {
       renderStream();
     }
+    if (state.activeDrawerPaper && $('#readerDrawer.open')) {
+      const livePaper = allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper;
+      if (['quicklooks', 'pregenerated'].includes(name) || livePaper !== state.activeDrawerPaper) {
+        openReaderDrawer(livePaper);
+      }
+    }
     if ($('#huddleModalBackdrop.open')) {
       openHuddleModal();
     }
+    restoreFtFormSnapshots(snapshots);
+    restoreControlStates(fieldStates);
   }
 
   function prioritizeParts() {

@@ -9,10 +9,11 @@ from pathlib import Path
 PICK_FIELDS = ('autoPick', 'weeklyPick')
 PART_ORDER = ('feeds', 'library', 'quicklooks', 'radar', 'pregenerated', 'readings', 'health', 'board')
 
-# The data budget was first set to the 100 KB target; the measured first-screen data is about 111 KB br
-# (the 近7天榜 pre-generated entries and the picked papers' abstracts). Lower these when data moves to deferred parts.
-FIRST_SCREEN_DATA_BUDGET_BR = 120 * 1024
-# Total critical path (index.html + stylesheet + tier-1 script): measured about 201 KB br, plus headroom.
+# Conservative decimal-KB cap chosen for this branch (not original spec wording):
+# tier-1 PREGENERATED retains only `quicklook` snippets needed on first-screen cards;
+# translation/study/meta load via deferred `pregenerated`.
+FIRST_SCREEN_DATA_BUDGET_BR = 100_000
+# Total critical path (index.html + stylesheet + tier-1 script): keeps headroom for code + styles.
 FIRST_SCREEN_TOTAL_BUDGET_BR = 225 * 1024
 FIRST_SCREEN_GZIP_TO_BR_RATIO = 1.25
 _UNSET = object()
@@ -65,10 +66,28 @@ def split_parts(data):
     parts = {'feeds': {'items': [data['FEEDS']['items'][i] for i in rest], 'at': rest},
              'library': {k: data['LIBRARY'][k] for k in ('papers', 'pdfIds')},
              'health': {k: v for k, v in data['SOURCE_HEALTH'].items() if k != 'checkedAt'}}
-    for name, global_name, keys in (('quicklooks', 'QUICKLOOKS', quick), ('pregenerated', 'PREGENERATED', prepared)):
-        values = data.get(global_name) or {}
-        first[global_name] = {k: v for k, v in values.items() if k in keys}
-        parts[name] = {'items': {k: v for k, v in values.items() if k not in keys}}
+    quick_values = data.get('QUICKLOOKS') or {}
+    first['QUICKLOOKS'] = {k: v for k, v in quick_values.items() if k in quick}
+    parts['quicklooks'] = {'items': {k: v for k, v in quick_values.items() if k not in quick}}
+    first_pre, rest_pre, field_orders = {}, {}, {}
+    pre_values = data.get('PREGENERATED') or {}
+    for k, v in pre_values.items():
+        if k in prepared and isinstance(v, dict) and 'quicklook' in v:
+            first_pre[k] = {'quicklook': v['quicklook']}
+            extra = {fk: fv for fk, fv in v.items() if fk != 'quicklook'}
+            if extra:
+                rest_pre[k] = extra
+                if list(v.keys()) != ['quicklook', *extra.keys()]:
+                    field_orders[k] = list(v.keys())
+        else:
+            rest_pre[k] = v
+    first['PREGENERATED'] = first_pre
+    pre_part = {'items': rest_pre}
+    if field_orders:
+        pre_part['fieldOrder'] = field_orders
+    if first_pre and rest_pre and list(pre_values.keys()) != [*first_pre.keys(), *(k for k in rest_pre if k not in first_pre)]:
+        pre_part['keys'] = list(pre_values.keys())
+    parts['pregenerated'] = pre_part
     for name, global_name in (('radar', 'RADAR'), ('readings', 'DEEP_READINGS'), ('board', 'WEEKLY_BOARD')):
         parts[name] = data.get(global_name)
     return first, {name: parts[name] for name in PART_ORDER}

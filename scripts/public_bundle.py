@@ -5,6 +5,26 @@ from pathlib import Path
 from public_split import js
 
 
+def _merge_dict(target, source):
+    out = dict(target)
+    for k, v in source.items():
+        if k in out and isinstance(out[k], dict) and isinstance(v, dict):
+            out[k] = _merge_dict(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def _reorder_dict(mapping, order):
+    if not order:
+        return mapping
+    out = {k: mapping[k] for k in order if k in mapping}
+    for k, v in mapping.items():
+        if k not in out:
+            out[k] = v
+    return out
+
+
 def _read(directory, name):
     path = directory / name
     if Path(name).is_absolute() or '..' in Path(name).parts or path.is_symlink():
@@ -49,8 +69,17 @@ def bundle_text(public_dir):
             ordered.update(zip(payload['at'], payload['items']))
             feed['items'] = [ordered[i] for i in range(feed['order']['total'])]
             del feed['order']
-        elif name in ('quicklooks', 'pregenerated'):
-            data[name.upper()].update(payload['items'])
+        elif name == 'quicklooks':
+            data['QUICKLOOKS'].update(payload['items'])
+        elif name == 'pregenerated':
+            store = data['PREGENERATED']
+            field_orders = payload.get('fieldOrder') or {}
+            for k, v in (payload.get('items') or {}).items():
+                if k in store and isinstance(store[k], dict) and isinstance(v, dict):
+                    store[k] = _reorder_dict(_merge_dict(store[k], v), field_orders.get(k))
+                else:
+                    store[k] = v
+            data['PREGENERATED'] = _reorder_dict(store, payload.get('keys'))
         elif name in ('library', 'health'):
             target = data['LIBRARY' if name == 'library' else 'SOURCE_HEALTH']
             target.pop('deferred', None)

@@ -274,7 +274,7 @@
     const cb = $('#candCountBadge');
     if (cb) {
       if (DEFERRED && !partsReady('feeds', 'radar')) {
-        cb.textContent = '…';
+        cb.textContent = '加载中';
         cb.title = '加载中';
         cb.setAttribute('aria-label', '加载中');
       } else {
@@ -292,7 +292,7 @@
     const lb = $('#libCountBadge');
     if (lb) {
       if (DEFERRED && !partsReady('library')) {
-        lb.textContent = '…';
+        lb.textContent = '加载中';
         lb.title = '加载中';
         lb.setAttribute('aria-label', '加载中');
       } else {

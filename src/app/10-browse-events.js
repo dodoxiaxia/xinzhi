@@ -448,12 +448,20 @@
     if (e.target.closest('[data-action="retry-radar-archive"]')) { RADAR_LOAD.state = 'idle'; renderStream(); return; }
     const retryPartBtn = e.target.closest('[data-action="retry-part"]');
     if (retryPartBtn) {
+      const snapshots = captureFtFormSnapshots();
+      const fieldStates = captureControlStates();
       const part = retryPartBtn.dataset.part;
-      retryParts(part ? [part] : neededParts());
+      const parts = part ? part.split(',').map(s => s.trim()).filter(Boolean) : neededParts();
+      retryParts(parts);
       if (state.mode === 'sources' && !exactDoi(state.search)) renderSourcesHealth();
       else if (state.mode === 'weekly' && !exactDoi(state.search)) renderDailyDeepRead();
       else renderStream();
+      if (state.activeDrawerPaper && $('#readerDrawer.open')) {
+        openReaderDrawer(state.activeDrawerPaper);
+      }
       if ($('#huddleModalBackdrop.open')) openHuddleModal();
+      restoreFtFormSnapshots(snapshots);
+      restoreControlStates(fieldStates);
       return;
     }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }

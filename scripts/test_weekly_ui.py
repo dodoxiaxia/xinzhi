@@ -70,6 +70,8 @@ def main():
         if ('/assets/app.' in path and path.endswith('.js')):
             data = fixture.replace('COUNT', str(controls['count'])).replace('READY', str(controls['ready']).lower())
             return route.fulfill(content_type='application/javascript', body=bundle.replace(source, data + source))
+        if not controls['ready'] and '/assets/data-pregenerated.' in path and path.endswith('.js'):
+            return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART&&window.XINZHI_PART("pregenerated",{"items":{}});')
         if '/api/' in path:
             calls.append({'url': path, 'method': route.request.method})
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})

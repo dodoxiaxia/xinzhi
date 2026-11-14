@@ -19,7 +19,7 @@ class PublicSplitTests(unittest.TestCase):
                     SOURCE_HEALTH={'checkedAt': 'now', 'sources': [{'id': 'source'}], 'pubmedFetch': {'status': 'ok'}},
                     CURATED=[], CONTENT_STATUS={'builtAt': 'now'}, JOURNAL_METRICS={'journals': []},
                     QUICKLOOKS={'10.example/a': {'one_line': 'latest'}, '10.example/b': {'one_line': 'rest'}},
-                    PREGENERATED={'doi:10.example/b': {'title': 'board'}, 'other': {'title': 'rest'}},
+                    PREGENERATED={'other': {'title': 'rest'}, 'doi:10.example/b': {'translation': {'abstract_zh': '译文'}, 'quicklook': {'one_line': 'board'}, 'study': {'papers': []}}},
                     WEEKLY_BOARD={'items': [papers[2]]}, DEEP_READINGS={'items': [{'id': 'reading'}]},
                     RADAR={'rows': [['recent']], 'jn': ['journal']})
 
@@ -37,11 +37,15 @@ class PublicSplitTests(unittest.TestCase):
             rebuilt = bundle_text(root)
             for name, value in data.items():
                 with self.subTest(name=name):self.assertEqual(_global(rebuilt, name), value)
+            self.assertEqual(list(_global(rebuilt, 'PREGENERATED').keys()), list(data['PREGENERATED'].keys()))
+            self.assertEqual(list(_global(rebuilt, 'PREGENERATED')['doi:10.example/b'].keys()), list(data['PREGENERATED']['doi:10.example/b'].keys()))
             self.assertEqual(_global(radar_text(root), 'RADAR_ARCHIVE'), archive)
             self.assertEqual(set(bundle_files(root)), {root/name for name in files if name.endswith('.js')})
             helper = Path(__file__).with_name('public_bundle.cjs')
             node = subprocess.check_output(['node', '-e', 'process.stdout.write(require(process.argv[1]).bundleText(process.argv[2]))', str(helper), tmp], text=True)
             for name, value in data.items():self.assertEqual(_global(node, name), value)
+            self.assertEqual(list(_global(node, 'PREGENERATED').keys()), list(data['PREGENERATED'].keys()))
+            self.assertEqual(list(_global(node, 'PREGENERATED')['doi:10.example/b'].keys()), list(data['PREGENERATED']['doi:10.example/b'].keys()))
         self.assertEqual(data, untouched)
         self.assertEqual(build_assets(data, js('RADAR_ARCHIVE', archive), ['// app'], 'body{}'), (files, app, css))
 
@@ -51,7 +55,7 @@ class PublicSplitTests(unittest.TestCase):
         self.assertEqual([data['FEEDS']['items'][i] for i in at], [p for p in data['FEEDS']['items'] if p.get('autoPick') or p.get('weeklyPick')])
         first, parts = split_parts(data)
         self.assertEqual(set(first['QUICKLOOKS']), {'10.example/a'})
-        self.assertEqual(set(first['PREGENERATED']), {'doi:10.example/b'})
+        self.assertEqual(first['PREGENERATED'], {'doi:10.example/b': {'quicklook': {'one_line': 'board'}}})
         self.assertNotIn('RADAR', first)
         self.assertNotIn('DEEP_READINGS', first)
         self.assertNotIn('WEEKLY_BOARD', first)
@@ -68,11 +72,16 @@ class PublicSplitTests(unittest.TestCase):
             {'id': 'b-pmid', 'pmid': '1003', 'weeklyPick': 3},
         ]
         pregenerated = {
-            'pmid:1001': {'title': 'both-pmid'},
+            'pmid:9001': {'translation': {'abstract_zh': '非周榜'}, 'title': 'offweek-pmid'},
+            'pmid:1001': {
+                'translation': {'abstract_zh': '双键译文'},
+                'quicklook': {'one_line': 'both-pmid-ql'},
+                'study': {'papers': [{'key': 'pmid:1001'}]},
+                'meta': {'builtAt': '2026-11-14'},
+            },
             'doi:10.example/b1': {'title': 'both-doi-alias'},
-            'doi:10.example/b2': {'title': 'doi-only'},
-            'pmid:1003': {'title': 'pmid-only'},
-            'pmid:9001': {'title': 'offweek-pmid'},
+            'doi:10.example/b2': {'quicklook': {'one_line': 'doi-ql'}, 'translation': {'abstract_zh': 'DOI译文'}},
+            'pmid:1003': {'translation': {'abstract_zh': '仅译文无速览'}},
             'doi:10.example/off': {'title': 'offweek-doi'},
         }
         data = self.payload()
@@ -80,10 +89,14 @@ class PublicSplitTests(unittest.TestCase):
         data['WEEKLY_BOARD'] = {'items': board_items}
         data['PREGENERATED'] = pregenerated
         first, parts = split_parts(data)
-        self.assertEqual(set(first['PREGENERATED']), {'pmid:1001', 'doi:10.example/b2', 'pmid:1003'})
-        self.assertEqual(set(parts['pregenerated']['items']), {'doi:10.example/b1', 'pmid:9001', 'doi:10.example/off'})
-        self.assertTrue(set(first['PREGENERATED']).isdisjoint(parts['pregenerated']['items']))
-        self.assertEqual({**first['PREGENERATED'], **parts['pregenerated']['items']}, pregenerated)
+        self.assertEqual(first['PREGENERATED'], {
+            'pmid:1001': {'quicklook': {'one_line': 'both-pmid-ql'}},
+            'doi:10.example/b2': {'quicklook': {'one_line': 'doi-ql'}},
+        })
+        self.assertNotIn('quicklook', parts['pregenerated']['items']['pmid:1001'])
+        self.assertEqual(set(parts['pregenerated']['items']['pmid:1001']), {'translation', 'study', 'meta'})
+        self.assertEqual(parts['pregenerated']['items']['pmid:1003'], {'translation': {'abstract_zh': '仅译文无速览'}})
+        self.assertEqual(parts['pregenerated']['items']['doi:10.example/b1'], {'title': 'both-doi-alias'})
         files, app, css = build_assets(data, js('RADAR_ARCHIVE', {'rows': []}), ['// app'], 'body{}')
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -91,7 +104,18 @@ class PublicSplitTests(unittest.TestCase):
                 (root / name).parent.mkdir(parents=True, exist_ok=True)
                 (root / name).write_text(text)
             (root / 'index.html').write_text('<link href="' + css + '"><script src="' + app + '"></script>')
-            self.assertEqual(_global(bundle_text(root), 'PREGENERATED'), pregenerated)
+            py_pre = _global(bundle_text(root), 'PREGENERATED')
+            self.assertEqual(py_pre, pregenerated)
+            self.assertEqual(list(py_pre.keys()), list(pregenerated.keys()))
+            for k in pregenerated:
+                self.assertEqual(list(py_pre[k].keys()), list(pregenerated[k].keys()))
+            helper = Path(__file__).with_name('public_bundle.cjs')
+            node = subprocess.check_output(['node', '-e', 'process.stdout.write(require(process.argv[1]).bundleText(process.argv[2]))', str(helper), tmp], text=True)
+            node_pre = _global(node, 'PREGENERATED')
+            self.assertEqual(node_pre, pregenerated)
+            self.assertEqual(list(node_pre.keys()), list(pregenerated.keys()))
+            for k in pregenerated:
+                self.assertEqual(list(node_pre[k].keys()), list(pregenerated[k].keys()))
         no_board = {**data, 'WEEKLY_BOARD': None}
         first_none, parts_none = split_parts(no_board)
         self.assertEqual(first_none['PREGENERATED'], {})
