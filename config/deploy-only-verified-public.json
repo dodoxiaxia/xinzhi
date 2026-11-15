@@ -1,0 +1,106 @@
+{
+  "packageCodeSha": "d646340107ca82ceb902ded4f64c403556ad7345",
+  "stateCommit": "c6eb758a08b9b449fe84e2139564d3eb474b38d3",
+  "stateRepository": "dodoxiaxia/xinzhi-state",
+  "pagesProject": "dryz-xinzhi",
+  "productionBranch": "main",
+  "file_count": 19,
+  "files": [
+    {
+      "path": "_headers",
+      "bytes": 923,
+      "sha256": "8d974fdcd147d25e3b4fed5a5599496d3c08582b225aa5c6c99ba1f6ba435dc5"
+    },
+    {
+      "path": "_worker.js",
+      "bytes": 837541,
+      "sha256": "c727395c521ea7b99d6942570df401038cc99ea6f2c1d3463541a8e5c10613b3"
+    },
+    {
+      "path": "assets/app.5bf0b3f655c7.js",
+      "bytes": 806786,
+      "sha256": "5bf0b3f655c7e705c9aa2552fd98b6b725ac22220bc12dd09b8dbe686a8d7634"
+    },
+    {
+      "path": "assets/data-board.e24c9b670aa5.js",
+      "bytes": 241004,
+      "sha256": "e24c9b670aa562976fb98cb7ab6221b521fb8544103851a5a62d70094c2ca57b"
+    },
+    {
+      "path": "assets/data-feeds.8cac267f6705.js",
+      "bytes": 3502934,
+      "sha256": "8cac267f6705ed9cccbd5ff4bfb470a499f21e8d8600d036f8aa7e8a6e05dbc2"
+    },
+    {
+      "path": "assets/data-health.e9f2e28e3e98.js",
+      "bytes": 171451,
+      "sha256": "e9f2e28e3e988d47797b2cf6acdfb66bd38929e49013958f4de11224fe6ffdb8"
+    },
+    {
+      "path": "assets/data-library.aed528e482b5.js",
+      "bytes": 993372,
+      "sha256": "aed528e482b507ad702746cd6a630bd8fc67b50ad777e7925e54c3b53ecb2408"
+    },
+    {
+      "path": "assets/data-pregenerated.5b6d7e3af7b2.js",
+      "bytes": 346743,
+      "sha256": "5b6d7e3af7b2207d27029c3bd94209015468be7347653f3b3d0811036a45abbb"
+    },
+    {
+      "path": "assets/data-quicklooks.918ceee9fe67.js",
+      "bytes": 6717867,
+      "sha256": "918ceee9fe67bbacfa78f9237f6e0450dacf05c34a5a011391e968d69dabe0e2"
+    },
+    {
+      "path": "assets/data-radar.598b34a76ba2.js",
+      "bytes": 678531,
+      "sha256": "598b34a76ba253adfa7e65ec3c6abafe2c3f955bd3c85a7a09412e06f4173a6a"
+    },
+    {
+      "path": "assets/data-readings.4499018dd827.js",
+      "bytes": 134854,
+      "sha256": "4499018dd82772778481b648166748e2749774b3fcfad3885bcc8ee8c304fe59"
+    },
+    {
+      "path": "assets/radar.efb6510c6fce.js",
+      "bytes": 3930891,
+      "sha256": "efb6510c6fce7bccdc9d783f3804af17934e212d046607aa546bdaa0047edc8b"
+    },
+    {
+      "path": "assets/style.2719dc04bb1b.css",
+      "bytes": 174610,
+      "sha256": "2719dc04bb1be833694a1d0d1bdad71ca53801b28e1f3e84bfc4429785bcccf0"
+    },
+    {
+      "path": "demo-reading.html",
+      "bytes": 12144,
+      "sha256": "0718e6a0b9816ba08daf4e4182212dc2a0221115ed3ac08f9af1cf46f27a062f"
+    },
+    {
+      "path": "feed.xml",
+      "bytes": 40087,
+      "sha256": "c40caa71eba46cc46c2cedc46b398d0ad8cc9d0e3964eca1edbcf947576f7dc6"
+    },
+    {
+      "path": "icon.png",
+      "bytes": 24627,
+      "sha256": "c6dc7553ea87b3040cd2f4da1704bcad4ef9367b0d738bf42fa5b9fc66368fa4"
+    },
+    {
+      "path": "index.html",
+      "bytes": 17234,
+      "sha256": "07a8dc059e008d8ee2104cbbc1bf3988b4f8f64fee0485f2cea8213b9ac737c8"
+    },
+    {
+      "path": "shards/readings-2026-10.a379109f15b4.js",
+      "bytes": 2238174,
+      "sha256": "a165589f6c84742e46835b834ec95961f314ef006e3cab04db0b2996c472650a"
+    },
+    {
+      "path": "shards/readings-2026-11.400f261c02dc.js",
+      "bytes": 1711378,
+      "sha256": "1f845a3bacddcc7eee1a28b75fe37dab04fb45efe70aba32b291010dcaf385e4"
+    }
+  ],
+  "notes": "Official verified-public package from state c6eb758 (run 43707634395 / deployment 8ba8f9cf). Not the in-repo docs/public-manifest.json at d646340, which is a different 6-file tree. sha256 is 64 hex; do not store 32-char Pages asset hashes here (hex32 guardrail)."
+}
