@@ -174,7 +174,7 @@
   const DOI_JOB_WATCH = { timer: null, doi: '', startedAt: 0 };
   // DOIs whose full-text page the reader opened in another tab; rechecked when they come back.
   const DOI_TOUCHED = new Set();
-  const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
+  const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, loadedCount: 0, promise: null, refreshedAt: 0 };
   const LIBRARY_REFRESH_TTL_MS = 60000;
 
   function exactDoi(value) {
@@ -203,6 +203,9 @@
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
     const doi = exactDoi(raw.doi);
     if (!doi || typeof raw.title !== 'string' || !raw.title.trim() || raw.title.length > 800) return null;
+    const rawTags = Array.isArray(raw.tags)
+      ? raw.tags.map(t => typeof t === 'string' ? t.trim() : '').filter((t, i, a) => t && t.startsWith('#') && t.length <= 40 && a.indexOf(t) === i).slice(0, 4)
+      : [];
     const p = {
       id: raw.id, doi, title: raw.title, journal: typeof raw.journal === 'string' ? raw.journal.slice(0, 200) : '',
       authors: Array.isArray(raw.authors) ? raw.authors.filter(a => typeof a === 'string').slice(0, 30).map(a => a.slice(0, 120)) : [],
@@ -212,7 +215,7 @@
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
       fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
-      basis: '官方题录 · 非全文精读', tags: [], studyDesign: '研究类型待核验', quantitativeMetrics: {}
+      basis: '官方题录 · 非全文精读', tags: rawTags, studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
     p.cleanJournal = p.journal;
@@ -258,6 +261,7 @@
       allPapersMap.set(p.id, p);
     }
     _maxDateCache = null;
+    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(p.doi, '');
     return true;
   }
   function exactDoiPapers(doi) {
@@ -289,6 +293,7 @@
       sourceKind: ['reader_upload', 'open_access', 'download'].includes(raw.sourceKind) ? raw.sourceKind : '',
       reason: typeof raw.reason === 'string' && /^[a-z_]{1,40}$/.test(raw.reason) ? raw.reason : '',
       nextCheckSeconds: Number.isInteger(raw.nextCheckSeconds) && raw.nextCheckSeconds >= 15 && raw.nextCheckSeconds <= 120 ? raw.nextCheckSeconds : 15 });
+    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(doi, '');
   }
   function watchDoiJob(doi) {
     if (DOI_JOB_WATCH.timer) clearTimeout(DOI_JOB_WATCH.timer);
@@ -346,6 +351,18 @@
       || (!!job && (!prev || prev.mode === 'submit' || job.id !== prev.jobId || job.state !== prev.jobState));
     const live = liveFtForm(doi, form, inDrawer);
     if (hasProgress) {
+      if (typeof recordConfirmedRequest === 'function') {
+        recordConfirmedRequest({
+          doi,
+          title: paper && paper.title ? paper.title : '',
+          journal: paper ? (paper.cleanJournal || paper.journal || '') : '',
+          sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
+          status: view.kind === 'ready' ? 'available' : view.kind,
+          stage: job ? (job.stage || '') : (view.kind === 'ready' ? 'available' : ''),
+          paperId: paper && paper.id ? String(paper.id) : '',
+          checked: true
+        });
+      }
       if (live) {
         const inp = live.querySelector('input[name="passphrase"]'), btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
         if (inp) inp.value = '';
@@ -412,6 +429,19 @@
       if (liveNowInput) liveNowInput.value = '';
       input.value = '';
       if (result && result.job) mergeDoiJob(doi, result.job);
+      if (typeof recordConfirmedRequest === 'function') {
+        const matchedPaper = exactDoiPapers(doi)[0] || DOI_FULLTEXT.get(doi) || {};
+        recordConfirmedRequest({
+          doi,
+          title: matchedPaper.title || '',
+          journal: matchedPaper.cleanJournal || matchedPaper.journal || '',
+          sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
+          status: result.job && result.job.stage === 'verifying' ? 'verifying' : ((result.job && result.job.state) || 'queued'),
+          stage: (result.job && result.job.stage) || 'queued',
+          paperId: matchedPaper.id ? String(matchedPaper.id) : '',
+          checked: true
+        });
+      }
       if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
       await lookupSupplementalDoi(doi, true);
       if (exactDoi(state.search) !== doi && !DOI_TOUCHED.has(doi)) refreshSupplementalView();
@@ -563,6 +593,68 @@
       }
     }
   }
+  function syncExistingBrowserRequest(doi, extraNote) {
+    if (typeof loadBrowserRequests !== 'function' || typeof recordConfirmedRequest !== 'function') return;
+    const clean = exactDoi(doi);
+    if (!clean) return;
+    const list = loadBrowserRequests();
+    if (!list.some(r => r.doi === clean)) return;
+    const paper = exactDoiPapers(clean)[0] || DOI_FULLTEXT.get(clean) || null;
+    const job = DOI_JOBS.get(clean) || null;
+    const status = paper && paper.fulltextStatus === 'available'
+      ? 'available'
+      : job && job.stage === 'verifying'
+      ? 'verifying'
+      : job && ['queued', 'running', 'review', 'failed', 'manual_needed'].includes(job.state)
+      ? job.state
+      : paper && ['review', 'manual_needed', 'pending'].includes(paper.fulltextStatus)
+      ? paper.fulltextStatus
+      : 'pending';
+    recordConfirmedRequest({
+      doi: clean,
+      title: paper && paper.title ? paper.title : '',
+      journal: paper ? (paper.cleanJournal || paper.journal || '') : '',
+      status,
+      stage: job ? (job.stage || '') : (status === 'available' ? 'available' : ''),
+      paperId: paper && paper.id ? String(paper.id) : '',
+      note: typeof extraNote === 'string' ? extraNote : '',
+      checked: true
+    });
+  }
+  let browserRequestsRefreshing = null;
+  function setRefreshRequestsBusy(busy) {
+    const btn = typeof $ === 'function' ? $('#refreshRequestsBtn') : null;
+    if (btn) btn.disabled = !!busy;
+  }
+  async function refreshBrowserRequests({ activeOnly = false, limit } = {}) {
+    if (typeof loadBrowserRequests !== 'function') return;
+    // If a refresh is already in flight, wait for it; a later "全部" click must still run after that.
+    while (browserRequestsRefreshing) await browserRequestsRefreshing;
+    const run = (async () => {
+      setRefreshRequestsBusy(true);
+      try {
+        const rows = loadBrowserRequests();
+        const targets = rows.filter(r => {
+          if (!r || !r.doi) return false;
+          if (activeOnly) return ['queued', 'running', 'verifying', 'pending'].includes(r.status) || !DOI_FULLTEXT.has(r.doi);
+          return true;
+        });
+        // A numeric limit is only for background/active-only probes. "刷新全部状态" omits it and must cover every saved record.
+        const capped = Number.isInteger(limit) && limit > 0 ? targets.slice(0, limit) : targets;
+        for (const row of capped) {
+          await lookupSupplementalDoi(row.doi, true);
+        }
+      } finally {
+        setRefreshRequestsBusy(false);
+      }
+    })();
+    browserRequestsRefreshing = run;
+    try {
+      await run;
+    } finally {
+      if (browserRequestsRefreshing === run) browserRequestsRefreshing = null;
+    }
+  }
   function refreshSupplementalView() {
     const snapshots = captureFtFormSnapshots();
     updateHeaderBadges();
@@ -570,6 +662,7 @@
     renderStream();
     if (state.activeDrawerPaper) openReaderDrawer(allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper);
     if ($('#huddleModalBackdrop.open')) openHuddleModal();
+    if ($('#requestsModalBackdrop.open') && typeof renderRequestsModal === 'function') renderRequestsModal();
     restoreFtFormSnapshots(snapshots);
   }
   async function lookupSupplementalDoi(doi, retry = false) {
@@ -588,10 +681,12 @@
           const previous = DOI_FULLTEXT.get(doi);
           if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
           DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
+          if (!result.job) syncExistingBrowserRequest(doi, '当前服务端查无该 DOI 记录或进行中任务');
         }
         else throw new Error('library_unavailable');
       } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
       if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
+      else if (typeof $ === 'function' && $('#requestsModalBackdrop.open') && typeof renderRequestsModal === 'function') renderRequestsModal();
       // Only the searched DOI owns the polling timer; a background recheck must not cancel it.
       if (exactDoi(state.search) === doi || DOI_JOB_WATCH.doi === doi) watchDoiJob(doi);
     })();
@@ -600,8 +695,10 @@
   }
   function loadSupplementalLibrary(refresh = false) {
     if (SUPPLEMENTAL_LIBRARY.promise) return SUPPLEMENTAL_LIBRARY.promise;
-    if (refresh) { SUPPLEMENTAL_LIBRARY.cursor = ''; SUPPLEMENTAL_LIBRARY.more = false; }
+    if (refresh) { SUPPLEMENTAL_LIBRARY.cursor = ''; SUPPLEMENTAL_LIBRARY.more = false; SUPPLEMENTAL_LIBRARY.loadedCount = 0; }
     SUPPLEMENTAL_LIBRARY.state = 'loading';
+    const seenDois = new Set();
+    if (!refresh) DOI_FULLTEXT.forEach((_, k) => seenDois.add(k));
     const run = async () => {
       try {
         const visited = new Set();
@@ -609,7 +706,12 @@
           const cursor = SUPPLEMENTAL_LIBRARY.cursor;
           const result = await libraryJson('/api/library?limit=20' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
           if (!Array.isArray(result.papers) || result.papers.length > 20) throw new Error('library_unavailable');
-          result.papers.forEach(mergeSupplementalPaper);
+          result.papers.forEach(p => {
+            const clean = exactDoi(p && p.doi);
+            if (clean) seenDois.add(clean);
+            mergeSupplementalPaper(p);
+          });
+          SUPPLEMENTAL_LIBRARY.loadedCount = seenDois.size;
           if (Array.isArray(result.jobs) && result.jobs.length <= 20) result.jobs.forEach(job => { if (result.papers.some(p => exactDoi(p.doi) === job.doi)) mergeDoiJob(job.doi,job); });
           const next = typeof result.cursor === 'string' && result.cursor.length <= 2000 ? result.cursor : '';
           if (next && (next === cursor || visited.has(next))) throw new Error('library_unavailable');
@@ -1058,8 +1160,159 @@
   // ==== src/app/01-state-helpers.js · Storage, URL state, DOM/format helpers, share text, theme ====
   // Safe storage (private mode / blocked storage must not break the page)
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
   function safeRemove(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+
+  // Authoritative 10 article-topic tags (matching scripts/enrich_metadata.py TAG_RULES)
+  const TOPIC_TAGS = [
+    '#房颤/电生理', '#心衰/心肌', '#心电', '#AI-ECG', '#大模型/NLP',
+    '#卒中/抗凝', '#高血压/血管', '#冠脉介入', '#穿戴/远程监测', '#影像'
+  ];
+  const UNCLASSIFIED_TOPIC = 'uncategorized';
+  function paperTopicTags(p) {
+    if (!p || !Array.isArray(p.tags)) return [];
+    const out = [];
+    for (const raw of p.tags) {
+      if (typeof raw !== 'string') continue;
+      const t = raw.trim();
+      if (!t || !t.startsWith('#') || out.includes(t)) continue;
+      out.push(t);
+    }
+    return out;
+  }
+  function parseTopicParams(tagParam, tagsParam) {
+    const rawList = [];
+    const pushOne = raw => {
+      let v = String(raw || '');
+      try { v = decodeURIComponent(v); } catch (e) { /* keep literal */ }
+      v = v.trim();
+      if (v && !rawList.includes(v)) rawList.push(v);
+    };
+    String(tagsParam || '').split(',').forEach(pushOne);
+    if (tagParam) pushOne(tagParam);
+    const specific = rawList.filter(v => v !== UNCLASSIFIED_TOPIC && v !== 'all');
+    if (specific.length) {
+      return { tags: specific, tag: specific.length === 1 ? specific[0] : '', topicUnclassified: false };
+    }
+    if (rawList.includes(UNCLASSIFIED_TOPIC)) {
+      return { tags: [], tag: '', topicUnclassified: true };
+    }
+    return { tags: [], tag: '', topicUnclassified: false };
+  }
+  function selectedTags() {
+    if (Array.isArray(state.tags) && state.tags.length) return state.tags.filter(t => t && t !== UNCLASSIFIED_TOPIC);
+    return state.tag && state.tag !== UNCLASSIFIED_TOPIC ? [state.tag] : [];
+  }
+  function isTopicUnclassified() {
+    if (state.topicUnclassified) return true;
+    return !selectedTags().length && state.tag === UNCLASSIFIED_TOPIC;
+  }
+  function hasTopicFilter() {
+    return isTopicUnclassified() || selectedTags().length > 0;
+  }
+
+  // This-browser-only request ledger (only confirmed submissions/server records; no secrets/tokens/PDFs)
+  const BROWSER_REQ_KEY = 'xz_browser_requests_v1';
+  const BROWSER_REQ_MAX = 200;
+  const BROWSER_REQ_MAX_BYTES = 60000;
+  const BROWSER_REQ_STATUSES = ['queued', 'running', 'verifying', 'available', 'pending', 'manual_needed', 'failed', 'review'];
+  function normalizeRequestDoi(value) {
+    if (typeof exactDoi === 'function') return exactDoi(value);
+    const s = String(value || '').trim().replace(/^doi:\s*/i, '').replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '');
+    let out = s;
+    try { out = decodeURIComponent(s); } catch (e) { /* ignore */ }
+    out = out.trim();
+    return /^10\.\d{4,9}\/[^\s<>"?#@\x00-\x1f\x7f]+$/.test(out) && /^[\x20-\x7e]+$/.test(out) ? out.toLowerCase() : '';
+  }
+  function sanitizeBrowserRequest(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const doi = normalizeRequestDoi(raw.doi);
+    if (!doi) return null;
+    const status = BROWSER_REQ_STATUSES.includes(raw.status) ? raw.status : 'queued';
+    const stage = typeof raw.stage === 'string' ? raw.stage.trim().slice(0, 40) : '';
+    const requestedAt = typeof raw.requestedAt === 'string' && raw.requestedAt.trim() ? raw.requestedAt.trim().slice(0, 40) : '';
+    const lastCheckedAt = typeof raw.lastCheckedAt === 'string' && raw.lastCheckedAt.trim() ? raw.lastCheckedAt.trim().slice(0, 40) : '';
+    const paperId = typeof raw.paperId === 'string' && /^[\w-]{1,80}$/.test(raw.paperId.trim()) ? raw.paperId.trim() : '';
+    const title = typeof raw.title === 'string' ? raw.title.trim().slice(0, 300) : '';
+    const journal = typeof raw.journal === 'string' ? raw.journal.trim().slice(0, 120) : '';
+    const sourceMode = typeof raw.sourceMode === 'string' ? raw.sourceMode.trim().slice(0, 32) : '';
+    const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 160) : '';
+    return { doi, title, journal, sourceMode, requestedAt, status, stage, paperId, lastCheckedAt, note };
+  }
+  function loadBrowserRequests() {
+    try {
+      const parsed = JSON.parse(safeGet(BROWSER_REQ_KEY) || '[]');
+      if (!Array.isArray(parsed)) return [];
+      const byDoi = new Map();
+      for (const item of parsed) {
+        const clean = sanitizeBrowserRequest(item);
+        if (!clean || byDoi.has(clean.doi)) continue;
+        byDoi.set(clean.doi, clean);
+        if (byDoi.size >= BROWSER_REQ_MAX) break;
+      }
+      return [...byDoi.values()];
+    } catch (e) {
+      return [];
+    }
+  }
+  function saveBrowserRequests(list) {
+    if (!Array.isArray(list)) return false;
+    const dedup = [];
+    const seen = new Set();
+    for (const item of list) {
+      const clean = sanitizeBrowserRequest(item);
+      if (!clean || seen.has(clean.doi)) continue;
+      seen.add(clean.doi);
+      dedup.push(clean);
+      if (dedup.length >= BROWSER_REQ_MAX) break;
+    }
+    let trimmed = dedup;
+    while (trimmed.length > 0) {
+      const serialized = JSON.stringify(trimmed);
+      if (serialized.length <= BROWSER_REQ_MAX_BYTES) {
+        if (safeSet(BROWSER_REQ_KEY, serialized)) return true;
+      }
+      trimmed = trimmed.slice(0, trimmed.length - 1);
+    }
+    return safeSet(BROWSER_REQ_KEY, '[]');
+  }
+  function recordConfirmedRequest(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    const doi = normalizeRequestDoi(entry.doi);
+    if (!doi) return false;
+    const now = new Date().toISOString();
+    const current = loadBrowserRequests();
+    const idx = current.findIndex(r => r.doi === doi);
+    const prev = idx >= 0 ? current[idx] : null;
+    const isGenericTitle = t => !t || t === '当前申请核验的文献';
+    const nextTitle = typeof entry.title === 'string' && !isGenericTitle(entry.title.trim())
+      ? entry.title.trim().slice(0, 300)
+      : (prev ? prev.title : '');
+    const merged = sanitizeBrowserRequest({
+      doi,
+      title: nextTitle,
+      journal: typeof entry.journal === 'string' && entry.journal.trim() ? entry.journal.trim() : (prev ? prev.journal : ''),
+      sourceMode: prev && prev.sourceMode ? prev.sourceMode : (typeof entry.sourceMode === 'string' ? entry.sourceMode : ''),
+      requestedAt: (prev && prev.requestedAt) || entry.requestedAt || now,
+      status: BROWSER_REQ_STATUSES.includes(entry.status) ? entry.status : (prev ? prev.status : 'queued'),
+      stage: typeof entry.stage === 'string' ? entry.stage : (prev ? prev.stage : ''),
+      paperId: typeof entry.paperId === 'string' && entry.paperId ? entry.paperId : (prev ? prev.paperId : ''),
+      lastCheckedAt: entry.checked === false ? (prev ? prev.lastCheckedAt : '') : now,
+      note: typeof entry.note === 'string' ? entry.note : (prev ? prev.note : '')
+    });
+    if (!merged) return false;
+    const nextList = [merged, ...current.filter(r => r.doi !== doi)];
+    const ok = saveBrowserRequests(nextList);
+    if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
+    return ok;
+  }
+  function removeBrowserRequest(doi) {
+    const clean = normalizeRequestDoi(doi);
+    if (!clean) return false;
+    const ok = saveBrowserRequests(loadBrowserRequests().filter(r => r.doi !== clean));
+    if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
+    return ok;
+  }
 
   // URL State & Query Params
   const urlParams = new URLSearchParams(window.location.search);
@@ -1101,6 +1354,7 @@
     const rawMode = params.get('mode') || 'curated';
     const mode = VALID_MODES.includes(rawMode) ? rawMode : 'curated';
     const nextViewInUrl = validView(params.get('view'));
+    const topicState = parseTopicParams(params.get('tag'), params.get('tags'));
     return {
       mode,
       viewInUrl: nextViewInUrl,
@@ -1110,7 +1364,9 @@
       publisher: params.get('pub') || '',
       journal: params.get('journal') || '',
       studyDesign: params.get('design') || '',
-      tag: params.get('tag') || '',
+      tag: topicState.tag,
+      tags: topicState.tags,
+      topicUnclassified: topicState.topicUnclassified,
       lane: params.get('lane') || 'core',
       sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
       range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
@@ -1130,7 +1386,7 @@
   }
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
-    'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
+    'studyDesign', 'tag', 'tags', 'topicUnclassified', 'lane', 'sort', 'range', 'minor', 'reading',
     'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'journalTierLegacy', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
@@ -1147,6 +1403,8 @@
     journal: initialUrlState.journal,
     studyDesign: initialUrlState.studyDesign,
     tag: initialUrlState.tag,
+    tags: initialUrlState.tags || [],
+    topicUnclassified: !!initialUrlState.topicUnclassified,
     lane: initialUrlState.lane,
     sort: initialUrlState.sort,
     range: initialUrlState.range,
@@ -2268,7 +2526,18 @@
       else u.searchParams.delete('jvis');
       set('nocase', state.excludeCaseReports ? '1' : '', '');
       set('design', state.studyDesign, '');
-      set('tag', state.tag, '');
+      const topicTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+      const topicUncat = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
+      if (topicUncat) {
+        set('tag', '', '');
+        set('tags', 'uncategorized', '');
+      } else if (topicTags.length > 1) {
+        set('tag', '', '');
+        set('tags', topicTags.join(','), '');
+      } else {
+        set('tag', topicTags[0] || '', '');
+        set('tags', '', '');
+      }
       set('lane', usesLane() ? state.lane : '', 'core');
       set('sort', state.sort, 'date-desc');
       set('range', state.range, defaultRange(state.mode));
@@ -2282,7 +2551,7 @@
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       set('ft', state.mode === 'library' ? state.ftFilter : '', '');
       u.searchParams.delete('maintainer');
-      const filteredView = state.search || state.clinicalTier || state.publisher || selectedJournals().length || state.studyDesign || state.tag
+      const filteredView = state.search || state.clinicalTier || state.publisher || selectedJournals().length || state.studyDesign || topicTags.length || topicUncat
         || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
@@ -2335,16 +2604,22 @@
 
   function sidebarSelections() {
     const journals = selectedJournals();
+    const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
     return [
       { group: 'tier', value: state.clinicalTier, label: '信源分组' },
       ...journals.map(j => ({ group: 'journal', value: j, label: '期刊' })),
       ...(journals.length ? [] : [{ group: 'pub', value: state.publisher, label: '出版方' }]),
       { group: 'design', value: state.studyDesign, label: '研究设计' },
-      { group: 'tag', value: state.tag, label: '主题' }
+      ...(untagged
+        ? [{ group: 'tag', value: 'uncategorized', displayValue: '未分类', label: '文章主题' }]
+        : tags.map(t => ({ group: 'tag', value: t, label: '文章主题' })))
     ].filter(selection => selection.value);
   }
   function clearSidebarFilters() {
     state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
+    state.tags = [];
+    state.topicUnclassified = false;
     state.journals = [];
     state.journalTier = '';
     state.journalTierLegacy = false;
@@ -2377,7 +2652,30 @@
       state.studyDesign = value;
       if (state.studyDesign === '病例报告') state.excludeCaseReports = false;
     }
-    if (group === 'tag') state.tag = !only && value && state.tag === value ? '' : value;
+    if (group === 'tag') {
+      if (!value) {
+        state.tag = '';
+        state.tags = [];
+        state.topicUnclassified = false;
+      } else if (value === 'uncategorized') {
+        const wasUncat = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
+        if (!only && wasUncat) {
+          state.topicUnclassified = false;
+          state.tag = '';
+          state.tags = [];
+        } else {
+          state.topicUnclassified = true;
+          state.tags = [];
+          state.tag = '';
+        }
+      } else {
+        state.topicUnclassified = false;
+        const cur = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+        const next = only ? [value] : (cur.includes(value) ? cur.filter(t => t !== value) : cur.concat(value));
+        state.tags = next;
+        state.tag = next.length === 1 ? next[0] : '';
+      }
+    }
     if (state.publisher) expandedPublishers.add(state.publisher);
     state.page = 1;
     return true;
@@ -2460,7 +2758,16 @@
     }
     if (!selectedJournals().length && !state.journalTier && state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) miss |= 2;
     if (state.studyDesign && p.studyDesign !== state.studyDesign) miss |= 4;
-    if (state.tag && (!p.tags || !p.tags.includes(state.tag))) miss |= 8;
+    const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
+    const pTags = typeof paperTopicTags === 'function'
+      ? paperTopicTags(p)
+      : (Array.isArray(p && p.tags) ? p.tags.map(t => typeof t === 'string' ? t.trim() : '').filter(t => t.startsWith('#')) : []);
+    if (untagged) {
+      if (pTags.length > 0) miss |= 8;
+    } else if (tags.length) {
+      if (!tags.some(t => pTags.includes(t))) miss |= 8;
+    }
     return miss;
   }
   function matchesSidebarFilters(p, skip) {
@@ -2703,11 +3010,16 @@
     }
 
     // 4. Tags Cloud
+    const activeTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
     const tagCounts = {};
-    base.forEach(p => (p.tags || []).forEach(t => { tagCounts[t] = 0; }));
-    if (state.tag) tagCounts[state.tag] = 0;
+    base.forEach(p => {
+      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
+      pTags.forEach(t => { tagCounts[t] = 0; });
+    });
+    activeTags.forEach(t => { if (!(t in tagCounts)) tagCounts[t] = 0; });
     facet('tag').forEach(p => {
-      (p.tags || []).forEach(t => {
+      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
+      pTags.forEach(t => {
         tagCounts[t] = (tagCounts[t] || 0) + 1;
       });
     });
@@ -2716,7 +3028,7 @@
     if (tagsCloudEl) {
       const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
-        const isActive = state.tag === tag;
+        const isActive = activeTags.includes(tag);
         return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)}</button>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
@@ -2764,9 +3076,10 @@
         if (selection.group === 'pub') return (p.publisher || '其他学术刊物') === selection.value;
         if (selection.group === 'journal') return p.cleanJournal === selection.value || p.journal === selection.value;
         if (selection.group === 'design') return p.studyDesign === selection.value;
-        return (p.tags || []).includes(selection.value);
+        const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
+        return selection.value === 'uncategorized' ? pTags.length === 0 : pTags.includes(selection.value);
       }).length;
-      return count ? `<button type="button" class="btn-sm" data-browse-only="${selection.group}" data-browse-value="${esc(selection.value)}">只看${esc(selection.value)} · ${count} 篇</button>` : '';
+      return count ? `<button type="button" class="btn-sm" data-browse-only="${selection.group}" data-browse-value="${esc(selection.value)}">只看${esc(selection.displayValue || selection.value)} · ${count} 篇</button>` : '';
     }).join('') : '';
     const noFollowed = !!(state.favoritesOnly && !(state.favoriteJournals || []).length);
     const message = noFollowed ? '还没有关注期刊，点期刊名旁的 ☆ 关注。关注后可在这里只看这些期刊。'
@@ -2876,8 +3189,17 @@
     if (doi || special) syncToolRowVisibility();
   }
   function supplementalLibraryNotice() {
-    if (SUPPLEMENTAL_LIBRARY.state === 'error') return '<div class="doi-library-notice">补录文献暂未加载，已保留现有文献。<button class="btn-sm" data-action="refresh-doi-library">重试加载</button></div>';
-    if (SUPPLEMENTAL_LIBRARY.more) return '<div class="doi-library-notice">还有补录文献未显示。<button class="btn-sm" data-action="load-doi-library">继续加载补录</button></div>';
+    const loaded = Number.isFinite(SUPPLEMENTAL_LIBRARY.loadedCount) ? SUPPLEMENTAL_LIBRARY.loadedCount : 0;
+    const rangeText = loaded > 0 ? `已加载当前前 ${loaded} 条动态补录文献` : '动态补录文献列表';
+    if (SUPPLEMENTAL_LIBRARY.state === 'error') {
+      return '<div class="doi-library-notice">动态补录文献暂未加载，已保留现有公开文献；若要核对具体文献请用顶部搜索框按完整 DOI 点查。<button type="button" class="btn-sm" data-action="refresh-doi-library">重试加载</button> <button type="button" class="btn-sm" data-action="open-requests">本浏览器申请记录</button></div>';
+    }
+    if (SUPPLEMENTAL_LIBRARY.more) {
+      return `<div class="doi-library-notice">${rangeText}（列表分页已截断，此处不是全部动态库；其它文献或非默认领域条目可按完整 DOI 精确检索或从本浏览器记录直达）。<button type="button" class="btn-sm" data-action="load-doi-library">继续加载补录</button> <button type="button" class="btn-sm" data-action="open-requests">本浏览器申请记录</button></div>`;
+    }
+    if (SUPPLEMENTAL_LIBRARY.state === 'complete' && loaded > 0) {
+      return `<div class="doi-library-notice">已加载本次返回的 ${loaded} 条动态补录文献（按 DOI 去重；无主题标签的记录在「文章主题」中归入「未分类」）。<button type="button" class="btn-sm" data-action="open-requests">本浏览器申请记录</button></div>`;
+    }
     return '';
   }
   function renderDoiStream(doi, streamEl, loadMoreBtn) {
@@ -3667,6 +3989,126 @@
     copyToClipboard(text, '已复制精选汇总文字');
   }
 
+  // This-Browser Request History Modal
+  function updateRequestsCounter() {
+    const el = $('#requestsCounter');
+    if (!el || typeof loadBrowserRequests !== 'function') return;
+    el.textContent = loadBrowserRequests().length;
+  }
+  function resolveBrowserRequestView(rec) {
+    const livePaper = (typeof exactDoiPapers === 'function' && exactDoiPapers(rec.doi)[0])
+      || (typeof DOI_FULLTEXT !== 'undefined' && DOI_FULLTEXT.get(rec.doi))
+      || null;
+    const liveJob = typeof DOI_JOBS !== 'undefined' ? DOI_JOBS.get(rec.doi) : null;
+    let kind = rec.status || 'queued';
+    let label = '已记录';
+    if (livePaper && typeof fulltextState === 'function') {
+      const ft = fulltextState(livePaper);
+      if (ft.kind === 'ready') { kind = 'ready'; label = '可下载'; }
+      else if (ft.kind === 'verifying') { kind = 'verifying'; label = '核验中'; }
+      else if (ft.kind === 'queued' || ft.kind === 'running') { kind = ft.kind; label = '排队下载'; }
+      else if (ft.kind === 'failed' || ft.kind === 'review') { kind = ft.kind; label = ft.short || '未取得'; }
+      else if (liveJob && liveJob.state) { kind = liveJob.state; label = '已记录'; }
+    } else if (liveJob) {
+      if (liveJob.stage === 'verifying') { kind = 'verifying'; label = '核验中'; }
+      else if (['queued', 'running'].includes(liveJob.state)) { kind = liveJob.state; label = '排队下载'; }
+      else if (['failed', 'manual_needed', 'review'].includes(liveJob.state)) { kind = liveJob.state; label = '未取得'; }
+    } else if (rec.status === 'available') {
+      kind = 'ready'; label = '可下载（待核对）';
+    } else if (rec.status === 'verifying') {
+      kind = 'verifying'; label = '核验中';
+    } else if (rec.status === 'queued' || rec.status === 'running') {
+      kind = rec.status; label = '排队下载';
+    } else if (['failed', 'manual_needed', 'review'].includes(rec.status)) {
+      kind = rec.status; label = '未取得';
+    } else if (rec.status === 'pending') {
+      kind = 'pending'; label = '待处理 / 查无进行中任务';
+    }
+    const dlUrl = livePaper && typeof pdfDownloadUrl === 'function' ? pdfDownloadUrl(livePaper) : '';
+    const title = (livePaper && livePaper.title) || rec.title || rec.doi;
+    const journal = (livePaper && (livePaper.cleanJournal || livePaper.journal)) || rec.journal || '';
+    const detailPaper = livePaper && typeof allPapersMap !== 'undefined' && allPapersMap.get(livePaper.id)
+      ? allPapersMap.get(livePaper.id)
+      : livePaper;
+    return { livePaper: detailPaper, kind, label, dlUrl, title, journal };
+  }
+  function renderRequestsModal() {
+    const body = $('#requestsModalBody');
+    if (!body || typeof loadBrowserRequests !== 'function') return;
+    const list = loadBrowserRequests();
+    updateRequestsCounter();
+    const refreshAllBtn = $('#refreshRequestsBtn');
+    if (refreshAllBtn) refreshAllBtn.disabled = list.length === 0;
+    const disclosure = `<p class="req-disclosure" role="note">仅保存在这台设备的这个浏览器（localStorage）中，不是账号同步，也不是服务器持久账本；状态刷新按完整 DOI 点查，不受默认领域筛选或动态补录前 100 条分页上限影响。仅在服务器确认提交或查到记录后才保存，网络不确定时不会自动重新排队。</p>`;
+    if (!list.length) {
+      body.innerHTML = disclosure + `<div class="empty-state" style="padding:24px;">
+        <p role="status">当前浏览器还没有已确认的全文申请记录。</p>
+        <small style="color:var(--text-muted);">提交获取全文且经服务器确认后，会记在这里以便随时回查状态。</small>
+      </div>`;
+      return;
+    }
+    const modeNames = { curated: '每日精选', weekly: '近7天榜', candidates: '文献雷达', library: '文献库' };
+    body.innerHTML = disclosure + list.map(rec => {
+      const v = resolveBrowserRequestView(rec);
+      const timeText = rec.requestedAt ? rec.requestedAt.slice(0, 16).replace('T', ' ') : '';
+      const srcLabel = rec.sourceMode && modeNames[rec.sourceMode] ? modeNames[rec.sourceMode] : '';
+      const checkedText = rec.lastCheckedAt ? ('最近核对 ' + rec.lastCheckedAt.slice(0, 16).replace('T', ' ')) : '';
+      const dlHtml = v.dlUrl
+        ? `<a href="${esc(v.dlUrl)}" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download="1">下载 PDF</a>`
+          + `<form class="ft-form ft-dl-form" data-ft-dl-form data-doi="${esc(rec.doi)}" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>`
+        : '';
+      const detailHtml = v.livePaper
+        ? `<button type="button" class="btn-sm" data-action="open-request-paper" data-doi="${esc(rec.doi)}">阅读详情</button>`
+        : `<button type="button" class="btn-sm" data-action="search-request-doi" data-doi="${esc(rec.doi)}">按 DOI 检索</button>`;
+      return `<article class="req-item" data-req-doi="${esc(rec.doi)}">
+        <div class="req-item-head">
+          <h4>${esc(v.title)}</h4>
+          <span class="req-status-badge req-status-${esc(v.kind)}">${esc(v.label)}</span>
+        </div>
+        <div class="req-item-meta">
+          <span>DOI: <code>${esc(rec.doi)}</code></span>
+          ${v.journal ? `<span>· ${esc(v.journal)}</span>` : ''}
+          ${srcLabel ? `<span>· 来自${esc(srcLabel)}</span>` : ''}
+          ${timeText ? `<span>· 申请于 ${esc(timeText)}</span>` : ''}
+          ${checkedText ? `<span>· ${esc(checkedText)}</span>` : ''}
+        </div>
+        ${rec.note ? `<p class="req-item-note">${esc(rec.note)}</p>` : ''}
+        <div class="req-item-actions">
+          ${detailHtml}
+          ${dlHtml}
+          <button type="button" class="btn-sm" data-action="refresh-request-doi" data-doi="${esc(rec.doi)}">刷新状态</button>
+          <button type="button" class="btn-sm" data-action="remove-request-doi" data-doi="${esc(rec.doi)}">移除</button>
+        </div>
+      </article>`;
+    }).join('');
+  }
+  let requestsLastFocus = null;
+  function openRequestsModal() {
+    const modal = $('#requestsModalBackdrop');
+    if (!modal) return;
+    renderRequestsModal();
+    const newlyOpened = !modal.classList.contains('open');
+    if (newlyOpened) { requestsLastFocus = document.activeElement; pushOverlay('requests'); }
+    modal.classList.add('open');
+    document.body.classList.add('dialog-open');
+    if (newlyOpened) $('#closeRequestsModalBtn')?.focus({ preventScroll: true });
+    if (typeof refreshBrowserRequests === 'function') {
+      refreshBrowserRequests({ activeOnly: true, limit: 10 }).then(() => {
+        if ($('#requestsModalBackdrop.open')) renderRequestsModal();
+      });
+    }
+  }
+  function closeRequestsModal({ fromHistory = false } = {}) {
+    if (!$('#requestsModalBackdrop.open')) return;
+    if (!fromHistory && popOverlay('requests')) return;
+    OVERLAY_PUSHED.delete('requests');
+    const modal = $('#requestsModalBackdrop');
+    if (modal) modal.classList.remove('open');
+    if (!$('#readerDrawer.open') && !$('#huddleModalBackdrop.open')) document.body.classList.remove('dialog-open');
+    requestsLastFocus?.focus({ preventScroll: true });
+    requestsLastFocus = null;
+  }
+
   // ==== src/app/08-sources-mode.js · Source health page and mode switching ====
   // Render Sources Health Grid
   function sourceHealthDetails(s) {
@@ -4191,7 +4633,8 @@
   function weeklyTitleCountText(shown, total) {
     if (state.search) return `匹配 ${shown} / ${total}`;
     if (shown === total) return `${total}`;
-    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports) {
+    const topicOn = typeof hasTopicFilter === 'function' && hasTopicFilter();
+    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports && !topicOn) {
       const useLegacy = typeof useLegacyTierFilter === 'function' ? useLegacyTierFilter() : false;
       const label = tierDef(state.journalTier, useLegacy).title || state.journalTier;
       return `· ${label} ${shown}`;
@@ -4315,6 +4758,8 @@
       publisher: state.publisher,
       studyDesign: state.studyDesign,
       tag: state.tag,
+      tags: typeof selectedTags === 'function' ? selectedTags().slice() : [],
+      topicUnclassified: typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false,
       minor: state.minor
     };
   }
@@ -4324,6 +4769,11 @@
       'clinicalTier', 'publisher', 'studyDesign', 'tag', 'minor'].forEach(k => {
       if (k in data) state[k] = data[k];
     });
+    state.topicUnclassified = !!data.topicUnclassified || data.tag === 'uncategorized';
+    state.tags = state.topicUnclassified ? []
+      : (Array.isArray(data.tags) ? data.tags.filter(t => typeof t === 'string' && t && t !== 'uncategorized')
+        : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []));
+    state.tag = !state.topicUnclassified && state.tags.length === 1 ? state.tags[0] : '';
     state.journals = Array.isArray(data.journals) ? data.journals.slice() : [];
     state.journalTier = data.journalTier || '';
     state.journalTierLegacy = !!data.journalTierLegacy;
@@ -4515,6 +4965,7 @@
       scope: usesLane() && !doi,
       star: has(p => paperJournalKey(p)),
       tiers,
+      topic: state.mode !== 'sources',
       specialty: has(p => p.clinicalTier),
       nocase: has(isCaseReport),
       design: has(p => p.studyDesign),
@@ -4529,8 +4980,9 @@
   }
   function qfHasActive() {
     const vis = qfChipVis();
+    const topicOn = typeof hasTopicFilter === 'function' ? hasTopicFilter() : !!(state.tag || state.topicUnclassified || (Array.isArray(state.tags) && state.tags.length));
     if (state.favoritesOnly || state.excludeCaseReports || selectedJournals().length || state.journalTier) return true;
-    if (state.clinicalTier || state.publisher || state.studyDesign || state.tag) return true;
+    if (state.clinicalTier || state.publisher || state.studyDesign || topicOn) return true;
     if (vis.scope && (state.lane !== 'core' || state.range !== defaultRange(state.mode))) return true;
     if (state.mode === 'library' && state.ftFilter) return true;
     if (usesLane() && (state.minor || state.reading)) return true;
@@ -4625,6 +5077,15 @@
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
       </span>`);
     });
+    if (vis.topic) {
+      const selTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+      const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false;
+      const topicOn = untagged || selTags.length > 0;
+      const topicLabel = untagged
+        ? '文章主题 · 未分类'
+        : (selTags.length === 1 ? '文章主题 · ' + selTags[0].replace(/^#/, '') : selTags.length > 1 ? '文章主题 · ' + selTags.length + ' 项' : '文章主题');
+      parts.push(chip('topic', esc(topicLabel), topicOn, ' aria-haspopup="dialog" aria-expanded="' + (!!(qfOpen && qfOpen.kind === 'topic')) + '" aria-label="按文章主题筛选"'));
+    }
     if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
     row.innerHTML = parts.join('');
     // 换栏目（页签）时快捷条横向位置归零，避免上一栏滑出去的位置留在新栏目里。
@@ -4635,7 +5096,8 @@
     if (qfOpen) openQfPop(qfOpen.kind, true);
   }
   function qfMoreActive() {
-    return !!(state.publisher || state.clinicalTier || state.excludeCaseReports || state.studyDesign || (usesLane() && (state.minor || state.reading)) || (state.mode === 'library' && state.ftFilter && !qfChipVis().scope));
+    const topicOn = typeof hasTopicFilter === 'function' ? hasTopicFilter() : !!(state.tag || state.topicUnclassified || (Array.isArray(state.tags) && state.tags.length));
+    return !!(topicOn || state.publisher || state.clinicalTier || state.excludeCaseReports || state.studyDesign || (usesLane() && (state.minor || state.reading)) || (state.mode === 'library' && state.ftFilter && !qfChipVis().scope));
   }
 
   function renderQfSummary() {
@@ -4656,7 +5118,12 @@
     if (state.excludeCaseReports) bits.push(item('已排除病例报告', 'nocase'));
     if (state.studyDesign) bits.push(item(state.studyDesign, 'design'));
     if (state.publisher && !selectedJournals().length) bits.push(item(state.publisher, 'pub'));
-    if (state.tag) bits.push(item(state.tag, 'tag'));
+    if (typeof isTopicUnclassified === 'function' && isTopicUnclassified()) {
+      bits.push(item('文章主题：未分类', 'topic', 'uncategorized'));
+    } else {
+      const selTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+      selTags.forEach(t => bits.push(item('文章主题：' + t, 'tag', t)));
+    }
     if (usesLane() && state.minor) bits.push(item('含更正/来信', 'minor'));
     if (usesLane() && state.reading) bits.push(item('可读内容', 'reading'));
     if (state.mode === 'library' && state.ftFilter) bits.push(item('全文状态', 'ft'));
@@ -4742,6 +5209,7 @@
     if (kind === 'journal') return journalPopHtml('other', query);
     if (kind === 'specialty') return specialtyPopHtml();
     if (kind === 'design') return designPopHtml();
+    if (kind === 'topic') return topicPopHtml();
     if (kind === 'scope') return scopePopHtml();
     if (kind === 'more') return morePopHtml();
     return '';
@@ -4823,6 +5291,36 @@
     });
     return `<div class="qf-pop-head"><strong>研究设计</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
       <p class="qf-hint">筛选只作用于已标注文献。当前栏目研究类型待核验 ${pending} 篇${total ? '，约占 ' + Math.round(pending * 100 / total) + '%' : ''}。</p>
+      <div class="qf-opt-list">${opts.join('')}</div>`;
+  }
+
+  function topicPopHtml() {
+    const basePapers = qfPapers().filter(p => matchesFilters(p, false, 'tag'));
+    const counts = {};
+    let untaggedCount = 0;
+    basePapers.forEach(p => {
+      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : [];
+      if (!pTags.length) untaggedCount += 1;
+      else pTags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+    });
+    const active = typeof selectedTags === 'function' ? selectedTags() : [];
+    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false;
+    const canonical = typeof TOPIC_TAGS !== 'undefined' ? TOPIC_TAGS : [];
+    const extraKeys = Object.keys(counts).concat(active)
+      .filter((t, i, a) => t && !canonical.includes(t) && a.indexOf(t) === i);
+    const allTags = canonical.concat(extraKeys);
+    const allOn = !untagged && !active.length;
+    const opts = [
+      `<button type="button" class="qf-opt${allOn ? ' is-on' : ''}" data-qf-topic-all="1" aria-pressed="${allOn}"><span>全部（清空文章主题筛选）</span> <small>${basePapers.length}</small></button>`
+    ].concat(allTags.map(t => {
+      const on = active.includes(t);
+      const n = counts[t] || 0;
+      return `<button type="button" class="qf-opt${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-topic="${esc(t)}" aria-pressed="${on}"><span>${esc(t)}</span> <small>${n}</small></button>`;
+    })).concat([
+      `<button type="button" class="qf-opt${untagged ? ' is-on' : ''}${untaggedCount ? '' : ' is-empty'}" data-qf-topic-unclassified="1" aria-pressed="${untagged}"><span>未分类（无可用主题标签）</span> <small>${untaggedCount}</small></button>`
+    ]);
+    return `<div class="qf-pop-head"><strong>文章主题</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <p class="qf-hint">可多选：多个主题之间为任一命中（OR），并与期刊档、搜索、专科来源、研究设计等条件叠加（AND）。「未分类」与具体主题互斥。</p>
       <div class="qf-opt-list">${opts.join('')}</div>`;
   }
 
@@ -4908,7 +5406,7 @@
   }
 
   document.addEventListener('click', e => {
-    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
+    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-topic], [data-qf-topic-all], [data-qf-topic-unclassified], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-tag], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
     if (!t) {
       if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop(false);
       return;
@@ -4922,7 +5420,7 @@
       if (state.excludeCaseReports && state.studyDesign === '病例报告') state.studyDesign = '';
       closeQfPop(); qfApply(); return;
     }
-    if (kind === 'journal' || kind === 'specialty' || kind === 'design' || kind === 'more') {
+    if (kind === 'journal' || kind === 'specialty' || kind === 'design' || kind === 'topic' || kind === 'more') {
       qfOpen && qfOpen.kind === kind ? closeQfPop() : openQfPop(kind);
       return;
     }
@@ -4980,9 +5478,26 @@
     }
     if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }
     if (t.hasAttribute('data-qf-reading')) { state.reading = t.getAttribute('data-qf-reading') || ''; qfApply(); return; }
+    if (t.hasAttribute('data-qf-topic-all')) {
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', '', false);
+      else { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
+      qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-topic-unclassified')) {
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', 'uncategorized', false);
+      else { state.tag = ''; state.tags = []; state.topicUnclassified = true; }
+      qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-topic')) {
+      const v = t.getAttribute('data-qf-topic') || '';
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', v, false);
+      else state.tag = state.tag === v ? '' : v;
+      qfApply(); return;
+    }
     if (t.hasAttribute('data-qf-tag')) {
-      const v = t.getAttribute('data-qf-tag');
-      state.tag = state.tag === v ? '' : v;
+      const v = t.getAttribute('data-qf-tag') || '';
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', v, false);
+      else state.tag = state.tag === v ? '' : v;
       qfApply(); return;
     }
     if (t.hasAttribute('data-qf-preset')) { closeQfPop(); applyFilterPreset(t.getAttribute('data-qf-preset')); return; }
@@ -5008,7 +5523,15 @@
       else if (key === 'tier') state.clinicalTier = '';
       else if (key === 'design') state.studyDesign = '';
       else if (key === 'pub') state.publisher = '';
-      else if (key === 'tag') state.tag = '';
+      else if (key === 'topic') { state.topicUnclassified = false; state.tags = []; state.tag = ''; }
+      else if (key === 'tag') {
+        if (val) {
+          state.tags = (typeof selectedTags === 'function' ? selectedTags() : (state.tag ? [state.tag] : [])).filter(x => x !== val);
+          state.tag = state.tags.length === 1 ? state.tags[0] : '';
+        } else {
+          state.tags = []; state.tag = ''; state.topicUnclassified = false;
+        }
+      }
       else if (key === 'minor') state.minor = false;
       else if (key === 'reading') state.reading = '';
       else if (key === 'ft') state.ftFilter = '';
@@ -5153,7 +5676,7 @@
   // Backward tabbing must reveal the focused control below sticky surfaces.
   document.addEventListener('focusin', event => {
     const target = event.target;
-    if (!(target instanceof HTMLElement) || target.closest('header,.stream-toolbar,.weekly-toc,#readerDrawer,#huddleModalBackdrop,.modal-backdrop')) return;
+    if (!(target instanceof HTMLElement) || target.closest('header,.stream-toolbar,.weekly-toc,#readerDrawer,#huddleModalBackdrop,#requestsModalBackdrop,.modal-backdrop')) return;
     const rect = target.getBoundingClientRect();
     const surfaces = [header, $('.stream-toolbar'), $('.weekly-toc')].filter(element => element && element.getClientRects().length && element.getBoundingClientRect().top <= parseFloat(getComputedStyle(element).top) + 1);
     const bottom = Math.max(0, ...surfaces.map(element => element.getBoundingClientRect().bottom));
@@ -5225,13 +5748,13 @@
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
       if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey
-        || $('#huddleModalBackdrop.open') || $('#readerDrawer.open') || $('#deepReader.open')
+        || $('#huddleModalBackdrop.open') || $('#requestsModalBackdrop.open') || $('#readerDrawer.open') || $('#deepReader.open')
         || document.activeElement?.matches('input,textarea,select') || document.activeElement?.isContentEditable) return;
       e.preventDefault();
       syncSearchPanel(true);
       searchInput?.focus();
     } else if (e.key === 'Tab') {
-      const modal = $('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open') || $('#appSidebar.open');
+      const modal = $('#requestsModalBackdrop.open .modal-dialog') || $('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open') || $('#appSidebar.open');
       if (modal) {
         const nodes = [...modal.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && !x.hidden && !x.closest('[hidden],[inert]') && x.getClientRects().length && getComputedStyle(x).visibility !== 'hidden' && (!x.checkVisibility || x.checkVisibility({ checkVisibilityCSS: true })) && !(x.closest('details:not([open])') && !(x.tagName === 'SUMMARY' && x.parentElement?.matches('details:not([open])'))));
         const first = nodes[0], last = nodes[nodes.length - 1];
@@ -5241,8 +5764,9 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     } else if (e.key === 'Escape') {
-      // One press closes the topmost layer only: shortlist, then reader, then full-text reading, then filters.
-      if ($('#huddleModalBackdrop.open')) closeHuddleModal();
+      // One press closes the topmost layer only: requests/shortlist, then reader, then full-text reading, then filters.
+      if ($('#requestsModalBackdrop.open')) closeRequestsModal();
+      else if ($('#huddleModalBackdrop.open')) closeHuddleModal();
       else if ($('#readerDrawer.open')) closeReaderDrawer();
       else if ($('#deepReader.open')) closeDeepReading();
       else if ($('#appSidebar.open')) closeSheet();
@@ -5514,6 +6038,63 @@
       restoreControlStates(fieldStates);
       return;
     }
+    if (e.target.closest('[data-action="open-requests"]')) {
+      if (typeof openRequestsModal === 'function') openRequestsModal();
+      return;
+    }
+    const refreshReqBtn = e.target.closest('[data-action="refresh-request-doi"]');
+    if (refreshReqBtn) {
+      const doi = exactDoi(refreshReqBtn.dataset.doi);
+      if (doi) {
+        refreshReqBtn.disabled = true;
+        lookupSupplementalDoi(doi, true).then(() => {
+          if (typeof renderRequestsModal === 'function' && $('#requestsModalBackdrop.open')) renderRequestsModal();
+        });
+      }
+      return;
+    }
+    const removeReqBtn = e.target.closest('[data-action="remove-request-doi"]');
+    if (removeReqBtn) {
+      const doi = exactDoi(removeReqBtn.dataset.doi);
+      if (doi && typeof removeBrowserRequest === 'function') {
+        removeBrowserRequest(doi);
+        if (typeof renderRequestsModal === 'function') renderRequestsModal();
+      }
+      return;
+    }
+    const openReqPaperBtn = e.target.closest('[data-action="open-request-paper"]');
+    if (openReqPaperBtn) {
+      const doi = exactDoi(openReqPaperBtn.dataset.doi);
+      const paper = (doi && exactDoiPapers(doi)[0]) || (doi && DOI_FULLTEXT.get(doi)) || null;
+      if (paper) {
+        if ($('#requestsModalBackdrop.open') && typeof closeRequestsModal === 'function') {
+          try { history.replaceState(null, '', location.href); } catch (err) { /* sandboxed */ }
+          closeRequestsModal({ fromHistory: true });
+        }
+        openReaderDrawer(allPapersMap.get(paper.id) || paper);
+      } else if (doi) {
+        state.search = doi;
+        state.page = 1;
+        if (searchInput) searchInput.value = doi;
+        syncSearchPanel();
+        if (typeof closeRequestsModal === 'function') closeRequestsModal();
+        renderStream();
+      }
+      return;
+    }
+    const searchReqBtn = e.target.closest('[data-action="search-request-doi"]');
+    if (searchReqBtn) {
+      const doi = exactDoi(searchReqBtn.dataset.doi);
+      if (doi) {
+        state.search = doi;
+        state.page = 1;
+        if (searchInput) searchInput.value = doi;
+        syncSearchPanel();
+        if (typeof closeRequestsModal === 'function') closeRequestsModal();
+        renderStream();
+      }
+      return;
+    }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
     if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
     const browseBtn = e.target.closest('[data-browse-only]');
@@ -5587,7 +6168,7 @@
       if (type === 'lane') state.lane = 'core';
       if (type === 'minor') state.minor = false;
       if (type === 'design') state.studyDesign = '';
-      if (type === 'tag') state.tag = '';
+      if (type === 'tag') { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
       if (type === 'nocase') state.excludeCaseReports = false;
@@ -5725,6 +6306,7 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
     if (entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
     const id = entry.deepReader;
@@ -5732,7 +6314,10 @@
     else closeDeepReading({ fromHistory: true });
     if (entry.overlay || entry.deepReader) return;
     const next = readStateFromUrl();
-    if (!URL_STATE_KEYS.some(k => state[k] !== next[k])) return;
+    const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
+      ? JSON.stringify(state[k]) !== JSON.stringify(next[k])
+      : state[k] !== next[k]);
+    if (!urlChanged) return;
     clearTimeout(searchTimer);
     viewInUrl = next.viewInUrl;
     URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
@@ -5773,6 +6358,21 @@
     [...$('#huddleModalBody').querySelectorAll('[data-action="compare-select"]')].find(x => x.dataset.paperId === id)?.focus({ preventScroll: true });
   });
   $('#openHuddleBtn')?.addEventListener('click', openHuddleModal);
+  $('#openRequestsBtn')?.addEventListener('click', () => { if (typeof openRequestsModal === 'function') openRequestsModal(); });
+  $('#closeRequestsModalBtn')?.addEventListener('click', () => { if (typeof closeRequestsModal === 'function') closeRequestsModal(); });
+  $('#closeRequestsFootBtn')?.addEventListener('click', () => { if (typeof closeRequestsModal === 'function') closeRequestsModal(); });
+  $('#requestsModalBackdrop')?.addEventListener('click', e => {
+    if (e.target.id === 'requestsModalBackdrop' && typeof closeRequestsModal === 'function') closeRequestsModal();
+  });
+  $('#refreshRequestsBtn')?.addEventListener('click', e => {
+    const btn = e.currentTarget;
+    if (typeof refreshBrowserRequests !== 'function') return;
+    btn.disabled = true;
+    refreshBrowserRequests({ activeOnly: false }).finally(() => {
+      btn.disabled = false;
+      if (typeof renderRequestsModal === 'function' && $('#requestsModalBackdrop.open')) renderRequestsModal();
+    });
+  });
   $('#closeHuddleModalBtn')?.addEventListener('click', () => closeHuddleModal());
   $('#huddleModalBackdrop')?.addEventListener('click', e => {
     if (e.target.id === 'huddleModalBackdrop') closeHuddleModal();
@@ -5815,10 +6415,14 @@
   try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
+  if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
   if (searchInput && state.search) searchInput.value = state.search;
   switchMode(state.mode, true);
   loadSupplementalLibrary();
+  if (typeof loadBrowserRequests === 'function' && loadBrowserRequests().length && typeof refreshBrowserRequests === 'function') {
+    refreshBrowserRequests({ activeOnly: true, limit: 10 });
+  }
   const refreshLibraryAfterReturn = () => {
     if (SUPPLEMENTAL_LIBRARY.promise) return;
     const doi = exactDoi(state.search);

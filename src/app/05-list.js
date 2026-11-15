@@ -95,8 +95,17 @@
     if (doi || special) syncToolRowVisibility();
   }
   function supplementalLibraryNotice() {
-    if (SUPPLEMENTAL_LIBRARY.state === 'error') return '<div class="doi-library-notice">补录文献暂未加载，已保留现有文献。<button class="btn-sm" data-action="refresh-doi-library">重试加载</button></div>';
-    if (SUPPLEMENTAL_LIBRARY.more) return '<div class="doi-library-notice">还有补录文献未显示。<button class="btn-sm" data-action="load-doi-library">继续加载补录</button></div>';
+    const loaded = Number.isFinite(SUPPLEMENTAL_LIBRARY.loadedCount) ? SUPPLEMENTAL_LIBRARY.loadedCount : 0;
+    const rangeText = loaded > 0 ? `已加载当前前 ${loaded} 条动态补录文献` : '动态补录文献列表';
+    if (SUPPLEMENTAL_LIBRARY.state === 'error') {
+      return '<div class="doi-library-notice">动态补录文献暂未加载，已保留现有公开文献；若要核对具体文献请用顶部搜索框按完整 DOI 点查。<button type="button" class="btn-sm" data-action="refresh-doi-library">重试加载</button> <button type="button" class="btn-sm" data-action="open-requests">本浏览器申请记录</button></div>';
+    }
+    if (SUPPLEMENTAL_LIBRARY.more) {
+      return `<div class="doi-library-notice">${rangeText}（列表分页已截断，此处不是全部动态库；其它文献或非默认领域条目可按完整 DOI 精确检索或从本浏览器记录直达）。<button type="button" class="btn-sm" data-action="load-doi-library">继续加载补录</button> <button type="button" class="btn-sm" data-action="open-requests">本浏览器申请记录</button></div>`;
+    }
+    if (SUPPLEMENTAL_LIBRARY.state === 'complete' && loaded > 0) {
+      return `<div class="doi-library-notice">已加载本次返回的 ${loaded} 条动态补录文献（按 DOI 去重；无主题标签的记录在「文章主题」中归入「未分类」）。<button type="button" class="btn-sm" data-action="open-requests">本浏览器申请记录</button></div>`;
+    }
     return '';
   }
   function renderDoiStream(doi, streamEl, loadMoreBtn) {

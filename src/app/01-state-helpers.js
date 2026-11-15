@@ -1,8 +1,159 @@
   // ==== src/app/01-state-helpers.js · Storage, URL state, DOM/format helpers, share text, theme ====
   // Safe storage (private mode / blocked storage must not break the page)
   function safeGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
   function safeRemove(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+
+  // Authoritative 10 article-topic tags (matching scripts/enrich_metadata.py TAG_RULES)
+  const TOPIC_TAGS = [
+    '#房颤/电生理', '#心衰/心肌', '#心电', '#AI-ECG', '#大模型/NLP',
+    '#卒中/抗凝', '#高血压/血管', '#冠脉介入', '#穿戴/远程监测', '#影像'
+  ];
+  const UNCLASSIFIED_TOPIC = 'uncategorized';
+  function paperTopicTags(p) {
+    if (!p || !Array.isArray(p.tags)) return [];
+    const out = [];
+    for (const raw of p.tags) {
+      if (typeof raw !== 'string') continue;
+      const t = raw.trim();
+      if (!t || !t.startsWith('#') || out.includes(t)) continue;
+      out.push(t);
+    }
+    return out;
+  }
+  function parseTopicParams(tagParam, tagsParam) {
+    const rawList = [];
+    const pushOne = raw => {
+      let v = String(raw || '');
+      try { v = decodeURIComponent(v); } catch (e) { /* keep literal */ }
+      v = v.trim();
+      if (v && !rawList.includes(v)) rawList.push(v);
+    };
+    String(tagsParam || '').split(',').forEach(pushOne);
+    if (tagParam) pushOne(tagParam);
+    const specific = rawList.filter(v => v !== UNCLASSIFIED_TOPIC && v !== 'all');
+    if (specific.length) {
+      return { tags: specific, tag: specific.length === 1 ? specific[0] : '', topicUnclassified: false };
+    }
+    if (rawList.includes(UNCLASSIFIED_TOPIC)) {
+      return { tags: [], tag: '', topicUnclassified: true };
+    }
+    return { tags: [], tag: '', topicUnclassified: false };
+  }
+  function selectedTags() {
+    if (Array.isArray(state.tags) && state.tags.length) return state.tags.filter(t => t && t !== UNCLASSIFIED_TOPIC);
+    return state.tag && state.tag !== UNCLASSIFIED_TOPIC ? [state.tag] : [];
+  }
+  function isTopicUnclassified() {
+    if (state.topicUnclassified) return true;
+    return !selectedTags().length && state.tag === UNCLASSIFIED_TOPIC;
+  }
+  function hasTopicFilter() {
+    return isTopicUnclassified() || selectedTags().length > 0;
+  }
+
+  // This-browser-only request ledger (only confirmed submissions/server records; no secrets/tokens/PDFs)
+  const BROWSER_REQ_KEY = 'xz_browser_requests_v1';
+  const BROWSER_REQ_MAX = 200;
+  const BROWSER_REQ_MAX_BYTES = 60000;
+  const BROWSER_REQ_STATUSES = ['queued', 'running', 'verifying', 'available', 'pending', 'manual_needed', 'failed', 'review'];
+  function normalizeRequestDoi(value) {
+    if (typeof exactDoi === 'function') return exactDoi(value);
+    const s = String(value || '').trim().replace(/^doi:\s*/i, '').replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '');
+    let out = s;
+    try { out = decodeURIComponent(s); } catch (e) { /* ignore */ }
+    out = out.trim();
+    return /^10\.\d{4,9}\/[^\s<>"?#@\x00-\x1f\x7f]+$/.test(out) && /^[\x20-\x7e]+$/.test(out) ? out.toLowerCase() : '';
+  }
+  function sanitizeBrowserRequest(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const doi = normalizeRequestDoi(raw.doi);
+    if (!doi) return null;
+    const status = BROWSER_REQ_STATUSES.includes(raw.status) ? raw.status : 'queued';
+    const stage = typeof raw.stage === 'string' ? raw.stage.trim().slice(0, 40) : '';
+    const requestedAt = typeof raw.requestedAt === 'string' && raw.requestedAt.trim() ? raw.requestedAt.trim().slice(0, 40) : '';
+    const lastCheckedAt = typeof raw.lastCheckedAt === 'string' && raw.lastCheckedAt.trim() ? raw.lastCheckedAt.trim().slice(0, 40) : '';
+    const paperId = typeof raw.paperId === 'string' && /^[\w-]{1,80}$/.test(raw.paperId.trim()) ? raw.paperId.trim() : '';
+    const title = typeof raw.title === 'string' ? raw.title.trim().slice(0, 300) : '';
+    const journal = typeof raw.journal === 'string' ? raw.journal.trim().slice(0, 120) : '';
+    const sourceMode = typeof raw.sourceMode === 'string' ? raw.sourceMode.trim().slice(0, 32) : '';
+    const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 160) : '';
+    return { doi, title, journal, sourceMode, requestedAt, status, stage, paperId, lastCheckedAt, note };
+  }
+  function loadBrowserRequests() {
+    try {
+      const parsed = JSON.parse(safeGet(BROWSER_REQ_KEY) || '[]');
+      if (!Array.isArray(parsed)) return [];
+      const byDoi = new Map();
+      for (const item of parsed) {
+        const clean = sanitizeBrowserRequest(item);
+        if (!clean || byDoi.has(clean.doi)) continue;
+        byDoi.set(clean.doi, clean);
+        if (byDoi.size >= BROWSER_REQ_MAX) break;
+      }
+      return [...byDoi.values()];
+    } catch (e) {
+      return [];
+    }
+  }
+  function saveBrowserRequests(list) {
+    if (!Array.isArray(list)) return false;
+    const dedup = [];
+    const seen = new Set();
+    for (const item of list) {
+      const clean = sanitizeBrowserRequest(item);
+      if (!clean || seen.has(clean.doi)) continue;
+      seen.add(clean.doi);
+      dedup.push(clean);
+      if (dedup.length >= BROWSER_REQ_MAX) break;
+    }
+    let trimmed = dedup;
+    while (trimmed.length > 0) {
+      const serialized = JSON.stringify(trimmed);
+      if (serialized.length <= BROWSER_REQ_MAX_BYTES) {
+        if (safeSet(BROWSER_REQ_KEY, serialized)) return true;
+      }
+      trimmed = trimmed.slice(0, trimmed.length - 1);
+    }
+    return safeSet(BROWSER_REQ_KEY, '[]');
+  }
+  function recordConfirmedRequest(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    const doi = normalizeRequestDoi(entry.doi);
+    if (!doi) return false;
+    const now = new Date().toISOString();
+    const current = loadBrowserRequests();
+    const idx = current.findIndex(r => r.doi === doi);
+    const prev = idx >= 0 ? current[idx] : null;
+    const isGenericTitle = t => !t || t === '当前申请核验的文献';
+    const nextTitle = typeof entry.title === 'string' && !isGenericTitle(entry.title.trim())
+      ? entry.title.trim().slice(0, 300)
+      : (prev ? prev.title : '');
+    const merged = sanitizeBrowserRequest({
+      doi,
+      title: nextTitle,
+      journal: typeof entry.journal === 'string' && entry.journal.trim() ? entry.journal.trim() : (prev ? prev.journal : ''),
+      sourceMode: prev && prev.sourceMode ? prev.sourceMode : (typeof entry.sourceMode === 'string' ? entry.sourceMode : ''),
+      requestedAt: (prev && prev.requestedAt) || entry.requestedAt || now,
+      status: BROWSER_REQ_STATUSES.includes(entry.status) ? entry.status : (prev ? prev.status : 'queued'),
+      stage: typeof entry.stage === 'string' ? entry.stage : (prev ? prev.stage : ''),
+      paperId: typeof entry.paperId === 'string' && entry.paperId ? entry.paperId : (prev ? prev.paperId : ''),
+      lastCheckedAt: entry.checked === false ? (prev ? prev.lastCheckedAt : '') : now,
+      note: typeof entry.note === 'string' ? entry.note : (prev ? prev.note : '')
+    });
+    if (!merged) return false;
+    const nextList = [merged, ...current.filter(r => r.doi !== doi)];
+    const ok = saveBrowserRequests(nextList);
+    if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
+    return ok;
+  }
+  function removeBrowserRequest(doi) {
+    const clean = normalizeRequestDoi(doi);
+    if (!clean) return false;
+    const ok = saveBrowserRequests(loadBrowserRequests().filter(r => r.doi !== clean));
+    if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
+    return ok;
+  }
 
   // URL State & Query Params
   const urlParams = new URLSearchParams(window.location.search);
@@ -44,6 +195,7 @@
     const rawMode = params.get('mode') || 'curated';
     const mode = VALID_MODES.includes(rawMode) ? rawMode : 'curated';
     const nextViewInUrl = validView(params.get('view'));
+    const topicState = parseTopicParams(params.get('tag'), params.get('tags'));
     return {
       mode,
       viewInUrl: nextViewInUrl,
@@ -53,7 +205,9 @@
       publisher: params.get('pub') || '',
       journal: params.get('journal') || '',
       studyDesign: params.get('design') || '',
-      tag: params.get('tag') || '',
+      tag: topicState.tag,
+      tags: topicState.tags,
+      topicUnclassified: topicState.topicUnclassified,
       lane: params.get('lane') || 'core',
       sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
       range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
@@ -73,7 +227,7 @@
   }
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
-    'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
+    'studyDesign', 'tag', 'tags', 'topicUnclassified', 'lane', 'sort', 'range', 'minor', 'reading',
     'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'journalTierLegacy', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
@@ -90,6 +244,8 @@
     journal: initialUrlState.journal,
     studyDesign: initialUrlState.studyDesign,
     tag: initialUrlState.tag,
+    tags: initialUrlState.tags || [],
+    topicUnclassified: !!initialUrlState.topicUnclassified,
     lane: initialUrlState.lane,
     sort: initialUrlState.sort,
     range: initialUrlState.range,

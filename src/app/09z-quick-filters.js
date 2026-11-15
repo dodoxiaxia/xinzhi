@@ -58,6 +58,8 @@
       publisher: state.publisher,
       studyDesign: state.studyDesign,
       tag: state.tag,
+      tags: typeof selectedTags === 'function' ? selectedTags().slice() : [],
+      topicUnclassified: typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false,
       minor: state.minor
     };
   }
@@ -67,6 +69,11 @@
       'clinicalTier', 'publisher', 'studyDesign', 'tag', 'minor'].forEach(k => {
       if (k in data) state[k] = data[k];
     });
+    state.topicUnclassified = !!data.topicUnclassified || data.tag === 'uncategorized';
+    state.tags = state.topicUnclassified ? []
+      : (Array.isArray(data.tags) ? data.tags.filter(t => typeof t === 'string' && t && t !== 'uncategorized')
+        : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []));
+    state.tag = !state.topicUnclassified && state.tags.length === 1 ? state.tags[0] : '';
     state.journals = Array.isArray(data.journals) ? data.journals.slice() : [];
     state.journalTier = data.journalTier || '';
     state.journalTierLegacy = !!data.journalTierLegacy;
@@ -258,6 +265,7 @@
       scope: usesLane() && !doi,
       star: has(p => paperJournalKey(p)),
       tiers,
+      topic: state.mode !== 'sources',
       specialty: has(p => p.clinicalTier),
       nocase: has(isCaseReport),
       design: has(p => p.studyDesign),
@@ -272,8 +280,9 @@
   }
   function qfHasActive() {
     const vis = qfChipVis();
+    const topicOn = typeof hasTopicFilter === 'function' ? hasTopicFilter() : !!(state.tag || state.topicUnclassified || (Array.isArray(state.tags) && state.tags.length));
     if (state.favoritesOnly || state.excludeCaseReports || selectedJournals().length || state.journalTier) return true;
-    if (state.clinicalTier || state.publisher || state.studyDesign || state.tag) return true;
+    if (state.clinicalTier || state.publisher || state.studyDesign || topicOn) return true;
     if (vis.scope && (state.lane !== 'core' || state.range !== defaultRange(state.mode))) return true;
     if (state.mode === 'library' && state.ftFilter) return true;
     if (usesLane() && (state.minor || state.reading)) return true;
@@ -368,6 +377,15 @@
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
       </span>`);
     });
+    if (vis.topic) {
+      const selTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+      const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false;
+      const topicOn = untagged || selTags.length > 0;
+      const topicLabel = untagged
+        ? '文章主题 · 未分类'
+        : (selTags.length === 1 ? '文章主题 · ' + selTags[0].replace(/^#/, '') : selTags.length > 1 ? '文章主题 · ' + selTags.length + ' 项' : '文章主题');
+      parts.push(chip('topic', esc(topicLabel), topicOn, ' aria-haspopup="dialog" aria-expanded="' + (!!(qfOpen && qfOpen.kind === 'topic')) + '" aria-label="按文章主题筛选"'));
+    }
     if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
     row.innerHTML = parts.join('');
     // 换栏目（页签）时快捷条横向位置归零，避免上一栏滑出去的位置留在新栏目里。
@@ -378,7 +396,8 @@
     if (qfOpen) openQfPop(qfOpen.kind, true);
   }
   function qfMoreActive() {
-    return !!(state.publisher || state.clinicalTier || state.excludeCaseReports || state.studyDesign || (usesLane() && (state.minor || state.reading)) || (state.mode === 'library' && state.ftFilter && !qfChipVis().scope));
+    const topicOn = typeof hasTopicFilter === 'function' ? hasTopicFilter() : !!(state.tag || state.topicUnclassified || (Array.isArray(state.tags) && state.tags.length));
+    return !!(topicOn || state.publisher || state.clinicalTier || state.excludeCaseReports || state.studyDesign || (usesLane() && (state.minor || state.reading)) || (state.mode === 'library' && state.ftFilter && !qfChipVis().scope));
   }
 
   function renderQfSummary() {
@@ -399,7 +418,12 @@
     if (state.excludeCaseReports) bits.push(item('已排除病例报告', 'nocase'));
     if (state.studyDesign) bits.push(item(state.studyDesign, 'design'));
     if (state.publisher && !selectedJournals().length) bits.push(item(state.publisher, 'pub'));
-    if (state.tag) bits.push(item(state.tag, 'tag'));
+    if (typeof isTopicUnclassified === 'function' && isTopicUnclassified()) {
+      bits.push(item('文章主题：未分类', 'topic', 'uncategorized'));
+    } else {
+      const selTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+      selTags.forEach(t => bits.push(item('文章主题：' + t, 'tag', t)));
+    }
     if (usesLane() && state.minor) bits.push(item('含更正/来信', 'minor'));
     if (usesLane() && state.reading) bits.push(item('可读内容', 'reading'));
     if (state.mode === 'library' && state.ftFilter) bits.push(item('全文状态', 'ft'));
@@ -485,6 +509,7 @@
     if (kind === 'journal') return journalPopHtml('other', query);
     if (kind === 'specialty') return specialtyPopHtml();
     if (kind === 'design') return designPopHtml();
+    if (kind === 'topic') return topicPopHtml();
     if (kind === 'scope') return scopePopHtml();
     if (kind === 'more') return morePopHtml();
     return '';
@@ -566,6 +591,36 @@
     });
     return `<div class="qf-pop-head"><strong>研究设计</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
       <p class="qf-hint">筛选只作用于已标注文献。当前栏目研究类型待核验 ${pending} 篇${total ? '，约占 ' + Math.round(pending * 100 / total) + '%' : ''}。</p>
+      <div class="qf-opt-list">${opts.join('')}</div>`;
+  }
+
+  function topicPopHtml() {
+    const basePapers = qfPapers().filter(p => matchesFilters(p, false, 'tag'));
+    const counts = {};
+    let untaggedCount = 0;
+    basePapers.forEach(p => {
+      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : [];
+      if (!pTags.length) untaggedCount += 1;
+      else pTags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+    });
+    const active = typeof selectedTags === 'function' ? selectedTags() : [];
+    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false;
+    const canonical = typeof TOPIC_TAGS !== 'undefined' ? TOPIC_TAGS : [];
+    const extraKeys = Object.keys(counts).concat(active)
+      .filter((t, i, a) => t && !canonical.includes(t) && a.indexOf(t) === i);
+    const allTags = canonical.concat(extraKeys);
+    const allOn = !untagged && !active.length;
+    const opts = [
+      `<button type="button" class="qf-opt${allOn ? ' is-on' : ''}" data-qf-topic-all="1" aria-pressed="${allOn}"><span>全部（清空文章主题筛选）</span> <small>${basePapers.length}</small></button>`
+    ].concat(allTags.map(t => {
+      const on = active.includes(t);
+      const n = counts[t] || 0;
+      return `<button type="button" class="qf-opt${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-topic="${esc(t)}" aria-pressed="${on}"><span>${esc(t)}</span> <small>${n}</small></button>`;
+    })).concat([
+      `<button type="button" class="qf-opt${untagged ? ' is-on' : ''}${untaggedCount ? '' : ' is-empty'}" data-qf-topic-unclassified="1" aria-pressed="${untagged}"><span>未分类（无可用主题标签）</span> <small>${untaggedCount}</small></button>`
+    ]);
+    return `<div class="qf-pop-head"><strong>文章主题</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <p class="qf-hint">可多选：多个主题之间为任一命中（OR），并与期刊档、搜索、专科来源、研究设计等条件叠加（AND）。「未分类」与具体主题互斥。</p>
       <div class="qf-opt-list">${opts.join('')}</div>`;
   }
 
@@ -651,7 +706,7 @@
   }
 
   document.addEventListener('click', e => {
-    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
+    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-topic], [data-qf-topic-all], [data-qf-topic-unclassified], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-tag], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
     if (!t) {
       if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop(false);
       return;
@@ -665,7 +720,7 @@
       if (state.excludeCaseReports && state.studyDesign === '病例报告') state.studyDesign = '';
       closeQfPop(); qfApply(); return;
     }
-    if (kind === 'journal' || kind === 'specialty' || kind === 'design' || kind === 'more') {
+    if (kind === 'journal' || kind === 'specialty' || kind === 'design' || kind === 'topic' || kind === 'more') {
       qfOpen && qfOpen.kind === kind ? closeQfPop() : openQfPop(kind);
       return;
     }
@@ -723,9 +778,26 @@
     }
     if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }
     if (t.hasAttribute('data-qf-reading')) { state.reading = t.getAttribute('data-qf-reading') || ''; qfApply(); return; }
+    if (t.hasAttribute('data-qf-topic-all')) {
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', '', false);
+      else { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
+      qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-topic-unclassified')) {
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', 'uncategorized', false);
+      else { state.tag = ''; state.tags = []; state.topicUnclassified = true; }
+      qfApply(); return;
+    }
+    if (t.hasAttribute('data-qf-topic')) {
+      const v = t.getAttribute('data-qf-topic') || '';
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', v, false);
+      else state.tag = state.tag === v ? '' : v;
+      qfApply(); return;
+    }
     if (t.hasAttribute('data-qf-tag')) {
-      const v = t.getAttribute('data-qf-tag');
-      state.tag = state.tag === v ? '' : v;
+      const v = t.getAttribute('data-qf-tag') || '';
+      if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', v, false);
+      else state.tag = state.tag === v ? '' : v;
       qfApply(); return;
     }
     if (t.hasAttribute('data-qf-preset')) { closeQfPop(); applyFilterPreset(t.getAttribute('data-qf-preset')); return; }
@@ -751,7 +823,15 @@
       else if (key === 'tier') state.clinicalTier = '';
       else if (key === 'design') state.studyDesign = '';
       else if (key === 'pub') state.publisher = '';
-      else if (key === 'tag') state.tag = '';
+      else if (key === 'topic') { state.topicUnclassified = false; state.tags = []; state.tag = ''; }
+      else if (key === 'tag') {
+        if (val) {
+          state.tags = (typeof selectedTags === 'function' ? selectedTags() : (state.tag ? [state.tag] : [])).filter(x => x !== val);
+          state.tag = state.tags.length === 1 ? state.tags[0] : '';
+        } else {
+          state.tags = []; state.tag = ''; state.topicUnclassified = false;
+        }
+      }
       else if (key === 'minor') state.minor = false;
       else if (key === 'reading') state.reading = '';
       else if (key === 'ft') state.ftFilter = '';

@@ -235,6 +235,22 @@
           "notes": ""
         },
         {
+          "id": "curated-topic",
+          "label": "文章主题",
+          "selector": "[data-qf=\"topic\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
           "id": "curated-more",
           "label": "更多筛选",
           "selector": "[data-qf=\"more\"]",
@@ -545,6 +561,22 @@
           "label": "AI 行业",
           "selector": "[data-weekly-cat=\"aitech\"]",
           "kind": "chip",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "weekly-topic",
+          "label": "文章主题",
+          "selector": "[data-qf=\"topic\"]",
+          "kind": "button",
           "visible": "always",
           "viewports": [
             "mobile",
@@ -1415,6 +1447,22 @@
           "notes": ""
         },
         {
+          "id": "candidates-topic",
+          "label": "文章主题",
+          "selector": "[data-qf=\"topic\"]",
+          "kind": "button",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
           "id": "candidates-more",
           "label": "更多筛选",
           "selector": "[data-qf=\"more\"]",
@@ -2085,6 +2133,22 @@
           "label": "只看关注期刊",
           "selector": "[data-qf=\"star\"]",
           "kind": "toggle",
+          "visible": "always",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "进入本栏目",
+          "setup": [],
+          "stable": true,
+          "notes": ""
+        },
+        {
+          "id": "library-topic",
+          "label": "文章主题",
+          "selector": "[data-qf=\"topic\"]",
+          "kind": "button",
           "visible": "always",
           "viewports": [
             "mobile",
@@ -3181,6 +3245,38 @@
         "id": "huddle-counter",
         "label": "精选清单篇数",
         "selector": "#huddleCounter",
+        "kind": "text",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "open-requests-btn",
+        "label": "本浏览器申请记录",
+        "selector": "#openRequestsBtn",
+        "kind": "button",
+        "visible": "always",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "进入本栏目",
+        "setup": [],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "requests-counter",
+        "label": "本浏览器申请记录条数",
+        "selector": "#requestsCounter",
         "kind": "text",
         "visible": "always",
         "viewports": [
@@ -4938,6 +5034,155 @@
         ],
         "stable": true,
         "notes": "读取离线预生成结果，不调用模型"
+      },
+      {
+        "id": "topic-options",
+        "label": "文章主题选项",
+        "selector": "[data-qf-topic]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"topic\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "支持多选（同主题 OR，跨条件 AND）"
+      },
+      {
+        "id": "topic-all",
+        "label": "全部文章主题",
+        "selector": "[data-qf-topic-all]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"topic\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "topic-unclassified",
+        "label": "文章主题未分类",
+        "selector": "[data-qf-topic-unclassified]",
+        "kind": "chip",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"topic\"]"
+          }
+        ],
+        "stable": true,
+        "notes": "与具体主题互斥"
+      },
+      {
+        "id": "requests-modal",
+        "label": "本浏览器申请记录",
+        "selector": "#requestsModalBackdrop",
+        "kind": "dialog",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "stable": true,
+        "notes": "仅此浏览器本地记录"
+      },
+      {
+        "id": "requests-modal-body",
+        "label": "本浏览器申请记录列表",
+        "selector": "#requestsModalBody",
+        "kind": "list",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "requests-close-btn",
+        "label": "关闭申请记录",
+        "selector": "#closeRequestsModalBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "requests-refresh-btn",
+        "label": "刷新全部状态",
+        "selector": "#refreshRequestsBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
       }
     ],
     "states": [
@@ -5352,6 +5597,33 @@
         ],
         "expect": "visible",
         "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
+      },
+      {
+        "id": "topic-pop-open",
+        "label": "展开文章主题筛选",
+        "selector": "[data-qf-topic-all]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "[data-qf=\"topic\"]"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "requests-empty",
+        "label": "本浏览器申请记录为空",
+        "selector": "#requestsModalBody .empty-state",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:当前浏览器还没有已确认的全文申请记录"
       }
     ]
   }

@@ -347,7 +347,8 @@
   function weeklyTitleCountText(shown, total) {
     if (state.search) return `匹配 ${shown} / ${total}`;
     if (shown === total) return `${total}`;
-    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports) {
+    const topicOn = typeof hasTopicFilter === 'function' && hasTopicFilter();
+    if (state.journalTier && !selectedJournals().length && !state.favoritesOnly && !state.excludeCaseReports && !topicOn) {
       const useLegacy = typeof useLegacyTierFilter === 'function' ? useLegacyTierFilter() : false;
       const label = tierDef(state.journalTier, useLegacy).title || state.journalTier;
       return `· ${label} ${shown}`;

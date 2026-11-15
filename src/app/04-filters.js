@@ -357,7 +357,18 @@
       else u.searchParams.delete('jvis');
       set('nocase', state.excludeCaseReports ? '1' : '', '');
       set('design', state.studyDesign, '');
-      set('tag', state.tag, '');
+      const topicTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+      const topicUncat = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
+      if (topicUncat) {
+        set('tag', '', '');
+        set('tags', 'uncategorized', '');
+      } else if (topicTags.length > 1) {
+        set('tag', '', '');
+        set('tags', topicTags.join(','), '');
+      } else {
+        set('tag', topicTags[0] || '', '');
+        set('tags', '', '');
+      }
       set('lane', usesLane() ? state.lane : '', 'core');
       set('sort', state.sort, 'date-desc');
       set('range', state.range, defaultRange(state.mode));
@@ -371,7 +382,7 @@
       set('read', state.mode === 'weekly' ? activeDeepReadingId : '', '');
       set('ft', state.mode === 'library' ? state.ftFilter : '', '');
       u.searchParams.delete('maintainer');
-      const filteredView = state.search || state.clinicalTier || state.publisher || selectedJournals().length || state.studyDesign || state.tag
+      const filteredView = state.search || state.clinicalTier || state.publisher || selectedJournals().length || state.studyDesign || topicTags.length || topicUncat
         || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
@@ -424,16 +435,22 @@
 
   function sidebarSelections() {
     const journals = selectedJournals();
+    const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
     return [
       { group: 'tier', value: state.clinicalTier, label: '信源分组' },
       ...journals.map(j => ({ group: 'journal', value: j, label: '期刊' })),
       ...(journals.length ? [] : [{ group: 'pub', value: state.publisher, label: '出版方' }]),
       { group: 'design', value: state.studyDesign, label: '研究设计' },
-      { group: 'tag', value: state.tag, label: '主题' }
+      ...(untagged
+        ? [{ group: 'tag', value: 'uncategorized', displayValue: '未分类', label: '文章主题' }]
+        : tags.map(t => ({ group: 'tag', value: t, label: '文章主题' })))
     ].filter(selection => selection.value);
   }
   function clearSidebarFilters() {
     state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
+    state.tags = [];
+    state.topicUnclassified = false;
     state.journals = [];
     state.journalTier = '';
     state.journalTierLegacy = false;
@@ -466,7 +483,30 @@
       state.studyDesign = value;
       if (state.studyDesign === '病例报告') state.excludeCaseReports = false;
     }
-    if (group === 'tag') state.tag = !only && value && state.tag === value ? '' : value;
+    if (group === 'tag') {
+      if (!value) {
+        state.tag = '';
+        state.tags = [];
+        state.topicUnclassified = false;
+      } else if (value === 'uncategorized') {
+        const wasUncat = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
+        if (!only && wasUncat) {
+          state.topicUnclassified = false;
+          state.tag = '';
+          state.tags = [];
+        } else {
+          state.topicUnclassified = true;
+          state.tags = [];
+          state.tag = '';
+        }
+      } else {
+        state.topicUnclassified = false;
+        const cur = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+        const next = only ? [value] : (cur.includes(value) ? cur.filter(t => t !== value) : cur.concat(value));
+        state.tags = next;
+        state.tag = next.length === 1 ? next[0] : '';
+      }
+    }
     if (state.publisher) expandedPublishers.add(state.publisher);
     state.page = 1;
     return true;
@@ -549,7 +589,16 @@
     }
     if (!selectedJournals().length && !state.journalTier && state.publisher && (p.publisher || '其他学术刊物') !== state.publisher) miss |= 2;
     if (state.studyDesign && p.studyDesign !== state.studyDesign) miss |= 4;
-    if (state.tag && (!p.tags || !p.tags.includes(state.tag))) miss |= 8;
+    const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
+    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
+    const pTags = typeof paperTopicTags === 'function'
+      ? paperTopicTags(p)
+      : (Array.isArray(p && p.tags) ? p.tags.map(t => typeof t === 'string' ? t.trim() : '').filter(t => t.startsWith('#')) : []);
+    if (untagged) {
+      if (pTags.length > 0) miss |= 8;
+    } else if (tags.length) {
+      if (!tags.some(t => pTags.includes(t))) miss |= 8;
+    }
     return miss;
   }
   function matchesSidebarFilters(p, skip) {
@@ -792,11 +841,16 @@
     }
 
     // 4. Tags Cloud
+    const activeTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
     const tagCounts = {};
-    base.forEach(p => (p.tags || []).forEach(t => { tagCounts[t] = 0; }));
-    if (state.tag) tagCounts[state.tag] = 0;
+    base.forEach(p => {
+      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
+      pTags.forEach(t => { tagCounts[t] = 0; });
+    });
+    activeTags.forEach(t => { if (!(t in tagCounts)) tagCounts[t] = 0; });
     facet('tag').forEach(p => {
-      (p.tags || []).forEach(t => {
+      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
+      pTags.forEach(t => {
         tagCounts[t] = (tagCounts[t] || 0) + 1;
       });
     });
@@ -805,7 +859,7 @@
     if (tagsCloudEl) {
       const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
-        const isActive = state.tag === tag;
+        const isActive = activeTags.includes(tag);
         return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)}</button>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
@@ -853,9 +907,10 @@
         if (selection.group === 'pub') return (p.publisher || '其他学术刊物') === selection.value;
         if (selection.group === 'journal') return p.cleanJournal === selection.value || p.journal === selection.value;
         if (selection.group === 'design') return p.studyDesign === selection.value;
-        return (p.tags || []).includes(selection.value);
+        const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
+        return selection.value === 'uncategorized' ? pTags.length === 0 : pTags.includes(selection.value);
       }).length;
-      return count ? `<button type="button" class="btn-sm" data-browse-only="${selection.group}" data-browse-value="${esc(selection.value)}">只看${esc(selection.value)} · ${count} 篇</button>` : '';
+      return count ? `<button type="button" class="btn-sm" data-browse-only="${selection.group}" data-browse-value="${esc(selection.value)}">只看${esc(selection.displayValue || selection.value)} · ${count} 篇</button>` : '';
     }).join('') : '';
     const noFollowed = !!(state.favoritesOnly && !(state.favoriteJournals || []).length);
     const message = noFollowed ? '还没有关注期刊，点期刊名旁的 ☆ 关注。关注后可在这里只看这些期刊。'

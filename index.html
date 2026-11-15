@@ -186,6 +186,10 @@
       <span class="huddle-label">精选清单</span><span class="huddle-icon" aria-hidden="true">☆</span>
       <span class="huddle-counter" id="huddleCounter">0</span>
     </button>
+    <button class="huddle-btn requests-btn" id="openRequestsBtn" type="button" aria-label="打开本浏览器申请记录（仅此浏览器）" title="本浏览器申请记录（仅此浏览器）">
+      <span class="huddle-label">本浏览器申请记录</span>
+      <span class="huddle-counter" id="requestsCounter">0</span>
+    </button>
     <button class="icon-btn" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
     </button>
@@ -254,6 +258,26 @@
           <button class="btn-sm btn-share" id="copyHuddleSummaryBtn">复制精选汇总</button>
           <button class="btn-sm btn-primary" id="exportHuddleMdBtn">导出 Markdown</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- This-Browser Request History Modal -->
+  <div class="modal-backdrop" id="requestsModalBackdrop">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-label="本浏览器申请记录">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: 600;">本浏览器申请记录</h3>
+        <small class="selection-storage-note">仅此浏览器保存</small>
+        <button class="drawer-close-btn" id="closeRequestsModalBtn" type="button" aria-label="关闭">&times;</button>
+      </div>
+
+      <div class="modal-body" id="requestsModalBody">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-sm" type="button" id="refreshRequestsBtn">刷新全部状态</button>
+        <button class="btn-sm" type="button" id="closeRequestsFootBtn">关闭</button>
       </div>
     </div>
   </div>
