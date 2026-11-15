@@ -22,6 +22,7 @@
   {"name": "Open Heart", "url": "https://openheart.bmj.com/rss/current.xml", "category": "心血管", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
   {"name": "Stroke and Vascular Neurology", "url": "https://svn.bmj.com/rss/current.xml", "category": "心血管", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
   {"name": "Nature Cardiovascular Research", "url": "https://www.nature.com/natcardiovascres.rss", "category": "心血管", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
+  {"name": "Nature Biomedical Engineering", "url": "https://www.nature.com/natbiomedeng.rss", "category": "综合医学", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
   {"name": "Hypertension Research", "url": "https://www.nature.com/hr.rss", "category": "心血管", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
   {"name": "Journal of Human Hypertension", "url": "https://www.nature.com/jhh.rss", "category": "心血管", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
   {"name": "International Journal of Stroke", "url": "https://journals.sagepub.com/action/showFeed?ui=0&mi=ehikzz&ai=2b4&jc=wsoa&type=etoc&feed=rss", "category": "心血管", "sourceType": "出版商/学术平台", "enabled": true, "route": "publisher"},
