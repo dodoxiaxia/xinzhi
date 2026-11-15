@@ -1,7 +1,7 @@
 'use strict';
 // 离线浏览器测试（不访问外网，不调用模型）：ce5de25 上线后体验复核的四项修复。
 //  1 摘要拉取中：速览和结构区显示「正在获取摘要…」，确认没有摘要（为空或失败）后才显示「暂无公开摘要」
-//  2 近7天榜快捷条有「AI」档，口径为 AI 医疗、AI 前沿分类并上 AI 期刊；标题篇数随筛选与取消更新
+//  2 近7天榜快捷条有「AI 期刊」档，仅按 AI 期刊名单筛选（不合并 AI 医疗/AI 前沿主题），带 ▾ 期刊清单；标题篇数随筛选与取消更新
 //  3 390 宽快捷条右侧渐隐（滚到尽头去掉），换栏目时横向滚动位置归零
 //  4 摘要只有结论段时显示「摘要可能不完整」，完整摘要不显示
 const fs = require('fs'), path = require('path'), assert = require('assert');
@@ -14,7 +14,7 @@ const hourAgo = new Date(Date.now() - 3600e3).toISOString();
 const base = (id, extra) => Object.assign({ id, pmid: String(900000 + Number(String(id).replace(/\D/g, '') || 0)), doi: '10.1001/ux.' + id, title: 'Fixture paper ' + id,
   date: today, datePrecision: 'day', journal: 'Circulation', cleanJournal: 'Circulation', publisher: 'AHA', clinicalTier: '心血管综合与其他', tags: ['#心律'], studyDesign: 'RCT', kind: '原始研究' }, extra || {});
 const full = [{ label: 'Background', text: 'Background text.' }, { label: 'Methods', text: 'Methods text.' }, { label: 'Results', text: 'Results text.' }, { label: 'Conclusions', text: 'Conclusion text.' }];
-const tierJournals = ['The Lancet', 'Circulation', 'Heart Rhythm', 'NEJM AI', 'Some Regional Cardiology Journal'];
+const tierJournals = ['The Lancet', 'Circulation', 'Heart Rhythm', 'NEJM AI', 'Some Regional Cardiology Journal', 'Science', 'Circulation Research', 'Nature Reviews Cardiology', 'Nature Biomedical Engineering'];
 const radar = [
   // 摘要拉取：没有 summary / 分段，需要去 Europe PMC 拉
   base('fetch1'), base('fetch2'), base('fetch3'),
@@ -85,7 +85,7 @@ async function testAbstractFetching(browser) {
   for (const [name, id, epmc, expectNone] of cases) {
     let release; gate = new Promise(r => { release = r; });
     const { page, errors, context } = await newPage(browser, 1280, epmc);
-    await page.goto(origin + '/?mode=candidates&range=all', { waitUntil: 'load' });
+    await page.goto(origin + '/?mode=candidates&range=all&q=' + encodeURIComponent('Fixture paper ' + id), { waitUntil: 'load' });
     await page.waitForSelector('[data-action="open-drawer"][data-paper-id="' + id + '"]');
     await openPaper(page, id);
     await page.waitForTimeout(400); // 让 /api/ql、/api/ai 的只读查询先完成：旧版本这时会抢跑写「暂无公开摘要」
@@ -125,16 +125,16 @@ async function testWeeklyAiChip(browser, width) {
   const headingText = async () => (await page.locator('.weekly-head .next-title').innerText()).replace(/\s+/g, ' ').trim();
   assert.strictEqual(await headingText(), '近 7 天文献榜 5 篇', width + ': 起始标题篇数');
   const ai = page.locator('#qfChipRow [data-qf-jtier="ai"]');
-  assert.strictEqual(await ai.count(), 1, width + ': 近7天榜快捷条有 AI 档');
+  assert.strictEqual(await ai.count(), 1, width + ': 近7天榜快捷条有 AI 期刊档');
   assert.strictEqual((await ai.innerText()).trim(), 'AI');
-  assert(/筛选 AI/.test(await ai.getAttribute('aria-label')), width + ': AI 档的名称为 AI');
-  assert.strictEqual(await page.locator('#qfChipRow [data-qf-jtier-menu="ai"]').count(), 0, width + ': 榜内 AI 档不带期刊名单');
+  assert(/筛选AI 期刊/.test(await ai.getAttribute('aria-label')), width + ': AI 档的名称为 AI 期刊');
+  assert.strictEqual(await page.locator('#qfChipRow [data-qf-jtier-menu="ai"]').count(), 1, width + ': 榜内 AI 期刊档保留期刊名单');
   await ai.click();
   await page.waitForFunction(() => document.querySelector('#qfChipRow [data-qf-jtier="ai"]')?.getAttribute('aria-pressed') === 'true');
-  assert.deepStrictEqual(await catCount(), { all: 3, cardio: 1, general: 0, aimed: 1, aitech: 1 }, width + ': AI 档保留 AI 分类与 AI 期刊的并集');
-  assert.strictEqual(await headingText(), '近 7 天文献榜 · AI 3 篇', width + ': AI 筛选后的标题篇数');
+  assert.deepStrictEqual(await catCount(), { all: 1, cardio: 1, general: 0, aimed: 0, aitech: 0 }, width + ': 榜内 AI 期刊档只按 AI 期刊名单筛选，不并入主题');
+  assert.strictEqual(await headingText(), '近 7 天文献榜 · AI 期刊 1 篇', width + ': AI 期刊筛选后的标题篇数');
   const summary = await page.locator('#qfSummary').innerText();
-  assert(/(?:^|[^A-Za-z])AI(?:$|[^A-Za-z])/.test(summary) && !summary.includes('AI 期刊'), width + ': 已选条件的名称为独立的 AI');
+  assert(summary.includes('AI 期刊'), width + ': 已选条件的名称为 AI 期刊');
   await ai.click();
   await page.waitForFunction(() => document.querySelector('#qfChipRow [data-qf-jtier="ai"]')?.getAttribute('aria-pressed') === 'false');
   assert.strictEqual((await catCount()).all, 5, width + ': 再点一次取消筛选');

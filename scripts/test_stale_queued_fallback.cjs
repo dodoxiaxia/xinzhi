@@ -242,7 +242,7 @@ async function run() {
   const embedded = new Function('return (' + match[1] + ')')();
   for (const tier of ['flagship','cardioMain','cardioSub']) {
     const names = values => [...new Set(Array.from(values, tierApi.normalizeJournalName))].sort();
-    assert.deepEqual(names(embedded[tier]), names(tierApi.namesInTier(tier)), 'tier drift: ' + tier);
+    assert.deepEqual(names(embedded[tier]), names(tierApi.namesInLegacyTier(tier)), 'legacy tier drift: ' + tier);
   }
   async function backlog(on = true, vars = {}) {
     const clock = {now:Date.parse('2026-11-14T04:00:00Z')};

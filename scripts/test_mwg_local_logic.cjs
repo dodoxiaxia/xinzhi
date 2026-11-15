@@ -122,7 +122,7 @@ const list = {
   set innerHTML(value) { controls = [control('follow', {qfFollow:'Circulation'})]; },
 };
 focusContext.$ = selector => selector === '#qfJournalList' ? list : pop;
-focusContext.qfOpen = {kind:'jtier:cardioMain', query:''};
+focusContext.qfOpen = {kind:'jtier:cardioClinical', query:''};
 focusContext.journalListHtml = () => 'fixture';
 list.innerHTML = 'fixture';
 doc.activeElement = controls[0];

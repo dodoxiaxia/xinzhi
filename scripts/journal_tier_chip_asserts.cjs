@@ -1,5 +1,5 @@
 'use strict';
-// Assert journal-tier data is present and renderQuickFilters emits the five chips.
+// Assert journal-tier data is present and renderQuickFilters emits the visible menu chips.
 // Required by test_weekly_window.cjs so daily.yml pre-release also runs it.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -22,11 +22,15 @@ assert(summaryEnd > end, 'renderQfSummary block not found');
 const slice = appSrc.slice(start, summaryEnd);
 
 const papers = [
-  { id: 'flag', journal: 'The Lancet', cleanJournal: 'The Lancet' },
-  { id: 'main', journal: 'Circulation', cleanJournal: 'Circulation' },
-  { id: 'sub', journal: 'Heart Rhythm', cleanJournal: 'Heart Rhythm' },
+  { id: 'gm', journal: 'The Lancet', cleanJournal: 'The Lancet' },
+  { id: 'clin1', journal: 'Circulation', cleanJournal: 'Circulation' },
+  { id: 'clin2', journal: 'Heart Rhythm', cleanJournal: 'Heart Rhythm' },
+  { id: 'basic', journal: 'Circulation Research', cleanJournal: 'Circulation Research' },
+  { id: 'rev', journal: 'Nature Reviews Cardiology', cleanJournal: 'Nature Reviews Cardiology' },
+  { id: 'flag', journal: 'Science', cleanJournal: 'Science' },
   { id: 'ai', journal: 'NEJM AI', cleanJournal: 'NEJM AI' },
-  { id: 'oth', journal: 'Some Regional Cardiology Journal', cleanJournal: 'Some Regional Cardiology Journal' }
+  { id: 'oth', journal: 'Some Regional Cardiology Journal', cleanJournal: 'Some Regional Cardiology Journal' },
+  { id: 'natbme', journal: 'Nature Biomedical Engineering', cleanJournal: 'Nature Biomedical Engineering' }
 ];
 
 const nodes = {};
@@ -74,27 +78,29 @@ const ctx = vm.createContext({
 
 vm.runInContext(tiersSrc, ctx);
 assert.ok(ctx.window.XINZHI_JOURNAL_TIERS, 'XINZHI_JOURNAL_TIERS must be defined');
-const shorts = (ctx.window.XINZHI_JOURNAL_TIERS.tiers || []).map(t => t.short);
-assert.equal(shorts.length, 5);
-for (const label of ['顶刊', '心刊', '子刊', 'AI', '其他']) assert.ok(shorts.includes(label), 'missing tier short ' + label + ' in ' + JSON.stringify(shorts));
+const visibleTiers = ctx.window.XINZHI_JOURNAL_TIERS.tiers || [];
+assert.ok(visibleTiers.length >= 7, 'visible menu should include medical four + 顶刊 + AI + 其他');
+for (const t of visibleTiers) {
+  assert.ok(t.id && t.short && t.title, 'visible tier has id/short/title');
+}
 
 vm.runInContext(slice, ctx);
 ctx.renderQuickFilters();
 const html = el('row').innerHTML;
-for (const label of ['顶刊', '心刊', '子刊', 'AI', '其他']) {
-  assert.ok(html.includes('>' + label + '</button>') || html.includes('筛选' + (label === '心刊' ? '心血管主刊' : label === '子刊' ? '心血管子刊' : label === 'AI' ? 'AI 期刊' : label === '其他' ? '其他期刊' : '顶刊')),
-    'quick bar should render chip for ' + label + '; html=' + html);
-  assert.ok(html.includes(label), 'quick bar missing label ' + label + '; html=' + html);
+for (const t of visibleTiers) {
+  assert.ok(html.includes('>' + t.short + '</button>') || html.includes('筛选' + t.title),
+    'quick bar should render chip for ' + t.short + '; html=' + html);
+  assert.ok(html.includes(t.short), 'quick bar missing label ' + t.short + '; html=' + html);
 }
 
 // Without the global, no tier chips are emitted.
 ctx.window.XINZHI_JOURNAL_TIERS = undefined;
 ctx.renderQuickFilters();
 const missing = el('row').innerHTML;
-assert.ok(!missing.includes('顶刊') && !missing.includes('心刊'),
+assert.ok(!missing.includes('顶刊') && !missing.includes('综合') && !missing.includes('心刊'),
   'tier chips must not render when XINZHI_JOURNAL_TIERS is missing; html=' + missing);
 
-// 近7天榜：快捷条补 AI 档，口径为 AI 医疗、AI 前沿分类并上 AI 期刊。
+// 近7天榜：AI 期刊芯片只按期刊名单筛选，并保留期刊清单。
 const fnSrc = n => { const m = appSrc.match(new RegExp('  function ' + n + '\\([^]*?\\n  }')); assert(m, n + ' not found in app.js'); return m[0]; };
 const weeklyPapers = [
   { id: 'w1', journal: 'Circulation', cleanJournal: 'Circulation', weeklyCategory: 'cardio' },
@@ -109,28 +115,28 @@ vm.runInContext(tiersSrc, ctx);
 ctx.laneOf = p => (p.id === 'w6' ? 'cardio' : 'general');
 vm.runInContext(fnSrc('weeklyCategoryOf'), ctx);
 ctx.state.mode = 'weekly';
+ctx.state.journalTierLegacy = false;
 ctx.weeklyPublicationWindow = () => ({ entries: weeklyPapers.map(paper => ({ paper })) });
 ctx.renderQuickFilters();
 let weeklyHtml = el('row').innerHTML;
 assert.ok(/data-qf-jtier="ai"[^>]*>AI<\/button>/.test(weeklyHtml), 'weekly quick bar should render the AI chip; html=' + weeklyHtml);
-assert.ok(weeklyHtml.includes('aria-label="筛选 AI"'), 'weekly AI chip is named AI');
-assert.ok(!weeklyHtml.includes('data-qf-jtier-menu="ai"'), 'weekly AI chip has no journal list');
+assert.ok(weeklyHtml.includes('aria-label="筛选AI 期刊"'), 'weekly AI chip is named AI 期刊');
+assert.ok(weeklyHtml.includes('data-qf-jtier-menu="ai"'), 'weekly AI chip keeps the journal list');
 ctx.state.journalTier = 'ai';
-assert.deepEqual(weeklyPapers.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w3', 'w4', 'w5'], 'weekly AI filter = AI 分类与 AI 期刊的并集');
+assert.deepEqual(weeklyPapers.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w5'], 'weekly AI filter is the AI journal list only');
 ctx.renderQfSummary();
-assert.ok(/>AI <span/.test(el('summary').innerHTML), 'weekly selected condition is AI');
-assert.ok(!el('summary').innerHTML.includes('AI 期刊'), 'weekly selected condition is not named AI 期刊');
+assert.ok(el('summary').innerHTML.includes('AI 期刊'), 'weekly selected condition is AI 期刊');
 // 只剩 AI 期刊时，仍显示 AI 档并筛出该稿
 const journalOnly = weeklyPapers.filter(p => !['w3', 'w4'].includes(p.id));
 ctx.weeklyPublicationWindow = () => ({ entries: journalOnly.map(paper => ({ paper })) });
 ctx.renderQuickFilters();
 assert.ok(/data-qf-jtier="ai"/.test(el('row').innerHTML), 'weekly AI chip remains for AI journals');
-assert.deepEqual(journalOnly.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w5'], 'AI journal alone still matches the union');
-// 分类 AI 和 AI 期刊稿均移除后，榜内不出 AI 档
-ctx.weeklyPublicationWindow = () => ({ entries: weeklyPapers.filter(p => !['w3', 'w4', 'w5'].includes(p.id)).map(paper => ({ paper })) });
+assert.deepEqual(journalOnly.filter(ctx.paperMatchesJournalFilter).map(p => p.id), ['w5'], 'AI journal alone still matches the journal list');
+// 主题 AI 仍在、但 AI 期刊稿移除后，榜内不出 AI 期刊档
+ctx.weeklyPublicationWindow = () => ({ entries: weeklyPapers.filter(p => p.id !== 'w5').map(paper => ({ paper })) });
 ctx.state.journalTier = '';
 ctx.renderQuickFilters();
-assert.ok(!/data-qf-jtier="ai"/.test(el('row').innerHTML), 'weekly AI chip hidden when neither AI categories nor AI journals remain');
+assert.ok(!/data-qf-jtier="ai"/.test(el('row').innerHTML), 'weekly AI chip hidden when no AI journals remain, even if topic AI papers exist');
 // 其他栏目：仍按 AI 期刊名单
 ctx.state.mode = 'candidates';
 ctx.state.journalTier = 'ai';

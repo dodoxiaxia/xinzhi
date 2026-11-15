@@ -686,6 +686,7 @@
     clearTimeout(searchTimer);
     viewInUrl = next.viewInUrl;
     URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
+    if (entry && typeof entry.journalTierLegacy === 'boolean') state.journalTierLegacy = entry.journalTierLegacy;
     if (searchInput) searchInput.value = state.search;
     if (sortSelect) sortSelect.value = state.sort;
     $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');

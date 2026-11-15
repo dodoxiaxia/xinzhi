@@ -62,7 +62,8 @@
       favoritesOnly: params.get('favorites') === '1',
       excludeCaseReports: params.get('nocase') === '1',
       journals: parseJournalList(params.get('journals'), params.get('journal')),
-      journalTier: ['flagship', 'cardioMain', 'cardioSub', 'ai', 'other'].includes(params.get('jtier') || '') ? params.get('jtier') : '',
+      journalTier: ['generalMedicine', 'cardioClinical', 'basicTranslational', 'review', 'flagship', 'cardioMain', 'cardioSub', 'ai', 'other'].includes(params.get('jtier') || '') ? params.get('jtier') : '',
+      journalTierLegacy: ['flagship', 'cardioMain', 'cardioSub', 'ai', 'other'].includes(params.get('jtier') || '') && params.get('jvis') !== '1',
       day: params.get('day') === 'all' || /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') || '') ? params.get('day') : '',
       weeklyCat: ['cardio', 'general', 'aimed', 'aitech'].includes(params.get('wcat')) ? params.get('wcat') : '',
       weeklyPane: params.get('pane') === 'reading' ? 'reading' : 'board',
@@ -73,7 +74,7 @@
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
     'studyDesign', 'tag', 'lane', 'sort', 'range', 'minor', 'reading',
-    'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
+    'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'journalTierLegacy', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
   const initialUrlState = readStateFromUrl(window.location.search);
@@ -98,6 +99,9 @@
     excludeCaseReports: initialUrlState.excludeCaseReports,
     journals: initialUrlState.journals || [],
     journalTier: initialUrlState.journalTier || '',
+    journalTierLegacy: (typeof history !== 'undefined' && history.state && typeof history.state.journalTierLegacy === 'boolean')
+      ? history.state.journalTierLegacy
+      : !!initialUrlState.journalTierLegacy,
     day: initialUrlState.day,
     weeklyCat: initialUrlState.weeklyCat,
     weeklyPane: initialUrlState.weeklyPane,
