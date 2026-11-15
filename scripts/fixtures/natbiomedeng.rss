@@ -1,0 +1,166 @@
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/" xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns="http://purl.org/rss/1.0/" xmlns:admin="http://webns.net/mvcb/">
+    <channel rdf:about="http://feeds.nature.com/natbiomedeng/rss/current">
+        <title>Nature Biomedical Engineering</title>
+        <description>Nature Biomedical Engineering aspires to become the most prominent publishing venue in biomedical engineering by bringing together the most important advances in the discipline, enhancing their visibility by means of opinion and news articles, and providing overviews of the state of the art in each field through topic, disease or technology-focused review articles.</description>
+        <link>http://feeds.nature.com/natbiomedeng/rss/current</link>
+        <admin:generatorAgent rdf:resource="https://www.nature.com/"/>
+        <admin:errorReportsTo rdf:resource="mailto:feedback@nature.com"/>
+        <dc:publisher>Nature Publishing Group</dc:publisher>
+        <dc:language>en</dc:language>
+        <dc:rights>© 2026 Macmillan Publishers Limited, part of Springer Nature. All rights reserved.</dc:rights>
+        <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+        
+        
+        <prism:copyright>© 2026 Macmillan Publishers Limited, part of Springer Nature. All rights reserved.</prism:copyright>
+        <prism:rightsAgent>permissions@nature.com</prism:rightsAgent>
+        <image rdf:resource="https://www.nature.com/uploads/product/natbiomedeng/rss.png"/>
+        <items>
+            <rdf:Seq>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01850-0"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01854-w"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01829-x"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01842-0"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01822-4"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01820-6"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01784-7"/>
+                
+                    <rdf:li rdf:resource="https://www.nature.com/articles/s41551-026-01777-6"/>
+                
+            </rdf:Seq>
+        </items>
+    </channel>
+    <image rdf:about="https://www.nature.com/uploads/product/natbiomedeng/rss.png">
+        <title>Nature Biomedical Engineering</title>
+        <url>https://www.nature.com/uploads/product/natbiomedeng/rss.png</url>
+        <link>http://feeds.nature.com/natbiomedeng/rss/current</link>
+    </image>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01850-0">
+            <title><![CDATA[The patient in the conversation]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01850-0</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 13 November 2026; <a href="https://www.nature.com/articles/s41551-026-01850-0">doi:10.1038/s41551-026-01850-0</a></p>The translational promise of biomedical technologies often becomes clearer when viewed from the perspective of the intended patient.]]></content:encoded>
+            <dc:title><![CDATA[The patient in the conversation]]></dc:title>
+            
+            <dc:identifier>doi:10.1038/s41551-026-01850-0</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-11-13; | doi:10.1038/s41551-026-01850-0</dc:source>
+            <dc:date>2026-11-13</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01850-0</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01850-0</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01854-w">
+            <title><![CDATA[Author Correction: A HO-1 gene knockout using a NanoCRISPR scaffold suppresses metastasis in mouse models]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01854-w</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 11 November 2026; <a href="https://www.nature.com/articles/s41551-026-01854-w">doi:10.1038/s41551-026-01854-w</a></p>Author Correction: A HO-1 gene knockout using a NanoCRISPR scaffold suppresses metastasis in mouse models]]></content:encoded>
+            <dc:title><![CDATA[Author Correction: A HO-1 gene knockout using a NanoCRISPR scaffold suppresses metastasis in mouse models]]></dc:title>
+            <dc:creator>Ning Wang</dc:creator><dc:creator>Zichao Luo</dc:creator><dc:creator>Chao Liu</dc:creator><dc:creator>Jialin Ma</dc:creator><dc:creator>Xinyue Wu</dc:creator><dc:creator>Qinjie Wu</dc:creator><dc:creator>Xiaogang Liu</dc:creator><dc:creator>Changyang Gong</dc:creator>
+            <dc:identifier>doi:10.1038/s41551-026-01854-w</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-11-11; | doi:10.1038/s41551-026-01854-w</dc:source>
+            <dc:date>2026-11-11</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01854-w</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01854-w</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01829-x">
+            <title><![CDATA[Non-invasive oral magnetoelectric vagus nerve neuromodulation for Parkinson’s disease therapy]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01829-x</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 03 November 2026; <a href="https://www.nature.com/articles/s41551-026-01829-x">doi:10.1038/s41551-026-01829-x</a></p>Orally delivered magnetoelectric particles activate vagal afferent fibres in the gut−brain axis and influence neurodegeneration and neuroinflammation in mouse models of Parkinson’s disease.]]></content:encoded>
+            <dc:title><![CDATA[Non-invasive oral magnetoelectric vagus nerve neuromodulation for Parkinson’s disease therapy]]></dc:title>
+            <dc:creator>Cam-Hoa Mac</dc:creator><dc:creator>Pei-Ju Chang</dc:creator><dc:creator>Li-An Chu</dc:creator><dc:creator>Ya-Hui Lin</dc:creator><dc:creator>Jui-To Wang</dc:creator><dc:creator>Cheng-Yueh Lin</dc:creator><dc:creator>Yu-Chen Yuan</dc:creator><dc:creator>Yuan Yao</dc:creator><dc:creator>Dien Thi My Nguyen</dc:creator><dc:creator>Yen Chang</dc:creator><dc:creator>Yin-Hsu Chen</dc:creator><dc:creator>Mai Thanh Thi Nguyen</dc:creator><dc:creator>Yu-Jung Lin</dc:creator><dc:creator>Hsing-Wen Sung</dc:creator>
+            <dc:identifier>doi:10.1038/s41551-026-01829-x</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-11-03; | doi:10.1038/s41551-026-01829-x</dc:source>
+            <dc:date>2026-11-03</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01829-x</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01829-x</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01842-0">
+            <title><![CDATA[Author Correction: Intravascularly infused extracellular matrix as a biomaterial for targeting and treating inflamed tissues]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01842-0</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 02 November 2026; <a href="https://www.nature.com/articles/s41551-026-01842-0">doi:10.1038/s41551-026-01842-0</a></p>Author Correction: Intravascularly infused extracellular matrix as a biomaterial for targeting and treating inflamed tissues]]></content:encoded>
+            <dc:title><![CDATA[Author Correction: Intravascularly infused extracellular matrix as a biomaterial for targeting and treating inflamed tissues]]></dc:title>
+            <dc:creator>Martin T. Spang</dc:creator><dc:creator>Ryan Middleton</dc:creator><dc:creator>Miranda Diaz</dc:creator><dc:creator>Jervaughn Hunter</dc:creator><dc:creator>Joshua Mesfin</dc:creator><dc:creator>Alison Banka</dc:creator><dc:creator>Holly Sullivan</dc:creator><dc:creator>Raymond Wang</dc:creator><dc:creator>Tori S. Lazerson</dc:creator><dc:creator>Saumya Bhatia</dc:creator><dc:creator>James Corbitt</dc:creator><dc:creator>Gavin D’Elia</dc:creator><dc:creator>Gerardo Sandoval-Gomez</dc:creator><dc:creator>Rebecca Kandell</dc:creator><dc:creator>Maria A. Vratsanos</dc:creator><dc:creator>Karthikeyan Gnanasekaran</dc:creator><dc:creator>Takayuki Kato</dc:creator><dc:creator>Sachiyo Igata</dc:creator><dc:creator>Colin Luo</dc:creator><dc:creator>Kent G. Osborn</dc:creator><dc:creator>Nathan C. Gianneschi</dc:creator><dc:creator>Omolola Eniola-Adefeso</dc:creator><dc:creator>Pedro Cabrales</dc:creator><dc:creator>Ester J. Kwon</dc:creator><dc:creator>Francisco Contijoch</dc:creator><dc:creator>Ryan R. Reeves</dc:creator><dc:creator>Anthony N. DeMaria</dc:creator><dc:creator>Karen L. Christman</dc:creator>
+            <dc:identifier>doi:10.1038/s41551-026-01842-0</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-11-02; | doi:10.1038/s41551-026-01842-0</dc:source>
+            <dc:date>2026-11-02</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01842-0</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01842-0</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01822-4">
+            <title><![CDATA[Re-timing mortality risk through individualized modelling of lifespan trajectories]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01822-4</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 02 November 2026; <a href="https://www.nature.com/articles/s41551-026-01822-4">doi:10.1038/s41551-026-01822-4</a></p>RetiME is a deep learning-based biomarker that maps retinal features to individual mortality risks and can reconstruct personalized lifespan trajectories associated with observed mortality outcomes with distinct disease-related mortality patterns.]]></content:encoded>
+            <dc:title><![CDATA[Re-timing mortality risk through individualized modelling of lifespan trajectories]]></dc:title>
+            <dc:creator>Ting Xu</dc:creator><dc:creator>Qingsheng Peng</dc:creator><dc:creator>Hengtong Li</dc:creator><dc:creator>Meng Wang</dc:creator><dc:creator>Jie Zhang</dc:creator><dc:creator>Marco Yu</dc:creator><dc:creator>Crystal Chong</dc:creator><dc:creator>Can Can Xue</dc:creator><dc:creator>Xiayin Zhang</dc:creator><dc:creator>Hongyu He</dc:creator><dc:creator>Emily Y. Chew</dc:creator><dc:creator>Mukharram M. Bikbov</dc:creator><dc:creator>Gyulli M. Kazakbaeva</dc:creator><dc:creator>Jost B. Jonas</dc:creator><dc:creator>Huazhu Fu</dc:creator><dc:creator>Dianbo Liu</dc:creator><dc:creator>Ching-Yu Cheng</dc:creator>
+            <dc:identifier>doi:10.1038/s41551-026-01822-4</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-11-02; | doi:10.1038/s41551-026-01822-4</dc:source>
+            <dc:date>2026-11-02</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01822-4</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01822-4</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01820-6">
+            <title><![CDATA[A single-step injectable Janus-adhesive hydrogel for endoscopic gastrointestinal fistula repair]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01820-6</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 30 October 2026; <a href="https://www.nature.com/articles/s41551-026-01820-6">doi:10.1038/s41551-026-01820-6</a></p>A thermoresponsive hydrogel sealant, prepared in a user-friendly and single-step process, and featuring Janus-type adhesion, is injected endoscopically and repairs gastrointestinal fistulas in rat and minipig models.]]></content:encoded>
+            <dc:title><![CDATA[A single-step injectable Janus-adhesive hydrogel for endoscopic gastrointestinal fistula repair]]></dc:title>
+            <dc:creator>Sen Liang</dc:creator><dc:creator>Jingtao Li</dc:creator><dc:creator>Qi Li</dc:creator><dc:creator>Tianhe Jiang</dc:creator><dc:creator>Yajie Tian</dc:creator><dc:creator>Qingquan Han</dc:creator><dc:creator>Yafeng Jing</dc:creator><dc:creator>Shuai Wang</dc:creator><dc:creator>Jieling Li</dc:creator><dc:creator>Anhe Wang</dc:creator><dc:creator>Shuo Bai</dc:creator>
+            <dc:identifier>doi:10.1038/s41551-026-01820-6</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-10-30; | doi:10.1038/s41551-026-01820-6</dc:source>
+            <dc:date>2026-10-30</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01820-6</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01820-6</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01784-7">
+            <title><![CDATA[Closing the loop on blood flow control in spinal cord injury]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01784-7</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 29 October 2026; <a href="https://www.nature.com/articles/s41551-026-01784-7">doi:10.1038/s41551-026-01784-7</a></p>After spinal cord injury, clinicians raise blood pressure to protect tissue without directly monitoring the effect on the cord, exposing patients to harm. We designed a closed-loop controller that adjusts drug infusion in response to ultrasonography-based measurements of spinal cord blood flow, stabilizing perfusion at the injury site and preserving neurological function in animals.]]></content:encoded>
+            <dc:title><![CDATA[Closing the loop on blood flow control in spinal cord injury]]></dc:title>
+            
+            <dc:identifier>doi:10.1038/s41551-026-01784-7</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-10-29; | doi:10.1038/s41551-026-01784-7</dc:source>
+            <dc:date>2026-10-29</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01784-7</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01784-7</prism:url>
+        </item>
+    
+        <item rdf:about="https://www.nature.com/articles/s41551-026-01777-6">
+            <title><![CDATA[Optimal closed-loop feedback control of blood flow after spinal cord injury with norepinephrine]]></title>
+            <link>https://www.nature.com/articles/s41551-026-01777-6</link>
+            <content:encoded>
+                <![CDATA[<p>Nature Biomedical Engineering, Published online: 29 October 2026; <a href="https://www.nature.com/articles/s41551-026-01777-6">doi:10.1038/s41551-026-01777-6</a></p>A closed-loop control strategy regulates spinal cord blood flow by adjusting norepinephrine infusion using real-time flow measurements, enabling direct flow targeting after acute injury.]]></content:encoded>
+            <dc:title><![CDATA[Optimal closed-loop feedback control of blood flow after spinal cord injury with norepinephrine]]></dc:title>
+            <dc:creator>Denis Routkevitch</dc:creator><dc:creator>Patrick Kramer</dc:creator><dc:creator>Angelica F. Lopez</dc:creator><dc:creator>Claire Hao</dc:creator><dc:creator>Emily C. Baca</dc:creator><dc:creator>Zoe Soulé</dc:creator><dc:creator>Nicholas Kats</dc:creator><dc:creator>Carly Weber-Levine</dc:creator><dc:creator>Kelly Jiang</dc:creator><dc:creator>A. Daniel Davidar</dc:creator><dc:creator>Vikas N. Vattipally</dc:creator><dc:creator>Meghana Bhimreddy</dc:creator><dc:creator>Arjun K. Menta</dc:creator><dc:creator>Ritvik R. Jillala</dc:creator><dc:creator>Ben Bykov</dc:creator><dc:creator>Noah Lu</dc:creator><dc:creator>Mitchell Pelline</dc:creator><dc:creator>Ryan Bohluli</dc:creator><dc:creator>Neil A. Babu</dc:creator><dc:creator>Patrick Myers</dc:creator><dc:creator>Max J. Kerensky</dc:creator><dc:creator>Andrew M. Hersh</dc:creator><dc:creator>Kimberly Ashayeri</dc:creator><dc:creator>Constantin Smit</dc:creator><dc:creator>Amir Manbachi</dc:creator><dc:creator>Sridevi V. Sarma</dc:creator><dc:creator>Nicholas Theodore</dc:creator><dc:creator>Nitish V. Thakor</dc:creator>
+            <dc:identifier>doi:10.1038/s41551-026-01777-6</dc:identifier>
+            <dc:source>Nature Biomedical Engineering, Published online: 2026-10-29; | doi:10.1038/s41551-026-01777-6</dc:source>
+            <dc:date>2026-10-29</dc:date>
+            <prism:publicationName>Nature Biomedical Engineering</prism:publicationName>
+            <prism:doi>10.1038/s41551-026-01777-6</prism:doi>
+            <prism:url>https://www.nature.com/articles/s41551-026-01777-6</prism:url>
+        </item>
+    
+</rdf:RDF>
