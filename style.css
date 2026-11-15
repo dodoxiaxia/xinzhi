@@ -2400,6 +2400,8 @@ html[data-style="a"] .qf-scope.is-on {
   inset: 0;
   background: rgba(15, 30, 60, .28);
   z-index: 79;
+  /* Non-modal popover: keep mobile visual scrim without blocking #quickBar toggles or page controls. */
+  pointer-events: none;
 }
 .qf-pop {
   position: fixed;
@@ -2456,9 +2458,10 @@ html[data-style="a"] .qf-scope.is-on {
   border-radius: 8px;
   padding: 0 10px;
   font-size: 15px;
-  background: var(--bg, #fff);
-  color: inherit;
+  background: var(--bg-card, #fff);
+  color: var(--text-primary);
 }
+.qf-search::placeholder { color: var(--text-muted); opacity: 1; }
 .qf-hint, .qf-empty {
   margin: 0 14px 8px;
   font-size: 12px;

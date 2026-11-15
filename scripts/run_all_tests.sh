@@ -91,6 +91,7 @@ if [ "$BROWSER" = 1 ]; then
   run "feature-map-walk" node scripts/feature_map_walk.cjs --viewport all
   echo "== Reading shard loading"
   run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
+  run "test_mwg_local_ui" python3 scripts/test_mwg_local_ui.py
   echo "== Browser tests (Python + Playwright)"
   if [ ! -f public/index.html ] || [ ! -d public/assets ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"

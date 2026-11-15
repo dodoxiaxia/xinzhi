@@ -21,7 +21,14 @@
   const VALID_MODES = ['curated', 'weekly', 'candidates', 'library', 'sources'];
   function parseJournalList(many, one) {
     const out = [];
-    String(many || '').split(',').forEach(s => { const v = decodeURIComponent(s).trim(); if (v && !out.includes(v)) out.push(v); });
+    // URLSearchParams already decoded the outer query. Older links also encoded
+    // each list member; retain that compatibility, including literal/malformed %.
+    String(many || '').split(',').forEach(s => {
+      let v = s;
+      try { v = decodeURIComponent(s); } catch (e) { /* keep the literal member */ }
+      v = v.trim();
+      if (v && !out.includes(v)) out.push(v);
+    });
     const single = String(one || '').trim();
     if (single && !out.includes(single)) out.unshift(single);
     return out;

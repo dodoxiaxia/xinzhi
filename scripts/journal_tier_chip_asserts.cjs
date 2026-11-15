@@ -17,7 +17,7 @@ const start = appSrc.indexOf('  function qfPapers() {');
 const end = appSrc.indexOf('  function qfMoreActive()', start);
 assert(start >= 0 && end > start, 'renderQuickFilters helpers not found in app.js');
 // Include through renderQfSummary (after qfMoreActive)
-const summaryEnd = appSrc.indexOf('\n  function closeQfPop()', end);
+const summaryEnd = appSrc.indexOf('\n  function qfAnchor(', end);
 assert(summaryEnd > end, 'renderQfSummary block not found');
 const slice = appSrc.slice(start, summaryEnd);
 

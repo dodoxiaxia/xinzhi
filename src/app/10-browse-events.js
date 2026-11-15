@@ -212,7 +212,7 @@
     const tocTarget = e.target.closest('[data-toc-target]');
     if (tocTarget) {
       const body = $('#deepReaderBody'), target = body && document.getElementById(tocTarget.dataset.tocTarget);
-      if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: 'smooth' });
+      if (target) body.scrollTo({ top: target.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 12, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
       return;
     }
     const sourceFilter = e.target.closest('[data-source-filter]');
