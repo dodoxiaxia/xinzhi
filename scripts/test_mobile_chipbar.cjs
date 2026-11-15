@@ -14,7 +14,11 @@ const journals = [
   ['Circulation', 'AHA'],
   ['Heart Rhythm', 'Elsevier'],
   ['NEJM AI', 'NEJM'],
-  ['Some Regional Cardiology Journal', 'Other']
+  ['Some Regional Cardiology Journal', 'Other'],
+  ['Science', 'AAAS'],
+  ['Circulation Research', 'AHA'],
+  ['Nature Reviews Cardiology', 'Nature'],
+  ['Nature Biomedical Engineering', 'Nature']
 ];
 const papers = Array.from({ length: 40 }, (_, i) => {
   const [journal, publisher] = journals[i % journals.length];

@@ -352,6 +352,9 @@
       set('journal', js.length === 1 ? js[0] : '', '');
       set('journals', js.length > 1 ? js.join(',') : '', '');
       set('jtier', state.journalTier || '', '');
+      const overlappingLegacy = ['flagship', 'ai', 'other'].includes(state.journalTier);
+      if (state.journalTier && !state.journalTierLegacy && overlappingLegacy) u.searchParams.set('jvis', '1');
+      else u.searchParams.delete('jvis');
       set('nocase', state.excludeCaseReports ? '1' : '', '');
       set('design', state.studyDesign, '');
       set('tag', state.tag, '');
@@ -372,7 +375,10 @@
         || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
-      history.replaceState(history.state, '', u.pathname + (u.search || '') + u.hash);
+      const histState = history.state && typeof history.state === 'object'
+        ? Object.assign({}, history.state, { journalTierLegacy: !!state.journalTierLegacy })
+        : (state.journalTier ? { journalTierLegacy: !!state.journalTierLegacy } : history.state);
+      history.replaceState(histState, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
   }
 
@@ -430,6 +436,7 @@
     state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
     state.journals = [];
     state.journalTier = '';
+    state.journalTierLegacy = false;
     state.excludeCaseReports = false;
     state.page = 1;
   }

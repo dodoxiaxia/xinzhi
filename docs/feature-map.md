@@ -459,7 +459,7 @@
 - **reading-abstract**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **reading-guide**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **reading-quicklook**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
-- **journal-tier**：`[{"goto":"/?mode=library&lane=all"}]`
+- **journal-tier**：`[{"goto":"/?mode=library&lane=all"}]`；可见档位为医学四类（综合医学、心血管临床、基础与转化、综述）、顶刊（可见为 Science 与 Nature）、AI 期刊（既有名单整档保留）和其他（Nature Biomedical Engineering 具名）。旧 ?jtier=flagship\|cardioMain\|cardioSub\|ai\|other 仍按历史名单筛选；其中 flagship 的历史集合含 NEJM/Lancet/JAMA/BMJ/Science/Nature，与可见顶刊不同。近7天榜的 AI 期刊芯片只按期刊名单筛选，不与主题「AI 医疗」「AI 前沿」合并。 可见顶刊/其他与旧 id 共用时，链接带 jvis=1 以保留可见口径；无该参数的旧 ?jtier=flagship 仍按历史六刊。
 - **journal-menu**：`[{"goto":"/?mode=library&lane=all"}]`
 - **journal-search**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`；暗色输入与占位文字使用主题色；打开期刊清单后聚焦搜索；输入和选项刷新保持键盘焦点。
 - **journal-list**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`

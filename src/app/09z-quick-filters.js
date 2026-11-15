@@ -53,6 +53,7 @@
       excludeCaseReports: state.excludeCaseReports,
       journals: selectedJournals().slice(),
       journalTier: state.journalTier || '',
+      journalTierLegacy: !!state.journalTierLegacy,
       clinicalTier: state.clinicalTier,
       publisher: state.publisher,
       studyDesign: state.studyDesign,
@@ -68,6 +69,7 @@
     });
     state.journals = Array.isArray(data.journals) ? data.journals.slice() : [];
     state.journalTier = data.journalTier || '';
+    state.journalTierLegacy = !!data.journalTierLegacy;
     state.journal = state.journals[0] || '';
   }
   function saveFilterPreset(name) {
@@ -120,15 +122,14 @@
     const api = JT();
     return api ? api.tierOfName(name) : 'other';
   }
-  // 近7天榜里「AI」档按分类并上 AI 期刊的并集口径：AI 医疗 + AI 前沿 + AI 期刊；其他栏目仍按 AI 期刊档。
-  function weeklyAiTier() { return state.mode === 'weekly'; }
-  function paperIsWeeklyAi(p) {
-    const c = typeof weeklyCategoryOf === 'function' ? weeklyCategoryOf(p) : '';
-    return c === 'aimed' || c === 'aitech' || paperTierId(p) === 'ai';
+  function useLegacyTierFilter() {
+    if (!state.journalTier) return false;
+    if (state.journalTierLegacy) return true;
+    const api = JT();
+    return !!(api && typeof api.isVisibleTierId === 'function' && !api.isVisibleTierId(state.journalTier));
   }
   function paperMatchesJournalFilter(p) {
     if (!state.journalTier && !(selectedJournals().length)) return true;
-    if (weeklyAiTier() && state.journalTier === 'ai' && !selectedJournals().length) return paperIsWeeklyAi(p);
     const name = paperJournalKey(p);
     if (!name) return false;
     const js = selectedJournals();
@@ -137,6 +138,10 @@
       return set.has(normJournal(name));
     }
     if (!state.journalTier) return true;
+    const api = JT();
+    if (useLegacyTierFilter() && api && typeof api.legacyTierOfName === 'function') {
+      return api.legacyTierOfName(name) === state.journalTier;
+    }
     return paperTierId(p) === state.journalTier;
   }
   function journalNamesInColumn() {
@@ -152,13 +157,10 @@
   function tierJournalRows(tierId) {
     const api = JT();
     const counts = journalNamesInColumn();
-    if (tierId === 'other') {
-      return Array.from(counts.values())
-        .filter(row => !api || api.tierOfName(row.name) === 'other')
-        .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'zh'))
-        .map(row => Object.assign(row, { suggested: false }));
-    }
-    const names = api ? api.namesInTier(tierId, true) : [];
+    const isLegacy = api && typeof api.isVisibleTierId === 'function' && !api.isVisibleTierId(tierId);
+    const names = api
+      ? (isLegacy && typeof api.namesInLegacyTier === 'function' ? api.namesInLegacyTier(tierId, true) : api.namesInTier(tierId, true))
+      : [];
     const seen = new Set();
     const rows = [];
     names.forEach(n => {
@@ -168,11 +170,21 @@
       const hit = counts.get(k);
       rows.push({ name: (hit && hit.name) || (api && api.canonName(n)) || n, n: hit ? hit.n : 0, suggested: !!(api && api.isSuggestedName(n)) });
     });
-    // 当前栏目里规范名落入本档、但不在表中的刊（不应出现，除非 other）
+    if (tierId === 'other') {
+      const extra = [];
+      counts.forEach((row, k) => {
+        if (seen.has(k)) return;
+        if (!api || api.tierOfName(row.name) === 'other') {
+          seen.add(k);
+          extra.push({ name: row.name, n: row.n, suggested: false });
+        }
+      });
+      extra.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'zh'));
+      rows.push.apply(rows, extra);
+    }
     return rows;
   }
   function tierHasPapers(tierId) {
-    if (tierId === 'ai' && weeklyAiTier()) return qfPapers().some(paperIsWeeklyAi);
     return qfPapers().some(p => {
       const name = paperJournalKey(p);
       if (!name) return false;
@@ -190,10 +202,12 @@
   function selectWholeTier(tierId) {
     if (state.journalTier === tierId && !selectedJournals().length) {
       state.journalTier = '';
+      state.journalTierLegacy = false;
       state.journals = [];
       state.journal = '';
     } else {
       state.journalTier = tierId;
+      state.journalTierLegacy = false;
       state.journals = [];
       state.journal = '';
       state.publisher = '';
@@ -211,14 +225,25 @@
     const selectedKeys = new Set(list.map(normJournal));
     const allOn = presentKeys.size && [...presentKeys].every(k => selectedKeys.has(k));
     state.journalTier = list.length ? tierId : '';
+    state.journalTierLegacy = false;
     state.journals = (list.length && !allOn) ? list : [];
     state.journal = state.journals[0] || '';
     state.publisher = '';
     if (name && typeof rememberJournal === 'function') rememberJournal(name);
   }
-  function tierDef(id) {
+  function tierDef(id, useLegacy) {
     const api = JT();
-    return (api && api.tiers || []).find(t => t.id === id) || { id, short: id, title: id };
+    if (useLegacy && api && typeof api.legacyTierDef === 'function') {
+      const legacy = api.legacyTierDef(id);
+      if (legacy) return legacy;
+    }
+    const visible = (api && api.tiers || []).find(t => t.id === id);
+    if (visible) return visible;
+    if (api && typeof api.legacyTierDef === 'function') {
+      const legacy = api.legacyTierDef(id);
+      if (legacy) return legacy;
+    }
+    return { id, short: id, title: id };
   }
 
   function qfChipVis() {
@@ -338,10 +363,6 @@
       const on = tierIsOn(tier.id);
       const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
       const openKind = 'jtier:' + tier.id;
-      if (tier.id === 'ai' && weeklyAiTier()) {
-        parts.push(`<button type="button" class="qf-chip qf-chip-ai${on ? ' is-on' : ''}" data-qf-jtier="ai" aria-pressed="${on}" aria-label="筛选 AI" title="AI 医疗、AI 前沿，以及发在 AI 期刊的稿子">${esc(tier.short)}</button>`);
-        return;
-      }
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
         <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}">${esc(label)}</button>
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
@@ -369,9 +390,9 @@
     const bits = [];
     if (state.favoritesOnly) bits.push(item('只看关注期刊', 'favorites'));
     if (state.journalTier && !selectedJournals().length) {
-      bits.push(item(state.journalTier === 'ai' && weeklyAiTier() ? 'AI' : (tierDef(state.journalTier).title || state.journalTier), 'jtier'));
+      bits.push(item(tierDef(state.journalTier, useLegacyTierFilter()).title || state.journalTier, 'jtier'));
     } else if (selectedJournals().length) {
-      const prefix = state.journalTier ? (tierDef(state.journalTier).short + '：') : '';
+      const prefix = state.journalTier ? (tierDef(state.journalTier, useLegacyTierFilter()).short + '：') : '';
       selectedJournals().forEach(j => bits.push(item(prefix + j, 'journal', j)));
     }
     if (state.clinicalTier) bits.push(item(state.clinicalTier, 'tier'));
@@ -657,6 +678,7 @@
     if (t.hasAttribute('data-qf-jtier-all')) {
       const id = t.getAttribute('data-qf-jtier-all');
       state.journalTier = id;
+      state.journalTierLegacy = false;
       state.journals = [];
       state.journal = '';
       state.publisher = '';
@@ -718,13 +740,13 @@
       const key = t.getAttribute('data-qf-clear');
       const val = t.getAttribute('data-qf-clear-value');
       if (key === 'all') clearQuickFilters();
-      else if (key === 'jtier') { state.journalTier = ''; state.journals = []; state.journal = ''; }
+      else if (key === 'jtier') { state.journalTier = ''; state.journalTierLegacy = false; state.journals = []; state.journal = ''; }
       else if (key === 'favorites') state.favoritesOnly = false;
       else if (key === 'nocase') state.excludeCaseReports = false;
       else if (key === 'journal') {
         state.journals = selectedJournals().filter(j => j !== val);
         state.journal = state.journals[0] || '';
-        if (!state.journals.length) state.journalTier = '';
+        if (!state.journals.length) { state.journalTier = ''; state.journalTierLegacy = false; }
       }
       else if (key === 'tier') state.clinicalTier = '';
       else if (key === 'design') state.studyDesign = '';

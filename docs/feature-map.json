@@ -3553,7 +3553,7 @@
           }
         ],
         "stable": true,
-        "notes": ""
+        "notes": "可见档位为医学四类（综合医学、心血管临床、基础与转化、综述）、顶刊（可见为 Science 与 Nature）、AI 期刊（既有名单整档保留）和其他（Nature Biomedical Engineering 具名）。旧 ?jtier=flagship|cardioMain|cardioSub|ai|other 仍按历史名单筛选；其中 flagship 的历史集合含 NEJM/Lancet/JAMA/BMJ/Science/Nature，与可见顶刊不同。近7天榜的 AI 期刊芯片只按期刊名单筛选，不与主题「AI 医疗」「AI 前沿」合并。 可见顶刊/其他与旧 id 共用时，链接带 jvis=1 以保留可见口径；无该参数的旧 ?jtier=flagship 仍按历史六刊。"
       },
       {
         "id": "journal-menu",
