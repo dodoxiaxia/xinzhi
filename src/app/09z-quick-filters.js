@@ -392,12 +392,21 @@
       + '<button type="button" class="qf-sum-action" data-qf-save="1" title="把当前条件存成预设，仅此浏览器，不会自动套用">☆保存</button>';
   }
 
-  function closeQfPop() {
+  function qfAnchor(kind) {
+    if (kind === 'scope') return $('#qfScopeBtn');
+    if (kind && kind.startsWith('jtier:')) return $(`.qf-chip-caret[data-qf-jtier-menu="${kind.slice(6)}"]`);
+    return $(`.qf-chip[data-qf="${kind}"]`);
+  }
+  function closeQfPop(restoreFocus = true) {
+    if (typeof qfTabbing !== 'undefined') qfTabbing = false;
+    const anchor = qfOpen && qfAnchor(qfOpen.kind);
+    const hadFocus = $('#qfPop')?.contains(document.activeElement);
     qfOpen = null;
     const pop = $('#qfPop'), back = $('#qfBackdrop');
     if (pop) { pop.hidden = true; pop.innerHTML = ''; pop.classList.remove('is-sheet'); }
     if (back) back.hidden = true;
     $$('.qf-chip[aria-expanded="true"], #qfScopeBtn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    if (restoreFocus && hadFocus && anchor && !anchor.hidden) anchor.focus({ preventScroll: true });
   }
   function placeQfPop(anchor) {
     const pop = $('#qfPop');
@@ -430,20 +439,24 @@
   function openQfPop(kind, keepQuery) {
     const pop = $('#qfPop');
     if (!pop) return;
+    if (typeof qfTabbing !== 'undefined') qfTabbing = false;
     const query = keepQuery && qfOpen ? (qfOpen.query || '') : '';
+    const active = keepQuery && pop.contains(document.activeElement) ? document.activeElement : null;
+    const focusIndex = active ? [...pop.querySelectorAll('button, input')].indexOf(active) : -1;
+    const focusData = active ? Object.entries(active.dataset) : [];
     qfOpen = { kind, query };
     pop.innerHTML = qfPopHtml(kind, query);
-    let anchor;
-    if (kind === 'scope') anchor = $('#qfScopeBtn');
-    else if (kind && kind.slice(0, 6) === 'jtier:') anchor = $(`.qf-chip-caret[data-qf-jtier-menu="${kind.slice(6)}"]`);
-    else anchor = $(`.qf-chip[data-qf="${kind}"]`);
+    const anchor = qfAnchor(kind);
     $$('.qf-chip, #qfScopeBtn').forEach(b => b.setAttribute('aria-expanded', String(b === anchor)));
     placeQfPop(anchor);
     const input = $('#qfJournalSearch');
-    if (input) {
-      input.value = query;
-      if (!keepQuery) setTimeout(() => { try { input.focus(); } catch (e) {} }, 0);
-    }
+    if (input) input.value = query;
+    // Re-rendered options keep keyboard focus; new panels start at search/close.
+    const controls = [...pop.querySelectorAll('button, input')];
+    const replacement = active && (active.id ? pop.querySelector('#' + active.id) :
+      focusData.length ? controls.find(el => focusData.every(([k, v]) => el.dataset[k] === v)) : controls[focusIndex]);
+    const focus = replacement || ((!keepQuery || active) && (input || controls[0]));
+    if (focus) focus.focus({ preventScroll: true });
   }
 
   function qfPopHtml(kind, query) {
@@ -487,7 +500,11 @@
     if (!list || !qfOpen || !qfOpen.kind) return;
     if (qfOpen.kind !== 'journal' && qfOpen.kind.slice(0, 6) !== 'jtier:') return;
     const tierId = qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '';
+    const active = list.contains(document.activeElement) ? document.activeElement : null;
+    const focusData = active ? Object.entries(active.dataset) : [];
     list.innerHTML = journalListHtml(qfOpen.query || '', tierId);
+    if (focusData.length) [...list.querySelectorAll('button')]
+      .find(el => focusData.every(([k, v]) => el.dataset[k] === v))?.focus({ preventScroll: true });
   }
 
   function specialtyPopHtml() {
@@ -615,7 +632,7 @@
   document.addEventListener('click', e => {
     const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
     if (!t) {
-      if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop();
+      if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop(false);
       return;
     }
     if (t.hasAttribute('data-qf-close')) { closeQfPop(); return; }
@@ -728,9 +745,22 @@
       refreshJournalList();
     }
   });
+  let qfTabbing = false;
+  // Non-modal: let Tab and Shift+Tab leave naturally, then dismiss without
+  // pulling focus back from the reader's next control.
+  document.addEventListener('focusout', e => {
+    const pop = $('#qfPop');
+    if (qfOpen && pop?.contains(e.target) && e.relatedTarget && !pop.contains(e.relatedTarget)) {
+      // A pointer click on the same trigger must still toggle it closed.
+      if (qfTabbing || e.relatedTarget !== qfAnchor(qfOpen.kind)) closeQfPop(false);
+    }
+    qfTabbing = false;
+  });
   document.addEventListener('keydown', e => {
+    qfTabbing = e.key === 'Tab';
     if (e.key === 'Escape' && qfOpen) { closeQfPop(); e.preventDefault(); }
   });
+  document.addEventListener('pointerdown', () => { qfTabbing = false; });
   window.addEventListener('resize', () => {
     if (!qfOpen) return;
     let anchor;

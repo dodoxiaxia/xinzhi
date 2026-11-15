@@ -121,7 +121,7 @@
 - **reading-previous**：`[{"goto":"/?mode=weekly&pane=reading"},{"click":"#dailyDeepRead [data-action=\"open-deep-reading\"]"},{"wait":"#deepReaderBody [data-toc]"}]`
 - **reading-next**：`[{"goto":"/?mode=weekly&pane=reading"},{"click":"#dailyDeepRead [data-action=\"open-deep-reading\"]"},{"wait":"#deepReaderBody [data-toc]"}]`
 - **reading-position**：`[{"goto":"/?mode=weekly&pane=reading"},{"click":"#dailyDeepRead [data-action=\"open-deep-reading\"]"},{"wait":"#deepReaderBody [data-toc]"}]`
-- **reading-toc**：`[{"goto":"/?mode=weekly&pane=reading"},{"click":"#dailyDeepRead [data-action=\"open-deep-reading\"]"},{"wait":"#deepReaderBody [data-toc]"}]`
+- **reading-toc**：`[{"goto":"/?mode=weekly&pane=reading"},{"click":"#dailyDeepRead [data-action=\"open-deep-reading\"]"},{"wait":"#deepReaderBody [data-toc]"}]`；目录跳转遵守 prefers-reduced-motion；减少动态效果时立即滚动。
 - **reading-evidence**：`[{"goto":"/?mode=weekly&pane=reading"},{"click":"#dailyDeepRead [data-action=\"open-deep-reading\"]"},{"wait":"#deepReaderBody [data-toc]"}]`
 
 </details>
@@ -448,7 +448,7 @@
 - **globalsearch**：`[{"click":"#searchToggleBtn"}]`
 - **clear-search**：`[{"click":"#searchToggleBtn"},{"fill":["#globalSearch","房颤"]}]`
 - **global-panel-journal**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`；旧侧栏和筛选按钮由当前样式隐藏；使用快捷筛选中的期刊选择按钮。
-- **more-pop**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
+- **more-pop**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`；非模态筛选：打开时焦点进入；Tab/Shift+Tab 可离开并关闭；Escape/关闭按钮恢复入口焦点。
 - **more-close**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **publisher-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **specialty-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
@@ -461,7 +461,7 @@
 - **reading-quicklook**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **journal-tier**：`[{"goto":"/?mode=library&lane=all"}]`
 - **journal-menu**：`[{"goto":"/?mode=library&lane=all"}]`
-- **journal-search**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`
+- **journal-search**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`；暗色输入与占位文字使用主题色；打开期刊清单后聚焦搜索；输入和选项刷新保持键盘焦点。
 - **journal-list**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`
 - **journal-all**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`
 - **journal-follow**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf-jtier-menu]"}]`

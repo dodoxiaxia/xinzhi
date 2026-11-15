@@ -1073,7 +1073,7 @@
             }
           ],
           "stable": true,
-          "notes": ""
+          "notes": "目录跳转遵守 prefers-reduced-motion；减少动态效果时立即滚动。"
         },
         {
           "id": "reading-evidence",
@@ -1805,7 +1805,8 @@
               "click": "#qfScopeBtn"
             }
           ],
-          "expect": "visible"
+          "expect": "visible",
+          "notes": "非模态筛选：打开时焦点进入；Tab/Shift+Tab 可离开并关闭；Escape/关闭按钮恢复入口焦点。"
         },
         {
           "id": "candidates-scope-selected",
@@ -2686,7 +2687,8 @@
               "click": "#qfScopeBtn"
             }
           ],
-          "expect": "visible"
+          "expect": "visible",
+          "notes": "非模态筛选：打开时焦点进入；Tab/Shift+Tab 可离开并关闭；Escape/关闭按钮恢复入口焦点。"
         },
         {
           "id": "library-scope-selected",
@@ -3301,7 +3303,7 @@
           }
         ],
         "stable": true,
-        "notes": ""
+        "notes": "非模态筛选：打开时焦点进入；Tab/Shift+Tab 可离开并关闭；Escape/关闭按钮恢复入口焦点。"
       },
       {
         "id": "more-close",
@@ -3594,7 +3596,7 @@
           }
         ],
         "stable": true,
-        "notes": ""
+        "notes": "暗色输入与占位文字使用主题色；打开期刊清单后聚焦搜索；输入和选项刷新保持键盘焦点。"
       },
       {
         "id": "journal-list",
