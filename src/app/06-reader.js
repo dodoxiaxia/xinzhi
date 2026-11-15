@@ -176,37 +176,16 @@
         ? '<p class="text-muted" style="font-size:11.5px;margin-top:8px;">摘要来自 Europe PMC / PubMed 公开数据，版权归原出版商；此处未做 AI 加工。</p>' : '';
       const hasAbstract = !!(paper.summary || (paper.abstractSections && paper.abstractSections.length));
 
-      // Citation helpers (built from real fields only; no invented authors)
-      const cites = buildCitations(paper);
-      const citationSection = `
-        <div class="drawer-section cite-section">
-          <div class="citation-actions-bar">
-            <details class="cite-menu"><summary class="btn-cite">复制引用</summary>
-              <div class="cite-menu-list">
-                <button type="button" class="btn-cite copy-cite-btn" data-cite="${esc(cites.gb)}">GB/T 7714</button>
-                <button type="button" class="btn-cite copy-cite-btn" data-cite="${esc(cites.ama)}">AMA</button>
-                <button type="button" class="btn-cite copy-cite-btn" data-cite="${esc(cites.bibtex)}">BibTeX</button>
-              </div>
-            </details>
-            ${paper.pmid ? `<a href="https://pubmed.ncbi.nlm.nih.gov/${esc(paper.pmid)}/" target="_blank" rel="noopener" class="btn-cite" style="text-decoration:none;">PubMed ↗</a>` : ''}
-          </div>
-          ${paper.authors && paper.authors.length ? '' : '<p class="text-muted" style="font-size:11.5px;margin-top:6px;">未抓取到作者信息，引用不含作者，使用前请对照原文补全。</p>'}
-        </div>
-      `;
-
-      const tagsHtml = (paper.tags || []).map(t => `<span class="tag-chip active">${esc(t)}</span>`).join('');
-
       const zhTitle = (draft && draft.title_zh) || (ql && ql.title_zh) || paper.titleZh || '';
       const takeaway = cardTakeaway(paper);
       const head = `
         ${publicationStatusHtml(paper)}
         ${paper.media && paper.media.length ? `<div class="drawer-media">${paper.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('')}</div>` : ''}
 
-        <h2 class="drawer-title-en">${esc(paper.title)}</h2>
+        ${paper.title ? `<h2 class="drawer-title-en">${esc(paper.title)}</h2>` : ''}
         ${zhTitle ? `<div class="drawer-title-zh">${esc(zhTitle)}</div>` : ''}
         ${takeaway ? `<p class="drawer-takeaway">${esc(takeaway)}</p>` : ''}
-        ${journalMetricDetails(paper).replace(/<summary>[^<]*<\/summary>/, '<summary>指标来源与核对说明</summary>')}
-      `;
+      `.trim();
       const tr = LIVE_TR[trKeyOf(paper)];
       const zhAbs = (hasAbstract && validTranslation(tr)) ? tr.abstract_zh.split(/\n+/).map(s => `<p>${esc(s)}</p>`).join('') : '';
       const translationReady = !!(hasAbstract && zhAbs);
@@ -231,7 +210,6 @@
         </section>
         ${quantBox ? `<details class="metric-details"><summary>摘要自动提取的数字</summary>${quantBox}</details>` : ''}
         ${authorBox}
-        ${tagsHtml ? `<div class="drawer-tags">${tagsHtml}</div>` : ''}
       `;
       // 口令框正在输入时整块重画：搬动 DOM 会让输入框失焦，重画后原样还给它（光标位置也保留）。
       var typingEl = document.activeElement && document.activeElement.matches && document.activeElement.matches('#drawerFulltext input[name="passphrase"]') ? document.activeElement : null;
@@ -242,8 +220,17 @@
       const ftRegion = bodyEl.querySelector('[data-drawer-region="fulltext"]');
       const keepFtMounted = !changedPaper && bodyEl.dataset.paperId === String(paper.id) && !!(ftRegion && ftSection && ftSection.parentElement === ftRegion);
       if (!keepFtMounted) ftSection.remove();
-      renderDrawerRegions(bodyEl, paper, changedPaper, [['head', head], ['abstract', abstractSection], ['fulltext', ''], ['editorial', editorialSection],
-        ['ai', quickBox + aiBox], ['study', studyBoxHtml(paper)], ['cite', citationSection]]);
+      const aiHtml = quickBox + aiBox;
+      const studyHtml = studyBoxHtml(paper);
+      const regions = [
+        ...(head ? [['head', head]] : []),
+        ['abstract', abstractSection],
+        ...(editorialSection ? [['editorial', editorialSection]] : []),
+        ...(aiHtml ? [['ai', aiHtml]] : []),
+        ...(studyHtml ? [['study', studyHtml]] : []),
+        ['fulltext', '']
+      ];
+      renderDrawerRegions(bodyEl, paper, changedPaper, regions);
       if (!keepFtMounted) bodyEl.querySelector('[data-drawer-region="fulltext"]').appendChild(ftSection);
       const ftHtml = fulltextStatusHtml(paper, true, true);
       const ftStatus = ftSection.querySelector('[data-drawer-ft-status]');
@@ -272,13 +259,6 @@
     if (extLink) {
       extLink.href = doiUrl; extLink.hidden=doiUrl==='#';
     }
-    const institutionLink = $('#drawerInstitutionLink');
-    if (institutionLink) {
-      const institutionUrl = MAINTAINER ? hamburgFulltextUrl(paper.doi) : '';
-      institutionLink.href = institutionUrl || '#'; institutionLink.hidden = !institutionUrl;
-    }
-    const institutionLogin = $('#drawerInstitutionLoginLink');
-    if (institutionLogin) institutionLogin.hidden = !MAINTAINER;
     const ftSectionNow = $('#drawerFulltext');
     const pdfLink = $('#drawerPdfLink');
     const pdfForm = $('#drawerPdfForm');
@@ -347,10 +327,35 @@
       drawerRegionHtml = Object.fromEntries(regions);
       return;
     }
-    regions.forEach(([key, html]) => {
+    const desired = new Set(regions.map(([key]) => key));
+    if (bodyEl.querySelectorAll) {
+      bodyEl.querySelectorAll('[data-drawer-region]').forEach(el => {
+        const key = el.dataset && el.dataset.drawerRegion;
+        if (key && !desired.has(key)) {
+          el.remove();
+          delete drawerRegionHtml[key];
+        }
+      });
+    }
+    regions.forEach(([key, html], idx) => {
       if (drawerRegionHtml[key] === html) return;
-      const el = bodyEl.querySelector(`[data-drawer-region="${key}"]`);
-      if (!el) return;
+      let el = bodyEl.querySelector(`[data-drawer-region="${key}"]`);
+      if (!el) {
+        if (!document.createElement) return;
+        el = document.createElement('div');
+        el.className = 'drawer-region';
+        el.dataset.drawerRegion = key;
+        el.innerHTML = html;
+        let nextEl = null;
+        for (let j = idx + 1; j < regions.length; j++) {
+          nextEl = bodyEl.querySelector(`[data-drawer-region="${regions[j][0]}"]`);
+          if (nextEl) break;
+        }
+        if (bodyEl.insertBefore) bodyEl.insertBefore(el, nextEl);
+        else bodyEl.appendChild(el);
+        drawerRegionHtml[key] = html;
+        return;
+      }
       const open = new Set([...el.querySelectorAll('details[open] > summary')].map(x => x.textContent));
       const active = el.contains(document.activeElement) ? document.activeElement.closest('[data-action]') : null;
       const focus = active && { action: active.dataset.action, id: active.dataset.paperId };

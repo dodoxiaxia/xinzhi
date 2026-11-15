@@ -106,13 +106,13 @@ def main():
                 cached_id = page.evaluate("() => window.FEEDS.items.find(p=>p.weeklyPick && window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()]?.translation?.abstract_zh)?.id")
                 ready_id = cached_id or rows[0]['id']
                 before = len(calls)
-                page.locator(f'.weekly-card-actions [data-action="open-drawer"][data-paper-id="{ready_id}"]').click()
+                page.locator(f'.weekly-auto-item[data-paper-id="{ready_id}"] [data-action="open-drawer"]').click()
                 if cached_id:
                     cached = page.evaluate("id=>{const p=window.FEEDS.items.find(p=>p.id===id);return window.PREGENERATED[p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase()].translation.abstract_zh}", ready_id)
                     # Paragraph elements do not insert newlines into textContent.
                     # Compare each complete cached paragraph, including order.
-                    expect(page.locator('.abstract-translation .tr-box > p:not(.translation-note)')).to_have_text([p for p in cached.split('\n') if p.strip()])
-                    check(page.locator('.abstract-paired').count() == 1, f'{width}: actual cached translation uses paired reading')
+                    expect(page.locator('.abstract-reader .abs-panel[data-abs-panel="zh"] > p')).to_have_text([p for p in cached.split('\n') if p.strip()])
+                    check(page.locator('.abstract-reader .abs-tabs').count() == 1 and page.locator('.abstract-reader [data-abs-panel="zh"]').count() == 1 and page.locator('.abstract-reader [data-abs-panel="en"]').count() == 1, f'{width}: actual cached translation uses paired reading')
                 else:
                     expect(page.locator('.abstract-translation-status')).to_have_text('译文待预生成')
                     check(page.locator('.abstract-pending').count() == 1, f'{width}: actual missing translation has no empty column')
@@ -120,12 +120,11 @@ def main():
                 expected = page.evaluate('id=>window.JournalMetrics.compactText(window.FEEDS.items.find(p=>p.id===id))', ready_id)
                 expected_badge = page.evaluate('id=>window.JournalMetrics.badgeText(window.FEEDS.items.find(p=>p.id===id))', ready_id)
                 check(badge_text(page.locator('#drawerJournalBadges .journal-metrics-badge')) == expected_badge, f'{width}: reader badge shows verified values; full status remains in details')
-                page.locator('#drawerBody .journal-metrics-details > summary').first.click()
-                expect(page.locator('#drawerBody .journal-metrics-details').first).to_contain_text('单篇')
+                check(page.locator('#drawerBody .journal-metrics-details').count() == 0, f'{width}: reader drawer omits redundant journal metric details')
                 overflow(page, f'{width}/reader')
                 check(len(calls) == before, f'{width}: actual weekly translation needs no API call')
                 page.screenshot(path=str(out / f'reader-real-{width}.png'))
-                check(page.locator('.copy-cite-btn').evaluate_all("es=>es.every(e=>!e.dataset.cite.includes('期刊指标')&&!e.dataset.cite.includes('JCR 2024'))"), f'{width}: standard citations stay free of metric annotations')
+                check(page.locator('#drawerBody [data-drawer-region="cite"], #drawerBody .copy-cite-btn').count() == 0, f'{width}: reader drawer omits cite section')
                 page.locator('.abstract-reader').scroll_into_view_if_needed()
                 page.screenshot(path=str(out / f'abstract-real-{width}.png'))
                 page.locator('#drawerHuddleToggleBtn').click()
@@ -151,6 +150,10 @@ def main():
                 check_badges('.study-table thead th:not(:first-child)', f'{width}: comparison uses same registry')
                 page.locator('[data-action="study-copy"][data-task="compare"]').click()
                 check('期刊指标：' + expected in page.evaluate('window.__copied'), f'{width}: comparison copy includes metric note')
+                page.locator('[data-citation-export] summary').click()
+                page.locator('[data-citation-copy]').click()
+                copied_citations = page.evaluate('window.__copied')
+                check('期刊指标' not in copied_citations and 'JCR 2024' not in copied_citations, f'{width}: standard citations stay free of metric annotations')
                 overflow(page, f'{width}/huddle')
                 page.locator('#closeHuddleModalBtn').click()
 

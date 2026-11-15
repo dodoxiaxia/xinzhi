@@ -47,7 +47,21 @@ const c = vm.createContext({
   doiStatusBlock: () => '',
   journalMetricBadge: () => '',
   journalMetricDetails: () => '',
+  cardJournalName: p => (p && (p.cleanJournal || p.journal)) || '',
   designBadgeHtml: () => '',
+  DEFERRED: false,
+  PART_STATE: {},
+  partsReady: () => true,
+  partsPending: () => false,
+  cardTakeaway: () => '',
+  authorAffilHtml: () => '',
+  abstractMayBeIncomplete: () => false,
+  forgetPaper: () => {},
+  prioritizedDesign: () => '',
+  huddleStarSvg: () => '',
+  fetchPublicAbstract: async () => null,
+  openBodyOnly: () => {},
+  lastFocus: null,
   abstractTranslationStatus: () => '原文',
   validTranslation: () => false,
   trBoxHtml: () => '',
@@ -73,6 +87,17 @@ vm.runInContext([
   'exactDoi', 'safeSourceUrl', 'officialArticleUrl',
   'renderArticleCard', 'renderCompactRow', 'openReaderDrawer'
 ].map(fn).join('\n'), c);
+vm.runInContext(
+  'function cardSideActionsHtml(p) {' +
+  '  const sourceUrl = officialArticleUrl(p);' +
+  '  const doiBlock = typeof doiStatusBlock === "function" ? doiStatusBlock(p) : "";' +
+  '  const link = sourceUrl && !doiBlock' +
+  '    ? \'<a class="text-btn card-source" href="\' + sourceUrl + \'" target="_blank" rel="noopener" title="在期刊官网打开原文">官网<span aria-hidden="true">&thinsp;↗</span></a>\'' +
+  '    : "";' +
+  '  return \'<div class="card-side-actions" role="group" aria-label="操作">\' + link + \'</div>\';' +
+  '}',
+  c
+);
 
 let checks = 0;
 const eq = (a, b, msg) => { assert.strictEqual(a, b, msg); checks++; };
@@ -108,28 +133,28 @@ eq(c.officialArticleUrl(null), '', 'null paper returns empty string');
 
 // 2. Card & compact-row rendering
 const cardWithDoi = c.renderArticleCard(pubmedWithDoi);
-ok(cardWithDoi.includes('href="https://doi.org/10.1056/nejmoa2600001"') && cardWithDoi.includes('>官网原文 ↗</a>'),
+ok(cardWithDoi.includes('href="https://doi.org/10.1056/nejmoa2600001"') && cardWithDoi.includes('class="text-btn card-source"') && cardWithDoi.includes('>官网'),
   'Card official link points to doi.org when DOI exists');
 ok(!cardWithDoi.includes('https://pubmed.ncbi.nlm.nih.gov/41000001/'),
   'Card official link no longer uses PubMed url when DOI exists');
 
 const cardNoDoi = c.renderArticleCard(pubmedNoDoi);
-ok(cardNoDoi.includes('href="https://pubmed.ncbi.nlm.nih.gov/41000002/"') && cardNoDoi.includes('>官网原文 ↗</a>'),
+ok(cardNoDoi.includes('href="https://pubmed.ncbi.nlm.nih.gov/41000002/"') && cardNoDoi.includes('class="text-btn card-source"') && cardNoDoi.includes('>官网'),
   'Card official link uses PubMed url when no DOI exists');
 
 const cardBadUrl = c.renderArticleCard(badUrlNoDoi);
-ok(!cardBadUrl.includes('官网原文'), 'Card omits official link for unsafe url');
+ok(!cardBadUrl.includes('card-source') && !cardBadUrl.includes('javascript:'), 'Card omits official link for unsafe url');
 
 const rowWithDoi = c.renderCompactRow(pubmedWithDoi);
-ok(rowWithDoi.includes('href="https://doi.org/10.1056/nejmoa2600001"') && rowWithDoi.includes('title="官网原文"'),
+ok(rowWithDoi.includes('href="https://doi.org/10.1056/nejmoa2600001"') && rowWithDoi.includes('class="text-btn card-source"') && rowWithDoi.includes('title="在期刊官网打开原文"'),
   'Compact row official link points to doi.org when DOI exists');
 
-// 3. Reader drawer (#drawerExternalLink + independent PubMed button)
+// 3. Reader drawer (#drawerExternalLink + removed drawerBody cite/PubMed section)
 c.openReaderDrawer(pubmedWithDoi);
 eq(nodes.drawerExternalLink.href, 'https://doi.org/10.1056/nejmoa2600001', 'Reader drawer external link points to doi.org');
 eq(nodes.drawerExternalLink.hidden, false, 'Reader drawer external link is visible');
-ok(nodes.drawerBody.innerHTML.includes('href="https://pubmed.ncbi.nlm.nih.gov/41000001/"') && nodes.drawerBody.innerHTML.includes('>PubMed ↗</a>'),
-  'Independent PubMed button in reader drawer remains unchanged');
+ok(!nodes.drawerBody.innerHTML.includes('cite-section') && !nodes.drawerBody.innerHTML.includes('>PubMed ↗</a>'),
+  'Removed cite/PubMed section is absent from reader drawer');
 
 c.openReaderDrawer(pubmedNoDoi);
 eq(nodes.drawerExternalLink.href, 'https://pubmed.ncbi.nlm.nih.gov/41000002/', 'Reader drawer falls back to PubMed url without DOI');

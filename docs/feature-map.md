@@ -369,10 +369,7 @@
 | reader-region-head | 题名与期刊信息 | `[data-drawer-region="head"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | reader-region-abstract | 原摘要 | `[data-drawer-region="abstract"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | reader-region-study | 研究结构与核对清单 | `[data-drawer-region="study"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
-| reader-region-cite | 引用 | `[data-drawer-region="cite"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
-| reader-cite-menu | 复制引用 | `.cite-menu summary` | toggle | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 否 |
 | reader-abstract | 原摘要 | `.structured-abstract` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 否 |
-| maintainer-login | 汉堡登录入口 | `#drawerInstitutionLoginLink` | link | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-huddlemodalbackdrop | 精选清单 | `#huddleModalBackdrop` | dialog | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-huddlemodalbody | 精选文献清单 | `#huddleModalBody` | list | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-closehuddlemodalbtn | 关闭 | `#closeHuddleModalBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -397,9 +394,6 @@
 | ai-wait | 读取已有 AI 速览 | `[data-action="ai-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | translation-wait | 读取已有译文 | `[data-action="tr-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | brief-wait | 读取已有综述 | `[data-action="brief-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
-| reader-cite-gb | GB/T 7714 | `[data-cite*="[J]"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
-| reader-cite-ama | AMA | `[data-cite*="doi:"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
-| reader-cite-bibtex | BibTeX | `[data-cite^="@"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | request-fulltext | 获取全文 | `[data-ft-action="open-form"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | request-form | 全文申请 | `[data-ft-form]` | panel | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | request-passphrase | 全文口令 | `[data-ft-form] input[name="passphrase"]` | input | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -407,7 +401,6 @@
 | back-top | 回到页面顶部 | `#backToTopBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | translation-chinese-panel | 中文摘要正文 | `[data-abs-panel="zh"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | translation-english-panel | 原摘要正文 | `[data-abs-panel="en"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
-| maintainer-institution | 通过汉堡访问 | `#drawerInstitutionLink` | link | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | empty-favorites | 尚未关注期刊 | `.empty-state` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 否 |
 | cached-quicklook | 速览 | `.quicklook` | region | conditional · mobile/tablet/desktop · 打开已有预生成结果的文献 | 否 |
 | quicklook-findings | 速览要点与摘要原句 | `.ql-findings` | list | conditional · mobile/tablet/desktop · 打开已有预生成结果的文献 | 否 |
@@ -420,7 +413,6 @@
 | dark-theme | 深色模式 | `html[data-theme="dark"]` | attached | [{"goto":"/?mode=curated&theme=light"},{"click":"#themeToggle"}] |
 | light-theme | 浅色模式 | `html[data-theme="light"]` | attached | [{"goto":"/?mode=curated&theme=dark"},{"click":"#themeToggle"}] |
 | reader-open | 阅读面板已打开 | `#readerDrawer[aria-hidden="false"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}] |
-| cite-expanded | 引用菜单已展开 | `.cite-menu[open]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"},{"click":".cite-menu summary"}] |
 | reader-closed | 关闭阅读面板 | `#readerDrawer[aria-hidden="true"]` | attached | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"},{"click":"#drawerCloseBtn"}] |
 | shortlist-empty | 精选清单为空 | `#huddleEmptyHelp` | text:精选清单当前为空 | [{"click":"#openHuddleBtn"}] |
 | shortlist-selected | 文献已加入精选 | `#articlesStream [data-action="toggle-huddle"][aria-pressed="true"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"}] |
@@ -480,10 +472,7 @@
 - **reader-region-head**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
 - **reader-region-abstract**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
 - **reader-region-study**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；服务关闭时仍显示研究结构状态说明
-- **reader-region-cite**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
-- **reader-cite-menu**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
 - **reader-abstract**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
-- **maintainer-login**：`[{"goto":"/?mode=library&lane=all&maintainer=1"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；维护者模式；当前源码没有独立汉堡菜单按钮
 - **shortlist-huddlemodalbackdrop**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-huddlemodalbody**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-closehuddlemodalbtn**：`[{"click":"#openHuddleBtn"}]`
@@ -508,9 +497,6 @@
 - **ai-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **translation-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **brief-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **reader-cite-gb**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"},{"click":".cite-menu summary"}]`；GB/T 7714、AMA、BibTeX 三种格式
-- **reader-cite-ama**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"},{"click":".cite-menu summary"}]`；GB/T 7714、AMA、BibTeX 三种格式
-- **reader-cite-bibtex**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"},{"click":".cite-menu summary"}]`；GB/T 7714、AMA、BibTeX 三种格式
 - **request-fulltext**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"}]`
 - **request-form**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
 - **request-passphrase**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
@@ -518,7 +504,6 @@
 - **back-top**：`[{"goto":"/?mode=library&lane=all"},{"press":["body","End"]},{"wait":"#backToTopBtn"}]`
 - **translation-chinese-panel**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
 - **translation-english-panel**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"[data-abs-tab=\"en\"]"}]`
-- **maintainer-institution**：`[{"goto":"/?mode=library&lane=all&maintainer=1"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
 - **empty-favorites**：`[{"click":"[data-qf=\"star\"]"}]`
 - **cached-quicklook**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
 - **quicklook-findings**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
