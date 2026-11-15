@@ -5900,24 +5900,57 @@ function d1ShadowBind(env) {
     const rawEnv = env;
     const rawKv = env.QL_KV;
     const queue = new Map();
+    const spilled = [];
     let flushed = false;
     let savedCtx = null;
+    let pending = Promise.resolve();
+    let overflowWarned = false;
+
+    function warnOverflowOnce() {
+      if (overflowWarned) return;
+      overflowWarned = true;
+      try {
+        console.warn('d1 shadow: queue overflow'); // fixed text only: no key, DOI, value or error detail
+      } catch { /* ignore */ }
+    }
 
     function drain(ctx) {
-      if (!queue.size) return;
-      const items = [...queue.values()];
-      queue.clear();
+      if (!spilled.length && !queue.size) return;
+      const batches = spilled.splice(0);
+      if (queue.size) {
+        batches.push([...queue.values()]);
+        queue.clear();
+      }
       if (!ctx || typeof ctx.waitUntil !== 'function') return;
-      ctx.waitUntil(d1ShadowRun(rawEnv, items));
+      const task = pending.then(async () => {
+        for (const batch of batches) {
+          await d1ShadowRun(rawEnv, batch);
+        }
+      });
+      pending = task;
+      ctx.waitUntil(task);
+    }
+
+    function enqueue(key, entry) {
+      if (!queue.has(key) && queue.size >= D1_SHADOW_MAX_QUEUE) {
+        spilled.push([...queue.values()]);
+        queue.clear();
+      }
+      if (queue.has(key) || queue.size < D1_SHADOW_MAX_QUEUE) {
+        queue.set(key, entry);
+      } else {
+        warnOverflowOnce();
+      }
+      if (flushed) drain(savedCtx);
     }
 
     async function put(key, value, options) {
       const result = await rawKv.put(key, value, options);
       try {
         const entity = d1ShadowEntity(key);
-        if (entity && typeof value === 'string' && (queue.has(key) || queue.size < D1_SHADOW_MAX_QUEUE)) {
+        if (entity && typeof value === 'string') {
           const updatedAt = Date.now();
-          queue.set(key, {
+          enqueue(key, {
             key,
             entity,
             value,
@@ -5925,9 +5958,8 @@ function d1ShadowBind(env) {
             updatedAt,
             deleted: false
           });
-          if (flushed) drain(savedCtx);
         }
-      } catch { /* shadow write never affects KV or the request */ }
+      } catch { warnOverflowOnce(); }
       return result;
     }
 
@@ -5935,16 +5967,15 @@ function d1ShadowBind(env) {
       const result = await rawKv.delete(key, ...rest);
       try {
         const entity = d1ShadowEntity(key);
-        if (entity && (queue.has(key) || queue.size < D1_SHADOW_MAX_QUEUE)) {
-          queue.set(key, {
+        if (entity) {
+          enqueue(key, {
             key,
             entity,
             updatedAt: Date.now(),
             deleted: true
           });
-          if (flushed) drain(savedCtx);
         }
-      } catch { /* shadow write never affects KV or the request */ }
+      } catch { warnOverflowOnce(); }
       return result;
     }
 
