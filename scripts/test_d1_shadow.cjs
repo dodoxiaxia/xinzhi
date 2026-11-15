@@ -563,7 +563,7 @@ function assertD1MatchesKv(h, key, expectedEntity) {
     assert.equal(h.reads.filter(r => r.key === SWITCH).length, 2);
   }
 
-  // 9. Write runs after response, chunking (120 -> 3 batches <= 50), and queue cap (200)
+  // 9. Write runs after response, chunking (120 -> 3 batches <= 50), and queue spill beyond 200
   {
     const h = await create({on: true, muse: false});
     let release;
@@ -591,14 +591,187 @@ function assertD1MatchesKv(h, key, expectedEntity) {
     const h = await create({on: true});
     const bound = h.context.d1ShadowBind(h.env);
     for (let i = 0; i < 210; i++) await bound.env.QL_KV.put('library:paper:cap-' + i, 'v' + i);
-    // Overwriting an existing key in the Map still succeeds at cap 200
+    // Overwriting an existing key after hitting 200 still succeeds and wins on flush
     await bound.env.QL_KV.put('library:paper:cap-0', 'updated-v0');
     const waits = [];
     bound.flush({waitUntil: p => waits.push(p)});
+    assert.equal(waits.length, 1, 'spilled batches and tail queue flush in one waitUntil');
     await Promise.all(waits);
-    assert.equal(h.d1.rows.size, 200, 'queue cap drops entries beyond 200');
+    assert.equal(h.d1.rows.size, 210, 'spill preserves all entries beyond 200');
     assert.equal(h.d1.rows.get('library:paper:cap-0').value, 'updated-v0');
-    assert(!h.d1.rows.has('library:paper:cap-200'));
+    assert(h.d1.rows.has('library:paper:cap-200'), 'cap-200 must exist in D1');
+    for (let i = 1; i < 210; i++) assert.equal(h.d1.rows.get('library:paper:cap-' + i).value, 'v' + i);
+  }
+  {
+    // Boundary: 206 unique keys (41 DOIs x 5 mirror keys + 1 index written repeatedly across spill)
+    const h = await create({on: true});
+    const origBatch = h.env.LIBRARY_DB.batch;
+    let inFlight = 0;
+    let maxInFlight = 0;
+    h.env.LIBRARY_DB.batch = async stmts => {
+      inFlight++;
+      if (inFlight > maxInFlight) maxInFlight = inFlight;
+      await Promise.resolve();
+      try {
+        return await origBatch(stmts);
+      } finally {
+        inFlight--;
+      }
+    };
+    const bound = h.context.d1ShadowBind(h.env);
+    for (let i = 0; i < 41; i++) {
+      const doi = '10.9999/batch-' + i;
+      await bound.env.QL_KV.put('library:paper:' + doi, '{"i":' + i + '}');
+      await bound.env.QL_KV.put('library:muse-job:' + doi, '{"job":' + i + '}');
+      await bound.env.QL_KV.put('library:muse-queue:q-' + i, '{"q":' + i + '}');
+      await bound.env.QL_KV.put('library:muse-review:r-' + i, '{"rev":' + i + '}');
+      await bound.env.QL_KV.put('library:machine-register:' + doi, '{"reg":' + i + '}');
+      await bound.env.QL_KV.put('library:machine-index:v1', JSON.stringify({count: i + 1}));
+    }
+    const waits = [];
+    bound.flush({waitUntil: p => waits.push(p)});
+    assert.equal(waits.length, 1, '206-key flush uses single waitUntil');
+    await Promise.all(waits);
+    assert.equal(maxInFlight, 1, 'spilled batches run sequentially without concurrent D1 batches');
+    assert.equal(h.d1.rows.size, 206, 'all 206 unique keys mirrored to D1');
+    assert.equal([...h.d1.rows.values()].filter(r => r.deleted === 0).length, 206);
+    assert.equal(h.d1.rows.get('library:machine-index:v1').value, JSON.stringify({count: 41}));
+  }
+  function installSerialBatchProbe(h) {
+    const origBatch = h.env.LIBRARY_DB.batch;
+    const probe = {maxInFlight: 0, inFlight: 0, started: 0, finished: 0};
+    h.env.LIBRARY_DB.batch = async stmts => {
+      probe.started++;
+      probe.inFlight++;
+      if (probe.inFlight > probe.maxInFlight) probe.maxInFlight = probe.inFlight;
+      await Promise.resolve();
+      try {
+        return await origBatch(stmts);
+      } finally {
+        probe.inFlight--;
+        probe.finished++;
+      }
+    };
+    return probe;
+  }
+  async function flushSerialAndSettle(bound, label) {
+    const waits = [];
+    const settled = [];
+    bound.flush({
+      waitUntil(p) {
+        const wrapped = Promise.resolve(p).then(
+          v => { settled.push({status: 'fulfilled'}); return v; },
+          err => { settled.push({status: 'rejected'}); throw err; }
+        );
+        waits.push(wrapped);
+      }
+    });
+    assert.equal(waits.length, 1, label + ': single waitUntil at flush');
+    await Promise.all(waits);
+    assert.equal(settled.length, waits.length, label + ': no unfinished waitUntil');
+    assert(settled.every(s => s.status === 'fulfilled'), label + ': waitUntil must fulfill');
+    return waits;
+  }
+  {
+    // Codex note: 251 unique keys = MACHINE_REGISTER_MAX_ITEMS(50) x 5 mirrors + index, with a same-key update after spill
+    const h = await create({on: true});
+    const probe = installSerialBatchProbe(h);
+    const bound = h.context.d1ShadowBind(h.env);
+    for (let i = 0; i < 50; i++) {
+      const doi = '10.9999/max-' + i;
+      await bound.env.QL_KV.put('library:paper:' + doi, '{"i":' + i + '}');
+      await bound.env.QL_KV.put('library:attempt:' + doi, '{"a":' + i + '}');
+      await bound.env.QL_KV.put('library:muse-job:' + doi, '{"job":' + i + '}');
+      await bound.env.QL_KV.put('library:muse-queue:q-max-' + i, '{"q":' + i + '}');
+      await bound.env.QL_KV.put('library:machine-register:' + doi, '{"reg":' + i + '}');
+      await bound.env.QL_KV.put('library:machine-index:v1', JSON.stringify({count: i + 1}));
+    }
+    await bound.env.QL_KV.put('library:paper:10.9999/max-0', '{"i":0,"updated":true}');
+    await bound.env.QL_KV.put('library:machine-index:v1', JSON.stringify({count: 50, final: true}));
+    await flushSerialAndSettle(bound, '251-key max register');
+    assert.equal(probe.maxInFlight, 1, '251-key batches stay serial');
+    assert.equal(probe.inFlight, 0, '251-key: no in-flight batch after waitUntil settles');
+    assert.equal(probe.started, probe.finished, '251-key: every D1 batch finished');
+    assert.equal(h.d1.rows.size, 251, 'all 251 unique keys mirrored to D1');
+    assert.equal(h.d1.rows.get('library:paper:10.9999/max-0').value, '{"i":0,"updated":true}');
+    assert.equal(h.d1.rows.get('library:machine-index:v1').value, JSON.stringify({count: 50, final: true}));
+    assert.equal(h.d1.rows.get('library:machine-register:10.9999/max-49').value, '{"reg":49}');
+  }
+  {
+    // Codex note: >400 keys, multiple spills, same-key updates across segments are not lost, serial, no unfinished waitUntil
+    const h = await create({on: true});
+    const probe = installSerialBatchProbe(h);
+    const bound = h.context.d1ShadowBind(h.env);
+    const TOTAL = 420;
+    for (let i = 0; i < TOTAL; i++) {
+      await bound.env.QL_KV.put('library:paper:multi-' + i, 'v' + i);
+      if (i === 0 || i === 200 || i === 399) {
+        await bound.env.QL_KV.put('library:machine-index:v1', JSON.stringify({at: i}));
+      }
+    }
+    await bound.env.QL_KV.put('library:paper:multi-0', 'updated-0');
+    await bound.env.QL_KV.put('library:paper:multi-199', 'updated-199');
+    await bound.env.QL_KV.put('library:paper:multi-200', 'updated-200');
+    await bound.env.QL_KV.put('library:paper:multi-250', 'updated-250');
+    await bound.env.QL_KV.put('library:paper:multi-399', 'updated-399');
+    await bound.env.QL_KV.put('library:paper:multi-419', 'updated-419');
+    await bound.env.QL_KV.put('library:machine-index:v1', JSON.stringify({at: 419, final: true}));
+    await flushSerialAndSettle(bound, '420-key multi-spill');
+    assert.equal(probe.maxInFlight, 1, '420-key multi-spill batches stay serial');
+    assert.equal(probe.inFlight, 0, '420-key: no in-flight batch after waitUntil settles');
+    assert.equal(probe.started, probe.finished, '420-key: every D1 batch finished');
+    assert.ok(probe.started >= 9, '420 keys plus later updates require multiple 50-sized D1 batches');
+    assert.equal(h.d1.rows.size, 421, '420 papers plus index all reach D1 across multiple spills');
+    assert.equal(h.d1.rows.get('library:paper:multi-0').value, 'updated-0');
+    assert.equal(h.d1.rows.get('library:paper:multi-199').value, 'updated-199');
+    assert.equal(h.d1.rows.get('library:paper:multi-200').value, 'updated-200');
+    assert.equal(h.d1.rows.get('library:paper:multi-250').value, 'updated-250');
+    assert.equal(h.d1.rows.get('library:paper:multi-399').value, 'updated-399');
+    assert.equal(h.d1.rows.get('library:paper:multi-419').value, 'updated-419');
+    for (const i of [1, 100, 201, 349, 418]) {
+      assert.equal(h.d1.rows.get('library:paper:multi-' + i).value, 'v' + i);
+    }
+    assert.equal(h.d1.rows.get('library:machine-index:v1').value, JSON.stringify({at: 419, final: true}));
+  }
+  {
+    // Delete path beyond 200 must not silently drop deletes
+    const clock = {now: Date.parse('2026-11-15T08:30:00Z')};
+    const h = await create({on: true, clock});
+    const bound = h.context.d1ShadowBind(h.env);
+    for (let i = 0; i < 200; i++) await bound.env.QL_KV.put('library:paper:delcap-' + i, 'v' + i);
+    clock.now += 1000;
+    for (let i = 0; i < 5; i++) await bound.env.QL_KV.delete('library:paper:delcap-' + i);
+    for (let i = 200; i < 205; i++) await bound.env.QL_KV.delete('library:paper:delcap-' + i);
+    const waits = [];
+    bound.flush({waitUntil: p => waits.push(p)});
+    assert.equal(waits.length, 1);
+    await Promise.all(waits);
+    assert.equal(h.d1.rows.size, 205, 'all 205 keys including spilled deletes reach D1');
+    for (let i = 0; i < 5; i++) assert.equal(h.d1.rows.get('library:paper:delcap-' + i).deleted, 1);
+    for (let i = 200; i < 205; i++) assert.equal(h.d1.rows.get('library:paper:delcap-' + i).deleted, 1);
+    assert.equal(h.d1.rows.get('library:paper:delcap-199').deleted, 0);
+  }
+  {
+    // Idempotency: flushing same keys again with same or updated values keeps row count unchanged and updates overwritten values
+    const clock = {now: Date.parse('2026-11-15T08:35:00Z')};
+    const h = await create({on: true, clock});
+    const b1 = h.context.d1ShadowBind(h.env);
+    for (let i = 0; i < 6; i++) await b1.env.QL_KV.put('library:paper:idem-' + i, 'initial-' + i);
+    const w1 = [];
+    b1.flush({waitUntil: p => w1.push(p)});
+    await Promise.all(w1);
+    assert.equal(h.d1.rows.size, 6);
+
+    clock.now += 1000;
+    const b2 = h.context.d1ShadowBind(h.env);
+    for (let i = 0; i < 3; i++) await b2.env.QL_KV.put('library:paper:idem-' + i, 'initial-' + i);
+    for (let i = 3; i < 6; i++) await b2.env.QL_KV.put('library:paper:idem-' + i, 'updated-' + i);
+    const w2 = [];
+    b2.flush({waitUntil: p => w2.push(p)});
+    await Promise.all(w2);
+    assert.equal(h.d1.rows.size, 6, 'upsert keeps row count unchanged with no duplicate keys');
+    for (let i = 0; i < 3; i++) assert.equal(h.d1.rows.get('library:paper:idem-' + i).value, 'initial-' + i);
+    for (let i = 3; i < 6; i++) assert.equal(h.d1.rows.get('library:paper:idem-' + i).value, 'updated-' + i);
   }
 
   // 10. Static source check on edge/src/07c-d1-shadow.js
