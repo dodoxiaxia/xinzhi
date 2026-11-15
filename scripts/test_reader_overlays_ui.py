@@ -3,7 +3,7 @@
 
 Covers: drawer regions survive async updates, the shortlist keeps papers that are not
 loaded, Back closes panels and returns to the previous tab, Esc closes one layer at a
-time, and the Hamburg links appear only in maintainer mode. Run after build_public.py.
+time, and the removed Hamburg links stay absent even in maintainer mode. Run after build_public.py.
 """
 import functools
 import json
@@ -50,26 +50,29 @@ def main():
             context.route('**/*', mock)
             page = context.new_page()
 
-            # Hamburg links: hidden for colleagues, shown only in maintainer mode.
+            # Hamburg links: removed from the reader drawer footer.
             page.goto(base + '?mode=library&lane=all&reading=abstract', wait_until='networkidle')
             page.locator('#articlesStream [data-action="open-drawer"]').first.click()
             page.locator('#readerDrawer.open').wait_for()
-            check(not page.locator('#drawerInstitutionLoginLink').is_visible(), 'Hamburg login hidden by default')
-            check(not page.locator('#drawerInstitutionLink').is_visible(), 'Hamburg DOI link hidden by default')
+            check(page.locator('#drawerInstitutionLoginLink').count() == 0, 'Hamburg login removed from drawer footer')
+            check(page.locator('#drawerInstitutionLink').count() == 0, 'Hamburg DOI link removed from drawer footer')
 
             # Drawer regions: the late translation replaces only its own region.
-            page.wait_for_timeout(100)
+            page.locator('[data-drawer-region="study"]').wait_for()
+            page.wait_for_function(
+                "() => !/正在检查|正在获取摘要/.test(document.querySelector('[data-drawer-region=\"study\"]')?.textContent || '')"
+            )
             page.evaluate("""() => {
-                const cite = document.querySelector('[data-drawer-region="cite"]');
-                cite.firstElementChild.dataset.marker = 'kept';
+                const study = document.querySelector('[data-drawer-region="study"]');
+                study.firstElementChild.dataset.marker = 'kept';
                 const details = document.createElement('details');
                 details.innerHTML = '<summary>reader note</summary><p>x</p>';
                 details.open = true;
-                cite.appendChild(details);
+                study.appendChild(details);
             }""")
             page.get_by_text('延迟返回的中文译文。').wait_for(timeout=8000)
-            check(page.locator('[data-drawer-region="cite"] [data-marker="kept"]').count() == 1, 'unchanged drawer region is not rebuilt')
-            check(page.locator('[data-drawer-region="cite"] details[open]').count() == 1, 'open details survive an async update')
+            check(page.locator('[data-drawer-region="study"] [data-marker="kept"]').count() == 1, 'unchanged drawer region is not rebuilt')
+            check(page.locator('[data-drawer-region="study"] details[open]').count() == 1, 'open details survive an async update')
 
             # Back closes the drawer and stays on the site.
             page.go_back()
@@ -106,17 +109,18 @@ def main():
             page.wait_for_timeout(200)
             check(page.locator('.nav-tab-btn[data-mode="library"]').get_attribute('class').split().count('active') == 1, 'Back returns to the previous tab')
 
-            # Maintainer mode shows the Hamburg links; ?maintainer=0 hides them again.
+            # Maintainer mode sets the cookie, while Hamburg links remain absent from the drawer footer.
             page.goto(base + '?mode=library&lane=all&maintainer=1', wait_until='networkidle')
             check('maintainer' not in page.url, 'maintainer switch is removed from the address bar')
             page.locator('#articlesStream [data-action="open-drawer"]').first.click()
             page.locator('#readerDrawer.open').wait_for()
-            check(page.locator('#drawerInstitutionLoginLink').is_visible(), 'maintainer sees the Hamburg login')
+            check(page.locator('#drawerInstitutionLoginLink').count() == 0, 'maintainer does not see removed Hamburg login in drawer footer')
+            check(page.locator('#drawerInstitutionLink').count() == 0, 'maintainer does not see removed Hamburg DOI link in drawer footer')
             check(any(c['name'] == 'xz_maintainer' and c['value'] == '1' for c in context.cookies()), 'maintainer mode sets the cookie server pages read')
             page.goto(base + '?mode=library&lane=all&maintainer=0', wait_until='networkidle')
             page.locator('#articlesStream [data-action="open-drawer"]').first.click()
             page.locator('#readerDrawer.open').wait_for()
-            check(not page.locator('#drawerInstitutionLoginLink').is_visible(), 'maintainer=0 hides the Hamburg login again')
+            check(page.locator('#drawerInstitutionLoginLink').count() == 0, 'Hamburg login stays absent after maintainer=0')
             check(not any(c['name'] == 'xz_maintainer' for c in context.cookies()), 'maintainer=0 clears the cookie')
 
             # Shortlist: papers that are not loaded keep their saved record; unknown IDs stay removable.

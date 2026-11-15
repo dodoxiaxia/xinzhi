@@ -4032,58 +4032,6 @@
         "notes": "服务关闭时仍显示研究结构状态说明"
       },
       {
-        "id": "reader-region-cite",
-        "label": "引用",
-        "selector": "[data-drawer-region=\"cite\"]",
-        "kind": "region",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          }
-        ],
-        "stable": true,
-        "notes": ""
-      },
-      {
-        "id": "reader-cite-menu",
-        "label": "复制引用",
-        "selector": ".cite-menu summary",
-        "kind": "toggle",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          }
-        ],
-        "stable": false,
-        "notes": ""
-      },
-      {
         "id": "reader-abstract",
         "label": "原摘要",
         "selector": ".structured-abstract",
@@ -4108,29 +4056,6 @@
         ],
         "stable": false,
         "notes": ""
-      },
-      {
-        "id": "maintainer-login",
-        "label": "汉堡登录入口",
-        "selector": "#drawerInstitutionLoginLink",
-        "kind": "link",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all&maintainer=1"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          }
-        ],
-        "stable": true,
-        "notes": "维护者模式；当前源码没有独立汉堡菜单按钮"
       },
       {
         "id": "shortlist-huddlemodalbackdrop",
@@ -4736,93 +4661,6 @@
         "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
       },
       {
-        "id": "reader-cite-gb",
-        "label": "GB/T 7714",
-        "selector": "[data-cite*=\"[J]\"]",
-        "kind": "button",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          },
-          {
-            "click": ".cite-menu summary"
-          }
-        ],
-        "stable": true,
-        "notes": "GB/T 7714、AMA、BibTeX 三种格式"
-      },
-      {
-        "id": "reader-cite-ama",
-        "label": "AMA",
-        "selector": "[data-cite*=\"doi:\"]",
-        "kind": "button",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          },
-          {
-            "click": ".cite-menu summary"
-          }
-        ],
-        "stable": true,
-        "notes": "GB/T 7714、AMA、BibTeX 三种格式"
-      },
-      {
-        "id": "reader-cite-bibtex",
-        "label": "BibTeX",
-        "selector": "[data-cite^=\"@\"]",
-        "kind": "button",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          },
-          {
-            "click": ".cite-menu summary"
-          }
-        ],
-        "stable": true,
-        "notes": "GB/T 7714、AMA、BibTeX 三种格式"
-      },
-      {
         "id": "request-fulltext",
         "label": "获取全文",
         "selector": "[data-ft-action=\"open-form\"]",
@@ -4984,29 +4822,6 @@
           },
           {
             "click": "[data-abs-tab=\"en\"]"
-          }
-        ],
-        "stable": true,
-        "notes": ""
-      },
-      {
-        "id": "maintainer-institution",
-        "label": "通过汉堡访问",
-        "selector": "#drawerInstitutionLink",
-        "kind": "link",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "完成所列操作后显示",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all&maintainer=1"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
           }
         ],
         "stable": true,
@@ -5182,27 +4997,6 @@
           },
           {
             "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          }
-        ],
-        "expect": "visible"
-      },
-      {
-        "id": "cite-expanded",
-        "label": "引用菜单已展开",
-        "selector": ".cite-menu[open]",
-        "trigger": "按 setup 的顺序操作",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          },
-          {
-            "click": ".cite-menu summary"
           }
         ],
         "expect": "visible"
