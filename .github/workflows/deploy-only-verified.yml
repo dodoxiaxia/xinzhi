@@ -4,14 +4,22 @@ on:
   workflow_dispatch:
     inputs:
       purpose:
-        description: '发布用途（open / close；两者部署同一已核验原包）'
+        description: '发布用途（open / close；两者使用同一已核验正式包绑定）'
         required: true
         type: choice
         options:
           - open
           - close
       confirm:
-        description: '必须输入固定确认字面量: publish-verified-d646340-c6eb758'
+        description: '必须输入固定确认字面量: publish-official-bound-bundle'
+        required: true
+        type: string
+      daily_run_id:
+        description: '本仓库一次已成功并已部署的 daily-refresh 运行 ID（正整数）'
+        required: true
+        type: string
+      state_commit:
+        description: '私有 state 仓库对应的精确 40 位小写 commit SHA（禁止分支名或短 SHA）'
         required: true
         type: string
 
@@ -37,7 +45,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 校验所有发布闸门并从钉死 state 提交提取 19 文件原包
+      - name: 三方核验并从精确 state 提交提取 19 文件原包
         id: gate
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -47,11 +55,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_PURPOSE: ${{ inputs.purpose }}
           INPUT_CONFIRM: ${{ inputs.confirm }}
+          INPUT_DAILY_RUN_ID: ${{ inputs.daily_run_id }}
+          INPUT_STATE_COMMIT: ${{ inputs.state_commit }}
         run: |
           python3 scripts/deploy_only_verified.py \
             --purpose "$INPUT_PURPOSE" \
             --confirm "$INPUT_CONFIRM" \
-            --output-dir "${{ runner.temp }}/verified-public"
+            --daily-run-id "$INPUT_DAILY_RUN_ID" \
+            --state-commit "$INPUT_STATE_COMMIT" \
+            --output-dir "${{ runner.temp }}/verified-public" \
+            --binding-file "${{ runner.temp }}/verified-binding.json"
 
       - uses: actions/setup-node@v4
         if: steps.gate.outcome == 'success' && steps.gate.outputs.verified == 'true'
@@ -59,24 +72,40 @@ jobs:
           node-version: '20'
 
       # Official repo is public, so fetch origin/main works without checkout credentials.
-      # Do not persist checkout credentials. Recheck only needs the Cloudflare reads.
-      - name: 临发布重新核生产代码SHA与远端main
+      # Do not persist checkout credentials. Recheck re-validates production, 17 static assets,
+      # the official 19-file receipt, and handles fail-closed close rebinding if needed.
+      - name: 临发布复核生产身份、17 静态、官方 19 包与远端 main
         id: recheck
         if: steps.gate.outcome == 'success' && steps.gate.outputs.verified == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: python3 scripts/deploy_only_verified.py --recheck-before-deploy
+          XINZHI_STATE_REPOSITORY: ${{ vars.XINZHI_STATE_REPO || 'dodoxiaxia/xinzhi-state' }}
+          XINZHI_STATE_TOKEN: ${{ secrets.XINZHI_STATE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_PURPOSE: ${{ inputs.purpose }}
+        run: |
+          python3 scripts/deploy_only_verified.py \
+            --recheck-before-deploy \
+            --purpose "$INPUT_PURPOSE" \
+            --output-dir "${{ runner.temp }}/verified-public" \
+            --binding-file "${{ runner.temp }}/verified-binding.json"
 
       - name: 发布已核验原包到 Cloudflare Pages
-        if: steps.gate.outcome == 'success' && steps.gate.outputs.verified == 'true' && steps.recheck.outcome == 'success'
+        if: >-
+          steps.gate.outcome == 'success' &&
+          steps.gate.outputs.verified == 'true' &&
+          steps.recheck.outcome == 'success' &&
+          steps.recheck.outputs.verified == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CI: 'true'
-        run: >-
-          npx --yes wrangler@3 pages deploy "${{ runner.temp }}/verified-public"
-          --project-name dryz-xinzhi
-          --branch main
-          --commit-dirty=true
-          --commit-hash d646340107ca82ceb902ded4f64c403556ad7345
+          BOUND_CODE_SHA: ${{ steps.recheck.outputs.code_sha }}
+        run: |
+          [[ "$BOUND_CODE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "invalid bound code_sha" >&2; exit 1; }
+          npx --yes wrangler@3 pages deploy "${{ runner.temp }}/verified-public" \
+            --project-name dryz-xinzhi \
+            --branch main \
+            --commit-dirty=true \
+            --commit-hash "$BOUND_CODE_SHA"
