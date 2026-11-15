@@ -3,6 +3,8 @@
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert'), crypto = require('crypto');
 const root = path.resolve(__dirname, '..'), src = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const fn = name => {
+  const oneLine = src.match(new RegExp('  (?:async )?function ' + name + '\\([^\\n]*\\) \\{[^\\n]*\\}(?=\\n)'));
+  if (oneLine) return oneLine[0];
   const match = src.match(new RegExp('  (?:async )?function ' + name + '\\([^]*?\\n  }'));
   if (!match) throw Error('Missing helper ' + name);
   return match[0];
@@ -21,15 +23,16 @@ async function helpers() {
   const c = vm.createContext({ URL, AbortController, setTimeout, clearTimeout, encodeURIComponent, CURATED: [kept], FEEDS: { items: [radar] }, LIBRARY: { papers: [held] },
     state: { search: '', mode: 'library', lane: 'aitech', range: '7', journal: 'Other', reading: 'guide' }, _maxDateCache: {},
     PDF_LIBRARY_IDS: new Set([held.id]), DOI_FULLTEXT: new Map(), DOI_LOOKUPS: new Map(), DOI_JOBS: new Map(), DOI_JOB_WATCH: { timer:null, doi:'', startedAt:0 }, DOI_TOUCHED: new Set(),
-    SUPPLEMENTAL_LIBRARY: { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 },
+    SUPPLEMENTAL_LIBRARY: { state: 'idle', cursor: '', more: false, loadedCount: 0, promise: null, refreshedAt: 0 },
+    localStorage: (() => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) }; })(),
     esc: value => String(value).replace(/[<>&"']/g, ''), refreshSupplementalView: () => {},
     matchesFilters: () => false, getCurrentDataset: () => [],
     fetch: async () => ({ ok: true, json: async () => ({ ok: true, found: false }) }) });
   vm.runInContext('const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers]; const allPapersMap = new Map(STATIC_DOI_PAPERS.map(p => [p.id,p]));', c);
-  const names = ['exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
+  const names = ['safeGet', 'safeSet', 'safeRemove', 'normalizeRequestDoi', 'sanitizeBrowserRequest', 'loadBrowserRequests', 'saveBrowserRequests', 'recordConfirmedRequest', 'syncExistingBrowserRequest', 'exactDoi', 'hamburgFulltextUrl', 'doiTitleKey', 'sameDoiTitle', 'normalizePaper', 'paperText', 'laneOf', 'isCrossAI', 'supplementalPaper',
     'mergeSupplementalPaper', 'exactDoiPapers', 'fulltextConflict', 'acquireDoiUrl', 'doiJobActive', 'mergeDoiJob', 'watchDoiJob', 'ftMaintainerMode', 'fulltextState', 'safeSourceUrl', 'officialArticleUrl', 'fulltextView', 'fulltextStatusHtml', 'fulltextFilterBucket', 'pdfDownloadUrl', 'pdfDownloadLink', 'doiStatusBlock',
     'libraryJson', 'lookupSupplementalDoi', 'loadSupplementalLibrary', 'getFilteredArticles'];
-  vm.runInContext([constant('FT_STEPS'), constant('FT_FILTERS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
+  vm.runInContext([constant('BROWSER_REQ_KEY'), constant('BROWSER_REQ_MAX'), constant('BROWSER_REQ_MAX_BYTES'), constant('BROWSER_REQ_STATUSES'), constant('FT_STEPS'), constant('FT_FILTERS'), constant('KIND_MAP'), constant('MINOR_RE'), constant('CARDIO_TIERS'), constant('AI_RE'), constant('CARDIO_RE'), ...names.map(fn)].join('\n'), c);
   for (const value of ['10.1234/Keep', ' DOI: 10.1234/Keep ', 'https://doi.org/10.1234/Keep', 'https://DX.DOI.ORG/10.1234%2FKeep']) assert.equal(c.exactDoi(value), '10.1234/keep');
   for (const value of ['Kept clinical title', 'article 10.1234/keep', '10.1234', 'https://example.org/10.1234/keep', 'https://doi.org/10.1234/keep?token=x', '10.1234/x script']) assert.equal(c.exactDoi(value), '');
   assert.equal(c.hamburgFulltextUrl('https://doi.org/10.1056/AIe2600236'), 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/10.1056/aie2600236');
@@ -169,6 +172,27 @@ async function helpers() {
   assert.equal(c.SUPPLEMENTAL_LIBRARY.state, 'error'); assert(c.LIBRARY.papers.includes(held));
   c.fetch = async () => ({ ok: false, status: 404 }); await c.loadSupplementalLibrary(true);
   assert.equal(c.SUPPLEMENTAL_LIBRARY.state, 'unsupported'); assert(c.LIBRARY.papers.includes(held));
+
+  // Tag sanitization in supplemental records (keep existing tags, never infer from title)
+  const untagged = c.supplementalPaper({ ...apiPaper('10.1234/af-title', 'Atrial Fibrillation and Heart Failure Trial') });
+  assert.deepEqual(untagged.tags, [], 'Missing tags default to empty without title auto-tagging');
+  const tagged = c.supplementalPaper({ ...apiPaper('10.1234/tagged', 'Tagged Paper'), tags: ['bad', ' #房颤/电生理 ', '#房颤/电生理', '#心衰/心肌', '#影像', '#AI-ECG', '#大模型/NLP'] });
+  assert.deepEqual(tagged.tags, ['#房颤/电生理', '#心衰/心肌', '#影像', '#AI-ECG'], 'Valid # tags kept up to 4 and malformed entries dropped');
+
+  // Browser-local request ledger helpers (confirm-before-record, deduplication, corrupt storage safety)
+  assert.equal(c.normalizeRequestDoi('https://doi.org/10.1234/TestCase'), '10.1234/testcase');
+  assert.equal(c.normalizeRequestDoi('not a doi'), '');
+  c.localStorage.setItem(c.BROWSER_REQ_KEY, '{corrupt json');
+  assert.deepEqual(c.loadBrowserRequests(), [], 'Corrupt JSON does not crash loadBrowserRequests');
+  assert.equal(c.recordConfirmedRequest({ doi: 'invalid' }), false);
+  assert.equal(c.recordConfirmedRequest({ doi: 'DOI:10.1234/ReqOne', title: '当前申请核验的文献', status: 'queued' }), true);
+  assert.equal(c.recordConfirmedRequest({ doi: '10.1234/reqone', title: 'Resolved Real Title', status: 'verifying' }), true);
+  const loadedReqs = c.loadBrowserRequests();
+  assert.equal(loadedReqs.length, 1, 'Case-insensitive DOI alias deduplicates to one record');
+  assert.equal(loadedReqs[0].doi, '10.1234/reqone');
+  assert.equal(loadedReqs[0].title, 'Resolved Real Title', 'Real title replaces placeholder');
+  c.mergeSupplementalPaper({ ...apiPaper('10.1234/reqone', 'Resolved Real Title', 'available') });
+  assert.equal(c.loadBrowserRequests()[0].status, 'available', 'Supplemental merge updates tracked browser request to available');
 }
 
 async function browserChecks() {

@@ -26,6 +26,7 @@
 | curated-quick | 快捷筛选 | `#quickBar` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | curated-chip-row | 快捷条 | `#qfChipRow` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | curated-favorites | 只看关注期刊 | `[data-qf="star"]` | toggle | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| curated-topic | 文章主题 | `[data-qf="topic"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | curated-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | day-strip | 精选日期 | `#curatedDayBar` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | all-days | 全部日期 | `[data-day="all"]` | chip | always · mobile/tablet/desktop · 进入本栏目 | 是 |
@@ -62,6 +63,7 @@
 | weekly-cat-general | 综合医学 | `[data-weekly-cat="general"]` | chip | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | weekly-cat-aimed | AI 医疗 | `[data-weekly-cat="aimed"]` | chip | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | weekly-cat-aitech | AI 行业 | `[data-weekly-cat="aitech"]` | chip | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| weekly-topic | 文章主题 | `[data-qf="topic"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | reading-pane-small | 全文精读目录 | `#weeklyReadingPane` | panel | conditional · mobile/tablet · 完成所列操作后显示；仅在mobile/tablet视口显示 | 是 |
 | daily-reading-small | AI 全文精读 | `#dailyDeepRead` | list | conditional · mobile/tablet · 完成所列操作后显示；仅在mobile/tablet视口显示 | 是 |
 | reading-demo-small | 人工精读示范 | `[data-reading-id="demo-tailored-af"]` | button | conditional · mobile/tablet · 完成所列操作后显示；仅在mobile/tablet视口显示 | 是 |
@@ -144,6 +146,7 @@
 | candidates-quick | 快捷筛选 | `#quickBar` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-chip-row | 快捷条 | `#qfChipRow` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-favorites | 只看关注期刊 | `[data-qf="star"]` | toggle | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-topic | 文章主题 | `[data-qf="topic"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -214,6 +217,7 @@
 | library-quick | 快捷筛选 | `#quickBar` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-chip-row | 快捷条 | `#qfChipRow` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-favorites | 只看关注期刊 | `[data-qf="star"]` | toggle | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| library-topic | 文章主题 | `[data-qf="topic"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -333,6 +337,8 @@
 | source-status-btn | 信源状态 | `#sourceStatusBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | open-huddle-btn | 精选清单 | `#openHuddleBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | huddle-counter | 精选清单篇数 | `#huddleCounter` | text | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| open-requests-btn | 本浏览器申请记录 | `#openRequestsBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| requests-counter | 本浏览器申请记录条数 | `#requestsCounter` | text | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | searchpanel | 搜索面板 | `#searchPanel` | panel | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | globalsearch | 搜索题名、DOI | `#globalSearch` | input | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | clear-search | 清除搜索 | `#searchPanel [data-clear="search"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -406,6 +412,13 @@
 | quicklook-findings | 速览要点与摘要原句 | `.ql-findings` | list | conditional · mobile/tablet/desktop · 打开已有预生成结果的文献 | 否 |
 | cached-study | 研究结构与全文核对 | `.study-box` | region | conditional · mobile/tablet/desktop · 打开已有预生成结果的文献 | 否 |
 | study-copy | 复制研究结构与核对清单 | `[data-action="study-copy"]` | button | conditional · mobile/tablet/desktop · 打开已有预生成结果的文献 | 是 |
+| topic-options | 文章主题选项 | `[data-qf-topic]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| topic-all | 全部文章主题 | `[data-qf-topic-all]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| topic-unclassified | 文章主题未分类 | `[data-qf-topic-unclassified]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| requests-modal | 本浏览器申请记录 | `#requestsModalBackdrop` | dialog | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| requests-modal-body | 本浏览器申请记录列表 | `#requestsModalBody` | list | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| requests-close-btn | 关闭申请记录 | `#closeRequestsModalBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| requests-refresh-btn | 刷新全部状态 | `#refreshRequestsBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 
 | 状态 id | 状态 | 选择器 | 预期 | 操作 |
 | --- | --- | --- | --- | --- |
@@ -433,6 +446,8 @@
 | brief-completed | 已生成综述或讨论提纲 | `.brief-done` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | translation-error | 译文生成失败 | `.translation-error` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | translation-progress | 译文读取或等待状态 | `.tr-box [role="status"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
+| topic-pop-open | 展开文章主题筛选 | `[data-qf-topic-all]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}] |
+| requests-empty | 本浏览器申请记录为空 | `#requestsModalBody .empty-state` | text:当前浏览器还没有已确认的全文申请记录 | [{"click":"#openRequestsBtn"}] |
 
 <details><summary>入口操作与备注</summary>
 
@@ -509,5 +524,12 @@
 - **quicklook-findings**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
 - **cached-study**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
 - **study-copy**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **topic-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`；支持多选（同主题 OR，跨条件 AND）
+- **topic-all**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`
+- **topic-unclassified**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`；与具体主题互斥
+- **requests-modal**：`[{"click":"#openRequestsBtn"}]`；仅此浏览器本地记录
+- **requests-modal-body**：`[{"click":"#openRequestsBtn"}]`
+- **requests-close-btn**：`[{"click":"#openRequestsBtn"}]`
+- **requests-refresh-btn**：`[{"click":"#openRequestsBtn"}]`
 
 </details>

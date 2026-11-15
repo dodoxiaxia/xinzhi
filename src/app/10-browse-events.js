@@ -103,7 +103,7 @@
   // Backward tabbing must reveal the focused control below sticky surfaces.
   document.addEventListener('focusin', event => {
     const target = event.target;
-    if (!(target instanceof HTMLElement) || target.closest('header,.stream-toolbar,.weekly-toc,#readerDrawer,#huddleModalBackdrop,.modal-backdrop')) return;
+    if (!(target instanceof HTMLElement) || target.closest('header,.stream-toolbar,.weekly-toc,#readerDrawer,#huddleModalBackdrop,#requestsModalBackdrop,.modal-backdrop')) return;
     const rect = target.getBoundingClientRect();
     const surfaces = [header, $('.stream-toolbar'), $('.weekly-toc')].filter(element => element && element.getClientRects().length && element.getBoundingClientRect().top <= parseFloat(getComputedStyle(element).top) + 1);
     const bottom = Math.max(0, ...surfaces.map(element => element.getBoundingClientRect().bottom));
@@ -175,13 +175,13 @@
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== searchInput) {
       if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey
-        || $('#huddleModalBackdrop.open') || $('#readerDrawer.open') || $('#deepReader.open')
+        || $('#huddleModalBackdrop.open') || $('#requestsModalBackdrop.open') || $('#readerDrawer.open') || $('#deepReader.open')
         || document.activeElement?.matches('input,textarea,select') || document.activeElement?.isContentEditable) return;
       e.preventDefault();
       syncSearchPanel(true);
       searchInput?.focus();
     } else if (e.key === 'Tab') {
-      const modal = $('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open') || $('#appSidebar.open');
+      const modal = $('#requestsModalBackdrop.open .modal-dialog') || $('#huddleModalBackdrop.open .modal-dialog') || $('#readerDrawer.open') || $('#deepReader.open') || $('#appSidebar.open');
       if (modal) {
         const nodes = [...modal.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(x => !x.disabled && !x.hidden && !x.closest('[hidden],[inert]') && x.getClientRects().length && getComputedStyle(x).visibility !== 'hidden' && (!x.checkVisibility || x.checkVisibility({ checkVisibilityCSS: true })) && !(x.closest('details:not([open])') && !(x.tagName === 'SUMMARY' && x.parentElement?.matches('details:not([open])'))));
         const first = nodes[0], last = nodes[nodes.length - 1];
@@ -191,8 +191,9 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }
     } else if (e.key === 'Escape') {
-      // One press closes the topmost layer only: shortlist, then reader, then full-text reading, then filters.
-      if ($('#huddleModalBackdrop.open')) closeHuddleModal();
+      // One press closes the topmost layer only: requests/shortlist, then reader, then full-text reading, then filters.
+      if ($('#requestsModalBackdrop.open')) closeRequestsModal();
+      else if ($('#huddleModalBackdrop.open')) closeHuddleModal();
       else if ($('#readerDrawer.open')) closeReaderDrawer();
       else if ($('#deepReader.open')) closeDeepReading();
       else if ($('#appSidebar.open')) closeSheet();
@@ -464,6 +465,63 @@
       restoreControlStates(fieldStates);
       return;
     }
+    if (e.target.closest('[data-action="open-requests"]')) {
+      if (typeof openRequestsModal === 'function') openRequestsModal();
+      return;
+    }
+    const refreshReqBtn = e.target.closest('[data-action="refresh-request-doi"]');
+    if (refreshReqBtn) {
+      const doi = exactDoi(refreshReqBtn.dataset.doi);
+      if (doi) {
+        refreshReqBtn.disabled = true;
+        lookupSupplementalDoi(doi, true).then(() => {
+          if (typeof renderRequestsModal === 'function' && $('#requestsModalBackdrop.open')) renderRequestsModal();
+        });
+      }
+      return;
+    }
+    const removeReqBtn = e.target.closest('[data-action="remove-request-doi"]');
+    if (removeReqBtn) {
+      const doi = exactDoi(removeReqBtn.dataset.doi);
+      if (doi && typeof removeBrowserRequest === 'function') {
+        removeBrowserRequest(doi);
+        if (typeof renderRequestsModal === 'function') renderRequestsModal();
+      }
+      return;
+    }
+    const openReqPaperBtn = e.target.closest('[data-action="open-request-paper"]');
+    if (openReqPaperBtn) {
+      const doi = exactDoi(openReqPaperBtn.dataset.doi);
+      const paper = (doi && exactDoiPapers(doi)[0]) || (doi && DOI_FULLTEXT.get(doi)) || null;
+      if (paper) {
+        if ($('#requestsModalBackdrop.open') && typeof closeRequestsModal === 'function') {
+          try { history.replaceState(null, '', location.href); } catch (err) { /* sandboxed */ }
+          closeRequestsModal({ fromHistory: true });
+        }
+        openReaderDrawer(allPapersMap.get(paper.id) || paper);
+      } else if (doi) {
+        state.search = doi;
+        state.page = 1;
+        if (searchInput) searchInput.value = doi;
+        syncSearchPanel();
+        if (typeof closeRequestsModal === 'function') closeRequestsModal();
+        renderStream();
+      }
+      return;
+    }
+    const searchReqBtn = e.target.closest('[data-action="search-request-doi"]');
+    if (searchReqBtn) {
+      const doi = exactDoi(searchReqBtn.dataset.doi);
+      if (doi) {
+        state.search = doi;
+        state.page = 1;
+        if (searchInput) searchInput.value = doi;
+        syncSearchPanel();
+        if (typeof closeRequestsModal === 'function') closeRequestsModal();
+        renderStream();
+      }
+      return;
+    }
     if (e.target.closest('[data-action="refresh-doi-library"]')) { loadSupplementalLibrary(true); return; }
     if (e.target.closest('[data-action="load-doi-library"]')) { loadSupplementalLibrary(); return; }
     const browseBtn = e.target.closest('[data-browse-only]');
@@ -537,7 +595,7 @@
       if (type === 'lane') state.lane = 'core';
       if (type === 'minor') state.minor = false;
       if (type === 'design') state.studyDesign = '';
-      if (type === 'tag') state.tag = '';
+      if (type === 'tag') { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
       if (type === 'nocase') state.excludeCaseReports = false;
@@ -675,6 +733,7 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
     if (entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
     const id = entry.deepReader;
@@ -682,7 +741,10 @@
     else closeDeepReading({ fromHistory: true });
     if (entry.overlay || entry.deepReader) return;
     const next = readStateFromUrl();
-    if (!URL_STATE_KEYS.some(k => state[k] !== next[k])) return;
+    const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
+      ? JSON.stringify(state[k]) !== JSON.stringify(next[k])
+      : state[k] !== next[k]);
+    if (!urlChanged) return;
     clearTimeout(searchTimer);
     viewInUrl = next.viewInUrl;
     URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
@@ -723,6 +785,21 @@
     [...$('#huddleModalBody').querySelectorAll('[data-action="compare-select"]')].find(x => x.dataset.paperId === id)?.focus({ preventScroll: true });
   });
   $('#openHuddleBtn')?.addEventListener('click', openHuddleModal);
+  $('#openRequestsBtn')?.addEventListener('click', () => { if (typeof openRequestsModal === 'function') openRequestsModal(); });
+  $('#closeRequestsModalBtn')?.addEventListener('click', () => { if (typeof closeRequestsModal === 'function') closeRequestsModal(); });
+  $('#closeRequestsFootBtn')?.addEventListener('click', () => { if (typeof closeRequestsModal === 'function') closeRequestsModal(); });
+  $('#requestsModalBackdrop')?.addEventListener('click', e => {
+    if (e.target.id === 'requestsModalBackdrop' && typeof closeRequestsModal === 'function') closeRequestsModal();
+  });
+  $('#refreshRequestsBtn')?.addEventListener('click', e => {
+    const btn = e.currentTarget;
+    if (typeof refreshBrowserRequests !== 'function') return;
+    btn.disabled = true;
+    refreshBrowserRequests({ activeOnly: false }).finally(() => {
+      btn.disabled = false;
+      if (typeof renderRequestsModal === 'function' && $('#requestsModalBackdrop.open')) renderRequestsModal();
+    });
+  });
   $('#closeHuddleModalBtn')?.addEventListener('click', () => closeHuddleModal());
   $('#huddleModalBackdrop')?.addEventListener('click', e => {
     if (e.target.id === 'huddleModalBackdrop') closeHuddleModal();
@@ -765,10 +842,14 @@
   try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
+  if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
   if (!['curated', 'weekly', 'candidates', 'library', 'sources'].includes(state.mode)) state.mode = 'curated';
   if (searchInput && state.search) searchInput.value = state.search;
   switchMode(state.mode, true);
   loadSupplementalLibrary();
+  if (typeof loadBrowserRequests === 'function' && loadBrowserRequests().length && typeof refreshBrowserRequests === 'function') {
+    refreshBrowserRequests({ activeOnly: true, limit: 10 });
+  }
   const refreshLibraryAfterReturn = () => {
     if (SUPPLEMENTAL_LIBRARY.promise) return;
     const doi = exactDoi(state.search);

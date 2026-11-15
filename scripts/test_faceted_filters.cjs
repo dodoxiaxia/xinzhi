@@ -27,13 +27,16 @@ const papers = [
 const initial = () => ({
   mode: 'candidates', lane: 'cardio', range: '14', search: '', minor: false, reading: '',
   favoritesOnly: false, favoriteJournals: ['Circulation'], clinicalTier: '', publisher: '',
-  journal: '', studyDesign: '', tag: '', sort: 'date-desc', viewMode: 'compact', page: 4
+  journal: '', journals: [], journalTier: '', journalTierLegacy: false, studyDesign: '',
+  tag: '', tags: [], topicUnclassified: false, sort: 'date-desc', viewMode: 'compact', page: 4
 });
 const elements = Object.fromEntries(['tierFilterList', 'publisherAccordion', 'designFilterList', 'tagsCloud', 'activeFiltersBar'].map(id => [id, { innerHTML: '' }]));
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 const context = vm.createContext({DEFERRED:false,partsReady:()=>true,neededParts:()=>[],
   state: initial(), expandedPublishers: new Set(), getCurrentDataset: () => papers,
   usesLane: () => true, inLane: (p, lane) => lane === 'all' || p.lane === lane,
+  paperLane: p => p.lane, paperCrossAI: () => false, isCaseReport: p => p.studyDesign === '病例报告',
+  exactDoi: () => '', activeDeepReadingId: '', publishedDate: p => p.date || '', curatedDay: () => '',
   queryMatches: (text, query) => text.includes(query), quicklookOf: p => p.quicklook,
   hasAbstract: p => Boolean(p.summary), datePrecision: p => p.datePrecision,
   rangeStart: () => '2026-09-26', beijingToday: () => '2026-10-09',
@@ -41,12 +44,15 @@ const context = vm.createContext({DEFERRED:false,partsReady:()=>true,neededParts
   journalMetricBadge: () => '', URL, viewInUrl: false,
   window: { location: { href: 'https://example.test/?mode=candidates' } }
 });
-context.history = { replaceState: (_state, _title, url) => { context.window.location.href = new URL(url, context.window.location.href).href; } };
+context.history = { state: null, replaceState: (_state, _title, url) => { context.history.state = _state; context.window.location.href = new URL(url, context.window.location.href).href; } };
 vm.runInContext([
+  'paperTopicTags', 'parseTopicParams', 'selectedTags', 'isTopicUnclassified', 'hasTopicFilter',
   'publisherForJournal', 'sidebarSelections', 'clearSidebarFilters', 'selectSidebarFilter',
   'browseOnlyButton', 'paperDerived', 'paperSearchText', 'matchesQuery', 'selectedJournals', 'sidebarMisses', 'matchesSidebarFilters', 'matchesFilters',
   'renderSidebarFilters', 'renderActiveFilterChips', 'renderEmptyFilters', 'syncUrl', 'defaultRange'
-].map(fn).join('\n') + '\n' + ['PAPER_DERIVED', 'FACET_BITS'].map(name => source.match(new RegExp('  const ' + name + ' = [^\\n]+'))[0]).join('\n'), context);
+].map(fn).join('\n') + '\n'
+  + source.match(/  const TOPIC_TAGS = \[[^]*?\n  \];/)[0] + '\n'
+  + ['UNCLASSIFIED_TOPIC', 'PAPER_DERIVED', 'FACET_BITS'].map(name => source.match(new RegExp('  const ' + name + ' = [^\\n]+'))[0]).join('\n'), context);
 let checks = 0;
 const check = (value, label) => { assert(value, label); checks++; };
 const matches = () => papers.filter(p => context.matchesFilters(p, false)).map(p => p.id).join(',');
@@ -141,5 +147,61 @@ Object.assign(context.state, { favoritesOnly: true, favoriteJournals: [], search
 const followEmpty = context.renderEmptyFilters();
 check(followEmpty.includes('还没有关注期刊，点期刊名旁的 ☆ 关注'), 'Zero followed journals explains how to follow, rather than a generic empty list');
 check(!followEmpty.includes('当前领域、时间、关键词与筛选条件下暂无匹配'), 'Zero-follow empty state does not use the generic no-match copy');
+
+// Article topic multi-select OR, uncategorized mutual exclusion, cross-axis AND, unknown tags, and URL serialization
+papers.push(
+  paper('untagged-cohort', 'Circulation', 'AHA (Circulation)', '队列研究', { tags: [] }),
+  paper('af-hf-rct', 'Circulation', 'AHA (Circulation)', 'RCT', { tags: ['#房颤/电生理', '#心衰/心肌'] }),
+  paper('ai-ecg-cohort', 'NEJM', 'MMS (NEJM)', '队列研究', { tags: ['#AI-ECG', '#大模型/NLP'] }),
+  paper('bad-tag-rct', 'JAMA', 'JAMA Network', 'RCT', { tags: ['no-hash', '  #未知自定义  ', 123] })
+);
+reset();
+select('tag', '#房颤/电生理');
+select('tag', '#AI-ECG');
+check(matches() === 'af-hf-rct,ai-ecg-cohort', 'Multiple selected article topics use OR on the topic axis');
+check(context.selectedTags().join(',') === '#房颤/电生理,#AI-ECG' && !context.isTopicUnclassified(), 'Selected tags hold multiple topics without uncategorized');
+select('design', '队列研究');
+check(matches() === 'ai-ecg-cohort', 'Multi-topic OR intersects with studyDesign via AND');
+select('tag', 'uncategorized');
+check(matches() === 'untagged-cohort', 'Selecting uncategorized clears specific tags and intersects with design');
+check(context.selectedTags().length === 0 && context.isTopicUnclassified() === true, 'Uncategorized is mutually exclusive with specific tags');
+select('tag', '#AI-ECG');
+check(matches() === 'ai-ecg-cohort' && !context.isTopicUnclassified(), 'Selecting a specific tag clears uncategorized');
+select('tag', '');
+check(!context.hasTopicFilter() && context.state.studyDesign === '队列研究', 'Clearing topic removes topic condition while keeping design filter');
+{
+  const afterClear = matches().split(',').filter(Boolean);
+  const designed = papers.filter(p => p.studyDesign === context.state.studyDesign).map(p => p.id);
+  check(afterClear.every(id => designed.includes(id)) && afterClear.includes('untagged-cohort') && afterClear.includes('ai-ecg-cohort') && !afterClear.includes('bad-tag-rct'), 'Same-fixture papers keep the remaining design after topics are cleared; a different design is excluded');
+}
+
+reset();
+check(context.paperTopicTags({ tags: ['bad', ' #未知自定义 ', '#未知自定义', 42, '#影像'] }).join(',') === '#未知自定义,#影像', 'Malformed non-# values are ignored safely and valid # tags deduplicated');
+select('tag', '#未知自定义');
+check(matches() === 'bad-tag-rct', 'Unknown #-prefixed tags can still match safely without colliding with journal or disease tiers');
+select('tag', '');
+select('tag', 'uncategorized');
+check(matches() === 'untagged-cohort', 'Papers with only unknown #-prefixed tags are not treated as untagged');
+
+reset();
+select('tag', '#房颤/电生理');
+select('tag', '#大模型/NLP');
+context.syncUrl();
+let topicUrl = new URL(context.window.location.href);
+check(topicUrl.searchParams.get('tags') === '#房颤/电生理,#大模型/NLP' && !topicUrl.searchParams.has('tag'), 'Multiple topics serialize to ?tags= comma list');
+select('tag', '#大模型/NLP');
+context.syncUrl();
+topicUrl = new URL(context.window.location.href);
+check(topicUrl.searchParams.get('tag') === '#房颤/电生理' && !topicUrl.searchParams.has('tags'), 'Single topic serializes to ?tag= for legacy compatibility');
+select('tag', 'uncategorized');
+context.syncUrl();
+topicUrl = new URL(context.window.location.href);
+check(topicUrl.searchParams.get('tags') === 'uncategorized' && !topicUrl.searchParams.has('tag'), 'Uncategorized serializes to ?tags=uncategorized');
+const pSingle = context.parseTopicParams('#心电', '');
+check(pSingle.tags.join(',') === '#心电' && pSingle.tag === '#心电' && !pSingle.topicUnclassified, 'Legacy ?tag= parses into topic state');
+const pMulti = context.parseTopicParams('', '#房颤/电生理,#AI-ECG');
+check(pMulti.tags.join(',') === '#房颤/电生理,#AI-ECG' && !pMulti.topicUnclassified, 'Multi ?tags= parses into tags array');
+const pUncat = context.parseTopicParams('', 'uncategorized');
+check(pUncat.tags.length === 0 && pUncat.topicUnclassified === true, 'Uncategorized URL param parses cleanly');
 
 console.log('faceted filters: ' + checks + ' assertions passed');

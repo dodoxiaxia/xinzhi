@@ -196,3 +196,123 @@
     copyToClipboard(text, '已复制精选汇总文字');
   }
 
+  // This-Browser Request History Modal
+  function updateRequestsCounter() {
+    const el = $('#requestsCounter');
+    if (!el || typeof loadBrowserRequests !== 'function') return;
+    el.textContent = loadBrowserRequests().length;
+  }
+  function resolveBrowserRequestView(rec) {
+    const livePaper = (typeof exactDoiPapers === 'function' && exactDoiPapers(rec.doi)[0])
+      || (typeof DOI_FULLTEXT !== 'undefined' && DOI_FULLTEXT.get(rec.doi))
+      || null;
+    const liveJob = typeof DOI_JOBS !== 'undefined' ? DOI_JOBS.get(rec.doi) : null;
+    let kind = rec.status || 'queued';
+    let label = '已记录';
+    if (livePaper && typeof fulltextState === 'function') {
+      const ft = fulltextState(livePaper);
+      if (ft.kind === 'ready') { kind = 'ready'; label = '可下载'; }
+      else if (ft.kind === 'verifying') { kind = 'verifying'; label = '核验中'; }
+      else if (ft.kind === 'queued' || ft.kind === 'running') { kind = ft.kind; label = '排队下载'; }
+      else if (ft.kind === 'failed' || ft.kind === 'review') { kind = ft.kind; label = ft.short || '未取得'; }
+      else if (liveJob && liveJob.state) { kind = liveJob.state; label = '已记录'; }
+    } else if (liveJob) {
+      if (liveJob.stage === 'verifying') { kind = 'verifying'; label = '核验中'; }
+      else if (['queued', 'running'].includes(liveJob.state)) { kind = liveJob.state; label = '排队下载'; }
+      else if (['failed', 'manual_needed', 'review'].includes(liveJob.state)) { kind = liveJob.state; label = '未取得'; }
+    } else if (rec.status === 'available') {
+      kind = 'ready'; label = '可下载（待核对）';
+    } else if (rec.status === 'verifying') {
+      kind = 'verifying'; label = '核验中';
+    } else if (rec.status === 'queued' || rec.status === 'running') {
+      kind = rec.status; label = '排队下载';
+    } else if (['failed', 'manual_needed', 'review'].includes(rec.status)) {
+      kind = rec.status; label = '未取得';
+    } else if (rec.status === 'pending') {
+      kind = 'pending'; label = '待处理 / 查无进行中任务';
+    }
+    const dlUrl = livePaper && typeof pdfDownloadUrl === 'function' ? pdfDownloadUrl(livePaper) : '';
+    const title = (livePaper && livePaper.title) || rec.title || rec.doi;
+    const journal = (livePaper && (livePaper.cleanJournal || livePaper.journal)) || rec.journal || '';
+    const detailPaper = livePaper && typeof allPapersMap !== 'undefined' && allPapersMap.get(livePaper.id)
+      ? allPapersMap.get(livePaper.id)
+      : livePaper;
+    return { livePaper: detailPaper, kind, label, dlUrl, title, journal };
+  }
+  function renderRequestsModal() {
+    const body = $('#requestsModalBody');
+    if (!body || typeof loadBrowserRequests !== 'function') return;
+    const list = loadBrowserRequests();
+    updateRequestsCounter();
+    const refreshAllBtn = $('#refreshRequestsBtn');
+    if (refreshAllBtn) refreshAllBtn.disabled = list.length === 0;
+    const disclosure = `<p class="req-disclosure" role="note">仅保存在这台设备的这个浏览器（localStorage）中，不是账号同步，也不是服务器持久账本；状态刷新按完整 DOI 点查，不受默认领域筛选或动态补录前 100 条分页上限影响。仅在服务器确认提交或查到记录后才保存，网络不确定时不会自动重新排队。</p>`;
+    if (!list.length) {
+      body.innerHTML = disclosure + `<div class="empty-state" style="padding:24px;">
+        <p role="status">当前浏览器还没有已确认的全文申请记录。</p>
+        <small style="color:var(--text-muted);">提交获取全文且经服务器确认后，会记在这里以便随时回查状态。</small>
+      </div>`;
+      return;
+    }
+    const modeNames = { curated: '每日精选', weekly: '近7天榜', candidates: '文献雷达', library: '文献库' };
+    body.innerHTML = disclosure + list.map(rec => {
+      const v = resolveBrowserRequestView(rec);
+      const timeText = rec.requestedAt ? rec.requestedAt.slice(0, 16).replace('T', ' ') : '';
+      const srcLabel = rec.sourceMode && modeNames[rec.sourceMode] ? modeNames[rec.sourceMode] : '';
+      const checkedText = rec.lastCheckedAt ? ('最近核对 ' + rec.lastCheckedAt.slice(0, 16).replace('T', ' ')) : '';
+      const dlHtml = v.dlUrl
+        ? `<a href="${esc(v.dlUrl)}" target="_blank" rel="noopener" class="btn-sm btn-primary" data-ft-download="1">下载 PDF</a>`
+          + `<form class="ft-form ft-dl-form" data-ft-dl-form data-doi="${esc(rec.doi)}" hidden><label>全文口令 <input name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></label><button type="submit" class="btn-sm btn-primary">下载</button><span class="ft-error" role="alert"></span></form>`
+        : '';
+      const detailHtml = v.livePaper
+        ? `<button type="button" class="btn-sm" data-action="open-request-paper" data-doi="${esc(rec.doi)}">阅读详情</button>`
+        : `<button type="button" class="btn-sm" data-action="search-request-doi" data-doi="${esc(rec.doi)}">按 DOI 检索</button>`;
+      return `<article class="req-item" data-req-doi="${esc(rec.doi)}">
+        <div class="req-item-head">
+          <h4>${esc(v.title)}</h4>
+          <span class="req-status-badge req-status-${esc(v.kind)}">${esc(v.label)}</span>
+        </div>
+        <div class="req-item-meta">
+          <span>DOI: <code>${esc(rec.doi)}</code></span>
+          ${v.journal ? `<span>· ${esc(v.journal)}</span>` : ''}
+          ${srcLabel ? `<span>· 来自${esc(srcLabel)}</span>` : ''}
+          ${timeText ? `<span>· 申请于 ${esc(timeText)}</span>` : ''}
+          ${checkedText ? `<span>· ${esc(checkedText)}</span>` : ''}
+        </div>
+        ${rec.note ? `<p class="req-item-note">${esc(rec.note)}</p>` : ''}
+        <div class="req-item-actions">
+          ${detailHtml}
+          ${dlHtml}
+          <button type="button" class="btn-sm" data-action="refresh-request-doi" data-doi="${esc(rec.doi)}">刷新状态</button>
+          <button type="button" class="btn-sm" data-action="remove-request-doi" data-doi="${esc(rec.doi)}">移除</button>
+        </div>
+      </article>`;
+    }).join('');
+  }
+  let requestsLastFocus = null;
+  function openRequestsModal() {
+    const modal = $('#requestsModalBackdrop');
+    if (!modal) return;
+    renderRequestsModal();
+    const newlyOpened = !modal.classList.contains('open');
+    if (newlyOpened) { requestsLastFocus = document.activeElement; pushOverlay('requests'); }
+    modal.classList.add('open');
+    document.body.classList.add('dialog-open');
+    if (newlyOpened) $('#closeRequestsModalBtn')?.focus({ preventScroll: true });
+    if (typeof refreshBrowserRequests === 'function') {
+      refreshBrowserRequests({ activeOnly: true, limit: 10 }).then(() => {
+        if ($('#requestsModalBackdrop.open')) renderRequestsModal();
+      });
+    }
+  }
+  function closeRequestsModal({ fromHistory = false } = {}) {
+    if (!$('#requestsModalBackdrop.open')) return;
+    if (!fromHistory && popOverlay('requests')) return;
+    OVERLAY_PUSHED.delete('requests');
+    const modal = $('#requestsModalBackdrop');
+    if (modal) modal.classList.remove('open');
+    if (!$('#readerDrawer.open') && !$('#huddleModalBackdrop.open')) document.body.classList.remove('dialog-open');
+    requestsLastFocus?.focus({ preventScroll: true });
+    requestsLastFocus = null;
+  }
+

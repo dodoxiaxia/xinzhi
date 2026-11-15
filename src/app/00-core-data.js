@@ -174,7 +174,7 @@
   const DOI_JOB_WATCH = { timer: null, doi: '', startedAt: 0 };
   // DOIs whose full-text page the reader opened in another tab; rechecked when they come back.
   const DOI_TOUCHED = new Set();
-  const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, promise: null, refreshedAt: 0 };
+  const SUPPLEMENTAL_LIBRARY = { state: 'idle', cursor: '', more: false, loadedCount: 0, promise: null, refreshedAt: 0 };
   const LIBRARY_REFRESH_TTL_MS = 60000;
 
   function exactDoi(value) {
@@ -203,6 +203,9 @@
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
     const doi = exactDoi(raw.doi);
     if (!doi || typeof raw.title !== 'string' || !raw.title.trim() || raw.title.length > 800) return null;
+    const rawTags = Array.isArray(raw.tags)
+      ? raw.tags.map(t => typeof t === 'string' ? t.trim() : '').filter((t, i, a) => t && t.startsWith('#') && t.length <= 40 && a.indexOf(t) === i).slice(0, 4)
+      : [];
     const p = {
       id: raw.id, doi, title: raw.title, journal: typeof raw.journal === 'string' ? raw.journal.slice(0, 200) : '',
       authors: Array.isArray(raw.authors) ? raw.authors.filter(a => typeof a === 'string').slice(0, 30).map(a => a.slice(0, 120)) : [],
@@ -212,7 +215,7 @@
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
       fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
-      basis: '官方题录 · 非全文精读', tags: [], studyDesign: '研究类型待核验', quantitativeMetrics: {}
+      basis: '官方题录 · 非全文精读', tags: rawTags, studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
     p.cleanJournal = p.journal;
@@ -258,6 +261,7 @@
       allPapersMap.set(p.id, p);
     }
     _maxDateCache = null;
+    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(p.doi, '');
     return true;
   }
   function exactDoiPapers(doi) {
@@ -289,6 +293,7 @@
       sourceKind: ['reader_upload', 'open_access', 'download'].includes(raw.sourceKind) ? raw.sourceKind : '',
       reason: typeof raw.reason === 'string' && /^[a-z_]{1,40}$/.test(raw.reason) ? raw.reason : '',
       nextCheckSeconds: Number.isInteger(raw.nextCheckSeconds) && raw.nextCheckSeconds >= 15 && raw.nextCheckSeconds <= 120 ? raw.nextCheckSeconds : 15 });
+    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(doi, '');
   }
   function watchDoiJob(doi) {
     if (DOI_JOB_WATCH.timer) clearTimeout(DOI_JOB_WATCH.timer);
@@ -346,6 +351,18 @@
       || (!!job && (!prev || prev.mode === 'submit' || job.id !== prev.jobId || job.state !== prev.jobState));
     const live = liveFtForm(doi, form, inDrawer);
     if (hasProgress) {
+      if (typeof recordConfirmedRequest === 'function') {
+        recordConfirmedRequest({
+          doi,
+          title: paper && paper.title ? paper.title : '',
+          journal: paper ? (paper.cleanJournal || paper.journal || '') : '',
+          sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
+          status: view.kind === 'ready' ? 'available' : view.kind,
+          stage: job ? (job.stage || '') : (view.kind === 'ready' ? 'available' : ''),
+          paperId: paper && paper.id ? String(paper.id) : '',
+          checked: true
+        });
+      }
       if (live) {
         const inp = live.querySelector('input[name="passphrase"]'), btn = live.querySelector('button[type="submit"]'), err = live.querySelector('.ft-error');
         if (inp) inp.value = '';
@@ -412,6 +429,19 @@
       if (liveNowInput) liveNowInput.value = '';
       input.value = '';
       if (result && result.job) mergeDoiJob(doi, result.job);
+      if (typeof recordConfirmedRequest === 'function') {
+        const matchedPaper = exactDoiPapers(doi)[0] || DOI_FULLTEXT.get(doi) || {};
+        recordConfirmedRequest({
+          doi,
+          title: matchedPaper.title || '',
+          journal: matchedPaper.cleanJournal || matchedPaper.journal || '',
+          sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
+          status: result.job && result.job.stage === 'verifying' ? 'verifying' : ((result.job && result.job.state) || 'queued'),
+          stage: (result.job && result.job.stage) || 'queued',
+          paperId: matchedPaper.id ? String(matchedPaper.id) : '',
+          checked: true
+        });
+      }
       if (DOI_TOUCHED.size < 10) DOI_TOUCHED.add(doi);
       await lookupSupplementalDoi(doi, true);
       if (exactDoi(state.search) !== doi && !DOI_TOUCHED.has(doi)) refreshSupplementalView();
@@ -563,6 +593,68 @@
       }
     }
   }
+  function syncExistingBrowserRequest(doi, extraNote) {
+    if (typeof loadBrowserRequests !== 'function' || typeof recordConfirmedRequest !== 'function') return;
+    const clean = exactDoi(doi);
+    if (!clean) return;
+    const list = loadBrowserRequests();
+    if (!list.some(r => r.doi === clean)) return;
+    const paper = exactDoiPapers(clean)[0] || DOI_FULLTEXT.get(clean) || null;
+    const job = DOI_JOBS.get(clean) || null;
+    const status = paper && paper.fulltextStatus === 'available'
+      ? 'available'
+      : job && job.stage === 'verifying'
+      ? 'verifying'
+      : job && ['queued', 'running', 'review', 'failed', 'manual_needed'].includes(job.state)
+      ? job.state
+      : paper && ['review', 'manual_needed', 'pending'].includes(paper.fulltextStatus)
+      ? paper.fulltextStatus
+      : 'pending';
+    recordConfirmedRequest({
+      doi: clean,
+      title: paper && paper.title ? paper.title : '',
+      journal: paper ? (paper.cleanJournal || paper.journal || '') : '',
+      status,
+      stage: job ? (job.stage || '') : (status === 'available' ? 'available' : ''),
+      paperId: paper && paper.id ? String(paper.id) : '',
+      note: typeof extraNote === 'string' ? extraNote : '',
+      checked: true
+    });
+  }
+  let browserRequestsRefreshing = null;
+  function setRefreshRequestsBusy(busy) {
+    const btn = typeof $ === 'function' ? $('#refreshRequestsBtn') : null;
+    if (btn) btn.disabled = !!busy;
+  }
+  async function refreshBrowserRequests({ activeOnly = false, limit } = {}) {
+    if (typeof loadBrowserRequests !== 'function') return;
+    // If a refresh is already in flight, wait for it; a later "全部" click must still run after that.
+    while (browserRequestsRefreshing) await browserRequestsRefreshing;
+    const run = (async () => {
+      setRefreshRequestsBusy(true);
+      try {
+        const rows = loadBrowserRequests();
+        const targets = rows.filter(r => {
+          if (!r || !r.doi) return false;
+          if (activeOnly) return ['queued', 'running', 'verifying', 'pending'].includes(r.status) || !DOI_FULLTEXT.has(r.doi);
+          return true;
+        });
+        // A numeric limit is only for background/active-only probes. "刷新全部状态" omits it and must cover every saved record.
+        const capped = Number.isInteger(limit) && limit > 0 ? targets.slice(0, limit) : targets;
+        for (const row of capped) {
+          await lookupSupplementalDoi(row.doi, true);
+        }
+      } finally {
+        setRefreshRequestsBusy(false);
+      }
+    })();
+    browserRequestsRefreshing = run;
+    try {
+      await run;
+    } finally {
+      if (browserRequestsRefreshing === run) browserRequestsRefreshing = null;
+    }
+  }
   function refreshSupplementalView() {
     const snapshots = captureFtFormSnapshots();
     updateHeaderBadges();
@@ -570,6 +662,7 @@
     renderStream();
     if (state.activeDrawerPaper) openReaderDrawer(allPapersMap.get(state.activeDrawerPaper.id) || state.activeDrawerPaper);
     if ($('#huddleModalBackdrop.open')) openHuddleModal();
+    if ($('#requestsModalBackdrop.open') && typeof renderRequestsModal === 'function') renderRequestsModal();
     restoreFtFormSnapshots(snapshots);
   }
   async function lookupSupplementalDoi(doi, retry = false) {
@@ -588,10 +681,12 @@
           const previous = DOI_FULLTEXT.get(doi);
           if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
           DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
+          if (!result.job) syncExistingBrowserRequest(doi, '当前服务端查无该 DOI 记录或进行中任务');
         }
         else throw new Error('library_unavailable');
       } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
       if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
+      else if (typeof $ === 'function' && $('#requestsModalBackdrop.open') && typeof renderRequestsModal === 'function') renderRequestsModal();
       // Only the searched DOI owns the polling timer; a background recheck must not cancel it.
       if (exactDoi(state.search) === doi || DOI_JOB_WATCH.doi === doi) watchDoiJob(doi);
     })();
@@ -600,8 +695,10 @@
   }
   function loadSupplementalLibrary(refresh = false) {
     if (SUPPLEMENTAL_LIBRARY.promise) return SUPPLEMENTAL_LIBRARY.promise;
-    if (refresh) { SUPPLEMENTAL_LIBRARY.cursor = ''; SUPPLEMENTAL_LIBRARY.more = false; }
+    if (refresh) { SUPPLEMENTAL_LIBRARY.cursor = ''; SUPPLEMENTAL_LIBRARY.more = false; SUPPLEMENTAL_LIBRARY.loadedCount = 0; }
     SUPPLEMENTAL_LIBRARY.state = 'loading';
+    const seenDois = new Set();
+    if (!refresh) DOI_FULLTEXT.forEach((_, k) => seenDois.add(k));
     const run = async () => {
       try {
         const visited = new Set();
@@ -609,7 +706,12 @@
           const cursor = SUPPLEMENTAL_LIBRARY.cursor;
           const result = await libraryJson('/api/library?limit=20' + (cursor ? '&cursor=' + encodeURIComponent(cursor) : ''));
           if (!Array.isArray(result.papers) || result.papers.length > 20) throw new Error('library_unavailable');
-          result.papers.forEach(mergeSupplementalPaper);
+          result.papers.forEach(p => {
+            const clean = exactDoi(p && p.doi);
+            if (clean) seenDois.add(clean);
+            mergeSupplementalPaper(p);
+          });
+          SUPPLEMENTAL_LIBRARY.loadedCount = seenDois.size;
           if (Array.isArray(result.jobs) && result.jobs.length <= 20) result.jobs.forEach(job => { if (result.papers.some(p => exactDoi(p.doi) === job.doi)) mergeDoiJob(job.doi,job); });
           const next = typeof result.cursor === 'string' && result.cursor.length <= 2000 ? result.cursor : '';
           if (next && (next === cursor || visited.has(next))) throw new Error('library_unavailable');
