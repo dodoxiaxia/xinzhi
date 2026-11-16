@@ -51,7 +51,7 @@ def verify(path, doi, title):
     try:
         data = Path(path).read_bytes()
         result.update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
-        if not 51200 <= len(data) <= 20 * 1024 * 1024  # must match LIBRARY_MAX_PDF_BYTES or not data.startswith(b'%PDF-') or not re.search(rb'%%EOF\s*$', data[-1024:]):
+        if not 51200 <= len(data) <= 20 * 1024 * 1024 or not data.startswith(b'%PDF-') or not re.search(rb'%%EOF\s*$', data[-1024:]):  # must match LIBRARY_MAX_PDF_BYTES
             return result
         if not re.fullmatch(r'10\.\d{4,9}/[^\s<>?#@\\]{1,200}', doi) or doi != doi.lower() or len(normalized(title)) < 5:
             result['reason'] = 'invalid_identity'
