@@ -117,6 +117,105 @@ async function verifyNext(h, doi, result, reason) {
   assert.equal(splitWrong.verdict, 'mismatch'); assert.equal(splitWrong.reason, 'title_not_found'); // no free pass for another title
   assert.equal((await identity(h, splitBytes, '10.9999/synthetic.other', splitTitle)).reason, 'doi_not_found'); // DOI still has to be on the page
   assert.equal((await identity(h, splitBytes, split.doi, splitTitle + ' and more words that the page does not have')).reason, 'title_not_found');
+  // Marked-content dictionaries with a /BBox array must not swallow the following Tj / TJ strings.
+  // The title and DOI are Type0 glyph ids, so only the font decoder can recover them (not machinePdfStrings).
+  // A copy of the pre-fix walker (it advanced over "<<" / ">>" by two characters and left array mode on
+  // after "]") is kept here to prove the BDC+Tj fixture used to drop the text.
+  function legacyDecodeFontText(content, fonts) {
+    let out = '', font = null, name = '', last = null, array = null;
+    const length = content.length, delimiters = /[\s()<>\[\]{}\/%]/;
+    const escapes = {n:'\n',r:'\r',t:'\t',b:'\b',f:'\f'};
+    const hexBytes = run(h, 'machineHexBytes'), mapCodes = run(h, 'machineMapCodes');
+    for (let at = 0; at < length;) {
+      const char = content[at];
+      if (char === '(') {
+        let text = '', depth = 1;
+        for (at++; at < length && depth; at++) {
+          const c = content[at];
+          if (c === '\\') {
+            const next = content[at + 1] || '';
+            if (/[0-7]/.test(next)) { let digits = ''; while (digits.length < 3 && /[0-7]/.test(content[at + 1] || '')) { digits += content[at + 1]; at++; } text += String.fromCharCode(parseInt(digits, 8) & 255); }
+            else if (next === '\r' || next === '\n') { if (next === '\r' && content[at + 2] === '\n') at++; at++; }
+            else { text += escapes[next] !== undefined ? escapes[next] : next; at++; }
+            continue;
+          }
+          if (c === '(') depth++;
+          else if (c === ')') { depth--; if (!depth) break; }
+          text += c;
+        }
+        at++;
+        if (array) array.push(text); else last = text;
+      } else if (char === '<' && content[at + 1] === '<') at += 2;
+      else if (char === '>' && content[at + 1] === '>') at += 2;
+      else if (char === '<') {
+        const end = content.indexOf('>', at);
+        const text = hexBytes(content.slice(at + 1, end < 0 ? length : end));
+        at = end < 0 ? length : end + 1;
+        if (array) array.push(text); else last = text;
+      } else if (char === '[') { array = []; at++; }
+      else if (char === ']') at++;
+      else if (char === '%') { while (at < length && content[at] !== '\n' && content[at] !== '\r') at++; }
+      else if (char === '/') {
+        let end = at + 1;
+        while (end < length && !delimiters.test(content[end])) end++;
+        name = content.slice(at + 1, end);
+        at = end;
+      } else if (/\s|[{}>)]/.test(char)) at++;
+      else {
+        let end = at;
+        while (end < length && !delimiters.test(content[end])) end++;
+        if (end === at) end++;
+        const token = content.slice(at, end);
+        at = end;
+        if (array && /^-?[\d.]+$/.test(token)) { if (Number(token) < -200) array.push(null); continue; }
+        if (token === 'Tf') font = fonts.get(name) || null;
+        else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) out += mapCodes(font, last); last = null; }
+        else if (token === 'TJ') {
+          for (const part of array || []) out += part === null ? ' ' : mapCodes(font, part);
+          array = null; last = null;
+        } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) out += ' ';
+        else if (token === 'ET') out += '\n';
+        else if (token === 'BI') { const stop = content.indexOf('EI', at); at = stop < 0 ? length : stop + 2; }
+      }
+    }
+    return out;
+  }
+  async function pageContent(bytes) {
+    const ctx = run(h, 'machinePdfContext')(new Uint8Array(bytes));
+    const first = await run(h, 'machineFirstPageObject')(ctx);
+    const ids = await run(h, 'machineContentIds')(ctx, first.body);
+    const fonts = await run(h, 'machinePageFonts')(ctx, first.body);
+    let joined = '';
+    for (const id of ids) { const content = await run(h, 'machineContentText')(ctx, id); if (content) joined += content + '\n'; }
+    return {joined, fonts};
+  }
+  async function assertMarked(name, bytes, sample, {legacyMustDrop}) {
+    const {joined, fonts} = await pageContent(bytes);
+    const legacy = legacyDecodeFontText(joined, fonts);
+    const decoded = run(h, 'machineDecodeFontText')(joined, fonts);
+    const normalize = run(h, 'machineNormalize');
+    if (legacyMustDrop) {
+      assert.equal(normalize(legacy).includes(normalize(sample.title)), false, name + ' pre-fix walker must not read the title');
+      assert.equal(run(h, 'machineDoiPresent')(legacy, sample.doi), false, name + ' pre-fix walker must not read the DOI');
+    } else {
+      assert(normalize(legacy).includes(normalize(sample.title)), name + ' pre-fix walker must still read the TJ title');
+      assert(run(h, 'machineDoiPresent')(legacy, sample.doi), name + ' pre-fix walker must still read the TJ DOI');
+    }
+    assert(normalize(decoded).includes(normalize(sample.title)), name + ' decoder must read the title');
+    assert(run(h, 'machineDoiPresent')(decoded, sample.doi), name + ' decoder must read the DOI');
+    const page = await run(h, 'machineFirstPage')(new Uint8Array(bytes));
+    assert.equal(page.readable, true, name);
+    const verdict = await identity(h, bytes, sample.doi, sample.title);
+    assert.equal(verdict.verdict, 'ok', name);
+    assert.equal(verdict.level, 'full', name);
+    assert.equal(verdict.checks.title, 'page', name);
+    assert.equal((await identity(h, bytes, sample.doi, 'Synthetic unrelated study of imaginary tides and moons')).reason, 'title_not_found');
+    assert.equal((await identity(h, bytes, '10.9999/synthetic.other', sample.title)).reason, 'doi_not_found');
+  }
+  const {bdcTj, bdcTJ, nested} = fixtures.samples;
+  await assertMarked('bdc-bbox-tj', fixtures.bdcBBoxTj(bdcTj), bdcTj, {legacyMustDrop:true});
+  await assertMarked('bdc-bbox-TJ', fixtures.bdcBBoxTJ(bdcTJ), bdcTJ, {legacyMustDrop:false});
+  await assertMarked('nested-dict-tj', fixtures.nestedDictTj(nested), nested, {legacyMustDrop:true});
   // Readable page text with a different title is never rescued by metadata.
   const readableWrong = fixtures.flateEol({...flate});
   assert.equal((await identity(h, readableWrong, flate.doi, 'Synthetic unrelated study of imaginary tides and moons')).reason, 'title_not_found');
