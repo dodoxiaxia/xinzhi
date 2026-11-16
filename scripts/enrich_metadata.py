@@ -293,12 +293,12 @@ TAG_RULES = [
     ('#房颤/电生理', r'\batrial fibrillation\b|\bafib\b|\bcatheter ablation\b|\belectrophysiolog|\bpvi\b|\barrhythmi|\bpulmonary vein\b|\bantiarrhythmic\b'),
     ('#心衰/心肌', r'\bheart failure\b|\bhfref\b|\bhfpef\b|\bcardiomyopath|\bgdmt\b|\bejection fraction\b|\bsglt2\b|\bsacubitril\b'),
     ('#心电', r'\becg\b|\belectrocardiogram|\b12-lead\b|\belectrocardiographic\b|\bqt interval\b'),
-    ('#大模型/NLP', r'\blanguage model\b|\bllm\b|\bchatgpt\b|\bgenerative ai\b|\bnlp\b|\bgpt\b|\btransformer\b'),
+    ('#大模型/NLP', r'\blanguage model\b|\bllm\b|\bchatgpt\b|\bgenerative ai\b|\bnlp\b|\bgpt\b|\btransformer\b|\bai[- ]generated\b|\b(?:clinical|visit|consultation|encounter) transcripts?\b'),
     ('#卒中/抗凝', r'\bstroke\b|\banticoagula|\bthrombos|\bbleeding\b|\bnoac\b|\bdoac\b|\bischemic attack\b|\bwarfarin\b'),
     ('#高血压/血管', r'\bhypertension\b|\bblood pressure\b|\bvascular\b|\barterial\b|\batvb\b|\bantihypertensive\b'),
-    ('#冠脉介入', r'\bpci\b|\bstent\b|\bcoronary\b|\bangioplasty\b|\bmyocardial infarction\b|\bacs\b'),
+    ('#冠脉介入', r'\bpci\b|\bpercutaneous coronary intervention\b|\bstent\b|\bcoronary\b|\bangioplasty\b|\bmyocardial infarction\b|\bacs\b|\bivus\b|\bintravascular ultrasound\b|(?<!\d[ /.-])\boct\b(?!\.?\s*\d)|\bintravascular optical coherence tomography\b|\boct[- ]guided\b|\bcto\b|\bchronic total occlusion\b|\bantegrade dissection and re[- ]entry\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b'),
     ('#穿戴/远程监测', r'\bwearable\b|\bsmartwatch\b|\bremote monitoring\b|\btelehealth\b|\bdigital biomarker\b|\bphotoplethysmography\b|\bppg\b'),
-    ('#影像', r'\bcomputed tomography\b|\bmri\b|\bmagnetic resonance\b|\bechocardiograph|\bultrasound\b|\bperfusion\b|\bangio\b')
+    ('#影像', r'\bcomputed tomography\b|\bmri\b|\bmagnetic resonance\b|\bechocardiograph|\bultrasound\b|\bperfusion\b|\bangio\b|\bivus\b|\bintravascular ultrasound\b|(?<!\d[ /.-])\boct\b(?!\.?\s*\d)|\boptical coherence tomography\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b')
 ]
 
 def extract_tags(title, summary=''):
@@ -327,7 +327,13 @@ def clear_tag_overlay_cache():
 
 
 def _load_tag_overlay():
-    """Load only well-formed, reviewed overlay rows; malformed data is inert."""
+    """Load well-formed overlay rows; malformed data is inert.
+
+    A paper may have more than one row (doi and/or id). For each key, and when
+    doi and id both match the same paper, keep the highest origin:
+    human > machine_reviewed > machine_agreed. Equal origins keep the earlier
+    row in the file. A row that has both doi and id is indexed under both keys.
+    """
     global _TAG_OVERLAY_CACHE
     if _TAG_OVERLAY_CACHE is not None:
         return _TAG_OVERLAY_CACHE
@@ -337,7 +343,8 @@ def _load_tag_overlay():
         if not isinstance(rows, list):
             return {}
         result = {}
-        for row in rows:
+        priority = {'machine_agreed': 0, 'machine_reviewed': 1, 'human': 2}
+        for order, row in enumerate(rows):
             if not isinstance(row, dict):
                 continue
             origin = row.get('tagOrigin')
@@ -349,11 +356,16 @@ def _load_tag_overlay():
                 continue
             doi = row.get('doi')
             paper_id = row.get('id')
-            key = ('doi', doi.lower().strip()) if isinstance(doi, str) and doi.strip() else None
-            if key is None and isinstance(paper_id, str) and paper_id.strip():
-                key = ('id', paper_id.strip())
-            if key is not None:
-                result[key] = (origin, tags)
+            entry = (origin, tags, priority[origin], order)
+            keys = []
+            if isinstance(doi, str) and doi.strip():
+                keys.append(('doi', doi.lower().strip()))
+            if isinstance(paper_id, str) and paper_id.strip():
+                keys.append(('id', paper_id.strip()))
+            for key in keys:
+                previous = result.get(key)
+                if previous is None or entry[2] > previous[2]:
+                    result[key] = entry
         _TAG_OVERLAY_CACHE = result
         return _TAG_OVERLAY_CACHE
     except (OSError, ValueError, TypeError):
@@ -362,13 +374,22 @@ def _load_tag_overlay():
 
 
 def _overlay_entry(p, overlay):
+    """Choose the highest-origin match; ties use the earliest overlay row."""
+    candidates = []
     doi = p.get('doi')
     if isinstance(doi, str) and doi.strip():
         found = overlay.get(('doi', doi.lower().strip()))
         if found:
-            return found
+            candidates.append(found)
     paper_id = p.get('id')
-    return overlay.get(('id', paper_id.strip())) if isinstance(paper_id, str) and paper_id.strip() else None
+    if isinstance(paper_id, str) and paper_id.strip():
+        found = overlay.get(('id', paper_id.strip()))
+        if found:
+            candidates.append(found)
+    if not candidates:
+        return None
+    chosen = max(candidates, key=lambda entry: (entry[2], -entry[3]))
+    return chosen[0], chosen[1]
 
 
 def resolve_topic_tags(paper, title=None, summary=None):
