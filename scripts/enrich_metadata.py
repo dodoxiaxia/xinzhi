@@ -289,11 +289,14 @@ def classify_study_design(title, summary='', publication_types=()):
     return '研究类型待核验'
 
 # 5. Modality & Clinical Tags
+# AI-generated is not a standalone #大模型/NLP trigger. It counts only when the
+# same title+summary also matches llm, large language model, gpt, chatgpt, or
+# generative ai (those patterns already appear in the #大模型/NLP rule, all word-bounded).
 TAG_RULES = [
     ('#房颤/电生理', r'\batrial fibrillation\b|\bafib\b|\bcatheter ablation\b|\belectrophysiolog|\bpvi\b|\barrhythmi|\bpulmonary vein\b|\bantiarrhythmic\b'),
     ('#心衰/心肌', r'\bheart failure\b|\bhfref\b|\bhfpef\b|\bcardiomyopath|\bgdmt\b|\bejection fraction\b|\bsglt2\b|\bsacubitril\b'),
     ('#心电', r'\becg\b|\belectrocardiogram|\b12-lead\b|\belectrocardiographic\b|\bqt interval\b'),
-    ('#大模型/NLP', r'\blanguage model\b|\bllm\b|\bchatgpt\b|\bgenerative ai\b|\bnlp\b|\bgpt\b|\btransformer\b|\bai[- ]generated\b|\b(?:clinical|visit|consultation|encounter) transcripts?\b'),
+    ('#大模型/NLP', r'\blanguage model\b|\bllm\b|\blarge language model\b|\bchatgpt\b|\bgenerative ai\b|\bnlp\b|\bgpt\b|\btransformer\b|\b(?:clinical|visit|consultation|encounter) transcripts?\b'),
     ('#卒中/抗凝', r'\bstroke\b|\banticoagula|\bthrombos|\bbleeding\b|\bnoac\b|\bdoac\b|\bischemic attack\b|\bwarfarin\b'),
     ('#高血压/血管', r'\bhypertension\b|\bblood pressure\b|\bvascular\b|\barterial\b|\batvb\b|\bantihypertensive\b'),
     ('#冠脉介入', r'\bpci\b|\bpercutaneous coronary intervention\b|\bstent\b|\bcoronary\b|\bangioplasty\b|\bmyocardial infarction\b|\bacs\b|\bivus\b|\bintravascular ultrasound\b|(?<!\d[ /.-])\boct\b(?!\.?\s*\d)|\bintravascular optical coherence tomography\b|\boct[- ]guided\b|\bcto\b|\bchronic total occlusion\b|\bantegrade dissection and re[- ]entry\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b'),

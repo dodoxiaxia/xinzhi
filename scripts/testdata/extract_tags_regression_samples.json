@@ -89,5 +89,19 @@
     "must_not_have": [
       "#冠脉介入"
     ]
+  },
+  {
+    "id": "negative-ai-generated-alone",
+    "title": "AI-generated characters for supporting personalized learning and well-being",
+    "must_not_have": [
+      "#大模型/NLP"
+    ]
+  },
+  {
+    "id": "positive-ai-generated-with-chatgpt",
+    "title": "The value of AI-generated discharge summaries written with ChatGPT",
+    "must_have": [
+      "#大模型/NLP"
+    ]
   }
 ]
