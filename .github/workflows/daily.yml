@@ -243,6 +243,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_home_title_overlay.py'
           python3 -m unittest discover -s scripts -p 'test_tailored_figure_sources.py'
           python3 -m unittest discover -s scripts -p 'test_sol_gap_overlay.py'
+          python3 -m unittest discover -s scripts -p 'test_tag_backfill_overlay.py'
           python3 -m unittest discover -s scripts -p 'test_journal*.py'
           python3 -m unittest discover -s scripts -p 'test_ci_daily.py'
           python3 -m unittest discover -s scripts -p 'test_auto_picks.py'
