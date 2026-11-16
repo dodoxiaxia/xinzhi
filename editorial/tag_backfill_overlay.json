@@ -29,7 +29,8 @@
       "pmid": "",
       "tags": [
         "#AI-ECG",
-        "#房颤/电生理"
+        "#房颤/电生理",
+        "#心衰/心肌"
       ],
       "tagOrigin": "machine_agreed",
       "batchId": "tag-backfill-20261116-1",
@@ -39,7 +40,13 @@
         "title",
         "abstract"
       ],
-      "sampleId": "B005"
+      "sampleId": "B005",
+      "addedBatchId": "tag-backfill-20261116-1-broad",
+      "addedTags": [
+        "#心衰/心肌"
+      ],
+      "addedModel": "gemini-4-hydrogen-high",
+      "addedInputHash": "935fcc6223258fb1e6f7afc321f0e204aea5b32aa73a4396d14302bc505bf6a6"
     },
     {
       "id": "caa248ff71664eea",
@@ -695,7 +702,8 @@
       "doi": "10.1016/j.jaccas.2026.110216",
       "pmid": "",
       "tags": [
-        "#房颤/电生理"
+        "#房颤/电生理",
+        "#影像"
       ],
       "tagOrigin": "machine_agreed",
       "batchId": "tag-backfill-20261116-1",
@@ -705,7 +713,13 @@
         "title",
         "abstract"
       ],
-      "sampleId": "B071"
+      "sampleId": "B071",
+      "addedBatchId": "tag-backfill-20261116-1-broad",
+      "addedTags": [
+        "#影像"
+      ],
+      "addedModel": "gemini-4-hydrogen-high",
+      "addedInputHash": "a777b090dc7180eb156c4c2b0d00d5980158762cdb9f5cabb8a626b0dd2a027e"
     },
     {
       "id": "rss-99eadcc75743a579",
@@ -780,7 +794,8 @@
       "doi": "10.1016/j.jaccas.2026.110631",
       "pmid": "",
       "tags": [
-        "#房颤/电生理"
+        "#房颤/电生理",
+        "#影像"
       ],
       "tagOrigin": "machine_agreed",
       "batchId": "tag-backfill-20261116-1",
@@ -790,7 +805,13 @@
         "title",
         "abstract"
       ],
-      "sampleId": "B084"
+      "sampleId": "B084",
+      "addedBatchId": "tag-backfill-20261116-1-broad",
+      "addedTags": [
+        "#影像"
+      ],
+      "addedModel": "gemini-4-hydrogen-high",
+      "addedInputHash": "270b4f4076903c3d9e050401db8265bcad9cf879b5a4da9402d016c626d351ae"
     },
     {
       "id": "rss-8c094f6b7c46a95d",
@@ -1115,6 +1136,335 @@
         "abstract"
       ],
       "sampleId": "B153"
+    },
+    {
+      "id": "a947fed5a4857757",
+      "doi": "10.1001/jamacardio.2026.3829",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ee07c59befc018ebe5646cfb2f9d9b79d4b2113b04656455a6ce11979e8729d7",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B001"
+    },
+    {
+      "id": "dabf3d4ad95502c6",
+      "doi": "10.1016/j.jacadv.2026.103170",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "3f2c413ae122c86cbf1725875e5d622cbc833b7209234a1c7e484c1bd4c0fdc0",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B003"
+    },
+    {
+      "id": "rss-ea74bdadad2f61e5",
+      "doi": "10.1016/j.ahj.2026.107650",
+      "pmid": "",
+      "tags": [
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "651894015c62219cb3bed963825372a534719558f483321c908eaa91efa3e262",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B045"
+    },
+    {
+      "id": "rss-0b109eb553c6bf97",
+      "doi": "10.1016/j.amjcard.2026.10.028",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "44a1116a2f1face3df332f7516407eef27c4ce9c1cf51c1388680cacffda1d12",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B047"
+    },
+    {
+      "id": "rss-0163abf3454c8291",
+      "doi": "10.1016/j.jaccas.2026.110202",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "98d6c7ca59c7c3d18adf675332c10deea126f3094836b3cebec813d5500c0b45",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B069"
+    },
+    {
+      "id": "rss-a4c212b07b165ecb",
+      "doi": "10.1016/j.jaccas.2026.110633",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "07c8a096544d2a5f6a532ba39a572b2eb9f26d461bf7b45300090345466de088",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B085"
+    },
+    {
+      "id": "rss-4653b2235c9a0c62",
+      "doi": "10.1016/j.jaccas.2026.110658",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c9b79e579dac1bbbd3fae71f79704fa6776571e6cfa4a1a20b0fa107c0016e48",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B089"
+    },
+    {
+      "id": "rss-73c8a995d7b48f36",
+      "doi": "10.1016/j.jaccas.2026.111003",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d7d0cfdf146ce1f031c27228ea086252d06e4f9d7df292c7142ffccd74191267",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B100"
+    },
+    {
+      "id": "rss-bb976369e8406e87",
+      "doi": "10.1016/j.jaccas.2026.111127",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ab861604d48065d49fc03485d53780f85c188117d49df95db193f1954ce07974",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B104"
+    },
+    {
+      "id": "rss-7465237f97f67124",
+      "doi": "10.1016/j.jaccas.2026.111139",
+      "pmid": "",
+      "tags": [
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1164b1122852b6aedaf989d71dd929c151e524f315771ddb5ae958e3e26c4ed2",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B105"
+    },
+    {
+      "id": "rss-9dc081e661e43103",
+      "doi": "10.1016/j.jaccas.2026.111205",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4ef670795a93d156524dd11a059e5dfd34e8de0dde44e1cbbe3c742c61fc63f6",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B110"
+    },
+    {
+      "id": "rss-594ff44bf85dacae",
+      "doi": "10.1016/j.jaccas.2026.111217",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e1c7a840cf63198eaaa2cd66836dfffa44cfd1401e79a5d22c6913910aed7cf8",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B113"
+    },
+    {
+      "id": "rss-68d5ea04171adb7a",
+      "doi": "10.1016/j.jcin.2026.08.037",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "aed528d31f3a3f295f9522d8b505279f7eb787b8581504a60c61adaf2b320d97",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B124"
+    },
+    {
+      "id": "rss-ae4fb68e2c021a3f",
+      "doi": "10.1016/j.pcad.2026.11.002",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "09458fcd89c3261206da75b69c84aac53b7102d3cbf3de5b6e2b5ab9fb59a69e",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B132"
+    },
+    {
+      "id": "rss-5a38ab183cd6dac9",
+      "doi": "10.1038/s44161-026-00889-1",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "43bf99a4880e0793d1e1c7d3074cb8353d917d6bea1cd6b6ecf78136728d06d3",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B137"
+    },
+    {
+      "id": "rss-709b1d62c1c292f4",
+      "doi": "10.1038/s44161-026-00908-1",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d014e9c37129d80379946d477f0559bf6774380d1dda0adeadcc261187cfb50b",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B138"
+    },
+    {
+      "id": "pmid-43001732",
+      "doi": "10.1056/nejmc2611265",
+      "pmid": "43001732",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d9c90f8624735ee335ff5d1dea47387db500bfb8e31f65e9e1e9d2cb0b3fa485",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B139"
+    },
+    {
+      "id": "rss-d35a2cd046acfb8e",
+      "doi": "10.1136/openhrt-2026-004338",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "dffce88d89e75e47902015d91f9073a8127d12269f55afcd24a13dde9d33c436",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B148",
+      "note": "边缘例：主题实为介入入路，按抽核决定仍写入 #高血压/血管。"
+    },
+    {
+      "id": "pmid-42969140",
+      "doi": "10.1161/circulationaha.126.081422",
+      "pmid": "42969140",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_agreed",
+      "batchId": "tag-backfill-20261116-1-broad",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a93aed3471f6c4ae76af03c80ec0915203e0fdc68a5097a3ccd74b59d5a82fcb",
+      "inputFields": [
+        "title",
+        "abstract"
+      ],
+      "sampleId": "B150"
     }
-  ]
+  ],
+  "broadBatchId": "tag-backfill-20261116-1-broad",
+  "broadModel": "gemini-4-hydrogen-high",
+  "broadOfficialState": "788421d8669794bee448d7665122a24d713b33e1",
+  "broadCodeShaForExtractTags": "0b68f3520b16f1ef855496bc2ccc5ea9e3c8510d",
+  "broadNote": "第1批四个宽标签按「必须是论文主题」重跑后，只写入模型与正则相交且通过校验的标签。已有专指标签只合并、不覆盖。B095 仅模型有标，未写入。B148 为边缘例（主题实为介入入路），按抽核决定写入。"
 }
