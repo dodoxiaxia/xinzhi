@@ -167,5 +167,87 @@ class TagBackfillOverlayTests(unittest.TestCase):
         self.assertEqual(enrich.enrich_paper(self.paper())['tags'], ['#影像'])
 
 
+SPECIFIC_TAGS = {
+    '#房颤/电生理', '#卒中/抗凝', '#大模型/NLP', '#AI-ECG', '#心电', '#穿戴/远程监测',
+}
+BROAD_TAGS = {'#影像', '#心衰/心肌', '#高血压/血管', '#冠脉介入'}
+
+
+class CommittedOverlayFileTests(unittest.TestCase):
+    """Read the committed overlay and derive expected tags from that same file.
+
+    Counts are observed from the file under test, not hardcoded state inventory.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.overlay_path = Path(enrich.TAG_BACKFILL_OVERLAY)
+        cls.raw = json.loads(cls.overlay_path.read_text(encoding='utf-8'))
+        cls.items = cls.raw.get('items') or []
+
+    def setUp(self):
+        enrich.clear_tag_overlay_cache()
+        self.addCleanup(enrich.clear_tag_overlay_cache)
+
+    def test_committed_overlay_rows_are_well_formed_specific_tags(self):
+        self.assertTrue(self.overlay_path.is_file())
+        self.assertIsInstance(self.items, list)
+        self.assertGreater(len(self.items), 0)
+        self.assertEqual(self.raw.get('tagOrigin'), 'machine_agreed')
+        self.assertEqual(self.raw.get('model'), 'gemini-4-hydrogen-high')
+        self.assertTrue(self.raw.get('batchId'))
+        ids, dois, hashes = [], [], []
+        for row in self.items:
+            self.assertIsInstance(row, dict)
+            tags = row.get('tags')
+            self.assertIsInstance(tags, list)
+            self.assertTrue(tags)
+            self.assertLessEqual(len(tags), 4)
+            self.assertEqual(len(tags), len(set(tags)))
+            self.assertTrue(all(tag in SPECIFIC_TAGS for tag in tags))
+            self.assertFalse(any(tag in BROAD_TAGS for tag in tags))
+            self.assertEqual(row.get('tagOrigin'), 'machine_agreed')
+            self.assertEqual(row.get('batchId'), self.raw.get('batchId'))
+            self.assertEqual(row.get('model'), self.raw.get('model'))
+            self.assertTrue(isinstance(row.get('id'), str) and row['id'].strip())
+            self.assertTrue(isinstance(row.get('doi'), str) and row['doi'].strip())
+            self.assertTrue(isinstance(row.get('inputHash'), str) and row['inputHash'].strip())
+            ids.append(row['id'].strip())
+            dois.append(row['doi'].lower().strip())
+            hashes.append(row['inputHash'])
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(len(dois), len(set(dois)))
+        self.assertEqual(len(hashes), len(set(hashes)))
+
+    def test_resolve_topic_tags_returns_overlay_tags_for_every_committed_row(self):
+        regex_title = 'Coronary stent outcomes'
+        regex_tags = enrich.extract_tags(regex_title, '')
+        self.assertEqual(regex_tags, ['#冠脉介入'])
+        expected_by_doi = {row['doi'].lower().strip(): list(row['tags']) for row in self.items}
+        expected_by_id = {row['id'].strip(): list(row['tags']) for row in self.items}
+        with patch('builtins.print'):
+            for row in self.items:
+                by_doi = enrich.resolve_topic_tags(
+                    {'doi': row['doi'], 'title': regex_title, 'summary': ''},
+                    title=regex_title, summary='')
+                by_id = enrich.resolve_topic_tags(
+                    {'id': row['id'], 'title': regex_title, 'summary': ''},
+                    title=regex_title, summary='')
+                self.assertEqual(by_doi, expected_by_doi[row['doi'].lower().strip()])
+                self.assertEqual(by_id, expected_by_id[row['id'].strip()])
+                self.assertTrue(all(tag in SPECIFIC_TAGS for tag in by_doi))
+                self.assertNotIn('#冠脉介入', by_doi)
+
+    def test_unknown_paper_keeps_regex_and_priority_order_is_unchanged(self):
+        title = 'Atrial fibrillation and heart failure'
+        expected_regex = enrich.extract_tags(title, '')
+        self.assertTrue(expected_regex)
+        unknown = {'id': 'not-in-overlay', 'doi': '10.0/not-in-overlay', 'title': title, 'summary': ''}
+        self.assertEqual(enrich.resolve_topic_tags(unknown, title=title, summary=''), expected_regex)
+        source = Path(enrich.__file__).read_text(encoding='utf-8')
+        self.assertIn("human > machine_reviewed > machine_agreed", source)
+        self.assertIn("priority = {'machine_agreed': 0, 'machine_reviewed': 1, 'human': 2}", source)
+
+
 if __name__ == '__main__':
     unittest.main()
