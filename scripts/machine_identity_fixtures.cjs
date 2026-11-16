@@ -161,12 +161,57 @@ function splitOperatorAcrossStreams({doi, title}) {
   ];
   return finish(assemble(parts), '', 'trailer\n<< /Size 9 /Root 1 0 R >>\n');
 }
+// Type0 / Identity-H glyphs so the title and DOI live only in the ToUnicode map. A Helvetica / ASCII literal
+// would let machinePdfStrings recover the words even when the decoder stays stuck in array mode, and the fixture
+// would not prove the BDC /BBox bug.
+function glyphTools(text) {
+  const alphabet = [...new Set([...text])].sort(), glyph = new Map(alphabet.map((ch, n) => [ch, 0x0100 + n * 3]));
+  const hex = code => code.toString(16).toUpperCase().padStart(4, '0');
+  const shown = value => '<' + [...value].map(ch => hex(glyph.get(ch))).join('') + '>';
+  let cmap = '/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Adobe-Identity-UCS def /CMapType 2 def\n1 begincodespacerange <0000> <FFFF> endcodespacerange\n';
+  cmap += alphabet.length + ' beginbfchar\n' + alphabet.map(ch => '<' + hex(glyph.get(ch)) + '> <' + hex(ch.codePointAt(0)) + '>').join('\n') + '\nendbfchar\nendcmap end end\n';
+  return {shown, cmap};
+}
+function type0Page({contentText, cmap}) {
+  const content = zlib.deflateSync(latin1(contentText));
+  const parts = [
+    {id:1, head:'<< /Type /Catalog /Pages 2 0 R >>\n'},
+    {id:2, head:'<< /Type /Pages /Count 1 /Kids [3 0 R] >>\n'},
+    {id:3, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F2 6 0 R >> >> /Contents 4 0 R >>\n'},
+    {id:4, ...stream('/Filter /FlateDecode', content)},
+    {id:6, head:'<< /Type /Font /Subtype /Type0 /BaseFont /ABCDEF+SyntheticSans /Encoding /Identity-H /DescendantFonts [7 0 R] /ToUnicode 8 0 R >>\n'},
+    {id:7, head:'<< /Type /Font /Subtype /CIDFontType2 /BaseFont /ABCDEF+SyntheticSans /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> >>\n'},
+    {id:8, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(cmap)))}
+  ];
+  return finish(assemble(parts), '', 'trailer\n<< /Size 9 /Root 1 0 R >>\n');
+}
+// F: tagged-PDF marked-content dictionary with a /BBox array, then hex Tj (the 103428 shape). Built in memory only.
+function bdcBBoxTj({doi, title}) {
+  const tools = glyphTools(doi + title);
+  return type0Page({cmap:tools.cmap, contentText:'BT /F2 12 Tf 1 0 0 1 72 720 Tm /Artifact << /BBox [0 0 100 20] /Type /Layout >> BDC '
+    + tools.shown(doi) + ' Tj 0 -24 Td ' + tools.shown(title) + ' Tj EMC ET\n'});
+}
+// G: the same marked-content dictionary, but the title and DOI are written with TJ arrays (the 103445 / 103484 shape).
+function bdcBBoxTJ({doi, title}) {
+  const tools = glyphTools(doi + title);
+  return type0Page({cmap:tools.cmap, contentText:'BT /F2 12 Tf 1 0 0 1 72 720 Tm /Span << /Lang (en) /BBox [72 700 540 740] >> BDC '
+    + '[' + tools.shown(doi) + '] TJ 0 -24 Td [' + tools.shown(title) + '] TJ EMC ET\n'});
+}
+// H: nested dictionaries, a literal string that itself contains ">>", and a /BBox array in the inner dict, then Tj.
+function nestedDictTj({doi, title}) {
+  const tools = glyphTools(doi + title);
+  return type0Page({cmap:tools.cmap, contentText:'BT /F2 12 Tf 1 0 0 1 72 720 Tm /Span << /Lang (en) /Info << /BBox [1 2 3 4] /Note (contains >> and << tokens) >> >> BDC '
+    + tools.shown(doi) + ' Tj 0 -24 Td ' + tools.shown(title) + ' Tj EMC ET\n'});
+}
 const samples = {
   flate: {doi:'10.9999/synthetic.flate', title:'Synthetic trailing newline after compressed page content in an imaginary cohort'},
   objstm: {doi:'10.9999/synthetic.objstm', title:'Synthetic page tree stored inside an object stream of an imaginary registry'},
   custom: {doi:'10.9999/synthetic.enc', title:'Synthetic custom glyph encoding recovered through a unicode map'},
   wide: {doi:'10.9999/synthetic.wide', title:'Effect of synthetic offsets on imaginary staff: a ligature headline, set in a simple font'},
-  split: {doi:'10.9999/synthetic.split', title:'Synthetic ambient scribes in imaginary practice: | A staff offset trial across a split operator'}
+  split: {doi:'10.9999/synthetic.split', title:'Synthetic ambient scribes in imaginary practice: | A staff offset trial across a split operator'},
+  bdcTj: {doi:'10.9999/synthetic.bdctj', title:'Synthetic marked content bbox array ahead of a typographic string'},
+  bdcTJ: {doi:'10.9999/synthetic.bdctjarr', title:'Synthetic marked content bbox array ahead of a kerning array'},
+  nested: {doi:'10.9999/synthetic.nest', title:'Synthetic nested marked content dictionaries around a typographic string'}
 };
 function files() {
   return {
@@ -175,7 +220,7 @@ function files() {
     'custom-encoding-tounicode.pdf':customEncoding(samples.custom)
   };
 }
-module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
+module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
 if (require.main === module) {
   fs.mkdirSync(module.exports.directory, {recursive:true});
   for (const [name, bytes] of Object.entries(files())) fs.writeFileSync(path.join(module.exports.directory, name), bytes);

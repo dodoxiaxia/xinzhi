@@ -3302,13 +3302,45 @@ function machineMapCodes(font, bytes) {
   return out;
 }
 // Walks the operators of a content stream and decodes Tj / TJ / ' / " strings through the current font's ToUnicode map.
+// Marked-content dictionaries (<<...>> after BDC/BMC, including nested ones) are skipped whole so a /BBox array
+// inside the dictionary cannot leave the walker in TJ-array mode. "]" closes that mode; the closed array is kept
+// only for a TJ that follows it (including when "]" ends one /Contents stream and "TJ" starts the next).
 function machineDecodeFontText(content, fonts) {
   if (!fonts.size) return '';
-  let out = '', font = null, name = '', last = null, array = null;
+  let out = '', font = null, name = '', last = null, array = null, pending = null;
   const length = content.length, delimiters = /[\s()<>\[\]{}\/%]/;
   const escapes = {n:'\n',r:'\r',t:'\t',b:'\b',f:'\f'};
+  const skipLiteral = start => {
+    let depth = 0;
+    for (let i = start; i < length; i++) {
+      if (content[i] === '\\') { i++; continue; }
+      if (content[i] === '(') depth++;
+      else if (content[i] === ')') { depth--; if (!depth) return i + 1; }
+    }
+    return length;
+  };
+  const skipDict = start => {
+    let depth = 0, i = start;
+    while (i < length) {
+      if (content[i] === '<' && content[i + 1] === '<') { depth++; i += 2; continue; }
+      if (content[i] === '>' && content[i + 1] === '>') { depth--; i += 2; if (!depth) return i; continue; }
+      if (content[i] === '(') { i = skipLiteral(i); continue; }
+      if (content[i] === '<' && content[i + 1] !== '<') {
+        const end = content.indexOf('>', i + 1);
+        i = end < 0 ? length : end + 1;
+        continue;
+      }
+      if (content[i] === '%') {
+        while (i < length && content[i] !== '\n' && content[i] !== '\r') i++;
+        continue;
+      }
+      i++;
+    }
+    return length;
+  };
   for (let at = 0; at < length;) {
     const char = content[at];
+    if (char === '<' && content[at + 1] === '<') { at = skipDict(at); continue; }
     if (char === '(') {
       let text = '', depth = 1;
       for (at++; at < length && depth; at++) {
@@ -3326,15 +3358,13 @@ function machineDecodeFontText(content, fonts) {
       }
       at++;
       if (array) array.push(text); else last = text;
-    } else if (char === '<' && content[at + 1] === '<') at += 2;
-    else if (char === '>' && content[at + 1] === '>') at += 2;
-    else if (char === '<') {
+    } else if (char === '<') {
       const end = content.indexOf('>', at);
       const text = machineHexBytes(content.slice(at + 1, end < 0 ? length : end));
       at = end < 0 ? length : end + 1;
       if (array) array.push(text); else last = text;
-    } else if (char === '[') { array = []; at++; }
-    else if (char === ']') at++;
+    } else if (char === '[') { array = []; pending = null; last = null; at++; }
+    else if (char === ']') { pending = array; array = null; at++; }
     else if (char === '%') { while (at < length && content[at] !== '\n' && content[at] !== '\r') at++; }
     else if (char === '/') {
       let end = at + 1;
@@ -3349,14 +3379,15 @@ function machineDecodeFontText(content, fonts) {
       const token = content.slice(at, end);
       at = end;
       if (array && /^-?[\d.]+$/.test(token)) { if (Number(token) < -200) array.push(null); continue; }
-      if (token === 'Tf') font = fonts.get(name) || null;
-      else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) out += machineMapCodes(font, last); last = null; }
+      if (token === 'Tf') { font = fonts.get(name) || null; pending = null; }
+      else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) out += machineMapCodes(font, last); last = null; pending = null; }
       else if (token === 'TJ') {
-        for (const part of array || []) out += part === null ? ' ' : machineMapCodes(font, part);
-        array = null; last = null;
-      } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) out += ' ';
-      else if (token === 'ET') out += '\n';
-      else if (token === 'BI') { const stop = content.indexOf('EI', at); at = stop < 0 ? length : stop + 2; }
+        for (const part of array || pending || []) out += part === null ? ' ' : machineMapCodes(font, part);
+        array = null; pending = null; last = null;
+      } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) { out += ' '; pending = null; }
+      else if (token === 'ET') { out += '\n'; pending = null; }
+      else if (token === 'BI') { const stop = content.indexOf('EI', at); at = stop < 0 ? length : stop + 2; pending = null; }
+      else pending = null;
     }
   }
   return out;
