@@ -35,6 +35,7 @@ const job = h => JSON.parse(h.values.get('library:muse-job:' + doi));
   await error(await readerUpload(h,{headers:{'sec-fetch-site':'cross-site'}}),403,'pdf_origin');
   await error(await readerUpload(h,{bytes:Buffer.from('<html>' + 'x'.repeat(60000) + '</html>')}),415,'muse_bad_pdf');
   await error(await readerUpload(h,{bytes:Buffer.from('%PDF-1.7\nsmall\n%%EOF\n')}),413,'muse_bad_pdf');
+  await error(await readerUpload(h,{headers:{'content-length':String(20 * 1024 * 1024 + 65536 + 1)}}),413,'file_too_large');
   await error(await readerUpload(h,{body:form([['pdf',new Blob([original]),'a.pdf'],['passphrase','synthetic-passphrase'],['extra','x']])}),400,'pdf_bad_form');
   assert.equal(h.writes.filter(w => w.key.startsWith('library:muse')).length,0);
 

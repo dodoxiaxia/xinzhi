@@ -2,6 +2,7 @@
 // Synthetic machine tokens only. No live publisher, KV, or model calls.
 const assert = require('assert');
 const crypto = require('crypto');
+const vm = require('vm');
 const {setup,token} = require('./test_fulltext_auth_helpers.cjs');
 const {doi,title,hash,error} = require('./test_doi_library_worker.cjs');
 const {runReview} = require('./muse_review_runner.cjs');
@@ -125,6 +126,9 @@ async function review(h, body) {
   assert.deepEqual(protocol.statusDetail.reasons, ['source_blocked']);
   assert.equal(protocol.limits.listLimitDefault, 20);
   assert.equal(protocol.limits.listLimitMax, 50);
+  assert.equal(protocol.limits.minPdfBytes, 51200);
+  assert.equal(protocol.limits.maxPdfBytes, 20 * 1024 * 1024);
+  assert.equal(protocol.limits.oversizeError, 'file_too_large');
   assert(!JSON.stringify(protocol).includes(dsh));
   assert(!JSON.stringify(protocol).includes(museKey));
   const museProtocol = await (await h.context.worker.fetch(new Request(base + '/api/muse/protocol'), h.env)).json();
@@ -139,6 +143,39 @@ async function review(h, body) {
   h.env.MACHINE_TOKENS = '{';
   const broken = await (await h.context.worker.fetch(new Request(base + '/api/machine/protocol'), h.env)).json();
   assert.equal(broken.configured, false);
+
+  // Size gates only: 10,773,309 bytes (the hrthm.2026.11.011 class) is under 20 MiB;
+  // a Content-Length or body above 20 MiB is 413 file_too_large. Undersize stays muse_bad_pdf.
+  // Built in memory; no large file is committed.
+  h = await create();
+  const run = code => vm.runInContext(code, h.context);
+  const maxPdf = 20 * 1024 * 1024, midBytes = 10773309;
+  function bodyRequest(declared, bytes) {
+    const payload = bytes || new Uint8Array(0);
+    let sent = false;
+    return {
+      headers: {get(name) { return String(name).toLowerCase() === 'content-length' && declared != null ? String(declared) : null; }},
+      body: {getReader() { return {async read() { if (sent) return {done:true}; sent = true; return {done:false, value:payload}; }, cancel() {}}; }}
+    };
+  }
+  async function expectLibraryFail(promise, status, code) {
+    try { await promise; assert.fail('expected ' + code); }
+    catch (err) { assert.equal(err.status, status, code); assert.equal(err.code, code); }
+  }
+  const midBody = await run('machineReadBody')(bodyRequest(midBytes, new Uint8Array(midBytes)), maxPdf);
+  assert.equal(midBody.length, midBytes);
+  await expectLibraryFail(run('machineReadBody')(bodyRequest(maxPdf + 1, new Uint8Array(1)), maxPdf), 413, 'file_too_large');
+  await expectLibraryFail(run('machineReadBody')(bodyRequest('nope', new Uint8Array(100)), maxPdf), 413, 'muse_bad_pdf');
+  function sizeGatePdf(size) {
+    const head = Buffer.from('%PDF-1.7\n'), tail = Buffer.from('\n%%EOF\n');
+    return Buffer.concat([head, Buffer.alloc(size - head.length - tail.length, 0x20), tail]);
+  }
+  seedPaper(h, doi);
+  const midUpload = await upload(h, sizeGatePdf(midBytes), doi);
+  assert.notEqual(midUpload.status, 413);
+  const midUploadBody = await midUpload.json();
+  assert.notEqual(midUploadBody.error, 'file_too_large');
+  await error(await upload(h, sizeGatePdf(100), doi), 413, 'muse_bad_pdf');
 
   h = await create();
   const beforeRoles = h.writes.length;

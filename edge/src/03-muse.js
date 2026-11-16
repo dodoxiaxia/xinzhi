@@ -309,7 +309,7 @@ async function museArchiveSuperseded(env, previous, newId, doi, now) {
 }
 
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
-  if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
+  libraryRejectUploadPdfSize(bytes.length);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
   const sha256 = await pdfDigest('SHA-256',bytes), candidateKey = 'library:muse-candidate:' + sha256;
   await libraryPut(env.QL_KV,candidateKey,bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset + bytes.byteLength),{expirationTtl:604800});

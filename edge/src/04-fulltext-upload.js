@@ -14,7 +14,7 @@ const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
     + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
-    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
+    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–20 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
     + pdfOfficialLink(doi),notice ? 403 : 200,'上传全文 PDF',doi);
@@ -23,7 +23,8 @@ async function museReadForm(request) {
   const type = request.headers.get('content-type') || '';
   if (!/^multipart\/form-data;/i.test(type)) pdfFail('pdf_content_type',415);
   const declared = request.headers.get('content-length');
-  if (declared && (!/^\d+$/.test(declared) || Number(declared) > MUSE_UPLOAD_FORM_BYTES)) libraryFail('muse_bad_pdf',413);
+  if (declared && !/^\d+$/.test(declared)) libraryFail('muse_bad_pdf',413);
+  if (declared && Number(declared) > MUSE_UPLOAD_FORM_BYTES) libraryFail('file_too_large',413);
   const reader = request.body && request.body.getReader();
   if (!reader) pdfFail('pdf_bad_form',400);
   const chunks = []; let size = 0;
@@ -31,7 +32,7 @@ async function museReadForm(request) {
     let item; try { item = await reader.read(); } catch { pdfFail('pdf_bad_form',400); }
     if (item.done) break;
     size += item.value.byteLength;
-    if (size > MUSE_UPLOAD_FORM_BYTES) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); }
+    if (size > MUSE_UPLOAD_FORM_BYTES) { pdfCancel(reader); libraryFail('file_too_large',413); }
     chunks.push(item.value);
   }
   const body = new Uint8Array(size); let offset = 0;
@@ -53,7 +54,7 @@ async function handleMuseReaderUpload(request, env) {
     const {passphrase,file} = await museReadForm(request);
     await pdfVerifyPassphrase(passphrase,env,request);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
+    libraryRejectUploadPdfSize(bytes.length);
     try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
     let paper = libraryPaper(await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi),doi);
     if (paper?.fulltextStatus === 'available') return libraryResult(request,paper,'',true);
@@ -208,7 +209,7 @@ async function handleMuseUpload(request, env) {
     if (length && (!/^\d+$/.test(length) || Number(length) !== job.bytes)) libraryFail('muse_bad_pdf',413);
     const reader = request.body?.getReader(); if (!reader) libraryFail('muse_bad_pdf',400);
     const chunks = []; let size = 0;
-    while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > job.bytes || size > LIBRARY_MAX_PDF_BYTES) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); } chunks.push(item.value); }
+    while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > LIBRARY_MAX_PDF_BYTES) { pdfCancel(reader); libraryFail('file_too_large',413); } if (size > job.bytes) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); } chunks.push(item.value); }
     const bytes = new Uint8Array(size); let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.byteLength; }
     if (size !== job.bytes || await pdfDigest('SHA-256',bytes) !== job.sha256) libraryFail('muse_bad_pdf',409);

@@ -155,7 +155,7 @@ function privateSourceNotProjected(value) {
   for (const failureResponse of [
     () => new Response(githubPdf,{headers:{'content-type':'application/pdf'}}),
     () => new Response(Buffer.concat([Buffer.from('not a PDF'),Buffer.alloc(60*1024)]),{headers:{'content-type':'application/pdf'}}),
-    () => new Response(null,{headers:{'content-type':'application/pdf','content-length':String(10*1024*1024+1)}})
+    () => new Response(null,{headers:{'content-type':'application/pdf','content-length':String(20*1024*1024+1)}})
   ]) {
     h = fixture({pdfResponse:failureResponse}); assert.equal((await (await request(h)).json()).status,'review'); assert.equal(pdfWrites(h).length,0);
   }

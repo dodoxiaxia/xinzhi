@@ -6,7 +6,7 @@ const {readJson,ready,serviceError,failureLog} = require('./fulltext_import_runn
 const crypto = require('crypto');
 const ENDPOINT = 'https://learn.dryz.info/api/drive-archive';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files', UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
-const MAX_BYTES = 10 * 1024 * 1024, PER_RUN = 20;
+const MAX_BYTES = 20 * 1024 * 1024, PER_RUN = 20; // must match LIBRARY_MAX_PDF_BYTES
 const validDoi = doi => typeof doi === 'string' && /^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(doi) && doi === doi.toLowerCase() && !/[<>?#@\\]/.test(doi);
 function driveName(task) {
   const title = Array.from(task.title.replace(/[\x00-\x1f\x7f\/\\":<>|?*]/g,' ').replace(/\s+/g,' ').trim()).slice(0,120).join('');

@@ -146,7 +146,8 @@ async function machineStatsBump(env, caller, field, amount = 1) {
 }
 async function machineReadBody(request, max) {
   const declared = request.headers.get('content-length');
-  if (declared && (!/^\d+$/.test(declared) || Number(declared) > max)) libraryFail('muse_bad_pdf', 413);
+  if (declared && !/^\d+$/.test(declared)) libraryFail('muse_bad_pdf', 413);
+  if (declared && Number(declared) > max) libraryFail('file_too_large', 413);
   const reader = request.body && request.body.getReader();
   if (!reader) libraryFail('machine_bad_request', 400);
   const chunks = [];
@@ -156,7 +157,7 @@ async function machineReadBody(request, max) {
     try { item = await reader.read(); } catch { libraryFail('machine_bad_request', 400); }
     if (item.done) break;
     size += item.value.byteLength;
-    if (size > max) { pdfCancel(reader); libraryFail('muse_bad_pdf', 413); }
+    if (size > max) { pdfCancel(reader); libraryFail('file_too_large', 413); }
     chunks.push(item.value);
   }
   const bytes = new Uint8Array(size);
@@ -173,7 +174,8 @@ async function machineReadUpload(request) {
   }
   if (request.method === 'POST' && /^multipart\/form-data;/i.test(type)) {
     const declared = request.headers.get('content-length');
-    if (declared && (!/^\d+$/.test(declared) || Number(declared) > LIBRARY_MAX_PDF_BYTES + 65536)) libraryFail('muse_bad_pdf', 413);
+    if (declared && !/^\d+$/.test(declared)) libraryFail('muse_bad_pdf', 413);
+    if (declared && Number(declared) > LIBRARY_MAX_PDF_BYTES + 65536) libraryFail('file_too_large', 413);
     const body = await machineReadBody(request, LIBRARY_MAX_PDF_BYTES + 65536);
     let form;
     try { form = await new Response(body, {headers:{'content-type':type}}).formData(); } catch { libraryFail('machine_bad_request', 400); }
@@ -182,7 +184,7 @@ async function machineReadUpload(request) {
     const doi = typeof doiText === 'string' ? libraryDoi(doiText) : '';
     if (!doi || !file || typeof file === 'string') libraryFail('machine_bad_request', 400);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+    libraryFailIfPdfTooLarge(bytes.length);
     return {doi, bytes};
   }
   libraryFail('machine_bad_request', 415);
@@ -496,7 +498,7 @@ function handleMachineProtocol(request, env) {
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
-      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS},
+      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS,minPdfBytes:LIBRARY_MIN_PDF_BYTES,maxPdfBytes:LIBRARY_MAX_PDF_BYTES,oversizeError:'file_too_large'},
     emptyClaimRetry:{bodyField:'retryAfter',legacyBodyField:'retryAfterSeconds',header:'Retry-After',emptyQueueSeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,scanLimitSeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,indexBuildingSeconds:MACHINE_INDEX_BUILDING_RETRY_SECONDS,note:'空领取（task 为 null）时，响应体同时带 retryAfter 与 retryAfterSeconds，单位都是秒，与 Retry-After 响应头相同。现有客户端若读不到响应头，请读 retryAfter。队列真空 300 秒，claim_scan_limit 与索引回填中各 60 秒。'},
     stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
       note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
@@ -528,7 +530,7 @@ async function handleMachineUpload(request, env) {
     const replacing = replaceHeader === '1';
     if (replacing && !machineMayReplace(caller)) libraryFail('machine_forbidden', 403);
     const {doi, bytes} = await machineReadUpload(request);
-    if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+    libraryRejectUploadPdfSize(bytes.length);
     try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf', 415); }
     const sha256 = await pdfDigest('SHA-256', bytes);
     const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);

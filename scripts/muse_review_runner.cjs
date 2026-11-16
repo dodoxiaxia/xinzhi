@@ -26,7 +26,7 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
       headers:{authorization:'Bearer ' + token,'content-type':'application/json','user-agent':'XinZhiMuseVerifier/1.0'},body:JSON.stringify(input)});
     if (binary && response.ok && response.headers.get('content-type') === 'application/pdf') {
       const chunks = []; let size = 0;
-      for await (const chunk of response.body) { size += chunk.length; if (size > 10 * 1024 * 1024) throw new Error('invalid_candidate'); chunks.push(chunk); }
+      for await (const chunk of response.body) { size += chunk.length; if (size > 20 * 1024 * 1024) throw new Error('invalid_candidate'); chunks.push(chunk); }
       return Buffer.concat(chunks,size);
     }
     const body = await readJson(response);
@@ -54,7 +54,7 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     if (!task || typeof task.doi !== 'string' || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(task.doi) || /[<>?#@\\]/.test(task.doi)
         || task.doi !== task.doi.toLowerCase() || (recheckDoi && task.doi !== recheckDoi) || typeof task.title !== 'string' || !task.title || task.title.length > 800
         || !uuid.test(task.taskId || '') || !uuid.test(task.leaseId || '') || !/^[a-f0-9]{64}$/.test(task.sha256 || '')
-        || !Number.isInteger(task.bytes) || task.bytes < 51200 || task.bytes > 10 * 1024 * 1024) throw new Error('invalid_candidate');
+        || !Number.isInteger(task.bytes) || task.bytes < 51200 || task.bytes > 20 * 1024 * 1024) throw new Error('invalid_candidate');
     const identity = {taskId:task.taskId,doi:task.doi,leaseId:task.leaseId};
     const bytes = await call({action:'bytes',...identity},true);
     if (bytes.length !== task.bytes || crypto.createHash('sha256').update(bytes).digest('hex') !== task.sha256) throw new Error('invalid_candidate');

@@ -343,6 +343,8 @@ def cmd_upload(args):
         err = data.get("error") or ""
         if err in ("machine_identity", "machine_identity_mismatch"):
             eprint("网站核验读不了这份原件（%s）。停止，不要改 PDF 再传。把上面的 JSON 报告给 ddx。" % err)
+        elif err == "file_too_large":
+            eprint("文件超过网站 PDF 上限（file_too_large，见 /api/machine/protocol 的 limits.maxPdfBytes）。停止，不要改文件再传。")
     return emit(payload, 0 if rc == 0 else rc)
 
 
