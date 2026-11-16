@@ -370,8 +370,8 @@ def make_archive(candidates,library):
             continue
         if not key or key not in pool:raise ValueError('Checked article has no archived metadata: '+key)
         p=dict(pool[key]);d=dict(draft)
-        from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, extract_tags
-        p.update(cleanJournal=clean_journal_name(p.get('journal')), publisher=classify_publisher(p.get('journal'),p.get('url')), clinicalTier=classify_clinical_tier(p.get('journal'),p.get('title','')), studyDesign=classify_study_design(p.get('title',''),p.get('summary',''),p.get('pubTypes',())), tags=extract_tags(p.get('title',''),p.get('summary','')))
+        from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, resolve_topic_tags
+        p.update(cleanJournal=clean_journal_name(p.get('journal')), publisher=classify_publisher(p.get('journal'),p.get('url')), clinicalTier=classify_clinical_tier(p.get('journal'),p.get('title','')), studyDesign=classify_study_design(p.get('title',''),p.get('summary',''),p.get('pubTypes',())), tags=resolve_topic_tags(p, title=p.get('title',''), summary=p.get('summary','')))
         d['published']=date
         p.update(hasDraft=True,draftData=d);archive.append(public_paper(p))
     return archive
@@ -400,7 +400,7 @@ def make_radar(candidates,tz=None,corrections=None):
     """Compact 365-day PubMed title archive (radar 30/90/365-day views). Day-precision rows only."""
     path=ROOT/'data/radar-archive.json'
     if not path.exists():return None
-    from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, extract_tags
+    from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, resolve_topic_tags
     a=load('data/radar-archive.json')
     corrections=corrections if corrections is not None else load_corrections(ROOT)
     # Do not publish a metadata-only rebuild over an existing abstract archive.
@@ -440,7 +440,7 @@ def make_radar(candidates,tz=None,corrections=None):
             absmap[str(r['pmid'])]=[[x.get('l',''),x.get('t','')] for x in f['a']]
         rows.append([r['pmid'],r.get('doi',''),r['date'],idx('jn',cj),idx('pub',classify_publisher(j,url)),
                      idx('tier',classify_clinical_tier(j,r['title'])),idx('design',annotated['studyDesign']),
-                     [idx('tag',t) for t in extract_tags(r['title'],atext)],r['title']])
+                     [idx('tag',t) for t in resolve_topic_tags(dict(r, doi=r.get('doi'), id='pmid:'+str(r.get('pmid'))), title=r['title'], summary=atext)],r['title']])
     if not rows:return None
     lists={k:[v for v,_ in sorted(d.items(),key=lambda kv:kv[1])] for k,d in pools.items()}
     return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):corrected_title({'pmid':r[0],'doi':r[1],'title':r[8]},tz['pmid:%s'%r[0]],corrections) for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows,

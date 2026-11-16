@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from scope_filter import scope_decision
 
 ROOT = Path(__file__).resolve().parents[1]
+TAG_BACKFILL_OVERLAY = ROOT / 'editorial/tag_backfill_overlay.json'
 
 # Known journal aliases only: preserve the raw `journal` field as provenance.
 def _journal_key(journal):
@@ -310,6 +311,86 @@ def extract_tags(title, summary=''):
         matched[matched.index('#心电')] = '#AI-ECG'
     return matched[:4]
 
+
+_VALID_TAGS = {tag for tag, _ in TAG_RULES} | {'#AI-ECG'}
+
+
+_TAG_OVERLAY_CACHE = None
+TAG_OVERLAY_RECONCILE_LOG = []
+
+
+def clear_tag_overlay_cache():
+    """Clear the cached overlay and reconciliation records."""
+    global _TAG_OVERLAY_CACHE
+    _TAG_OVERLAY_CACHE = None
+    TAG_OVERLAY_RECONCILE_LOG.clear()
+
+
+def _load_tag_overlay():
+    """Load only well-formed, reviewed overlay rows; malformed data is inert."""
+    global _TAG_OVERLAY_CACHE
+    if _TAG_OVERLAY_CACHE is not None:
+        return _TAG_OVERLAY_CACHE
+    try:
+        data = json.loads(TAG_BACKFILL_OVERLAY.read_text(encoding='utf-8'))
+        rows = data.get('items', []) if isinstance(data, dict) else []
+        if not isinstance(rows, list):
+            return {}
+        result = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            origin = row.get('tagOrigin')
+            if origin not in {'human', 'machine_agreed', 'machine_reviewed'}:
+                continue
+            tags = row.get('tags')
+            if (not isinstance(tags, list) or not tags or len(tags) > 4
+                    or any(not isinstance(tag, str) or tag not in _VALID_TAGS for tag in tags)):
+                continue
+            doi = row.get('doi')
+            paper_id = row.get('id')
+            key = ('doi', doi.lower().strip()) if isinstance(doi, str) and doi.strip() else None
+            if key is None and isinstance(paper_id, str) and paper_id.strip():
+                key = ('id', paper_id.strip())
+            if key is not None:
+                result[key] = (origin, tags)
+        _TAG_OVERLAY_CACHE = result
+        return _TAG_OVERLAY_CACHE
+    except (OSError, ValueError, TypeError):
+        _TAG_OVERLAY_CACHE = {}
+        return _TAG_OVERLAY_CACHE
+
+
+def _overlay_entry(p, overlay):
+    doi = p.get('doi')
+    if isinstance(doi, str) and doi.strip():
+        found = overlay.get(('doi', doi.lower().strip()))
+        if found:
+            return found
+    paper_id = p.get('id')
+    return overlay.get(('id', paper_id.strip())) if isinstance(paper_id, str) and paper_id.strip() else None
+
+
+def resolve_topic_tags(paper, title=None, summary=None):
+    """Resolve tags with human and reviewed overlay decisions ahead of regex."""
+    title = paper.get('title', '') if title is None else title
+    summary = paper.get('summary', '') if summary is None else summary
+    regex_tags = extract_tags(title, summary)
+    existing_tags = paper.get('tags')
+    overlay_entry = _overlay_entry(paper, _load_tag_overlay())
+    if paper.get('tagOrigin') == 'human' and isinstance(existing_tags, list) and existing_tags:
+        return existing_tags
+    if overlay_entry:
+        origin, overlay_tags = overlay_entry
+        if origin == 'machine_agreed' and set(overlay_tags) != set(regex_tags):
+            record = {'doi': paper.get('doi'), 'id': paper.get('id'),
+                      'overlayTags': list(overlay_tags), 'regexTags': list(regex_tags)}
+            TAG_OVERLAY_RECONCILE_LOG.append(record)
+            identifier = record['doi'] or record['id'] or '(unknown paper)'
+            print(f"标签对账：保留 overlay {identifier}；overlay={overlay_tags} regex={regex_tags}")
+        return overlay_tags
+    return regex_tags
+
 # 6. Quantitative Metrics Extraction
 def extract_quantitative_metrics(title, summary=''):
     text = f"{title or ''} {summary or ''}"
@@ -548,7 +629,7 @@ def enrich_paper(p, drafts_by_doi={}, drafts_by_url={}):
     # A case-report journal is direct evidence of the article type when nothing else is known.
     if design == '研究类型待核验' and CASE_REPORT_JOURNALS.match(journal):
         design = '病例报告'
-    tags = extract_tags(title, summary)
+    tags = resolve_topic_tags(p, title=title, summary=summary)
     quant_metrics = extract_quantitative_metrics(title, summary)
 
     p['publisher'] = pub
