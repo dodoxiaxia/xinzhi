@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from scope_filter import scope_decision
 
 ROOT = Path(__file__).resolve().parents[1]
+TAG_BACKFILL_OVERLAY = ROOT / 'editorial/tag_backfill_overlay.json'
 
 # Known journal aliases only: preserve the raw `journal` field as provenance.
 def _journal_key(journal):
@@ -310,6 +311,49 @@ def extract_tags(title, summary=''):
         matched[matched.index('#心电')] = '#AI-ECG'
     return matched[:4]
 
+
+_VALID_TAGS = {tag for tag, _ in TAG_RULES} | {'#AI-ECG'}
+
+
+def _load_tag_overlay():
+    """Load only well-formed, reviewed overlay rows; malformed data is inert."""
+    try:
+        data = json.loads(TAG_BACKFILL_OVERLAY.read_text(encoding='utf-8'))
+        rows = data.get('items', []) if isinstance(data, dict) else []
+        if not isinstance(rows, list):
+            return {}
+        result = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            origin = row.get('tagOrigin')
+            if origin not in {'human', 'machine_agreed', 'machine_reviewed'}:
+                continue
+            tags = row.get('tags')
+            if (not isinstance(tags, list) or not tags or len(tags) > 4
+                    or any(not isinstance(tag, str) or tag not in _VALID_TAGS for tag in tags)):
+                continue
+            doi = row.get('doi')
+            paper_id = row.get('id')
+            key = ('doi', doi.lower().strip()) if isinstance(doi, str) and doi.strip() else None
+            if key is None and isinstance(paper_id, str) and paper_id.strip():
+                key = ('id', paper_id.strip())
+            if key is not None:
+                result[key] = (origin, tags)
+        return result
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _overlay_entry(p, overlay):
+    doi = p.get('doi')
+    if isinstance(doi, str) and doi.strip():
+        found = overlay.get(('doi', doi.lower().strip()))
+        if found:
+            return found
+    paper_id = p.get('id')
+    return overlay.get(('id', paper_id.strip())) if isinstance(paper_id, str) and paper_id.strip() else None
+
 # 6. Quantitative Metrics Extraction
 def extract_quantitative_metrics(title, summary=''):
     text = f"{title or ''} {summary or ''}"
@@ -548,7 +592,19 @@ def enrich_paper(p, drafts_by_doi={}, drafts_by_url={}):
     # A case-report journal is direct evidence of the article type when nothing else is known.
     if design == '研究类型待核验' and CASE_REPORT_JOURNALS.match(journal):
         design = '病例报告'
-    tags = extract_tags(title, summary)
+    regex_tags = extract_tags(title, summary)
+    existing_tags = p.get('tags')
+    overlay_entry = _overlay_entry(p, _load_tag_overlay())
+    if (p.get('tagOrigin') == 'human' and isinstance(existing_tags, list) and existing_tags):
+        tags = existing_tags
+    elif overlay_entry and overlay_entry[0] == 'human':
+        tags = overlay_entry[1]
+    elif regex_tags:
+        tags = regex_tags
+    elif overlay_entry:
+        tags = overlay_entry[1]
+    else:
+        tags = []
     quant_metrics = extract_quantitative_metrics(title, summary)
 
     p['publisher'] = pub
