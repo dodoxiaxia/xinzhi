@@ -167,6 +167,10 @@ class TagBackfillOverlayTests(unittest.TestCase):
         self.assertEqual(enrich.enrich_paper(self.paper())['tags'], ['#影像'])
 
 
+VOCAB_TAGS = {
+    '#房颤/电生理', '#卒中/抗凝', '#大模型/NLP', '#AI-ECG', '#心电', '#穿戴/远程监测',
+    '#影像', '#心衰/心肌', '#高血压/血管', '#冠脉介入',
+}
 SPECIFIC_TAGS = {
     '#房颤/电生理', '#卒中/抗凝', '#大模型/NLP', '#AI-ECG', '#心电', '#穿戴/远程监测',
 }
@@ -189,14 +193,12 @@ class CommittedOverlayFileTests(unittest.TestCase):
         enrich.clear_tag_overlay_cache()
         self.addCleanup(enrich.clear_tag_overlay_cache)
 
-    def test_committed_overlay_rows_are_well_formed_specific_tags(self):
+    def test_committed_overlay_rows_are_well_formed(self):
         self.assertTrue(self.overlay_path.is_file())
         self.assertIsInstance(self.items, list)
         self.assertGreater(len(self.items), 0)
         self.assertEqual(self.raw.get('tagOrigin'), 'machine_agreed')
-        self.assertEqual(self.raw.get('model'), 'gemini-4-hydrogen-high')
-        self.assertTrue(self.raw.get('batchId'))
-        ids, dois, hashes = [], [], []
+        ids, dois = [], []
         for row in self.items:
             self.assertIsInstance(row, dict)
             tags = row.get('tags')
@@ -204,20 +206,34 @@ class CommittedOverlayFileTests(unittest.TestCase):
             self.assertTrue(tags)
             self.assertLessEqual(len(tags), 4)
             self.assertEqual(len(tags), len(set(tags)))
-            self.assertTrue(all(tag in SPECIFIC_TAGS for tag in tags))
-            self.assertFalse(any(tag in BROAD_TAGS for tag in tags))
+            self.assertTrue(all(tag in VOCAB_TAGS for tag in tags))
             self.assertEqual(row.get('tagOrigin'), 'machine_agreed')
-            self.assertEqual(row.get('batchId'), self.raw.get('batchId'))
-            self.assertEqual(row.get('model'), self.raw.get('model'))
             self.assertTrue(isinstance(row.get('id'), str) and row['id'].strip())
             self.assertTrue(isinstance(row.get('doi'), str) and row['doi'].strip())
             self.assertTrue(isinstance(row.get('inputHash'), str) and row['inputHash'].strip())
+            self.assertTrue(row.get('batchId') or row.get('addedBatchId'))
+            self.assertTrue(row.get('model') or row.get('addedModel'))
             ids.append(row['id'].strip())
             dois.append(row['doi'].lower().strip())
-            hashes.append(row['inputHash'])
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(dois), len(set(dois)))
-        self.assertEqual(len(hashes), len(set(hashes)))
+
+    def test_added_tags_are_merged_not_overwritten(self):
+        for row in self.items:
+            added = row.get('addedTags')
+            if not added:
+                continue
+            self.assertIsInstance(added, list)
+            self.assertTrue(added)
+            self.assertTrue(all(tag in BROAD_TAGS for tag in added))
+            self.assertTrue(all(tag in row['tags'] for tag in added))
+            kept = [tag for tag in row['tags'] if tag not in added]
+            # Existing specific tags stay in the same row; added broad tags do not replace them.
+            self.assertTrue(kept)
+            self.assertTrue(all(tag in SPECIFIC_TAGS for tag in kept))
+            self.assertTrue(row.get('addedBatchId'))
+            self.assertTrue(row.get('addedInputHash'))
+            self.assertEqual(row.get('addedModel'), 'gemini-4-hydrogen-high')
 
     def test_resolve_topic_tags_returns_overlay_tags_for_every_committed_row(self):
         regex_title = 'Coronary stent outcomes'
@@ -235,8 +251,7 @@ class CommittedOverlayFileTests(unittest.TestCase):
                     title=regex_title, summary='')
                 self.assertEqual(by_doi, expected_by_doi[row['doi'].lower().strip()])
                 self.assertEqual(by_id, expected_by_id[row['id'].strip()])
-                self.assertTrue(all(tag in SPECIFIC_TAGS for tag in by_doi))
-                self.assertNotIn('#冠脉介入', by_doi)
+                self.assertTrue(all(tag in VOCAB_TAGS for tag in by_doi))
 
     def test_unknown_paper_keeps_regex_and_priority_order_is_unchanged(self):
         title = 'Atrial fibrillation and heart failure'
@@ -247,6 +262,7 @@ class CommittedOverlayFileTests(unittest.TestCase):
         source = Path(enrich.__file__).read_text(encoding='utf-8')
         self.assertIn("human > machine_reviewed > machine_agreed", source)
         self.assertIn("priority = {'machine_agreed': 0, 'machine_reviewed': 1, 'human': 2}", source)
+
 
 
 if __name__ == '__main__':
