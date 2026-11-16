@@ -103,5 +103,60 @@
     "must_have": [
       "#大模型/NLP"
     ]
+  },
+  {
+    "id": "negative-oct-comma-year",
+    "title": "A cluster-randomised trial of digital coaching",
+    "summary": "Between Oct, 2023 and May, 2024, 205 practices enrolled.",
+    "must_not_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-from-oct-to-dec",
+    "title": "Seasonal variation in admissions from Oct to Dec",
+    "must_not_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-ophthalmic-oct-abbrev-retinal",
+    "title": "OCT changes in retinal thickness after therapy",
+    "must_have": [
+      "#影像"
+    ],
+    "must_not_have": [
+      "#冠脉介入"
+    ]
+  },
+  {
+    "id": "negative-ophthalmic-oct-abbrev-macular",
+    "title": "Macular hole surgery outcomes assessed by OCT",
+    "must_have": [
+      "#影像"
+    ],
+    "must_not_have": [
+      "#冠脉介入"
+    ]
+  },
+  {
+    "id": "negative-ophthalmic-oct-abbrev-fundus-glaucoma",
+    "title": "Fundus and glaucoma findings on OCT",
+    "must_have": [
+      "#影像"
+    ],
+    "must_not_have": [
+      "#冠脉介入"
+    ]
+  },
+  {
+    "id": "positive-intravascular-oct-abbrev",
+    "title": "Intravascular OCT assessment of healing",
+    "must_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
   }
 ]

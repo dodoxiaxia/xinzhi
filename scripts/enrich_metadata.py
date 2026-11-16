@@ -292,6 +292,14 @@ def classify_study_design(title, summary='', publication_types=()):
 # AI-generated is not a standalone #大模型/NLP trigger. It counts only when the
 # same title+summary also matches llm, large language model, gpt, chatgpt, or
 # generative ai (those patterns already appear in the #大模型/NLP rule, all word-bounded).
+# OCT abbreviation: word-bounded, not month usage such as "Oct, 2023" or "from Oct to Dec".
+_OCT_ABBREV = (
+    r'(?<!\d[ /.-])(?<!from\s)\boct\b'
+    r'(?![.,]?\s*\d)'
+    r'(?!\s+to\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep(?:t)?|nov|dec)\b)'
+)
+_OPHTHAL_RE = r'\b(?:retina(?:l)?|macula(?:r)?|fundus|glaucoma|ophthalm)'
+
 TAG_RULES = [
     ('#房颤/电生理', r'\batrial fibrillation\b|\bafib\b|\bcatheter ablation\b|\belectrophysiolog|\bpvi\b|\barrhythmi|\bpulmonary vein\b|\bantiarrhythmic\b'),
     ('#心衰/心肌', r'\bheart failure\b|\bhfref\b|\bhfpef\b|\bcardiomyopath|\bgdmt\b|\bejection fraction\b|\bsglt2\b|\bsacubitril\b'),
@@ -299,10 +307,18 @@ TAG_RULES = [
     ('#大模型/NLP', r'\blanguage model\b|\bllm\b|\blarge language model\b|\bchatgpt\b|\bgenerative ai\b|\bnlp\b|\bgpt\b|\btransformer\b|\b(?:clinical|visit|consultation|encounter) transcripts?\b'),
     ('#卒中/抗凝', r'\bstroke\b|\banticoagula|\bthrombos|\bbleeding\b|\bnoac\b|\bdoac\b|\bischemic attack\b|\bwarfarin\b'),
     ('#高血压/血管', r'\bhypertension\b|\bblood pressure\b|\bvascular\b|\barterial\b|\batvb\b|\bantihypertensive\b'),
-    ('#冠脉介入', r'\bpci\b|\bpercutaneous coronary intervention\b|\bstent\b|\bcoronary\b|\bangioplasty\b|\bmyocardial infarction\b|\bacs\b|\bivus\b|\bintravascular ultrasound\b|(?<!\d[ /.-])\boct\b(?!\.?\s*\d)|\bintravascular optical coherence tomography\b|\boct[- ]guided\b|\bcto\b|\bchronic total occlusion\b|\bantegrade dissection and re[- ]entry\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b'),
+    ('#冠脉介入', r'\bpci\b|\bpercutaneous coronary intervention\b|\bstent\b|\bcoronary\b|\bangioplasty\b|\bmyocardial infarction\b|\bacs\b|\bivus\b|\bintravascular ultrasound\b|' + _OCT_ABBREV + r'|\bintravascular optical coherence tomography\b|\bintravascular oct\b|\boct[- ]guided\b|\bcto\b|\bchronic total occlusion\b|\bantegrade dissection and re[- ]entry\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b'),
     ('#穿戴/远程监测', r'\bwearable\b|\bsmartwatch\b|\bremote monitoring\b|\btelehealth\b|\bdigital biomarker\b|\bphotoplethysmography\b|\bppg\b'),
-    ('#影像', r'\bcomputed tomography\b|\bmri\b|\bmagnetic resonance\b|\bechocardiograph|\bultrasound\b|\bperfusion\b|\bangio\b|\bivus\b|\bintravascular ultrasound\b|(?<!\d[ /.-])\boct\b(?!\.?\s*\d)|\boptical coherence tomography\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b')
+    ('#影像', r'\bcomputed tomography\b|\bmri\b|\bmagnetic resonance\b|\bechocardiograph|\bultrasound\b|\bperfusion\b|\bangio\b|\bivus\b|\bintravascular ultrasound\b|' + _OCT_ABBREV + r'|\boptical coherence tomography\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b')
 ]
+
+def _coronary_rule_without_bare_oct():
+    """#冠脉介入 pattern with the bare OCT abbreviation removed."""
+    for tag, pat in TAG_RULES:
+        if tag == '#冠脉介入':
+            return pat.replace(_OCT_ABBREV, r'(?!)')
+    raise RuntimeError('missing #冠脉介入 rule')
+
 
 def extract_tags(title, summary=''):
     text = f"{title or ''} {summary or ''}".lower()
@@ -310,6 +326,13 @@ def extract_tags(title, summary=''):
     for tag, pat in TAG_RULES:
         if re.search(pat, text):
             matched.append(tag)
+    # Bare OCT plus ophthalmology context is imaging, not coronary intervention,
+    # unless another #冠脉介入 rule (IVUS, CTO, coronary, oct-guided, etc.) also hits.
+    if ('#冠脉介入' in matched
+            and re.search(_OCT_ABBREV, text)
+            and re.search(_OPHTHAL_RE, text)
+            and not re.search(_coronary_rule_without_bare_oct(), text)):
+        matched.remove('#冠脉介入')
     if '#心电' in matched and re.search(r'\bartificial intelligence\b|\bmachine learning\b|\bdeep learning\b|\bneural network\b|\bai\b', text):
         matched[matched.index('#心电')] = '#AI-ECG'
     return matched[:4]
