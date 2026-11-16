@@ -1,0 +1,107 @@
+[
+  {
+    "id": "S05",
+    "title": "Artificial Intelligence in Cardiology: An Evidence Map Across Subspecialties, 2014–2026",
+    "summary": "Cardiovascular imaging leads AI applications, especially in coronary computed tomography and echocardiography, followed by non-invasive electrophysiology, predominantly in atrial fibrillation screening.",
+    "must_have": [
+      "#影像",
+      "#房颤/电生理",
+      "#冠脉介入"
+    ]
+  },
+  {
+    "id": "S07",
+    "title": "Guidewire Manipulation‐Directed IVUS‐Guided Antegrade Dissection and Re‐Entry Without Dedicated Devices",
+    "must_have": [
+      "#冠脉介入"
+    ]
+  },
+  {
+    "id": "S14",
+    "title": "Digital Exhaust or Digital Gold? The Value of AI-Generated Clinical Visit Transcripts",
+    "must_have": [
+      "#大模型/NLP"
+    ]
+  },
+  {
+    "id": "S23",
+    "title": "From 'high-risk plaque' to high-value care: measuring vulnerability and managing uncertainty.",
+    "must_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-oct-substrings",
+    "title": "October outcomes in octogenarian patients with octopus and octreotide exposure",
+    "must_not_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-transcript-substrings",
+    "title": "Transcription factor activity, transcriptome analysis, mRNA transcript levels, and transcriptional regulation",
+    "must_not_have": [
+      "#大模型/NLP"
+    ]
+  },
+  {
+    "id": "positive-vulnerable-plaque",
+    "title": "Vulnerable plaque and plaque vulnerability in a prospective cohort",
+    "must_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-cto-pci-substrings",
+    "title": "Victory predictors in a factory directory, plus MPCI and TPCIS scores",
+    "must_not_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-oct-month-abbrev",
+    "title": "A cluster-randomised trial of digital coaching",
+    "summary": "Between Oct 30, 2023, and May 22, 2024, 205 practices enrolled. Screening continued from 15 Oct 2026 and Oct. 2023 records.",
+    "must_not_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "positive-oct-abbreviation-not-date",
+    "title": "Defining silent plaque rupture healing in vivo: a structural approach by OCT.",
+    "must_have": [
+      "#冠脉介入",
+      "#影像"
+    ]
+  },
+  {
+    "id": "negative-ophthalmic-oct-not-coronary",
+    "title": "AI-based clinician decision support system for diagnosis of inherited retinal diseases: a multicenter, randomized trial",
+    "summary": "The accurate and timely diagnosis of inherited retinal diseases (IRDs) represents an unmet clinical need in ophthalmology. Optical coherence tomography was used for phenotyping.",
+    "must_have": [
+      "#影像"
+    ],
+    "must_not_have": [
+      "#冠脉介入"
+    ]
+  },
+  {
+    "id": "negative-ai-generated-alone",
+    "title": "AI-generated characters for supporting personalized learning and well-being",
+    "must_not_have": [
+      "#大模型/NLP"
+    ]
+  },
+  {
+    "id": "positive-ai-generated-with-chatgpt",
+    "title": "The value of AI-generated discharge summaries written with ChatGPT",
+    "must_have": [
+      "#大模型/NLP"
+    ]
+  }
+]

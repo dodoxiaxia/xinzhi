@@ -138,6 +138,34 @@ class TagBackfillOverlayTests(unittest.TestCase):
         self.remove_overlay()
         self.assertEqual(enrich.enrich_paper(self.paper())['tags'], [])
 
+    def test_highest_origin_wins_across_doi_and_id_keys(self):
+        self.write_overlay([
+            {'doi': '10.1234/example', 'tags': ['#影像'], 'tagOrigin': 'machine_agreed'},
+            {'id': 'paper-1', 'tags': ['#心电'], 'tagOrigin': 'machine_reviewed'},
+        ])
+        self.assertEqual(enrich.enrich_paper(self.paper())['tags'], ['#心电'])
+
+    def test_duplicate_key_higher_origin_wins_even_when_it_appears_first(self):
+        self.write_overlay([
+            {'id': 'paper-1', 'tags': ['#影像'], 'tagOrigin': 'human'},
+            {'id': 'paper-1', 'tags': ['#心电'], 'tagOrigin': 'machine_agreed'},
+        ])
+        self.assertEqual(enrich.enrich_paper(self.paper())['tags'], ['#影像'])
+
+    def test_duplicate_key_later_higher_origin_replaces_lower(self):
+        self.write_overlay([
+            {'id': 'paper-1', 'tags': ['#影像'], 'tagOrigin': 'machine_agreed'},
+            {'id': 'paper-1', 'tags': ['#心电'], 'tagOrigin': 'machine_reviewed'},
+        ])
+        self.assertEqual(enrich.enrich_paper(self.paper())['tags'], ['#心电'])
+
+    def test_doi_id_same_origin_tie_uses_first_overlay_row(self):
+        self.write_overlay([
+            {'doi': '10.1234/example', 'tags': ['#影像'], 'tagOrigin': 'machine_reviewed'},
+            {'id': 'paper-1', 'tags': ['#心电'], 'tagOrigin': 'machine_reviewed'},
+        ])
+        self.assertEqual(enrich.enrich_paper(self.paper())['tags'], ['#影像'])
+
 
 if __name__ == '__main__':
     unittest.main()
