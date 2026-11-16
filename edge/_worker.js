@@ -629,7 +629,15 @@ function pdfDownloadReady(env) {
 // Supplemental records/PDFs live independently of static bibliography, editorial decisions and AI caches.
 const LIBRARY_PREFIX = 'library:paper:';
 const LIBRARY_TASK_MS = 45000;
-const LIBRARY_MAX_PDF_BYTES = 10 * 1024 * 1024;
+const LIBRARY_MAX_PDF_BYTES = 20 * 1024 * 1024;
+const LIBRARY_MIN_PDF_BYTES = 51200;
+function libraryFailIfPdfTooLarge(length) {
+  if (length > LIBRARY_MAX_PDF_BYTES) libraryFail('file_too_large', 413);
+}
+function libraryRejectUploadPdfSize(length) {
+  libraryFailIfPdfTooLarge(length);
+  if (length < LIBRARY_MIN_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+}
 const libraryCatalogCache = new Map();
 const LIBRARY_RETRY_SECONDS = 300;
 const FULLTEXT_JOB_PREFIX = 'library:job:';
@@ -799,7 +807,7 @@ function libraryError(request, error, doi = '', route = '') {
     grok_disabled:'后台机构获取尚未启用。', grok_not_configured:'后台机构获取尚未完成配置，请联系维护者。',
     grok_owner_conflict:'后台执行流程需要维护者确认，任务未重复派发。',
     library_not_found:'尚无可下载的全文，请先获取并加入文献库。', library_busy:'这篇文献的获取请求正在处理。', library_retry_later:'当前获取频率受限，请等待下方时间后再试。', library_limit:'本日按需获取次数已达到限制，额度重置后可再试。',
-    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', muse_busy:'这篇已有 PDF 正在下载或等待网站核验，暂不接受重复上传。', muse_bad_pdf:'上传的文件不是完整的 PDF，或大小不在 50 KiB–10 MiB 之间。', muse_bad_request:'请通过网站页面提交。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
+    library_metadata_unavailable:'暂未取得可核实的官方 DOI 题录，未入库。', muse_busy:'这篇已有 PDF 正在下载或等待网站核验，暂不接受重复上传。', muse_bad_pdf:'上传的文件不是完整的 PDF，或大小不在 50 KiB–20 MiB 之间。', file_too_large:'上传的文件超过 20 MiB 上限。', muse_bad_request:'请通过网站页面提交。', library_identity:'DOI 或题名来源关联需要核验，暂不提供全文。', library_integrity:'已保存 PDF 的完整性校验未通过，暂不提供下载。', library_sync_pending:'全文存储仍在同步，请稍后重新下载。',
     library_paused:'来源要求授权、验证或已限制请求，获取已暂停。请维护者确认后恢复，或由已授权机构浏览器处理。', library_method:'请使用文献获取页面提交。', library_timeout:'获取全文超时，请稍后重试。', library_upstream:'文献来源暂时不可用，请稍后重试。', library_server:'文献获取服务暂时不可用。' };
   const retryable = ['library_not_found','library_busy','library_retry_later','library_limit','library_timeout','library_upstream','library_sync_pending'].includes(code);
   const retryHint = code === 'library_paused' && retryAfter ? '<p>上游返回 Retry-After，限制期限为北京时间 ' + new Date(retryAfter + 28800000).toISOString().slice(0,19).replace('T',' ') + '。到期不会自动恢复，仍需维护者确认。</p>' : retryAfter ? libraryRetryHint(retryAfter) : '';
@@ -2085,7 +2093,7 @@ async function museArchiveSuperseded(env, previous, newId, doi, now) {
 }
 
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
-  if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
+  libraryRejectUploadPdfSize(bytes.length);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
   const sha256 = await pdfDigest('SHA-256',bytes), candidateKey = 'library:muse-candidate:' + sha256;
   await libraryPut(env.QL_KV,candidateKey,bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset + bytes.byteLength),{expirationTtl:604800});
@@ -2454,7 +2462,7 @@ const MUSE_UPLOAD_FORM_BYTES = LIBRARY_MAX_PDF_BYTES + 65536;
 function museUploadPage(doi, notice = '') {
   return pdfHtml((notice ? '<p role="alert">' + pdfEscape(notice) + '</p>' : '')
     + '<p>如果你能在自己的浏览器里打开这篇原文（开放获取，或通过汉堡登录），下载 PDF 后在这里上传，不必等下载队列。</p>'
-    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–10 MiB，不要修改、压缩或加水印。</p>'
+    + '<p>原件先进入网站私有隔离区，由独立核验任务检查 DOI、题名与全部页面（通常几分钟内完成；若即时核验没有赶上，要等下一轮核验，可能需要数小时）；通过后凭全文口令下载。请上传出版社原版或接受稿，50 KiB–20 MiB，不要修改、压缩或加水印。</p>'
     + '<form method="post" enctype="multipart/form-data" action="/api/muse/reader-upload?doi=' + pdfEscape(encodeURIComponent(doi)) + '"><p><label for="pdf">PDF 文件</label><br><input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required></p>'
     + '<p><label for="passphrase">全文口令</label><br><input id="passphrase" name="passphrase" type="password" maxlength="256" autocomplete="current-password" required></p><button type="submit">上传并核验</button></form>'
     + pdfOfficialLink(doi),notice ? 403 : 200,'上传全文 PDF',doi);
@@ -2463,7 +2471,8 @@ async function museReadForm(request) {
   const type = request.headers.get('content-type') || '';
   if (!/^multipart\/form-data;/i.test(type)) pdfFail('pdf_content_type',415);
   const declared = request.headers.get('content-length');
-  if (declared && (!/^\d+$/.test(declared) || Number(declared) > MUSE_UPLOAD_FORM_BYTES)) libraryFail('muse_bad_pdf',413);
+  if (declared && !/^\d+$/.test(declared)) libraryFail('muse_bad_pdf',413);
+  if (declared && Number(declared) > MUSE_UPLOAD_FORM_BYTES) libraryFail('file_too_large',413);
   const reader = request.body && request.body.getReader();
   if (!reader) pdfFail('pdf_bad_form',400);
   const chunks = []; let size = 0;
@@ -2471,7 +2480,7 @@ async function museReadForm(request) {
     let item; try { item = await reader.read(); } catch { pdfFail('pdf_bad_form',400); }
     if (item.done) break;
     size += item.value.byteLength;
-    if (size > MUSE_UPLOAD_FORM_BYTES) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); }
+    if (size > MUSE_UPLOAD_FORM_BYTES) { pdfCancel(reader); libraryFail('file_too_large',413); }
     chunks.push(item.value);
   }
   const body = new Uint8Array(size); let offset = 0;
@@ -2493,7 +2502,7 @@ async function handleMuseReaderUpload(request, env) {
     const {passphrase,file} = await museReadForm(request);
     await pdfVerifyPassphrase(passphrase,env,request);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf',413);
+    libraryRejectUploadPdfSize(bytes.length);
     try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
     let paper = libraryPaper(await libraryGet(env.QL_KV,LIBRARY_PREFIX + doi),doi);
     if (paper?.fulltextStatus === 'available') return libraryResult(request,paper,'',true);
@@ -2648,7 +2657,7 @@ async function handleMuseUpload(request, env) {
     if (length && (!/^\d+$/.test(length) || Number(length) !== job.bytes)) libraryFail('muse_bad_pdf',413);
     const reader = request.body?.getReader(); if (!reader) libraryFail('muse_bad_pdf',400);
     const chunks = []; let size = 0;
-    while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > job.bytes || size > LIBRARY_MAX_PDF_BYTES) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); } chunks.push(item.value); }
+    while (true) { const item = await reader.read(); if (item.done) break; size += item.value.byteLength; if (size > LIBRARY_MAX_PDF_BYTES) { pdfCancel(reader); libraryFail('file_too_large',413); } if (size > job.bytes) { pdfCancel(reader); libraryFail('muse_bad_pdf',413); } chunks.push(item.value); }
     const bytes = new Uint8Array(size); let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.byteLength; }
     if (size !== job.bytes || await pdfDigest('SHA-256',bytes) !== job.sha256) libraryFail('muse_bad_pdf',409);
@@ -3670,7 +3679,8 @@ async function machineStatsBump(env, caller, field, amount = 1) {
 }
 async function machineReadBody(request, max) {
   const declared = request.headers.get('content-length');
-  if (declared && (!/^\d+$/.test(declared) || Number(declared) > max)) libraryFail('muse_bad_pdf', 413);
+  if (declared && !/^\d+$/.test(declared)) libraryFail('muse_bad_pdf', 413);
+  if (declared && Number(declared) > max) libraryFail('file_too_large', 413);
   const reader = request.body && request.body.getReader();
   if (!reader) libraryFail('machine_bad_request', 400);
   const chunks = [];
@@ -3680,7 +3690,7 @@ async function machineReadBody(request, max) {
     try { item = await reader.read(); } catch { libraryFail('machine_bad_request', 400); }
     if (item.done) break;
     size += item.value.byteLength;
-    if (size > max) { pdfCancel(reader); libraryFail('muse_bad_pdf', 413); }
+    if (size > max) { pdfCancel(reader); libraryFail('file_too_large', 413); }
     chunks.push(item.value);
   }
   const bytes = new Uint8Array(size);
@@ -3697,7 +3707,8 @@ async function machineReadUpload(request) {
   }
   if (request.method === 'POST' && /^multipart\/form-data;/i.test(type)) {
     const declared = request.headers.get('content-length');
-    if (declared && (!/^\d+$/.test(declared) || Number(declared) > LIBRARY_MAX_PDF_BYTES + 65536)) libraryFail('muse_bad_pdf', 413);
+    if (declared && !/^\d+$/.test(declared)) libraryFail('muse_bad_pdf', 413);
+    if (declared && Number(declared) > LIBRARY_MAX_PDF_BYTES + 65536) libraryFail('file_too_large', 413);
     const body = await machineReadBody(request, LIBRARY_MAX_PDF_BYTES + 65536);
     let form;
     try { form = await new Response(body, {headers:{'content-type':type}}).formData(); } catch { libraryFail('machine_bad_request', 400); }
@@ -3706,7 +3717,7 @@ async function machineReadUpload(request) {
     const doi = typeof doiText === 'string' ? libraryDoi(doiText) : '';
     if (!doi || !file || typeof file === 'string') libraryFail('machine_bad_request', 400);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    if (bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+    libraryFailIfPdfTooLarge(bytes.length);
     return {doi, bytes};
   }
   libraryFail('machine_bad_request', 415);
@@ -4020,7 +4031,7 @@ function handleMachineProtocol(request, env) {
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
-      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS},
+      registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS,minPdfBytes:LIBRARY_MIN_PDF_BYTES,maxPdfBytes:LIBRARY_MAX_PDF_BYTES,oversizeError:'file_too_large'},
     emptyClaimRetry:{bodyField:'retryAfter',legacyBodyField:'retryAfterSeconds',header:'Retry-After',emptyQueueSeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,scanLimitSeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,indexBuildingSeconds:MACHINE_INDEX_BUILDING_RETRY_SECONDS,note:'空领取（task 为 null）时，响应体同时带 retryAfter 与 retryAfterSeconds，单位都是秒，与 Retry-After 响应头相同。现有客户端若读不到响应头，请读 retryAfter。队列真空 300 秒，claim_scan_limit 与索引回填中各 60 秒。'},
     stats:{keyPattern:'library:machine-rate:stats:<caller-id>:<utc-date>',fields:MACHINE_STATS_FIELDS,ttlSeconds:172800,
       note:'每个调用方、每个 UTC 日共用一个 JSON 键，记录领取、空领取、上传 409 和退回次数。额度键（upload/requeue/register）仍是整数，互不混写。完成记录若有领取时间，列表和上传响应会带 claimedAt 与 claimDurationSeconds。旧客户端可忽略这些字段。'},
@@ -4052,7 +4063,7 @@ async function handleMachineUpload(request, env) {
     const replacing = replaceHeader === '1';
     if (replacing && !machineMayReplace(caller)) libraryFail('machine_forbidden', 403);
     const {doi, bytes} = await machineReadUpload(request);
-    if (bytes.length < 51200 || bytes.length > LIBRARY_MAX_PDF_BYTES) libraryFail('muse_bad_pdf', 413);
+    libraryRejectUploadPdfSize(bytes.length);
     try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf', 415); }
     const sha256 = await pdfDigest('SHA-256', bytes);
     const record = await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi);
