@@ -92,6 +92,37 @@ class TagBackfillOverlayTests(unittest.TestCase):
             self.assertEqual(enrich.enrich_paper(p)['tags'], ['#房颤/电生理'])
         self.assertEqual(enrich.TAG_OVERLAY_RECONCILE_LOG, [])
 
+    def test_machine_overlays_append_only_new_vocabulary(self):
+        title = 'Transcatheter aortic valve replacement imaging'
+        for origin in ('machine_agreed', 'machine_reviewed'):
+            with self.subTest(origin=origin):
+                self.write_overlay([{'id': 'paper-1', 'tags': ['#影像'], 'tagOrigin': origin}])
+                self.assertEqual(enrich.resolve_topic_tags(self.paper(title=title), title, ''),
+                                 ['#影像', '#结构性心脏病'])
+        self.write_overlay([{'id': 'paper-1', 'tags': ['#影像', '#心电', '#心衰/心肌', '#冠脉介入'], 'tagOrigin': 'machine_agreed'}])
+        self.assertEqual(enrich.resolve_topic_tags(self.paper(title=title), title, ''),
+                         ['#影像', '#心电', '#心衰/心肌', '#冠脉介入'])
+        self.write_overlay([{'id': 'paper-1', 'tags': ['#影像'], 'tagOrigin': 'machine_reviewed'}])
+        self.assertEqual(enrich.resolve_topic_tags(self.paper(title='Coronary stent outcomes'), 'Coronary stent outcomes', ''), ['#影像'])
+
+    def test_human_overlay_and_paper_tags_are_returned_unchanged(self):
+        self.write_overlay([{'id': 'paper-1', 'tags': ['#影像'], 'tagOrigin': 'human'}])
+        self.assertEqual(enrich.resolve_topic_tags(self.paper(title='Transcatheter aortic valve replacement', tags=['#心电']),
+                                                   'Transcatheter aortic valve replacement', ''), ['#影像'])
+        self.remove_overlay()
+        tags = ['#心电', '#影像']
+        self.assertIs(enrich.resolve_topic_tags(self.paper(title='Transcatheter aortic valve replacement', tags=tags, tagOrigin='human'),
+                                                 'Transcatheter aortic valve replacement', ''), tags)
+
+    def test_machine_agreed_reconciliation_ignores_appended_new_tag_only(self):
+        self.write_overlay([{'id': 'paper-1', 'tags': ['#房颤/电生理'], 'tagOrigin': 'machine_agreed'}])
+        title = 'Atrial fibrillation with transcatheter aortic valve replacement'
+        with patch('builtins.print') as output:
+            result = enrich.resolve_topic_tags(self.paper(title=title), title, '')
+        self.assertEqual(result, ['#房颤/电生理', '#结构性心脏病'])
+        self.assertEqual(enrich.TAG_OVERLAY_RECONCILE_LOG, [])
+        self.assertFalse(output.called)
+
     def test_shared_tag_resolution_matches_enrichment_and_radar_inputs(self):
         source = Path(build_public.__file__).read_text(encoding='utf-8')
         self.assertIn('resolve_topic_tags', source)
