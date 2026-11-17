@@ -4833,6 +4833,9 @@ function machineRegisterItem(raw) {
   if (!doi) return {error:'bad_doi'};
   // RSS titles of some journals (Lancet family) start with a section label such as "[Articles] " or "[Comment] "; that label is
   // not part of the printed title, so one leading label is dropped before the title is checked or stored.
+  // The label must start with a letter and be followed by whitespace or the end of the string (libraryText
+  // already trimmed the value, so a bare "[Articles]" is still a label, not a title). Radiotracer prefixes
+  // such as "[18F]FDG", "[18F]-FDG", "[99mTc]sestamibi" and "[11C]" start with a digit and stay part of the title.
   const title = typeof raw.title === 'string' ? libraryText(raw.title).replace(MACHINE_REGISTER_SECTION_LABEL, '') : '';
   // Upload identity check needs at least five normalized characters of title, otherwise the paper could never be uploaded.
   if (!title || machineNormalize(title).length < 5) return {doi,error:'bad_title'};
@@ -4869,7 +4872,7 @@ async function machineRegisterExisting(env, doi) {
 // journal, authors and date stay empty, which keeps the machineOrphanPaper shape. One lookup per new DOI, each bounded by
 // MACHINE_REGISTER_CROSSREF_MS; after MACHINE_REGISTER_CROSSREF_BUDGET_MS of a batch, or once Crossref limits requests, the
 // rest of the batch uses the fallback so a 50-item batch still answers well inside a client's 60 second timeout.
-const MACHINE_REGISTER_SECTION_LABEL = /^\[[^\]]{1,40}\]\s*/;
+const MACHINE_REGISTER_SECTION_LABEL = /^\[[A-Za-z][A-Za-z ./-]{0,39}\](?:\s+|$)/;
 const MACHINE_REGISTER_CROSSREF_MS = 5000;
 const MACHINE_REGISTER_CROSSREF_BUDGET_MS = 25000;
 function machineRegisterLookup() {

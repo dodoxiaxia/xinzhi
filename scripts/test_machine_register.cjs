@@ -284,7 +284,7 @@ async function crossrefTitles() {
     item('x3',{doi:'10.1000/xr.articles',title:rss.articles}), item('x4',{doi:'10.1000/xr.comment',title:rss.comment}),
     item('x5',{doi:'10.1000/xr.tags'})])).json();
   assert.deepEqual(body.results.map(r => r.result), ['registered','registered','registered','registered','registered']);
-  // Crossref title wins; a title that differs after normalization keeps the submitted one and a marker.
+  // 存的是 Crossref 题名，提交的原题名记在 registeredTitle。
   // libraryText cleans every official title the same way (the ideographic space becomes an ASCII one).
   const dashTitle = h.context.libraryText(official['10.1000/xr.dash']);
   assert(dashTitle.includes('\u2015'));
@@ -337,14 +337,32 @@ async function crossrefTitles() {
   legacy.paper.metadataStatus = 'made_up_status';
   assert.equal(h.context.libraryPaper(legacy, '10.1000/xr.comment').metadataStatus, 'external_bibliography_checked');
 
-  // A label alone is not a title.
+  // A label alone is not a title, with or without the trailing space that libraryText trims.
   h = await answer();
   const bare = await (await register(h, dsh, [item('x6',{doi:'10.1000/xr.bare',title:'[Articles] '})])).json();
   assert.deepEqual(bare.results[0], {doi:'10.1000/xr.bare',result:'rejected',error:'bad_title'});
+  const bareExact = await (await register(h, dsh, [item('x6b',{doi:'10.1000/xr.bare2',title:'[Articles]'})])).json();
+  assert.deepEqual(bareExact.results[0], {doi:'10.1000/xr.bare2',result:'rejected',error:'bad_title'});
   // Only one leading label is dropped.
   h = await answer();
   await register(h, dsh, [item('x7',{doi:'10.1000/xr.twice',title:'[Articles] [Corrigendum] Synthetic twice labelled title'})]);
   assert.equal(paperOf(h, '10.1000/xr.twice').title, '[Corrigendum] Synthetic twice labelled title');
+
+  // Radiotracer brackets are part of the printed title (cardiac PET / myocardial imaging) and must stay.
+  // They start with a digit, so they are not a section label; [Articles] / [Comment] still drop, as above.
+  h = await answer();
+  const tracers = [
+    ['10.1000/xr.f18a', '[18F]FDG PET imaging in a synthetic cardiac cohort'],
+    ['10.1000/xr.f18b', '[18F]-FDG uptake in synthetic myocardium'],
+    ['10.1000/xr.tc99', '[99mTc]sestamibi perfusion in synthetic cohorts'],
+    ['10.1000/xr.c11', '[11C]methionine PET in synthetic cardiomyocytes']
+  ];
+  await register(h, dsh, tracers.map(([doi, title], n) => item('tr' + n, {doi, title})));
+  for (const [doi, title] of tracers) {
+    assert.equal(paperOf(h, doi).title, title);
+    assert.equal(stored(h, 'library:machine-register:' + doi).title, title);
+    assert.equal(paperOf(h, doi).titleSource, 'registration');
+  }
 
   // Crossref limiting requests (429): lookups already started in the same group finish; later groups of the batch fall back
   // without a lookup. Every item still registers.
@@ -356,7 +374,26 @@ async function crossrefTitles() {
   const looked = new Set(crossrefCalls(h).map(call => decodeURIComponent(call.url.pathname).slice('/works/'.length)));
   assert(looked.has('10.1000/xr.limit.0'));
   for (const entry of limitedItems.slice(group)) assert(!looked.has(entry.doi), entry.doi + ' was looked up after the 429');
-  for (const entry of limitedItems) assert.equal(paperOf(h, entry.doi).titleSource, 'registration');
+  for (const entry of limitedItems) {
+    assert.equal(paperOf(h, entry.doi).titleSource, 'registration');
+    assert.equal(paperOf(h, entry.doi).metadataStatus, 'registration_title_only');
+  }
+
+  // Crossref returning 403: same as 429 — lookups already started in the same group finish; later groups of the
+  // batch fall back without a lookup. Every item still registers, with the submitted title and
+  // metadataStatus=registration_title_only.
+  h = await answer(null, {'10.1000/xr.forbid.0':() => new Response('forbidden', {status:403})});
+  const forbiddenItems = Array.from({length:group + 2}, (_, n) => item('G' + n, {doi:'10.1000/xr.forbid.' + n}));
+  const forbidden = await (await register(h, dsh, forbiddenItems)).json();
+  assert(forbidden.results.every(r => r.result === 'registered'));
+  const forbidLooked = new Set(crossrefCalls(h).map(call => decodeURIComponent(call.url.pathname).slice('/works/'.length)));
+  assert(forbidLooked.has('10.1000/xr.forbid.0'));
+  for (const entry of forbiddenItems.slice(group)) assert(!forbidLooked.has(entry.doi), entry.doi + ' was looked up after the 403');
+  for (const entry of forbiddenItems) {
+    assert.equal(paperOf(h, entry.doi).titleSource, 'registration');
+    assert.equal(paperOf(h, entry.doi).metadataStatus, 'registration_title_only');
+    assert.equal(paperOf(h, entry.doi).title, entry.title);
+  }
 
   // Crossref down or answering with another DOI: fallback, never an error for the batch.
   h = await answer(null, {'10.1000/xr.dash':() => new Response('down', {status:503}), '10.1000/xr.same':() => Response.json({message:{DOI:'10.1000/other',title:['Wrong paper']}})});
