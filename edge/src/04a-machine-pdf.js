@@ -13,12 +13,15 @@ const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
 const MACHINE_PDF_PADDING = new Uint8Array([0x28,0xbf,0x4e,0x5e,0x4e,0x75,0x8a,0x41,0x64,0x00,0x4e,0x56,0xff,0xfa,0x01,0x08,0x2e,0x2e,0x00,0xb6,0xd0,0x68,0x3e,0x80,0x2f,0x0c,0xa9,0xfe,0x64,0x53,0x69,0x7a]);
+// En dash, em dash and horizontal bar are punctuation like the ASCII hyphen, so they are dropped too. Japanese journals print
+// subtitles as "Title\u3000\u2015 Subtitle \u2015" while RSS feeds give "Title: Subtitle"; both must normalize to the same text.
+const MACHINE_NORMALIZE_DASHES = new Set([0x2013, 0x2014, 0x2015]);
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
   for (const char of stripped) {
     const code = char.codePointAt(0);
-    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || code > 127) out += char;
+    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_DASHES.has(code))) out += char;
   }
   return out;
 }
@@ -757,9 +760,15 @@ async function machineIdentity(bytes, doi, title) {
   const page = await machineFirstPage(bytes);
   const readable = page.readable;
   const doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
-  const titlePage = machineNormalize(page.text).includes(expected);
+  const pageText = machineNormalize(page.text);
+  // Some publisher fonts (seen in MDPI PDFs) map the "fl" ligature glyph to U+00DF, so page 1 reads "Inßammation" for
+  // "Inflammation". Only after the normal match fails, and only page-side: every page "ß" is read as "fl" and the whole
+  // expected title must then appear unchanged. Nothing else is mapped, and an expected title with a real "ß" is untouched.
+  const titleExact = pageText.includes(expected);
+  const titleLigature = !titleExact && pageText.includes('\u00df') && pageText.replace(/\u00df/g, 'fl').includes(expected);
+  const titlePage = titleExact || titleLigature;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
-  const checks = {doi:doiPage ? 'page' : doiMeta ? 'metadata' : '', title:titlePage ? 'page' : titleMeta ? 'metadata' : '', readable};
+  const checks = {doi:doiPage ? 'page' : doiMeta ? 'metadata' : '', title:titlePage ? 'page' : titleMeta ? 'metadata' : '', readable, ...(titleLigature ? {titleGlyph:'eszett_as_fl'} : {})};
   const doiFound = doiPage || doiMeta;
   if (doiPage && titlePage) return {verdict:'ok', level:'full', checks};
   if (doiFound && titlePage) return {verdict:'ok', level:'metadata_doi', checks};

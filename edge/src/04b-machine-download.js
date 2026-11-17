@@ -1047,7 +1047,12 @@ function machineRegisterItem(raw) {
   if (Object.keys(raw).some(key => !['doi','title','source','section'].includes(key))) return {error:'bad_item'};
   const doi = libraryDoi(raw.doi);
   if (!doi) return {error:'bad_doi'};
-  const title = typeof raw.title === 'string' ? libraryText(raw.title) : '';
+  // RSS titles of some journals (Lancet family) start with a section label such as "[Articles] " or "[Comment] "; that label is
+  // not part of the printed title, so one leading label is dropped before the title is checked or stored.
+  // The label must start with a letter and be followed by whitespace or the end of the string (libraryText
+  // already trimmed the value, so a bare "[Articles]" is still a label, not a title). Radiotracer prefixes
+  // such as "[18F]FDG", "[18F]-FDG", "[99mTc]sestamibi" and "[11C]" start with a digit and stay part of the title.
+  const title = typeof raw.title === 'string' ? libraryText(raw.title).replace(MACHINE_REGISTER_SECTION_LABEL, '') : '';
   // Upload identity check needs at least five normalized characters of title, otherwise the paper could never be uploaded.
   if (!title || machineNormalize(title).length < 5) return {doi,error:'bad_title'};
   if (typeof raw.source !== 'string' || !MACHINE_REGISTER_SOURCE.test(raw.source)) return {doi,error:'bad_source'};
@@ -1055,7 +1060,8 @@ function machineRegisterItem(raw) {
   return {doi,title,source:raw.source,section:raw.section};
 }
 // The record a registration writes first (see machineRegisterOne): no journal, no authors, no publication date, no PDF, full text
-// still needed (libraryPaper always reports the bibliography as checked, so that field cannot tell records apart). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
+// still needed. metadataStatus cannot tell records apart (older registrations stored the checked value too, and a registration
+// with a successful Crossref lookup still does). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
 // The caller must still confirm that no job and no register record exist; the register record is written last, after the job.
 function machineOrphanPaper(record, paper) {
   return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
@@ -1077,12 +1083,41 @@ async function machineRegisterExisting(env, doi) {
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
-async function machineRegisterOne(env, caller, item, changes) {
+// The upload identity check looks for the stored title on page 1 of the PDF, so registration stores the Crossref title (the
+// printed one) when Crossref answers, and the submitted RSS title only as a fallback. Only the title is taken from Crossref:
+// journal, authors and date stay empty, which keeps the machineOrphanPaper shape. One lookup per new DOI, each bounded by
+// MACHINE_REGISTER_CROSSREF_MS; after MACHINE_REGISTER_CROSSREF_BUDGET_MS of a batch, or once Crossref limits requests, the
+// rest of the batch uses the fallback so a 50-item batch still answers well inside a client's 60 second timeout.
+const MACHINE_REGISTER_SECTION_LABEL = /^\[[A-Za-z][A-Za-z ./-]{0,39}\](?:\s+|$)/;
+const MACHINE_REGISTER_CROSSREF_MS = 5000;
+const MACHINE_REGISTER_CROSSREF_BUDGET_MS = 25000;
+function machineRegisterLookup() {
+  const started = Date.now();
+  let stopped = false;
+  return {open:() => !stopped && Date.now() - started < MACHINE_REGISTER_CROSSREF_BUDGET_MS, stop:() => { stopped = true; }};
+}
+async function machineRegisterTitle(item, lookup) {
+  // Returns {title,titleSource,metadataStatus} and, when Crossref and the submitted title differ after machineNormalize,
+  // titleMismatch:true with the submitted title kept as registeredTitle. Never throws: a failed lookup means the fallback.
+  let official = '';
+  if (lookup && lookup.open()) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), MACHINE_REGISTER_CROSSREF_MS);
+    try { official = (await libraryMetadata(item.doi, {signal:controller.signal})).title; }
+    catch (error) { if (error && error.code === 'library_paused') lookup.stop(); }
+    finally { clearTimeout(timer); }
+  }
+  if (!official || machineNormalize(official).length < 5) return {title:item.title,titleSource:'registration',metadataStatus:'registration_title_only'};
+  const result = {title:official,titleSource:'crossref',metadataStatus:'external_bibliography_checked'};
+  return machineNormalize(official) === machineNormalize(item.title) ? result : {...result,titleMismatch:true,registeredTitle:item.title};
+}
+async function machineRegisterOne(env, caller, item, changes, lookup) {
   const now = Date.now(), id = crypto.randomUUID();
   const registration = {source:item.source,section:item.section};
   const job = {version:1,id,doi:item.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,registration};
-  const paper = {id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),doi:item.doi,title:item.title,journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',
-    ingestedAt:new Date(now).toISOString(),metadataStatus:'external_bibliography_checked',fulltextStatus:'manual_needed'};
+  const named = await machineRegisterTitle(item, lookup);
+  const titleNote = {titleSource:named.titleSource,...(named.titleMismatch ? {titleMismatch:true,registeredTitle:named.registeredTitle} : {})};
+  const paper = {id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),doi:item.doi,title:named.title,journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',
+    ingestedAt:new Date(now).toISOString(),metadataStatus:named.metadataStatus,...titleNote,fulltextStatus:'manual_needed'};
   // Same order as a site-owner selection: paper record, job, queue pointer. A half-written DOI would later look
   // like "already exists" and never enter the queue, so a failure removes what this call wrote.
   const local = [];
@@ -1090,7 +1125,7 @@ async function machineRegisterOne(env, caller, item, changes) {
     await librarySave(env.QL_KV, paper, null, 'library_manual_needed');
     await musePut(env, job, {indexChanges:local});
     await libraryPut(env.QL_KV, job.queueKey, JSON.stringify({doi:item.doi,id}), {expirationTtl:604800});
-    await libraryPut(env.QL_KV, MACHINE_REGISTER_PREFIX + item.doi, JSON.stringify({version:1,doi:item.doi,title:item.title,source:item.source,section:item.section,registeredBy:caller.id,registeredAt:now,taskId:id}));
+    await libraryPut(env.QL_KV, MACHINE_REGISTER_PREFIX + item.doi, JSON.stringify({version:1,doi:item.doi,title:item.title,paperTitle:named.title,...titleNote,source:item.source,section:item.section,registeredBy:caller.id,registeredAt:now,taskId:id}));
   } catch (error) {
     for (const key of [MUSE_JOB_PREFIX + item.doi, job.queueKey, MACHINE_REGISTER_PREFIX + item.doi, LIBRARY_PREFIX + item.doi, 'library:attempt:' + item.doi]) {
       try { await env.QL_KV.delete(key); } catch {}
@@ -1121,7 +1156,7 @@ async function handleMachineRegister(request, env) {
     const limit = machineLimit(env, 'MACHINE_REGISTER_DAILY_LIMIT', MACHINE_REGISTER_DAILY_DEFAULT);
     const usedBefore = await libraryGet(env.QL_KV, machineRateKey(caller, 'register'));
     const used = Number.isInteger(usedBefore) && usedBefore >= 0 ? usedBefore : 0;
-    const results = new Array(input.items.length), seen = new Set(), changes = [], todo = [];
+    const results = new Array(input.items.length), seen = new Set(), changes = [], todo = [], lookup = machineRegisterLookup();
     let registered = 0, consumed = 0, failure = null;
     // Validation and in-batch duplicates need no storage access; they are settled first, in input order.
     input.items.forEach((raw, n) => {
@@ -1158,7 +1193,7 @@ async function handleMachineRegister(request, env) {
           } else if (used + registered + fresh.length >= limit) results[entry.n] = {doi:entry.item.doi,result:'over_quota'};
           else fresh.push(entry);
         });
-        const outcomes = await Promise.allSettled(fresh.map(entry => machineRegisterOne(env, caller, entry.item, changes)));
+        const outcomes = await Promise.allSettled(fresh.map(entry => machineRegisterOne(env, caller, entry.item, changes, lookup)));
         fresh.forEach((entry, k) => {
           const outcome = outcomes[k], item = entry.item;
           if (outcome.status === 'rejected') { failure = failure || outcome.reason; return; }

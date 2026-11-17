@@ -45,6 +45,10 @@ function libraryText(value, limit = 800) {
   const text = stripTags(value).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
   return text.length <= limit && !/(?:\/(?:Users|home|workspace|tmp)\/|file:\/\/|\.local\/|\b(?:ghp_|github_pat_)|\bbearer\s+\S+)/i.test(text) ? text : '';
 }
+// external_bibliography_checked: the record's title came from an official lookup (Crossref). registration_title_only: a
+// machine registration whose Crossref lookup failed, so the title is the submitted (RSS) one. A record without a known
+// value keeps the old report, because every writer before registration_title_only existed stored the checked value.
+const LIBRARY_METADATA_STATUSES = ['external_bibliography_checked','registration_title_only'];
 function libraryPaper(record, expectedDoi = '') {
   const input = record && record.version === 1 && record.paper;
   if (!input || (expectedDoi && input.doi !== expectedDoi) || libraryDoi(input.doi) !== input.doi || !/^doi-[a-f0-9]{16}$/.test(input.id || '') || !libraryText(input.title) || !['available','pending','review','manual_needed'].includes(input.fulltextStatus)) return null;
@@ -53,7 +57,7 @@ function libraryPaper(record, expectedDoi = '') {
     url:'https://doi.org/' + encodeURIComponent(input.doi).replace(/%2F/gi, '/'), authors:(Array.isArray(input.authors) ? input.authors : []).map(name => libraryText(name, 200)).filter(Boolean).slice(0, 30),
     date:/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(input.date || '') ? input.date : '', datePrecision:['day','month','year'].includes(input.datePrecision) ? input.datePrecision : '',
     dateBasis:libraryText(input.dateBasis || '', 100), ingestedAt:typeof input.ingestedAt === 'string' && !isNaN(Date.parse(input.ingestedAt)) ? input.ingestedAt : '',
-    metadataStatus:'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
+    metadataStatus:LIBRARY_METADATA_STATUSES.includes(input.metadataStatus) ? input.metadataStatus : 'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
   return paper;
 }
 async function libraryGet(kv, key) {

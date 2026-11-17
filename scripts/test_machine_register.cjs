@@ -250,7 +250,167 @@ async function run() {
   const requeued = await (await post(h, '/api/machine/requeue', dsh, {})).json();
   assert.equal(requeued.requeued.length, 1);
   assert.equal(stored(h, 'library:muse-job:10.1000/reg.1').registration.section, 'CARDIO');
+  await crossrefTitles();
   console.log('machine register tests passed');
+}
+const vmGroup = h => require('vm').runInContext('MACHINE_REGISTER_GROUP', h.context);
+// Registration stores the Crossref title when Crossref answers (mocked here; no network), else the submitted RSS title.
+async function crossrefTitles() {
+  const official = {
+    '10.1000/xr.dash':'Synthetic Anticoagulant Timing after Stroke in Atrial Fibrillation\u3000\u2015 SYNTH-ICH Registry 12-Month Outcomes \u2015',
+    '10.1000/xr.same':'Synthetic exact title for a Crossref match',
+    '10.1000/xr.articles':'ClinicalAge, a framework for synthetic biological age estimation',
+    '10.1000/xr.tags':'<i>Synthetic</i> tagged title from Crossref'
+  };
+  const answer = (h, extra = {}) => create({crossrefResponse:u => {
+    const doi = decodeURIComponent(u.pathname.slice('/works/'.length));
+    if (extra[doi]) return extra[doi]();
+    return official[doi] ? Response.json({message:{DOI:doi,title:[official[doi]]}}) : new Response('missing', {status:404});
+  }});
+  const crossrefCalls = h => h.calls.filter(call => call.url.hostname === 'api.crossref.org');
+  const paperOf = (h, doi) => stored(h, 'library:paper:' + doi).paper;
+  const reported = (h, doi) => h.context.libraryPaper(stored(h, 'library:paper:' + doi), doi);
+
+  let h = await answer();
+  const rss = {
+    // The feed shortened the title: a real difference, so the marker is set.
+    dash:'Synthetic Anticoagulant Timing after Stroke: SYNTH-ICH Registry 12-Month Outcomes',
+    same:'Synthetic exact title for a Crossref match.',
+    articles:'[Articles] ClinicalAge, a framework for synthetic biological age estimation',
+    comment:'[Comment] A novel ageing biomarker in synthetic cohorts'
+  };
+  const body = await (await register(h, dsh, [
+    item('x1',{doi:'10.1000/xr.dash',title:rss.dash}), item('x2',{doi:'10.1000/xr.same',title:rss.same}),
+    item('x3',{doi:'10.1000/xr.articles',title:rss.articles}), item('x4',{doi:'10.1000/xr.comment',title:rss.comment}),
+    item('x5',{doi:'10.1000/xr.tags'})])).json();
+  assert.deepEqual(body.results.map(r => r.result), ['registered','registered','registered','registered','registered']);
+  // 存的是 Crossref 题名，提交的原题名记在 registeredTitle。
+  // libraryText cleans every official title the same way (the ideographic space becomes an ASCII one).
+  const dashTitle = h.context.libraryText(official['10.1000/xr.dash']);
+  assert(dashTitle.includes('\u2015'));
+  let paper = paperOf(h, '10.1000/xr.dash');
+  assert.equal(paper.title, dashTitle);
+  assert.equal(paper.titleSource, 'crossref');
+  assert.equal(paper.titleMismatch, true);
+  assert.equal(paper.registeredTitle, rss.dash);
+  assert.equal(paper.metadataStatus, 'external_bibliography_checked');
+  assert.equal(reported(h, '10.1000/xr.dash').metadataStatus, 'external_bibliography_checked');
+  let meta = stored(h, 'library:machine-register:10.1000/xr.dash');
+  assert.deepEqual({title:meta.title,paperTitle:meta.paperTitle,titleSource:meta.titleSource,titleMismatch:meta.titleMismatch,registeredTitle:meta.registeredTitle},
+    {title:rss.dash,paperTitle:dashTitle,titleSource:'crossref',titleMismatch:true,registeredTitle:rss.dash});
+  // Same title after normalization (punctuation, case): no marker.
+  paper = paperOf(h, '10.1000/xr.same');
+  assert.equal(paper.title, official['10.1000/xr.same']);
+  assert.equal(paper.titleSource, 'crossref');
+  assert(!('titleMismatch' in paper) && !('registeredTitle' in paper));
+  // Lancet-family RSS section label: Crossref has the bare title, so after the label is dropped the two agree.
+  paper = paperOf(h, '10.1000/xr.articles');
+  assert.equal(paper.title, official['10.1000/xr.articles']);
+  assert(!('titleMismatch' in paper));
+  assert.equal(stored(h, 'library:machine-register:10.1000/xr.articles').title, 'ClinicalAge, a framework for synthetic biological age estimation');
+  // Crossref has no record: fallback to the submitted title, label dropped, and the bibliography is not reported as checked.
+  paper = paperOf(h, '10.1000/xr.comment');
+  assert.equal(paper.title, 'A novel ageing biomarker in synthetic cohorts');
+  assert.equal(paper.titleSource, 'registration');
+  assert.equal(paper.metadataStatus, 'registration_title_only');
+  assert.equal(reported(h, '10.1000/xr.comment').metadataStatus, 'registration_title_only');
+  assert.equal(stored(h, 'library:machine-register:10.1000/xr.comment').paperTitle, 'A novel ageing biomarker in synthetic cohorts');
+  // Markup in a Crossref title is stripped the same way as every other official title.
+  assert.equal(paperOf(h, '10.1000/xr.tags').title, 'Synthetic tagged title from Crossref');
+  // Only the title comes from Crossref: the registration shape (no journal/authors/date) and the orphan rule are unchanged.
+  for (const doi of ['10.1000/xr.dash','10.1000/xr.comment']) {
+    paper = paperOf(h, doi);
+    assert.deepEqual([paper.journal,paper.authors,paper.date], ['',[],'']);
+    assert.equal(h.context.machineOrphanPaper(stored(h, 'library:paper:' + doi), reported(h, doi)), true);
+  }
+  assert.equal(crossrefCalls(h).length, 5);
+  // A replay looks nothing up again.
+  const before = crossrefCalls(h).length;
+  const replay = await (await register(h, dsh, [item('x1',{doi:'10.1000/xr.dash',title:rss.dash})])).json();
+  assert.equal(replay.results[0].result, 'skipped');
+  assert.equal(crossrefCalls(h).length, before);
+
+  // Records written before this change, without metadataStatus, keep the old report; unknown values are not passed through.
+  const legacy = {...stored(h, 'library:paper:10.1000/xr.comment')};
+  legacy.paper = {...legacy.paper}; delete legacy.paper.metadataStatus;
+  assert.equal(h.context.libraryPaper(legacy, '10.1000/xr.comment').metadataStatus, 'external_bibliography_checked');
+  legacy.paper.metadataStatus = 'made_up_status';
+  assert.equal(h.context.libraryPaper(legacy, '10.1000/xr.comment').metadataStatus, 'external_bibliography_checked');
+
+  // A label alone is not a title, with or without the trailing space that libraryText trims.
+  h = await answer();
+  const bare = await (await register(h, dsh, [item('x6',{doi:'10.1000/xr.bare',title:'[Articles] '})])).json();
+  assert.deepEqual(bare.results[0], {doi:'10.1000/xr.bare',result:'rejected',error:'bad_title'});
+  const bareExact = await (await register(h, dsh, [item('x6b',{doi:'10.1000/xr.bare2',title:'[Articles]'})])).json();
+  assert.deepEqual(bareExact.results[0], {doi:'10.1000/xr.bare2',result:'rejected',error:'bad_title'});
+  // Only one leading label is dropped.
+  h = await answer();
+  await register(h, dsh, [item('x7',{doi:'10.1000/xr.twice',title:'[Articles] [Corrigendum] Synthetic twice labelled title'})]);
+  assert.equal(paperOf(h, '10.1000/xr.twice').title, '[Corrigendum] Synthetic twice labelled title');
+
+  // Radiotracer brackets are part of the printed title (cardiac PET / myocardial imaging) and must stay.
+  // They start with a digit, so they are not a section label; [Articles] / [Comment] still drop, as above.
+  h = await answer();
+  const tracers = [
+    ['10.1000/xr.f18a', '[18F]FDG PET imaging in a synthetic cardiac cohort'],
+    ['10.1000/xr.f18b', '[18F]-FDG uptake in synthetic myocardium'],
+    ['10.1000/xr.tc99', '[99mTc]sestamibi perfusion in synthetic cohorts'],
+    ['10.1000/xr.c11', '[11C]methionine PET in synthetic cardiomyocytes']
+  ];
+  await register(h, dsh, tracers.map(([doi, title], n) => item('tr' + n, {doi, title})));
+  for (const [doi, title] of tracers) {
+    assert.equal(paperOf(h, doi).title, title);
+    assert.equal(stored(h, 'library:machine-register:' + doi).title, title);
+    assert.equal(paperOf(h, doi).titleSource, 'registration');
+  }
+
+  // Crossref limiting requests (429): lookups already started in the same group finish; later groups of the batch fall back
+  // without a lookup. Every item still registers.
+  const group = vmGroup(h);
+  h = await answer(null, {'10.1000/xr.limit.0':() => new Response('slow down', {status:429})});
+  const limitedItems = Array.from({length:group + 2}, (_, n) => item('L' + n, {doi:'10.1000/xr.limit.' + n}));
+  const limited = await (await register(h, dsh, limitedItems)).json();
+  assert(limited.results.every(r => r.result === 'registered'));
+  const looked = new Set(crossrefCalls(h).map(call => decodeURIComponent(call.url.pathname).slice('/works/'.length)));
+  assert(looked.has('10.1000/xr.limit.0'));
+  for (const entry of limitedItems.slice(group)) assert(!looked.has(entry.doi), entry.doi + ' was looked up after the 429');
+  for (const entry of limitedItems) {
+    assert.equal(paperOf(h, entry.doi).titleSource, 'registration');
+    assert.equal(paperOf(h, entry.doi).metadataStatus, 'registration_title_only');
+  }
+
+  // Crossref returning 403: same as 429 — lookups already started in the same group finish; later groups of the
+  // batch fall back without a lookup. Every item still registers, with the submitted title and
+  // metadataStatus=registration_title_only.
+  h = await answer(null, {'10.1000/xr.forbid.0':() => new Response('forbidden', {status:403})});
+  const forbiddenItems = Array.from({length:group + 2}, (_, n) => item('G' + n, {doi:'10.1000/xr.forbid.' + n}));
+  const forbidden = await (await register(h, dsh, forbiddenItems)).json();
+  assert(forbidden.results.every(r => r.result === 'registered'));
+  const forbidLooked = new Set(crossrefCalls(h).map(call => decodeURIComponent(call.url.pathname).slice('/works/'.length)));
+  assert(forbidLooked.has('10.1000/xr.forbid.0'));
+  for (const entry of forbiddenItems.slice(group)) assert(!forbidLooked.has(entry.doi), entry.doi + ' was looked up after the 403');
+  for (const entry of forbiddenItems) {
+    assert.equal(paperOf(h, entry.doi).titleSource, 'registration');
+    assert.equal(paperOf(h, entry.doi).metadataStatus, 'registration_title_only');
+    assert.equal(paperOf(h, entry.doi).title, entry.title);
+  }
+
+  // Crossref down or answering with another DOI: fallback, never an error for the batch.
+  h = await answer(null, {'10.1000/xr.dash':() => new Response('down', {status:503}), '10.1000/xr.same':() => Response.json({message:{DOI:'10.1000/other',title:['Wrong paper']}})});
+  const down = await (await register(h, dsh, [item('x1',{doi:'10.1000/xr.dash',title:rss.dash}), item('x2',{doi:'10.1000/xr.same',title:rss.same})])).json();
+  assert.deepEqual(down.results.map(r => r.result), ['registered','registered']);
+  assert.equal(paperOf(h, '10.1000/xr.dash').title, rss.dash);
+  assert.equal(paperOf(h, '10.1000/xr.same').title, rss.same);
+  assert.equal(paperOf(h, '10.1000/xr.same').metadataStatus, 'registration_title_only');
+
+  // "Title: Subtitle" from the feed and "Title\u3000\u2015 Subtitle \u2015" from Crossref are the same title once dashes count as
+  // punctuation: the Crossref form is stored and no mismatch is recorded (shape of Circulation Reports cr-26-0249).
+  h = await answer();
+  await register(h, dsh, [item('x8',{doi:'10.1000/xr.dash',title:'Synthetic Anticoagulant Timing after Stroke in Atrial Fibrillation: SYNTH-ICH Registry 12-Month Outcomes'})]);
+  paper = paperOf(h, '10.1000/xr.dash');
+  assert.equal(paper.titleSource, 'crossref');
+  assert(paper.title.includes('\u2015'));
+  assert(!('titleMismatch' in paper) && !('registeredTitle' in paper));
 }
 // scripts/test_machine_download.cjs awaits run(), so the CI jobs that already run that file also run these checks.
 module.exports = {run};

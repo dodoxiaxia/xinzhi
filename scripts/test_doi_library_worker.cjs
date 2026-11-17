@@ -83,6 +83,11 @@ if(require.main===module)(async()=>{
  const stored=JSON.parse(h.values.get(key));assert.equal(stored.pdf.key,'library:pdf:'+hash(pdf));assert.equal(stored.pdf.source,'github');
  const before=h.calls.length,writesBefore=h.writes.length;const repeat=await h.request('/api/acquire');assert.equal(repeat.status,200);assert.equal((await repeat.json()).cached,true);assert.equal(h.calls.length,before);assert.equal(h.writes.length,writesBefore);
  const exact=await h.request('/api/library',{method:'GET',doi:'doi: 10.1000/EXACT'});assert.equal((await exact.json()).paper.doi,doi);assert.equal(h.calls.length,before);
+ // The public projection reports what the record says: a Crossref-checked acquisition stays checked, a registration whose
+ // Crossref lookup failed reports registration_title_only, and an unknown or missing value keeps the legacy checked report.
+ assert.equal((await (await h.request('/api/library',{method:'GET'})).json()).paper.metadataStatus,'external_bibliography_checked');
+ {const g=harness();seed(g,record('manual_needed',{metadataStatus:'registration_title_only',titleSource:'registration'}));const p=(await (await g.request('/api/library',{method:'GET'})).json()).paper;assert.equal(p.metadataStatus,'registration_title_only');assert(!Object.hasOwn(p,'titleSource'));
+  for(const status of [undefined,'made_up_status']){const legacy=record('manual_needed');if(status)legacy.paper.metadataStatus=status;else delete legacy.paper.metadataStatus;seed(g,legacy);assert.equal((await (await g.request('/api/library',{method:'GET'})).json()).paper.metadataStatus,'external_bibliography_checked');}}
  const download=await h.request('/api/fulltext');assert.equal(download.status,200);assert.equal(download.headers.get('content-type'),'application/pdf');assert(download.headers.get('content-disposition').startsWith('attachment;'));assert.deepEqual(Buffer.from(await download.arrayBuffer()),pdf);assert.equal(h.calls.length,before);
  await error(await h.request('/api/fulltext',{passphrase:'wrong'}),403,'pdf_passphrase_invalid');
  h.values.set(stored.pdf.key,Buffer.from('%PDF-1.7\nChanged bytes\n%%EOF\n'));await error(await h.request('/api/fulltext'),502,'library_integrity');

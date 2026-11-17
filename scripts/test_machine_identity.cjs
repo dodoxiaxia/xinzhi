@@ -84,6 +84,63 @@ async function verifyNext(h, doi, result, reason) {
     const both = await identity(h, files[name], '10.9999/synthetic.other', 'Synthetic unrelated study of imaginary tides and moons');
     assert.equal(both.verdict, 'mismatch'); assert.equal(both.reason, 'identity_mismatch');
   }
+  // Lancet-family RSS section labels ("[Articles] ", "[Comment] ") are not printed on page 1: a stored title that kept the label
+  // never matches (title_not_found), the title registration now stores (label dropped) does. Synthetic text only.
+  for (const [label, printed] of [['[Articles] ', 'ClinicalAge, a framework for synthetic biological age estimation'], ['[Comment] ', 'A novel ageing biomarker in synthetic cohorts']]) {
+    const labelDoi = '10.9999/synthetic.label', pdf = fixtures.flateEol({doi:labelDoi, title:printed});
+    const kept = await identity(h, pdf, labelDoi, label + printed);
+    assert.equal(kept.verdict, 'mismatch'); assert.equal(kept.checks.title, '');
+    const registered = run(h, 'machineRegisterItem')({doi:labelDoi, title:label + printed, source:'rss-2026-11-17-am', section:'MAIN'});
+    assert.equal(registered.title, printed);
+    const fixed = await identity(h, pdf, labelDoi, registered.title);
+    assert.equal(fixed.verdict, 'ok'); assert.equal(fixed.level, 'full');
+  }
+  // Japanese subtitles: page 1 and Crossref print "Title\u3000\u2015 Subtitle \u2015", the RSS feed (and so the library title) "Title: Subtitle".
+  // Titles modelled on Circulation Reports cr-26-0249 / cr-26-0254; the PDFs are synthetic (no publisher file).
+  const normalize = run(h, 'machineNormalize');
+  for (const [n, rss, printed] of [
+    ['0249', 'Early Direct Oral Anticoagulant Initiation After Intracranial Hemorrhage Among Japanese Patients With Nonvalvular Atrial Fibrillation: SAFE-ICH Registry 12-Month Outcomes',
+      'Early Direct Oral Anticoagulant Initiation After Intracranial Hemorrhage Among Japanese Patients With Nonvalvular Atrial Fibrillation\u3000\u2015 SAFE-ICH Registry 12-Month Outcomes \u2015'],
+    ['0254', 'Association of Mean Left Atrial Pressure With Clinical Characteristics and Outcomes in Patients Undergoing Catheter Ablation for Atrial Fibrillation: Subanalysis of the Shinshu Catheter Ablation (Shinshu-AB) Registry',
+      'Association of Mean Left Atrial Pressure With Clinical Characteristics and Outcomes in Patients Undergoing Catheter Ablation for Atrial Fibrillation\u3000\u2015 Subanalysis of the Shinshu Catheter Ablation (Shinshu-AB) Registry \u2015']]) {
+    assert.equal(normalize(rss), normalize(printed), n);
+    const dashDoi = '10.9999/synthetic.dash-' + n, pdf = fixtures.customEncoding({doi:dashDoi, title:printed});
+    for (const expected of [rss, printed]) {
+      const verdict = await identity(h, pdf, dashDoi, expected);
+      assert.equal(verdict.verdict, 'ok', n + ' ' + expected); assert.equal(verdict.level, 'full'); assert.equal(verdict.checks.title, 'page');
+    }
+    // Dropping the dashes does not loosen anything else: a different subtitle still misses.
+    const other = await identity(h, pdf, dashDoi, rss.replace(/: .*/, ': Synthetic Different Registry Outcomes'));
+    assert.equal(other.verdict, 'mismatch'); assert.equal(other.checks.title, '');
+  }
+  // En dash, em dash and horizontal bar all drop like the ASCII hyphen; other non-ASCII text is kept.
+  assert.equal(normalize('12\u2013Month \u2014 Outcomes \u2015'), normalize('12-Month Outcomes'));
+  assert.equal(normalize('Synthetic \u5fc3\u623f\u98a4\u52a8 title'), 'synthetic\u5fc3\u623f\u98a4\u52a8title');
+  // "fl" ligature mis-mapped to U+00DF by the font (shape of MDPI jcm15218528): page 1 says "Inßammation". Synthetic PDFs only.
+  {
+    const ligDoi = '10.9999/synthetic.ligature', title = 'Systemic Inflammation and New-Onset Atrial Fibrillation in Synthetic Cohorts';
+    for (const pdf of [fixtures.flateEol({doi:ligDoi, title:title.replace('fl', '\u00df')}), fixtures.customEncoding({doi:ligDoi, title:title.replace('fl', '\u00df')})]) {
+      const passed = await identity(h, pdf, ligDoi, title);
+      assert.equal(passed.verdict, 'ok'); assert.equal(passed.level, 'full'); assert.equal(passed.checks.title, 'page'); assert.equal(passed.checks.titleGlyph, 'eszett_as_fl');
+      // The rest of the title must still match exactly: one other word changed fails.
+      const elsewhere = await identity(h, pdf, ligDoi, title.replace('Atrial', 'Ventricular'));
+      assert.equal(elsewhere.verdict, 'mismatch'); assert.equal(elsewhere.checks.title, '');
+      // Only "fl" is recovered: an expected "ff" or "fi" spelling is not.
+      for (const other of ['ff', 'fi']) assert.equal((await identity(h, pdf, ligDoi, title.replace('fl', other))).verdict, 'mismatch', other);
+    }
+    // An expected title with "fl" and a page that differs elsewhere (and has no "ß") fails.
+    const plain = fixtures.flateEol({doi:ligDoi, title:'Systemic Inflammation and New-Onset Ventricular Arrhythmia in Synthetic Cohorts'});
+    const differs = await identity(h, plain, ligDoi, title);
+    assert.equal(differs.verdict, 'mismatch'); assert(!('titleGlyph' in differs.checks));
+    // A genuine German "ß" still matches its own page normally, without the fallback.
+    const germanDoi = '10.9999/synthetic.german', german = 'Große Studie zur Herzinsuffizienz in synthetischen Kohorten';
+    const germanPdf = fixtures.flateEol({doi:germanDoi, title:german});
+    const own = await identity(h, germanPdf, germanDoi, german);
+    assert.equal(own.verdict, 'ok'); assert.equal(own.level, 'full'); assert(!('titleGlyph' in own.checks));
+    // ...and is not passed against a page with different text, with or without the "ß" read as "fl".
+    const otherPdf = fixtures.flateEol({doi:germanDoi, title:'Große Analyse zur Vorhofflimmern in synthetischen Kohorten'});
+    for (const expected of [german, german.replace('\u00df', 'fl')]) assert.equal((await identity(h, otherPdf, germanDoi, expected)).verdict, 'mismatch', expected);
+  }
   // Variants of each structure.
   for (const eol of ['\r\n', '\n', '\r', ' \n']) assert.equal((await identity(h, fixtures.flateEol({...flate, eol}), flate.doi, flate.title)).verdict, 'ok', JSON.stringify(eol));
   assert.equal((await identity(h, fixtures.flateEol({...flate, lengthWrong:true}), flate.doi, flate.title)).verdict, 'ok');
