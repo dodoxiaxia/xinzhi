@@ -42,7 +42,6 @@
       if (draft && (draft.limitations || draft.learning_question)) {
         editorialSection = `
           <div class="drawer-section drawer-editorial-extra">
-            ${draft.source_checked === true ? '<div class="drawer-section-title">已核对导读 <small>对照公开摘要核对</small></div>' : ''}
             ${draft.limitations ? `<details class="drawer-extra"><summary>证据边界</summary><p>${esc(draft.limitations)}</p></details>` : ''}
             ${draft.learning_question ? `<div class="clinical-question-box"><b>共读问题</b><p>${esc(draft.learning_question)}</p></div>` : ''}
           </div>
@@ -178,12 +177,15 @@
 
       const zhTitle = (draft && draft.title_zh) || (ql && ql.title_zh) || paper.titleZh || '';
       const takeaway = cardTakeaway(paper);
+      // 已核对导读（source_checked）不论有无证据边界/共读问题，都在要点行上方标明，与未核对草稿分得清；不重复摘要。
+      const checkedTitle = draft && draft.source_checked === true ? '<div class="drawer-section-title">已核对导读 <small>对照公开摘要核对</small></div>' : '';
       const head = `
         ${publicationStatusHtml(paper)}
         ${paper.media && paper.media.length ? `<div class="drawer-media">${paper.media.slice(0, 2).map(m => `<a class="media-pill" href="${esc(m.u)}" target="_blank" rel="noopener noreferrer" title="${esc(m.t)}">媒体关注 · ${esc(m.s)}</a>`).join('')}</div>` : ''}
 
         ${paper.title ? `<h2 class="drawer-title-en">${esc(paper.title)}</h2>` : ''}
         ${zhTitle ? `<div class="drawer-title-zh">${esc(zhTitle)}</div>` : ''}
+        ${checkedTitle}
         ${takeaway ? `<p class="drawer-takeaway">${esc(takeaway)}</p>` : ''}
       `.trim();
       const tr = LIVE_TR[trKeyOf(paper)];
