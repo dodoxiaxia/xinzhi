@@ -322,16 +322,26 @@ _AI_RCT_EXCLUDE_RE = (r'\b(?:secondary|post[- ]hoc|ancillary|exploratory|economi
 _AI_RCT_ARM_RE = (r'\b(?:randomi[sz]ed|randomly (?:assigned|allocated)|allocated)\b[^.;]{0,100}?\bto\b[^.;]{0,100}?(?:' + _AI_TERM_RE + r')')
 
 TOPICAL_TAG_RULES = [
-    ('#结构性心脏病', r'\btavr\b|\btavi\b|\btranscatheter (?:aortic|mitral|tricuspid|pulmonary) valve|\btranscatheter edge[- ]to[- ]edge\b|\bteer\b|\bmitraclip\b|\btriclip\b|\bsavr\b'
+    ('#结构性心脏病', r'\btavr\b|\btavi\b|\btranscatheter (?:aortic|mitral|tricuspid|pulmonary) valve|\bedge[- ]to[- ]edge\b|\bteer\b|\bmitraclip\b|\btriclip\b|\bsavr\b'
                      r'|\baortic (?:valve )?stenosis\b|\baortic (?:valve )?regurgitation\b|\bmitral (?:valve|regurgitation|stenosis|annul)|\btricuspid (?:valve|regurgitation)\b|\bvalvular heart disease\b|\bheart valves?\b'
-                     r'|\bvalve (?:replacement|repair|disease|intervention|surgery)\b|\bvalve[- ]in[- ]valve\b|\bparavalvular\b|\bbioprosthetic valve|\bstructural heart\b'
-                     r'|\bleft atrial appendage (?:occlusion|closure)\b|\blaao\b|\bpatent foramen ovale\b|\bpfo\b|\bbicuspid aortic valve\b'),
+                     r'|\b(?:aortic|pulmonary|prosthetic) valves?\b|\bvalve (?:replacement|repair|disease|intervention|surgery)\b|\bvalve[- ]in[- ]valve\b|\btav[- ]in[- ]tav\b|\bredo[- ]tav[ri]\b|\bleaflet modification\b|\bparavalvular\b|\bbioprosthetic valve'
+                     r'|\bcalcific aortic valve|\baortic valve calcifi|\bstructural heart (?:interventions?|procedures?|teams?|programs?|imaging|centers?)\b'
+                     r'|\bleft atrial appendage (?:occlusion|closure)\b|\blaao\b|\bpatent foramen ovale\b|\bpfo\b|\bbicuspid aortic valve\b|\biatrogenic atrial septal defects?\b'),
     ('#先心病', r'\bcongenital heart\b|\bcongenital cardiac\b|\bachd\b|\btetralogy of fallot\b|\bfontan\b|(?<!iatrogenic )\batrial septal defects?\b|\bventricular septal defects?\b|\bsingle[- ]ventricle\b'
-               r'|\btransposition of the great arteries\b|\bhypoplastic left heart\b|\bcoarctation of the aorta\b|\bpatent ductus arteriosus\b|\bebstein\b|\buniventricular\b|\bnorwood\b|\bglenn\b|\bfetal (?:echocardiograph|cardiac)'),
-    ('#预防/血脂', r'\bldl\b|\bldl-c\b|\bcholesterol\b|\bstatins?\b|\bpcsk9\b|\binclisiran\b|\bezetimibe\b|\bbempedoic\b|\bevolocumab\b|\balirocumab\b|\bobicetrapib\b|\bcetp\b|\bicosapent\b'
+               r'|\btransposition of the great arteries\b|\bhypoplastic left heart\b|\bcoarctation of the aorta\b|\bpatent ductus arteriosus\b|\bebstein\b|\buniventricular\b|\bnorwood\b|\bglenn\b|\bfetal (?:echocardiograph|cardiac)|\bbicuspid aortic valve\b'),
+    ('#预防/血脂', r'\bldl\b|\bldl-c\b|\bcholesterol\b|\bstatins?\b|\bpcsk9\b|\binclisiran\b|\bezetimibe\b|\bbempedoic\b|\bevolocumab\b|\balirocumab\b|\bobicetrapib\b|\bcetp\b|\bicosapent\b|\bangptl3\b'
                  r'|\blipoprotein\(a\)|\blp\(a\)|\btriglyceride|\bdyslipid|\bhyperlipid|\bhypercholesterol|\bhypertriglycerid|\blipid[- ]lowering\b|\blipids?\b|\bapolipoprotein\b|\bapob\b|\bremnant cholesterol\b'
                  r'|\bprimary prevention\b|\bsecondary prevention\b|\bcardiovascular (?:disease )?prevention\b|\bpreventive cardiology\b|\bprevent equations?\b|\bscore2\b|\bpooled cohort equations?\b'),
 ]
+_TYG_RE = r'\btriglyceride[- ]glucose\b|\btyg\b'
+_PREV_MOLECULE_ONLY_RE = r'\bpcsk9\b(?![- ](?:inhibit|antibod|monoclonal|sirna|targeting therap))|\bcetp\b(?! inhibit)|\bapolipoprotein\b|\bapob\b|\bcholesterol\b|\blipids?\b'
+_BASIC_SCIENCE_RE = r'\b(?:mice|mouse|murine|rats?|zebrafish|knock(?:out|down)|in vitro|cell lines?|induced pluripotent|ipsc|organoids?|methylation|ubiquitinat|transcriptom|single[- ]cell rna|signaling pathway|porcine model|minipig)\b'
+_PREV_ASPIRIN_RE = r'\b(?:aspirin|polypill)\b'
+_CONCLUSION_LABEL_RE = re.compile(r'(?:^|[\s.])(?:conclusions?(?: and relevance)?|interpretation|implications?|clinical implications?)\s*:', re.I)
+_CONCLUSION_CUE_RE = re.compile(r'\b(?:in conclusion|in summary|we conclude|these (?:findings|results|data) (?:suggest|indicate|demonstrate|support|highlight|show)|our (?:findings|results|data) (?:suggest|indicate|demonstrate|show|support))\b', re.I)
+_AI_RCT_EXCLUDE_TITLE_RE = r'\bincentives?\b|\beducational (?:interventions?|materials?)\b|\bvignettes?\b|\bscenario[- ]based\b|\bsurvey experiment\b'
+_AI_RCT_EXCLUDE_ABS_RE = r'\bvignettes?\b|\bfinancial incentives?\b|\bscenario[- ]based\b|\bsurvey experiment\b'
+
 
 # Keep this ordered vocabulary aligned with the frontend filter list.
 TOPIC_VOCAB = tuple(
@@ -379,19 +389,77 @@ def _is_ai_rct(title, summary=''):
                 and re.search(_AI_RCT_ARM_RE, summary))
 
 
-def extract_tags(title, summary=''):
+def _conclusion_text(summary):
+    text = summary or ''
+    labels = list(_CONCLUSION_LABEL_RE.finditer(text))
+    if labels:
+        return text[labels[-1].end():]
+    sentences = [part for part in re.split(r'(?<=[.!?])\s+', text.strip()) if part]
+    if not sentences:
+        return ''
+    selected = [part for part in sentences if _CONCLUSION_CUE_RE.search(part)]
+    if sentences[-1] not in selected:
+        selected.append(sentences[-1])
+    return ' '.join(selected)
+
+
+def _topical_hit(tag, pattern, title, summary):
     title_text = (title or '').lower()
     summary_text = (summary or '').lower()
-    matched = _legacy_tags(title, summary)
-    additions = []
-    if _is_ai_rct(title, summary):
-        additions.append(TAG_AI_RCT)
-    for tag, pattern in TOPICAL_TAG_RULES:
-        if (re.search(pattern, title_text)
-                or len(re.findall(pattern, summary_text)) >= 2):
-            additions.append(tag)
-    return list(dict.fromkeys(matched + additions))[:4]
+    if tag == '#预防/血脂':
+        title_text = re.sub(_TYG_RE, ' ', title_text)
+        summary_text = re.sub(_TYG_RE, ' ', summary_text)
+    title_hit = bool(re.search(pattern, title_text))
+    ok = title_hit or bool(re.search(pattern, _conclusion_text(summary_text)))
+    if not ok and tag == '#预防/血脂' and re.search(_PREV_ASPIRIN_RE, title_text) and re.search(r'\bprimary prevention\b', title_text + ' ' + summary_text):
+        return True, True
+    if ok and not title_hit and re.search(_BASIC_SCIENCE_RE, summary_text):
+        return False, False
+    if ok and tag == '#预防/血脂' and re.search(_BASIC_SCIENCE_RE, title_text + ' ' + summary_text):
+        hits = re.findall(pattern, title_text + ' ' + summary_text)
+        if hits and all(re.fullmatch(_PREV_MOLECULE_ONLY_RE, hit) for hit in hits):
+            return False, False
+    return ok, title_hit
 
+
+def _ai_rct_hit(title, summary):
+    title_text = (title or '').lower()
+    summary_text = (summary or '').lower()
+    if re.search(_AI_RCT_EXCLUDE_TITLE_RE, title_text) or not _is_ai_rct(title, summary):
+        return False, False
+    via_title = bool(re.search(_RCT_TITLE_RE, title_text))
+    if not via_title and re.search(_AI_RCT_EXCLUDE_ABS_RE, summary_text):
+        return False, False
+    return True, via_title
+
+
+def extract_tags(title, summary=''):
+    legacy = _legacy_tags(title, summary)[:4]
+    legacy_title = set(_legacy_tags(title, ''))
+    additions = []
+    ok, title_hit = _ai_rct_hit(title, summary)
+    if ok:
+        additions.append((TAG_AI_RCT, title_hit))
+    for tag, pattern in TOPICAL_TAG_RULES:
+        ok, title_hit = _topical_hit(tag, pattern, title, summary)
+        if ok:
+            additions.append((tag, title_hit))
+    result = list(legacy)
+    for tag, title_hit in additions:
+        if tag in result:
+            continue
+        if len(result) < 4:
+            result.append(tag)
+        elif title_hit:
+            for i in range(len(result) - 1, -1, -1):
+                if result[i] in legacy and result[i] not in legacy_title:
+                    result.pop(i)
+                    result.append(tag)
+                    break
+    return result
+
+
+NEW_VOCAB_TAGS = frozenset({TAG_AI_RCT} | {tag for tag, _ in TOPICAL_TAG_RULES})
 
 _VALID_TAGS = {tag for tag, _ in TAG_RULES} | {'#AI-ECG', TAG_AI_RCT} | {tag for tag, _ in TOPICAL_TAG_RULES}
 
@@ -474,7 +542,7 @@ def _overlay_entry(p, overlay):
 
 
 def resolve_topic_tags(paper, title=None, summary=None):
-    """Resolve tags with human and reviewed overlay decisions ahead of regex."""
+    """Keep human tags; preserve machine overlay order and append new regex vocabulary."""
     title = paper.get('title', '') if title is None else title
     summary = paper.get('summary', '') if summary is None else summary
     regex_tags = extract_tags(title, summary)
@@ -484,12 +552,18 @@ def resolve_topic_tags(paper, title=None, summary=None):
         return existing_tags
     if overlay_entry:
         origin, overlay_tags = overlay_entry
-        if origin == 'machine_agreed' and set(overlay_tags) != set(regex_tags):
-            record = {'doi': paper.get('doi'), 'id': paper.get('id'),
-                      'overlayTags': list(overlay_tags), 'regexTags': list(regex_tags)}
-            TAG_OVERLAY_RECONCILE_LOG.append(record)
-            identifier = record['doi'] or record['id'] or '(unknown paper)'
-            print(f"标签对账：保留 overlay {identifier}；overlay={overlay_tags} regex={regex_tags}")
+        if origin in ('machine_agreed', 'machine_reviewed'):
+            result = list(overlay_tags)
+            result.extend(tag for tag in regex_tags
+                          if tag in NEW_VOCAB_TAGS and tag not in result)
+            result = result[:4]
+            if origin == 'machine_agreed' and set(result) != set(regex_tags):
+                record = {'doi': paper.get('doi'), 'id': paper.get('id'),
+                          'overlayTags': list(overlay_tags), 'regexTags': list(regex_tags)}
+                TAG_OVERLAY_RECONCILE_LOG.append(record)
+                identifier = record['doi'] or record['id'] or '(unknown paper)'
+                print(f"标签对账：保留 overlay {identifier}；overlay={overlay_tags} regex={regex_tags}")
+            return result
         return overlay_tags
     return regex_tags
 

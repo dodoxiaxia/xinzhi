@@ -226,7 +226,7 @@
   {
     "id": "structural-incidental",
     "title": "Sex differences in outcomes after myocardial infarction",
-    "summary": "Patients with prior valve surgery were excluded.",
+    "summary": "BACKGROUND: Prior valve surgery was noted. CONCLUSIONS: Outcomes after myocardial infarction were similar.",
     "must_not_have": [
       "#结构性心脏病"
     ]
@@ -246,7 +246,8 @@
     ],
     "must_not_have": [
       "#先心病"
-    ]
+    ],
+    "summary": "Patients with heart failure, stroke and bleeding were assessed by echocardiography after transseptal puncture."
   },
   {
     "id": "lipid-inclisiran",
@@ -258,7 +259,7 @@
   {
     "id": "lipid-summary-double",
     "title": "Outcomes in a contemporary cohort",
-    "summary": "LDL cholesterol was measured at baseline. Higher LDL cholesterol was associated with events.",
+    "summary": "METHODS: LDL cholesterol was measured. CONCLUSIONS: Higher LDL cholesterol was associated with events.",
     "must_have": [
       "#预防/血脂"
     ]
@@ -266,7 +267,7 @@
   {
     "id": "lipid-summary-single",
     "title": "Ablation outcomes in persistent atrial fibrillation",
-    "summary": "Statin use was recorded as a covariate.",
+    "summary": "METHODS: Statin use was recorded as a covariate. CONCLUSIONS: Ablation outcomes were favourable.",
     "must_not_have": [
       "#预防/血脂"
     ]
@@ -276,6 +277,138 @@
     "title": "Risk of coronary heart disease (CHD) in women",
     "must_not_have": [
       "#先心病"
+    ]
+  },
+  {
+    "id": "r2-b02",
+    "title": "RBFOX2 Autoregulation Promotes Cardiomyocyte Transcriptome Maturation and Differentiation",
+    "summary": "BACKGROUND: RBFOX2 haploinsufficiency has been linked to congenital heart disease, including hypoplastic left heart syndrome. METHODS: Human induced pluripotent stem cell-derived cardiomyocytes and zebrafish were studied. CONCLUSIONS: Reduced RBFOX2 dosage stalls cardiomyocyte maturation, contributing to congenital heart disease pathogenesis.",
+    "must_have": [],
+    "must_not_have": [
+      "#先心病"
+    ]
+  },
+  {
+    "id": "r2-b04",
+    "title": "PRMT3-Mediated Arginine Methylation Stabilizes PCSK9 to Promote Aortic Valve Calcification",
+    "summary": "BACKGROUND: Calcific aortic valve disease lacks drug therapy. METHODS: Valve interstitial cells, knockout mice and methylation assays were used. RESULTS: PRMT3 methylates PCSK9 and stabilizes it. CONCLUSIONS: The PRMT3-PCSK9 axis promotes aortic valve calcification.",
+    "must_have": [
+      "#结构性心脏病"
+    ],
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "r2-b15",
+    "title": "Comparative prognostic value of TyG index and TyG-BMI for 90-day all-cause mortality in critically ill older adults",
+    "summary": "BACKGROUND: The triglyceride-glucose (TyG) index reflects insulin resistance. METHODS: ICU patients were analysed. RESULTS: Higher triglyceride-glucose index predicted mortality. CONCLUSIONS: The TyG index and TyG-BMI predict 90-day mortality.",
+    "must_have": [],
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "r2-b18",
+    "title": "Financial incentives increase uptake and perceived effectiveness of autonomous medical AI, yet patients still seek human reconfirmation",
+    "summary": "In a randomized vignette experiment, participants were randomized to no copay vs copay for AI screening and chose between AI or a clinician.",
+    "must_have": [],
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "r2-b19",
+    "title": "Individual and Community-Level Differences in Use of Contemporary Electrophysiology Procedures in the United States",
+    "summary": "METHODS: We identified patients who underwent pulmonary vein isolation, left atrial appendage occlusion, or leadless pacemaker implantation. RESULTS: Use of left atrial appendage occlusion increased; Black patients were less likely to undergo left atrial appendage occlusion. CONCLUSIONS: Sociodemographic differences in contemporary electrophysiology procedures persist.",
+    "must_have": [],
+    "must_not_have": [
+      "#结构性心脏病"
+    ]
+  },
+  {
+    "id": "r2-b05",
+    "title": "Aspirin, cardiovascular events, and major bleeding in older adults: extended follow-up of the ASPREE trial",
+    "summary": "BACKGROUND AND AIMS: Guidelines advise against routine low-dose aspirin for primary prevention in older adults. CONCLUSIONS: No long-term benefit was observed.",
+    "must_have": [
+      "#预防/血脂"
+    ],
+    "must_not_have": []
+  },
+  {
+    "id": "r2-b10",
+    "title": "Clinical significance of persistent iatrogenic atrial septal defect after catheter ablation for atrial fibrillation",
+    "summary": "Patients with heart failure, stroke and bleeding were assessed by echocardiography after transseptal puncture.",
+    "must_have": [
+      "#结构性心脏病",
+      "#房颤/电生理"
+    ],
+    "must_not_have": [
+      "#先心病"
+    ]
+  },
+  {
+    "id": "r2-b12",
+    "title": "Comparison of Leaflet Modification Techniques for TAV-in-TAV: Insights From Bench Testing",
+    "summary": "",
+    "must_have": [
+      "#结构性心脏病"
+    ],
+    "must_not_have": []
+  },
+  {
+    "id": "rule-bicuspid",
+    "title": "Bicuspid aortic valve morphology and outcomes after TAVR",
+    "summary": "",
+    "must_have": [
+      "#结构性心脏病",
+      "#先心病"
+    ],
+    "must_not_have": []
+  },
+  {
+    "id": "rule-pfo",
+    "title": "Patent foramen ovale is a significant risk factor for patients with coronary artery disease",
+    "summary": "",
+    "must_have": [
+      "#结构性心脏病"
+    ],
+    "must_not_have": []
+  },
+  {
+    "id": "rule-conclusion",
+    "title": "Outcomes in a contemporary cohort",
+    "summary": "METHODS: Adults were followed. RESULTS: Events were recorded. CONCLUSIONS: Higher LDL cholesterol was associated with events.",
+    "must_have": [
+      "#预防/血脂"
+    ],
+    "must_not_have": []
+  },
+  {
+    "id": "rule-no-conclusion",
+    "title": "Ablation outcomes in a registry",
+    "summary": "BACKGROUND: Statin use is common. METHODS: Statin therapy and statin dose were recorded. CONCLUSIONS: Ablation outcomes were favourable.",
+    "must_have": [],
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "rule-no-structural",
+    "title": "Substrate characteristics of ventricular tachycardia in structural heart disease",
+    "summary": "",
+    "must_have": [],
+    "must_not_have": [
+      "#结构性心脏病"
+    ]
+  },
+  {
+    "id": "rule-ai-education",
+    "title": "Can co-designed educational interventions help consumers think critically about asking ChatGPT health questions? Results from a randomised-controlled trial",
+    "summary": "",
+    "must_have": [],
+    "must_not_have": [
+      "#AI-RCT证据"
     ]
   }
 ]
