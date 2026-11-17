@@ -412,5 +412,33 @@
     "action": "uncertain",
     "reason": "uncertain_scope",
     "note": "The AI RCT evidence tag alone does not constitute a cardiovascular signal"
+  },
+  {
+    "id": "tag_ai_rct_d03_without_ai_cues_not_cv",
+    "paper": {
+      "title": "Digital messaging for human papillomavirus vaccine literacy: a randomized trial",
+      "summary": "Guardians were randomly assigned to receive digital messages or a printed brochure about vaccination. Follow-up assessed changes in vaccine knowledge and literacy.",
+      "journal": "Regional Health Reports",
+      "tags": [
+        "#AI-RCT证据"
+      ]
+    },
+    "action": "uncertain",
+    "reason": "uncertain_scope",
+    "note": "The AI RCT evidence tag alone does not constitute a cardiovascular signal"
+  },
+  {
+    "id": "tag_ai_rct_d03_medical_ai_backstop_keep",
+    "paper": {
+      "title": "AI Chatbot Use for Human Papillomavirus Vaccine Literacy in Japan: A Randomized Clinical Trial",
+      "summary": "In this randomized clinical trial in Japan, guardians received an AI chatbot intervention or printed educational materials. Vaccine literacy was assessed after the intervention.",
+      "journal": "JAMA Network Open",
+      "tags": [
+        "#AI-RCT证据"
+      ]
+    },
+    "action": "keep",
+    "reason": null,
+    "note": "Kept by the medical AI backstop; not a cardiovascular determination"
   }
 ]
