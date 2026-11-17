@@ -84,5 +84,13 @@ Worker 注入点及顶层构建占位符必须登记在 `INJECTED_WORKER_CONSTAN
 .py/.js/.cjs/.mjs/.ts 新增跳过测试（unittest/pytest 跳过装饰器、skipTest 调用、JS 的 it/test/describe 跳过）、
 固定等待（waitForTimeout），或在测试文件里给断言套重试（attempt/tries 循环、retry 包装、toPass、expect.poll、flaky，
 前后 8 行内有断言），同一差异必须在同一行或上一行用新增注释 `verify-allow: 理由` 写明原因（# 或 // 注释均可），
-否则失败。理由至少 4 个非空白字符，占位词不算。已有代码不受影响。优先修根因；
-写法与自验入口见 `.claude/skills/verify/SKILL.md`。
+否则失败。理由去掉标点和空白后至少 4 个字符；占位词（TODO、TBD、FIXME、reason、later 等）不分大小写、
+去标点后比较，`TODO.`、`fixme!` 也不算。已有代码不受影响。差异按显式 `a/`、`b/` 前缀读取，本机设了
+`diff.noprefix` 或 `diff.mnemonicPrefix` 也照样命中。优先修根因；写法与自验入口见 `.claude/skills/verify/SKILL.md`。
+
+口径是「观察再执行」：先按上面的写法拦，命中情况看一段时间再决定是否扩大。**已知缺口**（目前不报，不代表允许）：
+
+- Python：裸 `@skipIf` / `@skip`（`from unittest import skipIf` 后不带模块前缀）、`pytest.skip()` 调用、
+  `pytest.importorskip`、`raise unittest.SkipTest` / `raise SkipTest`。
+- JS：`xit`、`xtest`、`xdescribe`、`test.skip.each`、`test.fixme`、`test.todo`。
+- 重试：不带 attempt/tries/retry 命名的循环（如 `for i in range(3):` 包着断言）、`time.sleep` 固定等待。

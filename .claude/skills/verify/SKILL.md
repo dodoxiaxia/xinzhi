@@ -9,16 +9,22 @@ description: 改完心知仓库后、交卷或开 PR 前的固定自验入口。
 
 ## 怎么跑
 
+只有这一种入口，选项加在后面：
+
 ```sh
-git fetch origin main
-bash <(git show origin/main:scripts/verify.sh)          # 推荐：入口本身也取 main 的版本
-scripts/verify.sh                                         # 等价写法：main 上已有入口时会自动换成 main 的版本再跑
-scripts/verify.sh --ui                                    # 改了界面时（需先按 AGENTS.md 第 2 节构建 public/ 并有 Chromium）
+bash <(git show origin/main:scripts/verify.sh)
+bash <(git show origin/main:scripts/verify.sh) --ui     # 改了界面时（需先按 AGENTS.md 第 2 节构建 public/ 并有 Chromium）
 ```
 
-其他选项：`--referee-only` 只跑守卫；`--no-fetch` 离线时不先拉取（裁判可能过期，输出会提示）；
-`--pr-body FILE` 顺带检查 PR 正文。各步日志在 `.local/verify/<时间>/`，结尾打印汇总。
-退出码：0 全部通过；1 有步骤失败；3 改了界面但没跑 `--ui`。
+入口本身取自 origin/main，被验分支里的 `scripts/verify.sh` 不参与。直接运行分支里的文件（`scripts/verify.sh`、
+`bash scripts/verify.sh`）不算入口：文件开头到自检之间的任何一行都是分支代码，可以在自检前直接退出，所以它的输出不能当自验证据。
+输出第一行 `verify entry: referee origin/main@<SHA> (<提交时间>)` 只在实际执行的字节与裁判的 `scripts/verify.sh` 完全一致时出现；
+否则入口会改用裁判那份执行，或印 `branch copy, NOT the referee entry`。分支里的入口与裁判不同时，输出会写
+「working-tree scripts/verify.sh differs from the referee entry; ignored」。
+
+其他选项：`--referee-only` 只跑守卫；`--no-fetch` 离线时不先拉取，输出会印 `WARNING --no-fetch` 以及所用裁判的 SHA 和提交时间，
+交卷时照抄；`--pr-body FILE` 顺带检查 PR 正文。各步日志在 `.local/verify/<时间>/`，结尾打印汇总。
+退出码：0 全部通过；1 有步骤失败；2 用法或环境错误；3 改了界面但没跑 `--ui`。
 
 ## 入口按顺序做什么
 
@@ -29,7 +35,7 @@ scripts/verify.sh --ui                                    # 改了界面时（�
    「differs; ignored」。可用环境变量 `VERIFY_REFEREE_REF` 换裁判引用，交卷时须写明。
 2. `python3 scripts/build_sources.py --check`
 3. `scripts/run_all_tests.sh --no-browser`
-4. 改了 `index.html`、`style.css`、`src/app/`、拼接产物或 `docs/feature-map.json` 时：`--ui` 会跑完整的
+4. 改了 `index.html`、`style.css`、`src/app/`、拼接产物、`edge/src/*.js` 或 `docs/feature-map.json` 时：`--ui` 会跑完整的
    `scripts/run_all_tests.sh`（含浏览器测试和 `node scripts/feature_map_walk.cjs --viewport all`）。
    没跑就在汇总里标 `NOT RUN` 并以 3 退出；交卷必须写明浏览器部分没验及原因。
 
@@ -61,14 +67,19 @@ scripts/verify.sh --ui                                    # 改了界面时（�
 await page.waitForTimeout(300);
 ```
 
-理由至少 4 个非空白字符，`TODO`、`TBD`、`reason` 等占位不算。也可用通用写法 `guardrails:allow test-weakening <理由>`。
+理由去掉标点和空白后至少 4 个字符；`TODO`、`TBD`、`FIXME`、`reason`、`later` 等占位词不分大小写、去标点后比较，
+`TODO.`、`fixme!` 也不算。也可用通用写法 `guardrails:allow test-weakening <理由>`。
 按共用验收口径，测试不稳时优先找根因；找不到就删掉该测试并在交卷里写明，不要用跳过、固定等待或重试刷绿。
-细则见 `docs/guardrails.md#test-weakening`。
+这个守卫目前按「观察再执行」口径：只认上面列出的写法，已知漏网的写法（裸 `skipIf`、`pytest.skip()`、`xit` 等）
+列在 `docs/guardrails.md#test-weakening` 的「已知缺口」里，命中不了不等于允许，交卷照样要写明。细则见同一节。
 
 ## 修 3 轮仍不过就停
 
 同一步骤连续 3 次运行失败（入口在 `.local/verify/history.tsv` 计数，汇总会打印 `consecutive failing runs` 和 `STOP`），
 停止修改，交给 ddx，附三轮的改法和报错。
+
+这个计数只是本地提示，不是强制锁：`history.tsv` 在本机 `.local/` 下，删掉或换个工作树就会从 0 开始，入口也不会因此拒跑。
+停手靠执行者自觉和交卷时如实写轮数。
 
 ## 交卷要附
 
@@ -77,5 +88,6 @@ await page.waitForTimeout(300);
 
 ## 可选：只观察的提交钩子
 
-`scripts/git-hooks/pre-commit` 在提交时打印裁判守卫结果，从不拦提交。需要的人自己启用：
+`scripts/git-hooks/pre-commit` 在提交时用 `bash <(git show origin/main:scripts/verify.sh) --referee-only --no-fetch`
+打印裁判守卫结果（入口同样取自 origin/main，main 上还没有入口时只打印跳过），从不拦提交。需要的人自己启用：
 `git config core.hooksPath scripts/git-hooks`（撤销：`git config --unset core.hooksPath`）。不会自动安装到任何环境。

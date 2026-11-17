@@ -75,7 +75,7 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 
 日志在 `.local/test-logs/`。浏览器测试的截图和结果写到 `.local/` 下。
 
-**改完交卷前的固定自验入口**：`bash <(git show origin/main:scripts/verify.sh)`（裁判守卫取自 origin/main，再跑 build_sources --check 与上面的 --no-browser），说明见 [.claude/skills/verify/SKILL.md](.claude/skills/verify/SKILL.md)。
+**改完交卷前的固定自验入口**：只认 `bash <(git show origin/main:scripts/verify.sh)` 这一种写法（入口和裁判守卫都取自 origin/main，再跑 build_sources --check 与上面的 --no-browser；改界面加 `--ui`）。直接运行分支里的 `scripts/verify.sh` 不算自验。说明见 [.claude/skills/verify/SKILL.md](.claude/skills/verify/SKILL.md)。
 
 **浏览器环境**
 

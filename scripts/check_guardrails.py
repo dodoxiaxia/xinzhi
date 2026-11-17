@@ -163,7 +163,8 @@ RETRY = re.compile(r'\bfor\s+\w*(?:attempt|tries|retr)\w*\s+in\b|\bwhile\b.*\b(?
 ASSERTION = re.compile(r'\bassert\w*|\bexpect\s*\(|\bself\.fail\s*\(')
 RETRY_WINDOW = 8
 VERIFY_ALLOW = re.compile(r'(?:#|//)\s*verify-allow:\s*(.*?)\s*(?:\*/)?$')
-PLACEHOLDER_REASONS = frozenset(('todo', 'tbd', 'reason', '<reason>', 'xxx', 'n/a', 'na', 'none', '-'))
+# Compared after lowercasing and dropping punctuation/whitespace, so `TODO.`, `fixme!` and `<reason>` are placeholders too.
+PLACEHOLDER_REASONS = frozenset(('todo', 'tbd', 'tba', 'reason', 'xxx', 'na', 'none', 'fixme', 'later', 'wip', 'temp', 'flaky'))
 
 
 def verify_allow_reason(text):
@@ -172,7 +173,8 @@ def verify_allow_reason(text):
     if not m:
         return None
     reason = m.group(1).strip()
-    if len(reason.replace(' ', '')) < 4 or reason.lower() in PLACEHOLDER_REASONS:
+    normalized = ''.join(ch for ch in reason.casefold() if ch.isalnum())
+    if len(normalized) < 4 or normalized in PLACEHOLDER_REASONS:
         return None
     return reason
 
@@ -181,7 +183,7 @@ def added_lines(root, base, include_untracked):
     """{path: {new_line_number: text}} for lines added since merge-base(base, HEAD), working tree included."""
     merge = git(root, 'merge-base', base, 'HEAD').strip()
     added, path, number = {}, None, 0
-    for row in git(root, 'diff', '-U0', '--no-color', '--no-ext-diff', merge, '--').splitlines():
+    for row in git(root, 'diff', '-U0', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', merge, '--').splitlines():
         if row.startswith('+++ '):
             path = row[6:] if row.startswith('+++ b/') else None
         elif row.startswith('@@'):
@@ -805,7 +807,7 @@ def run_checks(root, only=None, base=None, public=None, extra_files=(), commit_r
     if 'forbidden-files' in selected:
         candidates = set(filter(None, tracked))
         if base:
-            candidates = {row.split('\t')[-1] for row in git(root, 'diff', '--name-status', base + '...HEAD', '--diff-filter=A').splitlines()}
+            candidates = {row.split('\t')[-1] for row in git(root, 'diff', '--name-status', '--src-prefix=a/', '--dst-prefix=b/', base + '...HEAD', '--diff-filter=A').splitlines()}
             candidates.update(filter(None, git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0')))
         for path in sorted(candidates):
             if Path(path).suffix.lower() in EXTENSIONS or Path(path).name == '.env' or Path(path).name.startswith('.env.'):
@@ -813,7 +815,7 @@ def run_checks(root, only=None, base=None, public=None, extra_files=(), commit_r
                 if not any(fnmatch.fnmatch(path, g) for g in globs):
                     emit('forbidden-files', path, 1, 'PR must not contain screenshots/PDFs; put evidence outside the repo (see .github/pull_request_template.md)', 'remove the file from the PR')
     if base and not config.get('allow_workflows'):
-        for path in git(root, 'diff', '--name-only', base + '...HEAD').splitlines():
+        for path in git(root, 'diff', '--name-only', '--src-prefix=a/', '--dst-prefix=b/', base + '...HEAD').splitlines():
             if path.startswith('.github/workflows/'):
                 emit('workflows-untouched', path, 1, 'workflow changed', 'propose CI changes as a docs/ plan first')
     if base and 'test-weakening' in selected:

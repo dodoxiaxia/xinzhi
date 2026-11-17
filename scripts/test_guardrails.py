@@ -160,6 +160,34 @@ class GuardrailMutationTests(unittest.TestCase):
         self.assertEqual(len(self.run_check('test-weakening', base='HEAD')), 1)
         self.git('rm', '-qf', 'scripts/test_sample.cjs', 'scripts/test_sample.py')
 
+    def test_test_weakening_placeholder_reasons_ignore_case_and_punctuation(self):
+        wait_call = 'await page.' + 'waitFor' + 'Timeout(500);'
+        for reason in ('TODO.', 'fixme!', 'Fix-Me', 'T.B.D.', '<reason>', 'n/a', 'LATER...', '  wip  ', '....', 'a.b.c'):
+            with self.subTest(reason=reason):
+                self.write('scripts/test_sample.cjs', '  ' + wait_call + ' // verify-' + 'allow: ' + reason + '\n')
+                self.assertEqual(len(self.run_check('test-weakening', base='HEAD')), 1)
+        for reason in ('animation has no completion event', '容器里没有浏览器'):
+            with self.subTest(reason=reason):
+                self.write('scripts/test_sample.cjs', '  ' + wait_call + ' // verify-' + 'allow: ' + reason + '\n')
+                self.assertEqual(self.run_check('test-weakening', base='HEAD'), [])
+        self.git('rm', '-qf', 'scripts/test_sample.cjs')
+
+    def test_test_weakening_survives_diff_noprefix_and_mnemonic_prefix(self):
+        # A user's diff config must not blind the diff parser (`+++ path` instead of `+++ b/path`).
+        skip_call = 'self.' + 'skip' + 'Test("later")'
+        self.write('scripts/test_sample.py', 'def test_x(self):\n    ' + skip_call + '\n')
+        for key, value in (('diff.noprefix', 'true'), ('diff.mnemonicPrefix', 'true')):
+            with self.subTest(config=key):
+                self.git('config', key, value)
+                found = self.run_check('test-weakening', base='HEAD')
+                self.git('config', '--unset', key)
+                self.assertEqual([(f.path, f.line) for f in found], [('scripts/test_sample.py', 2)])
+        self.git('commit', '-qm', 'skip')
+        self.write('.github/workflows/sample.yml', 'name: sample\n')
+        self.git('commit', '-qm', 'Workflow fixture')
+        self.git('config', 'diff.noprefix', 'true')
+        self.assertEqual(self.run_check('workflows-untouched', base='HEAD~1')[0].path, '.github/workflows/sample.yml')
+
     def test_test_weakening_scope(self):
         skip_call = 'self.' + 'skip' + 'Test("later")'
         # A pre-existing skip is not part of the diff; a reason must be added in the same diff, not inherited.
