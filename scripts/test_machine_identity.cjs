@@ -4,7 +4,7 @@
 const assert = require('assert'), crypto = require('crypto'), fs = require('fs'), path = require('path'), vm = require('vm');
 const {setup, token} = require('./test_fulltext_auth_helpers.cjs');
 const {hash, error} = require('./test_doi_library_worker.cjs');
-const fixtures = require('./machine_identity_fixtures.cjs');
+const fixtures = require('./machine_identity_fixtures.cjs'), encrypted = require('./machine_identity_encrypted_fixtures.cjs');
 const base = 'https://learn.dryz.info', reviewUrl = base + '/api/muse/review';
 const museKey = 'synthetic_muse_key_0123456789_abcdef', dsh = 'synthetic_downloader_token_0123456789ab', fallback = 'synthetic_fallback_token_0123456789abcd', reader = 'synthetic_reader_token_0123456789abcdef';
 const tokens = JSON.stringify([{id:'dsh',role:'downloader',token:dsh},{id:'fallback',role:'fallback',token:fallback},{id:'ddx',role:'reader',token:reader}]);
@@ -231,6 +231,44 @@ async function verifyNext(h, doi, result, reason) {
   assert.equal((await identity(h, noContents, flate.doi, flate.title)).reason, 'contents_not_found');
   assert.equal((await identity(h, files['flate-eol-before-endstream.pdf'], flate.doi, 'Hi')).reason, 'title_too_short');
   assert.equal((await identity(h, files['flate-eol-before-endstream.pdf'], 'not a doi', flate.title)).reason, 'doi_invalid');
+
+  // Encrypted PDFs (fixtures written by qpdf from invented samples). Standard handler, empty user password: decrypt,
+  // then unpack the encrypted /ObjStm that holds the page tree. Before decryption existed these all failed as
+  // objstm_unsupported, which named the symptom rather than the cause.
+  const md5 = value => Buffer.from(run(h, 'machineMd5')(new Uint8Array(Buffer.from(value, 'latin1')))).toString('hex');
+  for (const value of ['', 'a', 'abc', 'message digest', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64), 'y'.repeat(1000)]) assert.equal(md5(value), crypto.createHash('md5').update(value, 'latin1').digest('hex'), 'md5 ' + value.length);
+  const encFile = name => fs.readFileSync(path.join(encrypted.directory, name));
+  const {crypt, info: encInfo} = encrypted.samples;
+  for (const name of ['encrypted-aesv2-r4-objstm.pdf', 'encrypted-rc4-r2-objstm.pdf', 'encrypted-rc4-r3-objstm.pdf', 'encrypted-aesv3-r5-objstm.pdf', 'encrypted-aesv3-r6-objstm.pdf']) {
+    const bytes = encFile(name);
+    assert(/\/Encrypt\s+\d+\s+0\s+R/.test(latin(bytes)) && /\/Type\s*\/ObjStm/.test(latin(bytes)) && bytes.length < 8192, name);
+    const verdict = await identity(h, bytes, crypt.doi, crypt.title);
+    assert.deepEqual({verdict:verdict.verdict, level:verdict.level, checks:verdict.checks}, {verdict:'ok', level:'full', checks:{doi:'page', title:'page', readable:true}}, name);
+    assert.equal((await identity(h, bytes, crypt.doi, 'Synthetic unrelated study of imaginary tides and moons')).reason, 'title_not_found', name);
+  }
+  // Info /Title is an encrypted string outside any object stream: decrypted per object, it still rescues an unreadable page.
+  const infoVerdict = await identity(h, encFile('encrypted-aesv2-info-title.pdf'), encInfo.doi, encInfo.title);
+  assert.equal(infoVerdict.level, 'metadata_title'); assert.equal(infoVerdict.checks.title, 'metadata');
+  // A file that needs a password to open is never guessed at; other handlers and methods say so instead of blaming /ObjStm.
+  const userPassword = await identity(h, encFile('encrypted-user-password.pdf'), crypt.doi, crypt.title);
+  assert.deepEqual({verdict:userPassword.verdict, reason:userPassword.reason, checks:userPassword.checks}, {verdict:'mismatch', reason:'encrypted_pdf', checks:{doi:'', title:'', readable:false}});
+  const aesv2 = encFile('encrypted-aesv2-r4-objstm.pdf');
+  assert.equal((await identity(h, mutate(aesv2, '/Filter /Standard', '/Filter /Synthetx'), crypt.doi, crypt.title)).reason, 'encryption_unsupported');
+  assert.equal((await identity(h, mutate(aesv2, '/CFM /AESV2', '/CFM /AESV9'), crypt.doi, crypt.title)).reason, 'encryption_unsupported');
+  assert.equal((await identity(h, mutate(aesv2, '/R 4', '/R 7'), crypt.doi, crypt.title)).reason, 'encryption_unsupported');
+  // Losing the trailer /ID changes the derived key: the empty password no longer verifies.
+  assert.equal((await identity(h, Buffer.from(latin(aesv2).replace(/\/ID\s*\[/g, '/XD ['), 'latin1'), crypt.doi, crypt.title)).reason, 'encrypted_pdf');
+  // Unencrypted files never enter the decryptor.
+  for (const name of ['flate-eol-before-endstream.pdf', 'objstm-xref-stream.pdf', 'custom-encoding-tounicode.pdf']) {
+    const page = await run(h, 'machineFirstPage')(new Uint8Array(files[name]));
+    assert(!page.notes.has('encrypted_pdf') && !page.notes.has('encryption_unsupported'), name);
+  }
+  // Object-stream detection reads only the object's own dictionary. A short object written just before an /ObjStm used
+  // to be taken for one (a fixed 400-byte window ran past its endobj), which left a false objstm_unsupported note.
+  const shortBefore = mutate(files['objstm-xref-stream.pdf'], '5 0 obj\n', '9 0 obj\n7\nendobj\n5 0 obj\n');
+  const shortPage = await run(h, 'machineFirstPage')(new Uint8Array(shortBefore));
+  assert(!shortPage.notes.has('objstm_unsupported'), [...shortPage.notes].join(','));
+  assert.equal((await identity(h, shortBefore, objstm.doi, objstm.title)).verdict, 'ok');
 
   // Upload endpoint: 202 for each structure, 409 with a reason code (and nothing else from the PDF) for a wrong paper.
   for (const [name, sample] of cases) {
