@@ -302,6 +302,51 @@ class CommittedOverlayFileTests(unittest.TestCase):
         previous = [row for row in self.items if row.get('batchId') != batch_id]
         self.assertTrue(all(row in self.items for row in previous))
 
+    def test_batch3_rows_are_complete_unique_and_machine_reviewed(self):
+        batch_id = self.raw.get('batch3BatchId')
+        self.assertTrue(batch_id)
+        rows = [row for row in self.items if row.get('batchId') == batch_id]
+        self.assertTrue(rows)
+        ids, dois = set(), set()
+        for row in rows:
+            for field in ('id', 'doi', 'pmid', 'inputHash', 'sampleId', 'model', 'batchId'):
+                self.assertIn(field, row)
+            self.assertEqual(row['tagOrigin'], 'machine_reviewed')
+            self.assertEqual(row['model'], 'gemini-4-hydrogen-high')
+            self.assertEqual(row['batchId'], batch_id)
+            self.assertEqual(row['inputFields'], ['title'])
+            self.assertTrue(row['tags'])
+            self.assertLessEqual(len(row['tags']), 4)
+            self.assertEqual(len(row['tags']), len(set(row['tags'])))
+            self.assertTrue(set(row['tags']) <= VOCAB_TAGS)
+            self.assertNotIn(row['id'], ids)
+            if row['doi'].strip():
+                self.assertNotIn(row['doi'].lower(), dois)
+            ids.add(row['id'])
+            if row['doi'].strip():
+                dois.add(row['doi'].lower())
+            title = 'Coronary stent outcomes'
+            self.assertEqual(enrich.extract_tags(title, ''), ['#冠脉介入'])
+            with patch('builtins.print'):
+                resolved = enrich.resolve_topic_tags(
+                    {'id': row['id'], 'doi': row['doi'], 'title': title, 'summary': ''},
+                    title=title, summary='')
+            self.assertTrue(set(row['tags']) <= set(resolved))
+        previous = [row for row in self.items if row.get('batchId') != batch_id]
+        self.assertTrue(all(row in self.items for row in previous))
+
+    def test_backfill_batches_do_not_share_ids_or_dois(self):
+        seen_ids, seen_dois = {}, {}
+        for row in self.items:
+            batch = row.get('batchId')
+            ident = row['id'].strip()
+            self.assertNotIn(ident, seen_ids, f'{ident} in {batch} and {seen_ids.get(ident)}')
+            seen_ids[ident] = batch
+            doi = row.get('doi', '').lower().strip()
+            if doi:
+                self.assertNotIn(doi, seen_dois, f'{doi} in {batch} and {seen_dois.get(doi)}')
+                seen_dois[doi] = batch
+
     def test_resolve_topic_tags_returns_overlay_tags_for_every_committed_row(self):
         regex_title = 'Coronary stent outcomes'
         regex_tags = enrich.extract_tags(regex_title, '')
