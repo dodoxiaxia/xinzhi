@@ -6019,22 +6019,6 @@
       "sampleId": "F1154"
     },
     {
-      "id": "rss-d86292f205b9ce8b",
-      "doi": "10.1148/ryct.260225",
-      "pmid": "42986195",
-      "tags": [
-        "#大模型/NLP"
-      ],
-      "tagOrigin": "machine_reviewed",
-      "batchId": "tag-backfill-20261117-3",
-      "model": "gemini-4-hydrogen-high",
-      "inputHash": "49b38cbfde15fa96eaf638b19f68e4ba904024955de3ffba4404bb47025c747e",
-      "inputFields": [
-        "title"
-      ],
-      "sampleId": "F1155"
-    },
-    {
       "id": "pmid-42986920",
       "doi": "10.1161/circresaha.126.329915",
       "pmid": "42986920",
@@ -6241,5 +6225,5 @@
   "batch3Model": "gemini-4-hydrogen-high",
   "batch3OfficialState": "27bad94bfa063ddb3e3048833939439d47ae2006",
   "batch3CodeShaForExtractTags": "965ad8211eafd52bb13e93ae8f8b2465e87367d2",
-  "batch3Note": "第3批：仅题名、尚无词表标签的条目；抽核 30 条 28/30，补充心源性休克、肺动脉压传感器、机械循环支持归 #心衰/心肌 的规则后全批重跑；以 machine_reviewed 写入；弃权不写；#AI-RCT证据 不标综述、meta 分析、二次分析和方案稿"
+  "batch3Note": "第3批：仅题名、尚无词表标签的条目；抽核 30 条 28/30，补充心源性休克、肺动脉压传感器、机械循环支持归 #心衰/心肌 的规则后全批重跑；以 machine_reviewed 写入；弃权不写；#AI-RCT证据 不标综述、meta 分析、二次分析和方案稿；F1155（10.1148/ryct.260225，CT 图像重建视觉工具）模型以低置信度误标 #大模型/NLP，整条撤回；此后 confidence=low 的结果一律不写入"
 }
