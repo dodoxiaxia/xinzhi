@@ -20,7 +20,7 @@ import sys
 
 ENCODED_WORDS = ('YmVhY29u', '54O954Gr5Y+w', '5b+D5ZCJ5bq3', 'eGluamlrYW5n', 'eGpr', '5LqS6IGU572R5Yy76Zmi', 'QUnljLvnlJ8=')
 BANNED_WORDS = tuple(base64.b64decode(w).decode() for w in ENCODED_WORDS)
-CHECKS = ('banned-words', 'public-ids', 'secrets', 'hex32', 'sources-fresh', 'forbidden-files', 'workflows-untouched', 'ui-banned-labels', 'feature-map-selectors', 'state-counts')
+CHECKS = ('banned-words', 'public-ids', 'secrets', 'hex32', 'sources-fresh', 'forbidden-files', 'workflows-untouched', 'ui-banned-labels', 'feature-map-selectors', 'state-counts', 'test-weakening')
 INJECTED_WORKER_CONSTANTS = frozenset(('PDF_LIBRARY', 'DOI_ADJUDICATIONS', 'PUBLIC_ABSTRACT_SOURCES', 'FULLTEXT_OIDC_BUILD_KEYS', 'SCOPE_UNCERTAIN_LIST'))
 BASELINE = ('docs/screenshots/**', 'docs/manual-assets/*', 'docs/使用说明.pdf', 'scripts/fixtures/machine-identity/*.pdf', 'icon.png')
 ADDED_ALLOW = ('scripts/fixtures/machine-identity/*.pdf', 'icon.png')
@@ -147,6 +147,79 @@ TEST_PATH = re.compile(
     r'(?:^|/)tests?/|(?:^|/)scripts/test_|/test_[^/]+$|'
     r'test_[^/]+\.(?:py|cjs|js|mjs)$|_test\.(?:py|cjs|js|mjs)$|\.test\.(?:py|cjs|js|mjs)$'
 )
+
+
+# --- test-weakening: a diff that skips a test, adds a fixed wait or retries an assertion must say why ---
+# Patterns are written with escapes so this file never contains the literal call it looks for.
+WEAKEN_EXTENSIONS = ('.py', '.js', '.cjs', '.mjs', '.ts')
+WEAKEN_PATTERNS = (
+    (re.compile(r'\bunittest\.skip'), 'adds a unittest skip decorator'),
+    (re.compile(r'\bpytest\.mark\.skip'), 'adds a pytest skip marker'),
+    (re.compile(r'\bskipTest\s*\('), 'adds a skipTest call'),
+    (re.compile(r'\b(?:it|test|describe)\.skip\s*\('), 'adds a skipped JS test'),
+    (re.compile(r'\bwaitForTimeout\s*\('), 'adds a fixed waitForTimeout sleep'),
+)
+RETRY = re.compile(r'\bfor\s+\w*(?:attempt|tries|retr)\w*\s+in\b|\bwhile\b.*\b(?:attempt|tries|retr)\w*|@retry\b|\b\w*retry\w*\s*\(|\btoPass\s*\(|\bexpect\.poll\s*\(|@flaky\b|\bflaky\s*\(', re.I)
+ASSERTION = re.compile(r'\bassert\w*|\bexpect\s*\(|\bself\.fail\s*\(')
+RETRY_WINDOW = 8
+VERIFY_ALLOW = re.compile(r'(?:#|//)\s*verify-allow:\s*(.*?)\s*(?:\*/)?$')
+# Compared after lowercasing and dropping punctuation/whitespace, so `TODO.`, `fixme!` and `<reason>` are placeholders too.
+PLACEHOLDER_REASONS = frozenset(('todo', 'tbd', 'tba', 'reason', 'xxx', 'na', 'none', 'fixme', 'later', 'wip', 'temp', 'flaky'))
+
+
+def verify_allow_reason(text):
+    """Return the stated reason of a `verify-allow:` comment, or None when absent or empty."""
+    m = VERIFY_ALLOW.search(text)
+    if not m:
+        return None
+    reason = m.group(1).strip()
+    normalized = ''.join(ch for ch in reason.casefold() if ch.isalnum())
+    if len(normalized) < 4 or normalized in PLACEHOLDER_REASONS:
+        return None
+    return reason
+
+
+def added_lines(root, base, include_untracked):
+    """{path: {new_line_number: text}} for lines added since merge-base(base, HEAD), working tree included."""
+    merge = git(root, 'merge-base', base, 'HEAD').strip()
+    added, path, number = {}, None, 0
+    for row in git(root, 'diff', '-U0', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', merge, '--').splitlines():
+        if row.startswith('+++ '):
+            path = row[6:] if row.startswith('+++ b/') else None
+        elif row.startswith('@@'):
+            m = re.match(r'@@ -\S+ \+(\d+)', row)
+            number = int(m[1]) if m else 0
+        elif row.startswith('+') and path:
+            added.setdefault(path, {})[number] = row[1:]
+            number += 1
+    if include_untracked:
+        for rel in filter(None, git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0')):
+            try:
+                text = (Path(root) / rel).read_text(encoding='utf-8')
+            except (OSError, UnicodeDecodeError):
+                continue
+            added[rel] = dict(enumerate(text.splitlines(), 1))
+    return added
+
+
+def weakening_hits(path, lines):
+    """Yield (line, rule) for unexplained test weakening in the added `lines` ({number: text}) of `path`."""
+    if not path.endswith(WEAKEN_EXTENSIONS):
+        return
+
+    def explained(number):
+        # The reason must be part of the same diff: on the added line itself or an added line just above it.
+        return any(n in lines and verify_allow_reason(lines[n]) for n in (number, number - 1))
+
+    for number in sorted(lines):
+        text = lines[number]
+        for pattern, rule in WEAKEN_PATTERNS:
+            if pattern.search(text) and not explained(number):
+                yield number, rule
+        if is_test_path(path) and RETRY.search(text) and not explained(number):
+            window = [lines.get(n, '') for n in range(number - RETRY_WINDOW, number + RETRY_WINDOW + 1)]
+            if any(ASSERTION.search(t) for t in window):
+                yield number, 'wraps an assertion in a retry'
 
 
 def is_test_path(path):
@@ -734,7 +807,7 @@ def run_checks(root, only=None, base=None, public=None, extra_files=(), commit_r
     if 'forbidden-files' in selected:
         candidates = set(filter(None, tracked))
         if base:
-            candidates = {row.split('\t')[-1] for row in git(root, 'diff', '--name-status', base + '...HEAD', '--diff-filter=A').splitlines()}
+            candidates = {row.split('\t')[-1] for row in git(root, 'diff', '--name-status', '--src-prefix=a/', '--dst-prefix=b/', base + '...HEAD', '--diff-filter=A').splitlines()}
             candidates.update(filter(None, git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0')))
         for path in sorted(candidates):
             if Path(path).suffix.lower() in EXTENSIONS or Path(path).name == '.env' or Path(path).name.startswith('.env.'):
@@ -742,9 +815,14 @@ def run_checks(root, only=None, base=None, public=None, extra_files=(), commit_r
                 if not any(fnmatch.fnmatch(path, g) for g in globs):
                     emit('forbidden-files', path, 1, 'PR must not contain screenshots/PDFs; put evidence outside the repo (see .github/pull_request_template.md)', 'remove the file from the PR')
     if base and not config.get('allow_workflows'):
-        for path in git(root, 'diff', '--name-only', base + '...HEAD').splitlines():
+        for path in git(root, 'diff', '--name-only', '--src-prefix=a/', '--dst-prefix=b/', base + '...HEAD').splitlines():
             if path.startswith('.github/workflows/'):
                 emit('workflows-untouched', path, 1, 'workflow changed', 'propose CI changes as a docs/ plan first')
+    if base and 'test-weakening' in selected:
+        for path, lines in sorted(added_lines(root, base, include_untracked).items()):
+            for number, rule in weakening_hits(path, lines):
+                emit('test-weakening', path, number, f'diff {rule} without a stated reason',
+                     'fix the root cause; or add "# verify-allow: <reason>" (JS: "// verify-allow: <reason>") on the same or previous line in this diff')
     if 'public-ids' in selected:
         fix = 'new data injected into public/_worker.js: prove it carries no reviewed/hold/hidden ids, add it to the registry and a test in test_public_bibliography_review.py'
         build = texts.get('scripts/build_public.py', '')

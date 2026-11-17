@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Observe-only pre-commit hook: prints the referee guardrail result, never blocks a commit.
+# Opt in per clone with:  git config core.hooksPath scripts/git-hooks   (undo: git config --unset core.hooksPath)
+# Nothing installs this automatically. The entry is always taken from origin/main, never from this branch.
+git rev-parse --show-toplevel >/dev/null 2>&1 || exit 0
+if git cat-file -e origin/main:scripts/verify.sh 2>/dev/null; then
+  echo "pre-commit (observe only): bash <(git show origin/main:scripts/verify.sh) --referee-only --no-fetch"
+  bash <(git show origin/main:scripts/verify.sh) --referee-only --no-fetch 2>&1 | sed 's/^/  /'
+else
+  echo "pre-commit (observe only): origin/main has no scripts/verify.sh yet; skipped"
+fi
+echo "pre-commit: observe only, commit not blocked"
+exit 0
