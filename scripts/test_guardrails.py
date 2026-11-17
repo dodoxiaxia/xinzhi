@@ -127,6 +127,64 @@ class GuardrailMutationTests(unittest.TestCase):
         self.assertEqual(found[0].path, '.github/workflows/sample.yml')
         self.assertEqual(self.run_check('workflows-untouched', base='HEAD~1', config={'allow_workflows': True}), [])
 
+    def test_test_weakening_requires_a_reason_in_the_same_diff(self):
+        # Call names are assembled at runtime so this file's own diff never trips the check.
+        skip_deco = '@unittest.' + 'skip("flaky")'
+        skip_call = 'self.' + 'skip' + 'Test("later")'
+        wait_call = 'await page.' + 'waitFor' + 'Timeout(500);'
+        js_skip = 'it.' + 'skip("later", () => {});'
+        allow_py = '  # verify-' + 'allow: upstream feed offline until 2026-12-01'
+        allow_js = ' // verify-' + 'allow: animation has no completion event'
+        cases = [
+            ('scripts/test_sample.py', 'import unittest\n' + skip_deco + '\ndef test_x():\n    pass\n', 2),
+            ('scripts/test_sample.py', 'def test_x(self):\n    ' + skip_call + '\n', 2),
+            ('scripts/test_sample.cjs', 'async function t(page) {\n  ' + wait_call + '\n}\n', 2),
+            ('scripts/test_sample.cjs', js_skip + '\n', 1),
+            ('scripts/test_sample.py', 'def test_x(self):\n    for ' + 'attempt in range(3):\n        self.assertEqual(f(), 1)\n', 2),
+            ('scripts/test_sample.cjs', 'await expect(async () => {\n  expect(await f()).toBe(1);\n}).' + 'to' + 'Pass();\n', 3),
+            ('scripts/helper.py', 'def helper(self):\n    ' + skip_call + '\n', 2),
+        ]
+        for path, text, line in cases:
+            with self.subTest(path=path, line=line):
+                self.write(path, text)
+                found = self.run_check('test-weakening', base='HEAD')
+                self.assertEqual([(f.path, f.line) for f in found], [(path, line)])
+                self.git('rm', '-qf', path)
+        # Positive: the same additions with a stated reason on the same line or the line above pass.
+        self.write('scripts/test_sample.py', 'import unittest\n' + skip_deco + allow_py + '\ndef test_x(self):\n'
+                   '    ' + allow_py.strip() + '\n    ' + skip_call + '\n')
+        self.write('scripts/test_sample.cjs', 'async function t(page) {\n  ' + wait_call + allow_js + '\n}\n')
+        self.assertEqual(self.run_check('test-weakening', base='HEAD'), [])
+        # An empty or placeholder reason does not count.
+        self.write('scripts/test_sample.cjs', 'async function t(page) {\n  ' + wait_call + ' // verify-' + 'allow: TODO\n}\n')
+        self.assertEqual(len(self.run_check('test-weakening', base='HEAD')), 1)
+        self.git('rm', '-qf', 'scripts/test_sample.cjs', 'scripts/test_sample.py')
+
+    def test_test_weakening_scope(self):
+        skip_call = 'self.' + 'skip' + 'Test("later")'
+        # A pre-existing skip is not part of the diff; a reason must be added in the same diff, not inherited.
+        self.write('scripts/test_old.py', 'def test_x(self):\n    ' + skip_call + '\n')
+        self.git('commit', '-qm', 'Old skip')
+        self.assertEqual(self.run_check('test-weakening', base='HEAD'), [])
+        self.write('scripts/test_old.py', '# verify-' + 'allow: explained long ago\ndef test_y(self):\n    pass\n'
+                   'def test_x(self):\n    ' + skip_call + '\n')
+        self.git('commit', '-qm', 'Unrelated edit')
+        self.assertEqual(self.run_check('test-weakening', base='HEAD~1'), [])
+        # Without --base the check is diff-only and silent; docs and non-test retry logic are out of scope.
+        self.write('scripts/test_new.py', 'def test_x(self):\n    ' + skip_call + '\n')
+        self.assertEqual(self.run_check('test-weakening'), [])
+        self.git('rm', '-qf', 'scripts/test_new.py')
+        self.write('docs/note.md', skip_call + '\n')
+        self.write('scripts/fetcher.py', 'for ' + 'attempt in range(3):\n    assert ok()\n')
+        self.assertEqual(self.run_check('test-weakening', base='HEAD'), [])
+        # Committed and uncommitted additions both count; untracked files only when asked.
+        self.write('scripts/test_new.py', 'def test_x(self):\n    ' + skip_call + '\n')
+        self.git('commit', '-qm', 'Committed skip')
+        self.assertEqual(len(self.run_check('test-weakening', base='HEAD~1')), 1)
+        (self.root / 'scripts/test_untracked.py').write_text('def test_x(self):\n    ' + skip_call + '\n')
+        self.assertEqual(len(self.run_check('test-weakening', base='HEAD~1')), 1)
+        self.assertEqual(len(self.run_check('test-weakening', base='HEAD~1', include_untracked=True)), 2)
+
     def test_ui_labels_and_scope(self):
         for label in g.UI_LABELS:
             self.violation('ui-banned-labels', 'index.html', '\n' + label)

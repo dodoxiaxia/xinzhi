@@ -77,3 +77,12 @@ Worker 注入点及顶层构建占位符必须登记在 `INJECTED_WORKER_CONSTAN
 `enabledFeeds` / `feedCount` / `sources` 等字段等于字面量，或 `{'empty_feed': 82}` 这类摘要。
 0、1、2 以及测试自己在临时目录里构造的夹具数据不报。期望值应从同一份数据推导（见 #161）。
 行内或配置例外必须写明理由。
+
+## test-weakening
+
+仅 `--base` 差异模式检查（相对 `merge-base(base, HEAD)` 的工作树，含未提交改动；本地运行时含未跟踪文件）。
+.py/.js/.cjs/.mjs/.ts 新增跳过测试（unittest/pytest 跳过装饰器、skipTest 调用、JS 的 it/test/describe 跳过）、
+固定等待（waitForTimeout），或在测试文件里给断言套重试（attempt/tries 循环、retry 包装、toPass、expect.poll、flaky，
+前后 8 行内有断言），同一差异必须在同一行或上一行用新增注释 `verify-allow: 理由` 写明原因（# 或 // 注释均可），
+否则失败。理由至少 4 个非空白字符，占位词不算。已有代码不受影响。优先修根因；
+写法与自验入口见 `.claude/skills/verify/SKILL.md`。
