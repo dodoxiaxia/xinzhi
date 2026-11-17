@@ -7,8 +7,13 @@ const path = require('node:path');
 const root = process.env.XINZHI_TEST_ASSET_ROOT || path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src/app/01-state-helpers.js'), 'utf8');
 const helpers = source.slice(source.indexOf('  const validView'), source.indexOf('  const URL_STATE_KEYS'));
+// readStateFromUrl parses topic params with the real helpers defined above validView (since #174).
+const topicStart = source.indexOf('  const UNCLASSIFIED_TOPIC');
+const topicEnd = source.indexOf('  function selectedTags(');
+assert.ok(topicStart >= 0 && topicEnd > topicStart, 'topic helpers found in 01-state-helpers.js');
+const topicHelpers = source.slice(topicStart, topicEnd);
 const context = vm.createContext({ URLSearchParams, safeGet: () => null });
-vm.runInContext(helpers + '\nthis.read = readStateFromUrl;', context);
+vm.runInContext(topicHelpers + '\n' + helpers + '\nthis.read = readStateFromUrl;', context);
 const cases = [
   ['?journals=100%25', ['100%']],
   ['?journals=bad%ZZ', ['bad%ZZ']],

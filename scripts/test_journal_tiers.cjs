@@ -64,7 +64,12 @@ function createHarness() {
     stateSource.indexOf('  function selectedJournals('),
     stateSource.indexOf('  function readStateFromUrl(')
   );
-  vm.runInContext(selectedHelper + '\n' + readHelpers + '\nthis.readStateFromUrl = readStateFromUrl;', ctx);
+  // readStateFromUrl parses topic params with the real helpers defined above validView (since #174).
+  const topicStart = stateSource.indexOf('  const UNCLASSIFIED_TOPIC');
+  const topicEnd = stateSource.indexOf('  function selectedTags(');
+  assert.ok(topicStart >= 0 && topicEnd > topicStart, 'topic helpers found in 01-state-helpers.js');
+  const topicHelpers = stateSource.slice(topicStart, topicEnd);
+  vm.runInContext(topicHelpers + '\n' + selectedHelper + '\n' + readHelpers + '\nthis.readStateFromUrl = readStateFromUrl;', ctx);
   ctx.state = {
     mode: 'library',
     lane: 'core',

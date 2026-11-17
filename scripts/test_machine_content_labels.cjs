@@ -32,7 +32,7 @@ const ctx = vm.createContext({
   preGeneratedOf: () => null,
   trKeyOf: p => p.id,
 });
-vm.runInContext(['officialArticleUrl', 'renderArticleCard', 'renderCompactRow', 'weeklyCard', 'weeklyRow'].map(fn).join('\n'), ctx);
+vm.runInContext(['isInternalSourceName', 'cardJournalName', 'huddleStarSvg', 'cardTakeaway', 'cardSideActionsHtml', 'authorAffilHtml', 'officialArticleUrl', 'renderArticleCard', 'renderCompactRow', 'weeklyCard', 'weeklyRow'].map(fn).join('\n'), ctx);
 
 let checks = 0;
 const check = (cond, msg) => { assert(cond, msg); checks++; };
@@ -52,7 +52,8 @@ const aiBoth = { id: 'p-both', title: 'Original EN title', titleZh: '机器中�
 quicklooks[aiBoth.id] = { title_zh: '速览中文标题', one_line: 'AI 一句话结论' };
 const cardBoth = ctx.renderArticleCard(aiBoth);
 check(hasNoMachineLabel(cardBoth), 'Card with machine title and AI gist omits machine-content labels');
-check(cardBoth.includes('ql-title') && cardBoth.includes('速览中文标题'), 'Card outputs machine title directly');
+// Since #145 machine and reviewed Chinese titles share one title button (the ql-title class was removed).
+check(/<h3 class="article-title"><button class="title-open"[^>]*>速览中文标题<\/button><\/h3>/.test(cardBoth), 'Card outputs machine title directly');
 check(cardBoth.includes('gist-ai') && cardBoth.includes('AI 一句话结论'), 'Card outputs AI gist directly');
 
 // 2. Cards: machine title only (no one_line)
@@ -91,7 +92,8 @@ check(hasNoMachineLabel(rowBoth) && rowBoth.includes('速览中文标题'), 'Com
 const rowTitleOnly = ctx.renderCompactRow(aiTitleOnly);
 check(hasNoMachineLabel(rowTitleOnly) && rowTitleOnly.includes('仅机器译名'), 'Compact row titleZh outputs title directly without label');
 const rowHuman = ctx.renderCompactRow(humanPaper);
-check(hasNoMachineLabel(rowHuman) && rowHuman.includes('[导读] 人工导读标题'), 'Compact row reviewed draft has no machine label');
+// Since #145 the compact title shows the reviewed title without the old "[导读]" prefix.
+check(hasNoMachineLabel(rowHuman) && /class="compact-title title-open"[^>]*>人工导读标题<\/button>/.test(rowHuman) && !rowHuman.includes('不应显示的机器译名') && !rowHuman.includes('不应显示的速览标题'), 'Compact row reviewed draft has no machine label');
 const rowEn = ctx.renderCompactRow({ id: 'p-en', title: 'Plain English Paper', journal: 'BMJ' });
 check(hasNoMachineLabel(rowEn) && rowEn.includes('Plain English Paper'), 'Compact row English title has no machine label');
 

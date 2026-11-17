@@ -75,7 +75,14 @@ assert(panelPadRight >= 46, '.search-panel .search-input padding-right must be >
 // 4. Final @media (max-width: 480px) rule ensures >= 44px height and 16px font-size on mobile.
 const media480 = topRules.filter(r => r.media && /max-width\s*:\s*480px/.test(r.media)).pop();
 assert(media480, '@media (max-width: 480px) rule must exist');
-assert.equal(topRules[topRules.length - 1], media480, '@media (max-width: 480px) should be the final rule');
+// The mobile rule must win the cascade: no later rule (top level or inside any @media) that targets the search
+// input or clear button may override its sizing. (Since #142 unrelated rules follow it, so "last rule in the
+// file" is no longer the right proxy.)
+const media480Index = topRules.lastIndexOf(media480);
+const SIZING = ['height', 'min-height', 'max-height', 'font-size', 'width', 'min-width'];
+const later = topRules.slice(media480Index + 1).flatMap(r => (r.media ? r.rules.map(x => ({ ...x, media: r.media })) : [r]));
+const overriding = later.filter(r => /\.search-(?:input|clear)\b/.test(r.selector || '') && SIZING.some(k => k in parseProps(r.body)));
+assert.deepEqual(overriding.map(r => (r.media ? r.media + ' ' : '') + r.selector), [], 'no rule after @media (max-width: 480px) may override search input / clear button sizing');
 const mobileInputRule = media480.rules.find(r => r.selector.includes('.search-input'));
 assert(mobileInputRule, '@media (max-width: 480px) must style .search-input');
 const mobileProps = parseProps(mobileInputRule.body);
