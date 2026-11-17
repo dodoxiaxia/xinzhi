@@ -3234,14 +3234,33 @@ function machineIntValue(text, key) {
 }
 function machineRefList(text) { return [...text.matchAll(/(\d+)\s+\d+\s+R/g)].map(match => match[1]); }
 // Support Standard Security Handler (R=2..6) with empty user password (permission-encrypted PDFs).
+// Trailer dictionaries and cross-reference stream dictionaries only (where /Encrypt and /ID live), so that bytes inside
+// an uncompressed stream of an unencrypted file are never taken for an encryption entry.
+function machineTrailerText(ctx) {
+  let out = '';
+  for (const match of ctx.text.matchAll(/(?<![A-Za-z])trailer\b/g)) {
+    const end = ctx.text.indexOf('startxref', match.index);
+    out += ctx.text.slice(match.index, end < 0 ? Math.min(ctx.text.length, match.index + 4096) : end) + '\n';
+  }
+  for (const [id] of ctx.index) {
+    const body = machineTopBody(ctx, id), streamAt = body.indexOf('stream');
+    if (streamAt >= 0 && /\/Type\s*\/XRef\b/.test(body.slice(0, streamAt))) out += body.slice(0, streamAt) + '\n';
+  }
+  return out;
+}
 async function machineEncryption(ctx) {
   if (ctx.enc !== undefined) return ctx.enc;
   ctx.enc = null;
-  // The encryption dictionary is an indirect object (usual) or written inline in the trailer; never inside an /ObjStm.
-  const encs = [...ctx.text.matchAll(/\/Encrypt\s+(\d+)\s+\d+\s+R/g)], inline = /\/Encrypt\s*<</.test(ctx.text);
-  if (!encs.length && !inline) return null;
   const reject = reason => { ctx.notes.add(reason); return (ctx.enc = {unsupported:true, reason}); };
-  const dict = encs.length ? machineTopBody(ctx, encs[encs.length - 1][1]) : machineDictValue(ctx.text.slice(ctx.text.lastIndexOf('/Encrypt')), 'Encrypt');
+  try { return await machineEncryptionSetup(ctx, reject); } catch { return reject('encryption_unsupported'); }
+}
+// Standard security handler, empty user password: the file key (ISO 32000-2 Algorithms 2, 2.A, 2.B) checked against /U.
+async function machineEncryptionSetup(ctx, reject) {
+  // The encryption dictionary is an indirect object (usual) or written inline in the trailer; never inside an /ObjStm.
+  const trailer = machineTrailerText(ctx);
+  const encs = [...trailer.matchAll(/\/Encrypt\s+(\d+)\s+\d+\s+R/g)], inline = /\/Encrypt\s*<</.test(trailer);
+  if (!encs.length && !inline) return null;
+  const dict = encs.length ? machineTopBody(ctx, encs[encs.length - 1][1]) : machineDictValue(trailer.slice(trailer.lastIndexOf('/Encrypt')), 'Encrypt');
   if (!dict) return reject('encryption_unsupported');
   const cf = machineDictValue(dict, 'CF'), topDict = cf ? dict.replace(cf, '') : dict;
   const filter = /\/Filter\s*\/([A-Za-z0-9_.-]+)/.exec(topDict);
@@ -3250,8 +3269,8 @@ async function machineEncryption(ctx) {
   const pMatch = /\/P(?![A-Za-z0-9_])\s+(-?\d+)/.exec(topDict), p = pMatch ? Number(pMatch[1]) : 0;
   const o = machinePdfStringBytes(topDict, 'O'), u = machinePdfStringBytes(topDict, 'U');
   const meta = !/\/EncryptMetadata\s+false\b/.test(topDict);
-  const ids = [...ctx.text.matchAll(/\/ID\s*\[\s*([(<])/g)];
-  const id0 = ids.length ? machinePdfTokenBytes(ctx.text, ids[ids.length - 1].index + ids[ids.length - 1][0].length, ids[ids.length - 1][1]) : new Uint8Array(0);
+  const ids = [...trailer.matchAll(/\/ID\s*\[\s*([(<])/g)];
+  const id0 = ids.length ? machinePdfTokenBytes(trailer, ids[ids.length - 1].index + ids[ids.length - 1][0].length, ids[ids.length - 1][1]) : new Uint8Array(0);
   // fail(): the file is encrypted in a way this reader does not do. locked(): the empty user password does not open
   // it, so it needs a password (never guessed).
   const fail = () => reject('encryption_unsupported'), locked = () => reject('encrypted_pdf');

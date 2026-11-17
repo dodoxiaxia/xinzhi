@@ -263,6 +263,9 @@ async function verifyNext(h, doi, result, reason) {
     const page = await run(h, 'machineFirstPage')(new Uint8Array(files[name]));
     assert(!page.notes.has('encrypted_pdf') && !page.notes.has('encryption_unsupported'), name);
   }
+  // /Encrypt counts only in a trailer or cross-reference stream dictionary, not as bytes inside some stream.
+  const encryptInStream = mutate(files['flate-eol-before-endstream.pdf'], '5 0 obj\n', '9 0 obj\n<< /Length 15 >>\nstream\n/Encrypt 5 0 R\nendstream\nendobj\n5 0 obj\n');
+  assert.equal((await identity(h, encryptInStream, flate.doi, flate.title)).level, 'full');
   // Object-stream detection reads only the object's own dictionary. A short object written just before an /ObjStm used
   // to be taken for one (a fixed 400-byte window ran past its endobj), which left a false objstm_unsupported note.
   const shortBefore = mutate(files['objstm-xref-stream.pdf'], '5 0 obj\n', '9 0 obj\n7\nendobj\n5 0 obj\n');
