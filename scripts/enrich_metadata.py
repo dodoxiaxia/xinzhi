@@ -312,6 +312,34 @@ TAG_RULES = [
     ('#影像', r'\bcomputed tomography\b|\bmri\b|\bmagnetic resonance\b|\bechocardiograph|\bultrasound\b|\bperfusion\b|\bangio\b|\bivus\b|\bintravascular ultrasound\b|' + _OCT_ABBREV + r'|\boptical coherence tomography\b|\bhigh[- ]risk plaque\b|\bvulnerable plaque\b|\bplaque vulnerability\b')
 ]
 
+# AI RCT means AI itself is the randomized intervention; exclude secondary and protocol papers.
+TAG_AI_RCT = '#AI-RCT证据'
+_AI_TERM_RE = (r'\b(?:ai|artificial[- ]intelligence|machine[- ]learning|deep[- ]learning|reinforcement[- ]learning|neural networks?|large language models?|language models?|llms?|chatgpt|gpt(?:-?\d(?:\.\d)?)?|generative ai|conversational ai|chatbots?|ai[- ]ecg|ecg[- ]ai)\b'
+               r'|\b(?:ai|llm|deep[- ]learning|machine[- ]learning)[- ](?:enabled|assisted|based|guided|powered|driven|supported|generated|augmented|enhanced)\b')
+_RCT_TITLE_RE = r'\brandomi[sz]ed(?:[- ][\w()-]+){0,4}? (?:trial|study)\b|\b(?:cluster|pragmatic)[- ]randomi[sz]ed\b|\brandomi[sz]ed (?:controlled|clinical)\b'
+_AI_RCT_EXCLUDE_RE = (r'\b(?:secondary|post[- ]hoc|ancillary|exploratory|economic|cost[- ]effectiveness|subgroup|pooled) analys[ie]s\b|\bpost[- ]hoc\b|\bsub-?stud(?:y|ies)\b|\ban analysis (?:of|from)\b|\binsights? from\b|\bdata from\b'
+                      r'|\brationale\b|\bdesign (?:of|and)\b|\bprotocol\b|\bsystematic review\b|\bmeta-analys|\btrials\b|\bletter\b|\bresponse to\b|\bfacilitate\b')
+_AI_RCT_ARM_RE = (r'\b(?:randomi[sz]ed|randomly (?:assigned|allocated)|allocated)\b[^.;]{0,100}?\bto\b[^.;]{0,100}?(?:' + _AI_TERM_RE + r')')
+
+TOPICAL_TAG_RULES = [
+    ('#结构性心脏病', r'\btavr\b|\btavi\b|\btranscatheter (?:aortic|mitral|tricuspid|pulmonary) valve|\btranscatheter edge[- ]to[- ]edge\b|\bteer\b|\bmitraclip\b|\btriclip\b|\bsavr\b'
+                     r'|\baortic (?:valve )?stenosis\b|\baortic (?:valve )?regurgitation\b|\bmitral (?:valve|regurgitation|stenosis|annul)|\btricuspid (?:valve|regurgitation)\b|\bvalvular heart disease\b|\bheart valves?\b'
+                     r'|\bvalve (?:replacement|repair|disease|intervention|surgery)\b|\bvalve[- ]in[- ]valve\b|\bparavalvular\b|\bbioprosthetic valve|\bstructural heart\b'
+                     r'|\bleft atrial appendage (?:occlusion|closure)\b|\blaao\b|\bpatent foramen ovale\b|\bpfo\b|\bbicuspid aortic valve\b'),
+    ('#先心病', r'\bcongenital heart\b|\bcongenital cardiac\b|\bachd\b|\btetralogy of fallot\b|\bfontan\b|(?<!iatrogenic )\batrial septal defects?\b|\bventricular septal defects?\b|\bsingle[- ]ventricle\b'
+               r'|\btransposition of the great arteries\b|\bhypoplastic left heart\b|\bcoarctation of the aorta\b|\bpatent ductus arteriosus\b|\bebstein\b|\buniventricular\b|\bnorwood\b|\bglenn\b|\bfetal (?:echocardiograph|cardiac)'),
+    ('#预防/血脂', r'\bldl\b|\bldl-c\b|\bcholesterol\b|\bstatins?\b|\bpcsk9\b|\binclisiran\b|\bezetimibe\b|\bbempedoic\b|\bevolocumab\b|\balirocumab\b|\bobicetrapib\b|\bcetp\b|\bicosapent\b'
+                 r'|\blipoprotein\(a\)|\blp\(a\)|\btriglyceride|\bdyslipid|\bhyperlipid|\bhypercholesterol|\bhypertriglycerid|\blipid[- ]lowering\b|\blipids?\b|\bapolipoprotein\b|\bapob\b|\bremnant cholesterol\b'
+                 r'|\bprimary prevention\b|\bsecondary prevention\b|\bcardiovascular (?:disease )?prevention\b|\bpreventive cardiology\b|\bprevent equations?\b|\bscore2\b|\bpooled cohort equations?\b'),
+]
+
+# Keep this ordered vocabulary aligned with the frontend filter list.
+TOPIC_VOCAB = tuple(
+    [tag for tag, _ in TAG_RULES[:3]] + ['#AI-ECG'] +
+    [tag for tag, _ in TAG_RULES[3:]] + [TAG_AI_RCT] +
+    [tag for tag, _ in TOPICAL_TAG_RULES]
+)
+
 def _coronary_rule_without_bare_oct():
     """#冠脉介入 pattern with the bare OCT abbreviation removed."""
     for tag, pat in TAG_RULES:
@@ -320,7 +348,7 @@ def _coronary_rule_without_bare_oct():
     raise RuntimeError('missing #冠脉介入 rule')
 
 
-def extract_tags(title, summary=''):
+def _legacy_tags(title, summary=''):
     text = f"{title or ''} {summary or ''}".lower()
     matched = []
     for tag, pat in TAG_RULES:
@@ -335,10 +363,37 @@ def extract_tags(title, summary=''):
         matched.remove('#冠脉介入')
     if '#心电' in matched and re.search(r'\bartificial intelligence\b|\bmachine learning\b|\bdeep learning\b|\bneural network\b|\bai\b', text):
         matched[matched.index('#心电')] = '#AI-ECG'
-    return matched[:4]
+    return matched
 
 
-_VALID_TAGS = {tag for tag, _ in TAG_RULES} | {'#AI-ECG'}
+def _is_ai_rct(title, summary=''):
+    title = (title or '').lower()
+    summary = (summary or '').lower()
+    if not re.search(_AI_TERM_RE, title):
+        return False
+    if re.search(_AI_RCT_EXCLUDE_RE, title):
+        return False
+    if re.search(_RCT_TITLE_RE, title):
+        return True
+    return bool(summary and not re.search(_AI_RCT_EXCLUDE_RE, summary)
+                and re.search(_AI_RCT_ARM_RE, summary))
+
+
+def extract_tags(title, summary=''):
+    title_text = (title or '').lower()
+    summary_text = (summary or '').lower()
+    matched = _legacy_tags(title, summary)
+    additions = []
+    if _is_ai_rct(title, summary):
+        additions.append(TAG_AI_RCT)
+    for tag, pattern in TOPICAL_TAG_RULES:
+        if (re.search(pattern, title_text)
+                or len(re.findall(pattern, summary_text)) >= 2):
+            additions.append(tag)
+    return list(dict.fromkeys(matched + additions))[:4]
+
+
+_VALID_TAGS = {tag for tag, _ in TAG_RULES} | {'#AI-ECG', TAG_AI_RCT} | {tag for tag, _ in TOPICAL_TAG_RULES}
 
 
 _TAG_OVERLAY_CACHE = None

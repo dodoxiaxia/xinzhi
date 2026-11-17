@@ -158,5 +158,124 @@
       "#冠脉介入",
       "#影像"
     ]
+  },
+  {
+    "id": "ai-rct-title",
+    "title": "AI-enabled electrocardiography alert intervention and all-cause mortality: a pragmatic randomized clinical trial",
+    "must_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "ai-rct-abstract-arm",
+    "title": "Large language model assistance for discharge counselling in heart failure",
+    "summary": "Patients were randomly assigned to an LLM-assisted counselling arm or usual care. The primary outcome was readmission.",
+    "must_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "ai-rct-ai-analysis",
+    "title": "Artificial intelligence-enabled analysis of handheld single-lead electrocardiograms to predict incident atrial fibrillation: an analysis of the VITAL-AF trial",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "ai-observational",
+    "title": "Deep learning ECG model predicts incident heart failure in a retrospective cohort of 120000 patients",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "non-ai-rct",
+    "title": "Tenecteplase for acute ischemic stroke: a randomized clinical trial",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "ai-rct-secondary",
+    "title": "Clinical decision support with machine learning and blood pressure control: a post hoc secondary analysis of a cluster randomized trial",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "ai-rct-protocol",
+    "title": "Rationale and design of a cluster-randomised trial of an artificial intelligence-based stroke care platform",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "ai-rct-review",
+    "title": "Artificial intelligence in cardiovascular medicine: systematic review of randomized controlled trials",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "structural-valve",
+    "title": "Transcatheter aortic valve replacement in low-risk aortic stenosis",
+    "must_have": [
+      "#结构性心脏病"
+    ]
+  },
+  {
+    "id": "structural-incidental",
+    "title": "Sex differences in outcomes after myocardial infarction",
+    "summary": "Patients with prior valve surgery were excluded.",
+    "must_not_have": [
+      "#结构性心脏病"
+    ]
+  },
+  {
+    "id": "congenital-fontan",
+    "title": "Long-term outcomes after the Fontan operation in adults with congenital heart disease",
+    "must_have": [
+      "#先心病"
+    ]
+  },
+  {
+    "id": "congenital-iatrogenic-asd",
+    "title": "Clinical significance of persistent iatrogenic atrial septal defect after catheter ablation for atrial fibrillation",
+    "must_have": [
+      "#房颤/电生理"
+    ],
+    "must_not_have": [
+      "#先心病"
+    ]
+  },
+  {
+    "id": "lipid-inclisiran",
+    "title": "Inclisiran-based treatment strategy in hypercholesterolaemia",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "lipid-summary-double",
+    "title": "Outcomes in a contemporary cohort",
+    "summary": "LDL cholesterol was measured at baseline. Higher LDL cholesterol was associated with events.",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "lipid-summary-single",
+    "title": "Ablation outcomes in persistent atrial fibrillation",
+    "summary": "Statin use was recorded as a covariate.",
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "coronary-not-congenital",
+    "title": "Risk of coronary heart disease (CHD) in women",
+    "must_not_have": [
+      "#先心病"
+    ]
   }
 ]

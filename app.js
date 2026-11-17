@@ -1163,10 +1163,11 @@
   function safeSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
   function safeRemove(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
 
-  // Authoritative 10 article-topic tags (matching scripts/enrich_metadata.py TAG_RULES)
+  // Topic filter vocabulary matches scripts/enrich_metadata.py TOPIC_VOCAB.
   const TOPIC_TAGS = [
     '#房颤/电生理', '#心衰/心肌', '#心电', '#AI-ECG', '#大模型/NLP',
-    '#卒中/抗凝', '#高血压/血管', '#冠脉介入', '#穿戴/远程监测', '#影像'
+    '#卒中/抗凝', '#高血压/血管', '#冠脉介入', '#穿戴/远程监测', '#影像',
+    '#AI-RCT证据', '#结构性心脏病', '#先心病', '#预防/血脂'
   ];
   const UNCLASSIFIED_TOPIC = 'uncategorized';
   function paperTopicTags(p) {
