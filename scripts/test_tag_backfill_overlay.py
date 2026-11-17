@@ -335,6 +335,21 @@ class CommittedOverlayFileTests(unittest.TestCase):
         previous = [row for row in self.items if row.get('batchId') != batch_id]
         self.assertTrue(all(row in self.items for row in previous))
 
+    def test_f1155_low_confidence_mislabel_was_withdrawn(self):
+        withdrawn_ids = {'rss-d86292f205b9ce8b'}
+        withdrawn_dois = {'10.1148/ryct.260225'}
+        withdrawn_sids = {'F1155'}
+        for row in self.items:
+            self.assertNotIn((row.get('sampleId') or '').strip(), withdrawn_sids)
+            self.assertNotIn((row.get('id') or '').strip(), withdrawn_ids)
+            self.assertNotIn((row.get('doi') or '').strip().lower(), withdrawn_dois)
+        note = self.raw.get('batch3Note') or ''
+        self.assertIn('F1155', note)
+        self.assertIn('10.1148/ryct.260225', note)
+        self.assertIn('整条撤回', note)
+        self.assertIn('低置信度', note)
+        self.assertIn('confidence=low', note)
+
     def test_backfill_batches_do_not_share_ids_or_dois(self):
         seen_ids, seen_dois = {}, {}
         for row in self.items:
