@@ -339,6 +339,10 @@ _PREVENTION_CORE_RE = (r'\b(?:ldl(?:-c)?|ldl cholesterol|lipid[- ]lowering|stati
                        r'cardiovascular (?:disease )?prevention|preventive cardiology|risk equations?|'
                        r'prevent equations?|score2|dyslipid\w* management|lipid management|'
                        r'atherogenic index|coronary artery calcium|\bcac\b|cardiovascular risk score)\b')
+# These campaign/risk-score names are title-only signals, not abstract conclusion evidence.
+_PREVENTION_TITLE_ONLY_RE = (r'\bcardiovascular health promotion\b|'
+                             r"\blife['’]?s essential 8\b|\blifes essential 8\b|\ble[- ]?8\b|"
+                             r"\blife['’]?s simple 7\b|\blifes simple 7\b|\bls7\b")
 _PREVENTION_RISK_TOOL_RE = (r'\btyg(?:[- ](?:cvai|bmi|wc|whtr|avi|vai))?\b|\btriglyceride[- ]glucose\b|'
                             r'atherogenic index|coronary artery calcium|\bcac\b|cardiovascular risk score|risk equations?|'
                             r'prevent equations?|\bscore2\b')
@@ -425,6 +429,8 @@ def _topical_hit(tag, pattern, title, summary):
         title_text = re.sub(_TYG_RE, ' ', title_text)
         summary_text = re.sub(_TYG_RE, ' ', summary_text)
     title_hit = bool(re.search(pattern, title_text))
+    if tag == '#预防/血脂' and re.search(_PREVENTION_TITLE_ONLY_RE, title_text):
+        title_hit = True
     conclusion = _conclusion_text(summary_text)
     conclusion_hit = bool(re.search(pattern, conclusion))
     if tag == '#预防/血脂' and conclusion_hit and not re.search(_PREVENTION_CORE_RE, conclusion):

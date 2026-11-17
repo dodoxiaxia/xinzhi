@@ -484,5 +484,29 @@
     "must_have": [
       "#AI-RCT证据"
     ]
+  },
+  {
+    "id": "prevention-title-health-promotion-synthetic",
+    "title": "Cardiovascular Health Promotion for US Veterans: Current State, Gaps, and Strategies: A Scientific Statement",
+    "summary": "This synthetic summary describes current approaches and research priorities.",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "prevention-title-life-essential-8-synthetic",
+    "title": "Using Life's Essential 8 to assess cardiovascular health in adults",
+    "summary": "This synthetic study compares population health measures.",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "prevention-abstract-life-essential-8-only-synthetic",
+    "title": "A synthetic study of health behavior measurement in adults",
+    "summary": "BACKGROUND: Life's Essential 8 was mentioned as a health measure. CONCLUSIONS: The findings describe behavior measurement.",
+    "must_not_have": [
+      "#预防/血脂"
+    ]
   }
 ]
