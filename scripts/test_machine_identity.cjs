@@ -95,6 +95,27 @@ async function verifyNext(h, doi, result, reason) {
     const fixed = await identity(h, pdf, labelDoi, registered.title);
     assert.equal(fixed.verdict, 'ok'); assert.equal(fixed.level, 'full');
   }
+  // Japanese subtitles: page 1 and Crossref print "Title\u3000\u2015 Subtitle \u2015", the RSS feed (and so the library title) "Title: Subtitle".
+  // Titles modelled on Circulation Reports cr-26-0249 / cr-26-0254; the PDFs are synthetic (no publisher file).
+  const normalize = run(h, 'machineNormalize');
+  for (const [n, rss, printed] of [
+    ['0249', 'Early Direct Oral Anticoagulant Initiation After Intracranial Hemorrhage Among Japanese Patients With Nonvalvular Atrial Fibrillation: SAFE-ICH Registry 12-Month Outcomes',
+      'Early Direct Oral Anticoagulant Initiation After Intracranial Hemorrhage Among Japanese Patients With Nonvalvular Atrial Fibrillation\u3000\u2015 SAFE-ICH Registry 12-Month Outcomes \u2015'],
+    ['0254', 'Association of Mean Left Atrial Pressure With Clinical Characteristics and Outcomes in Patients Undergoing Catheter Ablation for Atrial Fibrillation: Subanalysis of the Shinshu Catheter Ablation (Shinshu-AB) Registry',
+      'Association of Mean Left Atrial Pressure With Clinical Characteristics and Outcomes in Patients Undergoing Catheter Ablation for Atrial Fibrillation\u3000\u2015 Subanalysis of the Shinshu Catheter Ablation (Shinshu-AB) Registry \u2015']]) {
+    assert.equal(normalize(rss), normalize(printed), n);
+    const dashDoi = '10.9999/synthetic.dash-' + n, pdf = fixtures.customEncoding({doi:dashDoi, title:printed});
+    for (const expected of [rss, printed]) {
+      const verdict = await identity(h, pdf, dashDoi, expected);
+      assert.equal(verdict.verdict, 'ok', n + ' ' + expected); assert.equal(verdict.level, 'full'); assert.equal(verdict.checks.title, 'page');
+    }
+    // Dropping the dashes does not loosen anything else: a different subtitle still misses.
+    const other = await identity(h, pdf, dashDoi, rss.replace(/: .*/, ': Synthetic Different Registry Outcomes'));
+    assert.equal(other.verdict, 'mismatch'); assert.equal(other.checks.title, '');
+  }
+  // En dash, em dash and horizontal bar all drop like the ASCII hyphen; other non-ASCII text is kept.
+  assert.equal(normalize('12\u2013Month \u2014 Outcomes \u2015'), normalize('12-Month Outcomes'));
+  assert.equal(normalize('Synthetic \u5fc3\u623f\u98a4\u52a8 title'), 'synthetic\u5fc3\u623f\u98a4\u52a8title');
   // Variants of each structure.
   for (const eol of ['\r\n', '\n', '\r', ' \n']) assert.equal((await identity(h, fixtures.flateEol({...flate, eol}), flate.doi, flate.title)).verdict, 'ok', JSON.stringify(eol));
   assert.equal((await identity(h, fixtures.flateEol({...flate, lengthWrong:true}), flate.doi, flate.title)).verdict, 'ok');

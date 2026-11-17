@@ -13,12 +13,15 @@ const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
 const MACHINE_PDF_PADDING = new Uint8Array([0x28,0xbf,0x4e,0x5e,0x4e,0x75,0x8a,0x41,0x64,0x00,0x4e,0x56,0xff,0xfa,0x01,0x08,0x2e,0x2e,0x00,0xb6,0xd0,0x68,0x3e,0x80,0x2f,0x0c,0xa9,0xfe,0x64,0x53,0x69,0x7a]);
+// En dash, em dash and horizontal bar are punctuation like the ASCII hyphen, so they are dropped too. Japanese journals print
+// subtitles as "Title\u3000\u2015 Subtitle \u2015" while RSS feeds give "Title: Subtitle"; both must normalize to the same text.
+const MACHINE_NORMALIZE_DASHES = new Set([0x2013, 0x2014, 0x2015]);
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
   for (const char of stripped) {
     const code = char.codePointAt(0);
-    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || code > 127) out += char;
+    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_DASHES.has(code))) out += char;
   }
   return out;
 }

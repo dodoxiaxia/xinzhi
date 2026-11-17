@@ -365,6 +365,15 @@ async function crossrefTitles() {
   assert.equal(paperOf(h, '10.1000/xr.dash').title, rss.dash);
   assert.equal(paperOf(h, '10.1000/xr.same').title, rss.same);
   assert.equal(paperOf(h, '10.1000/xr.same').metadataStatus, 'registration_title_only');
+
+  // "Title: Subtitle" from the feed and "Title\u3000\u2015 Subtitle \u2015" from Crossref are the same title once dashes count as
+  // punctuation: the Crossref form is stored and no mismatch is recorded (shape of Circulation Reports cr-26-0249).
+  h = await answer();
+  await register(h, dsh, [item('x8',{doi:'10.1000/xr.dash',title:'Synthetic Anticoagulant Timing after Stroke in Atrial Fibrillation: SYNTH-ICH Registry 12-Month Outcomes'})]);
+  paper = paperOf(h, '10.1000/xr.dash');
+  assert.equal(paper.titleSource, 'crossref');
+  assert(paper.title.includes('\u2015'));
+  assert(!('titleMismatch' in paper) && !('registeredTitle' in paper));
 }
 // scripts/test_machine_download.cjs awaits run(), so the CI jobs that already run that file also run these checks.
 module.exports = {run};
