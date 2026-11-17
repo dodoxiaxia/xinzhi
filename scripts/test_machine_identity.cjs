@@ -84,6 +84,17 @@ async function verifyNext(h, doi, result, reason) {
     const both = await identity(h, files[name], '10.9999/synthetic.other', 'Synthetic unrelated study of imaginary tides and moons');
     assert.equal(both.verdict, 'mismatch'); assert.equal(both.reason, 'identity_mismatch');
   }
+  // Lancet-family RSS section labels ("[Articles] ", "[Comment] ") are not printed on page 1: a stored title that kept the label
+  // never matches (title_not_found), the title registration now stores (label dropped) does. Synthetic text only.
+  for (const [label, printed] of [['[Articles] ', 'ClinicalAge, a framework for synthetic biological age estimation'], ['[Comment] ', 'A novel ageing biomarker in synthetic cohorts']]) {
+    const labelDoi = '10.9999/synthetic.label', pdf = fixtures.flateEol({doi:labelDoi, title:printed});
+    const kept = await identity(h, pdf, labelDoi, label + printed);
+    assert.equal(kept.verdict, 'mismatch'); assert.equal(kept.checks.title, '');
+    const registered = run(h, 'machineRegisterItem')({doi:labelDoi, title:label + printed, source:'rss-2026-11-17-am', section:'MAIN'});
+    assert.equal(registered.title, printed);
+    const fixed = await identity(h, pdf, labelDoi, registered.title);
+    assert.equal(fixed.verdict, 'ok'); assert.equal(fixed.level, 'full');
+  }
   // Variants of each structure.
   for (const eol of ['\r\n', '\n', '\r', ' \n']) assert.equal((await identity(h, fixtures.flateEol({...flate, eol}), flate.doi, flate.title)).verdict, 'ok', JSON.stringify(eol));
   assert.equal((await identity(h, fixtures.flateEol({...flate, lengthWrong:true}), flate.doi, flate.title)).verdict, 'ok');

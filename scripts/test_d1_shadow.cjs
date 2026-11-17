@@ -774,6 +774,27 @@ function assertD1MatchesKv(h, key, expectedEntity) {
     for (let i = 3; i < 6; i++) assert.equal(h.d1.rows.get('library:paper:idem-' + i).value, 'updated-' + i);
   }
 
+  // 9b. Registration with a (mocked) Crossref title: the paper record and the register record carry the Crossref title and the
+  // mismatch marker, and D1 mirrors both byte for byte. No network: Crossref is the harness mock.
+  {
+    const official = 'Synthetic Registry Outcomes\u3000\u2015 SYNTH-REG Cohort \u2015';
+    const h = await create({on: true, setup: {crossrefResponse: u => Response.json({message: {DOI: decodeURIComponent(u.pathname.slice('/works/'.length)), title: [official]}})}});
+    const doi = '10.1000/d1.crossref';
+    const res = await send(h, 'POST', '/api/machine/register', {authorization: 'Bearer ' + dsh, 'content-type': 'application/json'},
+      JSON.stringify({items: [{doi, title: 'Synthetic Registry Outcomes: SYNTH-REG', source: 'rss-2026-11-17-am', section: 'CARDIO'}]}));
+    assert.equal(res.status, 200);
+    await h.flush();
+    const paperRow = assertD1MatchesKv(h, 'library:paper:' + doi, 'paper');
+    const registerRow = assertD1MatchesKv(h, 'library:machine-register:' + doi, 'machine_register');
+    const mirroredPaper = JSON.parse(paperRow.value).paper, mirroredRegister = JSON.parse(registerRow.value);
+    assert.equal(mirroredPaper.title, h.context.libraryText(official));
+    assert.equal(mirroredPaper.titleSource, 'crossref');
+    assert.equal(mirroredPaper.titleMismatch, true);
+    assert.equal(mirroredPaper.metadataStatus, 'external_bibliography_checked');
+    assert.equal(mirroredRegister.title, 'Synthetic Registry Outcomes: SYNTH-REG');
+    assert.equal(mirroredRegister.paperTitle, mirroredPaper.title);
+  }
+
   // 10. Static source check on edge/src/07c-d1-shadow.js
   {
     const src = fs.readFileSync(path.join(__dirname, '../edge/src/07c-d1-shadow.js'), 'utf8');
