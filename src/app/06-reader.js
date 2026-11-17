@@ -39,7 +39,8 @@
       const draft = paper.draftData;
 
       let editorialSection = '';
-      if (draft && (draft.limitations || draft.learning_question)) {
+      // 已核对导读（source_checked）即使只有摘要、没有证据边界或共读问题，也要显示标题，与未核对草稿分得清。
+      if (draft && (draft.source_checked === true || draft.limitations || draft.learning_question)) {
         editorialSection = `
           <div class="drawer-section drawer-editorial-extra">
             ${draft.source_checked === true ? '<div class="drawer-section-title">已核对导读 <small>对照公开摘要核对</small></div>' : ''}

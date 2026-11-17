@@ -38,13 +38,17 @@ const listCtx = vm.createContext({
   pdfDownloadLink: () => '',
   doiStatusBlock: () => '',
   safeSourceUrl: () => 'https://example.org/paper',
-  exactDoi: () => false
+  exactDoi: () => false,
+  designBadgeHtml: () => '',
+  journalMetricBadge: () => ''
 });
+vm.runInContext(['isInternalSourceName', 'cardJournalName', 'huddleStarSvg', 'cardTakeaway', 'cardSideActionsHtml', 'authorAffilHtml'].map(fn).join('\n'), listCtx);
 vm.runInContext(fn('officialArticleUrl'), listCtx);
 vm.runInContext(fn('renderArticleCard'), listCtx);
 const cardHtml = listCtx.renderArticleCard({ id: 'p1', title: 'Test Paper', journal: 'Circulation' });
 ok(cardHtml.includes('class="title-open" data-action="open-drawer"'), 'card title button opens reader drawer');
-ok(/>\s*(?:<span[^>]*>☆<\/span>\s*)?精选<\/button>/.test(cardHtml), 'card shortlist button displays "精选"');
+// Since #145 the card shortlist control is the star icon button; its accessible name carries the "精选" term.
+ok(/<button[^>]*class="[^"]*\bcard-star\b[^"]*"[^>]*data-action="toggle-huddle"[^>]*aria-label="加入精选"[^>]*title="加入精选"/.test(cardHtml), 'card shortlist button displays "精选"');
 
 const modeMatch = src.match(/  const MODE_NOTES = \{[^]*?\n  \};/);
 ok(Boolean(modeMatch), 'MODE_NOTES exists in app.js');
@@ -81,6 +85,8 @@ const huddleNodes = {
   '#closeHuddleModalBtn': makeNode()
 };
 const huddleCtx = vm.createContext({
+  DEFERRED: false, // non-split page: all data parts are already loaded, as in test_faceted_filters.cjs
+  partsSettled: () => true,
   $: sel => huddleNodes[sel] || null,
   document: { activeElement: null, body: { classList: { add: () => {} } } },
   state: { huddle: [], huddleCompare: [] },
@@ -131,6 +137,9 @@ const drawerNodes = {
   '#drawerFulltext': ftSection
 };
 const readerCtx = vm.createContext({
+  DEFERRED: false, // non-split page: all data parts are already loaded
+  partsPending: () => false,
+  partsReady: () => true,
   $: sel => drawerNodes[sel] || null,
   document: { activeElement: null, body: { classList: { add: () => {} } }, querySelectorAll: () => [] },
   state: { huddle: [], activeDrawerPaper: null },
@@ -167,7 +176,7 @@ const readerCtx = vm.createContext({
   studyCheck: () => {},
   aiWaitingMessage: () => '等待确认'
 });
-vm.runInContext(fn('officialArticleUrl') + '\nlet lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
+vm.runInContext(['isInternalSourceName', 'cardJournalName', 'authorAffilHtml', 'cardTakeaway', 'abstractMayBeIncomplete', 'huddleStarSvg', 'officialArticleUrl'].map(fn).join('\n') + '\nlet lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
 
 const renderDrawer = paper => {
   readerCtx.state.activeDrawerPaper = null;
@@ -181,15 +190,29 @@ const checkedDraftHtml = renderDrawer({
   id: 'd1', title: 'Checked draft', doi: '10.1/d1', summary: 'Abstract',
   hasDraft: true, draftData: { summary: '导读正文', source_checked: true }
 });
-ok(checkedDraftHtml.includes('已核对导读'), 'source_checked draft shows "已核对导读"');
-ok(checkedDraftHtml.includes('对照公开摘要核对') && !checkedDraftHtml.includes('未经医生终审'), 'source_checked draft states abstract check without unreviewed disclaimer');
+const CHECKED_TITLE = '<div class="drawer-section-title">已核对导读 <small>对照公开摘要核对</small></div>';
+const countOf = (html, needle) => html.split(needle).length - 1;
+// A source_checked draft that only has a summary (no limitations / learning_question) still shows the heading.
+ok(countOf(checkedDraftHtml, CHECKED_TITLE) === 1, 'source_checked summary-only draft shows the "已核对导读 / 对照公开摘要核对" heading once');
+ok(checkedDraftHtml.includes('<p class="drawer-takeaway">导读正文</p>'), 'source_checked draft summary is shown on the takeaway line');
+ok(!checkedDraftHtml.includes('未经医生终审') && !checkedDraftHtml.includes('未经人工核对'), 'source_checked draft has no unreviewed disclaimer');
+
+const checkedExtraHtml = renderDrawer({
+  id: 'd3', title: 'Checked draft with limits', doi: '10.1/d3', summary: 'Abstract',
+  hasDraft: true, draftData: { summary: '带边界的导读', source_checked: true, limitations: '单中心回顾性', learning_question: '能否外推？' }
+});
+ok(countOf(checkedExtraHtml, CHECKED_TITLE) === 1 && checkedExtraHtml.includes('证据边界') && checkedExtraHtml.includes('能否外推？'), 'source_checked draft with limitations shows the heading once plus evidence limits and question');
 
 const uncheckedDraftHtml = renderDrawer({
   id: 'd2', title: 'Unchecked draft', doi: '10.1/d2', summary: 'Abstract',
   hasDraft: true, draftData: { summary: '未核对正文', source_checked: false }
 });
-ok(!uncheckedDraftHtml.includes('已核对导读'), 'unchecked draft is never labelled "已核对导读"');
-ok(!uncheckedDraftHtml.includes('未经人工核对') && uncheckedDraftHtml.includes('<div class="drawer-section-title">速览</div>'), 'unchecked draft uses plain 速览 title without unverified disclaimer');
+ok(!uncheckedDraftHtml.includes('已核对导读') && !uncheckedDraftHtml.includes('对照公开摘要核对'), 'unchecked draft is never labelled "已核对导读"');
+// New design (since #145): no 速览 subheading for drafts; the summary sits on the takeaway line.
+ok(!uncheckedDraftHtml.includes('<div class="drawer-section-title">速览</div>') && uncheckedDraftHtml.includes('<p class="drawer-takeaway">未核对正文</p>'), 'unchecked draft shows its summary on the takeaway line without a 速览 subheading');
+ok(!uncheckedDraftHtml.includes('未经人工核对') && !uncheckedDraftHtml.includes('机器标注'), 'unchecked draft carries no unverified or machine-annotation label');
+// Checked and unchecked drafts stay distinguishable on the page: only the checked one carries the heading.
+ok(checkedDraftHtml.includes(CHECKED_TITLE) && !uncheckedDraftHtml.includes(CHECKED_TITLE), 'checked and unchecked drafts are distinguishable by the 已核对导读 heading');
 
 const onDemandNoneHtml = renderDrawer({
   id: 'q1', title: 'No quicklook yet', doi: '10.1/q1', summary: 'Abstract', _aiState: 'none'
