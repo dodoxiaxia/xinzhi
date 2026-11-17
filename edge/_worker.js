@@ -3000,14 +3000,20 @@ const parseKey = k => {
 };
 
 // ==== edge/src/04a-machine-pdf.js · First-page identity check for machine uploads ====
-// A deliberately small PDF reader that only needs Workers APIs (DecompressionStream, TextDecoder).
+// A deliberately small PDF reader that only needs Workers APIs (DecompressionStream, TextDecoder, crypto.subtle).
 // It is a gate in front of the independent GitHub dual-parser verification, never a replacement for it.
 // Every way it can fail to read a page leaves a short internal reason code (no PDF content) so a 409
-// says why: inflate_failed, objstm_unsupported, page_tree_not_found, contents_not_found, filter_unsupported,
-// page_text_empty, doi_not_found, title_not_found, identity_mismatch, title_too_short.
+// says why: encrypted_pdf, encryption_unsupported, inflate_failed, objstm_unsupported, page_tree_not_found,
+// contents_not_found, filter_unsupported, page_text_empty, doi_not_found, title_not_found, identity_mismatch, title_too_short.
+// Encryption: only the Standard security handler with an empty user password (publisher "permissions only" files that
+// any viewer opens without asking) is decrypted: RC4 (V1/V2, R2/R3), AESV2 (V4, R4) and AESV3 (V5, R5/R6). A file that
+// needs a password to open is encrypted_pdf; any other handler, method or a key that does not verify is
+// encryption_unsupported. RC4 is plain JS (no Web Crypto RC4); MD5, SHA-2 and AES use crypto.subtle.
 const MACHINE_INFLATE_MAX = 16 * 1024 * 1024;
 const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
+const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
+const MACHINE_PDF_PADDING = new Uint8Array([0x28,0xbf,0x4e,0x5e,0x4e,0x75,0x8a,0x41,0x64,0x00,0x4e,0x56,0xff,0xfa,0x01,0x08,0x2e,0x2e,0x00,0xb6,0xd0,0x68,0x3e,0x80,0x2f,0x0c,0xa9,0xfe,0x64,0x53,0x69,0x7a]);
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -3028,6 +3034,73 @@ function machineBytes(text) {
   const bytes = new Uint8Array(text.length);
   for (let index = 0; index < text.length; index++) bytes[index] = text.charCodeAt(index) & 255;
   return bytes;
+}
+function machineConcat(...parts) {
+  let total = 0;
+  for (const part of parts) total += part.length;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) { out.set(part, offset); offset += part.length; }
+  return out;
+}
+function machineBytesEqual(a, b, length = Math.min(a.length, b.length)) {
+  if (a.length < length || b.length < length) return false;
+  let diff = 0;
+  for (let i = 0; i < length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+// MD5 through Web Crypto: Workers support it in crypto.subtle.digest as a non-standard algorithm for legacy formats
+// (https://developers.cloudflare.com/workers/runtime-apis/web-crypto/, footnote 3). Here it only derives PDF keys.
+async function machineMd5(data) {
+  return new Uint8Array(await crypto.subtle.digest('MD5', data));
+}
+function machineRc4(key, data) {
+  const s = new Uint8Array(256), out = new Uint8Array(data.length);
+  for (let i = 0; i < 256; i++) s[i] = i;
+  for (let i = 0, j = 0; i < 256; i++) {
+    j = (j + s[i] + key[i % key.length]) & 255;
+    const t = s[i]; s[i] = s[j]; s[j] = t;
+  }
+  for (let k = 0, i = 0, j = 0; k < data.length; k++) {
+    i = (i + 1) & 255; j = (j + s[i]) & 255;
+    const t = s[i]; s[i] = s[j]; s[j] = t;
+    out[k] = data[k] ^ s[(s[i] + s[j]) & 255];
+  }
+  return out;
+}
+async function machineSha(alg, data) {
+  return new Uint8Array(await crypto.subtle.digest(alg, data));
+}
+async function machineAesCbcDecrypt(keyOrRaw, data, raw = false) {
+  if (data.length < 16) return new Uint8Array(0);
+  const iv = data.subarray(0, 16), ct = data.subarray(16);
+  if (!ct.length) return new Uint8Array(0);
+  if (ct.length % 16 !== 0) return null;
+  try {
+    const key = keyOrRaw instanceof Uint8Array ? await crypto.subtle.importKey('raw', keyOrRaw, {name:'AES-CBC'}, false, raw ? ['encrypt', 'decrypt'] : ['decrypt']) : keyOrRaw;
+    if (!raw) return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC', iv}, key, ct));
+    const last = ct.subarray(ct.length - 16);
+    const pad = new Uint8Array(await crypto.subtle.encrypt({name:'AES-CBC', iv:last}, key, new Uint8Array(0)));
+    const plain = new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC', iv}, key, machineConcat(ct, pad)));
+    return plain.subarray(0, ct.length);
+  } catch { return null; }
+}
+// ISO 32000-2 Algorithm 2.B key derivation for R=6 with empty user password.
+async function machineAlg2b(salt) {
+  const algs = ['SHA-256', 'SHA-384', 'SHA-512'];
+  let k = await machineSha('SHA-256', salt), lastByte = 0;
+  for (let round = 0; round < 64 || lastByte > round - 32; round++) {
+    const k1 = new Uint8Array(k.length * 64);
+    for (let n = 0; n < 64; n++) k1.set(k, n * k.length);
+    const key = await crypto.subtle.importKey('raw', k.subarray(0, 16), {name:'AES-CBC'}, false, ['encrypt']);
+    const eFull = new Uint8Array(await crypto.subtle.encrypt({name:'AES-CBC', iv:k.subarray(16, 32)}, key, k1));
+    const e = eFull.subarray(0, k1.length);
+    let mod3 = 0;
+    for (let i = 0; i < 16; i++) mod3 = (mod3 + e[i]) % 3;
+    lastByte = e[e.length - 1];
+    k = await machineSha(algs[mod3], e);
+  }
+  return k.subarray(0, 32);
 }
 // Text of every literal string in a decoded content stream (escape handling is intentionally lossy).
 function machinePdfStrings(content) {
@@ -3102,10 +3175,14 @@ function machinePngPredictor(data, columns, colors, bits) {
 // Tolerant object scan (the way pdf.js repairs a damaged xref): the last "N G obj" wins, objects inside /ObjStm are
 // found when an id is missing at top level. Root comes from the last trailer or xref-stream dictionary.
 function machinePdfContext(bytes) {
-  const text = machineLatin1(bytes), index = new Map(), pattern = /(?<![0-9])(\d{1,10})\s+\d{1,5}\s+obj\b/g;
+  const text = machineLatin1(bytes), index = new Map(), gens = new Map(), pattern = /(?<![0-9])(\d{1,10})\s+(\d{1,5})\s+obj\b/g;
   let match;
-  while ((match = pattern.exec(text))) index.set(Number(match[1]), match.index + match[0].length);
-  return {text, index, packed:null, cache:new Map(), notes:new Set()};
+  while ((match = pattern.exec(text))) {
+    const id = Number(match[1]);
+    index.set(id, match.index + match[0].length);
+    gens.set(id, Number(match[2]));
+  }
+  return {text, index, gens, packed:null, enc:undefined, cache:new Map(), notes:new Set()};
 }
 function machineTopBody(ctx, id) {
   const start = ctx.index.get(Number(id));
@@ -3133,6 +3210,130 @@ function machineIntValue(text, key) {
   return match ? Number(match[1]) : null;
 }
 function machineRefList(text) { return [...text.matchAll(/(\d+)\s+\d+\s+R/g)].map(match => match[1]); }
+// Support Standard Security Handler (R=2..6) with empty user password (permission-encrypted PDFs).
+// Trailer dictionaries and cross-reference stream dictionaries only (where /Encrypt and /ID live), so that bytes inside
+// an uncompressed stream of an unencrypted file are never taken for an encryption entry.
+function machineTrailerText(ctx) {
+  let out = '';
+  for (const match of ctx.text.matchAll(/(?<![A-Za-z])trailer\b/g)) {
+    const end = ctx.text.indexOf('startxref', match.index);
+    out += ctx.text.slice(match.index, end < 0 ? Math.min(ctx.text.length, match.index + 4096) : end) + '\n';
+  }
+  for (const [id] of ctx.index) {
+    const body = machineTopBody(ctx, id), streamAt = body.indexOf('stream');
+    if (streamAt >= 0 && /\/Type\s*\/XRef\b/.test(body.slice(0, streamAt))) out += body.slice(0, streamAt) + '\n';
+  }
+  return out;
+}
+async function machineEncryption(ctx) {
+  if (ctx.enc !== undefined) return ctx.enc;
+  ctx.enc = null;
+  const reject = reason => { ctx.notes.add(reason); return (ctx.enc = {unsupported:true, reason}); };
+  try { return await machineEncryptionSetup(ctx, reject); } catch { return reject('encryption_unsupported'); }
+}
+// Standard security handler, empty user password: the file key (ISO 32000-2 Algorithms 2, 2.A, 2.B) checked against /U.
+async function machineEncryptionSetup(ctx, reject) {
+  // The encryption dictionary is an indirect object (usual) or written inline in the trailer; never inside an /ObjStm.
+  const trailer = machineTrailerText(ctx);
+  const encs = [...trailer.matchAll(/\/Encrypt\s+(\d+)\s+\d+\s+R/g)], inline = /\/Encrypt\s*<</.test(trailer);
+  if (!encs.length && !inline) return null;
+  const dict = encs.length ? machineTopBody(ctx, encs[encs.length - 1][1]) : machineDictValue(trailer.slice(trailer.lastIndexOf('/Encrypt')), 'Encrypt');
+  if (!dict) return reject('encryption_unsupported');
+  const cf = machineDictValue(dict, 'CF'), topDict = cf ? dict.replace(cf, '') : dict;
+  const filter = /\/Filter\s*\/([A-Za-z0-9_.-]+)/.exec(topDict);
+  if (!filter || filter[1] !== 'Standard') return reject('encryption_unsupported');
+  const v = machineIntValue(topDict, 'V'), r = machineIntValue(topDict, 'R');
+  const pMatch = /\/P(?![A-Za-z0-9_])\s+(-?\d+)/.exec(topDict), p = pMatch ? Number(pMatch[1]) : 0;
+  const o = machinePdfStringBytes(topDict, 'O'), u = machinePdfStringBytes(topDict, 'U');
+  const meta = !/\/EncryptMetadata\s+false\b/.test(topDict);
+  const ids = [...trailer.matchAll(/\/ID\s*\[\s*([(<])/g)];
+  const id0 = ids.length ? machinePdfTokenBytes(trailer, ids[ids.length - 1].index + ids[ids.length - 1][0].length, ids[ids.length - 1][1]) : new Uint8Array(0);
+  // fail(): the file is encrypted in a way this reader does not do. locked(): the empty user password does not open
+  // it, so it needs a password (never guessed).
+  const fail = () => reject('encryption_unsupported'), locked = () => reject('encrypted_pdf');
+  if (!o || !u) return fail();
+  if (v === 5 && (r === 5 || r === 6)) {
+    const ue = machinePdfStringBytes(topDict, 'UE');
+    if (u.length < 48 || !ue || ue.length < 32 || typeof crypto?.subtle?.decrypt !== 'function') return fail();
+    let fileKey = null;
+    if (r === 5) {
+      if (!machineBytesEqual(await machineSha('SHA-256', u.subarray(32, 40)), u, 32)) return locked();
+      fileKey = await machineAesCbcDecrypt(await machineSha('SHA-256', u.subarray(40, 48)), machineConcat(new Uint8Array(16), ue.subarray(0, 32)), true);
+    } else {
+      if (!machineBytesEqual(await machineAlg2b(u.subarray(32, 40)), u, 32)) return locked();
+      fileKey = await machineAesCbcDecrypt(await machineAlg2b(u.subarray(40, 48)), machineConcat(new Uint8Array(16), ue.subarray(0, 32)), true);
+    }
+    if (!fileKey || fileKey.length !== 32) return fail();
+    const cfm = name => {
+      if (name === 'Identity') return null;
+      const entry = name && cf ? machineDictValue(cf, name) : '';
+      const m = /\/CFM\s*\/([A-Za-z0-9]+)/.exec(entry);
+      return !m || m[1] === 'AESV3' ? 'AESV3' : m[1] === 'None' ? null : 'unsupported';
+    };
+    const stm = cfm((/\/StmF\s*\/([A-Za-z0-9_.-]+)/.exec(topDict) || [])[1] || 'StdCF');
+    const str = cfm((/\/StrF\s*\/([A-Za-z0-9_.-]+)/.exec(topDict) || [])[1] || 'StdCF');
+    if (stm === 'unsupported' || str === 'unsupported') return fail();
+    const aesKey = await crypto.subtle.importKey('raw', fileKey, {name:'AES-CBC'}, false, ['decrypt']);
+    return (ctx.enc = {v, r, fileKey, aesKey, stm, str, meta});
+  }
+  if (![1, 2, 4].includes(v) || ![2, 3, 4].includes(r)) return fail();
+  let stm = 'RC4', str = 'RC4', cfLen = 0;
+  if (v === 4) {
+    const resolveCf = name => {
+      if (!name || name === 'Identity') return null;
+      const entry = machineDictValue(cf, name), m = /\/CFM\s*\/([A-Za-z0-9]+)/.exec(entry);
+      const len = machineIntValue(entry, 'Length');
+      if (len) cfLen = Math.max(cfLen, len);
+      if (!m || m[1] === 'None') return null;
+      if (m[1] === 'V2') return 'RC4';
+      if (m[1] === 'AESV2') return 'AESV2';
+      return 'unsupported';
+    };
+    stm = resolveCf((/\/StmF\s*\/([A-Za-z0-9_.-]+)/.exec(topDict) || [])[1] || 'Identity');
+    str = resolveCf((/\/StrF\s*\/([A-Za-z0-9_.-]+)/.exec(topDict) || [])[1] || 'Identity');
+    if (stm === 'unsupported' || str === 'unsupported') return fail();
+  }
+  const rawLen = machineIntValue(topDict, 'Length') || (cfLen ? (cfLen <= 32 ? cfLen * 8 : cfLen) : (v === 4 ? 128 : 40));
+  const keyLen = v === 1 ? 5 : Math.min(16, Math.max(5, rawLen >> 3));
+  const pBytes = new Uint8Array(4);
+  new DataView(pBytes.buffer).setInt32(0, p | 0, true);
+  const seed = machineConcat(MACHINE_PDF_PADDING, o.subarray(0, 32), pBytes, id0, r >= 4 && !meta ? new Uint8Array([255,255,255,255]) : new Uint8Array(0));
+  let hash = await machineMd5(seed);
+  if (r >= 3) for (let i = 0; i < 50; i++) hash = await machineMd5(hash.subarray(0, keyLen));
+  const fileKey = hash.subarray(0, keyLen);
+  let valid = false;
+  if (r === 2) valid = machineBytesEqual(machineRc4(fileKey, MACHINE_PDF_PADDING), u, 32);
+  else {
+    let test = await machineMd5(machineConcat(MACHINE_PDF_PADDING, id0));
+    const roundKey = new Uint8Array(keyLen);
+    for (let i = 0; i < 20; i++) {
+      for (let k = 0; k < keyLen; k++) roundKey[k] = fileKey[k] ^ i;
+      test = machineRc4(roundKey, test);
+    }
+    valid = machineBytesEqual(test, u, 16);
+  }
+  if (!valid) return locked();
+  return (ctx.enc = {v, r, keyLen, fileKey, stm, str, meta});
+}
+async function machineDecryptData(ctx, enc, id, data, method) {
+  if (!enc || enc.unsupported || !method || !data.length) return data;
+  try { return await machineDecryptObject(ctx, enc, id, data, method); } catch { return null; }
+}
+async function machineDecryptObject(ctx, enc, id, data, method) {
+  if (method === 'AESV3') return await machineAesCbcDecrypt(enc.aesKey, data);
+  const gen = ctx.gens.get(id) || 0;
+  const suffix = new Uint8Array(method === 'AESV2' ? 9 : 5);
+  suffix[0] = id & 255; suffix[1] = (id >> 8) & 255; suffix[2] = (id >> 16) & 255;
+  suffix[3] = gen & 255; suffix[4] = (gen >> 8) & 255;
+  if (method === 'AESV2') suffix.set([0x73, 0x41, 0x6c, 0x54], 5);
+  const objKey = (await machineMd5(machineConcat(enc.fileKey, suffix))).subarray(0, Math.min(enc.keyLen + 5, 16));
+  if (method === 'RC4') return machineRc4(objKey, data);
+  if (method === 'AESV2') {
+    if (typeof crypto?.subtle?.decrypt !== 'function') return null;
+    return await machineAesCbcDecrypt(objKey, data);
+  }
+  return null;
+}
 async function machineStreamParts(ctx, body) {
   const marker = /(?<!end)stream(?:\r\n|\n|\r)/.exec(body);
   if (!marker) return null;
@@ -3159,10 +3360,21 @@ function machineFilters(dict) {
   return array ? [...array[1].matchAll(/\/([A-Za-z0-9]+)/g)].map(match => match[1]) : single ? [single[1]] : [];
 }
 // Decoded bytes of a stream object body, or null (with a reason in ctx.notes).
-async function machineStreamBytes(ctx, body) {
+async function machineStreamBytes(ctx, body, id = null) {
   const parts = await machineStreamParts(ctx, body);
   if (!parts) return null;
   let bytes = machineBytes(parts.raw);
+  const enc = await machineEncryption(ctx);
+  if (enc) {
+    if (enc.unsupported) { ctx.notes.add(enc.reason); return null; }
+    // Cross-reference streams are never encrypted; XMP is left in clear text when /EncryptMetadata is false.
+    const clear = /\/Type\s*\/XRef\b/.test(parts.dict) || (enc.meta === false && /\/Type\s*\/Metadata\b/.test(parts.dict));
+    if (enc.stm && !clear) {
+      if (id === null || id === undefined) { ctx.notes.add('encryption_unsupported'); return null; }
+      bytes = await machineDecryptData(ctx, enc, Number(id), bytes, enc.stm);
+      if (!bytes) { ctx.notes.add('encryption_unsupported'); return null; }
+    }
+  }
   for (const filter of machineFilters(parts.dict)) {
     if (filter !== 'FlateDecode' && filter !== 'Fl') { ctx.notes.add('filter_unsupported'); return null; }
     bytes = await machineInflate(bytes, ctx.notes);
@@ -3176,12 +3388,14 @@ async function machineStreamBytes(ctx, body) {
 async function machinePackedObjects(ctx) {
   if (ctx.packed) return ctx.packed;
   ctx.packed = new Map();
-  for (const [id, start] of ctx.index) {
-    if (!/\/Type\s*\/ObjStm\b/.test(ctx.text.slice(start, start + 400))) continue;
-    const body = machineTopBody(ctx, id), parts = await machineStreamParts(ctx, body);
+  const enc = await machineEncryption(ctx);
+  for (const [id] of ctx.index) {
+    const body = machineTopBody(ctx, id), streamAt = body.indexOf('stream');
+    if (streamAt < 0 || !/\/Type\s*\/ObjStm\b/.test(body.slice(0, streamAt))) continue;
+    const parts = await machineStreamParts(ctx, body);
     const count = parts && machineIntValue(parts.dict, 'N'), first = parts && machineIntValue(parts.dict, 'First');
-    const bytes = parts && count !== null && first !== null ? await machineStreamBytes(ctx, body) : null;
-    if (!bytes) { ctx.notes.add('objstm_unsupported'); continue; }
+    const bytes = parts && count !== null && first !== null ? await machineStreamBytes(ctx, body, id) : null;
+    if (!bytes) { if (!(enc && enc.unsupported)) ctx.notes.add('objstm_unsupported'); continue; }
     const text = machineLatin1(bytes), header = text.slice(0, first).split(/\s+/).filter(Boolean).map(Number);
     for (let n = 0; n < count && 2 * n + 1 < header.length; n++) {
       const objectId = header[2 * n], from = first + header[2 * n + 1];
@@ -3295,7 +3509,7 @@ async function machinePageFonts(ctx, page) {
   for (const entry of table.matchAll(/\/([^\s/\[\]<>()]+)\s+(\d+)\s+\d+\s+R/g)) {
     const body = await machineBody(ctx, entry[2]), unicodeId = body && machineRefValue(body, 'ToUnicode');
     if (!unicodeId) continue;
-    const stream = await machineBody(ctx, unicodeId), bytes = stream && await machineStreamBytes(ctx, stream);
+    const stream = await machineBody(ctx, unicodeId), bytes = stream && await machineStreamBytes(ctx, stream, unicodeId);
     if (bytes) fonts.set(entry[1], machineParseCmap(machineLatin1(bytes), /\/Subtype\s*\/Type0\b/.test(body)));
   }
   return fonts;
@@ -3401,26 +3615,41 @@ function machineDecodeFontText(content, fonts) {
   }
   return out;
 }
-function machinePdfStringValue(text, key) {
-  const match = new RegExp('/' + key + '(?![A-Za-z0-9_])\\s*([(<])').exec(text);
-  if (!match) return '';
-  let at = match.index + match[0].length, value = '';
-  if (match[1] === '<') {
+function machinePdfTokenBytes(text, at, opener) {
+  if (opener === '<') {
     const end = text.indexOf('>', at);
-    value = machineHexBytes(text.slice(at, end < 0 ? text.length : end));
-  } else {
-    let depth = 1;
-    for (; at < text.length && depth; at++) {
-      const c = text[at];
-      if (c === '\\') { value += text[at + 1] || ''; at++; continue; }
-      if (c === '(') depth++;
-      else if (c === ')') { depth--; if (!depth) break; }
-      value += c;
-    }
+    return machineBytes(machineHexBytes(text.slice(at, end < 0 ? text.length : end)));
   }
+  const escapes = {n:'\n',r:'\r',t:'\t',b:'\b',f:'\f'};
+  let value = '', depth = 1;
+  for (; at < text.length && depth; at++) {
+    const c = text[at];
+    if (c === '\\') {
+      const next = text[at + 1] || '';
+      if (/[0-7]/.test(next)) { let digits = ''; while (digits.length < 3 && /[0-7]/.test(text[at + 1] || '')) { digits += text[at + 1]; at++; } value += String.fromCharCode(parseInt(digits, 8) & 255); }
+      else if (next === '\r' || next === '\n') { if (next === '\r' && text[at + 2] === '\n') at++; at++; }
+      else { value += escapes[next] !== undefined ? escapes[next] : next; at++; }
+      continue;
+    }
+    if (c === '(') depth++;
+    else if (c === ')') { depth--; if (!depth) break; }
+    value += c;
+  }
+  return machineBytes(value);
+}
+function machinePdfStringBytes(text, key) {
+  const match = new RegExp('/' + key + '(?![A-Za-z0-9_])\\s*([(<])').exec(text);
+  return match ? machinePdfTokenBytes(text, match.index + match[0].length, match[1]) : null;
+}
+function machineDecodePdfString(bytes) {
+  if (!bytes || !bytes.length) return '';
+  const value = machineLatin1(bytes);
   if (value.startsWith('\xfe\xff')) { let out = ''; for (let n = 2; n + 1 < value.length; n += 2) out += String.fromCharCode(value.charCodeAt(n) * 256 + value.charCodeAt(n + 1)); return out; }
-  if (value.startsWith('\xef\xbb\xbf')) { try { return new TextDecoder().decode(machineBytes(value.slice(3))); } catch { return value; } }
+  if (value.startsWith('\xef\xbb\xbf')) { try { return new TextDecoder().decode(bytes.subarray(3)); } catch { return value; } }
   return value;
+}
+function machinePdfStringValue(text, key) {
+  return machineDecodePdfString(machinePdfStringBytes(text, key));
 }
 function machineXmlText(value) {
   return value.replace(/<[^>]*>/g, ' ').replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, code) => {
@@ -3438,15 +3667,23 @@ function machineXmlText(value) {
 async function machineMetadata(ctx) {
   const titles = [];
   let text = '';
-  const infos = [...ctx.text.matchAll(/\/Info\s+(\d+)\s+\d+\s+R/g)], infoBody = infos.length ? await machineBody(ctx, infos[infos.length - 1][1]) : null;
-  if (infoBody) {
-    const title = machinePdfStringValue(infoBody, 'Title');
+  const enc = await machineEncryption(ctx);
+  const infos = [...ctx.text.matchAll(/\/Info\s+(\d+)\s+\d+\s+R/g)], infoId = infos.length ? infos[infos.length - 1][1] : '';
+  const infoTop = infoId ? machineTopBody(ctx, infoId) !== null : false, infoBody = infoId ? await machineBody(ctx, infoId) : null;
+  if (infoBody && !(infoTop && enc && enc.unsupported)) {
+    const readInfo = async key => {
+      const raw = machinePdfStringBytes(infoBody, key);
+      if (!raw) return '';
+      const plain = infoTop && enc && enc.str ? await machineDecryptData(ctx, enc, Number(infoId), raw, enc.str) : raw;
+      return plain ? machineDecodePdfString(plain) : '';
+    };
+    const title = await readInfo('Title');
     if (title) titles.push(title);
-    for (const key of ['Subject', 'Keywords', 'Title', 'Author', 'doi', 'DOI']) text += machinePdfStringValue(infoBody, key) + '\n';
+    for (const key of ['Subject', 'Keywords', 'Title', 'Author', 'doi', 'DOI']) text += await readInfo(key) + '\n';
   }
   const roots = [...ctx.text.matchAll(/\/Root\s+(\d+)\s+\d+\s+R/g)], catalog = roots.length ? await machineBody(ctx, roots[roots.length - 1][1]) : null;
   const xmpId = catalog && machineRefValue(catalog, 'Metadata'), xmpBody = xmpId && await machineBody(ctx, xmpId);
-  const xmpBytes = xmpBody && await machineStreamBytes(ctx, xmpBody);
+  const xmpBytes = xmpBody && await machineStreamBytes(ctx, xmpBody, xmpId);
   if (xmpBytes) {
     let xmp = ''; try { xmp = new TextDecoder().decode(xmpBytes.length > 400000 ? xmpBytes.subarray(0, 400000) : xmpBytes); } catch { xmp = machineLatin1(xmpBytes); }
     const block = /<dc:title\b[\s\S]*?<\/dc:title>/i.exec(xmp);
@@ -3458,7 +3695,7 @@ async function machineMetadata(ctx) {
 async function machineContentText(ctx, id) {
   const body = await machineBody(ctx, id);
   if (!body) return null;
-  const bytes = await machineStreamBytes(ctx, body);
+  const bytes = await machineStreamBytes(ctx, body, id);
   return bytes ? machineLatin1(bytes) : null;
 }
 // What the first page says. `strings` is the readable part (used to judge whether text could be read at all).
@@ -3476,7 +3713,7 @@ async function machineFirstPage(bytes) {
     let joined = '';
     for (const id of ids) {
       const content = await machineContentText(ctx, id);
-      if (content === null) { if (!notes.has('inflate_failed') && !notes.has('filter_unsupported') && !notes.has('objstm_unsupported')) notes.add('contents_not_found'); continue; }
+      if (content === null) { if (![...MACHINE_ENCRYPTION_REASONS, 'inflate_failed', 'filter_unsupported', 'objstm_unsupported'].some(code => notes.has(code))) notes.add('contents_not_found'); continue; }
       strings += machinePdfStrings(content);
       raw += '\n' + content;
       joined += content + '\n';
@@ -3503,7 +3740,8 @@ function machineMetaTitleMatches(titles, expected) {
 function machineFailReason(page, doiFound, titleFound) {
   const empty = !page.text.replace(/\s/g, '').length;
   if (empty || !page.readable) {
-    for (const code of ['objstm_unsupported', 'inflate_failed', 'filter_unsupported', 'page_tree_not_found', 'contents_not_found']) if (page.notes.has(code)) return code;
+    // Encryption comes first: when it blocks reading, every later failure (object streams, inflate) is only its echo.
+    for (const code of [...MACHINE_ENCRYPTION_REASONS, 'objstm_unsupported', 'inflate_failed', 'filter_unsupported', 'page_tree_not_found', 'contents_not_found']) if (page.notes.has(code)) return code;
   }
   if (empty) return 'page_text_empty';
   if (!doiFound && !titleFound) return 'identity_mismatch';
@@ -3553,7 +3791,7 @@ const MACHINE_ROLE_CAPS = {
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
-const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
+const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','encrypted_pdf','encryption_unsupported','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
 const MACHINE_REQUEUE_DAILY_DEFAULT = 200;
 const MACHINE_REGISTER_DAILY_DEFAULT = 200;
 const MACHINE_LIST_LIMIT_DEFAULT = 20;

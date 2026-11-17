@@ -23,7 +23,7 @@ for (const name of ['radar-archive.json', 'candidates.json', 'archive-full.json'
   if (fs.existsSync(file)) { try { collect(JSON.parse(fs.readFileSync(file, 'utf8'))); } catch { /* optional data */ } }
 }
 const byStem = new Map([...titles].map(([doi, title]) => [doi.replace(/\//g, '_'), {doi, title}]));
-const context = vm.createContext({URL, URLSearchParams, Response, Request, TextEncoder, TextDecoder, Uint8Array, AbortController, setTimeout, clearTimeout, crypto:require('crypto').webcrypto, fetch:async () => { throw new Error('offline'); }, console, Date, atob, btoa, DecompressionStream});
+const context = vm.createContext({URL, URLSearchParams, Response, Request, TextEncoder, TextDecoder, Uint8Array, AbortController, setTimeout, clearTimeout, crypto:require('./webcrypto_md5_shim.cjs').withMd5(), fetch:async () => { throw new Error('offline'); }, console, Date, atob, btoa, DecompressionStream});
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../edge/_worker.js'), 'utf8').replace('export default {', 'globalThis.worker = {'), context);
 const identity = vm.runInContext('machineIdentity', context);
 (async () => {

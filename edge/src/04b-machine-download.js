@@ -20,7 +20,7 @@ const MACHINE_ROLE_CAPS = {
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
-const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
+const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','encrypted_pdf','encryption_unsupported','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
 const MACHINE_REQUEUE_DAILY_DEFAULT = 200;
 const MACHINE_REGISTER_DAILY_DEFAULT = 200;
 const MACHINE_LIST_LIMIT_DEFAULT = 20;
