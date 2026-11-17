@@ -3765,9 +3765,15 @@ async function machineIdentity(bytes, doi, title) {
   const page = await machineFirstPage(bytes);
   const readable = page.readable;
   const doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
-  const titlePage = machineNormalize(page.text).includes(expected);
+  const pageText = machineNormalize(page.text);
+  // Some publisher fonts (seen in MDPI PDFs) map the "fl" ligature glyph to U+00DF, so page 1 reads "Inßammation" for
+  // "Inflammation". Only after the normal match fails, and only page-side: every page "ß" is read as "fl" and the whole
+  // expected title must then appear unchanged. Nothing else is mapped, and an expected title with a real "ß" is untouched.
+  const titleExact = pageText.includes(expected);
+  const titleLigature = !titleExact && pageText.includes('\u00df') && pageText.replace(/\u00df/g, 'fl').includes(expected);
+  const titlePage = titleExact || titleLigature;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
-  const checks = {doi:doiPage ? 'page' : doiMeta ? 'metadata' : '', title:titlePage ? 'page' : titleMeta ? 'metadata' : '', readable};
+  const checks = {doi:doiPage ? 'page' : doiMeta ? 'metadata' : '', title:titlePage ? 'page' : titleMeta ? 'metadata' : '', readable, ...(titleLigature ? {titleGlyph:'eszett_as_fl'} : {})};
   const doiFound = doiPage || doiMeta;
   if (doiPage && titlePage) return {verdict:'ok', level:'full', checks};
   if (doiFound && titlePage) return {verdict:'ok', level:'metadata_doi', checks};

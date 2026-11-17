@@ -116,6 +116,31 @@ async function verifyNext(h, doi, result, reason) {
   // En dash, em dash and horizontal bar all drop like the ASCII hyphen; other non-ASCII text is kept.
   assert.equal(normalize('12\u2013Month \u2014 Outcomes \u2015'), normalize('12-Month Outcomes'));
   assert.equal(normalize('Synthetic \u5fc3\u623f\u98a4\u52a8 title'), 'synthetic\u5fc3\u623f\u98a4\u52a8title');
+  // "fl" ligature mis-mapped to U+00DF by the font (shape of MDPI jcm15218528): page 1 says "Inßammation". Synthetic PDFs only.
+  {
+    const ligDoi = '10.9999/synthetic.ligature', title = 'Systemic Inflammation and New-Onset Atrial Fibrillation in Synthetic Cohorts';
+    for (const pdf of [fixtures.flateEol({doi:ligDoi, title:title.replace('fl', '\u00df')}), fixtures.customEncoding({doi:ligDoi, title:title.replace('fl', '\u00df')})]) {
+      const passed = await identity(h, pdf, ligDoi, title);
+      assert.equal(passed.verdict, 'ok'); assert.equal(passed.level, 'full'); assert.equal(passed.checks.title, 'page'); assert.equal(passed.checks.titleGlyph, 'eszett_as_fl');
+      // The rest of the title must still match exactly: one other word changed fails.
+      const elsewhere = await identity(h, pdf, ligDoi, title.replace('Atrial', 'Ventricular'));
+      assert.equal(elsewhere.verdict, 'mismatch'); assert.equal(elsewhere.checks.title, '');
+      // Only "fl" is recovered: an expected "ff" or "fi" spelling is not.
+      for (const other of ['ff', 'fi']) assert.equal((await identity(h, pdf, ligDoi, title.replace('fl', other))).verdict, 'mismatch', other);
+    }
+    // An expected title with "fl" and a page that differs elsewhere (and has no "ß") fails.
+    const plain = fixtures.flateEol({doi:ligDoi, title:'Systemic Inflammation and New-Onset Ventricular Arrhythmia in Synthetic Cohorts'});
+    const differs = await identity(h, plain, ligDoi, title);
+    assert.equal(differs.verdict, 'mismatch'); assert(!('titleGlyph' in differs.checks));
+    // A genuine German "ß" still matches its own page normally, without the fallback.
+    const germanDoi = '10.9999/synthetic.german', german = 'Große Studie zur Herzinsuffizienz in synthetischen Kohorten';
+    const germanPdf = fixtures.flateEol({doi:germanDoi, title:german});
+    const own = await identity(h, germanPdf, germanDoi, german);
+    assert.equal(own.verdict, 'ok'); assert.equal(own.level, 'full'); assert(!('titleGlyph' in own.checks));
+    // ...and is not passed against a page with different text, with or without the "ß" read as "fl".
+    const otherPdf = fixtures.flateEol({doi:germanDoi, title:'Große Analyse zur Vorhofflimmern in synthetischen Kohorten'});
+    for (const expected of [german, german.replace('\u00df', 'fl')]) assert.equal((await identity(h, otherPdf, germanDoi, expected)).verdict, 'mismatch', expected);
+  }
   // Variants of each structure.
   for (const eol of ['\r\n', '\n', '\r', ' \n']) assert.equal((await identity(h, fixtures.flateEol({...flate, eol}), flate.doi, flate.title)).verdict, 'ok', JSON.stringify(eol));
   assert.equal((await identity(h, fixtures.flateEol({...flate, lengthWrong:true}), flate.doi, flate.title)).verdict, 'ok');
