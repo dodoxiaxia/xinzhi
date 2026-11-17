@@ -508,5 +508,45 @@
     "must_not_have": [
       "#预防/血脂"
     ]
+  },
+  {
+    "id": "hf-title-pulmonary-artery-pressure-sensor-synthetic",
+    "title": "Utilizing a Substitute Pulmonary Artery Pressure Sensor System due to Unreliable Pulmonary Artery Pressure Readings",
+    "summary": "",
+    "must_have": [
+      "#心衰/心肌"
+    ]
+  },
+  {
+    "id": "hf-title-cardiogenic-shock-synthetic",
+    "title": "The pressure is on: balancing cardio-pulmonary haemodynamic interactions in cardiogenic shock",
+    "summary": "",
+    "must_have": [
+      "#心衰/心肌"
+    ]
+  },
+  {
+    "id": "hf-title-impella-synthetic",
+    "title": "Hemodynamic outcomes with Impella support in acute myocardial dysfunction",
+    "summary": "",
+    "must_have": [
+      "#心衰/心肌"
+    ]
+  },
+  {
+    "id": "hf-negative-septic-shock-synthetic",
+    "title": "Vasopressor timing in septic shock: a randomized trial",
+    "summary": "",
+    "must_not_have": [
+      "#心衰/心肌"
+    ]
+  },
+  {
+    "id": "hf-negative-abstract-cardiogenic-shock-synthetic",
+    "title": "A synthetic analysis of critical care outcomes",
+    "summary": "Cardiogenic shock was discussed among several causes of acute instability.",
+    "must_not_have": [
+      "#心衰/心肌"
+    ]
   }
 ]

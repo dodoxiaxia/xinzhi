@@ -1,11 +1,12 @@
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from enrich_metadata import (extract_tags, _is_ai_rct, _legacy_tags, TOPIC_VOCAB, _VALID_TAGS,
+from enrich_metadata import (extract_tags, _is_ai_rct, _legacy_tags, _HEART_FAILURE_TITLE_ONLY_RE, TOPIC_VOCAB, _VALID_TAGS,
                              TOPICAL_TAG_RULES, TAG_RULES, _RCT_TITLE_RE, _conclusion_text)
 
 
@@ -35,7 +36,11 @@ class ExtractTagsRegressionTests(unittest.TestCase):
                 legacy_title = set(_legacy_tags(title, ''))
                 tags = extract_tags(title, summary)
                 self.assertTrue(legacy_title.intersection(legacy).issubset(tags))
-                old_result = [tag for tag in tags if tag not in new_vocab]
+                # Title-only advanced heart-failure terms may add this legacy-vocabulary tag.
+                title_only_hf = ('#心衰/心肌' not in legacy
+                                 and bool(re.search(_HEART_FAILURE_TITLE_ONLY_RE, (title or '').lower())))
+                old_result = [tag for tag in tags if tag not in new_vocab
+                              and not (title_only_hf and tag == '#心衰/心肌')]
                 self.assertTrue(all(tag in legacy for tag in old_result))
                 self.assertEqual(old_result, [tag for tag in legacy if tag in old_result])
                 if len(legacy) < 4:
