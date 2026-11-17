@@ -343,6 +343,15 @@ _PREVENTION_CORE_RE = (r'\b(?:ldl(?:-c)?|ldl cholesterol|lipid[- ]lowering|stati
 _PREVENTION_TITLE_ONLY_RE = (r'\bcardiovascular health promotion\b|'
                              r"\blife['’]?s essential 8\b|\blifes essential 8\b|\ble[- ]?8\b|"
                              r"\blife['’]?s simple 7\b|\blifes simple 7\b|\bls7\b")
+# These advanced heart-failure signals are title-only so incidental abstract
+# mentions do not broaden the tag.
+_HEART_FAILURE_TITLE_ONLY_RE = (
+    r'\bcardiogenic shock\b|'
+    r'\bpulmonary artery (?:pressure )?sensors?\b|\bcardiomems\b|'
+    r'\bmechanical circulatory support\b|'
+    r'\bleft ventricular assist devices?\b|\blvads?\b|\bimpella\b|'
+    r'\becmo\b|\bextracorporeal membrane oxygenation\b|'
+    r'\bva[- ]ecmo\b|\bveno[- ]arterial ecmo\b')
 _PREVENTION_RISK_TOOL_RE = (r'\btyg(?:[- ](?:cvai|bmi|wc|whtr|avi|vai))?\b|\btriglyceride[- ]glucose\b|'
                             r'atherogenic index|coronary artery calcium|\bcac\b|cardiovascular risk score|risk equations?|'
                             r'prevent equations?|\bscore2\b')
@@ -468,8 +477,11 @@ def _ai_rct_hit(title, summary):
 
 def extract_tags(title, summary=''):
     legacy = _legacy_tags(title, summary)[:4]
+    title_text = (title or '').lower()
     legacy_title = set(_legacy_tags(title, ''))
     additions = []
+    if re.search(_HEART_FAILURE_TITLE_ONLY_RE, title_text):
+        additions.append(('#心衰/心肌', True))
     ok, title_hit = _ai_rct_hit(title, summary)
     if ok:
         additions.append((TAG_AI_RCT, title_hit))
