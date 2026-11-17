@@ -410,5 +410,79 @@
     "must_not_have": [
       "#AI-RCT证据"
     ]
+  },
+  {
+    "id": "C02",
+    "title": "Association between the triglyceride glucose index:Chinese visceral adiposity index (TyG-CVAI) and new-onset cardiovascular disease",
+    "summary": "A general population cohort without baseline cardiovascular disease was followed to evaluate prediction of new-onset cardiovascular disease.",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "C08",
+    "title": "Prospective evaluation of a self-report-guided strategy for targeted coronary artery calcium imaging",
+    "summary": "People without a history of coronary disease underwent targeted calcium screening to support primary prevention risk stratification.",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "C13",
+    "title": "Technical Success of Fetal Aortic Valvuloplasty in Relation to Center Volumes",
+    "must_have": [
+      "#结构性心脏病"
+    ]
+  },
+  {
+    "id": "C14",
+    "title": "Funnel-type patent foramen ovale morphology on 3D echocardiography: a novel high-risk anatomic feature",
+    "summary": "CONCLUSIONS: Funnel-type morphology was associated with stroke independent of age, hypertension and dyslipidaemia.",
+    "must_have": [
+      "#结构性心脏病"
+    ],
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "C16",
+    "title": "Impact of an AI prognostic tool on clinician performance in colorectal liver metastases",
+    "summary": "In a prospective randomized multi-reader multi-case study, 12 surgeons assessed retrospective cases with and without tool assistance.",
+    "must_not_have": [
+      "#AI-RCT证据"
+    ]
+  },
+  {
+    "id": "C17",
+    "title": "TyG index and 90-day mortality among critically ill intensive care patients",
+    "summary": "The triglyceride-glucose index was associated with mortality in a cohort of ICU patients.",
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "C18",
+    "title": "Coronary calcium score and long-term prognosis in patients with known coronary artery disease",
+    "summary": "In patients with known coronary disease, calcium burden predicted subsequent mortality.",
+    "must_not_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "C19",
+    "title": "Ablation outcomes in a contemporary cohort",
+    "summary": "CONCLUSIONS: Statin therapy was associated with lower cardiovascular events during follow-up.",
+    "must_have": [
+      "#预防/血脂"
+    ]
+  },
+  {
+    "id": "C20",
+    "title": "AI-enabled electrocardiography alert intervention and all-cause mortality: a pragmatic randomized clinical trial",
+    "summary": "Patients were randomly assigned to an AI-enabled alert intervention or usual care.",
+    "must_have": [
+      "#AI-RCT证据"
+    ]
   }
 ]

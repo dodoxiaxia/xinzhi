@@ -325,7 +325,7 @@ TOPICAL_TAG_RULES = [
     ('#结构性心脏病', r'\btavr\b|\btavi\b|\btranscatheter (?:aortic|mitral|tricuspid|pulmonary) valve|\bedge[- ]to[- ]edge\b|\bteer\b|\bmitraclip\b|\btriclip\b|\bsavr\b'
                      r'|\baortic (?:valve )?stenosis\b|\baortic (?:valve )?regurgitation\b|\bmitral (?:valve|regurgitation|stenosis|annul)|\btricuspid (?:valve|regurgitation)\b|\bvalvular heart disease\b|\bheart valves?\b'
                      r'|\b(?:aortic|pulmonary|prosthetic) valves?\b|\bvalve (?:replacement|repair|disease|intervention|surgery)\b|\bvalve[- ]in[- ]valve\b|\btav[- ]in[- ]tav\b|\bredo[- ]tav[ri]\b|\bleaflet modification\b|\bparavalvular\b|\bbioprosthetic valve'
-                     r'|\bcalcific aortic valve|\baortic valve calcifi|\bstructural heart (?:interventions?|procedures?|teams?|programs?|imaging|centers?)\b'
+                     r'|\bvalvuloplast\w*|\bcalcific aortic valve|\baortic valve calcifi|\bstructural heart (?:interventions?|procedures?|teams?|programs?|imaging|centers?)\b'
                      r'|\bleft atrial appendage (?:occlusion|closure)\b|\blaao\b|\bpatent foramen ovale\b|\bpfo\b|\bbicuspid aortic valve\b|\biatrogenic atrial septal defects?\b'),
     ('#先心病', r'\bcongenital heart\b|\bcongenital cardiac\b|\bachd\b|\btetralogy of fallot\b|\bfontan\b|(?<!iatrogenic )\batrial septal defects?\b|\bventricular septal defects?\b|\bsingle[- ]ventricle\b'
                r'|\btransposition of the great arteries\b|\bhypoplastic left heart\b|\bcoarctation of the aorta\b|\bpatent ductus arteriosus\b|\bebstein\b|\buniventricular\b|\bnorwood\b|\bglenn\b|\bfetal (?:echocardiograph|cardiac)|\bbicuspid aortic valve\b'),
@@ -333,14 +333,28 @@ TOPICAL_TAG_RULES = [
                  r'|\blipoprotein\(a\)|\blp\(a\)|\btriglyceride|\bdyslipid|\bhyperlipid|\bhypercholesterol|\bhypertriglycerid|\blipid[- ]lowering\b|\blipids?\b|\bapolipoprotein\b|\bapob\b|\bremnant cholesterol\b'
                  r'|\bprimary prevention\b|\bsecondary prevention\b|\bcardiovascular (?:disease )?prevention\b|\bpreventive cardiology\b|\bprevent equations?\b|\bscore2\b|\bpooled cohort equations?\b'),
 ]
-_TYG_RE = r'\btriglyceride[- ]glucose\b|\btyg\b'
+# Conclusion-only hits require a central prevention/lipid topic; generic risk-factor covariates do not qualify.
+_PREVENTION_CORE_RE = (r'\b(?:ldl(?:-c)?|ldl cholesterol|lipid[- ]lowering|statin therapy|statins?|pcsk9 inhibitor|'
+                       r'lipoprotein\s*\(a\)|lp\s*\(a\)|primary prevention|secondary prevention|'
+                       r'cardiovascular (?:disease )?prevention|preventive cardiology|risk equations?|'
+                       r'prevent equations?|score2|dyslipid\w* management|lipid management|'
+                       r'atherogenic index|coronary artery calcium|\bcac\b|cardiovascular risk score)\b')
+_PREVENTION_RISK_TOOL_RE = (r'\btyg(?:[- ](?:cvai|bmi|wc|whtr|avi|vai))?\b|\btriglyceride[- ]glucose\b|'
+                            r'atherogenic index|coronary artery calcium|\bcac\b|cardiovascular risk score|risk equations?|'
+                            r'prevent equations?|\bscore2\b')
+_PRIOR_CVD_RE = (r'\b(?:known|prior|preexisting) (?:cardiovascular|coronary) disease\b|'
+                 r'\bestablished (?:cardiovascular|coronary) disease\b|\bsecondary prevention\b|'
+                 r'\bicu\b|\bcritically ill\b|\bhospitali[sz]ed patients?\b')
+_TYG_RE = r'\btriglyceride[- ]glucose\b|\btyg(?:[- ](?:cvai|bmi|wc|whtr|avi|vai))?\b'
 _PREV_MOLECULE_ONLY_RE = r'\bpcsk9\b(?![- ](?:inhibit|antibod|monoclonal|sirna|targeting therap))|\bcetp\b(?! inhibit)|\bapolipoprotein\b|\bapob\b|\bcholesterol\b|\blipids?\b'
 _BASIC_SCIENCE_RE = r'\b(?:mice|mouse|murine|rats?|zebrafish|knock(?:out|down)|in vitro|cell lines?|induced pluripotent|ipsc|organoids?|methylation|ubiquitinat|transcriptom|single[- ]cell rna|signaling pathway|porcine model|minipig)\b'
 _PREV_ASPIRIN_RE = r'\b(?:aspirin|polypill)\b'
 _CONCLUSION_LABEL_RE = re.compile(r'(?:^|[\s.])(?:conclusions?(?: and relevance)?|interpretation|implications?|clinical implications?)\s*:', re.I)
 _CONCLUSION_CUE_RE = re.compile(r'\b(?:in conclusion|in summary|we conclude|these (?:findings|results|data) (?:suggest|indicate|demonstrate|support|highlight|show)|our (?:findings|results|data) (?:suggest|indicate|demonstrate|show|support))\b', re.I)
 _AI_RCT_EXCLUDE_TITLE_RE = r'\bincentives?\b|\beducational (?:interventions?|materials?)\b|\bvignettes?\b|\bscenario[- ]based\b|\bsurvey experiment\b'
-_AI_RCT_EXCLUDE_ABS_RE = r'\bvignettes?\b|\bfinancial incentives?\b|\bscenario[- ]based\b|\bsurvey experiment\b'
+_AI_RCT_EXCLUDE_ABS_RE = (r'\bvignettes?\b|\bfinancial incentives?\b|\bscenario[- ]based\b|\bsurvey experiment\b|'
+                         r'\bmulti[- ]reader\b|\bmulti[- ]case\b|\breader study\b|\breaders? assessed\b|'
+                         r'\bretrospective cases\b|\bsimulated\b|\bsimulation\b|\bscenario\b')
 
 
 # Keep this ordered vocabulary aligned with the frontend filter list.
@@ -406,11 +420,22 @@ def _conclusion_text(summary):
 def _topical_hit(tag, pattern, title, summary):
     title_text = (title or '').lower()
     summary_text = (summary or '').lower()
+    full_context = title_text + ' ' + summary_text
     if tag == '#预防/血脂':
         title_text = re.sub(_TYG_RE, ' ', title_text)
         summary_text = re.sub(_TYG_RE, ' ', summary_text)
     title_hit = bool(re.search(pattern, title_text))
-    ok = title_hit or bool(re.search(pattern, _conclusion_text(summary_text)))
+    conclusion = _conclusion_text(summary_text)
+    conclusion_hit = bool(re.search(pattern, conclusion))
+    if tag == '#预防/血脂' and conclusion_hit and not re.search(_PREVENTION_CORE_RE, conclusion):
+        conclusion_hit = False
+    ok = title_hit or conclusion_hit
+    if tag == '#预防/血脂' and re.search(_PREVENTION_RISK_TOOL_RE, full_context):
+        context = full_context
+        incident = re.search(r'new[- ]onset|incident|first (?:cardiovascular )?(?:disease|events?)|primary prevention|targeted cac (?:screening|imaging)', context)
+        general = re.search(r'general population|population[- ]based cohort|without (?:known|prior|previous) (?:cardiovascular|coronary|ischaemic|ischemic) (?:disease|heart disease)|no (?:prior|history of) (?:cardiovascular|coronary) disease|primary prevention', context)
+        if incident and general and not re.search(_PRIOR_CVD_RE, context):
+            return True, title_hit
     if not ok and tag == '#预防/血脂' and re.search(_PREV_ASPIRIN_RE, title_text) and re.search(r'\bprimary prevention\b', title_text + ' ' + summary_text):
         return True, True
     if ok and not title_hit and re.search(_BASIC_SCIENCE_RE, summary_text):
@@ -425,7 +450,9 @@ def _topical_hit(tag, pattern, title, summary):
 def _ai_rct_hit(title, summary):
     title_text = (title or '').lower()
     summary_text = (summary or '').lower()
-    if re.search(_AI_RCT_EXCLUDE_TITLE_RE, title_text) or not _is_ai_rct(title, summary):
+    if (re.search(_AI_RCT_EXCLUDE_TITLE_RE, title_text)
+            or re.search(_AI_RCT_EXCLUDE_ABS_RE, title_text + ' ' + summary_text)
+            or not _is_ai_rct(title, summary)):
         return False, False
     via_title = bool(re.search(_RCT_TITLE_RE, title_text))
     if not via_title and re.search(_AI_RCT_EXCLUDE_ABS_RE, summary_text):
