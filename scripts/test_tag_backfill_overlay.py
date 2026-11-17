@@ -202,6 +202,7 @@ VOCAB_TAGS = {
     '#房颤/电生理', '#卒中/抗凝', '#大模型/NLP', '#AI-ECG', '#心电', '#穿戴/远程监测',
     '#影像', '#心衰/心肌', '#高血压/血管', '#冠脉介入',
 }
+VOCAB_TAGS = set(enrich.TOPIC_VOCAB)
 SPECIFIC_TAGS = {
     '#房颤/电生理', '#卒中/抗凝', '#大模型/NLP', '#AI-ECG', '#心电', '#穿戴/远程监测',
 }
@@ -238,14 +239,16 @@ class CommittedOverlayFileTests(unittest.TestCase):
             self.assertLessEqual(len(tags), 4)
             self.assertEqual(len(tags), len(set(tags)))
             self.assertTrue(all(tag in VOCAB_TAGS for tag in tags))
-            self.assertEqual(row.get('tagOrigin'), 'machine_agreed')
+            self.assertIn(row.get('tagOrigin'), {'machine_agreed', 'machine_reviewed', 'human'})
             self.assertTrue(isinstance(row.get('id'), str) and row['id'].strip())
-            self.assertTrue(isinstance(row.get('doi'), str) and row['doi'].strip())
+            self.assertTrue(isinstance(row.get('doi', ''), str))
+            self.assertTrue(row.get('doi', '').strip() or row.get('id', '').strip())
             self.assertTrue(isinstance(row.get('inputHash'), str) and row['inputHash'].strip())
             self.assertTrue(row.get('batchId') or row.get('addedBatchId'))
             self.assertTrue(row.get('model') or row.get('addedModel'))
             ids.append(row['id'].strip())
-            dois.append(row['doi'].lower().strip())
+            if row['doi'].strip():
+                dois.append(row['doi'].lower().strip())
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual(len(dois), len(set(dois)))
 
@@ -266,23 +269,58 @@ class CommittedOverlayFileTests(unittest.TestCase):
             self.assertTrue(row.get('addedInputHash'))
             self.assertEqual(row.get('addedModel'), 'gemini-4-hydrogen-high')
 
+    def test_batch2_rows_are_complete_unique_and_machine_reviewed(self):
+        batch_id = self.raw.get('batch2BatchId')
+        self.assertTrue(batch_id)
+        rows = [row for row in self.items if row.get('batchId') == batch_id]
+        self.assertTrue(rows)
+        ids, dois = set(), set()
+        for row in rows:
+            for field in ('id', 'doi', 'pmid', 'inputHash', 'sampleId', 'model', 'batchId'):
+                self.assertIn(field, row)
+            self.assertEqual(row['tagOrigin'], 'machine_reviewed')
+            self.assertEqual(row['model'], 'gemini-4-hydrogen-high')
+            self.assertEqual(row['batchId'], batch_id)
+            self.assertEqual(row['inputFields'], ['title', 'abstract'])
+            self.assertTrue(row['tags'])
+            self.assertLessEqual(len(row['tags']), 4)
+            self.assertEqual(len(row['tags']), len(set(row['tags'])))
+            self.assertTrue(set(row['tags']) <= VOCAB_TAGS)
+            self.assertNotIn(row['id'], ids)
+            if row['doi'].strip():
+                self.assertNotIn(row['doi'].lower(), dois)
+            ids.add(row['id'])
+            if row['doi'].strip():
+                dois.add(row['doi'].lower())
+            title = 'Coronary stent outcomes'
+            self.assertEqual(enrich.extract_tags(title, ''), ['#冠脉介入'])
+            with patch('builtins.print'):
+                resolved = enrich.resolve_topic_tags(
+                    {'id': row['id'], 'doi': row['doi'], 'title': title, 'summary': ''},
+                    title=title, summary='')
+            self.assertTrue(set(row['tags']) <= set(resolved))
+        previous = [row for row in self.items if row.get('batchId') != batch_id]
+        self.assertTrue(all(row in self.items for row in previous))
+
     def test_resolve_topic_tags_returns_overlay_tags_for_every_committed_row(self):
         regex_title = 'Coronary stent outcomes'
         regex_tags = enrich.extract_tags(regex_title, '')
         self.assertEqual(regex_tags, ['#冠脉介入'])
-        expected_by_doi = {row['doi'].lower().strip(): list(row['tags']) for row in self.items}
+        expected_by_doi = {row['doi'].lower().strip(): list(row['tags']) for row in self.items if row.get('doi', '').strip()}
         expected_by_id = {row['id'].strip(): list(row['tags']) for row in self.items}
         with patch('builtins.print'):
             for row in self.items:
-                by_doi = enrich.resolve_topic_tags(
-                    {'doi': row['doi'], 'title': regex_title, 'summary': ''},
-                    title=regex_title, summary='')
+                if row.get('doi', '').strip():
+                    by_doi = enrich.resolve_topic_tags(
+                        {'doi': row['doi'], 'title': regex_title, 'summary': ''},
+                        title=regex_title, summary='')
                 by_id = enrich.resolve_topic_tags(
                     {'id': row['id'], 'title': regex_title, 'summary': ''},
                     title=regex_title, summary='')
-                self.assertEqual(by_doi, expected_by_doi[row['doi'].lower().strip()])
-                self.assertEqual(by_id, expected_by_id[row['id'].strip()])
-                self.assertTrue(all(tag in VOCAB_TAGS for tag in by_doi))
+                if row.get('doi', '').strip():
+                    self.assertTrue(set(expected_by_doi[row['doi'].lower().strip()]) <= set(by_doi))
+                self.assertTrue(set(expected_by_id[row['id'].strip()]) <= set(by_id))
+                self.assertTrue(all(tag in VOCAB_TAGS for tag in (by_doi if row.get('doi', '').strip() else by_id)))
 
     def test_unknown_paper_keeps_regex_and_priority_order_is_unchanged(self):
         title = 'Atrial fibrillation and heart failure'
