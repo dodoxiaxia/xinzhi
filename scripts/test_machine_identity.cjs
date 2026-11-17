@@ -4,6 +4,7 @@
 const assert = require('assert'), crypto = require('crypto'), fs = require('fs'), path = require('path'), vm = require('vm');
 const {setup, token} = require('./test_fulltext_auth_helpers.cjs');
 const {hash, error} = require('./test_doi_library_worker.cjs');
+const {withMd5} = require('./webcrypto_md5_shim.cjs');
 const fixtures = require('./machine_identity_fixtures.cjs'), encrypted = require('./machine_identity_encrypted_fixtures.cjs');
 const base = 'https://learn.dryz.info', reviewUrl = base + '/api/muse/review';
 const museKey = 'synthetic_muse_key_0123456789_abcdef', dsh = 'synthetic_downloader_token_0123456789ab', fallback = 'synthetic_fallback_token_0123456789abcd', reader = 'synthetic_reader_token_0123456789abcdef';
@@ -13,6 +14,7 @@ function run(h, code) { return vm.runInContext(code, h.context); }
 async function create() {
   const h = await setup();
   h.context.DecompressionStream = DecompressionStream;
+  h.context.crypto = withMd5(h.context.crypto);
   Object.assign(h.env, {MUSE_FULLTEXT_ENABLED:'true', MUSE_FULLTEXT_KEY:museKey, MACHINE_TOKENS:tokens});
   return h;
 }
@@ -235,8 +237,8 @@ async function verifyNext(h, doi, result, reason) {
   // Encrypted PDFs (fixtures written by qpdf from invented samples). Standard handler, empty user password: decrypt,
   // then unpack the encrypted /ObjStm that holds the page tree. Before decryption existed these all failed as
   // objstm_unsupported, which named the symptom rather than the cause.
-  const md5 = value => Buffer.from(run(h, 'machineMd5')(new Uint8Array(Buffer.from(value, 'latin1')))).toString('hex');
-  for (const value of ['', 'a', 'abc', 'message digest', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64), 'y'.repeat(1000)]) assert.equal(md5(value), crypto.createHash('md5').update(value, 'latin1').digest('hex'), 'md5 ' + value.length);
+  const md5 = async value => Buffer.from(await run(h, 'machineMd5')(new Uint8Array(Buffer.from(value, 'latin1')))).toString('hex');
+  for (const value of ['', 'a', 'abc', 'message digest', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64), 'y'.repeat(1000)]) assert.equal(await md5(value), crypto.createHash('md5').update(value, 'latin1').digest('hex'), 'md5 ' + value.length);
   const encFile = name => fs.readFileSync(path.join(encrypted.directory, name));
   const {crypt, info: encInfo} = encrypted.samples;
   for (const name of ['encrypted-aesv2-r4-objstm.pdf', 'encrypted-rc4-r2-objstm.pdf', 'encrypted-rc4-r3-objstm.pdf', 'encrypted-aesv3-r5-objstm.pdf', 'encrypted-aesv3-r6-objstm.pdf']) {

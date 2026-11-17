@@ -3008,15 +3008,12 @@ const parseKey = k => {
 // Encryption: only the Standard security handler with an empty user password (publisher "permissions only" files that
 // any viewer opens without asking) is decrypted: RC4 (V1/V2, R2/R3), AESV2 (V4, R4) and AESV3 (V5, R5/R6). A file that
 // needs a password to open is encrypted_pdf; any other handler, method or a key that does not verify is
-// encryption_unsupported. MD5 and RC4 are plain JS (no Web Crypto MD5 in Node test runs, no RC4 anywhere); AES and SHA-2
-// use crypto.subtle.
+// encryption_unsupported. RC4 is plain JS (no Web Crypto RC4); MD5, SHA-2 and AES use crypto.subtle.
 const MACHINE_INFLATE_MAX = 16 * 1024 * 1024;
 const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
 const MACHINE_PDF_PADDING = new Uint8Array([0x28,0xbf,0x4e,0x5e,0x4e,0x75,0x8a,0x41,0x64,0x00,0x4e,0x56,0xff,0xfa,0x01,0x08,0x2e,0x2e,0x00,0xb6,0xd0,0x68,0x3e,0x80,0x2f,0x0c,0xa9,0xfe,0x64,0x53,0x69,0x7a]);
-const MACHINE_MD5_SHIFTS = [7,12,17,22,5,9,14,20,4,11,16,23,6,10,15,21];
-const MACHINE_MD5_K = Uint32Array.from({length:64}, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 0x100000000));
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -3052,30 +3049,10 @@ function machineBytesEqual(a, b, length = Math.min(a.length, b.length)) {
   for (let i = 0; i < length; i++) diff |= a[i] ^ b[i];
   return diff === 0;
 }
-function machineMd5(data) {
-  const len = data.length, padded = new Uint8Array(((len + 8) >> 6) * 64 + 64);
-  padded.set(data); padded[len] = 0x80;
-  const view = new DataView(padded.buffer);
-  view.setUint32(padded.length - 8, (len * 8) >>> 0, true);
-  view.setUint32(padded.length - 4, Math.floor((len * 8) / 0x100000000) >>> 0, true);
-  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
-  for (let offset = 0; offset < padded.length; offset += 64) {
-    let a = a0, b = b0, c = c0, d = d0;
-    for (let i = 0; i < 64; i++) {
-      let f, g;
-      if (i < 16) { f = (b & c) | (~b & d); g = i; }
-      else if (i < 32) { f = (d & b) | (~d & c); g = (5 * i + 1) & 15; }
-      else if (i < 48) { f = b ^ c ^ d; g = (3 * i + 5) & 15; }
-      else { f = c ^ (b | ~d); g = (7 * i) & 15; }
-      const s = MACHINE_MD5_SHIFTS[(i >> 4) * 4 + (i & 3)];
-      const sum = (a + f + MACHINE_MD5_K[i] + view.getUint32(offset + g * 4, true)) >>> 0;
-      a = d; d = c; c = b; b = (b + ((sum << s) | (sum >>> (32 - s)))) >>> 0;
-    }
-    a0 = (a0 + a) >>> 0; b0 = (b0 + b) >>> 0; c0 = (c0 + c) >>> 0; d0 = (d0 + d) >>> 0;
-  }
-  const out = new Uint8Array(16), outView = new DataView(out.buffer);
-  outView.setUint32(0, a0, true); outView.setUint32(4, b0, true); outView.setUint32(8, c0, true); outView.setUint32(12, d0, true);
-  return out;
+// MD5 through Web Crypto: Workers support it in crypto.subtle.digest as a non-standard algorithm for legacy formats
+// (https://developers.cloudflare.com/workers/runtime-apis/web-crypto/, footnote 3). Here it only derives PDF keys.
+async function machineMd5(data) {
+  return new Uint8Array(await crypto.subtle.digest('MD5', data));
 }
 function machineRc4(key, data) {
   const s = new Uint8Array(256), out = new Uint8Array(data.length);
@@ -3321,13 +3298,13 @@ async function machineEncryptionSetup(ctx, reject) {
   const pBytes = new Uint8Array(4);
   new DataView(pBytes.buffer).setInt32(0, p | 0, true);
   const seed = machineConcat(MACHINE_PDF_PADDING, o.subarray(0, 32), pBytes, id0, r >= 4 && !meta ? new Uint8Array([255,255,255,255]) : new Uint8Array(0));
-  let hash = machineMd5(seed);
-  if (r >= 3) for (let i = 0; i < 50; i++) hash = machineMd5(hash.subarray(0, keyLen));
+  let hash = await machineMd5(seed);
+  if (r >= 3) for (let i = 0; i < 50; i++) hash = await machineMd5(hash.subarray(0, keyLen));
   const fileKey = hash.subarray(0, keyLen);
   let valid = false;
   if (r === 2) valid = machineBytesEqual(machineRc4(fileKey, MACHINE_PDF_PADDING), u, 32);
   else {
-    let test = machineMd5(machineConcat(MACHINE_PDF_PADDING, id0));
+    let test = await machineMd5(machineConcat(MACHINE_PDF_PADDING, id0));
     const roundKey = new Uint8Array(keyLen);
     for (let i = 0; i < 20; i++) {
       for (let k = 0; k < keyLen; k++) roundKey[k] = fileKey[k] ^ i;
@@ -3340,13 +3317,16 @@ async function machineEncryptionSetup(ctx, reject) {
 }
 async function machineDecryptData(ctx, enc, id, data, method) {
   if (!enc || enc.unsupported || !method || !data.length) return data;
+  try { return await machineDecryptObject(ctx, enc, id, data, method); } catch { return null; }
+}
+async function machineDecryptObject(ctx, enc, id, data, method) {
   if (method === 'AESV3') return await machineAesCbcDecrypt(enc.aesKey, data);
   const gen = ctx.gens.get(id) || 0;
   const suffix = new Uint8Array(method === 'AESV2' ? 9 : 5);
   suffix[0] = id & 255; suffix[1] = (id >> 8) & 255; suffix[2] = (id >> 16) & 255;
   suffix[3] = gen & 255; suffix[4] = (gen >> 8) & 255;
   if (method === 'AESV2') suffix.set([0x73, 0x41, 0x6c, 0x54], 5);
-  const objKey = machineMd5(machineConcat(enc.fileKey, suffix)).subarray(0, Math.min(enc.keyLen + 5, 16));
+  const objKey = (await machineMd5(machineConcat(enc.fileKey, suffix))).subarray(0, Math.min(enc.keyLen + 5, 16));
   if (method === 'RC4') return machineRc4(objKey, data);
   if (method === 'AESV2') {
     if (typeof crypto?.subtle?.decrypt !== 'function') return null;
