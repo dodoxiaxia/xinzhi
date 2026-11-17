@@ -2688,6 +2688,3543 @@
         "abstract"
       ],
       "sampleId": "E0473"
+    },
+    {
+      "id": "a76a3fd5e0e70fd7",
+      "doi": "10.3760/cma.j.cn112139-20260730-00329",
+      "pmid": "",
+      "tags": [
+        "#影像",
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a34582248dcf041076379485bc36501126ca6adc40adb8dcd26e9ba83bac8ed3",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0001"
+    },
+    {
+      "id": "2bdbc8b5d6423d2d",
+      "doi": "10.1136/bmjdh-2026-000253",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b5de5dc09ab60f80c8eff3bcf786c2b0146640a8eda0aa4a739d52f92c52243e",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0003"
+    },
+    {
+      "id": "2eeec5e0033bfe35",
+      "doi": "10.3390/diagnostics16183014",
+      "pmid": "",
+      "tags": [
+        "#AI-ECG"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a1e3d4c26be5d8dd524d67935280df4110f78c8c631ad488a189a898c844f9e6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0021"
+    },
+    {
+      "id": "f8a0125e0b4eba26",
+      "doi": "10.1038/s42256-026-01293-x",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b29e48ed35ee7c4e6f351b11df665b7db3aa6c55e3a8ceb18bbcbc26a8314b75",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0024"
+    },
+    {
+      "id": "ced6905eabcdf2ea",
+      "doi": "10.1038/s44159-026-00617-3",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6d31a170caf420dd59b073fc5877c088cef2f58b00bacbbd0bd0879033c21468",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0033"
+    },
+    {
+      "id": "c4643992c9022b45",
+      "doi": "10.7326/annals-25-02772",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0c9ae77a53676ba2455897d65ab25ba057d08b48e7fa6fa20fce3846f80b7ff5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0034"
+    },
+    {
+      "id": "b850fb07eaea0f0b",
+      "doi": "10.1038/s43856-026-01920-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1dcf366b04bcb9bf81e375f08345cc17ed097c0ce816083e4a840f844fdcf805",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0037"
+    },
+    {
+      "id": "79ecf1c842382fc0",
+      "doi": "10.1038/s41596-026-01408-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "dc723d7532f168866fc06e5917b5495d6914284a4da4c6185a5927338c22cc03",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0048"
+    },
+    {
+      "id": "6d6bfa1a5e17ecb3",
+      "doi": "10.1038/s43856-026-01871-5",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f3042b72e57c3fbb2531aed66f82919f15b9009118406fef11c14d27f51e9f13",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0052"
+    },
+    {
+      "id": "5a241267fcb31b25",
+      "doi": "10.1038/s41746-026-03104-4",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a33c5271b8b21f09a560cc05072970d61f81b746b55ffc98e166d88e73ad3930",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0057"
+    },
+    {
+      "id": "1279e64c5c80da32",
+      "doi": "10.1038/s41586-026-10687-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "118eb35fcd23baf18bc10ed7d11610fc4315ed291ec1d66b5ed4a3295fd4c837",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0068"
+    },
+    {
+      "id": "a73d2d9d4dafb344",
+      "doi": "10.1056/aip2600583",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a6944ab799bb5766ce0597780db18ef66531e647af0623c01115056a9f9ea9e4",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0077"
+    },
+    {
+      "id": "92b22a28b60cb3fa",
+      "doi": "10.1038/s42256-026-01278-w",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "083c8e7083f8a3bd1c6fb686b5fe5c21cc85ae3d6f3527a0c631f91fef837808",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0112"
+    },
+    {
+      "id": "d2125202168bb069",
+      "doi": "10.1056/aioa2501034",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "47954957fada47a9ecc864658f6571560fc885d0db40e2c07c675c1c98e972ad",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0117"
+    },
+    {
+      "id": "cc6b17f71b34e581",
+      "doi": "10.1016/j.xcrm.2026.102966",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0a2ce2166831d85e1826318897f58ee7e66064748bac78e7b4a1aed520ead9f7",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0118"
+    },
+    {
+      "id": "8c96028655a458cb",
+      "doi": "10.1056/aics2500562",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b331f6be984ba276540e41842b2d1b8cac1fb7bd8549e200c7d8ada6e4fa2226",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0120"
+    },
+    {
+      "id": "7fb68105896da6b5",
+      "doi": "10.1038/s41746-026-02933-7",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6b9b6147a3e2687106144076e261081349afb43eed31bee52566d69c0bb03ddc",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0127"
+    },
+    {
+      "id": "ccbb85162a172cb2",
+      "doi": "10.1038/s41586-026-10764-5",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b7a309353b058a4d0305f5c4eb4fcfb3bda7e7e40e0efb6564eeabfa6295a083",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0128"
+    },
+    {
+      "id": "ef42bf8927d5d4b5",
+      "doi": "10.1038/s42256-026-01268-y",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e0d08139623f94f48bcfb574764d9de6dd302b6be4d55b3fcde2bedf2f94b98e",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0134"
+    },
+    {
+      "id": "ae2843268824352b",
+      "doi": "10.20944/preprints202607.1383.v1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a8c6a22c45124f24192b3f527974ff4b1dcc0b82829eba06623e12ede564411c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0141"
+    },
+    {
+      "id": "53db5f1d05ee1478",
+      "doi": "10.1038/s43856-026-01790-5",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "3fe39a9aec9a0e427e4272d62d8cbdada0666436844e09ab40c98a1a3e164d0f",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0144"
+    },
+    {
+      "id": "310b08afe05d598e",
+      "doi": "10.1038/s44360-026-00152-8",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0209fb8cb804b726fc694a86f28c8a6ef5451a0f64363d50e8b1470a15da0bd0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0146"
+    },
+    {
+      "id": "0d05efa44cce8cbc",
+      "doi": "10.1038/s41551-026-01734-3",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a8c6bddf05d2dc537d3988eb272211e30eefec0cfcebdc052380cedf9f6520d5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0152"
+    },
+    {
+      "id": "4162614f96b1d84d",
+      "doi": "10.1038/s44360-026-00164-4",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "10e4fe28235a34c121e866a186645672648dccf6e7f8f87358472440873bd372",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0156"
+    },
+    {
+      "id": "1d91683f583b05ac",
+      "doi": "10.1038/s41551-026-01701-y",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1c1b3115ee86403987fe99b402775b6289cd37a711b7b3e640675ed72262cd95",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0176"
+    },
+    {
+      "id": "5ef1c73935004768",
+      "doi": "10.1038/s41467-026-73779-6",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d60b7c085b2a5a1fbce24ef9e9be8ca7634b98ac508d7baba73d679da362a795",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0179"
+    },
+    {
+      "id": "cc9486f00bbfd0b7",
+      "doi": "10.1038/s41551-026-01719-2",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c65f5645227d8dad842919f99cd06d94bec13977a4678eeaae81a8f849e2339c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0182"
+    },
+    {
+      "id": "ec00d97580025d11",
+      "doi": "10.1038/s44271-026-00486-9",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b3d2e941880bc49d33525fe5a65c1bd93ec84fea587b47c0ae5d3766d70e30d2",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0185"
+    },
+    {
+      "id": "10b0838f51e2af3b",
+      "doi": "10.1038/s44387-026-00126-x",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ccdbc0fe9ef4fcd857c46fcc5b8f87b5356638acaee0d64e236c1f63680fcff0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0194"
+    },
+    {
+      "id": "f757b11e69778263",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6b44dfbb3893dd78e2ab714a545b6ef3bbd98b3ef659f2713f4016f228f4c429",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0195"
+    },
+    {
+      "id": "8d0b18c1422f4e97",
+      "doi": "10.1038/s44401-026-00085-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "cdadcb599e37c987e84ff01dd0d76503a5fe8bbcfcc8dda01c9fb011d1b3aed8",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0202"
+    },
+    {
+      "id": "bfa0217c6f1a0e75",
+      "doi": "10.1038/s41591-026-04352-3",
+      "pmid": "",
+      "tags": [
+        "#穿戴/远程监测"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "aa6c5859552a97138c4f60d160e911cb5e95d729dbf7f7806f4c3358308c83a5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0208"
+    },
+    {
+      "id": "b62c169f8b5b60b4",
+      "doi": "10.1038/s42256-026-01247-3",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "5075eb649bcf1fc1ed26a57dc308e6f53b39b7d50b04c0592bc5cb3f59c0e528",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0221"
+    },
+    {
+      "id": "cadd5c39d0fa744a",
+      "doi": "10.1056/aie2600526",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "55c43460d1a0f343582a1ae1fc5d696a25db29c8f98af421866372a50a3695c8",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0237"
+    },
+    {
+      "id": "587ba4c297d904b5",
+      "doi": "10.1056/aipc2600233",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "7111e73bd89a56e1ebd80f2a4698986b14c4458022ada8d6d181e3731e96f548",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0245"
+    },
+    {
+      "id": "2dc30a3a10f992f8",
+      "doi": "10.1056/aira2600073",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ed58500ca5e70646f9c48fb0ba7e36ac25c1a630f005b621ace25b8d141babe7",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0247"
+    },
+    {
+      "id": "3827c47fff3d25f4",
+      "doi": "10.1038/s42256-026-01217-9",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "9f91dec20c401c4cdcc1127e986ec8fb636902a6e6758283fc03398523c29d9a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0256"
+    },
+    {
+      "id": "fe1798bab2e95286",
+      "doi": "10.1145/3772318.3791724",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "702494815c383160859db1b442fbff0d4615d06745627b0596bd3c3513d9de49",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0259"
+    },
+    {
+      "id": "45166da6bdd97751",
+      "doi": "10.1001/jamanetworkopen.2026.4014",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "91f92e1fef9c7d54a0a216705db981772607dc6fb68ab5cab8b5d04d48ca9492",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0261"
+    },
+    {
+      "id": "16cfa19260ba8393",
+      "doi": "10.1038/s41598-026-45326-2",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b4ce7f07e9652822d45c48969fad3d2003cbbd4d854a0046a5b8ca21db5189dd",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0270"
+    },
+    {
+      "id": "e0560b9573fb16b1",
+      "doi": "10.1111/pace.70130",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "afa4f2a5d2c003f5fef19d4eda193ba018d211e330cbb1f6b65cb1f0fe15e403",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0273"
+    },
+    {
+      "id": "abebc81043af3725",
+      "doi": "10.1016/j.landig.2026.100983",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c16ce1f902490e382e22194460f5635c9356602ebda36236dc0c8e69c42338cd",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0278"
+    },
+    {
+      "id": "7d22330783fb5206",
+      "doi": "10.1001/jamaoto.2025.5335",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b215df933570cacef38fd7dcf7db60845f8251eed9231f2c3ffd3df9202a38a3",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0284"
+    },
+    {
+      "id": "3fe2927d67d5d4e0",
+      "doi": "10.1093/eurheartj/ehaf879",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f0aa0044b7ba8411297097ceafd21bbc863ecadd975a7737bcadbf40836f3ba2",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0289"
+    },
+    {
+      "id": "189e76e3fd9589f9",
+      "doi": "10.1056/aioa2500799",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4565541efdf9f52cdd0f8b704181fa03df378fb0d50279b9701922e6139b5022",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0291"
+    },
+    {
+      "id": "d8725e23e99866eb",
+      "doi": "10.1038/s41467-026-70274-w",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "fc15ddce1d0ec90e30241cea4c43ec8e1c57c8c997755f7bff58e3405479d701",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0296"
+    },
+    {
+      "id": "d4a182d0e168fb67",
+      "doi": "10.1038/s44401-026-00076-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "029a93ce15dea3a0702656e6ab6eab37ec0d1feefa85d14eb0083b5c4f37989a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0322"
+    },
+    {
+      "id": "e7e8383979b83d58",
+      "doi": "10.1038/s42256-025-01153-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "57d32532c6cdc89e9d1b0c5c986b2226a5a2a139abe7b3dacd59ba8235137c5c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0352"
+    },
+    {
+      "id": "88ea673148bff2f7",
+      "doi": "10.1038/s41586-025-10021-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "67ba56b0e5e2abddca18c974dad21f5435c41fa7033c20820206a1b3ff944900",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0353"
+    },
+    {
+      "id": "93f35227d7feb2ed",
+      "doi": "10.1038/s41562-026-02409-4",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "996591577373e762bf5190b1c600302232cf341c6e9386bba689828c51ea8a24",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0355"
+    },
+    {
+      "id": "5d0831d73d6575f0",
+      "doi": "10.1038/s42256-025-01169-6",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "8350d695f88c713fd593228244871587016d80c8e53f92cfc7823acbef8b974f",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0362"
+    },
+    {
+      "id": "a4aa25a81aa4d106",
+      "doi": "10.1038/s42256-026-01179-y",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1cd8ac1c4104163dd576bbffc71f37be51834b9c985d0743e5402d5bd57ac973",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0366"
+    },
+    {
+      "id": "40b7dc98e36671f5",
+      "doi": "10.1038/s42256-026-01193-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "29cc0c20913bfaa6808113e4b2230b5ac729c416f7772b821c11aef62f7e8b4c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0369"
+    },
+    {
+      "id": "f0e91ef2ff5bae88",
+      "doi": "10.1056/aip2501416",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e6919b3bf8f01a4af1ea46406ba3381f5cefdb1d43cb6b6f367842485f6ea421",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0374"
+    },
+    {
+      "id": "d756e2e765080689",
+      "doi": "10.1056/aip2501328",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "46fe8e49a2f3aabc61432dc7a1e22ee87e602284b01f9f6be461a79d17e060e5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0375"
+    },
+    {
+      "id": "3b51e13dda54492e",
+      "doi": "10.1016/j.landig.2025.100960",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "cc8305f748d91cf4e9157194e165d3e84437efb025ad6eb5bebd001e943d890c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0384"
+    },
+    {
+      "id": "a71dd72b65a4f573",
+      "doi": "10.1038/s41746-026-02408-9",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d4ec347d8ff74aded6cb18cd72fd89dabb311277db946a0b983005d975ac345a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0389"
+    },
+    {
+      "id": "5fd6c01144f1a542",
+      "doi": "10.1038/s44360-025-00024-7",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "03417550d1f25bf26b3f2e54f2f2623fa441d5299b48b46752ef006041b49f00",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0404"
+    },
+    {
+      "id": "47951a6db8abdb9e",
+      "doi": "10.1038/s41586-025-09937-5",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b6a7c25298bb25aceb4ddff3770f2394fdc7b0ade35444b72e97fc91056890d9",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0406"
+    },
+    {
+      "id": "89056cb38bc62353",
+      "doi": "10.1038/s42256-025-01152-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "14e7f60066607f495418c45fc41c55b287457c008989a7df384f0898b9e27029",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0409"
+    },
+    {
+      "id": "6766a0f936e10342",
+      "doi": "10.1038/s43856-025-01337-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "769e9b4db39813b9cbd5771e405bc17e977db68cf4ce562925489247b6a8bb06",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0410"
+    },
+    {
+      "id": "ab0a46241166eb20",
+      "doi": "10.1038/s43856-025-01348-x",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d535619bbf415c934903d7887d536fde50328e4987b8c4f81db5876aa7abeb4a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0412"
+    },
+    {
+      "id": "2ac389e2827b8974",
+      "doi": "10.1038/s41746-025-02167-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "03aebb3e11ff7419c84152bd73ca839f0dd8301aeb3394f1de52acefecda2ce1",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0413"
+    },
+    {
+      "id": "de1be436d13e1e0e",
+      "doi": "10.1038/s44387-025-00048-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f18f73e524ced973295360e6f9b475d9eb24dc86015695b57fd09de6524bae54",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0415"
+    },
+    {
+      "id": "ff506b093ed24a3d",
+      "doi": "10.1056/aidbp2500418",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ba72ebb224861d6141156d1e7cc303171ac96f8e541a26434d7ddc4573f1df06",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0419"
+    },
+    {
+      "id": "f67ab78be78d4e06",
+      "doi": "10.1016/j.xcrm.2025.102547",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a6025953ca8871910ed726d46788219af132d8ce79aff3acc9df016278b93197",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0422"
+    },
+    {
+      "id": "f2ef8eba6b15c671",
+      "doi": "10.1016/j.landig.2025.100931",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "66bc54d486394601a473cc73062079647b80a2b270fc2fb9f6c67af2184dcb2c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0423"
+    },
+    {
+      "id": "ed18363d2f6e915c",
+      "doi": "10.1056/aie2501329",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4e0984bda6799043bed86ebce7262edfe28a557ade196db03aee4d64a599363d",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0424"
+    },
+    {
+      "id": "b45bce2af53219e8",
+      "doi": "10.1056/aioa2500749",
+      "pmid": "",
+      "tags": [
+        "#卒中/抗凝"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "11816af1d30c423bbc7fbcc4af2b5d8b4db4cc19ba66d901812689a055f363c6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0431"
+    },
+    {
+      "id": "31ddbd255da6cc30",
+      "doi": "10.1056/aioa2500588",
+      "pmid": "",
+      "tags": [
+        "#AI-ECG"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f0536f74cfad9f5baafd65aebeb91923f80bfc7558f42db3c0a5ed7d6541cb34",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0441"
+    },
+    {
+      "id": "d0cd4e88a0b0a0be",
+      "doi": "10.1038/s42256-025-01115-6",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "3e0f65ef05396172344391359e92f73cac6dce6e53a36935928fe4da2eaa142b",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0450"
+    },
+    {
+      "id": "b34847625aa96a80",
+      "doi": "10.1038/s43856-025-01315-6",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0e493ff9f25c8122d61e2ad3a8b23acd51ad19b41f741dba89e01d81a98f885c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0454"
+    },
+    {
+      "id": "7811a220eb4156e1",
+      "doi": "10.5694/mja2.70057",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "83b4061d602a2e6829923a96ec7616dbb6fd12a0c541a738a6e22d14f1149533",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0462"
+    },
+    {
+      "id": "f82603657c5f689a",
+      "doi": "10.1038/s41598-025-31010-4",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e30ef9dffcc6836397b0b091f5530ac2e720010296071b1bb90ae56baeefc1ee",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0465"
+    },
+    {
+      "id": "e77a55e4fac8ff71",
+      "doi": "10.1038/s44387-025-00047-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "7b6c588931c64eca96bb73a0c370fafbb0b00145620080f22a58bafc8d8dd3f3",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0467"
+    },
+    {
+      "id": "9af47dabd6cf3bf8",
+      "doi": "10.1038/s44401-025-00038-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "782913d6f0a2d5216cd94f2adbd1cf2c7ae3ba9389281f6b7a6ee23d9501d014",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0475"
+    },
+    {
+      "id": "e50bc08a922c1055",
+      "doi": "10.1038/s43856-025-01216-8",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ea26121b85cd77034efe67c15bc291c2e4c84dd8b091da3d741b81a4859659e9",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0477"
+    },
+    {
+      "id": "ec12b3a72d3c563a",
+      "doi": "10.1038/s41598-025-22940-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a668bc90b7db436659456dd0fe8ee1286c40d16c5dad74a9758b70853527139e",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0481"
+    },
+    {
+      "id": "282ecef74755481e",
+      "doi": "10.2196/66691",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "16681a716e7d9d9ba78a751868adc7011a3dccc87b1f804424d8e858d8297077",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0482"
+    },
+    {
+      "id": "f1f430cf07efb0fe",
+      "doi": "10.1038/s41467-025-64769-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "235780e39c34c635f0df19010b2947577a202e24f6de8022de6846d33e86b304",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0484"
+    },
+    {
+      "id": "1744e316fd9ba216",
+      "doi": "10.1038/s44401-025-00043-2",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "cfca5c2a49c0e71fc7134fb63cb9753a148edc4c50e8713b29ffbda3ae294dfb",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0487"
+    },
+    {
+      "id": "ba5cc383031aa08f",
+      "doi": "10.1016/j.landig.2025.100922",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "33170cb52d1d40c6ba34fcdf9f374108c149dd83b1a6b612fa93d08bc5686340",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0489"
+    },
+    {
+      "id": "6a96669815880ff4",
+      "doi": "10.1038/s41575-025-01108-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "2364fd1d5e9ff739775eb011a67de26a6d72d123913db302d2bd09fb83ed3ba9",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0490"
+    },
+    {
+      "id": "9023f9f36a39636b",
+      "doi": "10.7554/elife.106187",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f32eb4747ac8cff28df3c779dcb6a03330e09dc8397e41a4cb0b8416926e630a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0494"
+    },
+    {
+      "id": "cf47695a8b328205",
+      "doi": "10.1038/s41598-025-20496-7",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e0dfcd9cf1bb9b948cce0f0a189ea6505ed0ea574d368f68d95b82a0d1a504fd",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0497"
+    },
+    {
+      "id": "35ab8668df1e61d7",
+      "doi": "10.1038/s41598-025-19257-3",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "8883fb02c7374bd572d08cbdfc3c780bf12e50fe13a899f24c417a7b73713ceb",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0502"
+    },
+    {
+      "id": "d9b93a89a50accfe",
+      "doi": "10.1001/jamaophthalmol.2025.2918",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "5bf3c198cca8d8e7a6a911ed92b9b257a67b4ac47985ae0b3c637a121fc6cf6c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0509"
+    },
+    {
+      "id": "22ff3d96e2beeb6c",
+      "doi": "10.1038/s41467-025-63804-5",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "491884e81d7a12a95e17ecda64deca92f434b2e250e391e04b01762658ba1684",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0510"
+    },
+    {
+      "id": "5760228744ebde5e",
+      "doi": "10.1038/s44387-025-00021-x",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e74da3ade83c6e72884fe5e5023c481feb95c4794f272e30ff54eda00a638fc5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0519"
+    },
+    {
+      "id": "4ab1568e35406228",
+      "doi": "10.1038/s41746-025-01840-7",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "fbf554d36b09f09e1d9a5bcfc757b6c5c9043755184a94aa2ca8cae65ab8308a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0520"
+    },
+    {
+      "id": "e0946652a1457239",
+      "doi": "10.1056/aics2401161",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "49ba7d05e1d03e2ec7b08149df00830113e999d0eeb66e1151365bff7ab742d2",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0526"
+    },
+    {
+      "id": "c99814f30c3afafb",
+      "doi": "10.1056/aidbp2500120",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "21b1a0aaf4790e79ae76154549bf01e59eeb8cca643233821e52d27999b3fdc3",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0528"
+    },
+    {
+      "id": "709fee938e1b3e8d",
+      "doi": "10.1001/jamaophthalmol.2025.2413",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d344e660ab10c6100324df7ca55b8caad37469e65cb8d0acfa1a567479ef3522",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0532"
+    },
+    {
+      "id": "8b271dcd18e22a53",
+      "doi": "10.1038/s41598-025-13560-9",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0f231c5d4d7dff0cd37057ee1584d7980acc8d171438eb4a8ae408bf786cfb24",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0536"
+    },
+    {
+      "id": "f589e36bdd7e8fdd",
+      "doi": "10.1001/jamanetworkopen.2025.28538",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e79c96c88a0978f10813a728a50ecbcfedcd9c2c86da0fbb28065d95295b76a5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0537"
+    },
+    {
+      "id": "7722546d65fea719",
+      "doi": "10.1001/jamanetworkopen.2025.26021",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "18f067d294aa7887e626cf10b8dac8f259a6b3f8a0930f1231cdf619611d3c34",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0542"
+    },
+    {
+      "id": "39dea989705293f4",
+      "doi": "10.1145/3711896.3736556",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "819559679c5a36d487a42edf1ed278697017abf1a75fd5bb2245baf044946099",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0544"
+    },
+    {
+      "id": "33e25a43d7597d62",
+      "doi": "10.1038/s41591-025-03727-2",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4a846e4d2d2a22b025bb21a77256e654e549a6bedfdae563e8e69dbeda164f9b",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0545"
+    },
+    {
+      "id": "95830d0d82938fdc",
+      "doi": "10.1126/science.aea3922",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "15f039cbea853ce267cae7b1dca5f02b0e12ce2320bd247a4929c1f9e1519c47",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0546"
+    },
+    {
+      "id": "39330d91284b5516",
+      "doi": "10.1038/s42256-025-01058-y",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "127376a3ee45159f40cfe847f576f5ff71bb34f29ecee19aaac5b5f43586697a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0552"
+    },
+    {
+      "id": "07a77429c8d41c9c",
+      "doi": "10.1038/s41586-025-08869-4",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ae5876bd93c5a3cdb395cd56ff8d66a65d1324f567aaf37eab88f9019d5d1770",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0556"
+    },
+    {
+      "id": "03299a7b0b0be507",
+      "doi": "10.1101/2025.06.11.25329442",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "092e5332bfcf799b897ece903ebdfe657b3c0c3c4fd7aa34780d57254d9418ff",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0557"
+    },
+    {
+      "id": "e255b0120a11e9ff",
+      "doi": "10.1038/s44387-025-00011-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "543995329b92f5c75fea9584940ea73ba8231a95b8f8e6c0d073754b33b07b01",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0559"
+    },
+    {
+      "id": "17672e491fd3c20d",
+      "doi": "10.1016/j.compbiomed.2025.110351",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4c1a777df5f5a47d2e0e315a90890d91c7bef990d8783382a604296913936ad2",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0561"
+    },
+    {
+      "id": "6c13d1b698a62a18",
+      "doi": "10.1038/s41746-025-01653-8",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "003f53bafa9f0b5f771a32a2fef8790b4cec5bc92c21bb0834b89f4f9996d874",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0570"
+    },
+    {
+      "id": "49cdbb6a7488baf0",
+      "doi": "10.1016/j.imed.2025.03.002",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1aa2c75303cdc8f9d166fe60855fb2c4fa0153e2671fe7d9ed9e4a45817b9937",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0571"
+    },
+    {
+      "id": "1a59d49dab1b0ea6",
+      "doi": "10.1093/ehjdh/ztaf011",
+      "pmid": "",
+      "tags": [
+        "#AI-ECG"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "df9a795e86196fd5a5ebdc57dcc7ed98e8003cee24732b57ce213350817c1d45",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0588"
+    },
+    {
+      "id": "afb43a0e1a0b8f06",
+      "doi": "10.2196/58670",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0424141595864745e1535a6b231e13f741c7c15097890a0bbffa923ae856e035",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0589"
+    },
+    {
+      "id": "34a5185fc2fbe66a",
+      "doi": "10.1038/s42256-025-00986-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6700fac0f647886838ea6961993cf9f1d5ecd6a271c7421e045b964fe4cfffc3",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0592"
+    },
+    {
+      "id": "06a098ca0b5252b0",
+      "doi": "10.1038/s42256-025-00985-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b0581f076c791d686a558cd894a3de38fda54acf9fab84d21b4d75fdada027a7",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0593"
+    },
+    {
+      "id": "3eb728a210a4eef4",
+      "doi": "10.1038/s44401-024-00004-1",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e34ea63eb9ad993fe3f20e9906d8130145cbeeac1d2d5baf7b0d47577f7e0c5f",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0597"
+    },
+    {
+      "id": "654e1919a63abcde",
+      "doi": "10.1038/s42256-024-00976-7",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "90e421d48c069b88831f437c0f03b059b6ccb5d3799147556187a63257031f9e",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0599"
+    },
+    {
+      "id": "8cc3e8627ab428a1",
+      "doi": "10.1038/s41467-024-55628-6",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "843e8cd05ef5908c30cadcbc7ffe1ec39a175f340bf3905d55d93216953644d6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0602"
+    },
+    {
+      "id": "853792e53d7731ff",
+      "doi": "10.1038/s41591-024-03328-5",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1949c704a25549c1b7997261da3eb079c717f51c9ed58672174413d46ac04256",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0607"
+    },
+    {
+      "id": "f41c1ed9302c38cc",
+      "doi": "10.1038/s42256-024-00929-0",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "370220b173fd84a647d070aad4c43f4e2f6de2e8d49fdfcba3da1caa25a6b227",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0611"
+    },
+    {
+      "id": "084189fe6a41fedc",
+      "doi": "10.1038/s42256-024-00922-7",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6ae97c21b5b182c6f93072afa66fa46afb201299203334f35f3389e1b13820a0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0612"
+    },
+    {
+      "id": "17272ef340e8b4de",
+      "doi": "10.1038/s42256-024-00881-z",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "66dbd9f58971a383462480338fbe27df1946b11e15bc4633a9312ff9b9e1e56a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0617"
+    },
+    {
+      "id": "ab94b24b19e740fd",
+      "doi": "10.1109/ichi61247.2024.00111",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "536f7aea248037cc8f27ae8f99bb9d3226353d4ba58b68bedd2b46ff830b9104",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0623"
+    },
+    {
+      "id": "70c8a68e3f8569a4",
+      "doi": "10.1038/s44159-023-00211-x",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "51678957e2dff416b646a58d6f04bf0f01942b0cae79dc7230374801d9245d09",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0640"
+    },
+    {
+      "id": "f9ff146378b9046b",
+      "doi": "10.1038/s42256-023-00692-8",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "dedc65c311faed5dda62e5f91ea99d2d333b4df6f6b5ddfa09038d831f4f4d8c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0646"
+    },
+    {
+      "id": "d65345f7c18c87ba",
+      "doi": "10.1161/circoutcomes.117.003939",
+      "pmid": "",
+      "tags": [
+        "#预防/血脂"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "3424f8b1a53e6c091ecf03fc69bf1fb3a6c87903de11350bedfb3587c039b31b",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0686"
+    },
+    {
+      "id": "f9ec900b36cb76d5",
+      "doi": "10.3760/cma.j.cn112148-20250503-00327",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "150ff9e8164a6f51d140cc82e4b7944042f8168d112caa6127bf3d9f040e95a6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0702"
+    },
+    {
+      "id": "f9b58666294bdfc3",
+      "doi": "10.48550/arxiv.2512.03838",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6d81144507301c1c5527f413a4e10477a5b5be41786eea2b28cd97fc9429e8ce",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0703"
+    },
+    {
+      "id": "f216d259bd4856e8",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c16ce1f902490e382e22194460f5635c9356602ebda36236dc0c8e69c42338cd",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0710"
+    },
+    {
+      "id": "ecad61276c305d98",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "aadcf7f42a9d3f46dd33b34c81c9b85cb645590ff7e66fdb954a5d419f8118f5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0714"
+    },
+    {
+      "id": "ea3ce2e94d3ba14b",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "95f4b262d91b10ed973efc89322cf759af27935196f5572886c451549a505044",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0718"
+    },
+    {
+      "id": "e7f9a00c007fc475",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "2b4aa9cabdbccbe19f63b145d35f221863bce20f835d4ea8f7726c911756cb3a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0722"
+    },
+    {
+      "id": "e2cb91b49545c04e",
+      "doi": "10.3760/cma.j.cn112138-20250103-00007",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ad54a6381ec688154c74dd496236f0392dbdb78d0e157eb8ae4bc6355f84d808",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0727"
+    },
+    {
+      "id": "db8ebeded8fe817a",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "be11fbbf31f67de9a7e00dbe2b1aaad5058f63d51a4c4d4520c7a4447684c676",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0737"
+    },
+    {
+      "id": "d6f2bc9283561539",
+      "doi": "10.3760/cma.j.cn112148-20251127-00829",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌",
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e4c1dcd8ae4e583a3711d47c2ef37d8cb9eba7f42efec995273b35407708de59",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0744"
+    },
+    {
+      "id": "c897f82670d591b7",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "dceb89b4ceb6b799369b1a82086ed9518d1d5c53e9545e81b1b885be05cc4e07",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0750"
+    },
+    {
+      "id": "c1ef0f2cbdc63f48",
+      "doi": "10.3760/cma.j.cn112148-20251106-00785",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理",
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "49a81798c19d353cb0d30444f5052c9222452e26a2f3669e65355ba988fa05c5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0757"
+    },
+    {
+      "id": "c137e9dc4fd82554",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "7b7bd5bb35922e9cc53c47ccf1ca9ef403dbc2aecb9cdbe8be83a746d64f042f",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0758"
+    },
+    {
+      "id": "b55d19d5140a2b80",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ba56367c478daeae2fafb8e4f868355fa6f4972ae09253420e60806952dfb795",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0765"
+    },
+    {
+      "id": "aa4a994191105c42",
+      "doi": "10.48550/arxiv.2604.20791",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "5482ca1f4eaf6f50fee21e843456528ffac7ac22f4504b483c5b5676b83e7e55",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0779"
+    },
+    {
+      "id": "a88a41e65db6a51f",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "3b362fd12fed3e9d25d54ac7e4711659d63c7574556c6664eabc720a938053e0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0780"
+    },
+    {
+      "id": "a72fff3c7502aacf",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0d0b1c4840aec20422512aa0f4c5c86ca397fa047264379df3166247f9db7cd6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0781"
+    },
+    {
+      "id": "a3afcbd365977aff",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a4a861077282fcbb7751afa28840eb55fbb5afb98eae5dcaa14360baa434a8fa",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0785"
+    },
+    {
+      "id": "a29f3c6319a6b6d6",
+      "doi": "10.3760/cma.j.cn113661-20250317-00132",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d779b23cb804060f869ecc1ca957d99159bdf8c7a4bb86ffa51fff00314cbcac",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0787"
+    },
+    {
+      "id": "9c411f602dbf9e25",
+      "doi": "10.3760/cma.j.cn112138-20250318-00163",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理",
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "49fc077b6e41441b3ed2a57851134a0736de91b362f0a179c92debc44754f8a3",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0792"
+    },
+    {
+      "id": "9bad6beadfc6a7ea",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b8b2ede0b7ac374e06e686fb7b6541809555260a87c77bd66ce9ebd935a9bbe2",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0793"
+    },
+    {
+      "id": "9baac0b0e77a4f4e",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "aa78438b50ec7da4e5916e995e658a3128237d72215805d80ab427b2caf7cca5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0794"
+    },
+    {
+      "id": "9a1d739f7d0e9f53",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "30637cdbede8cdecb91b9cd311bfd2b6e553512882f957b9e5881b932803a35c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0795"
+    },
+    {
+      "id": "92c4958c9e1b8035",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a658c7ce68f95b1c70a296d53e3869354e893f2c773f7c1517e43db062afbf29",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0799"
+    },
+    {
+      "id": "9284abd6c5a6a69e",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "5653acb14477b073ea927d5319ec418ef269bb4802f692c4f1787f7918beb171",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0802"
+    },
+    {
+      "id": "8d582a706c205a0b",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "dea0e3f3881471e42aa5e9a5a81bfa9f2754935e385181e405e1c873294dbc57",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0810"
+    },
+    {
+      "id": "8c4bdff4a20a03c6",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f4f571798a4c99db5a6d1dc0c49bc0f6eda5f908523874dcaf20ed95bd78597b",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0811"
+    },
+    {
+      "id": "891a0ca9ca481407",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "26818d189b9c41ad78308deb85301a0be23dff7ea0eba7bff3d2c169cb21772c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0817"
+    },
+    {
+      "id": "84eaf3cf8055805f",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1d303255a3ab758c1b03667a9c33a398953425ca8e34aa20bca2e70af0c19172",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0820"
+    },
+    {
+      "id": "84052cecfa476c5d",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "66bc54d486394601a473cc73062079647b80a2b270fc2fb9f6c67af2184dcb2c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0821"
+    },
+    {
+      "id": "83d1292000b3a0bb",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "dd8c321fb1085c05d9a3e4e940c18f9a00cc02963537fb2ab4fb79e7b9a10630",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0823"
+    },
+    {
+      "id": "81b59f1b5065571a",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "cd08583657a14ee1540485c36cc175ad94c29bb2fb3b4f6c2e7f367e2d6d0d12",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0826"
+    },
+    {
+      "id": "814b860e19382e2f",
+      "doi": "10.1145/nnnnnnn.nnnnnnn",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "940d9bc52c92c4421f6735da7f190aacd6b70033db299734f21d045d705dcfd4",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0828"
+    },
+    {
+      "id": "7bd591a23f3a5470",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d03fa900921a0b783b03f5ecd4d637860508368cb3bc45d8dadf0b25952f4308",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0832"
+    },
+    {
+      "id": "776cb42035ea10f0",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "56ee6b417dc4e67f0018d75c67c399b12656f8b7759d223f587560c4549ae802",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0836"
+    },
+    {
+      "id": "761212546a00b67f",
+      "doi": "10.3760/cma.j.cn112138-20250602-00321",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b0d8d85cc15f8adda6fd48bbfb0309b8085509dd573ba2801280c360fb48da78",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0838"
+    },
+    {
+      "id": "701e22803652d5d9",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6110f5780465e0fbc29c9fe90c248451819eb0dbc2f532a742dd5d772e4ab099",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0841"
+    },
+    {
+      "id": "6b3939f62f325f7e",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "97425aac3c20bae445545698bd97cd501c23f5e5016f6fd7f31e4d717649eefa",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0847"
+    },
+    {
+      "id": "6582f3d8f1dc70ae",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e7c1b282d88c06ac79a18d6306c501d2b1e266a4afbdc54d863d2d860b0f0b55",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0852"
+    },
+    {
+      "id": "4836895cc484759f",
+      "doi": "10.3760/cma.j.cn112148-20250714-00507",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "411ae192980a6e06887324e1262d781f20981341abf67605f736db0b59008af6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0877"
+    },
+    {
+      "id": "39ee4ececa4cff6b",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "825a1879b56d6a0d5d47763060cbaa3e246b9615aa250280d2c233f3d589afe5",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0884"
+    },
+    {
+      "id": "37cb5c6f96b8b0f5",
+      "doi": "10.1016/j.landig.2026.100979",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "741c9152568777fd4e7770d5b7e95dc34786d24ea5a6e9adb9015d5c89168784",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0887"
+    },
+    {
+      "id": "2f9e7d2d6e8868f4",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ad16670562a73a741427cb58c4756e00f96af3e91af8ad4b9bc64d1aa0d4fe16",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0891"
+    },
+    {
+      "id": "27b5a6b6524a3fd9",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "922973fae35e03ab73a83a22a1f1d696b4ea2d9ea8a6401f147bb7a9b08d66da",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0895"
+    },
+    {
+      "id": "1f8ec3ad4b84cc1e",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c4043ef754d3959d2a10e1b0e0e0ace2f0e85c185403256e0949319b38c77d64",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0901"
+    },
+    {
+      "id": "152a12c6a0e403c0",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a0c6bd2ede3a980373c36273c865fc1fff558fbc70fde500e7be0e2afb5e68a4",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0909"
+    },
+    {
+      "id": "0f221a16e26d08ca",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#卒中/抗凝"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "23838bbd4090befda33bc93cf1d9f8e10f2b4aca4c9a29b546791d2d4c2f1b55",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0914"
+    },
+    {
+      "id": "0dee306e1fb3335b",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e3cb904ef89185b52860949738e00416ecb6669baa3e1f1669b6a16584d995c8",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0916"
+    },
+    {
+      "id": "0de66a4881039984",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ff9e99083b470dcc82a0830b889f3db3de75a837994d0810011c327ce5267241",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0917"
+    },
+    {
+      "id": "0ac005169fc948f0",
+      "doi": "10.3760/cma.j.cn112138-20250905-00523",
+      "pmid": "",
+      "tags": [
+        "#预防/血脂"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "ed0fa752fd0cdbc116a1e3e726353e4b1e557853a68ee08ce7206b46e8f2327b",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0920"
+    },
+    {
+      "id": "0a57c2bbe65ac9ff",
+      "doi": "10.3760/cma.j.cn112148-20251223-00901",
+      "pmid": "",
+      "tags": [
+        "#AI-ECG",
+        "#影像",
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "60a7ceefdb647b16d454f8e5b4dc2f41c34c9d889f2e77ccd5730f9932206596",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0921"
+    },
+    {
+      "id": "086b885052f28ba2",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "8ad6fe398dde0ef536ebab85291beb6331bdcd17ee34736f0f7d8e90c650efd0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0922"
+    },
+    {
+      "id": "00697444b54ba274",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4aef63b7512d0970b0784b507b6fd78121e3d6955b6347b148404503f2011824",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0930"
+    },
+    {
+      "id": "rss-d400f8be21c5628a",
+      "doi": "10.1016/j.amjcard.2026.11.006",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "34ebd9a4c5477790bf0eb0e577f19d10b99df07fe1f997e15fde70c7021c9214",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0943"
+    },
+    {
+      "id": "rss-aa55cab4e41b5be7",
+      "doi": "10.1016/j.echo.2026.11.004",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌",
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1fd7f325c2f14a285cd33ac6c0657cfe25c5845ecf69b77231d2168c6ee39332",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0944"
+    },
+    {
+      "id": "pmid-43036870",
+      "doi": "10.1093/europace/euag323",
+      "pmid": "43036870",
+      "tags": [
+        "#结构性心脏病"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "29dcc3f6737e1f2427548c13b35e7005d64111c1d5ee560c9a5099b6a64ba58d",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0959"
+    },
+    {
+      "id": "rss-c1d4520e68b29271",
+      "doi": "10.1016/j.carrev.2026.10.023",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b6d47abe357e13f06ee2b94c74400e4fbd6883d7ef6252661d27e434c2879b0b",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0966"
+    },
+    {
+      "id": "pmid-43031388",
+      "doi": "10.1093/eurheartj/ehag901",
+      "pmid": "43031388",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b7f4a777a79b1cf6641721fc12cfb409868fa1b577ef3b652d322a69dfd76a10",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0977"
+    },
+    {
+      "id": "pmid-42994505",
+      "doi": "10.1016/j.hrthm.2026.10.056",
+      "pmid": "42994505",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d890254230e70e5b011bb93affa2126e0d70840bd383204652785d53ebc12532",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0981"
+    },
+    {
+      "id": "rss-f3e9b55a1446c24e",
+      "doi": "10.1093/ajh/hpag130",
+      "pmid": "43021647",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "99e01c92e343413f04673f03c5022ca2b228f790e0fb7e5c25045c8c2c8f4e0c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0982"
+    },
+    {
+      "id": "rss-1da89dd11e00ccb0",
+      "doi": "10.1038/s44161-026-00895-3",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌",
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "24aba4dfadd1dd228fc6a644a60b2cbfb71bc865426da715fb4df6120d8bf2f9",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0994"
+    },
+    {
+      "id": "rss-1144d8dddbf0807e",
+      "doi": "10.1016/j.ahj.2026.107653",
+      "pmid": "",
+      "tags": [
+        "#冠脉介入",
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "fa220ef45dd78712197cc78297d130563071ad51fa94b9d335c8fee8dd86c126",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0997"
+    },
+    {
+      "id": "rss-ca9bc2171bd4da2a",
+      "doi": "10.1016/j.cardfail.2026.11.716",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "8ef802a7723a9463a5625b73e07ceb12862f04603ace1a5c636823e1b2ef323a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F0998"
+    },
+    {
+      "id": "pmid-43021588",
+      "doi": "10.1093/eurheartj/ehag860",
+      "pmid": "43021588",
+      "tags": [
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "42dbc1352d69591ab0af94484294d6363a1965268019a8f79d31f7cd93e86226",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1014"
+    },
+    {
+      "id": "rss-a4ea649eb671cc27",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "864b45049ffe757f5fbdda3d6186d71a90a37ac77a683de06588e97b820edb44",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1019"
+    },
+    {
+      "id": "rss-98480fb3fe35ad8a",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "177304298fe8c6606a86c1fc8fe1c10a15904e41f8edda50e0cd7baf6d3518ab",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1027"
+    },
+    {
+      "id": "rss-d25a27937a785d8c",
+      "doi": "10.1016/j.jacc.2026.07.044",
+      "pmid": "",
+      "tags": [
+        "#结构性心脏病",
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c1488a74007ca75fdadc130ff26e3f66b7744501684f9be4838d90d732981070",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1030"
+    },
+    {
+      "id": "rss-4434cdcc975ef179",
+      "doi": "10.1016/j.ahj.2026.107654",
+      "pmid": "",
+      "tags": [
+        "#冠脉介入",
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "d82acaf45509ba655b65a508870d07e74bf41cc62fac8dab8da55eada5f28c7c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1032"
+    },
+    {
+      "id": "rss-bc6317aedb12e0be",
+      "doi": "10.1016/j.carrev.2026.11.006",
+      "pmid": "",
+      "tags": [
+        "#高血压/血管",
+        "#卒中/抗凝"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1b9ef6529165e5737141f82908a7cacf4f7d10dd0dd3c4cd0173d44a39e30401",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1034"
+    },
+    {
+      "id": "rss-e1b9d92c4c642f9f",
+      "doi": "10.1016/j.cardfail.2026.11.715",
+      "pmid": "",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e452ca0132ee47435f06118b64495c966349cfdd070c5ba7f0e0d190a864014a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1035"
+    },
+    {
+      "id": "rss-04620bcd4a94bb05",
+      "doi": "10.3389/fdgth.2026.2045018",
+      "pmid": "",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6a878b550e4706cace0929c2d415f041c038d2338ca0eb6e5611378b70028902",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1036"
+    },
+    {
+      "id": "pmid-43020621",
+      "doi": "10.1136/heartjnl-2026-328389",
+      "pmid": "43020621",
+      "tags": [
+        "#心电",
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "6063615bd522edd6a35b3ef280422ef833e8d79b3958364fda50ce7b7dfa592c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1037"
+    },
+    {
+      "id": "pmid-43020609",
+      "doi": "10.1136/heartjnl-2026-328325",
+      "pmid": "43020609",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a0a46fe8af89f99735329d95d3e5b11052a6405efc98f9163cafe2f30da6b3f6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1038"
+    },
+    {
+      "id": "pmid-43014631",
+      "doi": "10.1016/j.hrthm.2026.10.067",
+      "pmid": "43014631",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "fe8b731a7ec6135636bfc50e8bcb602aebe16230926689066568b59d436824a1",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1067"
+    },
+    {
+      "id": "rss-752756e63e645080",
+      "doi": "10.1093/eurjpc/zwag581",
+      "pmid": "43004941",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "48cd8b6a3137c8a36fed12a3d4f7e6fc812b3c3428bd97ecab27ed237fbbfc3d",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1074"
+    },
+    {
+      "id": "rss-8652c2f040e8eb65",
+      "doi": "10.1093/eurjpc/zwag580",
+      "pmid": "43004932",
+      "tags": [
+        "#预防/血脂"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "0538cc5217fe7821d67007cf24f4bb2dfbaf31f6c698a60a4b9463354167775a",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1076"
+    },
+    {
+      "id": "rss-01b78b2f58e08a92",
+      "doi": "10.1016/j.artmed.2026.103566",
+      "pmid": "",
+      "tags": [
+        "#卒中/抗凝"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c034bc25d1618db1406049dfd5740a8a3de7b8d091c0c0cbe1aa1b23f3c89bb2",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1104"
+    },
+    {
+      "id": "rss-0f7509f00f7281ca",
+      "doi": "10.1016/j.jcin.2026.07.055",
+      "pmid": "",
+      "tags": [
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "7c0941754a65dc85705296da28a5bea4cefcdf77300e0a940a88689d07c1db14",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1110"
+    },
+    {
+      "id": "pmid-43002392",
+      "doi": "10.1161/circulationaha.126.084113",
+      "pmid": "43002392",
+      "tags": [
+        "#心衰/心肌",
+        "#影像"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "f8d0d9e29f5fe79ee9bffeb2feda7216c14b277929ecbc20a35125f5627a10e0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1123"
+    },
+    {
+      "id": "rss-d8f392e6f7f2c7b1",
+      "doi": "10.1016/j.amjcard.2026.11.005",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "551efcaee9c81c5f2778a4a5ffb5ad9ce65d9c2052d1c54de1a7b98220dd39e6",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1129"
+    },
+    {
+      "id": "pmid-43007249",
+      "doi": "10.1016/j.jcmg.2026.10.006",
+      "pmid": "43007249",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e4edba92dbd71be4c124d443022f371f5ee1022d4ca1e978f353e10b50d2e56d",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1136"
+    },
+    {
+      "id": "pmid-42998298",
+      "doi": "10.1161/circulationaha.126.083999",
+      "pmid": "42998298",
+      "tags": [
+        "#AI-ECG"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "e1c26bb30ee0eff3412a1ed494b67c3c0b140774184600d03cb90ff4bd92adc7",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1138"
+    },
+    {
+      "id": "pmid-42998292",
+      "doi": "10.1161/circulationaha.126.084421",
+      "pmid": "42998292",
+      "tags": [
+        "#心衰/心肌",
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "5407eb4f423d88a188f477ce98734d8930c5c8fd216904eb5899eb681f229b39",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1139"
+    },
+    {
+      "id": "rss-6d27e5a0b882b910",
+      "doi": "10.1093/ejcts/ezag240",
+      "pmid": "42990128",
+      "tags": [
+        "#房颤/电生理",
+        "#卒中/抗凝",
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "72365d247ee4f5b220bd3526d953c2ef3f46540f7df470bfc89866d1d3760a21",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1142"
+    },
+    {
+      "id": "rss-0968bd0dc29755a3",
+      "doi": "10.1016/j.jcin.2026.08.028",
+      "pmid": "",
+      "tags": [
+        "#卒中/抗凝"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "919734b5889c854f05fa82f9b08abd6c8f5d4b059a304f60aeeb249bd726470d",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1145"
+    },
+    {
+      "id": "pmid-42994713",
+      "doi": "10.1016/j.hrthm.2026.11.002",
+      "pmid": "42994713",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "9c6e495e8b5e52a99a553aa9c24104a24f4b4b87d9325710d012130b601c7748",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1148"
+    },
+    {
+      "id": "rss-6fde6101c2df5024",
+      "doi": "10.1093/eschf/xvag280",
+      "pmid": "42983952",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "a0516d90c6cfa2863c9800fa6c823ed8a32de274644c7aa33b1d65bc6d557d18",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1154"
+    },
+    {
+      "id": "rss-d86292f205b9ce8b",
+      "doi": "10.1148/ryct.260225",
+      "pmid": "42986195",
+      "tags": [
+        "#大模型/NLP"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "49b38cbfde15fa96eaf638b19f68e4ba904024955de3ffba4404bb47025c747e",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1155"
+    },
+    {
+      "id": "pmid-42986920",
+      "doi": "10.1161/circresaha.126.329915",
+      "pmid": "42986920",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "bfb024618c788edd66fdf84b81c20ce77811d3cdf1d0d94c2bce7eac94279716",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1159"
+    },
+    {
+      "id": "rss-1f9d688f6a183744",
+      "doi": "10.1093/ehjacc/zuag128",
+      "pmid": "42982082",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "53a34ac31ae1c0a744c55819ac06dcb24599429661d2761d02d77aa85abde017",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1164"
+    },
+    {
+      "id": "rss-c3a2916756b2bd76",
+      "doi": "10.1097/hjh.0000000000004446",
+      "pmid": "42979958",
+      "tags": [
+        "#高血压/血管"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "4906c42db40bd7dd67aa4c304cd53182754c43d8e63f6f25712f19c411d90fb4",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1170"
+    },
+    {
+      "id": "rss-810ee3aef20a6b9f",
+      "doi": "10.1016/j.jacep.2026.08.003",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "1b380aca95b0167f6c322f2b5fff78c505879d9ae3c16726ccfd45a63a6ce671",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1175"
+    },
+    {
+      "id": "rss-5224961c31f05960",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "b428292523899b9cc94ef7a04813737e879d5d030d516fa4305f168a0edb5a5c",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1176"
+    },
+    {
+      "id": "rss-645ec4093980e9f6",
+      "doi": "",
+      "pmid": "",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "3544d7d25867bb11d3e3f9b860ea12af5a523546f99eb698470df0ed8f80ea46",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1178"
+    },
+    {
+      "id": "pmid-42982389",
+      "doi": "10.1016/j.hrthm.2026.11.001",
+      "pmid": "42982389",
+      "tags": [
+        "#房颤/电生理"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "07cc66ba8cbc0eafbf3a497bb906d1fcabd7cda14fe2af68913557160b1e8e23",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1180"
+    },
+    {
+      "id": "rss-f90aa2f145abf07e",
+      "doi": "10.4244/eij-d-26-01026",
+      "pmid": "42975597",
+      "tags": [
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "fc7368380c2af810842a70df81c5c9f346f6bdf555d2b5b325c8a28b7ae55b6d",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1189"
+    },
+    {
+      "id": "rss-8033b624c9e9aa08",
+      "doi": "10.4244/eij-d-26-00997",
+      "pmid": "42975596",
+      "tags": [
+        "#冠脉介入"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "c580a571e4272c28cbcf8162e79dd04b6e5fff2a20a865c2c2e78e2cb50f01f0",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1190"
+    },
+    {
+      "id": "pmid-42976371",
+      "doi": "10.1001/jamacardio.2026.5331",
+      "pmid": "42976371",
+      "tags": [
+        "#结构性心脏病"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "91d04fac24665c3c95d8d81eb43ad2009b5e8d4d26c230f2ca6864b58ec86070",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1191"
+    },
+    {
+      "id": "pmid-42974691",
+      "doi": "10.1161/circgen.126.005850",
+      "pmid": "42974691",
+      "tags": [
+        "#心衰/心肌"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "26b7195a3226260edab5fa7201cf69ee77b9d4d90de157d1fc1ab240cd1d039f",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1194"
+    },
+    {
+      "id": "pmid-42776540",
+      "doi": "10.1001/jama.2026.15601",
+      "pmid": "42776540",
+      "tags": [
+        "#卒中/抗凝"
+      ],
+      "tagOrigin": "machine_reviewed",
+      "batchId": "tag-backfill-20261117-3",
+      "model": "gemini-4-hydrogen-high",
+      "inputHash": "327bb516b41e313060c8eb0af3c03ebe5b9ab49f41a0f141719e65fb6da29042",
+      "inputFields": [
+        "title"
+      ],
+      "sampleId": "F1195"
     }
   ],
   "broadBatchId": "tag-backfill-20261116-1-broad",
@@ -2699,5 +6236,10 @@
   "batch2Model": "gemini-4-hydrogen-high",
   "batch2OfficialState": "27bad94bfa063ddb3e3048833939439d47ae2006",
   "batch2CodeShaForExtractTags": "942d57bed36519c8fdfb6d64fab03e7d5490840d",
-  "batch2Note": "第2批：有摘要但正则为空；模型输出经抽核（30/30）后以 machine_reviewed 写入；弃权不写；#AI-RCT证据 不标系统综述、meta 分析、二次分析和方案稿（E0071 系统综述按此撤回，整条不写）"
+  "batch2Note": "第2批：有摘要但正则为空；模型输出经抽核（30/30）后以 machine_reviewed 写入；弃权不写；#AI-RCT证据 不标系统综述、meta 分析、二次分析和方案稿（E0071 系统综述按此撤回，整条不写）",
+  "batch3BatchId": "tag-backfill-20261117-3",
+  "batch3Model": "gemini-4-hydrogen-high",
+  "batch3OfficialState": "27bad94bfa063ddb3e3048833939439d47ae2006",
+  "batch3CodeShaForExtractTags": "965ad8211eafd52bb13e93ae8f8b2465e87367d2",
+  "batch3Note": "第3批：仅题名、尚无词表标签的条目；抽核 30 条 28/30，补充心源性休克、肺动脉压传感器、机械循环支持归 #心衰/心肌 的规则后全批重跑；以 machine_reviewed 写入；弃权不写；#AI-RCT证据 不标综述、meta 分析、二次分析和方案稿"
 }
