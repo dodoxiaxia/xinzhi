@@ -203,6 +203,13 @@ const checkedExtraHtml = renderDrawer({
 });
 ok(countOf(checkedExtraHtml, CHECKED_TITLE) === 1 && checkedExtraHtml.includes('证据边界') && checkedExtraHtml.includes('能否外推？'), 'source_checked draft with limitations shows the heading once plus evidence limits and question');
 
+// The checked heading sits above the takeaway line (summary is not repeated); with limitations the order is
+// heading -> takeaway -> 证据边界 -> 共读问题. Both the summary-only and the limitations case are checked.
+const TAKEAWAY = '<p class="drawer-takeaway">';
+const before = (html, ...needles) => needles.every((n, i) => html.indexOf(n) >= 0 && (i === 0 || html.indexOf(needles[i - 1]) < html.indexOf(n)));
+ok(before(checkedDraftHtml, CHECKED_TITLE, TAKEAWAY) && countOf(checkedDraftHtml, '导读正文') === 1, 'source_checked summary-only draft: heading precedes the takeaway line and the summary is not repeated');
+ok(before(checkedExtraHtml, CHECKED_TITLE, TAKEAWAY + '带边界的导读', '证据边界', '能否外推？') && countOf(checkedExtraHtml, '带边界的导读') === 1, 'source_checked draft with limitations: heading -> takeaway -> 证据边界 -> 共读问题');
+
 const uncheckedDraftHtml = renderDrawer({
   id: 'd2', title: 'Unchecked draft', doi: '10.1/d2', summary: 'Abstract',
   hasDraft: true, draftData: { summary: '未核对正文', source_checked: false }
