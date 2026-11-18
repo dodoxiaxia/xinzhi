@@ -46,6 +46,10 @@ def title_matches(text, title, cleaned=None):
     return 'accepted manuscript' in text.casefold() and cleaned is not None and normalized(title) in normalized(cleaned)
 
 
+def page_has_doi(text, pattern):
+    return bool(re.search(pattern, text.casefold()))
+
+
 def verify(path, doi, title):
     result = {'verified': False, 'pages': 0, 'method': METHOD, 'reason': 'invalid_pdf'}
     try:
@@ -58,22 +62,32 @@ def verify(path, doi, title):
             return result
         import fitz
         from pypdf import PdfReader
-        reader = PdfReader(path, strict=True)
-        with fitz.open(path) as document:
-            if document.needs_pass or not 1 <= len(reader.pages) <= 200 or document.page_count != len(reader.pages):
+        recovered = False
+        try:
+            reader = PdfReader(path, strict=True)
+            pypdf_page_count = len(reader.pages)
+        except Exception:
+            recovered = True
+            reader = PdfReader(path, strict=False)
+            if reader.is_encrypted:
                 return result
-            first_pypdf = first_fitz = ''
+            pypdf_page_count = len(reader.pages)
+        with fitz.open(path) as document:
+            if document.needs_pass or not 1 <= pypdf_page_count <= 200 or document.page_count != pypdf_page_count:
+                return result
+            pypdf_texts, fitz_texts = [], []
             cleaned_pypdf = cleaned_fitz = None
             for number, page in enumerate(reader.pages):
                 parsed = page.extract_text() or ''
                 rendered_page = document.load_page(number)
                 text = rendered_page.get_text('text') or ''
+                pypdf_texts.append(parsed)
+                fitz_texts.append(text)
                 scale = min(1 / 3, 2000 / max(rendered_page.rect.width, rendered_page.rect.height, 1))
                 pixels = rendered_page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
                 if pixels.width < 1 or pixels.height < 1 or not pixels.samples:
                     return result
                 if number == 0:
-                    first_pypdf, first_fitz = parsed, text
                     if 'accepted manuscript' in parsed.casefold():
                         pypdf_runs = []
                         def visit(run, cm, tm, font, size):
@@ -88,11 +102,15 @@ def verify(path, doi, title):
                                      for block in blocks if block['type'] == 0
                                      for line in block['lines'] for span in line['spans']]
                         cleaned_fitz = without_margin_numbers(fitz_runs, rendered_page.rect.width)
-            result['pages'] = len(reader.pages)
+            if recovered and not any(value.strip() for value in pypdf_texts):
+                return result
+            result['pages'] = pypdf_page_count
         pattern = r'(?<![a-z0-9])' + r'\s*'.join(re.escape(c) for c in doi) + r'(?![a-z0-9])'
-        # Each parser must independently find the same first-page DOI and title.
-        if not all(re.search(pattern, text.casefold()) and title_matches(text, title, cleaned)
-                   for text, cleaned in ((first_pypdf, cleaned_pypdf), (first_fitz, cleaned_fitz))):
+        # Each parser independently finds the title on page one and the DOI on some page.
+        if not (title_matches(pypdf_texts[0], title, cleaned_pypdf)
+                and title_matches(fitz_texts[0], title, cleaned_fitz)
+                and any(page_has_doi(text, pattern) for text in pypdf_texts)
+                and any(page_has_doi(text, pattern) for text in fitz_texts)):
             result['reason'] = 'identity_mismatch'
             return result
         result.update(verified=True, reason='verified')

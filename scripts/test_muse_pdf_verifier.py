@@ -1,4 +1,5 @@
 import hashlib
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,131 @@ class MuseOriginalTests(unittest.TestCase):
         document.save(self.path, deflate=False)
         document.close()
 
+    def make_pdf(self, pages, name='synthetic.pdf', metadata=None):
+        target = Path(self.directory.name) / name
+        document = fitz.open()
+        for text in pages:
+            page = document.new_page()
+            if text:
+                page.insert_text((36, 50), text)
+            for index in range(1300):
+                x, y = 40 + index % 50 * 10, 100 + index // 50 * 10
+                page.draw_rect(fitz.Rect(x, y, x + 4, y + 4), color=(.2, .3, .5))
+        if metadata:
+            document.set_metadata(metadata)
+        document.save(target, deflate=False)
+        document.close()
+        return target
+
+    def damage_xref(self, target):
+        original = target.read_bytes()
+        damaged = re.sub(rb'(?m)^xref\r?$', b'nope', original, count=1)
+        self.assertNotEqual(damaged, original)
+        target.write_bytes(damaged)
+
+    def test_doi_on_later_page_is_accepted(self):
+        pages = ['Exact cardiovascular trial'] + ['ordinary text'] * 3 + ['DOI 10.1000/exact']
+        target = self.make_pdf(pages)
+        result = verify(target, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertTrue(result['verified'], result)
+        self.assertEqual(result['pages'], len(pages))
+
+    def test_damaged_xref_retries_non_strict_and_preserves_bytes(self):
+        target = self.make_pdf(['Exact cardiovascular trial 10.1000/exact', 'Second page content'], 'xref.pdf')
+        original = target.read_bytes()
+        damaged = re.sub(rb'(?m)^xref\r?$', b'nope', original, count=1)
+        self.assertNotEqual(damaged, original)
+        target.write_bytes(damaged)
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+        with self.assertRaises(PdfReadError):
+            PdfReader(target, strict=True)
+        self.assertEqual(len(PdfReader(target, strict=False).pages), 2)
+        with fitz.open(target) as document:
+            self.assertEqual(document.page_count, 2)
+        before = target.read_bytes()
+        result = verify(target, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertTrue(result['verified'], result)
+        self.assertEqual(result['sha256'], hashlib.sha256(before).hexdigest())
+        self.assertEqual(target.read_bytes(), before)
+
+    def test_damaged_xref_without_page_text_is_rejected(self):
+        target = self.make_pdf(['', ''], 'xref-no-text.pdf')
+        self.damage_xref(target)
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+        with self.assertRaises(PdfReadError):
+            PdfReader(target, strict=True)
+        self.assertEqual(len(PdfReader(target, strict=False).pages), 2)
+        result = verify(target, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'invalid_pdf')
+
+    def test_damaged_xref_encrypted_pdf_is_rejected(self):
+        encrypted = Path(self.directory.name) / 'encrypted-xref.pdf'
+        with fitz.open(self.path) as document:
+            document.save(encrypted, encryption=fitz.PDF_ENCRYPT_AES_256,
+                          owner_pw='synthetic-owner', user_pw='synthetic-reader')
+        self.damage_xref(encrypted)
+        from pypdf import PdfReader
+        # The strict read fails for the damaged xref. Whether strict=False then raises
+        # (pypdf without `cryptography`, as in muse-checks.yml) or opens it as encrypted
+        # (pypdf with `cryptography`) depends on the environment; both must be rejected.
+        with self.assertRaises(Exception):
+            PdfReader(encrypted, strict=True).pages[0]
+        result = verify(encrypted, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'invalid_pdf')
+
+    def test_strict_readable_blank_pdf_keeps_identity_mismatch_reason(self):
+        target = self.make_pdf(['', ''], 'strict-no-text.pdf')
+        from pypdf import PdfReader
+        self.assertEqual(len(PdfReader(target, strict=True).pages), 2)
+        result = verify(target, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'identity_mismatch')
+
+    def test_identity_and_pdf_structure_rejections(self):
+        cases = [
+            (['ordinary text 10.1000/exact', 'Exact cardiovascular trial'], 'identity_mismatch'),
+            (['Exact cardiovascular trial', 'ordinary text'], 'identity_mismatch'),
+            (['Exact cardiovascular trial 10.1000/exact2'], 'identity_mismatch'),
+            (['Exact cardiovascular trial 110.1000/exact'], 'identity_mismatch'),
+            (['Wrong title', '10.1000/exact'], 'identity_mismatch'),
+        ]
+        for index, (pages, reason) in enumerate(cases):
+            with self.subTest(index=index):
+                result = verify(self.make_pdf(pages, f'case-{index}.pdf'), '10.1000/exact', 'Exact cardiovascular trial')
+                self.assertFalse(result['verified'], result)
+                self.assertEqual(result['reason'], reason)
+        metadata_pdf = self.make_pdf(['Exact cardiovascular trial', 'ordinary text'], 'metadata.pdf',
+                                     {'title': '10.1000/exact', 'subject': '10.1000/exact'})
+        result = verify(metadata_pdf, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'identity_mismatch')
+
+    def test_page_count_mismatch_and_empty_file_rejected(self):
+        target = self.make_pdf(['Exact cardiovascular trial 10.1000/exact', 'Second page'], 'mismatch.pdf')
+        raw = target.read_bytes()
+        changed = re.sub(rb'/Count\s+2\b', b'/Count 3', raw, count=1)
+        self.assertNotEqual(changed, raw)
+        changed = re.sub(rb'(?m)^xref\r?$', b'nope', changed, count=1)
+        target.write_bytes(changed)
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+        with self.assertRaises(PdfReadError):
+            PdfReader(target, strict=True)
+        fallback_count = len(PdfReader(target, strict=False).pages)
+        with fitz.open(target) as doc:
+            self.assertNotEqual(fallback_count, doc.page_count)
+        result = verify(target, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'invalid_pdf')
+        self.path.write_bytes(b'')
+        result = verify(self.path, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'invalid_pdf')
+
     def test_both_parsers_all_pages_and_immutable_original(self):
         before = self.path.read_bytes()
         result = verify(self.path, '10.1000/exact', 'Exact cardiovascular trial')
@@ -39,7 +165,9 @@ class MuseOriginalTests(unittest.TestCase):
         with fitz.open(self.path) as document:
             encrypted = Path(self.directory.name) / 'encrypted.pdf'
             document.save(encrypted, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw='synthetic-owner', user_pw='synthetic-reader')
-        self.assertFalse(verify(encrypted, '10.1000/exact', 'Exact cardiovascular trial')['verified'])
+        result = verify(encrypted, '10.1000/exact', 'Exact cardiovascular trial')
+        self.assertFalse(result['verified'], result)
+        self.assertEqual(result['reason'], 'invalid_pdf')
         self.path.write_bytes(b'<html>' + b'x' * 52000)
         self.assertFalse(verify(self.path, '10.1000/exact', 'Exact cardiovascular trial')['verified'])
 
