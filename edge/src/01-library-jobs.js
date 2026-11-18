@@ -462,7 +462,7 @@ async function handleLibrary(request, env) {
     if (!env.QL_KV) libraryFail('library_not_configured', 503);
     const url = new URL(request.url);
     if (url.searchParams.has('doi')) {
-      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGetDisplay(env, LIBRARY_PREFIX + doi), doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus,paused:false });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       const job = env.MUSE_FULLTEXT_ENABLED === 'true' ? musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi)
@@ -482,7 +482,7 @@ async function handleLibrary(request, env) {
     if (cachedPage && cachedPage.kv === env.QL_KV && cachedPage.until > Date.now()) return json(cachedPage.payload);
     let listing; try { listing = await env.QL_KV.list({ prefix:LIBRARY_PREFIX, limit:Number(rawLimit), ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
     if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
-    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGet(env.QL_KV, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
+    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGetDisplay(env, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
     const jobs = env.MUSE_FULLTEXT_ENABLED === 'true' ? (await Promise.all(papers.map(paper => musePublicJobValue(env,paper.doi)))).filter(Boolean) : [];
     const byDoi = new Map(jobs.map(job => [job.doi,job]));
     papers = papers.map(paper => byDoi.has(paper.doi) ? libraryObservedPaper(paper,null,byDoi.get(paper.doi)) : paper);
