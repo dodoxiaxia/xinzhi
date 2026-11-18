@@ -28,6 +28,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from build_data import clean
+from rejection_detail import raw_excerpt
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/quicklooks.json'
@@ -352,6 +353,14 @@ def validate(o, abstract):
     if extra:
         error = QuicklookError('numbers_not_in_abstract')
         error.numbers = sorted(extra)[:5]  # recorded with the rejection to show what the check disliked
+        allowed = allowed_nums(abstract)
+        error.located = []
+        for field in fields:
+            found = sorted(nums(o[field]) - allowed)
+            if found: error.located.append({'field': field, 'numbers': found[:5]})
+        for i, finding in enumerate(f):
+            found = sorted(nums(finding['text']) - allowed)
+            if found: error.located.append({'field': f'findings[{i}].text', 'numbers': found[:5]})
         raise error
     return {k: o[k].strip() for k in fields} | {'findings': [{'text': x['text'].strip(), 'quote': x['quote'].strip()} for x in f]}
 
@@ -534,6 +543,13 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
                     entry.update(count=entry['count'] + 1, last=today.isoformat(), code=code, checkVersion=CHECK_VERSION)
                     if getattr(error, 'numbers', None):
                         entry['numbers'] = error.numbers
+                    samples = entry.get('samples')
+                    if not isinstance(samples, list): samples = []
+                    sample = {'at': today.isoformat(), 'code': code, 'source': 'abstract'}
+                    if getattr(error, 'numbers', None): sample['numbers'] = error.numbers
+                    if getattr(error, 'located', None): sample['located'] = error.located
+                    sample.update(raw_excerpt(raw))
+                    entry['samples'] = (samples + [sample])[-MAX_REJECTIONS:]
                 continue
             stats['batch_stopped'] = True
             break

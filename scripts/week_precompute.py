@@ -14,6 +14,7 @@ import argparse, collections, datetime as dt, hashlib, json, os, re, subprocess,
 import urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from build_data import clean
+from rejection_detail import raw_excerpt
 from generate_quicklooks import local_abstract, minor_item, NoModelRedirect
 from auto_picks import CARDIO, GOOD_DESIGN, TOP
 from week_precompute_budget import BudgetError, MAX_ATTEMPTS, MAX_OUTPUT_TOKENS, reserve_runtime, reserve_configured
@@ -219,15 +220,24 @@ def select(rows,clock,target=24):
  return selected,{'start':start.isoformat(),'end':end.isoformat(),'timezone':'Asia/Shanghai','days':7,'target':target,'eligible':len(eligible),'selected':len(selected),'eligibleByCategory':{c:counts.get(c,0) for c in CATEGORIES},'excluded':dict(reasons),'shortfallReason':'严格7日出版窗口内，具完整公开摘要且相关的去重条目不足20；未用旧稿或低相关内容补数。' if len(selected)<20 else None}
 
 class EvidenceError(ValueError):
- def __init__(self,code):
-  super().__init__('evidence_validation_failed');self.code=code
+ def __init__(self,code,detail=None):
+  super().__init__('evidence_validation_failed');self.code=code;self.detail=detail if isinstance(detail,dict) else {}
 
 def validate(task,value,p):
  r=subprocess.run(['node',str(ROOT/'scripts/validate_week_precompute.cjs')],input=json.dumps({'task':task,'value':value,'title':p['title'],'abstract':p['abstract']},ensure_ascii=False),capture_output=True,text=True,timeout=15)
  if r.returncode:
-  try:code=json.loads(r.stdout).get('code') or ''
-  except ValueError:code=''
-  raise EvidenceError(code if re.fullmatch(r'[A-Za-z0-9_:.,%-]{1,80}',code) else 'unrecognized')
+  try:
+   payload=json.loads(r.stdout);code=payload.get('code') or '';detail=payload.get('detail') or {}
+  except ValueError:code='';detail={}
+  code=code if re.fullmatch(r'[A-Za-z0-9_:.,%-]{1,80}',code) else 'unrecognized'
+  if not isinstance(detail,dict):detail={}
+  safe={}
+  if isinstance(detail.get('where'),str) and re.fullmatch(r'[A-Za-z0-9_.\[\]-]{1,80}',detail['where']):safe['where']=detail['where']
+  if isinstance(detail.get('source'),str) and detail['source'] in {'abstract','title','quote'}:safe['source']=detail['source']
+  if isinstance(detail.get('numbers'),list):
+   numbers=[x for x in detail['numbers'][:5] if isinstance(x,str) and re.fullmatch(r'[0-9.%-]{1,32}',x)]
+   if numbers:safe['numbers']=numbers
+  raise EvidenceError(code,safe)
  return json.loads(r.stdout)['value']
 
 def version(task,origin='runtime'):
@@ -469,18 +479,22 @@ def configured_batch(selected,cache,cache_path,ledger,ledger_path,limit,model_ca
   result=checkpoint.run_reserved(ledger,cache,item['requestId'],dispatch) if checkpoint else dispatch()
   record_usage(item,result);atomic(ledger_path,ledger)
   if checkpoint:checkpoint.save(ledger,cache)
-  invalid=False;failures={}
+  invalid=False;failures={};details={}
   for task in missing:
    try:
     value=study_value(result.get(task),p) if task=='study' else quicklook_value(result.get(task),p) if task=='quicklook' else result.get(task)
     store(cache,p,task,value,cfg['model'],stamp(),'configured-precompute');atomic(cache_path,cache);report['generatedTasks']+=1
     if checkpoint:checkpoint.save(ledger,cache)
    except CheckpointError:raise
-   except ValueError as exc:invalid=True;failures[task]=getattr(exc,'code','') or 'invalid'
+   except ValueError as exc:
+    invalid=True;failures[task]=getattr(exc,'code','') or 'invalid'
+    if isinstance(exc,EvidenceError):
+     detail=exc.detail
+     details[task]={'code':failures[task],**{k:detail[k] for k in ('where','numbers','source') if k in detail},**raw_excerpt(result.get(task))}
   if invalid:
    # The response is known and accounted: record a terminal rejection instead of
    # an uncertain charge, so one bad output does not pause every later batch.
-   item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;item['checkVersion']=EVIDENCE_CHECK_VERSION;atomic(ledger_path,ledger)
+   item['status']='rejected';item['failureCode']='evidence_validation_failed';item['taskFailures']=failures;item['taskDetails']=details;item['checkVersion']=EVIDENCE_CHECK_VERSION;atomic(ledger_path,ledger)
    for task in failures:rejected[(p['paperID'],p['sourceHash'],task)]+=1
    report['rejectedRequests']=report.get('rejectedRequests',0)+1
    if checkpoint:checkpoint.save(ledger,cache)

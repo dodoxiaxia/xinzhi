@@ -295,6 +295,10 @@ class QuicklooksTests(unittest.TestCase):
                     model=lambda *a: (bad, {}), rejected=rejected)
         self.assertEqual(rejected['10.1000/test1']['code'], 'numbers_not_in_abstract')
         self.assertEqual(rejected['10.1000/test1']['numbers'], ['99'])
+        samples=rejected['10.1000/test1']['samples']
+        self.assertEqual(len(samples),q.MAX_REJECTIONS)
+        self.assertEqual(json.loads(samples[-1]['raw']),bad)
+        self.assertEqual(samples[-1]['located'],[{'field':'one_line','numbers':['99']}])
         todo = q.eligible_papers([paper(1), paper(2)], {'items': {}}, {}, set(), TODAY, rejected)
         self.assertEqual([q.paper_key(p) for p in todo], ['10.1000/test2'])
         self.assertEqual(rejected['10.1000/test1']['checkVersion'], q.CHECK_VERSION)
@@ -307,6 +311,23 @@ class QuicklooksTests(unittest.TestCase):
         q.batch([paper(3)], {'items': {}}, {}, {'model': 'mock'}, TODAY, 1, 1,
                 model=Mock(side_effect=q.QuicklookError('model_output_json')), rejected=rejected)
         self.assertNotIn('10.1000/test3', rejected)
+
+    def test_rejection_samples_bound_raw_and_upgrade_legacy_record(self):
+        bad = valid_output()
+        bad['one_line'] = '纳入99例。'
+        raw = bad | {'unused': 'x' * 2600}
+        legacy = {'10.1000/test1': {'count': 1, 'last': TODAY.isoformat(), 'code': 'old', 'checkVersion': q.CHECK_VERSION}}
+        sentinel = 'diagnostic-config-sentinel'
+        rejected = q.load_rejections(legacy, TODAY)
+        q.batch([paper()], {'items': {}}, {}, {'model': 'mock', 'api_key': sentinel}, TODAY, 1, 1,
+                model=lambda *a: (raw, {}), rejected=rejected)
+        sample = rejected['10.1000/test1']['samples'][0]
+        self.assertEqual(sample['rawChars'], len(json.dumps(raw, ensure_ascii=False, sort_keys=True, default=str)))
+        self.assertTrue(sample['rawTruncated'])
+        self.assertEqual(len(sample['raw']), 2500)
+        self.assertEqual(sample['located'], [{'field': 'one_line', 'numbers': ['99']}])
+        self.assertNotIn(sentinel, json.dumps(rejected, ensure_ascii=False))
+        self.assertEqual(q.load_rejections(rejected, TODAY), rejected)
 
     def test_identity_mismatch_skips_only_that_paper(self):
         def fetch(p):
