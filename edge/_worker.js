@@ -1089,7 +1089,7 @@ async function handleLibrary(request, env) {
     if (!env.QL_KV) libraryFail('library_not_configured', 503);
     const url = new URL(request.url);
     if (url.searchParams.has('doi')) {
-      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGet(env.QL_KV, LIBRARY_PREFIX + doi), doi);
+      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGetDisplay(env, LIBRARY_PREFIX + doi), doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus,paused:false });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       const job = env.MUSE_FULLTEXT_ENABLED === 'true' ? musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi)
@@ -1109,7 +1109,7 @@ async function handleLibrary(request, env) {
     if (cachedPage && cachedPage.kv === env.QL_KV && cachedPage.until > Date.now()) return json(cachedPage.payload);
     let listing; try { listing = await env.QL_KV.list({ prefix:LIBRARY_PREFIX, limit:Number(rawLimit), ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
     if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
-    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGet(env.QL_KV, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
+    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGetDisplay(env, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
     const jobs = env.MUSE_FULLTEXT_ENABLED === 'true' ? (await Promise.all(papers.map(paper => musePublicJobValue(env,paper.doi)))).filter(Boolean) : [];
     const byDoi = new Map(jobs.map(job => [job.doi,job]));
     papers = papers.map(paper => byDoi.has(paper.doi) ? libraryObservedPaper(paper,null,byDoi.get(paper.doi)) : paper);
@@ -6659,6 +6659,35 @@ async function handleMachineD1Backfill(request, env) {
       ...(page.more ? {cursor: page.cursor} : {})
     }, 200, {'cache-control': 'no-store'});
   } catch (error) { return machineError(error); }
+}
+// ==== edge/src/07f-d1-read.js · Optional read-only D1 display path for library records ====
+const D1_READ_SWITCH_KEY = 'cfg:d1_read_enabled', D1_READ_SWITCH_TTL_MS = 60000;
+let d1ReadSwitch = { on:false, at:-Infinity };
+
+async function d1ReadEnabled(env) {
+  const now = Date.now();
+  if (now - d1ReadSwitch.at >= 0 && now - d1ReadSwitch.at < D1_READ_SWITCH_TTL_MS) return d1ReadSwitch.on;
+  let on = false;
+  try { on = (await env.QL_KV.get(D1_READ_SWITCH_KEY)) === '1'; } catch { on = false; }
+  d1ReadSwitch = { on, at:now };
+  return on;
+}
+
+async function libraryGetDisplay(env, key) {
+  const db = env && env.LIBRARY_DB;
+  if (!db || typeof db.prepare !== 'function' || typeof key !== 'string' || !key.startsWith('library:paper:')) return libraryGet(env.QL_KV, key);
+  if (!(await d1ReadEnabled(env))) return libraryGet(env.QL_KV, key);
+  try {
+    const row = await db.prepare('SELECT value, deleted, expires_at FROM kv_mirror WHERE key = ?1').bind(key).first();
+    if (!row) return libraryGet(env.QL_KV, key);
+    if (row.deleted === 1 || row.deleted === true) return null;
+    if (row.value === null || typeof row.value !== 'string') return libraryGet(env.QL_KV, key);
+    if (row.expires_at !== null && row.expires_at !== undefined && Number(row.expires_at) <= Date.now()) return libraryGet(env.QL_KV, key);
+    try { return JSON.parse(row.value); } catch { return libraryGet(env.QL_KV, key); }
+  } catch {
+    console.warn('d1 read: fallback to kv');
+    return libraryGet(env.QL_KV, key);
+  }
 }
 // ==== edge/src/08-router.js · Request router (export default) ====
 export default {

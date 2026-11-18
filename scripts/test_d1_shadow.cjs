@@ -814,6 +814,13 @@ function assertD1MatchesKv(h, key, expectedEntity) {
     }
   }
 
+  // 12. Exercise the isolated read-only display path.
+  {
+    const readTest = path.join(__dirname, 'test_d1_read.cjs');
+    const res = spawnSync(process.execPath, [readTest], {cwd: path.join(__dirname, '..'), stdio: 'inherit'});
+    assert.equal(res.status, 0, 'scripts/test_d1_read.cjs failed with status ' + res.status);
+  }
+
   console.log('D1 shadow checks passed');
 })().catch(error => {
   console.error(error);
