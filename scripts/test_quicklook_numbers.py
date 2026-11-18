@@ -2,10 +2,12 @@ import json
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_quicklooks as g  # noqa: E402
+import week_precompute as week  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = ['HR 0.70 (95% CI 0.51-0.98)', 'RR 0.7，95% CI 0.51–0.98', '3,364 patients', '共3364例', '共1,234例',
@@ -79,6 +81,53 @@ class QuicklookNumberTests(unittest.TestCase):
         self.assertEqual(check('一项试验的分析', 'One Trial Analysed'), 'ok')  # words are never required
         self.assertEqual(check('13项研究与13个队列', 'Thirteen Studies'), 'numbers_not_in_source:repeated_number')
         self.assertEqual(check('14项研究', 'Thirteen Studies'), 'numbers_not_in_source:14')
+
+    def test_week_validator_details_follow_production_check_order(self):
+        def validate(task, value, title, abstract):
+            result = subprocess.run(['node', str(ROOT / 'scripts/validate_week_precompute.cjs')], capture_output=True, text=True, timeout=30,
+                                    input=json.dumps({'task': task, 'value': value, 'title': title, 'abstract': abstract}, ensure_ascii=False))
+            return json.loads(result.stdout)
+
+        title = 'A randomized trial'
+        abstract = 'Patients were followed for 48 weeks. The study entered phase 3. Outcomes improved across groups.'
+        base = {'title_zh': '随机试验', 'one_line': '结果有所改善。', 'design': '随机试验', 'limits': '样本有限。',
+                'why_read': '了解研究结果。', 'findings': [
+                    {'text': '随访48周。', 'quote': 'followed for 48 weeks'},
+                    {'text': '研究结果改善。', 'quote': 'Outcomes improved across groups'}]}
+        for digit in ('48', '3'):
+            with self.subTest(title_digit=digit):
+                value = dict(base, title_zh=f'随机试验{digit}')
+                result = validate('quicklook', value, title, abstract)
+                self.assertFalse(result['ok'])
+                self.assertEqual(result['code'], f'numbers_not_in_source:{digit}')
+                self.assertEqual(result['detail'], {'where': 'title_zh_vs_title', 'source': 'title', 'numbers': [digit]})
+
+        value = dict(base, findings=[{'text': '随访48周。', 'quote': 'Patients were followed'}, base['findings'][1]])
+        result = validate('quicklook', value, title, abstract)
+        self.assertEqual(result['detail'], {'where': 'finding[0].text_vs_quote', 'source': 'quote', 'numbers': ['48']})
+
+        result = validate('quicklook', base, title, abstract)
+        self.assertTrue(result['ok'])
+        value = dict(base, title_zh='随机试验48', one_line='纳入99例。')
+        result = validate('quicklook', value, title, abstract)
+        self.assertFalse(result['ok'])
+        self.assertTrue(result['code'].startswith('numbers_not_in_abstract'))
+        self.assertEqual(result['detail'], {'where': 'one_line', 'source': 'abstract', 'numbers': ['99']})
+
+        malformed = validate('translate', {'title_zh': '短', 'abstract_zh': ''}, title, abstract)
+        self.assertFalse(malformed['ok'])
+        self.assertEqual(malformed['detail']['where'], 'validate')
+        self.assertEqual(malformed['detail']['numbers'], [])
+
+    def test_week_validator_discards_malformed_failure_details(self):
+        forged = {'ok': False, 'code': 'numbers_not_in_source:99', 'detail': {
+            'where': 'bad where ' + 'x' * 100, 'source': 'private', 'numbers': ['99', 'not-a-number']}}
+        completed = subprocess.CompletedProcess(args=[], returncode=1, stdout=json.dumps(forged), stderr='')
+        paper = {'title': 'A title', 'abstract': 'An abstract'}
+        with mock.patch.object(week.subprocess, 'run', return_value=completed):
+            with self.assertRaises(week.EvidenceError) as raised:
+                week.validate('quicklook', {}, paper)
+        self.assertEqual(raised.exception.detail, {'numbers': ['99']})
 
     def test_bare_fraction_is_not_an_integer(self):
         self.assertFalse(g.nums('5 mg') <= g.nums('dose .5 mg'))

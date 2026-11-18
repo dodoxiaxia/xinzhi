@@ -69,5 +69,43 @@ process.stdin.on('end',()=>{
   // The Worker's fixed failure code (e.g. quote_not_in_abstract, numbers_not_in_abstract:12.5) says which check
   // rejected the output; only short code-shaped strings are passed on, never model or abstract text.
   const code=String(error&&error.message||'').slice(0,80);
-  process.stdout.write(JSON.stringify({ok:false,error:'evidence_validation_failed',code:/^[A-Za-z0-9_:.,%-]+$/.test(code)?code:'unrecognized'}));process.exitCode=1;}
+  let detail={};
+  try { ctx.failureCode=code; detail=vm.runInContext(`(() => {
+    const {task,value,title,abstract}=input; let where='validate',source='abstract',numbers=[];
+    const tokens=s=>numberTokens(String(s||''));
+    const extra=(text,src)=>{const have=tokens(src), seen=tokens(text), used=new Map();return seen.filter(x=>{const n=(used.get(x)||0)+1;used.set(x,n);return n>have.filter(y=>y===x).length;}).slice(0,5);};
+    const message=e=>String(e&&e.message||'');
+    if(task==='translate') {
+      if(/^numbers_/.test(failureCode)) {
+        try {translationNumbersOk(value&&value.title_zh,title);where='abstract_zh_vs_abstract';source='abstract';numbers=extra(value&&value.abstract_zh,abstract);}
+        catch {where='title_zh_vs_title';source='title';numbers=extra(value&&value.title_zh,title);}
+      }
+    } else if(task==='quicklook'||task==='quicklook_repair') {
+      const v=value||{};let stage='validate';
+      try {validate(v,abstract);stage='title';}
+      catch(e) {
+        if(message(e).startsWith('numbers_not_in_abstract')) {
+          source='abstract';
+          const fields=['title_zh','one_line','design','limits','why_read'];
+          for(const field of fields) {const n=extra(v[field],abstract);if(n.length){where=field;numbers=n;break;}}
+          if(where==='validate'&&Array.isArray(v.findings)) for(let i=0;i<v.findings.length;i++) {
+            const n=extra(v.findings[i]&&v.findings[i].text,abstract);if(n.length){where='findings['+i+'].text';numbers=n;break;}
+          }
+        }
+        stage='done';
+      }
+      if(stage==='title') {
+        try {translationNumbersOk(v.title_zh,title);stage='findings';}
+        catch(e) {if(message(e).startsWith('numbers_')){where='title_zh_vs_title';source='title';numbers=extra(v.title_zh,title);}stage='done';}
+      }
+      if(stage==='findings'&&Array.isArray(v.findings)) for(let i=0;i<v.findings.length;i++) {
+        const f=v.findings[i]||{};
+        try {numbersOk(f.text,f.quote);}
+        catch(e) {if(message(e).startsWith('numbers_')){where='finding['+i+'].text_vs_quote';source='quote';numbers=extra(f.text,f.quote);}break;}
+      }
+    }
+    const valid=s=>typeof s==='string'&&/^[A-Za-z0-9_.\\[\\]-]{1,80}$/.test(s);
+    return {where:valid(where)?where:'validate',source:['abstract','title','quote'].includes(source)?source:'abstract',numbers:numbers.filter(x=>/^[0-9.%-]{1,32}$/.test(x)).slice(0,5)};
+  })()`,ctx); } catch {}
+  process.stdout.write(JSON.stringify({ok:false,error:'evidence_validation_failed',code:/^[A-Za-z0-9_:.,%-]+$/.test(code)?code:'unrecognized',detail}));process.exitCode=1;}
 });

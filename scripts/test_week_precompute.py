@@ -156,6 +156,22 @@ class CacheAndBudgetTests(unittest.TestCase):
    report=w.configured_batch([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',1,lambda public:{'translate':tr(),'study':{'wrong':'field'},'quicklook':ql()})
    # The one-call ceiling leaves no room for the retry; successes are kept.
    self.assertEqual(report['generatedTasks'],2);self.assertEqual(report['blocker'],'existing_daily_attempt_budget_exhausted');self.assertEqual(report['rejectedRequests'],1);self.assertNotIn('paused',ledger);self.assertEqual(next(iter(ledger['days'].values()))['requests'][0]['status'],'rejected');self.assertTrue(w.find(cache,self.p,'translate')[0]);self.assertTrue(w.find(cache,self.p,'quicklook')[0]);self.assertIsNone(w.find(cache,self.p,'study')[0])
+   row=next(iter(ledger['days'].values()))['requests'][0]
+   self.assertEqual(row['taskFailures'],{'study':'invalid_study_id'})
+   self.assertEqual(row['taskDetails']['study']['where'],'validate')
+   self.assertIn('wrong',row['taskDetails']['study']['raw'])
+ def test_configured_rejection_records_quicklook_detail(self):
+  cache={'entries':{}};ledger={'days':{}}
+  bad=ql();bad['one_line']='纳入99例，未见差异。'
+  result={'translate':tr(),'study':model_structure(),'quicklook':bad}
+  with tempfile.TemporaryDirectory() as d,patch.dict(w.os.environ,{'XINZHI_LLM_ENDPOINT':'https://model.fixture/api','XINZHI_LLM_MODEL':'existing','XINZHI_LLM_API_KEY':'fixture-secret'}):
+   report=w.configured_batch([self.p],cache,Path(d)/'cache',ledger,Path(d)/'ledger',1,lambda public:result)
+   row=next(iter(ledger['days'].values()))['requests'][0]
+   self.assertEqual(row['taskFailures'],{'quicklook':'numbers_not_in_abstract:99'})
+   detail=row['taskDetails']['quicklook']
+   self.assertEqual((detail['where'],detail['numbers']),('one_line',['99']))
+   self.assertIn('99',detail['raw'])
+   self.assertEqual(report['rejectedRequests'],1)
  def test_rejected_paper_is_not_paid_for_again_and_others_continue(self):
   cache={'entries':{}};ledger={'days':{}};calls=[]
   other=dict(self.p,paperID='doi:10.1234/other',sourceHash='b'*64)
