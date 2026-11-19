@@ -259,7 +259,7 @@ function machinePdfStrings(content) {
 }
 // Inflate and keep whatever was produced before an error. Bytes after the end of the zlib stream (an EOL before
 // "endstream", padding) make DecompressionStream throw after all output was delivered; that is tolerated.
-async function machineInflateOnce(bytes) {
+async function machineInflateOnce(bytes, limit) {
   const chunks = [];
   let size = 0, error = '';
   try {
@@ -272,20 +272,20 @@ async function machineInflateOnce(bytes) {
       const item = await reader.read();
       if (item.done) break;
       size += item.value.byteLength;
-      if (size > MACHINE_INFLATE_MAX) { error = 'too_large'; pdfCancel(reader); break; }
+      if (size > limit) { pdfCancel(reader); return {bytes:new Uint8Array(0), error:'too_large'}; }
       chunks.push(item.value);
     }
   } catch (caught) { error = String(caught && (caught.code || caught.name) || 'inflate_error'); }
-  const out = new Uint8Array(Math.min(size, MACHINE_INFLATE_MAX));
+  const out = new Uint8Array(size);
   let offset = 0;
   for (const chunk of chunks) { out.set(chunk.subarray(0, Math.max(0, out.length - offset)), offset); offset += chunk.byteLength; }
   return {bytes:out, error};
 }
-async function machineInflate(raw, notes) {
+async function machineInflate(raw, notes, strictLimit) {
   if (typeof DecompressionStream !== 'function') { notes.add('inflate_failed'); return null; }
-  const first = await machineInflateOnce(raw);
+  const first = await machineInflateOnce(raw, strictLimit ?? MACHINE_INFLATE_MAX);
   if (!first.error) return first.bytes;
-  if (first.error !== 'too_large' && first.bytes.length) { notes.add('inflate_tolerated'); return first.bytes; }
+  if (strictLimit === undefined && first.error !== 'too_large' && first.bytes.length) { notes.add('inflate_tolerated'); return first.bytes; }
   notes.add('inflate_failed');
   return null;
 }
@@ -471,10 +471,11 @@ async function machineDecryptObject(ctx, enc, id, data, method) {
   }
   return null;
 }
-async function machineStreamParts(ctx, body) {
+async function machineStreamParts(ctx, body, requireEnd = false) {
   const marker = /(?<!end)stream(?:\r\n|\n|\r)/.exec(body);
   if (!marker) return null;
   const dict = body.slice(0, marker.index), start = marker.index + marker[0].length;
+  if (requireEnd && /\bendobj\b/.test(dict)) return null;
   let length = machineIntValue(dict, 'Length');
   if (length === null) {
     const ref = machineRefValue(dict, 'Length'), lengthBody = ref && machineTopBody(ctx, ref);
@@ -486,6 +487,7 @@ async function machineStreamParts(ctx, body) {
   if (length !== null && start + length <= body.length && /^(?:\r\n|\n|\r| )*endstream/.test(body.slice(start + length, start + length + 12))) end = start + length;
   if (end < 0) {
     end = body.indexOf('endstream', start);
+    if (requireEnd && end < 0) return null;
     if (end < 0) end = body.length;
     if (body.startsWith('\r\n', end - 2)) end -= 2;
     else if (body[end - 1] === '\n' || body[end - 1] === '\r') end -= 1;
@@ -497,28 +499,31 @@ function machineFilters(dict) {
   return array ? [...array[1].matchAll(/\/([A-Za-z0-9]+)/g)].map(match => match[1]) : single ? [single[1]] : [];
 }
 // Decoded bytes of a stream object body, or null (with a reason in ctx.notes).
-async function machineStreamBytes(ctx, body, id = null) {
-  const parts = await machineStreamParts(ctx, body);
+async function machineStreamBytes(ctx, body, id = null, strictLimit) {
+  const parts = await machineStreamParts(ctx, body, strictLimit !== undefined);
   if (!parts) return null;
+  const filters = machineFilters(parts.dict), predictor = machineIntValue(parts.dict, 'Predictor');
+  if (strictLimit !== undefined && (parts.raw.length > strictLimit || filters.length > 1 || predictor > 1)) return null;
+  // Speculative font decoding must not change the existing failure reason.
+  const notes = strictLimit === undefined ? ctx.notes : new Set();
   let bytes = machineBytes(parts.raw);
   const enc = await machineEncryption(ctx);
   if (enc) {
-    if (enc.unsupported) { ctx.notes.add(enc.reason); return null; }
+    if (enc.unsupported) { notes.add(enc.reason); return null; }
     // Cross-reference streams are never encrypted; XMP is left in clear text when /EncryptMetadata is false.
     const clear = /\/Type\s*\/XRef\b/.test(parts.dict) || (enc.meta === false && /\/Type\s*\/Metadata\b/.test(parts.dict));
     if (enc.stm && !clear) {
-      if (id === null || id === undefined) { ctx.notes.add('encryption_unsupported'); return null; }
+      if (id === null || id === undefined) { notes.add('encryption_unsupported'); return null; }
       bytes = await machineDecryptData(ctx, enc, Number(id), bytes, enc.stm);
-      if (!bytes) { ctx.notes.add('encryption_unsupported'); return null; }
+      if (!bytes) { notes.add('encryption_unsupported'); return null; }
     }
   }
-  for (const filter of machineFilters(parts.dict)) {
-    if (filter !== 'FlateDecode' && filter !== 'Fl') { ctx.notes.add('filter_unsupported'); return null; }
-    bytes = await machineInflate(bytes, ctx.notes);
+  for (const filter of filters) {
+    if (filter !== 'FlateDecode' && filter !== 'Fl') { notes.add('filter_unsupported'); return null; }
+    bytes = await machineInflate(bytes, notes, strictLimit);
     if (!bytes) return null;
-    const predictor = machineIntValue(parts.dict, 'Predictor');
     if (predictor >= 10) bytes = machinePngPredictor(bytes, machineIntValue(parts.dict, 'Columns') || 1, machineIntValue(parts.dict, 'Colors') || 1, machineIntValue(parts.dict, 'BitsPerComponent') || 8);
-    else if (predictor > 1) { ctx.notes.add('filter_unsupported'); return null; }
+    else if (predictor > 1) { notes.add('filter_unsupported'); return null; }
   }
   return bytes;
 }
@@ -638,38 +643,529 @@ function machineParseCmap(text, type0) {
   // do): reading such a string in pairs maps nothing and silently drops the whole run, e.g. a title set in a ligature-bearing font.
   return {width:type0 ? (width || 2) : 1, map};
 }
-async function machinePageFonts(ctx, page) {
+// CFF 1 predefined data from Adobe Technical Note #5176, Appendices A–C.
+const MACHINE_CFF_NAMES = `
+  .notdef space exclam quotedbl numbersign dollar percent ampersand quoteright
+  parenleft parenright asterisk plus comma hyphen period slash zero
+  one two three four five six seven eight nine
+  colon semicolon less equal greater question at A B
+  C D E F G H I J K
+  L M N O P Q R S T
+  U V W X Y Z bracketleft backslash bracketright
+  asciicircum underscore quoteleft a b c d e f
+  g h i j k l m n o
+  p q r s t u v w x
+  y z braceleft bar braceright asciitilde exclamdown cent sterling
+  fraction yen florin section currency quotesingle quotedblleft guillemotleft guilsinglleft
+  guilsinglright fi fl endash dagger daggerdbl periodcentered paragraph bullet
+  quotesinglbase quotedblbase quotedblright guillemotright ellipsis perthousand questiondown grave acute
+  circumflex tilde macron breve dotaccent dieresis ring cedilla hungarumlaut
+  ogonek caron emdash AE ordfeminine Lslash Oslash OE ordmasculine
+  ae dotlessi lslash oslash oe germandbls onesuperior logicalnot mu
+  trademark Eth onehalf plusminus Thorn onequarter divide brokenbar degree
+  thorn threequarters twosuperior registered minus eth multiply threesuperior copyright
+  Aacute Acircumflex Adieresis Agrave Aring Atilde Ccedilla Eacute Ecircumflex
+  Edieresis Egrave Iacute Icircumflex Idieresis Igrave Ntilde Oacute Ocircumflex
+  Odieresis Ograve Otilde Scaron Uacute Ucircumflex Udieresis Ugrave Yacute
+  Ydieresis Zcaron aacute acircumflex adieresis agrave aring atilde ccedilla
+  eacute ecircumflex edieresis egrave iacute icircumflex idieresis igrave ntilde
+  oacute ocircumflex odieresis ograve otilde scaron uacute ucircumflex udieresis
+  ugrave yacute ydieresis zcaron exclamsmall Hungarumlautsmall dollaroldstyle dollarsuperior ampersandsmall
+  Acutesmall parenleftsuperior parenrightsuperior twodotenleader onedotenleader zerooldstyle oneoldstyle twooldstyle threeoldstyle
+  fouroldstyle fiveoldstyle sixoldstyle sevenoldstyle eightoldstyle nineoldstyle commasuperior threequartersemdash periodsuperior
+  questionsmall asuperior bsuperior centsuperior dsuperior esuperior isuperior lsuperior msuperior
+  nsuperior osuperior rsuperior ssuperior tsuperior ff ffi ffl parenleftinferior
+  parenrightinferior Circumflexsmall hyphensuperior Gravesmall Asmall Bsmall Csmall Dsmall Esmall
+  Fsmall Gsmall Hsmall Ismall Jsmall Ksmall Lsmall Msmall Nsmall
+  Osmall Psmall Qsmall Rsmall Ssmall Tsmall Usmall Vsmall Wsmall
+  Xsmall Ysmall Zsmall colonmonetary onefitted rupiah Tildesmall exclamdownsmall centoldstyle
+  Lslashsmall Scaronsmall Zcaronsmall Dieresissmall Brevesmall Caronsmall Dotaccentsmall Macronsmall figuredash
+  hypheninferior Ogoneksmall Ringsmall Cedillasmall questiondownsmall oneeighth threeeighths fiveeighths seveneighths
+  onethird twothirds zerosuperior foursuperior fivesuperior sixsuperior sevensuperior eightsuperior ninesuperior
+  zeroinferior oneinferior twoinferior threeinferior fourinferior fiveinferior sixinferior seveninferior eightinferior
+  nineinferior centinferior dollarinferior periodinferior commainferior Agravesmall Aacutesmall Acircumflexsmall Atildesmall
+  Adieresissmall Aringsmall AEsmall Ccedillasmall Egravesmall Eacutesmall Ecircumflexsmall Edieresissmall Igravesmall
+  Iacutesmall Icircumflexsmall Idieresissmall Ethsmall Ntildesmall Ogravesmall Oacutesmall Ocircumflexsmall Otildesmall
+  Odieresissmall OEsmall Oslashsmall Ugravesmall Uacutesmall Ucircumflexsmall Udieresissmall Yacutesmall Thornsmall
+  Ydieresissmall 001.000 001.001 001.002 001.003 Black Bold Book Light
+  Medium Regular Roman Semibold
+`.trim().split(/\s+/);
+const MACHINE_CFF_CHARSET_EXPERT = `
+  0 1 229 230 231 232 233 234 235 236 237 238 13 14 15 99
+  239 240 241 242 243 244 245 246 247 248 27 28 249 250 251 252
+  253 254 255 256 257 258 259 260 261 262 263 264 265 266 109 110
+  267 268 269 270 271 272 273 274 275 276 277 278 279 280 281 282
+  283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298
+  299 300 301 302 303 304 305 306 307 308 309 310 311 312 313 314
+  315 316 317 318 158 155 163 319 320 321 322 323 324 325 326 150
+  164 169 327 328 329 330 331 332 333 334 335 336 337 338 339 340
+  341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356
+  357 358 359 360 361 362 363 364 365 366 367 368 369 370 371 372
+  373 374 375 376 377 378
+`.trim().split(/\s+/).map(Number);
+const MACHINE_CFF_CHARSET_EXPERT_SUBSET = `
+  0 1 231 232 235 236 237 238 13 14 15 99 239 240 241 242
+  243 244 245 246 247 248 27 28 249 250 251 253 254 255 256 257
+  258 259 260 261 262 263 264 265 266 109 110 267 268 269 270 272
+  300 301 302 305 314 315 158 155 163 320 321 322 323 324 325 326
+  150 164 169 327 328 329 330 331 332 333 334 335 336 337 338 339
+  340 341 342 343 344 345 346
+`.trim().split(/\s+/).map(Number);
+const MACHINE_CFF_ENCODING_STANDARD = `
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+  17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+  33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48
+  49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64
+  65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80
+  81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110
+  0 111 112 113 114 0 115 116 117 118 119 120 121 122 0 123
+  0 124 125 126 127 128 129 130 131 0 132 133 0 134 135 136
+  137 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 138 0 139 0 0 0 0 140 141 142 143 0 0 0 0
+  0 144 0 0 0 145 0 0 146 147 148 149 0 0 0 0
+`.trim().split(/\s+/).map(Number);
+const MACHINE_CFF_ENCODING_EXPERT = `
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  1 229 230 0 231 232 233 234 235 236 237 238 13 14 15 99
+  239 240 241 242 243 244 245 246 247 248 27 28 249 250 251 252
+  0 253 254 255 256 257 0 0 0 258 0 0 259 260 261 262
+  0 0 263 264 265 0 266 109 110 267 268 269 0 270 271 272
+  273 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288
+  289 290 291 292 293 294 295 296 297 298 299 300 301 302 303 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+  0 304 305 306 0 0 307 308 309 310 311 0 312 0 0 312
+  0 0 314 315 0 0 316 317 318 0 0 0 158 155 163 319
+  320 321 322 323 324 325 0 0 326 150 164 169 327 328 329 330
+  331 332 333 334 335 336 337 338 339 340 341 342 343 344 345 346
+  347 348 349 350 351 352 353 354 355 356 357 358 359 360 361 362
+  363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378
+`.trim().split(/\s+/).map(Number);
+// PDF 32000 Latin simple-font encodings (one glyph name per byte, from code 32).
+const MACHINE_ENCODING_WINANSI = `
+  space exclam quotedbl numbersign dollar percent ampersand quotesingle parenleft
+  parenright asterisk plus comma hyphen period slash zero one
+  two three four five six seven eight nine colon
+  semicolon less equal greater question at A B C
+  D E F G H I J K L
+  M N O P Q R S T U
+  V W X Y Z bracketleft backslash bracketright asciicircum
+  underscore grave a b c d e f g
+  h i j k l m n o p
+  q r s t u v w x y
+  z braceleft bar braceright asciitilde bullet Euro bullet quotesinglbase
+  florin quotedblbase ellipsis dagger daggerdbl circumflex perthousand Scaron guilsinglleft
+  OE bullet Zcaron bullet bullet quoteleft quoteright quotedblleft quotedblright
+  bullet endash emdash tilde trademark scaron guilsinglright oe bullet
+  zcaron Ydieresis space exclamdown cent sterling currency yen brokenbar
+  section dieresis copyright ordfeminine guillemotleft logicalnot hyphen registered macron
+  degree plusminus twosuperior threesuperior acute mu paragraph periodcentered cedilla
+  onesuperior ordmasculine guillemotright onequarter onehalf threequarters questiondown Agrave Aacute
+  Acircumflex Atilde Adieresis Aring AE Ccedilla Egrave Eacute Ecircumflex
+  Edieresis Igrave Iacute Icircumflex Idieresis Eth Ntilde Ograve Oacute
+  Ocircumflex Otilde Odieresis multiply Oslash Ugrave Uacute Ucircumflex Udieresis
+  Yacute Thorn germandbls agrave aacute acircumflex atilde adieresis aring
+  ae ccedilla egrave eacute ecircumflex edieresis igrave iacute icircumflex
+  idieresis eth ntilde ograve oacute ocircumflex otilde odieresis divide
+  oslash ugrave uacute ucircumflex udieresis yacute thorn ydieresis
+`.trim().split(/\s+/);
+const MACHINE_ENCODING_MACROMAN = `
+  space exclam quotedbl numbersign dollar percent ampersand quotesingle parenleft
+  parenright asterisk plus comma hyphen period slash zero one
+  two three four five six seven eight nine colon
+  semicolon less equal greater question at A B C
+  D E F G H I J K L
+  M N O P Q R S T U
+  V W X Y Z bracketleft backslash bracketright asciicircum
+  underscore grave a b c d e f g
+  h i j k l m n o p
+  q r s t u v w x y
+  z braceleft bar braceright asciitilde - Adieresis Aring Ccedilla
+  Eacute Ntilde Odieresis Udieresis aacute agrave acircumflex adieresis atilde
+  aring ccedilla eacute egrave ecircumflex edieresis iacute igrave icircumflex
+  idieresis ntilde oacute ograve ocircumflex odieresis otilde uacute ugrave
+  ucircumflex udieresis dagger degree cent sterling section bullet paragraph
+  germandbls registered copyright trademark acute dieresis notequal AE Oslash
+  infinity plusminus lessequal greaterequal yen mu partialdiff summation product
+  pi integral ordfeminine ordmasculine Omega ae oslash questiondown exclamdown
+  logicalnot radical florin approxequal Delta guillemotleft guillemotright ellipsis space
+  Agrave Atilde Otilde OE oe endash emdash quotedblleft quotedblright
+  quoteleft quoteright divide lozenge ydieresis Ydieresis fraction currency guilsinglleft
+  guilsinglright fi fl daggerdbl periodcentered quotesinglbase quotedblbase perthousand Acircumflex
+  Ecircumflex Aacute Edieresis Egrave Iacute Icircumflex Idieresis Igrave Oacute
+  Ocircumflex apple Ograve Uacute Ucircumflex Ugrave dotlessi circumflex tilde
+  macron breve dotaccent ring cedilla hungarumlaut ogonek caron
+`.trim().split(/\s+/);
+const MACHINE_ENCODING_MACEXPERT = `
+  space exclamsmall Hungarumlautsmall centoldstyle dollaroldstyle dollarsuperior ampersandsmall Acutesmall parenleftsuperior
+  parenrightsuperior twodotenleader onedotenleader comma hyphen period fraction zerooldstyle oneoldstyle
+  twooldstyle threeoldstyle fouroldstyle fiveoldstyle sixoldstyle sevenoldstyle eightoldstyle nineoldstyle colon
+  semicolon - threequartersemdash - questionsmall - - - -
+  Ethsmall - - onequarter onehalf threequarters oneeighth threeeighths fiveeighths
+  seveneighths onethird twothirds - - - - - -
+  ff fi fl ffi ffl parenleftinferior - parenrightinferior Circumflexsmall
+  hypheninferior Gravesmall Asmall Bsmall Csmall Dsmall Esmall Fsmall Gsmall
+  Hsmall Ismall Jsmall Ksmall Lsmall Msmall Nsmall Osmall Psmall
+  Qsmall Rsmall Ssmall Tsmall Usmall Vsmall Wsmall Xsmall Ysmall
+  Zsmall colonmonetary onefitted rupiah Tildesmall - - asuperior centsuperior
+  - - - - Aacutesmall Agravesmall Acircumflexsmall Adieresissmall Atildesmall
+  Aringsmall Ccedillasmall Eacutesmall Egravesmall Ecircumflexsmall Edieresissmall Iacutesmall Igravesmall Icircumflexsmall
+  Idieresissmall Ntildesmall Oacutesmall Ogravesmall Ocircumflexsmall Odieresissmall Otildesmall Uacutesmall Ugravesmall
+  Ucircumflexsmall Udieresissmall - eightsuperior fourinferior threeinferior sixinferior eightinferior seveninferior
+  Scaronsmall - centinferior twoinferior - Dieresissmall - Caronsmall osuperior
+  fiveinferior - commainferior periodinferior Yacutesmall - dollarinferior - -
+  Thornsmall - nineinferior zeroinferior Zcaronsmall AEsmall Oslashsmall questiondownsmall oneinferior
+  Lslashsmall - - - - - - Cedillasmall -
+  - - - - OEsmall figuredash hyphensuperior - -
+  - - exclamdownsmall - Ydieresissmall - onesuperior twosuperior threesuperior
+  foursuperior fivesuperior sixsuperior sevensuperior ninesuperior zerosuperior - esuperior rsuperior
+  tsuperior - - isuperior ssuperior dsuperior - - -
+  - - lsuperior Ogoneksmall Brevesmall Macronsmall bsuperior nsuperior msuperior
+  commasuperior periodsuperior Dotaccentsmall Ringsmall - - - -
+`.trim().split(/\s+/);
+// Adobe Glyph List subset for Latin letters, punctuation, digits and ligatures.
+const MACHINE_LATIN_GLYPH_UNICODE = `
+  AE:c6 AEacute:1fc Aacute:c1 Abreve:102 Acircumflex:c2 Adieresis:c4 Agrave:c0 Amacron:100
+  Aogonek:104 Aring:c5 Aringacute:1fa Atilde:c3 Cacute:106 Ccaron:10c Ccedilla:c7 Ccircumflex:108
+  Cdotaccent:10a Dcaron:10e Dcroat:110 Delta:2206 Eacute:c9 Ebreve:114 Ecaron:11a Ecircumflex:ca
+  Edieresis:cb Edotaccent:116 Egrave:c8 Emacron:112 Eng:14a Eogonek:118 Eth:d0 Euro:20ac
+  Gbreve:11e Gcaron:1e6 Gcircumflex:11c Gdotaccent:120 Hbar:126 Hcircumflex:124 IJ:132 Iacute:cd
+  Ibreve:12c Icircumflex:ce Idieresis:cf Idotaccent:130 Igrave:cc Imacron:12a Iogonek:12e Itilde:128
+  Jcircumflex:134 Lacute:139 Lcaron:13d Ldot:13f Lslash:141 Nacute:143 Ncaron:147 Ntilde:d1
+  OE:152 Oacute:d3 Obreve:14e Ocircumflex:d4 Odieresis:d6 Ograve:d2 Ohorn:1a0 Ohungarumlaut:150
+  Omacron:14c Omega:2126 Oslash:d8 Oslashacute:1fe Otilde:d5 Racute:154 Rcaron:158 Sacute:15a
+  Scaron:160 Scedilla:15e Scircumflex:15c Tbar:166 Tcaron:164 Thorn:de Uacute:da Ubreve:16c
+  Ucircumflex:db Udieresis:dc Ugrave:d9 Uhorn:1af Uhungarumlaut:170 Umacron:16a Uogonek:172 Uring:16e
+  Utilde:168 Wacute:1e82 Wcircumflex:174 Wdieresis:1e84 Wgrave:1e80 Yacute:dd Ycircumflex:176 Ydieresis:178
+  Ygrave:1ef2 Zacute:179 Zcaron:17d Zdotaccent:17b aacute:e1 abreve:103 acircumflex:e2 acute:b4
+  adieresis:e4 ae:e6 aeacute:1fd agrave:e0 amacron:101 ampersand:26 aogonek:105 approxequal:2248
+  aring:e5 aringacute:1fb asciicircum:5e asciitilde:7e asterisk:2a at:40 atilde:e3 backslash:5c
+  bar:7c braceleft:7b braceright:7d bracketleft:5b bracketright:5d breve:2d8 brokenbar:a6 bullet:2022
+  cacute:107 caron:2c7 ccaron:10d ccedilla:e7 ccircumflex:109 cdotaccent:10b cedilla:b8 cent:a2
+  circumflex:2c6 colon:3a colonmonetary:20a1 comma:2c copyright:a9 currency:a4 dagger:2020 daggerdbl:2021
+  dcaron:10f dcroat:111 degree:b0 dieresis:a8 divide:f7 dollar:24 dotaccent:2d9 dotlessi:131
+  eacute:e9 ebreve:115 ecaron:11b ecircumflex:ea edieresis:eb edotaccent:117 egrave:e8 eight:38
+  eightinferior:2088 eightsuperior:2078 ellipsis:2026 emacron:113 emdash:2014 endash:2013 eng:14b eogonek:119
+  equal:3d eth:f0 exclam:21 exclamdown:a1 figuredash:2012 five:35 fiveeighths:215d fiveinferior:2085
+  fivesuperior:2075 florin:192 four:34 fourinferior:2084 foursuperior:2074 fraction:2044 gbreve:11f gcaron:1e7
+  gcircumflex:11d gdotaccent:121 germandbls:df grave:60 greater:3e greaterequal:2265 guillemotleft:ab guillemotright:bb
+  guilsinglleft:2039 guilsinglright:203a hbar:127 hcircumflex:125 hungarumlaut:2dd hyphen:2d iacute:ed ibreve:12d
+  icircumflex:ee idieresis:ef igrave:ec ij:133 imacron:12b infinity:221e integral:222b iogonek:12f
+  itilde:129 jcircumflex:135 kgreenlandic:138 lacute:13a lcaron:13e ldot:140 less:3c lessequal:2264
+  logicalnot:ac longs:17f lozenge:25ca lslash:142 macron:af minus:2212 mu:b5 multiply:d7
+  nacute:144 napostrophe:149 ncaron:148 nine:39 nineinferior:2089 ninesuperior:2079 notequal:2260 nsuperior:207f
+  ntilde:f1 numbersign:23 oacute:f3 obreve:14f ocircumflex:f4 odieresis:f6 oe:153 ogonek:2db
+  ograve:f2 ohorn:1a1 ohungarumlaut:151 omacron:14d one:31 onedotenleader:2024 oneeighth:215b onehalf:bd
+  oneinferior:2081 onequarter:bc onesuperior:b9 onethird:2153 ordfeminine:aa ordmasculine:ba oslash:f8 oslashacute:1ff
+  otilde:f5 paragraph:b6 parenleft:28 parenleftinferior:208d parenleftsuperior:207d parenright:29 parenrightinferior:208e parenrightsuperior:207e
+  partialdiff:2202 percent:25 period:2e periodcentered:b7 perthousand:2030 pi:3c0 plus:2b plusminus:b1
+  product:220f question:3f questiondown:bf quotedbl:22 quotedblbase:201e quotedblleft:201c quotedblright:201d quoteleft:2018
+  quoteright:2019 quotesinglbase:201a quotesingle:27 racute:155 radical:221a rcaron:159 registered:ae ring:2da
+  sacute:15b scaron:161 scedilla:15f scircumflex:15d section:a7 semicolon:3b seven:37 seveneighths:215e
+  seveninferior:2087 sevensuperior:2077 six:36 sixinferior:2086 sixsuperior:2076 slash:2f space:20 sterling:a3
+  summation:2211 tbar:167 tcaron:165 thorn:fe three:33 threeeighths:215c threeinferior:2083 threequarters:be
+  threesuperior:b3 tilde:2dc trademark:2122 two:32 twodotenleader:2025 twoinferior:2082 twosuperior:b2 twothirds:2154
+  uacute:fa ubreve:16d ucircumflex:fb udieresis:fc ugrave:f9 uhorn:1b0 uhungarumlaut:171 umacron:16b
+  underscore:5f uogonek:173 uring:16f utilde:169 wacute:1e83 wcircumflex:175 wdieresis:1e85 wgrave:1e81
+  yacute:fd ycircumflex:177 ydieresis:ff yen:a5 ygrave:1ef3 zacute:17a zcaron:17e zdotaccent:17c
+  zero:30 zeroinferior:2080 zerosuperior:2070
+`.trim().split(/\s+/).reduce((map, entry) => {
+  const [name, point] = entry.split(':');
+  return map.set(name, String.fromCodePoint(parseInt(point, 16)));
+}, new Map());
+
+const MACHINE_CFF_FONT_BYTES = 256 * 1024;
+const MACHINE_CFF_PAGE_BYTES = 1024 * 1024;
+const MACHINE_CFF_PAGE_FONTS = 24;
+const MACHINE_CFF_INDEX_LIMIT = 4096;
+const MACHINE_SIMPLE_FONT_PAGE_LIMIT = 64;
+const MACHINE_PDF_SIMPLE_ENCODINGS = new Map([
+  ['StandardEncoding', MACHINE_CFF_ENCODING_STANDARD.map(sid => MACHINE_CFF_NAMES[sid])],
+  ['WinAnsiEncoding', MACHINE_ENCODING_WINANSI], ['MacRomanEncoding', MACHINE_ENCODING_MACROMAN],
+  ['MacExpertEncoding', MACHINE_ENCODING_MACEXPERT]
+]);
+function machineCffUint(bytes, offset, width) {
+  let value = 0;
+  for (let at = offset; at < offset + width; at++) value = value * 256 + bytes[at];
+  return value;
+}
+function machineCffIndex(bytes, at, limit = MACHINE_CFF_INDEX_LIMIT) {
+  if (at + 2 > bytes.length) return null;
+  const count = machineCffUint(bytes, at, 2);
+  if (!count) return {count, end:at + 2};
+  const width = bytes[at + 2], data = at + 3 + (count + 1) * width;
+  if (count > limit || !(width >= 1 && width <= 4) || data > bytes.length) return null;
+  const offsets = [];
+  for (let index = 0; index <= count; index++) {
+    const offset = machineCffUint(bytes, at + 3 + index * width, width) - 1;
+    if (offset < 0 || data + offset > bytes.length
+      || (index ? offset < offsets[index - 1] : offset !== 0)) return null;
+    offsets.push(offset);
+  }
+  return {count, data, offsets, end:data + offsets[count]};
+}
+function machineCffDict(bytes) {
+  if (!bytes.length || bytes.length > 4096) return null;
+  const values = {charset:0, encoding:0, charStrings:0};
+  const operands = [];
+  for (let at = 0; at < bytes.length;) {
+    const b = bytes[at++];
+    let value;
+    if (b <= 21) {
+      const operator = b === 12 ? 1200 + bytes[at++] : b;
+      if (at > bytes.length || operator === 1230) return null; // CID-keyed fonts have no simple glyph names.
+      const key = b === 15 ? 'charset' : b === 16 ? 'encoding' : b === 17 ? 'charStrings' : '';
+      if (key) {
+        if (operands.length !== 1 || !Number.isInteger(operands[0]) || operands[0] < 0) return null;
+        values[key] = operands[0];
+      }
+      operands.length = 0;
+      continue;
+    }
+    if (b >= 32 && b <= 246) value = b - 139;
+    else if (b >= 247 && b <= 254 && at < bytes.length) {
+      value = ((b - 247) % 4 * 256 + bytes[at++] + 108) * (b < 251 ? 1 : -1);
+    } else if ((b === 28 || b === 29) && at + (b === 28 ? 2 : 4) <= bytes.length) {
+      const width = b === 28 ? 2 : 4;
+      value = machineCffUint(bytes, at, width);
+      const sign = 2 ** (8 * width - 1);
+      if (value >= sign) value -= sign * 2;
+      at += width;
+    } else if (b === 30) {
+      // Real numbers are legal for other DICT operators. They cannot be used as offsets.
+      let end = false;
+      while (at < bytes.length && !end) {
+        const packed = bytes[at++];
+        end = (packed >> 4) === 15 || (packed & 15) === 15;
+      }
+      if (!end) return null;
+      value = null;
+    } else {
+      return null;
+    }
+    if (operands.length === 48) return null;
+    operands.push(value);
+  }
+  return operands.length ? null : values;
+}
+function machineCffCharset(bytes, at, glyphs, firstData) {
+  if (at < 3) {
+    const predefined = at === 1 ? MACHINE_CFF_CHARSET_EXPERT : MACHINE_CFF_CHARSET_EXPERT_SUBSET;
+    if (at === 0) return glyphs <= 229 ? Array.from({length:glyphs}, (_, sid) => sid) : null;
+    return glyphs <= predefined.length ? predefined.slice(0, glyphs) : null;
+  }
+  if (at < firstData || at >= bytes.length) return null;
+  const format = bytes[at++], charset = [0];
+  if (format > 2) return null;
+  while (charset.length < glyphs) {
+    const size = 2 + format;
+    if (at + size > bytes.length) return null;
+    const first = machineCffUint(bytes, at, 2);
+    const left = format ? machineCffUint(bytes, at + 2, format) : 0;
+    if (!first || first + left > 65535 || charset.length + left >= glyphs) return null;
+    for (let sid = first; sid <= first + left; sid++) charset.push(sid);
+    at += size;
+  }
+  return new Set(charset).size === glyphs ? charset : null;
+}
+function machineCffEncoding(bytes, at, charset, firstData) {
+  const sids = new Set(charset);
+  if (at < 2) {
+    const predefined = at === 0 ? MACHINE_CFF_ENCODING_STANDARD : MACHINE_CFF_ENCODING_EXPERT;
+    return predefined.map(sid => sids.has(sid) ? sid : 0);
+  }
+  if (at < firstData || at + 2 > bytes.length) return null;
+  const format = bytes[at++], ranges = bytes[at++], width = (format & 127) + 1, codes = new Array(256).fill(0);
+  if (width > 2 || at + ranges * width > bytes.length) return null;
+  let glyph = 1;
+  for (let range = 0; range < ranges; range++) {
+    const first = bytes[at++], last = first + (width === 2 ? bytes[at++] : 0);
+    if (last > 255 || glyph + last - first >= charset.length) return null;
+    for (let code = first; code <= last; code++) {
+      if (codes[code]) return null;
+      codes[code] = charset[glyph++];
+    }
+  }
+  if (format & 128) {
+    const supplements = bytes[at++];
+    if (supplements === undefined || at + supplements * 3 > bytes.length) return null;
+    for (let index = 0; index < supplements; index++) {
+      const code = bytes[at++], sid = machineCffUint(bytes, at, 2);
+      if (!sid || !sids.has(sid) || codes[code]) return null;
+      codes[code] = sid;
+      at += 2;
+    }
+  }
+  return codes;
+}
+function machineCffFont(bytes) {
+  if (bytes[0] !== 1 || !(bytes[2] >= 4 && bytes[2] <= bytes.length) || !(bytes[3] >= 1 && bytes[3] <= 4)) return null;
+  const names = machineCffIndex(bytes, bytes[2], 1);
+  const top = names?.count && machineCffIndex(bytes, names.end, 1);
+  const strings = top?.count && machineCffIndex(bytes, top.end);
+  const subrs = strings && machineCffIndex(bytes, strings.end);
+  if (!subrs) return null;
+  const dict = machineCffDict(bytes.subarray(top.data, top.end));
+  const chars = dict && dict.charStrings >= subrs.end && machineCffIndex(bytes, dict.charStrings);
+  if (!chars?.count) return null;
+  const charset = machineCffCharset(bytes, dict.charset, chars.count, subrs.end);
+  const codes = charset && machineCffEncoding(bytes, dict.encoding, charset, subrs.end);
+  if (!codes) return null;
+  const glyphNames = new Map();
+  for (const sid of charset) {
+    if (sid < MACHINE_CFF_NAMES.length) {
+      glyphNames.set(sid, MACHINE_CFF_NAMES[sid]);
+      continue;
+    }
+    const index = sid - MACHINE_CFF_NAMES.length;
+    if (index >= strings.count) return null;
+    const [start, end] = [strings.offsets[index], strings.offsets[index + 1]];
+    if (end === start || end - start > 127) return null;
+    const name = machineLatin1(bytes.subarray(strings.data + start, strings.data + end));
+    if (!/^[!-~]+$/.test(name)) return null;
+    glyphNames.set(sid, name);
+  }
+  return {names:new Set(glyphNames.values()), encoding:codes.map(sid => glyphNames.get(sid))};
+}
+function machineGlyphUnicode(glyph) {
+  const name = glyph?.split('.', 1)[0];
+  if (!name) return '';
+  if (/^[A-Za-z]$/.test(name)) return name;
+  if (/^(?:ff|fi|fl|ffi|ffl)$/.test(name)) return name;
+  if (/^f_(?:f_[il]|[fil])$/.test(name)) return name.replace(/_/g, '');
+  if (MACHINE_LATIN_GLYPH_UNICODE.has(name)) return MACHINE_LATIN_GLYPH_UNICODE.get(name);
+  const hex = /^uni(?:[0-9A-F]{4}){1,4}$/.test(name) ? name.slice(3).match(/.{4}/g)
+    : /^u[0-9A-F]{4,6}$/.test(name) ? [name.slice(1)] : [];
+  const points = hex.map(value => parseInt(value, 16));
+  if (points.some(point => point < 32 || point > 0x10ffff || (point >= 0xd800 && point <= 0xdfff))) return '';
+  return String.fromCodePoint(...points);
+}
+function machineSimpleCodeMap(cff, baseName, differences, standard = false) {
+  const base = MACHINE_PDF_SIMPLE_ENCODINGS.get(baseName);
+  const map = new Map();
+  if (baseName && !base) return map;
+  for (let code = 0; code < 256; code++) {
+    const name = differences.get(code) ?? (base ? base[code - (base.length === 256 ? 0 : 32)] : cff?.encoding[code]);
+    const text = name ? (!cff || cff.names.has(name) ? machineGlyphUnicode(name) : '')
+      : !base && !cff && standard && code >= 32 && code <= 126 ? String.fromCharCode(code) : '';
+    if (text) map.set(code, text);
+  }
+  return map;
+}
+async function machineSimpleFontEncoding(ctx, body) {
+  const reference = machineRefValue(body, 'Encoding');
+  const source = reference ? await machineBody(ctx, reference) : machineDictValue(body, 'Encoding');
+  if (source === null || source === undefined) return null;
+  if (source.length > 8192) return null;
+  const encoding = source.replace(/%[^\r\n]*/g, '');
+  const inputName = reference ? /^\s*\/([^\s/<>\[\]()]+)/.exec(encoding)
+    : /\/Encoding\s*\/([^\s/<>\[\]()]+)/.exec(body);
+  const base = inputName?.[1] || /\/BaseEncoding\s*\/([^\s/<>\[\]()]+)/.exec(encoding)?.[1] || '';
+  const rawDifferences = /\/Differences\s*\[([^\]]*)\]/.exec(encoding)?.[1];
+  if (rawDifferences === undefined && /\/Differences\b/.test(encoding)) return null;
+  const differences = new Map();
+  let code = -1;
+  for (const token of (rawDifferences || '').match(/\/[^\s/[\]()<>%{}]+|[0-9]+|\S/g) || []) {
+    if (token.startsWith('/') && code >= 0 && code <= 255) {
+      differences.set(code++, token.slice(1).replace(/#([0-9a-f]{2})/gi, (_, byte) => String.fromCharCode(parseInt(byte, 16))));
+    } else if (/^[0-9]{1,3}$/.test(token) && Number(token) <= 255) {
+      code = Number(token);
+    } else {
+      return null;
+    }
+  }
+  return {base, differences};
+}
+async function machineFontWithoutUnicode(ctx, body, budget) {
+  if (body.length > 8192) return null;
+  const subtype = /\/Subtype\s*\/(Type1|TrueType)\b/.exec(body)?.[1];
+  if (!subtype) return null;
+  const descriptorId = machineRefValue(body, 'FontDescriptor');
+  const descriptor = (descriptorId ? await machineBody(ctx, descriptorId) : machineDictValue(body, 'FontDescriptor')) || '';
+  if (descriptor.length > 8192) return null;
+  const file = machineRefValue(descriptor, 'FontFile3');
+  let cff = null;
+  if (file) {
+    if (subtype !== 'Type1' || !budget.bytes || budget.fonts >= MACHINE_CFF_PAGE_FONTS) return null;
+    budget.fonts++;
+    const limit = Math.min(MACHINE_CFF_FONT_BYTES, budget.bytes);
+    const start = ctx.index.get(Number(file));
+    if (start === undefined) return null; // PDF stream objects are never inside object streams.
+    const stream = ctx.text.slice(start, start + limit + 8192);
+    if (!/\/Subtype\s*\/Type1C\b/.test(stream.slice(0, 8192).split(/\bstream\b/, 1)[0])) return null;
+    const bytes = await machineStreamBytes(ctx, stream, file, limit);
+    budget.bytes -= bytes?.length ?? limit;
+    cff = bytes && machineCffFont(bytes);
+    if (!cff) return null;
+  }
+  const flags = machineIntValue(descriptor, 'Flags') || 0;
+  if (!cff && (flags & 4)) return null; // An explicitly symbolic simple font needs its own glyph mapping.
+  const encoding = await machineSimpleFontEncoding(ctx, body);
+  if (!encoding) return null;
+  const standard = !descriptor && subtype === 'Type1'
+    && /\/BaseFont\s*\/(?:Helvetica(?:-BoldOblique|-Oblique|-Bold)?|Times-(?:Roman|BoldItalic|Italic|Bold)|Courier(?:-BoldOblique|-Oblique|-Bold)?)(?=[\s/>])/.test(body);
+  if (!cff && !standard && !encoding.base && !encoding.differences.size) return null;
+  const map = machineSimpleCodeMap(cff, encoding.base, encoding.differences, standard);
+  const recovered = !!cff || (!standard && !!encoding.base) || encoding.differences.size > 0;
+  return map.size ? {width:1, map, strictOnly:true, recovered} : null;
+}
+
+async function machinePageFonts(ctx, page, withFallbackFonts) {
   const fonts = new Map();
   const resources = await machinePageInherited(ctx, page, 'Resources');
   let table = machineDictValue(resources, 'Font');
   if (!table && machineRefValue(resources, 'Font')) table = await machineBody(ctx, machineRefValue(resources, 'Font')) || '';
+  const budget = {bytes:MACHINE_CFF_PAGE_BYTES, fonts:0};
+  const fallback = new Map();
   for (const entry of table.matchAll(/\/([^\s/\[\]<>()]+)\s+(\d+)\s+\d+\s+R/g)) {
     const body = await machineBody(ctx, entry[2]), unicodeId = body && machineRefValue(body, 'ToUnicode');
-    if (!unicodeId) continue;
-    const stream = await machineBody(ctx, unicodeId), bytes = stream && await machineStreamBytes(ctx, stream, unicodeId);
-    if (bytes) fonts.set(entry[1], machineParseCmap(machineLatin1(bytes), /\/Subtype\s*\/Type0\b/.test(body)));
+    if (unicodeId) {
+      const stream = await machineBody(ctx, unicodeId), bytes = stream && await machineStreamBytes(ctx, stream, unicodeId);
+      if (bytes) fonts.set(entry[1], machineParseCmap(machineLatin1(bytes), /\/Subtype\s*\/Type0\b/.test(body)));
+    } else if (withFallbackFonts && body) {
+      if (!fallback.has(entry[2]) && fallback.size >= MACHINE_SIMPLE_FONT_PAGE_LIMIT) continue;
+      if (!fallback.has(entry[2])) fallback.set(entry[2], await machineFontWithoutUnicode(ctx, body, budget));
+      const font = fallback.get(entry[2]);
+      if (font) fonts.set(entry[1], font);
+    }
   }
   return fonts;
 }
-function machineMapCodes(font, bytes) {
-  if (!font) return bytes;
+function machineMapCodes(font, bytes, shownOnly) {
+  if (!font) return shownOnly && bytes ? '\ufffd' : bytes;
+  if (!shownOnly && font.strictOnly) return bytes;
   let out = '';
   for (let at = 0; at + font.width <= bytes.length; at += font.width) {
     let code = 0;
     for (let n = 0; n < font.width; n++) code = code * 256 + bytes.charCodeAt(at + n);
-    out += font.map.get(code) || '';
+    out += font.map.get(code) || (shownOnly ? '\ufffd' : '');
   }
+  if (shownOnly && bytes.length % font.width) out += '\ufffd';
   return out;
 }
-// Walks the operators of a content stream and decodes Tj / TJ / ' / " strings through the current font's ToUnicode map.
+// Walks the operators of a content stream and decodes Tj / TJ / ' / " strings through the current font's map.
 // Marked-content dictionaries (<<...>> after BDC/BMC, including nested ones) are skipped whole so a /BBox array
 // inside the dictionary cannot leave the walker in TJ-array mode. "]" closes that mode; the closed array is kept
 // only for a TJ that follows it (including when "]" ends one /Contents stream and "TJ" starts the next).
-function machineDecodeFontText(content, fonts) {
-  if (!fonts.size) return '';
-  let out = '', font = null, name = '', last = null, array = null, pending = null;
+function machineDecodeFontText(content, fonts, evidence = null) {
+  const shownOnly = evidence !== null;
+  if (shownOnly ? !fonts.size : ![...fonts.values()].some(font => !font.strictOnly)) return '';
+  let out = '', font = null, name = '', last = null, array = null, pending = null, inText = false;
+  const savedFonts = [];
   const length = content.length, delimiters = /[\s()<>\[\]{}\/%]/;
   const escapes = {n:'\n',r:'\r',t:'\t',b:'\b',f:'\f'};
+  const show = text => {
+    if (!shownOnly || inText) {
+      if (shownOnly && font?.recovered && text) evidence.recovered = true;
+      out += machineMapCodes(font, text, shownOnly);
+    }
+  };
   const skipLiteral = start => {
     let depth = 0;
     for (let i = start; i < length; i++) {
@@ -739,15 +1235,22 @@ function machineDecodeFontText(content, fonts) {
       const token = content.slice(at, end);
       at = end;
       if (array && /^-?[\d.]+$/.test(token)) { if (Number(token) < -200) array.push(null); continue; }
-      if (token === 'Tf') { font = fonts.get(name) || null; pending = null; }
-      else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) out += machineMapCodes(font, last); last = null; pending = null; }
+      if (token === 'Tf') { font = fonts.get(name) || null; pending = null; if (shownOnly) last = null; }
+      else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) show(last); last = null; pending = null; }
       else if (token === 'TJ') {
-        for (const part of array || pending || []) out += part === null ? ' ' : machineMapCodes(font, part);
+        for (const part of array || pending || []) { if (part === null) out += ' '; else show(part); }
         array = null; pending = null; last = null;
-      } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) { out += ' '; pending = null; }
-      else if (token === 'ET') { out += '\n'; pending = null; }
+      } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) { out += ' '; pending = null; if (shownOnly) last = null; }
+      else if (shownOnly && token === 'BT') { inText = true; pending = null; last = null; }
+      else if (token === 'ET') { out += '\n'; pending = null; inText = false; if (shownOnly) last = null; }
+      else if (shownOnly && token === 'q') {
+        if (savedFonts.length >= 64) return '';
+        savedFonts.push(font); pending = null; last = null;
+      }
+      else if (shownOnly && token === 'Q') { font = savedFonts.pop() || null; pending = null; last = null; }
+      else if (shownOnly && token === 'Do') { out += '\ufffd'; pending = null; last = null; }
       else if (token === 'BI') { const stop = content.indexOf('EI', at); at = stop < 0 ? length : stop + 2; pending = null; }
-      else pending = null;
+      else { pending = null; if (shownOnly) last = null; }
     }
   }
   return out;
@@ -839,19 +1342,22 @@ async function machineContentText(ctx, id) {
 async function machineFirstPage(bytes) {
   const ctx = machinePdfContext(bytes), notes = ctx.notes;
   const page = await machineFirstPageObject(ctx);
-  const {strings, decoded, raw} = page ? await machinePageText(ctx, page.body) : {strings:'', decoded:'', raw:''};
+  const {strings, decoded, raw, readShown} = await machinePageText(ctx, page && page.body, true);
   const metadata = await machineMetadata(ctx);
-  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
-  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readShown, readable:machineMostlyLetters(strings) || machineMostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
 }
-async function machinePageText(ctx, pageBody) {
+function machineMostlyLetters(value) {
+  const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length;
+  return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO;
+}
+async function machinePageText(ctx, pageBody, withFallbackFonts = false) {
   const notes = ctx.notes;
   let strings = '', raw = '', decoded = '';
+  let readShown = () => ({text:'', recovered:false});
   if (pageBody) {
     const ids = await machineContentIds(ctx, pageBody);
     if (!ids.length) notes.add('contents_not_found');
-    const fonts = await machinePageFonts(ctx, pageBody);
+    const fonts = await machinePageFonts(ctx, pageBody, withFallbackFonts);
     // A page's /Contents array is one logical stream (ISO 32000-1 7.8.2): an operator may start in one stream and end in the
     // next (a TJ array closed by "]" at the end of one and "TJ" at the start of the next), and the font selected in an
     // earlier stream stays current. Decode the streams joined, never one by one, or a title split that way is dropped.
@@ -864,10 +1370,16 @@ async function machinePageText(ctx, pageBody) {
       joined += content + '\n';
     }
     decoded += machineDecodeFontText(joined, fonts) + '\n';
+    // Keep strict operator evidence separate so existing matches retain their checks.
+    if (withFallbackFonts) readShown = () => {
+      const evidence = {recovered:false};
+      evidence.text = machineDecodeFontText(joined, fonts, evidence);
+      return evidence;
+    };
   }
-  return {strings, decoded, raw};
+  return {strings, decoded, raw, readShown};
 }
-async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
+async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES, includeBlank = false) {
   if (!limit || limit < 1) return [];
   const roots = [...ctx.text.matchAll(/\/Root\s+(\d+)\s+\d+\s+R/g)];
   const rootId = roots.length ? roots[roots.length - 1][1] : '';
@@ -875,7 +1387,7 @@ async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
   if (rootId) {
     const catalog = await machineBody(ctx, rootId);
     pagesId = catalog && machineRefValue(catalog, 'Pages');
-  } else {
+  } else if (!includeBlank) {
     // Trailerless PDFs (e.g. without /Root): locate the top-level /Catalog or /Pages object.
     let firstPagesId = '';
     for (const [id] of ctx.index) {
@@ -891,21 +1403,23 @@ async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
   while (stack.length && out.length < limit) {
     const {id, depth} = stack.pop();
     const key = Number(id);
-    if (!Number.isInteger(key) || seen.has(key)) continue;
+    if (!Number.isInteger(key) || seen.has(key)) { if (includeBlank) return []; continue; }
     seen.add(key);
     const body = await machineBody(ctx, id);
-    if (!body) continue;
+    if (!body) { if (includeBlank) return []; continue; }
     let kids = /\/Kids\s*\[([^\]]*)\]/.exec(body);
     if (!kids && machineRefValue(body, 'Kids')) {
       const listed = await machineBody(ctx, machineRefValue(body, 'Kids'));
       kids = listed && /\[([^\]]*)\]/.exec(listed);
     }
     if (kids) {
-      if (depth >= 32) continue;
+      if (depth >= 32) { if (includeBlank) return []; continue; }
       const refs = machineRefList(kids[1]);
       for (let i = refs.length - 1; i >= 0; i--) stack.push({id:refs[i], depth:depth + 1});
-    } else if (/\/Contents(?![A-Za-z0-9_])/.test(body)) {
+    } else if (includeBlank ? /\/Type\s*\/Page\b/.test(body) : /\/Contents(?![A-Za-z0-9_])/.test(body)) {
       out.push(body);
+    } else if (includeBlank) {
+      return [];
     }
   }
   return out;
@@ -943,9 +1457,11 @@ async function machineFindDoiOnLaterPages(ctx, doi) {
   }
   return {page:0, citedPages};
 }
-function machineDoiPresent(text, doi) {
+function machineDoiPresent(text, doi, strictBoundaries = false) {
   const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
-  return new RegExp('(?<![A-Za-z0-9])' + escaped + '(?![A-Za-z0-9])', 'i').test(text);
+  const start = strictBoundaries ? '(?:^|(?<=[\\s(:\'"<\\[{])|(?<=\\bdoi\\.org/))' : '(?<![A-Za-z0-9])';
+  const end = strictBoundaries ? '(?=$|\\s|[.,;:)\\]}\'">]+(?=\\s|$))' : '(?![A-Za-z0-9])';
+  return new RegExp(start + escaped + end, 'i').test(text);
 }
 function machineMetaTitleMatches(titles, expected) {
   return titles.some(title => {
@@ -992,6 +1508,45 @@ function machineTitleOnPage(pageText, expected) {
 function machineAnyDoi(text) {
   return /(?<![0-9A-Za-z])10\.\d{4,9}\s*\/\s*[^\s]/.test(String(text || ''));
 }
+function machineCatalogTitleVariant(shown, title) {
+  // Keep word boundaries and the undecodable-glyph marker. A different year immediately before
+  // the headline, or a change to any other letter/digit, must still prevent the match.
+  const words = value => value.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\ufffd]+/gu, ' ').trim();
+  const full = words(title);
+  const dropped = /^\s*[0-9]{4}\s+/.test(title) ? full.slice(5) : '';
+  const matches = (source, expected, yearDropped = false) => expected && new RegExp(
+    '(?:^| )' + (yearDropped ? '(?<!\\b[0-9]{4} )' : '') + expected + '(?: |$)'
+  ).test(source);
+  const page = words(shown);
+  if (matches(page, dropped, true)) return 'year_prefix_dropped';
+  const withoutAcronyms = shown.replace(/(?<=\p{L})[ \t\r\n]*\([A-Z]{2,8}\)/gu, '');
+  if (withoutAcronyms === shown) return '';
+  const cleaned = words(withoutAcronyms);
+  if (matches(cleaned, full) && !matches(page, full)) return 'acronym_inserted';
+  if (matches(cleaned, dropped, true)) return 'year_prefix_dropped+acronym_inserted';
+  return '';
+}
+function machineRepositoryCoverTitle(shown) {
+  // An institutional heading plus ordered repository fields and a Handle URL, all in shown text.
+  const heading = /\buniversity\s+repository\b/i.exec(shown.slice(0, 240));
+  if (!heading) return null;
+  const fields = /^\s*Title\s+([\s\S]{1,1200}?)\s+Authors?\s+[\s\S]{1,2400}?\s+Published\s+in\s+[\s\S]{1,600}?\s+Publication\s+Date\s+[\s\S]{1,120}?\s+Link\s+https?:\/\/hdl\.handle\.net\/[^\s]+[\s\S]{0,240}?\s+Citation\b/i;
+  return fields.exec(shown.slice(heading.index + heading[0].length, heading.index + heading[0].length + 3600))?.[1] ?? null;
+}
+async function machineRepositoryIdentity(page, coverTitle, doi, expected) {
+  const checks = {doi:'', title:'', readable:false, coverPage:'repository'};
+  if (machineNormalize(coverTitle) !== expected) return {verdict:'mismatch', reason:'identity_mismatch', checks};
+  const [, article] = await machinePageBodies(page.ctx, 2, true);
+  const shown = article ? (await machinePageText(page.ctx, article, true)).readShown().text : '';
+  checks.readable = machineMostlyLetters(shown);
+  if (machineDoiPresent(shown, doi, true)) { checks.doi = 'page'; checks.doiPage = 2; }
+  if (machineNormalize(shown).includes(expected)) checks.title = 'page';
+  // A cover or document metadata cannot supply either part of the article's identity.
+  if (checks.doi && checks.title) return {verdict:'ok', level:'full', checks};
+  const reason = checks.doi ? 'title_not_found' : checks.title ? 'doi_not_found' : 'identity_mismatch';
+  return {verdict:'mismatch', reason, checks};
+}
 // {verdict:'ok'|'invalid'|'mismatch', reason, level, doi, title}. level says how strong the evidence was:
 // 'full' (DOI and title both read from page 1), 'metadata_doi' (title on page 1, DOI only from Info/XMP),
 // 'metadata_title' (DOI on page 1, title only from Info/XMP because the page text could not be read),
@@ -1006,12 +1561,16 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   if (!libraryDoi(doi)) return {verdict:'invalid', reason:'doi_invalid'};
   if (expected.length < 5) return {verdict:'invalid', reason:'title_too_short'};
   const page = await machineFirstPage(bytes);
-  const readable = page.readable;
-  const doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
+  const {text:shown, recovered} = page.readShown();
+  const coverTitle = machineRepositoryCoverTitle(shown);
+  if (coverTitle !== null) return machineRepositoryIdentity(page, coverTitle, doi, expected);
+  let readable = page.readable;
+  let doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
   const pageText = machineNormalize(page.text);
   let titleMatch = machineTitleOnPage(pageText, expected);
   let titlePrefix = '';
   let titleVariant = '';
+  let titleExtraction = '';
   let matchedExpected = expected;
   const hasSectionLabel = MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''));
   const strippedTitle = hasSectionLabel ? String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, '') : '';
@@ -1091,6 +1650,38 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
         });
       }
     }
+    // Medical News in Brief runs multiple unrelated headlines together. Separate title/DOI
+    // hits on such a page do not justify the new fallbacks.
+    if (!titleMatch.found && !/\bmedical\s+news\s+in\s+brief\b/i.test(shown)) {
+      const shownDoi = machineDoiPresent(shown, doi, true);
+      const metadataDoi = doiMeta && machineDoiPresent(page.metadata.text, doi, true);
+      if (shownDoi && recovered) {
+        const normalizedShown = machineNormalize(shown);
+        for (const [candidate, prefix] of candidates) {
+          const value = machineNormalize(candidate);
+          if (value.length < 5 || !normalizedShown.includes(value)) continue;
+          titleMatch = {found:true, glyph:''};
+          titlePrefix = prefix;
+          titleExtraction = 'text_operators';
+          doiPage = true;
+          readable ||= machineMostlyLetters(shown);
+          break;
+        }
+      }
+      if (!titleMatch.found && (shownDoi || metadataDoi)) {
+        for (const [candidate, prefix] of candidates) {
+          const variant = machineCatalogTitleVariant(shown, candidate);
+          if (!variant) continue;
+          titleMatch = {found:true, glyph:''};
+          titlePrefix = prefix;
+          titleVariant = variant;
+          doiPage = shownDoi;
+          doiMeta = metadataDoi;
+          readable ||= machineMostlyLetters(shown);
+          break;
+        }
+      }
+    }
   }
   const titlePage = titleMatch.found;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
@@ -1100,6 +1691,7 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     readable,
     ...(titleMatch.glyph ? {titleGlyph:titleMatch.glyph} : {}),
     ...(titlePrefix ? {titlePrefix} : {}),
+    ...(titleExtraction ? {titleExtraction} : {}),
     ...(titleVariant ? {titleVariant} : {})
   };
   const doiFound = doiPage || doiMeta;

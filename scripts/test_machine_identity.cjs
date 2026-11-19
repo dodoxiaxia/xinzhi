@@ -1185,5 +1185,171 @@ async function verifyNext(h, doi, result, reason) {
     }
   }
 
+  // t18 A/C/D: embedded Type 1C fonts with custom codes and glyph names, without ToUnicode.
+  {
+    const doi = '10.9999/synthetic.t18-layout';
+    const title = 'Synthetic guidelines for ventricular rhythm in imaginary cohorts';
+    const options = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const showLines = (encode, lines) => lines.map((text, index) =>
+      'BT /F2 10 Tf 1 0 0 1 36 ' + (750 - index * 16) + ' Tm ' + encode(text) + ' Tj ET\n').join('');
+    const header = 'BT /F1 10 Tf 1 0 0 1 36 750 Tm ';
+    const layout = (lines, printed = doi, cffOptions) => fixtures.type1cTextPages(encode => [[
+      header + '(Synthetic co-publication notice for this imaginary journal) Tj 0 -14 Td '
+        + '(doi:' + printed + ') Tj 0 -14 Td (doi:10.9999/synthetic.copublished) Tj ET\n'
+        + 'BT /F2 14 Tf 1 0 0 1 36 680 Tm ' + encode(lines[0]) + ' Tj ET\n',
+      'BT 1 0 0 1 36 660 Tm [' + encode(lines[1]) + '] ',
+      'TJ ET\n'
+    ]], cffOptions);
+    const a = ['Synthetic guidelines for ventricular', 'rhythm in imaginary cohorts'];
+    const resultA = await identity(h, layout(a), doi, title, options);
+    assert.equal(resultA.level, 'full', 't18 A: custom CFF glyphs in Tj/TJ across Contents streams');
+    assert.equal(resultA.checks.titleExtraction, 'text_operators');
+    assert.equal((await identity(h, layout([a[0], 'rhythm in imaginary controls']), doi, title, options)).verdict, 'mismatch');
+    assert.equal((await identity(h, layout(a, '10.9999/synthetic.foreign'), doi, title, options)).verdict, 'mismatch');
+    assert.equal((await identity(h, layout(a, doi, {encodingFormat:1, charsetFormat:2, supplement:true}), doi, title, options)).level,
+      'full', 'CFF range encoding and charset formats, with a supplementary code');
+    assert.equal((await identity(h, layout(a, doi, {charsetFormat:1}), doi, title, options)).level, 'full', 'CFF format 1 charset');
+    for (const [label, damage] of [
+      ['truncated INDEX', cff => cff.subarray(0, cff.length - 1)],
+      ['oversized INDEX count', cff => { cff.writeUInt16BE(65535, 4); return cff; }],
+      ['oversized inflated font', cff => Buffer.concat([cff, Buffer.alloc(256 * 1024)])]
+    ]) {
+      const result = await identity(h, layout(a, doi, {damage}), doi, title, options);
+      assert.equal(result.reason, 'title_not_found', label);
+      assert(!result.checks.titleExtraction, label);
+    }
+    // A PDF encoding overrides the embedded encoding at the affected code.
+    const override = glyphs => '/Encoding << /BaseEncoding /WinAnsiEncoding /Differences ['
+      + [...glyphs.values()].map(glyph => glyph.code + ' /' + (glyph.name === 'S.fixture' ? glyphs.get('g').name : glyph.name)).join(' ') + '] >>';
+    const changed = layout(a, doi, {encodingOverride:override});
+    assert.equal((await identity(h, changed, doi, title, options)).verdict, 'mismatch', 'PDF Differences changes the glyph');
+    assert.equal((await identity(h, changed, doi, 'g' + title.slice(1), options)).level, 'full', 'PDF Differences takes precedence');
+    const simpleFont = run(h, 'machineFontWithoutUnicode');
+    const decodeSimple = async encoding => (await simpleFont({}, '<< /Subtype /TrueType /BaseFont /SyntheticTrueType '
+      + '/FontDescriptor << /Flags 32 >> /Encoding ' + encoding + ' >>', {})).map;
+    const winAnsi = await decodeSimple('/WinAnsiEncoding');
+    assert.equal(winAnsi.get(0x96), '\u2013', 'WinAnsi dash is a glyph, not C1 control');
+    assert.equal(winAnsi.get(0xe9), 'é');
+    const macRoman = await decodeSimple('/MacRomanEncoding');
+    assert.equal(macRoman.get(0x8e), 'é');
+    const differences = await decodeSimple('<< /BaseEncoding /MacRomanEncoding /Differences [142 /u1D400 /uni00660069] >>');
+    assert.equal(differences.get(0x8e), '𝐀');
+    assert.equal(differences.get(0x8f), 'fi');
+    const parseCff = run(h, 'machineCffFont');
+    const standardCff = parseCff(fixtures.cffFont([], 0, 0, 96));
+    assert.equal(standardCff.encoding[65], 'A', 'predefined ISOAdobe charset and Standard encoding');
+    for (const charset of [1, 2]) {
+      const expertCff = parseCff(fixtures.cffFont([], charset, 1, 60));
+      assert.equal(expertCff.encoding[87], 'fi', 'predefined Expert encoding and ligature charset');
+      assert.equal(expertCff.encoding[0], '.notdef', 'unassigned Expert code');
+    }
+
+    const spotlight = 'Synthetic commands for pacing in an imaginary registry';
+    const front = header + '(4207) Tj 0 -14 Td (CardioPulse) Tj 0 -14 Td (doi:' + doi + ') Tj '
+      + '0 -14 Td (Global Spotlights) Tj 0 -14 Td (Synthetic authors and affiliations) Tj ET\n';
+    const lateHeading = fixtures.type1cTextPages(encode => [[front + showLines(encode, [spotlight])]]);
+    const resultC = await identity(h, lateHeading, doi, spotlight, options);
+    assert.equal(resultC.level, 'full', 't18 C: late heading uses the embedded CFF encoding');
+    assert.equal(resultC.checks.titleExtraction, 'text_operators');
+    const inComment = fixtures.type1cTextPages(encode => [[front + '% ' + showLines(encode, [spotlight])]]);
+    assert.equal((await identity(h, inComment, doi, spotlight, options)).verdict, 'mismatch', 'comment is not shown');
+    const newsFront = header + '(Medical News in Brief) Tj 0 -14 Td (A Synthetic Sleep Report) Tj '
+      + '0 -14 Td (doi:' + doi + ') Tj ET\n';
+    const newsHeading = fixtures.type1cTextPages(encode => [[newsFront + showLines(encode, [spotlight])]]);
+    assert.equal((await identity(h, newsHeading, doi, spotlight, options)).verdict, 'mismatch', 'news with unrelated DOI and late heading');
+
+    const hex = '<' + Buffer.from(spotlight).toString('hex') + '>';
+    const standardOnly = fixtures.standardTextPages([[front + header + hex + ' Tj ET\n']]);
+    assert.equal((await identity(h, standardOnly, doi, spotlight, options)).reason, 'title_not_found', 'standard hex alone does not qualify');
+    const cover = (encode, coverTitle = title, link = 'https://hdl.handle.net/1/synthetic') => showLines(encode, [
+      'Utrecht University Repository', 'Title', coverTitle, 'Authors', 'Synthetic Author',
+      'Published in', 'Synthetic Journal', 'Publication Date', '2024', 'Link', link, 'Citation', 'Synthetic citation'
+    ]);
+    const article = (encode, paperTitle = title, printed = doi) => showLines(encode, [paperTitle, 'doi:' + printed]);
+    const covered = fixtures.type1cTextPages(encode => [[cover(encode)], [article(encode)]]);
+    const resultD = await identity(h, covered, doi, title, options);
+    assert.equal(resultD.level, 'full', 't18 D: both matches on physical page 2');
+    assert.deepEqual({...resultD.checks}, {doi:'page', title:'page', readable:true, coverPage:'repository', doiPage:2});
+    seedPaper(h, doi, title);
+    const uploaded = await upload(h, covered, doi);
+    assert.equal(uploaded.status, 202);
+    const {task} = await uploaded.json();
+    assert.equal(task.state, 'uploaded-awaiting-verification');
+    assert.equal(task.identity, 'full');
+    for (const [label, draw] of [
+      ['wrong cover title', encode => [[cover(encode, title.replace('rhythm', 'pacing'))], [article(encode)]]],
+      ['wrong article DOI', encode => [[cover(encode)], [article(encode, title, '10.9999/synthetic.foreign')]]],
+      ['longer foreign DOI', encode => [[cover(encode)], [article(encode, title, doi + '.other')]]],
+      ['wrong article title', encode => [[cover(encode)], [article(encode, title.replace('rhythm', 'pacing'))]]],
+      ['title and DOI on different pages', encode => [[cover(encode)], [showLines(encode, [title])], [showLines(encode, ['doi:' + doi])]]],
+      ['actual page 2 is blank', encode => [[cover(encode)], [], [article(encode)]]]
+    ]) {
+      const res = await identity(h, fixtures.type1cTextPages(draw), doi, title, options);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert.equal(res.checks.coverPage, 'repository', label);
+      assert(!res.hold, label);
+    }
+    const unrelatedPreface = fixtures.type1cTextPages(encode => [[cover(encode, title, 'https://example.org/elsewhere')], [article(encode)]]);
+    const unrecognized = await identity(h, unrelatedPreface, doi, title, options);
+    assert.equal(unrecognized.verdict, 'mismatch');
+    assert(!('coverPage' in unrecognized.checks));
+  }
+
+  // t18 B: allow the narrow Crossref differences only with the claimed DOI.
+  {
+    const doi = '10.9999/synthetic.t18-consensus', other = '10.9999/synthetic.foreign';
+    const options = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const title = 'European Rhythm Association/Pacific Rhythm Society consensus on atrial fibrillation in synthetic cohorts';
+    const abbreviated = title.replace('Association', 'Association (ERA)').replace('Society', 'Society (PRS)').replace('fibrillation', '\ufb01brillation');
+    for (const printed of [doi, '', other]) {
+      const cff = fixtures.type1cTextPages(encode => [[
+        'BT /F1 10 Tf 1 0 0 1 36 750 Tm (doi:' + printed + ') Tj /F2 10 Tf 0 -30 Td ' + encode(abbreviated) + ' Tj ET\n'
+      ]]);
+      const result = await identity(h, cff, doi, '2024 ' + title, options);
+      assert.equal(result.verdict, printed === doi ? 'ok' : 'mismatch');
+      if (printed === doi) assert.equal(result.checks.titleVariant, 'year_prefix_dropped+acronym_inserted');
+    }
+    const pdf = (printed, value = doi, infoTitle = '') => fixtures.customEncoding({doi:value, title:printed, infoTitle});
+    for (const [registered, printed, expected] of [
+      ['2024 ' + title, title, 'year_prefix_dropped'],
+      [title, abbreviated, 'acronym_inserted'],
+      ['2024 ' + title, abbreviated, 'year_prefix_dropped+acronym_inserted']
+    ]) {
+      const result = await identity(h, pdf(printed), doi, registered, options);
+      assert.equal(result.level, 'full', expected);
+      assert.equal(result.checks.titleVariant, expected);
+    }
+    const meta = await identity(h, pdf(abbreviated, '', 'DOI ' + doi), doi, '2024 ' + title, options);
+    assert.equal(meta.level, 'metadata_doi');
+    assert.equal(meta.checks.titleVariant, 'year_prefix_dropped+acronym_inserted');
+    const xmp = fixtures.customEncoding({doi:'', title:abbreviated, xmpTitle:'DOI ' + doi});
+    assert.equal((await identity(h, xmp, doi, title, options)).level, 'metadata_doi');
+    const newsVariant = fixtures.multiPage({pages:[{literal:'Medical News in Brief DOI ' + doi, unicode:abbreviated}]});
+    assert.equal((await identity(h, newsVariant, doi, title, options)).verdict, 'mismatch', 'news must not use catalogue variants');
+    for (const [label, printed, registered, printedDoi, metadata] of [
+      ['year omitted and a word changed', title.replace('atrial', 'ventricular'), '2024 ' + title],
+      ['different year', '2023 ' + abbreviated, '2024 ' + title],
+      ['too many letters', abbreviated.replace('ERA', 'TOOLONGXY'), title],
+      ['lowercase acronym', abbreviated.replace('ERA', 'Era'), title],
+      ['acronym outside parentheses', abbreviated.replace('(ERA)', '[ERA]'), title],
+      ['acronyms without claimed DOI', abbreviated, title, ''],
+      ['acronyms with foreign DOI', abbreviated, title, other],
+      ['acronyms with longer foreign DOI', abbreviated, title, doi + '.other'],
+      ['different word with metadata DOI', abbreviated.replace('atrial', 'ventricular'), title, '', doi]
+    ]) {
+      const result = await identity(h, pdf(printed, printedDoi, metadata), doi, registered, options);
+      assert.equal(result.verdict, 'mismatch', label);
+      assert(!('titleVariant' in result.checks), label);
+      assert(!result.hold, label);
+    }
+    for (const printedDoi of [other, doi]) {
+      const news = fixtures.multiPage({pages:['Medical News in Brief. Synthetic Sleep Supports Recovery. doi:' + printedDoi
+        + ' A synthetic item on nutrition. Another report on blood pressure.']});
+      const resultE = await identity(h, news, doi, 'Synthetic Testosterone Trial and Cardiovascular Events', options);
+      assert.equal(resultE.verdict, 'mismatch', 't18 E: the registered item is absent');
+      assert.equal(resultE.reason, printedDoi === doi ? 'title_not_found' : 'identity_mismatch');
+    }
+  }
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
+  console.log('t18: Type 1C encodings, bounded malformed fonts, DOI-gated variants and repository page 2 passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

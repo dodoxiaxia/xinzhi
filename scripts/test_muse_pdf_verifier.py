@@ -1,5 +1,7 @@
 import hashlib
+import json
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,7 +24,7 @@ class MuseOriginalTests(unittest.TestCase):
         document.save(self.path, deflate=False)
         document.close()
 
-    def make_pdf(self, pages, name='synthetic.pdf', metadata=None):
+    def make_pdf(self, pages, name='synthetic.pdf', metadata=None, xmp=None):
         target = Path(self.directory.name) / name
         document = fitz.open()
         for text in pages:
@@ -34,8 +36,25 @@ class MuseOriginalTests(unittest.TestCase):
                 page.draw_rect(fitz.Rect(x, y, x + 4, y + 4), color=(.2, .3, .5))
         if metadata:
             document.set_metadata(metadata)
+        if xmp:
+            document.set_xml_metadata(xmp)
         document.save(target, deflate=False)
         document.close()
+        return target
+
+    def make_type1c_pdf(self, pages):
+        target = Path(self.directory.name) / 'type1c.pdf'
+        script = r"""
+const fs = require('node:fs');
+const {type1cTextPages} = require('./scripts/machine_identity_fixtures.cjs');
+const pages = JSON.parse(fs.readFileSync(0, 'utf8'));
+const pdf = type1cTextPages(encode => pages.map(lines => [lines.map((line, i) =>
+  'BT /F2 10 Tf 1 0 0 1 36 ' + (750 - i * 16) + ' Tm ' + encode(line) + ' Tj ET\n').join('')]),
+  {encodingFormat:1, charsetFormat:2, supplement:true});
+fs.writeFileSync(process.argv[1], pdf);
+"""
+        subprocess.run(['node', '-e', script, str(target)], cwd=Path(__file__).resolve().parents[1],
+                       input=json.dumps(pages), text=True, check=True)
         return target
 
     def damage_xref(self, target):
@@ -339,6 +358,101 @@ class MuseOriginalTests(unittest.TestCase):
         self.assertFalse(exact_title_matches(page, title))
         self.assertTrue(exact_title_matches('Exact cardiovascular trial', 'Exact cardiovascular trial'))
         self.assertTrue(exact_title_matches('Accepted Manuscript\n1 Exact\n2 cardiovascular\n3 trial', 'Exact cardiovascular trial', 'Accepted Manuscript\nExact cardiovascular trial'))
+
+
+    def test_t18_type1c_headings_require_independent_pypdf_and_mupdf_evidence(self):
+        from pypdf import PdfReader
+        doi = '10.1000/exact'
+        a_title = 'Synthetic guidelines for ventricular rhythm in imaginary cohorts'
+        c_title = 'Synthetic commands for pacing in an imaginary registry'
+        for lines, title in (
+            (['Synthetic co-publication notice', 'DOI ' + doi, 'DOI 10.1000/copublished',
+              'Synthetic guidelines for ventricular', 'rhythm in imaginary cohorts'], a_title),
+            (['4207', 'CardioPulse', 'DOI ' + doi, 'Global Spotlights', 'Synthetic authors', c_title], c_title),
+        ):
+            with self.subTest(title=title):
+                target = self.make_type1c_pdf([lines])
+                reader = PdfReader(target, strict=True)
+                self.assertNotIn(doi, reader.pages[0].extract_text())
+                with fitz.open(target) as document:
+                    self.assertIn(doi, document[0].get_text())
+                    self.assertIn('Type1', [entry[2] for entry in document[0].get_fonts() if entry[1] == 'cff'])
+                self.assertTrue(verify(target, doi, title)['verified'])
+                self.assertFalse(verify(target, doi, title.replace('imaginary', 'real'))['verified'])
+                self.assertFalse(verify(target, '10.1000/foreign', title)['verified'])
+                # The ordinary font recovery does not broaden the existing strict manual-release rules.
+                sha = hashlib.sha256(target.read_bytes()).hexdigest()
+                self.assertFalse(verify(target, doi, title, release_sha256=sha)['verified'])
+
+        printed = 'European Rhythm Association (ERA) consensus on atrial ﬁbrillation'
+        title = '2024 European Rhythm Association consensus on atrial fibrillation'
+        self.assertTrue(verify(self.make_type1c_pdf([[printed, 'DOI ' + doi]]), doi, title)['verified'])
+        self.assertFalse(verify(self.make_type1c_pdf([[printed, 'DOI 10.1000/foreign']]), doi, title)['verified'])
+
+        cover = ['Utrecht University Repository', 'Title', a_title, 'Authors', 'Synthetic Author',
+                 'Published in', 'Synthetic Journal', 'Publication Date', '2024', 'Link',
+                 'https://hdl.handle.net/1/synthetic', 'Citation', 'Synthetic citation']
+        self.assertTrue(verify(self.make_type1c_pdf([cover, [a_title, 'DOI ' + doi]]), doi, a_title)['verified'])
+        self.assertFalse(verify(self.make_type1c_pdf([cover, [a_title, 'DOI 10.1000/foreign']]), doi, a_title)['verified'])
+
+    def test_t18_catalogue_year_and_acronyms_require_matching_doi(self):
+        from muse_pdf_verifier import catalog_title_variant
+        doi = '10.1000/exact'
+        title = 'European Rhythm Association/Pacific Rhythm Society consensus on atrial fibrillation'
+        abbreviated = 'European Rhythm Association (ERA)/Pacific Rhythm Society (PRS) consensus on atrial fibrillation'
+        self.assertTrue(catalog_title_variant(abbreviated.replace('fi', '\ufb01'), '2024 ' + title))
+        for registered, printed in (('2024 ' + title, title), (title, abbreviated), ('2024 ' + title, abbreviated)):
+            with self.subTest(registered=registered, printed=printed):
+                target = self.make_pdf([printed + '\nDOI ' + doi])
+                self.assertTrue(verify(target, doi, registered)['verified'])
+        for label, registered, pages, metadata in (
+            ('changed word', '2024 ' + title, [title.replace('atrial', 'ventricular') + '\nDOI ' + doi], None),
+            ('changed year', '2024 ' + title, ['2023 ' + abbreviated + '\nDOI ' + doi], None),
+            ('long acronym', title, [abbreviated.replace('ERA', 'TOOLONGXY') + '\nDOI ' + doi], None),
+            ('lowercase acronym', title, [abbreviated.replace('ERA', 'Era') + '\nDOI ' + doi], None),
+            ('no DOI', title, [abbreviated], None),
+            ('foreign DOI', title, [abbreviated + '\nDOI 10.1000/other'], None),
+            ('longer foreign DOI', title, [abbreviated + '\nDOI ' + doi + '.other'], None),
+            ('DOI only later', title, [abbreviated, doi], None),
+            ('DOI only in metadata', title, [abbreviated], {'subject': doi}),
+            ('metadata with longer foreign DOI', title, [abbreviated, doi + '.other'], {'subject': doi}),
+        ):
+            with self.subTest(label=label):
+                target = self.make_pdf(pages, metadata=metadata)
+                self.assertEqual(verify(target, doi, registered)['reason'], 'identity_mismatch')
+        confirmed = self.make_pdf([abbreviated, doi], metadata={'subject': doi})
+        self.assertTrue(verify(confirmed, doi, '2024 ' + title)['verified'])
+        xmp = self.make_pdf([abbreviated, doi], xmp=f'<synthetic>DOI {doi}</synthetic>')
+        self.assertTrue(verify(xmp, doi, title)['verified'])
+
+    def test_t18_repository_requires_correct_cover_and_both_article_matches_on_page_two(self):
+        doi, title = '10.1000/exact', 'Exact cardiovascular trial in synthetic cohorts'
+        cover = ('Utrecht University Repository\nTitle\n' + title + '\nAuthors\nSynthetic Author\n'
+                 'Published in\nSynthetic Journal\nPublication Date\n2024\n'
+                 'Link https://hdl.handle.net/1/synthetic\nCitation\nSynthetic citation')
+        article = title + '\nDOI ' + doi
+        self.assertTrue(verify(self.make_pdf([cover, article]), doi, title)['verified'])
+        for label, pages in (
+            ('wrong title on cover', [cover.replace('trial', 'registry'), article]),
+            ('wrong title on article', [cover, article.replace('trial', 'registry')]),
+            ('wrong DOI on article', [cover, article.replace(doi, '10.1000/other')]),
+            ('DOI prefix on article', [cover, article.replace(doi, doi + '.other')]),
+            ('DOI on cover only', [cover + '\n' + doi, title]),
+            ('DOI on third page', [cover, title, doi]),
+            ('blank article page', [cover, '', article]),
+        ):
+            with self.subTest(label=label):
+                result = verify(self.make_pdf(pages), doi, title)
+                self.assertEqual(result['reason'], 'identity_mismatch', result)
+
+    def test_t18_multi_item_news_stays_rejected_when_target_headline_is_absent(self):
+        title = 'Synthetic Testosterone Trial and Cardiovascular Events'
+        news = ('Medical News in Brief\nSynthetic Sleep and Recovery\n'
+                'DOI 10.1000/exact\nA Synthetic Report on Nutrition\n')
+        for printed in ('', title.replace('Trial', 'Trial (STT)')):
+            with self.subTest(printed=printed):
+                target = self.make_pdf([news + printed])
+                self.assertEqual(verify(target, '10.1000/exact', title)['reason'], 'identity_mismatch')
 
 
 if __name__ == '__main__':
