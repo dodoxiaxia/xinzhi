@@ -217,5 +217,50 @@ class MuseOriginalTests(unittest.TestCase):
 
 
 
+    def test_spelling_variants_match_like_the_upload_worker(self):
+        doi, base = '10.1000/exact', 'Beta-blocker therapy {} placebo after myocardial infarction in synthetic cohorts'
+        target = self.make_pdf([base.format('vs') + '\n10.1000/exact'], 'vs.pdf')
+        self.assertTrue(verify(target, doi, base.format('versus'))['verified'])
+        self.assertTrue(verify(target, doi, base.format('v.'))['verified'])
+        self.assertFalse(verify(target, doi, base.format('versus').replace('placebo', 'aspirin'))['verified'])
+        self.assertFalse(verify(target, doi, base.format('versuss'))['verified'])
+        marked = self.make_pdf(['SyntheticValve Transcatheter Repair in Elderly Cohorts\n10.1000/exact'], 'mark.pdf')
+        self.assertTrue(verify(marked, doi, 'SyntheticValve\u00ae Transcatheter Repair in Elderly Cohorts')['verified'])
+        self.assertFalse(verify(marked, doi, 'SyntheticValve\u00ae Transcatheter Repair in Elderly Cohortx')['verified'])
+
+    def test_unmapped_trademark_glyph_name_is_dropped_only_when_title_has_the_mark(self):
+        from muse_pdf_verifier import title_matches
+        page = 'SOCIETAL DOCUMENT\nCAD-RADS/C228 2.0 \u2013 2022 Coronary Artery\nDisease-Reporting and Data System'
+        self.assertTrue(title_matches(page, 'CAD-RADS\u2122 2.0 \u2013 2022 Coronary Artery Disease-Reporting and Data System'))
+        self.assertFalse(title_matches(page, 'CAD-RADS 2.0 \u2013 2022 Coronary Artery Disease-Reporting and Data System'))
+        self.assertFalse(title_matches(page, 'CAD-RADS\u2122 3.0 \u2013 2022 Coronary Artery Disease-Reporting and Data System'))
+
+    def proof_pdf(self, title_line, tag='HRTHM12284_proof', queries='Q1 Q3 Q4', name='proof.pdf'):
+        return self.make_pdf([f'FLA 5.7.0 DTD {tag}\n{title_line}\n{queries}\n10.1000/exact'], name)
+
+    def test_proof_stage_query_markers_need_proof_evidence_query_list_and_narrow_shape(self):
+        doi, title = '10.1000/exact', 'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF cohorts'
+        line = 'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts'
+        self.assertTrue(verify(self.proof_pdf(line), doi, title)['verified'])
+        self.assertTrue(verify(self.proof_pdf('Synthetic Q1 atrial fibrillation entrenchment revisited: Early timing of AF Q12 cohorts', queries='Q3 Q4'), doi, title)['verified'])
+        negatives = {
+            'no proof evidence': self.proof_pdf(line, tag='HRTHM12284'),
+            'no query list': self.proof_pdf(line, queries=''),
+            'short query list': self.proof_pdf(line, queries='Q1'),
+            'q plus three digits': self.proof_pdf(line.replace('Q2', 'Q123'), queries='Q1 Q3 Q4'),
+            'inside a word': self.proof_pdf(line.replace('cohorts', 'cohq2orts')),
+            'three markers': self.proof_pdf('Synthetic Q1 atrial fibrillation Q2 entrenchment revisited: Early timing Q3 of AF cohorts', queries='Q4'),
+            'not a q marker': self.proof_pdf(line.replace('Q2', 'X2')),
+            'extra word': self.proof_pdf(line.replace('cohorts', 'extra cohorts')),
+        }
+        for label, target in negatives.items():
+            self.assertFalse(verify(target, doi, title)['verified'], label)
+        self.assertFalse(verify(self.proof_pdf('Synthetic atrial Q2 timing of cohorts'), doi, 'Synthetic atrial timing of cohorts')['verified'], 'short title')
+        no_doi = self.make_pdf(['FLA 5.7.0 DTD HRTHM12284_proof\n' + line + '\nQ1 Q3 Q4'], 'nodoi.pdf')
+        self.assertFalse(verify(no_doi, doi, title)['verified'], 'no doi')
+        coenzyme = self.proof_pdf('Coenzyme Q10 supplementation and cardiovascular outcomes in synthetic heart failure cohorts', queries='')
+        self.assertFalse(verify(coenzyme, doi, 'Coenzyme supplementation and cardiovascular outcomes in synthetic heart failure cohorts')['verified'])
+
+
 if __name__ == '__main__':
     unittest.main()

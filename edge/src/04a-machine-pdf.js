@@ -30,6 +30,17 @@ const MACHINE_NORMALIZE_PUNCT = new Set([
 const MACHINE_IDENTITY_SECTION_LABEL = /^\s*\[[A-Za-z][A-Za-z ./-]{0,39}\]\s*/;
 // Crossref titles keep JATS/HTML inline markup ("<i>CYP2C19</i>", "P2Y<sub>12</sub>"); the page prints only the text inside.
 const MACHINE_TITLE_MARKUP = /<\/?(?:i|b|em|strong|sub|sup|sc|scp|u|italic|bold)\b[^<>]{0,80}>/gi;
+const MACHINE_TITLE_MARKS = /[\u2122\u00ae]/g;
+const MACHINE_TITLE_VERSUS = /(?<![\p{L}\p{N}])(?:versus|vs\.?|v\.)(?![\p{L}\p{N}])/giu;
+const MACHINE_TITLE_C1_CONTROLS = /[\u0080-\u009f]/g;
+const MACHINE_VARIANT_INSERT_MIN_LEN = 40;
+const MACHINE_VARIANT_MAX_INSERTS = 2;
+// Line-number evidence for accepted manuscripts: a chain of >= 5 consecutive positive integers (1..999) as standalone whitespace
+// tokens (ignoring PDF marked-content /MCID ids), each at most 40 tokens after the previous. The text extractor keeps no coordinates, so "left margin"
+// cannot be tested; instead the inserted number must itself be a member of such a run (see machineLineNumberMembers).
+const MACHINE_LINE_NUMBER_MIN_RUN = 5;
+const MACHINE_LINE_NUMBER_MAX_GAP = 40;
+const MACHINE_PROOF_MIN_QUERIES = 3;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -38,6 +49,116 @@ function machineNormalize(value) {
     if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_PUNCT.has(code))) out += char;
   }
   return out;
+}
+// Fallback spelling variants: Heart Rhythm stores "Versus" where page 1 prints "vs"; JACC Imaging stores "CAD-RADS™" where page 1
+// has no ™ (NFKD would turn it into the letters "tm"). Both sides go through this function: whole-word versus/vs/vs./v. become
+// "vs" and the two trademark signs are dropped; nothing else changes.
+function machineTitleVariant(value) {
+  return machineNormalize(String(value || '').replace(MACHINE_TITLE_MARKS, '').replace(MACHINE_TITLE_VERSUS, ' vs '));
+}
+// WinAnsi byte 0x96 (en dash) that some PDFs leave undecoded shows up as U+0096; C1 controls never occur in real titles.
+function machineTitleVariantNoC1(value) {
+  return machineTitleVariant(value).replace(MACHINE_TITLE_C1_CONTROLS, '');
+}
+// Token indexes (in page.text.split(/\s+/)) that belong to a chain of >= 5 integers counting up by one, each at most 40 tokens after
+// the previous one. Other integers in between (affiliation superscripts, page sizes) are skipped. The inserted line number of a title
+// must be one of these tokens, so the evidence sits at the title rather than anywhere on the page.
+function machineLineNumberMembers(tokens) {
+  const ints = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (!/^[1-9]\d{0,2}$/.test(tokens[i])) continue;
+    if (i > 0 && /\/MCID$/.test(tokens[i - 1])) continue;
+    ints.push({index:i, value:Number(tokens[i])});
+  }
+  const members = new Set();
+  for (let start = 0; start < ints.length; start++) {
+    const chain = [start];
+    let last = ints[start];
+    for (let j = start + 1; j < ints.length && ints[j].index - last.index <= MACHINE_LINE_NUMBER_MAX_GAP; j++) {
+      if (ints[j].value !== last.value + 1) continue;
+      chain.push(j);
+      last = ints[j];
+    }
+    if (chain.length >= MACHINE_LINE_NUMBER_MIN_RUN) for (const k of chain) members.add(ints[k].index);
+  }
+  return members;
+}
+// Normalizes page text token by token so a position in the normalized string maps back to its token.
+function machineTokenizedPage(text) {
+  const tokens = String(text || '').split(/\s+/);
+  const spans = [];
+  let norm = '';
+  for (const token of tokens) {
+    const piece = machineTitleVariantNoC1(token);
+    spans.push({start:norm.length, end:norm.length + piece.length, piece});
+    norm += piece;
+  }
+  return {tokens, spans, norm};
+}
+function machineMatchWordsWithInsertions(pageText, words, markerLengths, isMarker, validateMarkers) {
+  if (words.length < 2) return false;
+  const suffixes = new Array(words.length + 1);
+  suffixes[words.length] = '';
+  for (let k = words.length - 1; k >= 0; k--) suffixes[k] = words[k] + suffixes[k + 1];
+  if (suffixes[0].length < MACHINE_VARIANT_INSERT_MIN_LEN) return false;
+  const maxMarkerLen = markerLengths[markerLengths.length - 1];
+  const anchors = [];
+  if (words.length === 2) {
+    const pick = words[0].length >= words[1].length ? 0 : 1;
+    anchors.push({text:words[pick], prefixLen:pick ? words[0].length : 0, maxShift:pick ? maxMarkerLen : 0});
+  } else {
+    const total = suffixes[0].length;
+    let a = 1, lenA = words[0].length;
+    while (a + 2 < words.length && lenA < total / 3) { lenA += words[a].length; a++; }
+    let b = a + 1, lenB = words[a].length;
+    while (b + 1 < words.length && lenA + lenB < (total * 2) / 3) { lenB += words[b].length; b++; }
+    // Partitioning words into 3 contiguous slices guarantees at least one slice contains no gap insertions (at most 2 total).
+    anchors.push(
+      {text:words.slice(0, a).join(''), prefixLen:0, maxShift:0},
+      {text:words.slice(a, b).join(''), prefixLen:lenA, maxShift:Math.min(a, MACHINE_VARIANT_MAX_INSERTS) * maxMarkerLen},
+      {text:words.slice(b).join(''), prefixLen:lenA + lenB, maxShift:Math.min(b, MACHINE_VARIANT_MAX_INSERTS) * maxMarkerLen}
+    );
+    anchors.sort((x, y) => y.text.length - x.text.length);
+  }
+  const seenStarts = new Set();
+  const matchAtStart = start => {
+    if (start < 0 || seenStarts.has(start)) return false;
+    seenStarts.add(start);
+    let pos0 = start;
+    for (let i = 0; i < words.length - 1; i++) {
+      if (!pageText.startsWith(words[i], pos0)) return false;
+      pos0 += words[i].length;
+      for (const len1 of markerLengths) {
+        const m1 = pageText.slice(pos0, pos0 + len1);
+        if (m1.length !== len1 || !isMarker(m1)) continue;
+        const pos1 = pos0 + len1;
+        if (pageText.startsWith(suffixes[i + 1], pos1) && validateMarkers([{text:m1, at:pos0}])) return true;
+        let pos2 = pos1;
+        for (let j = i + 1; j < words.length - 1; j++) {
+          if (!pageText.startsWith(words[j], pos2)) break;
+          pos2 += words[j].length;
+          for (const len2 of markerLengths) {
+            const m2 = pageText.slice(pos2, pos2 + len2);
+            if (m2.length !== len2 || !isMarker(m2)) continue;
+            if (validateMarkers([{text:m1, at:pos0}, {text:m2, at:pos2}]) && pageText.startsWith(suffixes[j + 1], pos2 + len2)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+  for (const anchor of anchors) {
+    let from = 0;
+    while (from <= pageText.length - anchor.text.length) {
+      const at = pageText.indexOf(anchor.text, from);
+      if (at < 0) break;
+      for (let shift = 0; shift <= anchor.maxShift; shift++) {
+        if (matchAtStart(at - anchor.prefixLen - shift)) return true;
+      }
+      from = at + 1;
+    }
+  }
+  return false;
 }
 function machineLatin1(bytes) {
   let out = '';
@@ -722,7 +843,7 @@ async function machineFirstPage(bytes) {
   const metadata = await machineMetadata(ctx);
   // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
   const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
 }
 async function machinePageText(ctx, pageBody) {
   const notes = ctx.notes;
@@ -877,6 +998,8 @@ function machineAnyDoi(text) {
 // 'doi_only' (DOI on page 1, title unreadable), 'metadata_only', 'title_only' (machine uploads only, when
 // options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
+// If normal title matching (including section-label stripping) misses, falls back in order via machineTitleVariant
+// (whole-word versus/vs./v. -> vs and stripping ™/®): checks.titleVariant = 'versus_or_mark', then 'c1_control_dropped', then 'line_number_inserted', then 'proof_marker_inserted'.
 async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
@@ -888,12 +1011,85 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const pageText = machineNormalize(page.text);
   let titleMatch = machineTitleOnPage(pageText, expected);
   let titlePrefix = '';
+  let titleVariant = '';
   let matchedExpected = expected;
-  if (!titleMatch.found && MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''))) {
-    const stripped = machineNormalize(String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, ''));
+  const hasSectionLabel = MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''));
+  const strippedTitle = hasSectionLabel ? String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, '') : '';
+  if (!titleMatch.found && hasSectionLabel) {
+    const stripped = machineNormalize(strippedTitle);
     if (stripped.length >= 5) {
       const retry = machineTitleOnPage(pageText, stripped);
       if (retry.found) { titleMatch = retry; titlePrefix = 'section_label_dropped'; matchedExpected = stripped; }
+    }
+  }
+  if (!titleMatch.found) {
+    const variantPage = machineTitleVariant(page.text);
+    const c1Page = variantPage.replace(MACHINE_TITLE_C1_CONTROLS, '');
+    const candidates = [[title, '']];
+    if (hasSectionLabel) candidates.push([strippedTitle, 'section_label_dropped']);
+    const tryVariant = (name, matchFn) => {
+      if (titleMatch.found) return;
+      for (const [candidate, prefix] of candidates) {
+        const hit = matchFn(candidate);
+        if (!hit) continue;
+        titleMatch = hit.match;
+        titleVariant = name;
+        if (prefix) titlePrefix = prefix;
+        matchedExpected = hit.expected;
+        return;
+      }
+    };
+    tryVariant('versus_or_mark', candidate => {
+      const expectedVariant = machineTitleVariant(candidate);
+      if (expectedVariant.length < 5) return null;
+      const match = machineTitleOnPage(variantPage, expectedVariant);
+      return match.found ? {match, expected:expectedVariant} : null;
+    });
+    tryVariant('c1_control_dropped', candidate => {
+      const expectedC1 = machineTitleVariantNoC1(candidate);
+      if (expectedC1.length < 5 || (c1Page === variantPage && expectedC1 === machineTitleVariant(candidate))) return null;
+      const match = machineTitleOnPage(c1Page, expectedC1);
+      return match.found ? {match, expected:expectedC1} : null;
+    });
+    // Insertion fallbacks (below) are only allowed once the claimed DOI is already confirmed (full / metadata_doi): without that, a
+    // different paper whose title merely has an extra number would pass ("SPRINT 2 Trial" vs "SPRINT Trial").
+    const doiConfirmed = doiPage || doiMeta;
+    const wordsFor = candidate => String(candidate || '').trim().split(/\s+/).map(machineTitleVariantNoC1).filter(Boolean);
+    if (!titleMatch.found && doiConfirmed) {
+      const tokenized = machineTokenizedPage(page.text);
+      const members = machineLineNumberMembers(tokenized.tokens);
+      const memberAt = (at, text) => {
+        for (let i = 0; i < tokenized.spans.length; i++) {
+          const span = tokenized.spans[i];
+          if (span.start > at) break;
+          if (span.start === at && span.piece === text && members.has(i)) return true;
+        }
+        return false;
+      };
+      if (members.size) {
+        tryVariant('line_number_inserted', candidate => {
+          const words = wordsFor(candidate);
+          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [1, 2], tok => /^[1-9]\d?$/.test(tok), inserted => {
+            const nums = inserted.map(item => Number(item.text));
+            if (nums.length === 2 && !(nums[0] < nums[1])) return false;
+            return inserted.every(item => memberAt(item.at, item.text));
+          });
+          return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+        });
+      }
+      // Elsevier pre-proof PDFs print author-query markers (Q1, Q2 ...) inside the title. Needs proof-stage evidence on the page
+      // ("HRTHM12284_proof" file tag or "Journal Pre-proof") and a query list: at least 3 distinct Q-numbers in the shown text, which
+      // must include every inserted marker. page.shown excludes the raw content stream, where graphics-state operators
+      // ("Q 1 0 0 1 ...") would fake a match.
+      const proofStage = /[A-Z]{2,}\d{2,}_proof(?![A-Za-z])|(?:^|[^A-Za-z0-9])_proof(?![A-Za-z])|\bjournal\s+pre-?proof\b/i.test(page.shown);
+      const queryNumbers = new Set([...page.shown.matchAll(/(?:^|[^A-Za-z0-9])Q\s*(\d{1,2})(?![0-9])/g)].map(item => item[1]));
+      if (proofStage && queryNumbers.size >= MACHINE_PROOF_MIN_QUERIES) {
+        tryVariant('proof_marker_inserted', candidate => {
+          const words = wordsFor(candidate);
+          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [2, 3], tok => /^q\d{1,2}$/.test(tok), inserted => inserted.every(item => queryNumbers.has(item.text.slice(1))));
+          return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+        });
+      }
     }
   }
   const titlePage = titleMatch.found;
@@ -903,7 +1099,8 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     title:titlePage ? 'page' : titleMeta ? 'metadata' : '',
     readable,
     ...(titleMatch.glyph ? {titleGlyph:titleMatch.glyph} : {}),
-    ...(titlePrefix ? {titlePrefix} : {})
+    ...(titlePrefix ? {titlePrefix} : {}),
+    ...(titleVariant ? {titleVariant} : {})
   };
   const doiFound = doiPage || doiMeta;
   if (doiPage && titlePage) return {verdict:'ok', level:'full', checks};
@@ -919,7 +1116,7 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     if (later.page) return {verdict:'ok', level:'doi_later_page', checks:{...checks, doi:'later_page', doiPage:later.page, ...(citedPages ? {citedPages} : {})}};
   }
   const laterChecks = citedPages ? {...checks, citedPages} : checks;
-  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+  if (options && options.allowTitleOnly && titlePage && !titleVariant && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
     return {verdict:'ok', level:'title_only', checks:{...laterChecks, doi:'', doiAbsent:true}};
   }
   if (options && options.holdForeignDoi && titlePage && !doiFound && (machineAnyDoi(page.text) || machineAnyDoi(page.metadata.text))) {

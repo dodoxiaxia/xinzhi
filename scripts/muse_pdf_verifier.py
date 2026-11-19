@@ -39,11 +39,55 @@ def without_margin_numbers(runs, width):
     return '\n'.join(text for index, (text, _, _) in enumerate(runs) if index not in removed)
 
 
+MARKS = re.compile('[\u2122\u00ae]')
+VERSUS = re.compile(r'(?<![^\W_])(?:versus|vs\.?|v\.)(?![^\W_])', re.IGNORECASE)
+PROOF_STAGE = re.compile(r'[A-Z]{2,}[0-9]{2,}_proof(?![A-Za-z])|(?<![A-Za-z0-9])_proof(?![A-Za-z])|\bjournal\s+pre-?proof\b', re.IGNORECASE)
+# pypdf prints a trademark glyph it cannot map as its Adobe glyph name ("CAD-RADS/C228 2.0"); only dropped when the title itself carries TM/R.
+GLYPH_NAME = re.compile(r'/C[0-9]{2,3}(?![0-9])')
+INSERT_MIN_LEN = 40
+PROOF_MIN_QUERIES = 3
+
+
+def variant_normalized(value, drop_glyph_names=False):
+    """Same narrow variants as the upload Worker: whole-word versus/vs./v. become vs, TM and R signs are dropped."""
+    if drop_glyph_names:
+        value = GLYPH_NAME.sub('', value)
+    return normalized(VERSUS.sub(' vs ', MARKS.sub('', value)))
+
+
+def proof_marker_matches(text, title):
+    """Elsevier pre-proof: author-query markers (Q1, Q12) printed inside the title, at most two, between words.
+    Needs proof-stage evidence on the page and a query list: at least 3 distinct Q-numbers printed, including every inserted marker."""
+    if not PROOF_STAGE.search(text):
+        return False
+    words = [word for word in (variant_normalized(part) for part in title.split()) if word]
+    if len(words) < 2 or len(''.join(words)) < INSERT_MIN_LEN:
+        return False
+    pattern = re.escape(words[0]) + ''.join('(?P<m%d>q[0-9]{1,2})?' % index + re.escape(word) for index, word in enumerate(words[1:]))
+    page = variant_normalized(text)
+    numbers = set(re.findall(r'(?<![A-Za-z0-9])Q\s*([0-9]{1,2})(?![0-9])', text))
+    for match in re.finditer(pattern, page):
+        markers = [value for value in match.groupdict().values() if value]
+        if not markers or len(markers) > 2:
+            continue
+        if len(numbers) >= PROOF_MIN_QUERIES and all(marker[1:] in numbers for marker in markers):
+            return True
+    return False
+
+
 def title_matches(text, title, cleaned=None):
     if normalized(title) in normalized(text):
         return True
     # Only the accepted-manuscript layout has this geometric cleanup fallback.
-    return 'accepted manuscript' in text.casefold() and cleaned is not None and normalized(title) in normalized(cleaned)
+    if 'accepted manuscript' in text.casefold() and cleaned is not None and normalized(title) in normalized(cleaned):
+        return True
+    # Fallbacks: spelling variants, then proof-stage query markers. Both only matter because the DOI is checked separately.
+    expected = variant_normalized(title)
+    glyphs = bool(MARKS.search(title))
+    if len(expected) >= 5 and (expected in variant_normalized(text, glyphs)
+                               or (cleaned is not None and 'accepted manuscript' in text.casefold() and expected in variant_normalized(cleaned, glyphs))):
+        return True
+    return proof_marker_matches(text, title)
 
 
 def page_has_doi(text, pattern):
