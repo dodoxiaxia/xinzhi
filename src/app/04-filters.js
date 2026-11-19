@@ -878,6 +878,11 @@
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
+      const expansion = queryMatches('', foldSearch(state.search.trim()), true);
+      if (expansion.length) {
+        const terms = expansion.map(([term, alternatives]) => `${term} → ${alternatives.join(' / ')}`).join('；');
+        chips += `<span class="filter-badge-active" role="status" data-search-expansion>已按 ${esc(terms)} 检索</span>`;
+      }
     }
     container.innerHTML = chips;
     if (typeof renderQfSummary === 'function') renderQfSummary();
@@ -919,7 +924,7 @@
       : state.mode === 'curated' ? '当前条件下没有精选，可清除筛选或查看文献雷达。' : '当前领域、时间、关键词与筛选条件下暂无匹配。';
     const heading = noFollowed ? '还没有关注期刊' : '没有找到匹配的文献';
     return `<div class="empty-state"><h3>${heading}</h3><p>${message}</p><div class="empty-filter-actions">${suggestions}
-      ${selections.length ? '<button type="button" class="btn-sm" data-clear="sidebar">清空左侧筛选</button>' : ''}
+      ${selections.length ? `<button type="button" class="btn-sm" data-clear="sidebar">${state.mode === 'candidates' ? '清除筛选' : '清空左侧筛选'}</button>` : ''}
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
