@@ -8,11 +8,18 @@ import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlencode
 
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTICE = '离线布局测试文字，不是文献翻译或研究分析。'
+ON_DEMAND_DOI = '10.9999/weekly-on-demand-control'
+BANNED_GENERATION_SELECTORS = [
+    '[data-action="ai-translate"]',  # positive control: retired_translate_selector
+    '[data-action="ai-study"]',  # positive control: on-demand reader
+    '[data-action="ai-interpret"]',  # positive control: on-demand reader
+]
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -35,10 +42,18 @@ def main():
         const floor=new Date(end+'T00:00:00Z');floor.setUTCDate(floor.getUTCDate()-6);
         const start=floor.toISOString().slice(0,10);
         window.FEEDS.items.forEach(p=>delete p.weeklyPick);
+        window.__weeklyPrecomputed={};window.PREGENERATED={};window.QUICKLOOKS={};
+        if (new URLSearchParams(location.search).get('mode') === 'candidates') {
+          window.FEEDS.items.push({
+            id:'weekly-on-demand-control', doi:CONTROL_DOI, title:'Offline on-demand control',
+            date:end, datePrecision:'day', journal:'Circulation',
+            summary:'Fictional public abstract for the on-demand reader control.'
+          });
+          return;
+        }
         const selected=window.FEEDS.items.filter(p=>(p.pmid || p.doi) && (!p.datePrecision || p.datePrecision==='day') && p.date?.slice(0,10)>=start && p.date.slice(0,10)<=end).slice(0,count);
         if(selected.length!==count)throw Error('Not enough real recent public titles for fixture');
         window.__weeklyFixtureIds=selected.map(p=>p.id);
-        window.__weeklyPrecomputed={};window.PREGENERATED={};window.QUICKLOOKS={};
         selected.forEach((p,i)=>{
           p.weeklyPick=i+1;p.weeklyCategory=['cardio','general','aimed','aitech'][i%4];
           const key=p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase();
@@ -56,7 +71,7 @@ def main():
         const imprecise={...selected[0],id:'offline-month-date',weeklyPick:count+2,date:end,datePrecision:'month'};
         window.FEEDS.items.push(stale,imprecise);
       })();
-    '''.replace('NOTICE', json.dumps(NOTICE, ensure_ascii=False))
+    '''.replace('NOTICE', json.dumps(NOTICE, ensure_ascii=False)).replace('CONTROL_DOI', json.dumps(ON_DEMAND_DOI))
     server = ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(ROOT / 'public')))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f'http://127.0.0.1:{server.server_port}/'
@@ -67,6 +82,8 @@ def main():
 
     def mock(route):
         path = route.request.url
+        if not path.startswith(base):
+            return route.abort('blockedbyclient')
         if ('/assets/app.' in path and path.endswith('.js')):
             data = fixture.replace('COUNT', str(controls['count'])).replace('READY', str(controls['ready']).lower())
             return route.fulfill(content_type='application/javascript', body=bundle.replace(source, data + source))
@@ -74,10 +91,15 @@ def main():
                 return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART("pregenerated",{items:window.__weeklyPrecomputed});')
         if '/api/' in path:
             calls.append({'url': path, 'method': route.request.method})
+            if controls.get('probe_study_loading') and '/api/ai?task=study&' in path:
+                reader = route.request.frame.page
+                expect(reader.locator('#drawerBody .study-box')).to_contain_text('正在检查已有结果')
+                check(has_loading_text(reader), 'Loading detector sees the pending on-demand study lookup')
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
-        if not path.startswith(base):
-            return route.abort('blockedbyclient')
         return route.continue_()
+
+    def has_loading_text(page):
+        return '正在' in page.locator('#drawerBody').inner_text()
 
     def overflow(page, label):
         check(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), label + ': no overflow')
@@ -177,7 +199,7 @@ def main():
             expect(page.locator('.study-box')).to_contain_text(NOTICE)
             expect(page.locator('.ql-findings li')).to_contain_text(NOTICE)
             check(len(calls) == before, 'Pre-generated reader needs no API lookup or generation')
-            check('正在' not in page.locator('#drawerBody').inner_text(), 'Pre-generated reader has no loading placeholder')
+            check(not has_loading_text(page), 'Pre-generated reader has no loading placeholder')
             page.screenshot(path=str(out/'precomputed-reader-mobile-fixture.png'))
             page.locator('#drawerCloseBtn').click()
             page.locator('.weekly-auto-item .title-open').first.click()
@@ -191,7 +213,33 @@ def main():
             check(page.locator('.study-box, .quicklook').count() == 0, 'Missing analysis has no empty study or AI placeholder panel')
             check(page.locator('[data-abs-tab="zh"]').count() == 0, 'Missing translation leaves the original without a language toggle')
             check(len(calls) == before, 'Missing pre-generated results do not trigger automatic calls')
-            check(page.locator('[data-action="ai-translate"], [data-action="ai-study"], [data-action="ai-interpret"]').count() == 0, 'Missing weekly results never silently become model-generation controls')
+            generation = page.locator(', '.join(BANNED_GENERATION_SELECTORS))
+            check(generation.count() == 0, 'Missing weekly results never silently become model-generation controls')
+            retired_translate_selector, *on_demand_selectors = BANNED_GENERATION_SELECTORS
+            translate_probe = page.locator('#drawerBody').evaluate_handle('''body => {
+              const button = document.createElement('button');
+              button.dataset.action = 'ai-translate';
+              return body.appendChild(button);
+            }''')
+            try:
+                check(generation.count() == 1 and page.locator(retired_translate_selector).count() == 1,
+                      'Generation detector sees the retired translation action')
+            finally:
+                translate_probe.evaluate('node => node.remove()')
+            check(generation.count() == 0, 'Retired translation probe removed')
+            page.locator('#drawerCloseBtn').click()
+
+            # Unlike a weekly pick, a non-weekly paper with an abstract can offer both actions.
+            controls['probe_study_loading'] = True
+            page.goto(base + '?' + urlencode({'mode': 'candidates', 'lane': 'all', 'q': ON_DEMAND_DOI}),
+                      wait_until='domcontentloaded')
+            page.wait_for_function('() => window.XINZHI_DATA_READY === true')
+            with page.expect_response(lambda r: r.url.startswith(base + 'api/ai?task=study&')):
+                page.locator('#articlesStream .title-open').first.click()
+            controls['probe_study_loading'] = False
+            for selector in on_demand_selectors:
+                expect(page.locator('#drawerBody').locator(selector)).to_be_visible()
+            check(generation.count() == len(on_demand_selectors), 'Generation detector sees both real on-demand controls')
             page.locator('#drawerCloseBtn').click()
             touch = browser.new_context(has_touch=True, is_mobile=True, viewport={'width':390, 'height':900})
             touch.route('**/*', mock)

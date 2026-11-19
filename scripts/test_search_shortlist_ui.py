@@ -7,6 +7,7 @@ import argparse
 import functools
 import os
 import json
+import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,6 +15,8 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 BUTTONS = ['clearHuddleBtn', 'copyHuddleSummaryBtn', 'exportHuddleMdBtn']
+RESULT_COUNT = re.compile(r'^共 \d+ 篇$')
+POSITIVE_COUNT = re.compile(r'^共 [1-9]\d* 篇$')
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
@@ -39,8 +42,20 @@ def main():
         assert value, label
         checks.append(label)
 
-    def count(page):
-        return int(page.locator('.heading-total').first.inner_text().split()[1])
+    def wait_for_data(page):
+        page.wait_for_function('() => window.XINZHI_DATA_READY === true')
+
+    def load_public_page(page, url=None):
+        if url is None:
+            page.reload(wait_until='domcontentloaded')
+        else:
+            page.goto(url, wait_until='domcontentloaded')
+        wait_for_data(page)
+
+    def count(page, expected=RESULT_COUNT):
+        heading = page.locator('#listTotal')
+        expect(heading).to_have_text(f'共 {expected} 篇' if isinstance(expected, int) else expected)
+        return int(heading.inner_text().split()[1])
 
     search_terms = {'curated': '心电图', 'candidates': 'AI-ECG', 'library': 'Vein of Marshall'}
 
@@ -56,6 +71,8 @@ def main():
             button = page.locator('#' + button_id)
             expect(button).to_be_disabled()
             expect(button).to_have_attribute('aria-describedby', 'huddleEmptyHelp')
+            # Chromium may still report the old click focus just after disabling the button.
+            expect(button).not_to_be_focused()
             check(button.evaluate('(e)=>{e.focus(); return document.activeElement !== e}'), label + ': disabled button cannot take focus ' + button_id)
         # Keyboard traversal must not land on any disabled action.
         page.locator('#closeHuddleModalBtn').focus()
@@ -81,6 +98,8 @@ def main():
                         check(req.method == 'GET', 'Public abstract lookup is intercepted without a network call')
                         requests.append({'path': 'mocked-europe-pmc-search', 'method': req.method})
                         return r.fulfill(json={'resultList': {'result': []}})
+                    if not req.url.startswith(base):
+                        r.abort('blockedbyclient')
                     check(req.url.startswith(base), 'Only local public assets and APIs are requested')
                     if urlsplit(req.url).path.startswith('/api/'):
                         requests.append({'path': urlsplit(req.url).path, 'method': req.method})
@@ -93,8 +112,8 @@ def main():
                     label = f'{mode}/{width}'
                     term = search_terms[mode]
                     day = '&day=all' if mode == 'curated' else ''
-                    page.goto(base + f'?mode={mode}&lane=all{day}', wait_until='networkidle')
-                    baseline = count(page)
+                    load_public_page(page, base + f'?mode={mode}&lane=all{day}')
+                    baseline = count(page, POSITIVE_COUNT)
                     check(baseline > 0, label + ': public data loaded')
                     search = page.locator('#globalSearch')
                     sfill(page, term)
@@ -110,22 +129,22 @@ def main():
                     records.append({'width': width, 'mode': mode, 'baseline': baseline, 'term': term, 'matched': matched})
                     page.locator('#searchPanel [data-clear="search"]').click()
                     expect(search).to_have_value('')
-                    check(count(page) == baseline, label + ': removing query restores results')
+                    check(count(page, baseline) == baseline, label + ': removing query restores results')
                     sfill(page, 'zzzz-no-match')
                     expect(page.locator('#clearAllFiltersBtn')).to_be_visible()
-                    check(count(page) == 0, label + ': no match empty state')
+                    check(count(page, 0) == 0, label + ': no match empty state')
                     page.locator('#clearAllFiltersBtn').click()
                     expect(search).to_have_value('')
                     check('q' not in parse_qs(urlsplit(page.url).query), label + ': reset removes query from URL')
-                    check(count(page) > 0, label + ': reset restores results')
+                    check(count(page, POSITIVE_COUNT) > 0, label + ': reset restores results')
                     if mode != 'curated':
                         tier = page.locator('#qfChipRow [data-qf-jtier]').first
                         tier_name = tier.get_attribute('data-qf-jtier')
                         tier.click()
                         check(parse_qs(urlsplit(page.url).query)['jtier'] == [tier_name], label + ': filter is applied')
                         filtered_count = count(page)
-                        page.reload(wait_until='networkidle')
-                        check(count(page) == filtered_count, label + ': URL filter survives reload')
+                        load_public_page(page)
+                        check(count(page, filtered_count) == filtered_count, label + ': URL filter survives reload')
                         page.locator('[data-qf-clear="jtier"]').click()
                         check('jtier' not in parse_qs(urlsplit(page.url).query), label + ': filter chip clears URL')
                     sfill(page, term)
@@ -135,8 +154,8 @@ def main():
                     page.go_back(wait_until='load')
                     # Chromium may restore the page from the back/forward cache, which go_back() does not wait for.
                     page.wait_for_url(saved_url)
-                    expect(page.locator('.heading-total').first).to_have_text('共 ' + str(saved_count) + ' 篇')
-                    check(page.url == saved_url and count(page) == saved_count, label + ': browser Back restores query')
+                    wait_for_data(page)
+                    check(count(page, saved_count) == saved_count and page.url == saved_url, label + ': browser Back restores query')
                     expect(page.locator('#globalSearch')).to_have_value(term)
                     # In-page tab switches add one history entry each; Back returns to the previous tab with its query.
                     sources_tab = page.locator('[data-mode="sources"]')
@@ -148,8 +167,8 @@ def main():
                     check(parse_qs(urlsplit(page.url).query).get('mode') == ['sources'], label + ': tab switch reflected in URL')
                     page.go_back()
                     page.wait_for_url(saved_url)
-                    expect(page.locator('.heading-total').first).to_have_text('共 ' + str(saved_count) + ' 篇')
-                    check(page.url == saved_url, label + ': browser Back after tab switch restores previous tab and query')
+                    wait_for_data(page)
+                    check(count(page, saved_count) == saved_count and page.url == saved_url, label + ': browser Back after tab switch restores previous tab and query')
                     expect(page.locator('#globalSearch')).to_have_value(term)
                     next_mode = {'curated': 'candidates', 'candidates': 'library', 'library': 'curated'}[mode]
                     page.locator(f'[data-mode="{next_mode}"]').click()
@@ -159,22 +178,22 @@ def main():
                     expect(page.locator('#streamSection .search-scope')).to_contain_text({'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[next_mode])
 
                 composite = {'mode': 'library', 'lane': 'all', 'journal': 'No matching journal', 'design': 'RCT', 'range': '30'}
-                page.goto(base + '?' + urlencode(composite), wait_until='networkidle')
-                check(count(page) == 0, f'{width}: composite filters stay at zero without widening')
+                load_public_page(page, base + '?' + urlencode(composite))
+                check(count(page, 0) == 0, f'{width}: composite filters stay at zero without widening')
                 for kind in ['journal', 'design', 'range']:
                     expect(page.locator(f'[data-qf-clear="{kind}"]')).to_be_visible()
                 expect(page.locator('#clearAllFiltersBtn')).to_be_visible()
                 page.locator('#clearAllFiltersBtn').click()
-                check(count(page) > 0, f'{width}: one click resets composite zero-result filters')
+                check(count(page, POSITIVE_COUNT) > 0, f'{width}: one click resets composite zero-result filters')
                 params = parse_qs(urlsplit(page.url).query)
                 check(all(k not in params for k in ['journal', 'design', 'range']), f'{width}: composite filter URL cleared')
-                page.goto(base + '?mode=library&lane=all&view=compact', wait_until='load')
+                load_public_page(page, base + '?mode=library&lane=all&view=compact')
                 expect(page.locator('#articlesStream')).to_have_class('articles-compact-list')
                 check(page.locator('.compact-row').count() > 0, f'{width}: existing compact view works')
 
                 # A saved compact preference must be made explicit in a shared search URL.
                 page.evaluate('localStorage.setItem("xinzhi_view_mode", "compact")')
-                page.goto(base + '?q=房颤&design=RCT', wait_until='load')
+                load_public_page(page, base + '?q=房颤&design=RCT')
                 expect(page.locator('.search-scope')).to_contain_text('检索范围：每日精选')
                 shared_url, shared_count = page.url, count(page)
                 params = parse_qs(urlsplit(shared_url).query)
@@ -183,13 +202,13 @@ def main():
                 fresh = fresh_context.new_page()
                 fresh.on('pageerror', lambda error: errors.append(str(error)))
                 fresh.route('**/*', route)
-                fresh.goto(shared_url, wait_until='load')
-                check(count(fresh) == shared_count, f'{width}: shared query reproduces count without prior storage')
+                load_public_page(fresh, shared_url)
+                check(count(fresh, shared_count) == shared_count, f'{width}: shared query reproduces count without prior storage')
                 expect(fresh.locator('#articlesStream')).to_have_class('articles-compact-list')
                 expect(fresh.locator('.search-scope')).to_contain_text('检索范围：每日精选')
                 fresh_context.close()
 
-                page.goto(base + '?mode=candidates&lane=all&view=cards', wait_until='load')
+                load_public_page(page, base + '?mode=candidates&lane=all&view=cards')
                 author_paper = page.evaluate('''() => {
                     const visible = window.FEEDS.items.filter(p=>!p.minor && p.authors?.length && p.doi && p.datePrecision==='day');
                     visible.sort((a,b)=>b.date.localeCompare(a.date));
@@ -198,18 +217,18 @@ def main():
                 }''')
                 sfill(page, author_paper['author'])
                 expect(page.locator('#searchPanel [data-clear="search"]')).to_be_visible()
-                check(count(page) > 0, f'{width}: public author search returns results')
+                check(count(page, POSITIVE_COUNT) > 0, f'{width}: public author search returns results')
                 check(page.locator('#articlesStream [data-paper-id="' + author_paper['id'] + '"]').count() > 0, f'{width}: author search renders the matching public paper')
                 expect(page.locator('.search-scope')).to_contain_text('检索范围：文献雷达')
                 doi = author_paper['doi']
-                page.goto(base + '?' + urlencode({'mode': 'curated', 'q': doi, 'journal': 'No matching journal', 'view': 'compact'}), wait_until='networkidle')
+                load_public_page(page, base + '?' + urlencode({'mode': 'curated', 'q': doi, 'journal': 'No matching journal', 'view': 'compact'}))
                 expect(page.locator('#activeFiltersBar .results-meta')).to_contain_text('按 DOI 全站检索')
                 expect(page.locator('#articlesStream .compact-row[data-paper-id="' + author_paper['id'] + '"]')).to_be_visible()
                 check(parse_qs(urlsplit(page.url).query)['q'] == [doi], f'{width}: DOI query survives URL synchronization')
 
                 # Shortcuts remain available on the page, but never steal editable/modal focus.
-                page.goto(base + '?' + urlencode({'mode': 'library', 'lane': 'all', 'view': 'cards',
-                                                'q': search_terms['library']}), wait_until='networkidle')
+                load_public_page(page, base + '?' + urlencode({'mode': 'library', 'lane': 'all', 'view': 'cards',
+                                                               'q': search_terms['library']}))
                 page.locator('#globalSearch').evaluate('(e)=>e.blur()')
                 page.keyboard.press('/')
                 check(page.evaluate('document.activeElement.id === "globalSearch"'), f'{width}: slash still focuses search from the page')
@@ -232,10 +251,10 @@ def main():
                 check(page.url == before_url, f'{width}: reader slash leaves search unchanged')
                 page.locator('#drawerCloseBtn').click()
 
-                page.goto(base + '?mode=library&lane=all', wait_until='networkidle')
+                load_public_page(page, base + '?mode=library&lane=all')
                 total = int(page.locator('#libCountBadge').text_content())
                 hidden = page.evaluate('window.LIBRARY.papers.filter(p=>p.minor).length')
-                check(count(page) == total - hidden and hidden > 0, f'{width}: count difference is minor filter')
+                check(count(page, total - hidden) == total - hidden and hidden > 0, f'{width}: count difference is minor filter')
                 expect(page.locator('#libCountBadge')).to_have_attribute('title', '已收录题录总数，含更正 / 来信；列表按当前筛选计数')
                 page.locator('[data-qf="more"]').click()
                 more = page.locator('#qfPop')
@@ -243,7 +262,7 @@ def main():
                 more.locator('[data-qf-minor="1"]').click()
                 expect(more.locator('[data-qf-minor="1"]')).to_have_attribute('aria-pressed', 'true')
                 more.locator('[data-qf-close]').click()
-                check(count(page) == total, f'{width}: including minor equals total badge')
+                check(count(page, total) == total, f'{width}: including minor equals total badge')
                 expect(page.locator('[data-qf-clear="minor"]')).to_be_visible()
                 page.locator('#openHuddleBtn').click()
                 empty_actions(page, f'initial/{width}')
@@ -254,7 +273,7 @@ def main():
                 paper_id = add.get_attribute('data-paper-id')
                 add.click()
                 expect(page.locator('#huddleCounter')).to_have_text('1')
-                page.reload(wait_until='load')
+                load_public_page(page)
                 expect(page.locator('#huddleCounter')).to_have_text('1')
                 page.locator('#openHuddleBtn').click()
                 for button_id in BUTTONS:
@@ -277,12 +296,12 @@ def main():
                 clear.click()
                 empty_actions(page, f'clear/{width}')
                 check(page.evaluate('localStorage.getItem("xinzhi_huddle_ids")') == '[]', f'{width}: clearing persists')
-                page.reload(wait_until='load')
+                load_public_page(page)
                 page.locator('#openHuddleBtn').click()
                 empty_actions(page, f'reload/{width}')
                 page.locator('#closeHuddleModalBtn').click()
                 page.evaluate('localStorage.setItem("xinzhi_huddle_ids", JSON.stringify(["missing-public-id"]))')
-                page.reload(wait_until='load')
+                load_public_page(page)
                 page.locator('#openHuddleBtn').click()
                 # An unresolved saved ID stays listed (it may be an older radar paper) and can be removed.
                 missing = page.locator('.huddle-item-missing')

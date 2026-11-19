@@ -91,9 +91,43 @@
     '人工智能': ['artificial intelligence'], '机器学习': ['machine learning'], '深度学习': ['deep learning'], '预测模型': ['prediction model'],
     '随机对照': ['randomized', 'randomised'], '荟萃': ['meta-analysis'], '综述': ['review'], '指南': ['guideline'], '共识': ['consensus'],
     '心脏': ['cardiac', 'heart'], '血管': ['vascular'], '心血管': ['cardiovascular'], '血栓': ['thrombo'], '出血': ['bleeding', 'hemorrhage'],
-    '肥厚': ['hypertrophic'], '扩张型': ['dilated'], 'TAVR': ['transcatheter aortic'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
+    '肥厚': ['hypertrophic'], '扩张型': ['dilated'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
   };
-  const zhTerms = Object.keys(ZH_EN).sort((a,b) => b.length - a.length);
+  // Record the original keys before adding whole-word translations. New compounds
+  // can then widen a search while retaining matches from an older segmentation.
+  const zhTerms = ((legacy, additions) => ({
+    keys: Object.keys(Object.assign(ZH_EN, additions)).sort((a, b) => b.length - a.length), legacy
+  }))(new Set(Object.keys(ZH_EN)), {
+    '心包炎': ['pericarditis'], '心包': ['pericardium', 'pericardial', 'pericarditis'],
+    '主动脉夹层': ['aortic dissection', 'aortic dissections', 'dissection of the aorta'],
+    '动脉粥样硬化': ['atherosclerosis', 'atherosclerotic'], '心源性休克': ['cardiogenic shock'],
+    '房间隔缺损': ['atrial septal defect', 'atrial septal defects'], '卵圆孔未闭': ['patent foramen ovale'],
+    '晕厥': ['syncope', 'syncopal'], '长QT': ['long QT', 'QT prolongation', 'prolonged QT', 'LQTS'],
+    '希氏束起搏': ['His bundle pacing', 'His-bundle pacing'],
+    '左束支起搏': ['left bundle branch pacing', 'left bundle-branch pacing', 'left bundle branch area pacing'],
+    '传导阻滞': ['atrioventricular block', 'atrioventricular blocks', 'heart block', 'bundle branch block', 'conduction block'],
+    '心脏再同步': ['cardiac resynchronization therapy', 'cardiac resynchronisation therapy'],
+    '肌钙蛋白': ['troponin', 'troponins'], '利钠肽': ['natriuretic peptide', 'natriuretic peptides', 'NT-proBNP'],
+    '心脏移植': ['heart transplantation', 'heart transplant', 'heart transplants', 'cardiac transplantation'],
+    '睡眠呼吸暂停': ['sleep apnea', 'sleep apnoea'], '川崎病': ['Kawasaki disease', "Kawasaki's disease"],
+    '钙化积分': ['calcium score', 'calcium scoring', 'calcium scores', 'Agatston score'], '斑块': ['plaque', 'plaques'],
+    '肥胖': ['obesity', 'obese', 'adiposity'], '肾': ['renal', 'kidney', 'kidneys'],
+    '房早': ['premature atrial contraction', 'premature atrial contractions', 'atrial ectopy', 'atrial extrasystoles'],
+    '室早': ['premature ventricular contraction', 'premature ventricular contractions', 'ventricular ectopy', 'ventricular extrasystoles', 'PVCs'],
+    '心动过速': ['tachycardia', 'tachycardias'], '心动过缓': ['bradycardia', 'bradycardias'],
+    '冠脉CT': ['coronary computed tomography angiography', 'coronary CT angiography', 'coronary computed tomography', 'coronary CT'],
+    '心肌灌注': ['myocardial perfusion'], '胆固醇': ['cholesterol', 'hypercholesterolemia', 'hypercholesterolaemia'],
+    '炎症': ['inflammation', 'inflammatory'],
+    '肿瘤心脏病': ['cardio-oncology', 'cardiooncology', 'onco-cardiology'],
+    '妊娠': ['pregnancy', 'pregnant', 'gestational', 'preeclampsia', 'pre-eclampsia'],
+    '儿童': ['children', 'child', 'childhood', 'pediatric', 'paediatric', 'infant', 'infants', 'adolescent', 'adolescents'],
+    '老年': ['elderly', 'older adult', 'older adults', 'older patients', 'geriatric', 'geriatrics', 'octogenarians'],
+    '女性': ['women', 'woman', 'female', 'females'], '男性': ['men', 'man', 'male', 'males'],
+    '射血分数保留': ['heart failure with preserved ejection fraction'],
+    '射血分数降低': ['heart failure with reduced ejection fraction'],
+    '体外膜肺氧合': ['extracorporeal membrane oxygenation'],
+    '钠葡萄糖协同转运蛋白2': ['sodium-glucose cotransporter 2']
+  });
   const SEARCH_APOSTROPHES = /[\u2018\u2019\u201B\u02BC\u02B9\u2032\uFF07]/g;
   const SEARCH_QUOTES = /[\u201C\u201D\u201E\u201F\u2033\uFF02]/g;
   // 检索两侧都过它，题名/摘要里的弯引号与键盘直引号互认。
@@ -103,27 +137,109 @@
   // Segment adjacent Chinese terms: 房颤消融 and 房颤 消融 both mean AND.
   // The segmentation depends only on the query, so it is planned once per query string
   // (the filter calls this for every paper; re-segmenting per paper froze 14k-row searches).
-  function queryMatches(text, q) {
+  function queryMatches(text, q, explain = false) {
     const plans = queryMatches.plans || (queryMatches.plans = new Map());
     let plan = plans.get(q);
     if (!plan) {
-      plan = foldSearch(q).split(/\s+/).filter(Boolean).map(term => {
-        const groups = []; let rest = term;
-        while (rest) {
-          const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));
-          if (zh) { groups.push([zh.toLowerCase(), ...ZH_EN[zh].map(x=>x.toLowerCase())]); rest = rest.slice(zh.length); }
-          else {
-            const next = [...rest].findIndex((_,i) => i>0 && zhTerms.some(k=>rest.slice(i).startsWith(k.toLowerCase())));
-            const n = next > 0 ? next : rest.length;
-            groups.push([rest.slice(0,n)]); rest = rest.slice(n);
-          }
+      const escapePattern = value => foldSearch(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      const whole = value => new RegExp('\\b' + escapePattern(value) + '\\b');
+      const families = [
+        [['AF'], ['atrial fibrillation']],
+        [['HFpEF'], ['heart failure with preserved ejection fraction']],
+        [['HFrEF'], ['heart failure with reduced ejection fraction']],
+        [['TAVI', 'TAVR'], ['transcatheter aortic valve implantation', 'transcatheter aortic valve replacement']],
+        [['PCI'], ['percutaneous coronary intervention', 'percutaneous coronary interventions']],
+        [['CRT'], ['cardiac resynchronization therapy', 'cardiac resynchronisation therapy']],
+        [['LBBAP'], ['left bundle branch area pacing', 'left bundle branch-area pacing', 'left bundle-branch area pacing']],
+        [['HBP'], ['His bundle pacing', 'His-bundle pacing']],
+        [['SGLT2', 'SGLT2i'], ['sodium-glucose cotransporter 2', 'sodium glucose cotransporter 2', 'sodium-glucose co-transporter 2']],
+        [['ECMO'], ['extracorporeal membrane oxygenation']],
+        [['CCTA'], ['coronary computed tomography angiography', 'coronary CT angiography']],
+        [['PFO'], ['patent foramen ovale']],
+        [['ASD'], ['atrial septal defect', 'atrial septal defects']],
+        [['AVB'], ['atrioventricular block', 'atrioventricular blocks']],
+        [['LQTS'], ['long QT syndrome']],
+        [['NT-proBNP'], ['N-terminal pro-B-type natriuretic peptide']],
+        [['PVC', 'PVCs'], ['premature ventricular contraction', 'premature ventricular contractions']],
+        [['PAC', 'PACs'], ['premature atrial contraction', 'premature atrial contractions']]
+      ];
+      const aliases = new Map();
+      const phrases = new Map();
+      const forms = new Map();
+      for (const [short, long] of families) {
+        const variants = [...short, ...long];
+        const family = { variants, pattern: new RegExp('\\b(?:' + variants.map(escapePattern).join('|') + ')\\b') };
+        for (const name of variants) forms.set(foldSearch(name), variants);
+        for (const name of short) aliases.set(foldSearch(name), { name, ...family });
+        for (const name of long) {
+          const words = foldSearch(name).split(' ');
+          if (!phrases.has(words[0])) phrases.set(words[0], []);
+          phrases.get(words[0]).push({ name, words, ...family });
         }
-        return { term, groups };
-      });
+      }
+      const matches = (text, alternatives) => alternatives.some(a => typeof a === 'string' ? text.includes(a) : a.test(text));
+      const expansion = new Map();
+      const describe = (name, variants) => expansion.set(name, [...new Set(variants)].filter(v => v !== name));
+      const keys = zhTerms.keys.map(name => [name, foldSearch(name)]);
+      const legacyKeys = keys.filter(([name]) => zhTerms.legacy.has(name));
+      const segment = (term, terms) => {
+        const parts = [];
+        for (let start = 0; start < term.length;) {
+          const zh = terms.find(([, key]) => term.startsWith(key, start));
+          if (zh) { parts.push({ zh: zh[0], term: zh[1] }); start += zh[1].length; continue; }
+          let end = start + 1;
+          while (end < term.length && !terms.some(([, key]) => term.startsWith(key, end))) end++;
+          parts.push({ term: term.slice(start, end) });
+          start = end;
+        }
+        return parts;
+      };
+      const compile = ({ zh, term }, report) => {
+        if (zh) {
+          const translations = ZH_EN[zh];
+          const related = translations.flatMap(v => forms.get(foldSearch(v)) || []);
+          if (report) describe(zh, [...translations, ...related]);
+          const translated = zhTerms.legacy.has(zh) ? translations.map(foldSearch) : translations.map(whole);
+          return [term, ...translated, ...related.filter(v => !translations.includes(v)).map(whole)];
+        }
+        const alias = aliases.get(term);
+        if (!alias) return [term];
+        // TAVR previously expanded to this broader prefix, including e.g. valve-in-valve titles.
+        const legacy = term === 'tavr' ? ['transcatheter aortic'] : [];
+        if (report) describe(alias.name, [...alias.variants, ...legacy]);
+        return [alias.pattern, ...legacy];
+      };
+      const tests = [];
+      const words = foldSearch(q).split(/\s+/).filter(Boolean);
+      for (let i = 0; i < words.length;) {
+        const term = words[i];
+        const phrase = phrases.get(term)?.find(p => p.words.every((word, j) => word === words[i + j]));
+        if (phrase) {
+          describe(phrase.name, phrase.variants);
+          tests.push(text => phrase.words.every(word => text.includes(word)) || phrase.pattern.test(text));
+          i += phrase.words.length;
+          continue;
+        }
+        i++;
+        const parts = segment(term, keys);
+        const groups = parts.map(part => compile(part, true));
+        const shadowed = parts.some(part => part.zh && !zhTerms.legacy.has(part.zh) &&
+          legacyKeys.some(([, key]) => part.term.includes(key)));
+        if (parts.length === 1 && !shadowed) {
+          const [only] = groups;
+          tests.push(only.length === 1 && typeof only[0] === 'string' ? text => text.includes(term) : text => matches(text, only));
+          continue;
+        }
+        const previous = shadowed ? segment(term, legacyKeys).map(part => compile(part, false)) : null;
+        const hasAlias = parts.some(part => !part.zh && aliases.has(part.term));
+        tests.push(text => (!hasAlias && text.includes(term)) || groups.every(group => matches(text, group)) ||
+          (previous && previous.every(group => matches(text, group))));
+      }
+      plan = { tests, expansion: [...expansion] };
       if (plans.size > 50) plans.clear();
       plans.set(q, plan);
     }
-    return plan.every(({ term, groups }) => text.includes(term) || groups.every(alts=>alts.some(a=>text.includes(a))));
+    return explain ? plan.expansion : plan.tests.every(test => test(text));
   }
 
   // All papers indexed by ID
@@ -813,7 +929,6 @@
     SUPPLEMENTAL_LIBRARY.promise = run();
     return SUPPLEMENTAL_LIBRARY.promise;
   }
-
   // ==== src/app/00z-deferred-parts.js · Deferred data parts loader and in-place merger ====
   const DEFERRED = !!(window.XINZHI_PARTS && window.XINZHI_PARTS.parts);
   const PART_ORDER = DEFERRED ? Object.keys(window.XINZHI_PARTS.parts) : [];
@@ -1445,6 +1560,17 @@
   }
   function isCaseReport(p) { return (p && p.studyDesign) === '病例报告'; }
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
+  function readShortlistShareParam(params) {
+    const values = params.getAll('list');
+    return values.length === 0 ? null : values.length === 1 ? values[0] : '';
+  }
+  function clearShortlistShareUrl() {
+    try {
+      const url = new URL(location.href);
+      url.searchParams.delete('list');
+      history.replaceState(history.state, '', url.href);
+    } catch (e) { /* sandboxed history */ }
+  }
   function readStateFromUrl(search = window.location.search) {
     const params = new URLSearchParams(search);
     const rawMode = params.get('mode') || 'curated';
@@ -1492,6 +1618,7 @@
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
     mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
+    shortlistShare: readShortlistShareParam(urlParams),
     viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
     search: initialUrlState.search,
@@ -3113,6 +3240,11 @@
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
+      const expansion = queryMatches('', foldSearch(state.search.trim()), true);
+      if (expansion.length) {
+        const terms = expansion.map(([term, alternatives]) => `${term} → ${alternatives.join(' / ')}`).join('；');
+        chips += `<span class="filter-badge-active" role="status" data-search-expansion>已按 ${esc(terms)} 检索</span>`;
+      }
     }
     container.innerHTML = chips;
     if (typeof renderQfSummary === 'function') renderQfSummary();
@@ -3154,7 +3286,7 @@
       : state.mode === 'curated' ? '当前条件下没有精选，可清除筛选或查看文献雷达。' : '当前领域、时间、关键词与筛选条件下暂无匹配。';
     const heading = noFollowed ? '还没有关注期刊' : '没有找到匹配的文献';
     return `<div class="empty-state"><h3>${heading}</h3><p>${message}</p><div class="empty-filter-actions">${suggestions}
-      ${selections.length ? '<button type="button" class="btn-sm" data-clear="sidebar">清空左侧筛选</button>' : ''}
+      ${selections.length ? `<button type="button" class="btn-sm" data-clear="sidebar">${state.mode === 'candidates' ? '清除筛选' : '清空左侧筛选'}</button>` : ''}
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
@@ -4235,6 +4367,212 @@
     if (state.activeDrawerPaper?.id === paperId) openReaderDrawer(state.activeDrawerPaper);
   }
 
+  const SHORTLIST_SHARE_LIMIT = 60;
+  const SHORTLIST_SHARE_URL_LIMIT = 2000;
+  const SHORTLIST_SHARE_ID_LIMIT = 160;
+  const shortlistPaperParts = ['feeds', 'library', 'radar'];
+
+  function shortlistIdKey(id) {
+    if (typeof id !== 'string' || !id || id.length > SHORTLIST_SHARE_ID_LIMIT || /[^\x21-\x7e]/.test(id)) return '';
+    if (/^10\.\d{4,9}\/[a-z0-9._/%()+;:\-=]+$/i.test(id)) return id.toLowerCase();
+    const pmid = /^(?:pmid-)?([1-9]\d{0,9})$/i.exec(id);
+    if (pmid) return 'pmid-' + pmid[1];
+    return /^[a-z0-9][a-z0-9._-]*$/i.test(id) ? id : '';
+  }
+
+  function encodeShortlistShare(ids) {
+    return 'v1.' + btoa(ids.join('\n')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function decodeShortlistShare(value) {
+    const ids = [];
+    let ignored = false;
+    if (typeof value !== 'string' || value.length >= SHORTLIST_SHARE_URL_LIMIT || !value.startsWith('v1.')
+      || value.length === 3 || /[^a-z0-9_-]/i.test(value.slice(3))) {
+      return { ids, ignored: true };
+    }
+    let tokens;
+    try {
+      tokens = atob(value.slice(3).replace(/-/g, '+').replace(/_/g, '/')).split('\n');
+    } catch (e) {
+      return { ids, ignored: true };
+    }
+    const seen = new Set();
+    for (const id of tokens) {
+      const key = shortlistIdKey(id);
+      if (!key || seen.has(key) || ids.length >= SHORTLIST_SHARE_LIMIT) {
+        ignored = true;
+        continue;
+      }
+      ids.push(id);
+      seen.add(key);
+    }
+    return { ids, ignored };
+  }
+
+  function buildShortlistShareUrl(pageUrl, ids) {
+    const url = new URL(pageUrl);
+    // Start from the page itself. Filters, request parameters, and reader state stay in this browser.
+    url.search = '';
+    url.hash = '';
+    const accepted = [];
+    const seen = new Set();
+    let limited = false;
+    for (const id of ids) {
+      const key = shortlistIdKey(id);
+      if (!key || seen.has(key)) continue;
+      url.searchParams.set('list', encodeShortlistShare([...accepted, id]));
+      if (accepted.length >= SHORTLIST_SHARE_LIMIT || url.href.length >= SHORTLIST_SHARE_URL_LIMIT) {
+        limited = true;
+        break;
+      }
+      accepted.push(id);
+      seen.add(key);
+    }
+    if (!accepted.length) return { href: '', count: 0, limited };
+    url.searchParams.set('list', encodeShortlistShare(accepted));
+    return { href: url.href, count: accepted.length, limited };
+  }
+
+  function publicShortlistPapers(ids) {
+    const wanted = new Set(ids.map(shortlistIdKey).filter(Boolean));
+    const matches = new Map();
+    const aliases = new Map();
+    if (!wanted.size) return [];
+    // Static published records include deferred parts and the radar archive once loaded.
+    // The broader drawer index also includes supplemental lookups and is unsuitable here.
+    for (const paper of STATIC_DOI_PAPERS) {
+      const key = shortlistIdKey(paper.id);
+      if (!key) continue;
+      if (wanted.has(key) && !matches.has(key)) matches.set(key, paper);
+      const doi = exactDoi(paper.doi);
+      const pmid = paper.pmid ? 'pmid-' + paper.pmid : '';
+      for (const alias of [doi, pmid]) {
+        if (wanted.has(alias) && !aliases.has(alias)) aliases.set(alias, paper);
+      }
+    }
+    return ids.map(id => {
+      const key = shortlistIdKey(id);
+      return matches.get(key) || aliases.get(key);
+    });
+  }
+
+  function shareableHuddleIds(ids) {
+    const papers = publicShortlistPapers(ids);
+    // Use the canonical public record ID even if a saved selection used an alias.
+    return [...new Set(papers.filter(Boolean).map(paper => paper.id))];
+  }
+
+  async function copyShortlistShare() {
+    const button = $('#copyShortlistShareBtn');
+    const field = $('#shortlistShareCopyField');
+    const notice = $('#shortlistShareCopyNotice');
+    field.hidden = true;
+    const publicIds = shareableHuddleIds(state.huddle);
+    const omitted = new Set(state.huddle).size - publicIds.length;
+    if (omitted && (partsPending(...shortlistPaperParts) || RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle')) {
+      loadRadarArchive();
+      notice.textContent = '正在查找可分享的公开题录，请稍后再复制。';
+      return;
+    }
+    const link = buildShortlistShareUrl(location.href, publicIds);
+    if (!link.href) {
+      notice.textContent = '清单中没有可通过链接分享的公开题录。';
+      return;
+    }
+    const messages = [];
+    if (link.limited) messages.push(`链接长度或篇数已达上限，可分享前 ${link.count} 篇公开题录。`);
+    if (omitted) messages.push('已略过未匹配到公开题录或重复的条目。');
+    notice.textContent = messages.join('');
+    if (link.limited && button.dataset.sharePrefix !== link.href) {
+      button.dataset.sharePrefix = link.href;
+      button.textContent = `复制前 ${link.count} 篇的链接`;
+      return;
+    }
+    delete button.dataset.sharePrefix;
+    button.textContent = '复制分享链接';
+    const input = $('#shortlistShareCopyUrl');
+    const copied = navigator.clipboard?.writeText && await copyToClipboard(link.href, '已复制分享链接');
+    if (!copied && $('#huddleModalBackdrop.open')) {
+      field.hidden = false;
+      input.value = link.href;
+      input.focus();
+      input.select();
+    }
+  }
+
+  let renderedShortlistShare = null;
+  let sharedShortlistIds = [];
+  function renderSharedShortlist() {
+    const view = $('#sharedShortlist');
+    if (!view) return;
+    const value = state.shortlistShare;
+    view.hidden = value === null;
+    if (view.hidden) {
+      renderedShortlistShare = null;
+      sharedShortlistIds = [];
+      $('#sharedShortlistRows').replaceChildren();
+      return;
+    }
+    if (value === renderedShortlistShare) return;
+    const { ids, ignored } = decodeShortlistShare(value);
+    const pending = ids.length > 0 && partsPending(...shortlistPaperParts);
+    const matches = pending ? [] : publicShortlistPapers(ids);
+    const missing = ids.filter((id, index) => !matches[index]);
+    if (!pending && missing.length) loadRadarArchive();
+    const loading = pending || (missing.length > 0 && RADAR_LOAD.state === 'loading');
+    const failed = !partsReady(...shortlistPaperParts) || RADAR_LOAD.state === 'error';
+    const papers = new Map();
+    if (!loading) {
+      for (const paper of matches) if (paper && !papers.has(paper.id)) papers.set(paper.id, paper);
+    }
+    sharedShortlistIds = [...papers.keys()];
+    const count = loading ? ids.length : sharedShortlistIds.length;
+    $('#sharedShortlistTitle').textContent = `正在查看分享的清单（${count} 篇）`;
+    $('#mergeSharedShortlistBtn').disabled = sharedShortlistIds.length === 0;
+    const messages = [];
+    const duplicateMatches = !loading && matches.length - missing.length > papers.size;
+    if (ignored || duplicateMatches) messages.push('已忽略无效、重复或超出限制的分享条目。');
+    if (loading) messages.push('正在查找公开题录…');
+    $('#sharedShortlistNotice').textContent = messages.join('');
+    const missingGroup = $('#sharedShortlistMissing');
+    missingGroup.hidden = loading || !missing.length;
+    missingGroup.open = false;
+    $('#sharedShortlistMissingLabel').textContent = failed
+      ? `${missing.length} 篇暂无法确认（部分题录加载失败，请刷新重试）`
+      : `${missing.length} 篇在本站未找到`;
+    $('#sharedShortlistMissingIds').textContent = missing.join('\n');
+    if (loading) {
+      $('#sharedShortlistRows').replaceChildren();
+      return;
+    }
+    const rows = document.createElement('template');
+    rows.innerHTML = [...papers.values()].map(renderCompactRow).join('');
+    rows.content.querySelectorAll('.card-side-actions, .ft-status, .fulltext-state').forEach(node => node.remove());
+    rows.content.querySelectorAll('button.topic-badge').forEach(button => {
+      const badge = document.createElement('span');
+      badge.className = button.className;
+      badge.textContent = button.textContent;
+      button.replaceWith(badge);
+    });
+    $('#sharedShortlistRows').replaceChildren(rows.content);
+    renderedShortlistShare = value;
+  }
+
+  function mergeSharedShortlist() {
+    const existing = new Set([...state.huddle, ...shareableHuddleIds(state.huddle)]);
+    const added = sharedShortlistIds.filter(id => !existing.has(id));
+    if (!added.length) {
+      showToast('这些文献已在你的精选清单中');
+      return;
+    }
+    state.huddle.push(...added);
+    updateHuddleCounter();
+    renderStream();
+    if (state.mode === 'weekly') renderWeeklyAuto();
+    showToast(`已加入 ${added.length} 篇到你的精选清单`);
+  }
+
   let huddleLastFocus=null;
   function openHuddleModal() {
     const modal = $('#huddleModalBackdrop');
@@ -4245,6 +4583,8 @@
 
     const list = huddlePapers();
     const missing = state.huddle.filter(id => !huddlePaper(id));
+    const shareButton = $('#copyShortlistShareBtn');
+    if (shareButton) shareButton.disabled = state.huddle.length === 0;
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
     if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
@@ -4305,7 +4645,16 @@
     window.CITATION_EXPORT?.mount(body, list, { formatter: buildCitations, copy: copyToClipboard, today: beijingToday });
 
     const newlyOpened = !modal.classList.contains('open');
-    if(newlyOpened) { huddleLastFocus=document.activeElement; pushOverlay('huddle'); }
+    if(newlyOpened) {
+      if (shareButton) {
+        delete shareButton.dataset.sharePrefix;
+        shareButton.textContent = '复制分享链接';
+        $('#shortlistShareCopyField').hidden = true;
+        $('#shortlistShareCopyNotice').textContent = '';
+      }
+      huddleLastFocus=document.activeElement;
+      pushOverlay('huddle');
+    }
     modal.classList.add('open'); document.body.classList.add('dialog-open');
     if(newlyOpened) $('#closeHuddleModalBtn')?.focus({preventScroll:true});
     else if (focusAction) {
@@ -4505,7 +4854,6 @@
     requestsLastFocus?.focus({ preventScroll: true });
     requestsLastFocus = null;
   }
-
   // ==== src/app/08-sources-mode.js · Source health page and mode switching ====
   // Render Sources Health Grid
   function sourceHealthDetails(s) {
@@ -6808,6 +7156,8 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    state.shortlistShare = readShortlistShareParam(new URLSearchParams(location.search));
+    renderSharedShortlist();
     const wasReading = !!$('#readerDrawer.reading-mode');
     if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
@@ -6886,6 +7236,15 @@
   });
   $('#exportHuddleMdBtn')?.addEventListener('click', exportHuddleMarkdown);
   $('#copyHuddleSummaryBtn')?.addEventListener('click', copyHuddleSummary);
+  $('#copyShortlistShareBtn')?.addEventListener('click', copyShortlistShare);
+  $('#mergeSharedShortlistBtn')?.addEventListener('click', mergeSharedShortlist);
+  $('#closeSharedShortlistBtn')?.addEventListener('click', () => {
+    clearShortlistShareUrl();
+    state.shortlistShare = null;
+    renderSharedShortlist();
+    ($('.nav-tab-btn.active') || $('#sourceStatusBtn'))?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0 });
+  });
   // Clearing the whole shortlist asks once more: the first tap arms the button, the second one clears.
   let clearArmTimer = null;
   $('#clearHuddleBtn')?.addEventListener('click', e => {
@@ -6961,6 +7320,13 @@
     if (list.length > 0) openReaderDrawer(list[0]);
   }
   if (DEFERRED) startDeferredParts();
+  // Like the reading link, wait until the deferred loader has processed script settlement.
+  for (const type of ['load', 'error']) {
+    document.addEventListener(type, event => {
+      if (state.shortlistShare !== null && event.target.tagName === 'SCRIPT') requestAnimationFrame(renderSharedShortlist);
+    }, true);
+  }
+  renderSharedShortlist();
   initReadingMode();
 
 })();

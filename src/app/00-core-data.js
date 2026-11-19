@@ -91,9 +91,43 @@
     '人工智能': ['artificial intelligence'], '机器学习': ['machine learning'], '深度学习': ['deep learning'], '预测模型': ['prediction model'],
     '随机对照': ['randomized', 'randomised'], '荟萃': ['meta-analysis'], '综述': ['review'], '指南': ['guideline'], '共识': ['consensus'],
     '心脏': ['cardiac', 'heart'], '血管': ['vascular'], '心血管': ['cardiovascular'], '血栓': ['thrombo'], '出血': ['bleeding', 'hemorrhage'],
-    '肥厚': ['hypertrophic'], '扩张型': ['dilated'], 'TAVR': ['transcatheter aortic'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
+    '肥厚': ['hypertrophic'], '扩张型': ['dilated'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
   };
-  const zhTerms = Object.keys(ZH_EN).sort((a,b) => b.length - a.length);
+  // Record the original keys before adding whole-word translations. New compounds
+  // can then widen a search while retaining matches from an older segmentation.
+  const zhTerms = ((legacy, additions) => ({
+    keys: Object.keys(Object.assign(ZH_EN, additions)).sort((a, b) => b.length - a.length), legacy
+  }))(new Set(Object.keys(ZH_EN)), {
+    '心包炎': ['pericarditis'], '心包': ['pericardium', 'pericardial', 'pericarditis'],
+    '主动脉夹层': ['aortic dissection', 'aortic dissections', 'dissection of the aorta'],
+    '动脉粥样硬化': ['atherosclerosis', 'atherosclerotic'], '心源性休克': ['cardiogenic shock'],
+    '房间隔缺损': ['atrial septal defect', 'atrial septal defects'], '卵圆孔未闭': ['patent foramen ovale'],
+    '晕厥': ['syncope', 'syncopal'], '长QT': ['long QT', 'QT prolongation', 'prolonged QT', 'LQTS'],
+    '希氏束起搏': ['His bundle pacing', 'His-bundle pacing'],
+    '左束支起搏': ['left bundle branch pacing', 'left bundle-branch pacing', 'left bundle branch area pacing'],
+    '传导阻滞': ['atrioventricular block', 'atrioventricular blocks', 'heart block', 'bundle branch block', 'conduction block'],
+    '心脏再同步': ['cardiac resynchronization therapy', 'cardiac resynchronisation therapy'],
+    '肌钙蛋白': ['troponin', 'troponins'], '利钠肽': ['natriuretic peptide', 'natriuretic peptides', 'NT-proBNP'],
+    '心脏移植': ['heart transplantation', 'heart transplant', 'heart transplants', 'cardiac transplantation'],
+    '睡眠呼吸暂停': ['sleep apnea', 'sleep apnoea'], '川崎病': ['Kawasaki disease', "Kawasaki's disease"],
+    '钙化积分': ['calcium score', 'calcium scoring', 'calcium scores', 'Agatston score'], '斑块': ['plaque', 'plaques'],
+    '肥胖': ['obesity', 'obese', 'adiposity'], '肾': ['renal', 'kidney', 'kidneys'],
+    '房早': ['premature atrial contraction', 'premature atrial contractions', 'atrial ectopy', 'atrial extrasystoles'],
+    '室早': ['premature ventricular contraction', 'premature ventricular contractions', 'ventricular ectopy', 'ventricular extrasystoles', 'PVCs'],
+    '心动过速': ['tachycardia', 'tachycardias'], '心动过缓': ['bradycardia', 'bradycardias'],
+    '冠脉CT': ['coronary computed tomography angiography', 'coronary CT angiography', 'coronary computed tomography', 'coronary CT'],
+    '心肌灌注': ['myocardial perfusion'], '胆固醇': ['cholesterol', 'hypercholesterolemia', 'hypercholesterolaemia'],
+    '炎症': ['inflammation', 'inflammatory'],
+    '肿瘤心脏病': ['cardio-oncology', 'cardiooncology', 'onco-cardiology'],
+    '妊娠': ['pregnancy', 'pregnant', 'gestational', 'preeclampsia', 'pre-eclampsia'],
+    '儿童': ['children', 'child', 'childhood', 'pediatric', 'paediatric', 'infant', 'infants', 'adolescent', 'adolescents'],
+    '老年': ['elderly', 'older adult', 'older adults', 'older patients', 'geriatric', 'geriatrics', 'octogenarians'],
+    '女性': ['women', 'woman', 'female', 'females'], '男性': ['men', 'man', 'male', 'males'],
+    '射血分数保留': ['heart failure with preserved ejection fraction'],
+    '射血分数降低': ['heart failure with reduced ejection fraction'],
+    '体外膜肺氧合': ['extracorporeal membrane oxygenation'],
+    '钠葡萄糖协同转运蛋白2': ['sodium-glucose cotransporter 2']
+  });
   const SEARCH_APOSTROPHES = /[\u2018\u2019\u201B\u02BC\u02B9\u2032\uFF07]/g;
   const SEARCH_QUOTES = /[\u201C\u201D\u201E\u201F\u2033\uFF02]/g;
   // 检索两侧都过它，题名/摘要里的弯引号与键盘直引号互认。
@@ -103,27 +137,109 @@
   // Segment adjacent Chinese terms: 房颤消融 and 房颤 消融 both mean AND.
   // The segmentation depends only on the query, so it is planned once per query string
   // (the filter calls this for every paper; re-segmenting per paper froze 14k-row searches).
-  function queryMatches(text, q) {
+  function queryMatches(text, q, explain = false) {
     const plans = queryMatches.plans || (queryMatches.plans = new Map());
     let plan = plans.get(q);
     if (!plan) {
-      plan = foldSearch(q).split(/\s+/).filter(Boolean).map(term => {
-        const groups = []; let rest = term;
-        while (rest) {
-          const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));
-          if (zh) { groups.push([zh.toLowerCase(), ...ZH_EN[zh].map(x=>x.toLowerCase())]); rest = rest.slice(zh.length); }
-          else {
-            const next = [...rest].findIndex((_,i) => i>0 && zhTerms.some(k=>rest.slice(i).startsWith(k.toLowerCase())));
-            const n = next > 0 ? next : rest.length;
-            groups.push([rest.slice(0,n)]); rest = rest.slice(n);
-          }
+      const escapePattern = value => foldSearch(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      const whole = value => new RegExp('\\b' + escapePattern(value) + '\\b');
+      const families = [
+        [['AF'], ['atrial fibrillation']],
+        [['HFpEF'], ['heart failure with preserved ejection fraction']],
+        [['HFrEF'], ['heart failure with reduced ejection fraction']],
+        [['TAVI', 'TAVR'], ['transcatheter aortic valve implantation', 'transcatheter aortic valve replacement']],
+        [['PCI'], ['percutaneous coronary intervention', 'percutaneous coronary interventions']],
+        [['CRT'], ['cardiac resynchronization therapy', 'cardiac resynchronisation therapy']],
+        [['LBBAP'], ['left bundle branch area pacing', 'left bundle branch-area pacing', 'left bundle-branch area pacing']],
+        [['HBP'], ['His bundle pacing', 'His-bundle pacing']],
+        [['SGLT2', 'SGLT2i'], ['sodium-glucose cotransporter 2', 'sodium glucose cotransporter 2', 'sodium-glucose co-transporter 2']],
+        [['ECMO'], ['extracorporeal membrane oxygenation']],
+        [['CCTA'], ['coronary computed tomography angiography', 'coronary CT angiography']],
+        [['PFO'], ['patent foramen ovale']],
+        [['ASD'], ['atrial septal defect', 'atrial septal defects']],
+        [['AVB'], ['atrioventricular block', 'atrioventricular blocks']],
+        [['LQTS'], ['long QT syndrome']],
+        [['NT-proBNP'], ['N-terminal pro-B-type natriuretic peptide']],
+        [['PVC', 'PVCs'], ['premature ventricular contraction', 'premature ventricular contractions']],
+        [['PAC', 'PACs'], ['premature atrial contraction', 'premature atrial contractions']]
+      ];
+      const aliases = new Map();
+      const phrases = new Map();
+      const forms = new Map();
+      for (const [short, long] of families) {
+        const variants = [...short, ...long];
+        const family = { variants, pattern: new RegExp('\\b(?:' + variants.map(escapePattern).join('|') + ')\\b') };
+        for (const name of variants) forms.set(foldSearch(name), variants);
+        for (const name of short) aliases.set(foldSearch(name), { name, ...family });
+        for (const name of long) {
+          const words = foldSearch(name).split(' ');
+          if (!phrases.has(words[0])) phrases.set(words[0], []);
+          phrases.get(words[0]).push({ name, words, ...family });
         }
-        return { term, groups };
-      });
+      }
+      const matches = (text, alternatives) => alternatives.some(a => typeof a === 'string' ? text.includes(a) : a.test(text));
+      const expansion = new Map();
+      const describe = (name, variants) => expansion.set(name, [...new Set(variants)].filter(v => v !== name));
+      const keys = zhTerms.keys.map(name => [name, foldSearch(name)]);
+      const legacyKeys = keys.filter(([name]) => zhTerms.legacy.has(name));
+      const segment = (term, terms) => {
+        const parts = [];
+        for (let start = 0; start < term.length;) {
+          const zh = terms.find(([, key]) => term.startsWith(key, start));
+          if (zh) { parts.push({ zh: zh[0], term: zh[1] }); start += zh[1].length; continue; }
+          let end = start + 1;
+          while (end < term.length && !terms.some(([, key]) => term.startsWith(key, end))) end++;
+          parts.push({ term: term.slice(start, end) });
+          start = end;
+        }
+        return parts;
+      };
+      const compile = ({ zh, term }, report) => {
+        if (zh) {
+          const translations = ZH_EN[zh];
+          const related = translations.flatMap(v => forms.get(foldSearch(v)) || []);
+          if (report) describe(zh, [...translations, ...related]);
+          const translated = zhTerms.legacy.has(zh) ? translations.map(foldSearch) : translations.map(whole);
+          return [term, ...translated, ...related.filter(v => !translations.includes(v)).map(whole)];
+        }
+        const alias = aliases.get(term);
+        if (!alias) return [term];
+        // TAVR previously expanded to this broader prefix, including e.g. valve-in-valve titles.
+        const legacy = term === 'tavr' ? ['transcatheter aortic'] : [];
+        if (report) describe(alias.name, [...alias.variants, ...legacy]);
+        return [alias.pattern, ...legacy];
+      };
+      const tests = [];
+      const words = foldSearch(q).split(/\s+/).filter(Boolean);
+      for (let i = 0; i < words.length;) {
+        const term = words[i];
+        const phrase = phrases.get(term)?.find(p => p.words.every((word, j) => word === words[i + j]));
+        if (phrase) {
+          describe(phrase.name, phrase.variants);
+          tests.push(text => phrase.words.every(word => text.includes(word)) || phrase.pattern.test(text));
+          i += phrase.words.length;
+          continue;
+        }
+        i++;
+        const parts = segment(term, keys);
+        const groups = parts.map(part => compile(part, true));
+        const shadowed = parts.some(part => part.zh && !zhTerms.legacy.has(part.zh) &&
+          legacyKeys.some(([, key]) => part.term.includes(key)));
+        if (parts.length === 1 && !shadowed) {
+          const [only] = groups;
+          tests.push(only.length === 1 && typeof only[0] === 'string' ? text => text.includes(term) : text => matches(text, only));
+          continue;
+        }
+        const previous = shadowed ? segment(term, legacyKeys).map(part => compile(part, false)) : null;
+        const hasAlias = parts.some(part => !part.zh && aliases.has(part.term));
+        tests.push(text => (!hasAlias && text.includes(term)) || groups.every(group => matches(text, group)) ||
+          (previous && previous.every(group => matches(text, group))));
+      }
+      plan = { tests, expansion: [...expansion] };
       if (plans.size > 50) plans.clear();
       plans.set(q, plan);
     }
-    return plan.every(({ term, groups }) => text.includes(term) || groups.every(alts=>alts.some(a=>text.includes(a))));
+    return explain ? plan.expansion : plan.tests.every(test => test(text));
   }
 
   // All papers indexed by ID
@@ -813,4 +929,3 @@
     SUPPLEMENTAL_LIBRARY.promise = run();
     return SUPPLEMENTAL_LIBRARY.promise;
   }
-

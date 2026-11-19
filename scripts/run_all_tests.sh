@@ -64,6 +64,7 @@ sys.exit(not unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful())
 PY
 fi
 run "service-unittest" python3 -m unittest discover -s service/tests -t .
+run "smoke-live-offline" python3 scripts/test_smoke_live.py
 
 # Browser-driven Node tests (need Playwright + Chromium).
 NODE_BROWSER="test_boot_url_ui test_citation_export_ui test_deep_reader_history_ui test_doi_direct_download test_doi_library_ui test_doi_radar_archive_ui test_download_inline_ui test_filter_panel_toggle_ui test_fulltext_resilience_ui test_doi_miss_form_persist_ui test_grok_fulltext test_mode_toolrow_ui test_popstate_restore_ui test_range_bar_ui test_topics_requests_ui test_ux_ce5de25_ui test_mobile_chipbar"
@@ -79,6 +80,7 @@ for f in scripts/test_*.cjs; do
   esac
   run "$name" node "$f"
 done
+# test_shortlist_share.cjs runs via the Node discovery loop.
 
 echo "== First-screen budget"
 if [ -f public/index.html ] && [ -d public/assets ]; then
@@ -98,6 +100,7 @@ if [ "$BROWSER" = 1 ]; then
   run "test_long_titles_ui" python3 scripts/test_long_titles_ui.py
   run "test_topic_multitag_ui" python3 scripts/test_topic_multitag_ui.py
   run "test_radar_filter_followup_ui" python3 scripts/test_radar_filter_followup_ui.py
+  run "test_search_zh_expansion_ui" python3 scripts/test_search_zh_expansion_ui.py
   echo "== Browser tests (Python + Playwright)"
   if [ ! -f public/index.html ] || [ ! -d public/assets ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"
@@ -108,6 +111,7 @@ if [ "$BROWSER" = 1 ]; then
                 test_search_shortlist_ui test_search_toggle_ui test_sidebar_focus_trap_ui test_sol_gap_reader test_weekly_ui test_list_actions_ui; do
       run "$name" python3 "scripts/$name.py"
     done
+    run "test_shortlist_share_ui" python3 scripts/test_shortlist_share_ui.py
   fi
 fi
 
