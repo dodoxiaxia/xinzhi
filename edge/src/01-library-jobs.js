@@ -45,8 +45,8 @@ function libraryText(value, limit = 800) {
   const text = stripTags(value).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
   return text.length <= limit && !/(?:\/(?:Users|home|workspace|tmp)\/|file:\/\/|\.local\/|\b(?:ghp_|github_pat_)|\bbearer\s+\S+)/i.test(text) ? text : '';
 }
-// external_bibliography_checked: the record's title came from an official lookup (Crossref). registration_title_only: a
-// machine registration whose Crossref lookup failed, so the title is the submitted (RSS) one. A record without a known
+// external_bibliography_checked: the record's title came from an official DOI lookup. registration_title_only: a
+// machine registration whose lookup failed, so the title is the submitted (RSS) one. A record without a known
 // value keeps the old report, because every writer before registration_title_only existed stored the checked value.
 const LIBRARY_METADATA_STATUSES = ['external_bibliography_checked','registration_title_only'];
 function libraryPaper(record, expectedDoi = '') {
@@ -194,7 +194,7 @@ function librarySafeUrl(value, pdf = false) {
   let url; try { url = new URL(value); } catch { libraryFail('library_identity', 409); }
   const host = url.hostname.toLowerCase();
   if (url.protocol !== 'https:' || url.port || url.username || url.password || url.hash || host.includes(':') || /^\d+(?:\.\d+)*$/.test(host) || !host.includes('.') || /(?:^|\.)(?:localhost|local|internal|invalid|test|lan|home|onion)$/.test(host)) libraryFail('library_identity', 409);
-  if (pdf ? !LIBRARY_PDF_HOSTS.some(trusted => host === trusted || host.endsWith('.' + trusted)) : !['api.crossref.org','api.openalex.org','api.unpaywall.org'].includes(host)) libraryFail('library_identity', 409);
+  if (pdf ? !LIBRARY_PDF_HOSTS.some(trusted => host === trusted || host.endsWith('.' + trusted)) : !['api.crossref.org','api.datacite.org','api.openalex.org','api.unpaywall.org'].includes(host)) libraryFail('library_identity', 409);
   return url;
 }
 async function libraryRead(value, context, pdf = false) {
@@ -251,19 +251,43 @@ async function libraryRead(value, context, pdf = false) {
     throw pdfAttachDiagnostic(failure,diagnostic);
   } finally { clearTimeout(timer); context.signal.removeEventListener('abort', abort); controller.abort(); }
 }
+const LIBRARY_UNKNOWN_PUBLICATION = { date:'', datePrecision:'', dateBasis:'发表日期未知' };
+function libraryPublicationDate(parts, dateBasis) {
+  if (!Array.isArray(parts) || !parts.length || parts.length > 3 || parts.some(n => !Number.isInteger(n))) return null;
+  const [year, month, day] = parts;
+  if (year < 1600 || year > 2200 || (month !== undefined && (month < 1 || month > 12)) || (day !== undefined && (day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()))) return null;
+  return { date:parts.map((n, i) => String(n).padStart(i ? 2 : 4, '0')).join('-'), datePrecision:['year','month','day'][parts.length - 1], dateBasis };
+}
 function libraryPublication(message) {
   for (const [field, label] of [['published-online','Crossref published-online'],['published-print','Crossref published-print'],['published','Crossref published']]) {
-    const parts = message[field] && message[field]['date-parts'] && message[field]['date-parts'][0];
-    if (!Array.isArray(parts) || !parts.length || parts.length > 3 || parts.some(n => !Number.isInteger(n))) continue;
-    const [year, month, day] = parts;
-    if (year < 1600 || year > 2200 || (month !== undefined && (month < 1 || month > 12)) || (day !== undefined && (day < 1 || day > new Date(Date.UTC(year, month, 0)).getUTCDate()))) continue;
-    return { date:parts.map((n, i) => String(n).padStart(i ? 2 : 4, '0')).join('-'), datePrecision:['year','month','day'][parts.length - 1], dateBasis:label };
+    const publication = libraryPublicationDate(message[field]?.['date-parts']?.[0], label);
+    if (publication) return publication;
   }
-  return { date:'', datePrecision:'', dateBasis:'发表日期未知' };
+  return LIBRARY_UNKNOWN_PUBLICATION;
 }
-async function libraryMetadata(doi, context) {
-  delete context.crossrefPdfSource; // Source links are request-local and cannot survive a new DOI lookup.
-  const payload = await libraryRead('https://api.crossref.org/works/' + encodeURIComponent(doi), context);
+function libraryDatacitePublication(attributes) {
+  for (const entry of Array.isArray(attributes.dates) ? attributes.dates : []) {
+    if (entry?.dateType !== 'Issued' || typeof entry.date !== 'string' || !/^\d{4}(?:-\d{2}){0,2}$/.test(entry.date)) continue;
+    const publication = libraryPublicationDate(entry.date.split('-').map(Number), 'DataCite Issued');
+    if (publication) return publication;
+  }
+  return libraryPublicationDate([attributes.publicationYear], 'DataCite publicationYear') || LIBRARY_UNKNOWN_PUBLICATION;
+}
+function libraryDataciteBibliography(payload, doi, context) {
+  const attributes = payload?.data?.attributes;
+  const titles = Array.isArray(attributes?.titles) ? attributes.titles : [];
+  const title = libraryText((titles.find(entry => entry && !entry.titleType) || titles[0])?.title);
+  if (context.diagnostic) context.diagnostic.reason = 'identity';
+  if (!attributes || libraryDoi(attributes.doi) !== doi || !title) libraryFail('library_identity', 409);
+  const publisher = typeof attributes.publisher === 'string' ? attributes.publisher : attributes.publisher?.name;
+  const authors = (Array.isArray(attributes.creators) ? attributes.creators : []).slice(0, 30).map(creator => {
+    const given = libraryText(creator?.givenName, 200), family = libraryText(creator?.familyName, 200);
+    return libraryText(given && family ? given + ' ' + family : creator?.name || given || family, 200);
+  }).filter(Boolean);
+  return { title, titleSource:'datacite', journal:libraryText(attributes.container?.title, 300) || libraryText(publisher, 300),
+    authors, ...libraryDatacitePublication(attributes) };
+}
+function libraryCrossrefBibliography(payload, doi, context) {
   const message = payload && payload.message;
   if (context.diagnostic) context.diagnostic.reason = 'identity';
   if (!message || libraryDoi(message.DOI) !== doi || !Array.isArray(message.title) || !libraryText(message.title[0])) libraryFail('library_identity', 409);
@@ -274,10 +298,23 @@ async function libraryMetadata(doi, context) {
     if (urls.size === 3) break;
   }
   if (urls.size) context.crossrefPdfSource = { doi, urls:[...urls] };
-  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]),
+  return { title:libraryText(message.title[0]),
     journal:libraryText(Array.isArray(message['container-title']) ? message['container-title'][0] : '', 300),
     authors:(Array.isArray(message.author) ? message.author : []).slice(0, 30).map(author => libraryText([author && author.given, author && author.family].filter(Boolean).join(' '), 200)).filter(Boolean),
-    url:'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/'), ...libraryPublication(message), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
+    ...libraryPublication(message) };
+}
+async function libraryMetadata(doi, context) {
+  delete context.crossrefPdfSource; // Source links are request-local and cannot survive a new DOI lookup.
+  const encoded = encodeURIComponent(doi);
+  let crossref, bibliography;
+  try { crossref = await libraryRead('https://api.crossref.org/works/' + encoded, context); }
+  catch (error) {
+    if (error.status !== 404 || error.code !== 'library_metadata_unavailable') throw error;
+    bibliography = libraryDataciteBibliography(await libraryRead('https://api.datacite.org/dois/' + encoded, context), doi, context);
+  }
+  bibliography ||= libraryCrossrefBibliography(crossref, doi, context);
+  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, ...bibliography,
+    url:'https://doi.org/' + encoded.replace(/%2F/gi, '/'), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
 }
 function libraryValidatePdf(bytes) {
   if (!(bytes instanceof Uint8Array) || bytes.length < 8 || bytes.length > LIBRARY_MAX_PDF_BYTES || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-' || !/%%EOF\s*$/.test(new TextDecoder().decode(bytes.slice(-1024)))) libraryFail('library_identity', 409);
