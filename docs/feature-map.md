@@ -150,6 +150,7 @@
 | candidates-topic-badge | 文章主题徽标 | `#articlesStream .topic-badge` | toggle | conditional · mobile/tablet/desktop · 列表显示带主题的文章 | 是 |
 | candidates-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-summary-clear | 清除筛选（保留关键词） | `[data-qf-clear="all"]` | button | conditional · mobile/tablet/desktop · 雷达存在活动筛选条件 | 是 |
 | candidates-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-scope-crossai | 心血管×AI | `[data-qf-lane="crossai"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-scope-cardio | 心血管 | `[data-qf-lane="cardio"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -186,6 +187,7 @@
 - **candidates-card**：`[]`；重复卡片检查首张；随数据更新
 - **candidates-reset-empty**：`[{"goto":"/?mode=candidates&q=feature-map-no-match-zzzz"}]`
 - **candidates-topic-badge**：`[{"goto":"/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}]`；与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示
+- **candidates-summary-clear**：`[{"goto":"/?mode=candidates&lane=all"}]`；恢复默认筛选，保留搜索框关键词
 - **candidates-scope-core**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-crossai**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-cardio**：`[{"click":"#qfScopeBtn"}]`

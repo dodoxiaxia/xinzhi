@@ -5213,6 +5213,10 @@
     if (state.mode === 'sources') return [];
     return getCurrentDataset();
   }
+  function radarSourceFacetPapers() {
+    // A journal or publisher pick replaces the current source facet.
+    return qfPapers().filter(p => matchesFilters(p, false, 'pub'));
+  }
   function matchesQuickFilters(p) {
     if (state.favoritesOnly && !state.favoriteJournals.includes(p.cleanJournal || p.journal || '')) return false;
     if (state.excludeCaseReports && isCaseReport(p)) return false;
@@ -5541,10 +5545,11 @@
     if (state.mode === 'library' && state.ftFilter) bits.push(item('全文状态', 'ft'));
     if (usesLane() && state.lane !== 'core') bits.push(item((LANES.find(l => l.id === state.lane) || {}).short || '领域', 'lane'));
     if (usesLane() && state.range !== defaultRange(state.mode)) bits.push(item(state.range === 'all' ? '全部时间' : ('近 ' + state.range + ' 天'), 'range'));
+    const clearLabel = state.mode === 'candidates' ? '清除筛选（保留关键词）' : '清除';
     el.hidden = false;
     el.innerHTML = bits.join('<span class="qf-dot" aria-hidden="true">·</span>')
       + '<span class="qf-dot" aria-hidden="true">·</span>'
-      + '<button type="button" class="qf-sum-action" data-qf-clear="all">清除</button>'
+      + `<button type="button" class="qf-sum-action" data-qf-clear="all">${clearLabel}</button>`
       + '<span class="qf-dot" aria-hidden="true">·</span>'
       + '<button type="button" class="qf-sum-action" data-qf-save="1" title="把当前条件存成预设，仅此浏览器，不会自动套用">☆保存</button>';
   }
@@ -5616,6 +5621,7 @@
       focusData.length ? controls.find(el => focusData.every(([k, v]) => el.dataset[k] === v)) : controls[focusIndex]);
     const focus = replacement || ((!keepQuery || active) && (input || controls[0]));
     if (focus) focus.focus({ preventScroll: true });
+    if (!keepQuery && state.mode === 'candidates' && input) pop.scrollTop = 0;
   }
 
   function qfPopHtml(kind, query) {
@@ -5640,22 +5646,23 @@
     const id = tierId || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
     const q = foldSearch(String(query || '').trim());
     const rows = tierJournalRows(id);
-    // A journal pick replaces the source facet; count each journal under all the remaining radar filters.
-    const scopedCounts = state.mode === 'candidates'
-      ? journalNamesInColumn(qfPapers().filter(p => matchesFilters(p, false, 'pub'))) : null;
+    const scopedCounts = state.mode === 'candidates' ? journalNamesInColumn(radarSourceFacetPapers()) : null;
     const subset = currentTierSubset(id);
+    const picked = new Set(subset.map(normJournal));
     const whole = state.journalTier === id && !subset.length;
     const fav = new Set((state.favoriteJournals || []).map(normJournal));
     const filtered = rows.filter(r => !q || foldSearch(r.name).includes(q));
     if (!filtered.length) return '<p class="qf-empty">没有匹配的期刊</p>';
     return filtered.map(r => {
-      const n = scopedCounts ? (scopedCounts.get(normJournal(r.name))?.n || 0) : r.n;
-      const on = whole || subset.some(j => normJournal(j) === normJournal(r.name));
-      const starred = fav.has(normJournal(r.name));
+      const key = normJournal(r.name);
+      const n = scopedCounts ? (scopedCounts.get(key)?.n || 0) : r.n;
+      const on = whole || picked.has(key);
+      const disabled = scopedCounts && !n && !picked.has(key);
+      const starred = fav.has(key);
       const sug = r.suggested ? '<small class="qf-suggested">建议</small>' : '';
       return `<div class="qf-jrow${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}">
         <button type="button" class="qf-jstar${starred ? ' is-starred' : ''}" data-qf-follow="${esc(r.name)}" aria-label="${starred ? '取消关注' : '关注期刊'}" aria-pressed="${starred}">${starred ? '★' : '☆'}</button>
-        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}">${esc(r.name)}${sug}<small>${n}</small></button>
+        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}"${disabled ? ' disabled' : ''}><span class="qf-jlabel">${esc(r.name)}</span>${sug}<small class="qf-jcount">${n}</small></button>
       </div>`;
     }).join('');
   }
@@ -5737,8 +5744,8 @@
 
   function morePopHtml() {
     const pubCounts = {};
-    qfPapers().forEach(p => {
-      if (!matchesQuery(p)) return;
+    const papers = state.mode === 'candidates' ? radarSourceFacetPapers() : qfPapers().filter(matchesQuery);
+    papers.forEach(p => {
       const pub = p.publisher || '其他学术刊物';
       pubCounts[pub] = (pubCounts[pub] || 0) + 1;
     });
@@ -5841,6 +5848,7 @@
     const follow = t.getAttribute('data-qf-follow');
     if (follow) { e.preventDefault(); e.stopPropagation(); toggleFollow(follow); return; }
     if (t.hasAttribute('data-qf-pick-journal') || t.hasAttribute('data-qf-journal')) {
+      if (t.disabled) return;
       const name = t.getAttribute('data-qf-pick-journal') || t.getAttribute('data-qf-journal');
       const tierId = t.getAttribute('data-qf-journal-tier') || (t.closest('[data-qf-journal-tier]') && t.closest('[data-qf-journal-tier]').getAttribute('data-qf-journal-tier')) || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
       if (tierId) toggleJournalInTier(tierId, name);

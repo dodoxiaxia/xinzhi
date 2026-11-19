@@ -95,6 +95,7 @@ if [ "$BROWSER" = 1 ]; then
   run "test_mwg_local_ui" python3 scripts/test_mwg_local_ui.py
   run "test_weekly_layout_ui" python3 scripts/test_weekly_layout_ui.py
   run "test_topic_multitag_ui" python3 scripts/test_topic_multitag_ui.py
+  run "test_radar_filter_followup_ui" python3 scripts/test_radar_filter_followup_ui.py
   echo "== Browser tests (Python + Playwright)"
   if [ ! -f public/index.html ] || [ ! -d public/assets ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"
