@@ -6,7 +6,7 @@ import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,11 +53,12 @@ def main():
               label + ': no horizontal page overflow')
 
     journal_a, journal_b, design = 'Circulation', 'The BMJ', 'RCT'
+    viewports = [(1440, 950), (390, 950), (320, 950), (390, 844), (1280, 800)]
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
-            for width in (1440, 390, 320):
-                context = browser.new_context(viewport={'width': width, 'height': 950}, has_touch=width < 500)
+            for width, height in viewports:
+                context = browser.new_context(viewport={'width': width, 'height': height}, has_touch=width < 500)
                 context.route('**/*', route)
                 page = context.new_page()
                 page.on('pageerror', lambda error: errors.append(str(error)))
@@ -92,10 +93,32 @@ def main():
                 expect(rendered).to_have_count(len(expected))
 
                 pop = open_picker(page, 'generalMedicine')
-                choice(pop, 'data-qf-pick-journal', journal_b).click()
-                expect(choice(pop, 'data-qf-pick-journal', journal_b)).to_have_attribute('aria-pressed', 'true')
+                journal_b_button = choice(pop, 'data-qf-pick-journal', journal_b)
+                expect(journal_b_button.locator('small')).to_have_text('0')
+                expect(journal_b_button).to_have_attribute('aria-pressed', 'false')
+                expect(journal_b_button).to_be_disabled()
                 pop.locator('[data-qf-close]').click()
-                check(params(page).get('design') == design, f'{width}: replacing a journal retains the design')
+
+                page.locator('[data-qf="more"]').click()
+                reset = choice(pop, 'data-qf-design', '')
+                reset.click()
+                pop = open_picker(page, 'generalMedicine')
+                journal_b_button.click()
+                expect(journal_b_button).to_have_attribute('aria-pressed', 'true')
+                pop.locator('[data-qf-close]').click()
+                expect(rendered.first).to_be_visible()
+
+                # RCT is unavailable in the picker for this journal. Restore it through the URL.
+                zero_url = base + '?' + urlencode({**params(page), 'design': design})
+                page.goto(zero_url, wait_until='networkidle')
+                check(params(page).get('journal') == journal_b and params(page).get('design') == design,
+                      f'{width}: applying the design retains the selected journal')
+                pop = open_picker(page, 'generalMedicine')
+                expect(journal_b_button).to_be_visible()
+                expect(journal_b_button.locator('small')).to_have_text('0')
+                expect(journal_b_button).to_have_attribute('aria-pressed', 'true')
+                expect(journal_b_button).to_be_enabled()
+                pop.locator('[data-qf-close]').click()
                 expect(rendered).to_have_count(0)
                 expect(page.locator('#articlesStream .empty-state')).to_be_visible()
                 fits(page, f'{width}/empty')
@@ -115,6 +138,15 @@ def main():
                 expect(rendered.first).to_be_visible()
                 pop.locator('[data-qf-close]').click()
                 fits(page, f'{width}/results')
+
+                page.goto(zero_url, wait_until='networkidle')
+                pop = open_picker(page, 'generalMedicine')
+                journal_b_button.click()
+                expect(journal_b_button).to_have_attribute('aria-pressed', 'false')
+                expect(journal_b_button).to_be_disabled()
+                check('journal' not in params(page) and params(page).get('design') == design,
+                      f'{width}: removing a selected zero-count journal retains the design')
+                expect(rendered.first).to_be_visible()
                 context.close()
             browser.close()
 
@@ -122,7 +154,7 @@ def main():
         check(all(call['method'] == 'GET' for call in api_calls), 'QA made no model-generation or acquisition requests')
         report = {'assertions': len(checks), 'checks': checks, 'errors': errors, 'apiCalls': api_calls, 'publicFixture': {'journalA': journal_a, 'journalB': journal_b, 'design': design, 'combined': len(expected)}}
         (out / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
-        print(json.dumps({'facetedBrowserAssertions': len(checks), 'errors': errors, 'fixture': report['publicFixture']}, ensure_ascii=False))
+        print(json.dumps({'facetedBrowserAssertions': len(checks), 'viewports': viewports, 'errors': errors, 'fixture': report['publicFixture']}, ensure_ascii=False))
     finally:
         server.shutdown()
 
