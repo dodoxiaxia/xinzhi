@@ -58,7 +58,14 @@
   }
   function fulltextState(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
-    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    if (url) {
+      const inLibrary = typeof REQUEST_LIBRARY_PAPERS !== 'undefined' && REQUEST_LIBRARY_PAPERS.has(p);
+      const pending = !inLibrary && typeof requestLibraryMatch === 'function' && doi &&
+        DOI_FULLTEXT.get(doi)?.fulltextStatus === 'available' && !requestLibraryMatch(doi, p.title);
+      const short = inLibrary && doi ? '库里已有' : pending ? '已取得全文，待归类入库' : '可下载';
+      return { kind: 'ready', step: 2, headline: short === '可下载' ? '全文已核验，可以下载' : short,
+        short, eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    }
     if (!doi) return { kind: 'none', step: -1, short: '未申请', headline: '这篇没有 DOI，无法向站内申请全文', eta: '到官网原文查看', action: 'official' };
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
@@ -130,7 +137,7 @@
     if (!full) {
       const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
       const badgeAria = view.short + '：' + badgeTitle;
-      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>' + primary + form;
       const compactBadge = view.kind === 'none' ? '' : '<span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>';
       const compactPrimary = view.kind === 'none' ? primary.replace(/^(<(?:button|a)\b)/, '$1 title="' + esc(badgeTitle) + '"') : primary;
       return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + compactBadge + '<span class="ft-summary">' + esc(badgeTitle) + '</span>' + compactPrimary + '</span>' + form;
