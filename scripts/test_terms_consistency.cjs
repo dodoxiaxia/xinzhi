@@ -39,8 +39,7 @@ const listCtx = vm.createContext({
   doiStatusBlock: () => '',
   safeSourceUrl: () => 'https://example.org/paper',
   exactDoi: () => false,
-  designBadgeHtml: () => '',
-  journalMetricBadge: () => ''
+  designBadgeHtml: () => ''
 });
 vm.runInContext(src.match(/  const SEARCH_APOSTROPHES = [^\n]+/)[0] + '\n' + src.match(/  const SEARCH_QUOTES = [^\n]+/)[0] + '\n' + fn('foldSearch'), listCtx);
 vm.runInContext(['isInternalSourceName', 'cardJournalName', 'huddleStarSvg', 'cardTakeaway', 'cardSideActionsHtml', 'authorAffilHtml'].map(fn).join('\n'), listCtx);
@@ -88,12 +87,14 @@ const huddleNodes = {
 const huddleCtx = vm.createContext({
   DEFERRED: false, // non-split page: all data parts are already loaded, as in test_faceted_filters.cjs
   partsSettled: () => true,
+  PART_STATE: {},
   $: sel => huddleNodes[sel] || null,
   document: { activeElement: null, body: { classList: { add: () => {} } } },
   state: { huddle: [], huddleCompare: [] },
   huddlePapers: () => [],
   huddlePaper: () => null,
   RADAR_LOAD: { state: 'idle' },
+  loadRadarArchive: () => { throw new Error('Empty shortlist must not load the radar archive'); },
   selectedComparePapers: () => [],
   pushOverlay: () => {},
   compareCheck: () => {},
@@ -139,6 +140,9 @@ const drawerNodes = {
 };
 const readerCtx = vm.createContext({
   DEFERRED: false, // non-split page: all data parts are already loaded
+  PART_STATE: {},
+  prioritizeParts: () => {},
+  pumpPartQueue: () => {},
   partsPending: () => false,
   partsReady: () => true,
   $: sel => drawerNodes[sel] || null,
@@ -154,27 +158,22 @@ const readerCtx = vm.createContext({
   designBadgeHtml: () => '',
   esc,
   quicklookOf: () => null,
-  preGeneratedOf: () => null,
   forgetPaper: () => {},
   prioritizedDesign: () => '',
   validTranslation: () => false,
   LIVE_TR: {},
   trKeyOf: () => '',
-  trBoxHtml: () => '',
-  buildCitations: () => ({ gb: '', ama: '', bibtex: '' }),
   publicationStatusHtml: () => '',
-  journalMetricDetails: () => '',
-  abstractTranslationStatus: () => '',
-  fulltextView: () => null,
   fulltextStatusHtml: () => '',
   studyBoxHtml: () => '',
-  MAINTAINER: false,
   pdfDownloadUrl: () => '',
   resetDlForm: () => {},
   pushOverlay: () => {},
   aiApiCheck: () => {},
   trCheck: () => {},
   studyCheck: () => {},
+  fetchPublicAbstract: async () => null,
+  openBodyOnly: () => {},
   aiWaitingMessage: () => '等待确认'
 });
 vm.runInContext(['isInternalSourceName', 'cardJournalName', 'authorAffilHtml', 'cardTakeaway', 'abstractMayBeIncomplete', 'huddleStarSvg', 'officialArticleUrl'].map(fn).join('\n') + '\nlet lastFocus=null;\nlet drawerRegionHtml={};\n' + fn('openReaderDrawer') + '\n' + fn('renderDrawerRegions'), readerCtx);
