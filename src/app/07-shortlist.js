@@ -261,7 +261,8 @@
 
     const list = huddlePapers();
     const missing = state.huddle.filter(id => !huddlePaper(id));
-    $('#copyShortlistShareBtn').disabled = state.huddle.length === 0;
+    const shareButton = $('#copyShortlistShareBtn');
+    if (shareButton) shareButton.disabled = state.huddle.length === 0;
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
     if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
@@ -323,10 +324,12 @@
 
     const newlyOpened = !modal.classList.contains('open');
     if(newlyOpened) {
-      pendingShortlistPrefix = '';
-      $('#copyShortlistShareBtn').textContent = '复制分享链接';
-      $('#shortlistShareCopyField').hidden = true;
-      $('#shortlistShareCopyNotice').textContent = '';
+      if (shareButton) {
+        pendingShortlistPrefix = '';
+        shareButton.textContent = '复制分享链接';
+        $('#shortlistShareCopyField').hidden = true;
+        $('#shortlistShareCopyNotice').textContent = '';
+      }
       huddleLastFocus=document.activeElement;
       pushOverlay('huddle');
     }

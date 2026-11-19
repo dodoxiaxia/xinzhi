@@ -218,7 +218,6 @@
     const topicState = parseTopicParams(params.get('tag'), params.get('tags'));
     return {
       mode,
-      shortlistShare: readShortlistShareParam(params),
       viewInUrl: nextViewInUrl,
       viewMode: nextViewInUrl ? params.get('view') : validView(safeGet('xinzhi_view_mode')) ? safeGet('xinzhi_view_mode') : 'cards',
       search: params.get('q') || '',
@@ -258,7 +257,7 @@
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
     mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
-    shortlistShare: initialUrlState.shortlistShare,
+    shortlistShare: readShortlistShareParam(urlParams),
     viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
     search: initialUrlState.search,

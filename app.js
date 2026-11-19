@@ -1462,7 +1462,6 @@
     const topicState = parseTopicParams(params.get('tag'), params.get('tags'));
     return {
       mode,
-      shortlistShare: readShortlistShareParam(params),
       viewInUrl: nextViewInUrl,
       viewMode: nextViewInUrl ? params.get('view') : validView(safeGet('xinzhi_view_mode')) ? safeGet('xinzhi_view_mode') : 'cards',
       search: params.get('q') || '',
@@ -1502,7 +1501,7 @@
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
     mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
-    shortlistShare: initialUrlState.shortlistShare,
+    shortlistShare: readShortlistShareParam(urlParams),
     viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
     search: initialUrlState.search,
@@ -4457,7 +4456,8 @@
 
     const list = huddlePapers();
     const missing = state.huddle.filter(id => !huddlePaper(id));
-    $('#copyShortlistShareBtn').disabled = state.huddle.length === 0;
+    const shareButton = $('#copyShortlistShareBtn');
+    if (shareButton) shareButton.disabled = state.huddle.length === 0;
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
     if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
@@ -4519,10 +4519,12 @@
 
     const newlyOpened = !modal.classList.contains('open');
     if(newlyOpened) {
-      pendingShortlistPrefix = '';
-      $('#copyShortlistShareBtn').textContent = '复制分享链接';
-      $('#shortlistShareCopyField').hidden = true;
-      $('#shortlistShareCopyNotice').textContent = '';
+      if (shareButton) {
+        pendingShortlistPrefix = '';
+        shareButton.textContent = '复制分享链接';
+        $('#shortlistShareCopyField').hidden = true;
+        $('#shortlistShareCopyNotice').textContent = '';
+      }
       huddleLastFocus=document.activeElement;
       pushOverlay('huddle');
     }
