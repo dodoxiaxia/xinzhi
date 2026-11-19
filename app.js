@@ -5621,7 +5621,7 @@
       focusData.length ? controls.find(el => focusData.every(([k, v]) => el.dataset[k] === v)) : controls[focusIndex]);
     const focus = replacement || ((!keepQuery || active) && (input || controls[0]));
     if (focus) focus.focus({ preventScroll: true });
-    if (!keepQuery && state.mode === 'candidates' && input) pop.scrollTop = 0;
+    if (input && !keepQuery && state.mode === 'candidates') pop.scrollTop = 0;
   }
 
   function qfPopHtml(kind, query) {
