@@ -368,6 +368,8 @@
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
       fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
+      // Set only by the server for a paper released through manual hold-review (the DOI-in-full-text check was skipped).
+      fulltextVerification: raw.fulltextStatus === 'available' && raw.fulltextVerification === 'manual_release' ? 'manual_release' : '',
       basis: '官方题录 · 非全文精读', tags: rawTags, studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
@@ -2412,7 +2414,13 @@
   }
   function fulltextState(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
-    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    if (url) {
+      // A paper released by a maintainer after hand review: say so, so it is not mistaken for a fully machine-verified one.
+      const manual = !!(doi && DOI_FULLTEXT.get(doi) && DOI_FULLTEXT.get(doi).fulltextVerification === 'manual_release');
+      return manual
+        ? { kind: 'ready', step: 2, manual: true, headline: '全文经人工放行，可以下载', short: '人工放行', eta: '首页题名与文件校验已通过；全文里没有 DOI，由维护者人工放行。点「下载 PDF」获取', action: 'download', url }
+        : { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    }
     if (!doi) return { kind: 'none', step: -1, short: '未申请', headline: '这篇没有 DOI，无法向站内申请全文', eta: '到官网原文查看', action: 'official' };
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
@@ -2491,7 +2499,7 @@
     if (!full) {
       const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
       const badgeAria = view.short + '：' + badgeTitle;
-      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>' + primary + form;
       const compactBadge = view.kind === 'none' ? '' : '<span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>';
       const compactPrimary = view.kind === 'none' ? primary.replace(/^(<(?:button|a)\b)/, '$1 title="' + esc(badgeTitle) + '"') : primary;
       return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + compactBadge + '<span class="ft-summary">' + esc(badgeTitle) + '</span>' + compactPrimary + '</span>' + form;

@@ -217,6 +217,58 @@ class MuseOriginalTests(unittest.TestCase):
 
 
 
+    def test_manual_release_skips_only_the_doi_check(self):
+        title = 'Exact cardiovascular trial'
+        # The page prints another paper's DOI, never the claimed one: a normal verification rejects it.
+        target = self.make_pdf([title + '\n10.1000/other-paper', 'Second page content'], 'held.pdf')
+        sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        self.assertFalse(verify(target, '10.1000/exact', title)['verified'])
+        released = verify(target, '10.1000/exact', title, sha)
+        self.assertTrue(released['verified'], released)
+        self.assertEqual(released['skipped'], ['doi_in_fulltext'])
+        self.assertEqual(released['method'], 'dual_parser_title_manual_release')
+        self.assertEqual(released['sha256'], sha)
+        self.assertNotIn('skipped', verify(self.path, '10.1000/exact', 'Exact cardiovascular trial'))
+
+    def test_manual_release_still_needs_the_recorded_file_and_the_exact_title(self):
+        title = 'Exact cardiovascular trial'
+        target = self.make_pdf([title + '\n10.1000/other-paper'], 'held2.pdf')
+        sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        # A different file than the one released.
+        swapped = self.make_pdf([title + '\n10.1000/other-paper', 'extra page'], 'swapped.pdf')
+        result = verify(swapped, '10.1000/exact', title, sha)
+        self.assertFalse(result['verified'])
+        self.assertNotIn('skipped', result)
+        self.assertFalse(verify(target, '10.1000/exact', title, 'f' * 64)['verified'])
+        self.assertFalse(verify(target, '10.1000/exact', title, 'not-a-hash')['verified'])
+        # A title that is not on the first page is rejected even when released.
+        self.assertFalse(verify(target, '10.1000/exact', 'Exact cardiovascular trials', sha)['verified'])
+        self.assertFalse(verify(target, '10.1000/exact', 'Different cardiovascular trial', sha)['verified'])
+        # The spelling-variant fallbacks do not apply to a released file: strict title only.
+        vs = self.make_pdf(['Beta-blocker therapy vs placebo after myocardial infarction\n10.1000/other-paper'], 'vs-held.pdf')
+        vs_sha = hashlib.sha256(vs.read_bytes()).hexdigest()
+        self.assertFalse(verify(vs, '10.1000/exact', 'Beta-blocker therapy versus placebo after myocardial infarction', vs_sha)['verified'])
+        # PDF structure still has to parse.
+        broken = Path(self.directory.name) / 'broken.pdf'
+        broken.write_bytes(b'%PDF-1.4\n' + b'x' * 60000)
+        self.assertFalse(verify(broken, '10.1000/exact', title, hashlib.sha256(broken.read_bytes()).hexdigest())['verified'])
+
+
+    def test_command_line_passes_the_released_hash(self):
+        import json
+        import subprocess
+        import sys
+        title = 'Exact cardiovascular trial'
+        target = self.make_pdf([title + '\n10.1000/other-paper'], 'cli-held.pdf')
+        sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        script = str(Path(__file__).with_name('muse_pdf_verifier.py'))
+        base = [sys.executable, script, str(target), '--doi', '10.1000/exact', '--title', title]
+        plain = json.loads(subprocess.run(base, capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1])
+        released = json.loads(subprocess.run(base + ['--released-sha256', sha], capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1])
+        self.assertFalse(plain['verified'])
+        self.assertTrue(released['verified'])
+        self.assertEqual(released['skipped'], ['doi_in_fulltext'])
+
     def test_spelling_variants_match_like_the_upload_worker(self):
         doi, base = '10.1000/exact', 'Beta-blocker therapy {} placebo after myocardial infarction in synthetic cohorts'
         target = self.make_pdf([base.format('vs') + '\n10.1000/exact'], 'vs.pdf')
@@ -260,6 +312,33 @@ class MuseOriginalTests(unittest.TestCase):
         self.assertFalse(verify(no_doi, doi, title)['verified'], 'no doi')
         coenzyme = self.proof_pdf('Coenzyme Q10 supplementation and cardiovascular outcomes in synthetic heart failure cohorts', queries='')
         self.assertFalse(verify(coenzyme, doi, 'Coenzyme supplementation and cardiovascular outcomes in synthetic heart failure cohorts')['verified'])
+
+    def test_manual_release_never_uses_the_title_variants_of_normal_verification(self):
+        # Each file matches its title only through a variant rule. The same file passes normal verification (the claimed DOI is on
+        # the page) but is rejected on the release path, which compares the first-page title strictly.
+        from muse_pdf_verifier import exact_title_matches, title_matches
+        doi = '10.1000/exact'
+        cases = {
+            'versus': (self.make_pdf(['Beta-blocker therapy vs placebo after myocardial infarction in synthetic cohorts\n10.1000/exact'], 'rv-vs.pdf'),
+                       'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts'),
+            'trademark': (self.make_pdf(['SyntheticValve Transcatheter Repair in Elderly Cohorts\n10.1000/exact'], 'rv-mark.pdf'),
+                          'SyntheticValve\u2122 Transcatheter Repair in Elderly Cohorts'),
+            'proof marker': (self.proof_pdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', name='rv-proof.pdf'),
+                             'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF cohorts'),
+        }
+        for label, (target, title) in cases.items():
+            self.assertTrue(verify(target, doi, title)['verified'], label + ': normal verification accepts the variant')
+            result = verify(target, doi, title, hashlib.sha256(target.read_bytes()).hexdigest())
+            self.assertFalse(result['verified'], label + ': released path must not accept a variant-only title')
+            self.assertEqual(result['reason'], 'identity_mismatch', label)
+            self.assertNotIn('skipped', result, label)
+        # Same split at the comparison functions, including the unmapped trademark glyph name and the margin-number cleanup.
+        page = 'SOCIETAL DOCUMENT\nCAD-RADS/C228 2.0 \u2013 2022 Coronary Artery\nDisease-Reporting and Data System'
+        title = 'CAD-RADS\u2122 2.0 \u2013 2022 Coronary Artery Disease-Reporting and Data System'
+        self.assertTrue(title_matches(page, title))
+        self.assertFalse(exact_title_matches(page, title))
+        self.assertTrue(exact_title_matches('Exact cardiovascular trial', 'Exact cardiovascular trial'))
+        self.assertTrue(exact_title_matches('Accepted Manuscript\n1 Exact\n2 cardiovascular\n3 trial', 'Exact cardiovascular trial', 'Accepted Manuscript\nExact cardiovascular trial'))
 
 
 if __name__ == '__main__':
