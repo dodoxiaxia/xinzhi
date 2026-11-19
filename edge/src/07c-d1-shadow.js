@@ -15,7 +15,7 @@
 //
 // Excluded prefixes (not mirrored):
 //   - library:pdf:（PDF 二进制，已有 R2 备份，文献记录里有 sha256 和大小，行里放不下）
-//   - library:muse-candidate:（待核验的 PDF 二进制，7 天 TTL）
+//   - library:muse-candidate:（待核验的 PDF 二进制，常规 7 天 TTL；identity_hold 待人工核对时 30 天 TTL）
 //   - library:lock:、library:cap:、library:ip:（锁和读者限流计数，短期）
 //   - library:machine-rate:（机器调用方每日配额和观察计数，2 天 TTL，属限流计数）
 //   - library:diagnostic:、library:muse-review-dispatch（缓存/短期标记）
