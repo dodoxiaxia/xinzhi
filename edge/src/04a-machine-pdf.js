@@ -645,31 +645,42 @@ async function machinePageFonts(ctx, page) {
   if (!table && machineRefValue(resources, 'Font')) table = await machineBody(ctx, machineRefValue(resources, 'Font')) || '';
   for (const entry of table.matchAll(/\/([^\s/\[\]<>()]+)\s+(\d+)\s+\d+\s+R/g)) {
     const body = await machineBody(ctx, entry[2]), unicodeId = body && machineRefValue(body, 'ToUnicode');
-    if (!unicodeId) continue;
-    const stream = await machineBody(ctx, unicodeId), bytes = stream && await machineStreamBytes(ctx, stream, unicodeId);
-    if (bytes) fonts.set(entry[1], machineParseCmap(machineLatin1(bytes), /\/Subtype\s*\/Type0\b/.test(body)));
+    if (unicodeId) {
+      const stream = await machineBody(ctx, unicodeId), bytes = stream && await machineStreamBytes(ctx, stream, unicodeId);
+      if (bytes) fonts.set(entry[1], machineParseCmap(machineLatin1(bytes), /\/Subtype\s*\/Type0\b/.test(body)));
+    } else if (body && /\/Subtype\s*\/Type1\b/.test(body) && !/\/FontDescriptor\b/.test(body)
+      && /\/BaseFont\s*\/(?:Helvetica(?:-BoldOblique|-Oblique|-Bold)?|Times-(?:Roman|BoldItalic|Italic|Bold)|Courier(?:-BoldOblique|-Oblique|-Bold)?)(?=[\s/>])/.test(body)
+      && (!/\/Encoding\b/.test(body) || /\/Encoding\s*\/(?:StandardEncoding|WinAnsiEncoding|MacRomanEncoding)(?=[\s/>])/.test(body))) {
+      fonts.set(entry[1], {standard:true});
+    }
   }
   return fonts;
 }
-function machineMapCodes(font, bytes) {
-  if (!font) return bytes;
+function machineMapCodes(font, bytes, shownOnly) {
+  if (!font) return shownOnly && bytes ? '\ufffd' : bytes;
+  if (font.standard) return shownOnly ? bytes.replace(/[^ -~]/g, '\ufffd') : bytes;
   let out = '';
   for (let at = 0; at + font.width <= bytes.length; at += font.width) {
     let code = 0;
     for (let n = 0; n < font.width; n++) code = code * 256 + bytes.charCodeAt(at + n);
-    out += font.map.get(code) || '';
+    out += font.map.get(code) || (shownOnly ? '\ufffd' : '');
   }
+  if (shownOnly && bytes.length % font.width) out += '\ufffd';
   return out;
 }
 // Walks the operators of a content stream and decodes Tj / TJ / ' / " strings through the current font's ToUnicode map.
 // Marked-content dictionaries (<<...>> after BDC/BMC, including nested ones) are skipped whole so a /BBox array
 // inside the dictionary cannot leave the walker in TJ-array mode. "]" closes that mode; the closed array is kept
 // only for a TJ that follows it (including when "]" ends one /Contents stream and "TJ" starts the next).
-function machineDecodeFontText(content, fonts) {
-  if (!fonts.size) return '';
-  let out = '', font = null, name = '', last = null, array = null, pending = null;
+function machineDecodeFontText(content, fonts, shownOnly = false) {
+  if (shownOnly ? !fonts.size : ![...fonts.values()].some(font => font.map)) return '';
+  let out = '', font = null, name = '', last = null, array = null, pending = null, inText = false;
+  const savedFonts = [];
   const length = content.length, delimiters = /[\s()<>\[\]{}\/%]/;
   const escapes = {n:'\n',r:'\r',t:'\t',b:'\b',f:'\f'};
+  const show = text => {
+    if (!shownOnly || inText) out += machineMapCodes(font, text, shownOnly);
+  };
   const skipLiteral = start => {
     let depth = 0;
     for (let i = start; i < length; i++) {
@@ -739,15 +750,22 @@ function machineDecodeFontText(content, fonts) {
       const token = content.slice(at, end);
       at = end;
       if (array && /^-?[\d.]+$/.test(token)) { if (Number(token) < -200) array.push(null); continue; }
-      if (token === 'Tf') { font = fonts.get(name) || null; pending = null; }
-      else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) out += machineMapCodes(font, last); last = null; pending = null; }
+      if (token === 'Tf') { font = fonts.get(name) || null; pending = null; if (shownOnly) last = null; }
+      else if (token === 'Tj' || token === "'" || token === '"') { if (last !== null) show(last); last = null; pending = null; }
       else if (token === 'TJ') {
-        for (const part of array || pending || []) out += part === null ? ' ' : machineMapCodes(font, part);
+        for (const part of array || pending || []) { if (part === null) out += ' '; else show(part); }
         array = null; pending = null; last = null;
-      } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) { out += ' '; pending = null; }
-      else if (token === 'ET') { out += '\n'; pending = null; }
+      } else if (['Td', 'TD', 'T*', 'Tm'].includes(token)) { out += ' '; pending = null; if (shownOnly) last = null; }
+      else if (shownOnly && token === 'BT') { inText = true; pending = null; last = null; }
+      else if (token === 'ET') { out += '\n'; pending = null; inText = false; if (shownOnly) last = null; }
+      else if (shownOnly && token === 'q') {
+        if (savedFonts.length >= 64) return '';
+        savedFonts.push(font); pending = null; last = null;
+      }
+      else if (shownOnly && token === 'Q') { font = savedFonts.pop() || null; pending = null; last = null; }
+      else if (shownOnly && token === 'Do') { out += '\ufffd'; pending = null; last = null; }
       else if (token === 'BI') { const stop = content.indexOf('EI', at); at = stop < 0 ? length : stop + 2; pending = null; }
-      else pending = null;
+      else { pending = null; if (shownOnly) last = null; }
     }
   }
   return out;
@@ -839,15 +857,18 @@ async function machineContentText(ctx, id) {
 async function machineFirstPage(bytes) {
   const ctx = machinePdfContext(bytes), notes = ctx.notes;
   const page = await machineFirstPageObject(ctx);
-  const {strings, decoded, raw} = page ? await machinePageText(ctx, page.body) : {strings:'', decoded:'', raw:''};
+  const {strings, decoded, raw, readShown} = await machinePageText(ctx, page && page.body);
   const metadata = await machineMetadata(ctx);
-  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
-  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readShown, readable:machineMostlyLetters(strings) || machineMostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+}
+function machineMostlyLetters(value) {
+  const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length;
+  return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO;
 }
 async function machinePageText(ctx, pageBody) {
   const notes = ctx.notes;
   let strings = '', raw = '', decoded = '';
+  let readShown = () => '';
   if (pageBody) {
     const ids = await machineContentIds(ctx, pageBody);
     if (!ids.length) notes.add('contents_not_found');
@@ -864,10 +885,12 @@ async function machinePageText(ctx, pageBody) {
       joined += content + '\n';
     }
     decoded += machineDecodeFontText(joined, fonts) + '\n';
+    // Keep strict operator evidence separate so existing matches retain their checks.
+    readShown = () => machineDecodeFontText(joined, fonts, true);
   }
-  return {strings, decoded, raw};
+  return {strings, decoded, raw, readShown};
 }
-async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
+async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES, includeBlank = false) {
   if (!limit || limit < 1) return [];
   const roots = [...ctx.text.matchAll(/\/Root\s+(\d+)\s+\d+\s+R/g)];
   const rootId = roots.length ? roots[roots.length - 1][1] : '';
@@ -875,7 +898,7 @@ async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
   if (rootId) {
     const catalog = await machineBody(ctx, rootId);
     pagesId = catalog && machineRefValue(catalog, 'Pages');
-  } else {
+  } else if (!includeBlank) {
     // Trailerless PDFs (e.g. without /Root): locate the top-level /Catalog or /Pages object.
     let firstPagesId = '';
     for (const [id] of ctx.index) {
@@ -891,21 +914,23 @@ async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
   while (stack.length && out.length < limit) {
     const {id, depth} = stack.pop();
     const key = Number(id);
-    if (!Number.isInteger(key) || seen.has(key)) continue;
+    if (!Number.isInteger(key) || seen.has(key)) { if (includeBlank) return []; continue; }
     seen.add(key);
     const body = await machineBody(ctx, id);
-    if (!body) continue;
+    if (!body) { if (includeBlank) return []; continue; }
     let kids = /\/Kids\s*\[([^\]]*)\]/.exec(body);
     if (!kids && machineRefValue(body, 'Kids')) {
       const listed = await machineBody(ctx, machineRefValue(body, 'Kids'));
       kids = listed && /\[([^\]]*)\]/.exec(listed);
     }
     if (kids) {
-      if (depth >= 32) continue;
+      if (depth >= 32) { if (includeBlank) return []; continue; }
       const refs = machineRefList(kids[1]);
       for (let i = refs.length - 1; i >= 0; i--) stack.push({id:refs[i], depth:depth + 1});
-    } else if (/\/Contents(?![A-Za-z0-9_])/.test(body)) {
+    } else if (includeBlank ? /\/Type\s*\/Page\b/.test(body) : /\/Contents(?![A-Za-z0-9_])/.test(body)) {
       out.push(body);
+    } else if (includeBlank) {
+      return [];
     }
   }
   return out;
@@ -943,9 +968,11 @@ async function machineFindDoiOnLaterPages(ctx, doi) {
   }
   return {page:0, citedPages};
 }
-function machineDoiPresent(text, doi) {
+function machineDoiPresent(text, doi, strictBoundaries = false) {
   const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
-  return new RegExp('(?<![A-Za-z0-9])' + escaped + '(?![A-Za-z0-9])', 'i').test(text);
+  const start = strictBoundaries ? '(?:^|(?<=[\\s(:\'"<\\[{])|(?<=\\bdoi\\.org/))' : '(?<![A-Za-z0-9])';
+  const end = strictBoundaries ? '(?=$|\\s|[.,;:)\\]}\'">]+(?=\\s|$))' : '(?![A-Za-z0-9])';
+  return new RegExp(start + escaped + end, 'i').test(text);
 }
 function machineMetaTitleMatches(titles, expected) {
   return titles.some(title => {
@@ -992,6 +1019,45 @@ function machineTitleOnPage(pageText, expected) {
 function machineAnyDoi(text) {
   return /(?<![0-9A-Za-z])10\.\d{4,9}\s*\/\s*[^\s]/.test(String(text || ''));
 }
+function machineCatalogTitleVariant(shown, title) {
+  // Keep word boundaries and the undecodable-glyph marker. A different year immediately before
+  // the headline, or a change to any other letter/digit, must still prevent the match.
+  const words = value => value.normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}\ufffd]+/gu, ' ').trim();
+  const full = words(title);
+  const dropped = /^\s*[0-9]{4}\s+/.test(title) ? full.slice(5) : '';
+  const matches = (source, expected, yearDropped = false) => expected && new RegExp(
+    '(?:^| )' + (yearDropped ? '(?<!\\b[0-9]{4} )' : '') + expected + '(?: |$)'
+  ).test(source);
+  const page = words(shown);
+  if (matches(page, dropped, true)) return 'year_prefix_dropped';
+  const withoutAcronyms = shown.replace(/(?<=\p{L})[ \t\r\n]*\([A-Z]{2,8}\)/gu, '');
+  if (withoutAcronyms === shown) return '';
+  const cleaned = words(withoutAcronyms);
+  if (matches(cleaned, full) && !matches(page, full)) return 'acronym_inserted';
+  if (matches(cleaned, dropped, true)) return 'year_prefix_dropped+acronym_inserted';
+  return '';
+}
+function machineRepositoryCoverTitle(shown) {
+  // An institutional heading plus ordered repository fields and a Handle URL, all in shown text.
+  const heading = /\buniversity\s+repository\b/i.exec(shown.slice(0, 240));
+  if (!heading) return null;
+  const fields = /^\s*Title\s+([\s\S]{1,1200}?)\s+Authors?\s+[\s\S]{1,2400}?\s+Published\s+in\s+[\s\S]{1,600}?\s+Publication\s+Date\s+[\s\S]{1,120}?\s+Link\s+https?:\/\/hdl\.handle\.net\/[^\s]+[\s\S]{0,240}?\s+Citation\b/i;
+  return fields.exec(shown.slice(heading.index + heading[0].length, heading.index + heading[0].length + 3600))?.[1] ?? null;
+}
+async function machineRepositoryIdentity(page, coverTitle, doi, expected) {
+  const checks = {doi:'', title:'', readable:false, coverPage:'repository'};
+  if (machineNormalize(coverTitle) !== expected) return {verdict:'mismatch', reason:'identity_mismatch', checks};
+  const [, article] = await machinePageBodies(page.ctx, 2, true);
+  const shown = article ? (await machinePageText(page.ctx, article)).readShown() : '';
+  checks.readable = machineMostlyLetters(shown);
+  if (machineDoiPresent(shown, doi, true)) { checks.doi = 'page'; checks.doiPage = 2; }
+  if (machineNormalize(shown).includes(expected)) checks.title = 'page';
+  // A cover or document metadata cannot supply either part of the article's identity.
+  if (checks.doi && checks.title) return {verdict:'ok', level:'full', checks};
+  const reason = checks.doi ? 'title_not_found' : checks.title ? 'doi_not_found' : 'identity_mismatch';
+  return {verdict:'mismatch', reason, checks};
+}
 // {verdict:'ok'|'invalid'|'mismatch', reason, level, doi, title}. level says how strong the evidence was:
 // 'full' (DOI and title both read from page 1), 'metadata_doi' (title on page 1, DOI only from Info/XMP),
 // 'metadata_title' (DOI on page 1, title only from Info/XMP because the page text could not be read),
@@ -1006,12 +1072,16 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   if (!libraryDoi(doi)) return {verdict:'invalid', reason:'doi_invalid'};
   if (expected.length < 5) return {verdict:'invalid', reason:'title_too_short'};
   const page = await machineFirstPage(bytes);
-  const readable = page.readable;
-  const doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
+  const shown = page.readShown();
+  const coverTitle = machineRepositoryCoverTitle(shown);
+  if (coverTitle !== null) return machineRepositoryIdentity(page, coverTitle, doi, expected);
+  let readable = page.readable;
+  let doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
   const pageText = machineNormalize(page.text);
   let titleMatch = machineTitleOnPage(pageText, expected);
   let titlePrefix = '';
   let titleVariant = '';
+  let titleExtraction = '';
   let matchedExpected = expected;
   const hasSectionLabel = MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''));
   const strippedTitle = hasSectionLabel ? String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, '') : '';
@@ -1091,6 +1161,36 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
         });
       }
     }
+    if (!titleMatch.found) {
+      const shownDoi = machineDoiPresent(shown, doi, true);
+      const metadataDoi = doiMeta && machineDoiPresent(page.metadata.text, doi, true);
+      if (shownDoi) {
+        const normalizedShown = machineNormalize(shown);
+        for (const [candidate, prefix] of candidates) {
+          const value = machineNormalize(candidate);
+          if (value.length < 5 || !normalizedShown.includes(value)) continue;
+          titleMatch = {found:true, glyph:''};
+          titlePrefix = prefix;
+          titleExtraction = 'text_operators';
+          doiPage = true;
+          readable ||= machineMostlyLetters(shown);
+          break;
+        }
+      }
+      if (!titleMatch.found && (shownDoi || metadataDoi)) {
+        for (const [candidate, prefix] of candidates) {
+          const variant = machineCatalogTitleVariant(shown, candidate);
+          if (!variant) continue;
+          titleMatch = {found:true, glyph:''};
+          titlePrefix = prefix;
+          titleVariant = variant;
+          doiPage = shownDoi;
+          doiMeta = metadataDoi;
+          readable ||= machineMostlyLetters(shown);
+          break;
+        }
+      }
+    }
   }
   const titlePage = titleMatch.found;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
@@ -1100,6 +1200,7 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     readable,
     ...(titleMatch.glyph ? {titleGlyph:titleMatch.glyph} : {}),
     ...(titlePrefix ? {titlePrefix} : {}),
+    ...(titleExtraction ? {titleExtraction} : {}),
     ...(titleVariant ? {titleVariant} : {})
   };
   const doiFound = doiPage || doiMeta;

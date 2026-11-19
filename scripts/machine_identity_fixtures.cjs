@@ -248,6 +248,32 @@ function multiPage({pages, padTo = PAD_TO}) {
   chunks.push(latin1('trailer\n<< /Size ' + nextId + ' /Root 1 0 R >>\nstartxref\n0\n%%EOF\n'));
   return Buffer.concat(chunks);
 }
+// Standard Type1 font, no ToUnicode. Each entry is the ordered list of /Contents streams for one page.
+// An empty entry omits /Contents to exercise physical page numbering.
+function standardTextPages(pages) {
+  const parts = [
+    {id:1, head:'<< /Type /Catalog /Pages 2 0 R >>\n'},
+    {id:2, head:''},
+    {id:3, head:'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'}
+  ];
+  let next = 4;
+  const kids = [];
+  for (const streams of pages) {
+    const id = next++;
+    kids.push(id + ' 0 R');
+    const contents = streams.map(() => next++ + ' 0 R');
+    const dict = contents.length ? ' /Contents [' + contents.join(' ') + ']' : '';
+    parts.push({id, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >>' + dict + ' >>\n'});
+    streams.forEach((content, index) => parts.push({id:id + index + 1, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(content)))}));
+  }
+  parts[1].head = '<< /Type /Pages /Count ' + kids.length + ' /Kids [' + kids.join(' ') + '] >>\n';
+  const built = assemble(parts), chunks = pad(built.chunks);
+  const xrefAt = chunks.reduce((total, part) => total + part.length, 0);
+  const entries = [...built.offsets.values()].map(offset => String(offset).padStart(10, '0') + ' 00000 n \n');
+  chunks.push(latin1('xref\n0 ' + next + '\n0000000000 65535 f \n' + entries.join('')
+    + 'trailer\n<< /Size ' + next + ' /Root 1 0 R >>\nstartxref\n' + xrefAt + '\n%%EOF\n'));
+  return Buffer.concat(chunks);
+}
 const samples = {
   flate: {doi:'10.9999/synthetic.flate', title:'Synthetic trailing newline after compressed page content in an imaginary cohort'},
   objstm: {doi:'10.9999/synthetic.objstm', title:'Synthetic page tree stored inside an object stream of an imaginary registry'},
@@ -265,7 +291,7 @@ function files() {
     'custom-encoding-tounicode.pdf':customEncoding(samples.custom)
   };
 }
-module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, multiPage, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
+module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, multiPage, standardTextPages, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
 if (require.main === module) {
   fs.mkdirSync(module.exports.directory, {recursive:true});
   for (const [name, bytes] of Object.entries(files())) fs.writeFileSync(path.join(module.exports.directory, name), bytes);

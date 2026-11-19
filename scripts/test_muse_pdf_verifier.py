@@ -22,7 +22,7 @@ class MuseOriginalTests(unittest.TestCase):
         document.save(self.path, deflate=False)
         document.close()
 
-    def make_pdf(self, pages, name='synthetic.pdf', metadata=None):
+    def make_pdf(self, pages, name='synthetic.pdf', metadata=None, xmp=None):
         target = Path(self.directory.name) / name
         document = fitz.open()
         for text in pages:
@@ -34,6 +34,8 @@ class MuseOriginalTests(unittest.TestCase):
                 page.draw_rect(fitz.Rect(x, y, x + 4, y + 4), color=(.2, .3, .5))
         if metadata:
             document.set_metadata(metadata)
+        if xmp:
+            document.set_xml_metadata(xmp)
         document.save(target, deflate=False)
         document.close()
         return target
@@ -260,6 +262,81 @@ class MuseOriginalTests(unittest.TestCase):
         self.assertFalse(verify(no_doi, doi, title)['verified'], 'no doi')
         coenzyme = self.proof_pdf('Coenzyme Q10 supplementation and cardiovascular outcomes in synthetic heart failure cohorts', queries='')
         self.assertFalse(verify(coenzyme, doi, 'Coenzyme supplementation and cardiovascular outcomes in synthetic heart failure cohorts')['verified'])
+
+
+    def test_t18_standard_font_hex_headings_with_co_publication_or_late_heading(self):
+        doi = '10.1000/exact'
+        a_title = 'Synthetic guidelines for ventricular rhythm in imaginary cohorts'
+        c_title = 'Synthetic commands for pacing in an imaginary registry'
+        for prefix, shown, title in (
+            ('Synthetic co-publication notice\nDOI 10.1000/exact\nDOI 10.1000/copublished\n',
+             'Synthetic guidelines for ventricular\nrhythm in imaginary cohorts', a_title),
+            ('4207\nCardioPulse\nDOI 10.1000/exact\nGlobal Spotlights\nSynthetic authors\n',
+             c_title, c_title),
+        ):
+            with self.subTest(title=title):
+                target = self.make_pdf([prefix + shown])
+                with fitz.open(target) as document:
+                    self.assertRegex(document[0].read_contents(), rb'<[a-fA-F0-9]+>')
+                self.assertTrue(verify(target, doi, title)['verified'])
+                self.assertFalse(verify(target, doi, title.replace('imaginary', 'real'))['verified'])
+
+    def test_t18_catalogue_year_and_acronyms_require_matching_doi(self):
+        from muse_pdf_verifier import catalog_title_variant
+        doi = '10.1000/exact'
+        title = 'European Rhythm Association/Pacific Rhythm Society consensus on atrial fibrillation'
+        abbreviated = 'European Rhythm Association (ERA)/Pacific Rhythm Society (PRS) consensus on atrial fibrillation'
+        self.assertTrue(catalog_title_variant(abbreviated.replace('fi', '\ufb01'), '2024 ' + title))
+        for registered, printed in (('2024 ' + title, title), (title, abbreviated), ('2024 ' + title, abbreviated)):
+            with self.subTest(registered=registered, printed=printed):
+                target = self.make_pdf([printed + '\nDOI ' + doi])
+                self.assertTrue(verify(target, doi, registered)['verified'])
+        for label, registered, pages, metadata in (
+            ('changed word', '2024 ' + title, [title.replace('atrial', 'ventricular') + '\nDOI ' + doi], None),
+            ('changed year', '2024 ' + title, ['2023 ' + abbreviated + '\nDOI ' + doi], None),
+            ('long acronym', title, [abbreviated.replace('ERA', 'TOOLONGXY') + '\nDOI ' + doi], None),
+            ('lowercase acronym', title, [abbreviated.replace('ERA', 'Era') + '\nDOI ' + doi], None),
+            ('no DOI', title, [abbreviated], None),
+            ('foreign DOI', title, [abbreviated + '\nDOI 10.1000/other'], None),
+            ('longer foreign DOI', title, [abbreviated + '\nDOI ' + doi + '.other'], None),
+            ('DOI only later', title, [abbreviated, doi], None),
+            ('DOI only in metadata', title, [abbreviated], {'subject': doi}),
+            ('metadata with longer foreign DOI', title, [abbreviated, doi + '.other'], {'subject': doi}),
+        ):
+            with self.subTest(label=label):
+                target = self.make_pdf(pages, metadata=metadata)
+                self.assertEqual(verify(target, doi, registered)['reason'], 'identity_mismatch')
+        confirmed = self.make_pdf([abbreviated, doi], metadata={'subject': doi})
+        self.assertTrue(verify(confirmed, doi, '2024 ' + title)['verified'])
+        xmp = self.make_pdf([abbreviated, doi], xmp=f'<synthetic>DOI {doi}</synthetic>')
+        self.assertTrue(verify(xmp, doi, title)['verified'])
+
+    def test_t18_repository_requires_correct_cover_and_both_article_matches_on_page_two(self):
+        doi, title = '10.1000/exact', 'Exact cardiovascular trial in synthetic cohorts'
+        cover = ('Utrecht University Repository\nTitle\n' + title + '\nAuthors\nSynthetic Author\n'
+                 'Published in\nSynthetic Journal\nPublication Date\n2024\n'
+                 'Link https://hdl.handle.net/1/synthetic\nCitation\nSynthetic citation')
+        article = title + '\nDOI ' + doi
+        self.assertTrue(verify(self.make_pdf([cover, article]), doi, title)['verified'])
+        for label, pages in (
+            ('wrong title on cover', [cover.replace('trial', 'registry'), article]),
+            ('wrong title on article', [cover, article.replace('trial', 'registry')]),
+            ('wrong DOI on article', [cover, article.replace(doi, '10.1000/other')]),
+            ('DOI prefix on article', [cover, article.replace(doi, doi + '.other')]),
+            ('DOI on cover only', [cover + '\n' + doi, title]),
+            ('DOI on third page', [cover, title, doi]),
+            ('blank article page', [cover, '', article]),
+        ):
+            with self.subTest(label=label):
+                result = verify(self.make_pdf(pages), doi, title)
+                self.assertEqual(result['reason'], 'identity_mismatch', result)
+
+    def test_t18_multi_item_news_stays_rejected_when_target_headline_is_absent(self):
+        target = self.make_pdf(['Medical News in Brief\nSynthetic Sleep and Recovery\n'
+                                'DOI 10.1000/exact\nA Synthetic Report on Nutrition\n'])
+        self.assertEqual(verify(target, '10.1000/exact',
+                                'Synthetic Testosterone Trial and Cardiovascular Events')['reason'],
+                         'identity_mismatch')
 
 
 if __name__ == '__main__':
