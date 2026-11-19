@@ -12,8 +12,8 @@ from threading import Thread
 from urllib.parse import urlencode, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-AF_NOTE = '已按 AF → atrial fibrillation 一并检索'
-ZH_NOTE = '已按 房颤 → atrial fibrillation / AF；消融 → ablation 一并检索'
+AF_NOTE = '已按 AF → atrial fibrillation 检索'
+ZH_NOTE = '已按 房颤 → atrial fibrillation / AF；消融 → ablation 检索'
 NO_MATCH = 'AF xinzhi-search-no-match-4bfg4'
 ENGLISH = 'electrophysiology'
 VIEWPORTS = ((390, 844), (1280, 800))

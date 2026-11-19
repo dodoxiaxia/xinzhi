@@ -3223,7 +3223,7 @@
       const expansion = queryMatches('', foldSearch(state.search.trim()), true);
       if (expansion.length) {
         const terms = expansion.map(([term, alternatives]) => `${term} → ${alternatives.join(' / ')}`).join('；');
-        chips += `<span class="filter-badge-active search-scope" role="status" data-search-expansion>已按 ${esc(terms)} 一并检索</span>`;
+        chips += `<span class="filter-badge-active search-scope" role="status" data-search-expansion>已按 ${esc(terms)} 检索</span>`;
       }
     }
     container.innerHTML = chips;
