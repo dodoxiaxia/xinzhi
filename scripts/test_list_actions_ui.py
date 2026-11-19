@@ -11,7 +11,37 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 BANNED = ['未经人工核对', '未经医生终审', '未经人工审核', '未经人工医学终审', '以英文原文为准', '机器翻译，', '机器翻译 ·', 'AI 速览 ·', 'AI 全文精读 ·', 'AI 综述前']
-BANNED_SELECTORS = ['.content-label:not(#deepReaderLabel)', '.ql-flag', '.ft-badge-none', '.translation-note']
+BANNED_SELECTORS = [
+    '.content-label:not(#deepReaderLabel)',  # positive control: detector_sees
+    '.ql-flag',  # positive control: detector_sees
+    '.ft-badge-none',  # positive control: detector_sees
+    '.translation-note',  # positive control: detector_sees
+]
+
+
+def detector_sees(page, scope, selector):
+    target = page.locator(f'{scope} {selector}')
+    assert target.count() == 0, f'{scope}: unexpected {selector} before positive control'
+    node = page.locator(scope).evaluate_handle('''(parent, name) => {
+      const probe = document.createElement('span');
+      probe.id = 'hygiene-probe';
+      probe.className = name;
+      return parent.appendChild(probe);
+    }''', selector.removeprefix('.').split(':', 1)[0])
+    try:
+        assert target.count() == 1, f'{scope}: positive control missed {selector}'
+    finally:
+        node.evaluate('e => e.remove()')
+    assert target.count() == 0, f'{scope}: positive control did not clear {selector}'
+
+
+def phrases_in(page, scope):
+    text = page.locator(scope).first.text_content() or ''
+    return {phrase for phrase in BANNED if phrase in text}
+
+
+def has_legacy_quicklook_title(page):
+    return any(t.strip().startswith('AI 速览') for t in page.locator('.drawer-section-title').all_inner_texts())
 
 
 def main():
@@ -31,6 +61,8 @@ def main():
         checks.append(label)
 
     def mock(route):
+        if not route.request.url.startswith(base):
+            return route.abort('blockedbyclient')
         query = parse_qs(urlsplit(route.request.url).query)
         if query.get('task') == ['study'] and query.get('k', [''])[0].startswith('doi:10.9999/browser-fixture-'):
             return route.fulfill(json={'ok': True, 'found': True, 'canGenerate': False, 'study': {
@@ -40,17 +72,37 @@ def main():
             }})
         if '/api/' in route.request.url:
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': False})
-        if not route.request.url.startswith(base):
-            return route.abort('blockedbyclient')
         return route.continue_()
 
-    def no_labels(page, scope, label):
-        text = page.locator(scope).first.text_content() or ''
+    def no_banned_content(page, scope, label):
+        present = phrases_in(page, scope)
         for phrase in BANNED:
-            check(phrase not in text, f'{label}: no「{phrase}」')
+            check(phrase not in present, f'{label}: no「{phrase}」')
         for selector in BANNED_SELECTORS:
             check(page.locator(f'{scope} {selector}').count() == 0, f'{label}: no {selector}')
+
+    def no_labels(page, scope, label):
+        no_banned_content(page, scope, label)
         check(not page.locator('#aiDigest').is_visible(), f'{label}: AI digest entry hidden')
+
+    def digest_visibility_control(page, label):
+        digest = page.locator('#aiDigest')
+        attrs = digest.evaluate('''e => {
+          const saved = [e.getAttribute('style'), e.getAttribute('hidden')];
+          e.hidden = false;
+          e.style.setProperty('display', 'block', 'important');
+          e.style.position = 'fixed';
+          e.style.width = e.style.height = '1px';
+          return saved;
+        }''')
+        try:
+            check(digest.is_visible(), f'{label}: visibility detector sees the forced-visible digest entry')
+        finally:
+            digest.evaluate('''(e, attrs) => ['style', 'hidden'].forEach((name, i) => {
+              if (attrs[i] === null) e.removeAttribute(name);
+              else e.setAttribute(name, attrs[i]);
+            })''', attrs)
+        check(not digest.is_visible(), f'{label}: digest entry hidden again after probe')
 
     def box(locator):
         return locator.bounding_box()
@@ -62,6 +114,21 @@ def main():
             context.route('**/*', mock)
             page = context.new_page()
             tag = f'{width}px'
+
+            # The sources page leaves the real list scope empty for detector probes.
+            page.goto(base + '?mode=sources', wait_until='domcontentloaded')
+            scope = '#articlesStream'
+            for selector in BANNED_SELECTORS:
+                detector_sees(page, scope, selector)
+            probe = page.locator(scope).evaluate_handle(
+                '(parent) => parent.appendChild(document.createElement("span"))')
+            try:
+                for phrase in BANNED:
+                    probe.evaluate('(node, text) => { node.textContent = text; }', phrase)
+                    check(phrases_in(page, scope) == {phrase}, f'{tag}: positive control sees「{phrase}」')
+            finally:
+                probe.evaluate('e => e.remove()')
+            check(not phrases_in(page, scope), f'{tag}: phrase probes leave no banned text')
 
             def open_mode(mode, compact=False):
                 view = 'compact' if compact else 'cards'
@@ -75,6 +142,8 @@ def main():
                     scope = '#weeklySection' if mode == 'weekly' else '#articlesStream'
                     label = f'{tag} {mode} {"compact" if compact else "detailed"}'
                     no_labels(page, scope, label)
+                    if mode == 'curated' and not compact:
+                        digest_visibility_control(page, label)
                     row_class = ('.weekly-row' if compact else '.weekly-auto-item') if mode == 'weekly' else ('.compact-row' if compact else '.article-card')
                     cards = page.locator(scope + ' ' + row_class)
                     check(cards.count() > 0, f'{label}: has papers')
@@ -110,13 +179,19 @@ def main():
             page.goto(base + '?mode=candidates&q=10.1001/jamanetworkopen.2026.37545', wait_until='networkidle')
             page.locator('.article-card .title-open').first.click()
             expect(page.locator('.study-box .study-boundary').last).to_contain_text('未阅读全文')
-            text = page.locator('#readerDrawer').text_content() or ''
-            for phrase in BANNED:
-                check(phrase not in text, f'{tag} reader: no「{phrase}」')
-            for selector in BANNED_SELECTORS:
-                check(page.locator('#readerDrawer ' + selector).count() == 0, f'{tag} reader: no {selector}')
-            titles = page.locator('.drawer-section-title').all_inner_texts()
-            check(not any(t.strip().startswith('AI 速览') for t in titles), f'{tag} reader: no section titled「AI 速览」')
+            no_banned_content(page, '#readerDrawer', f'{tag} reader')
+            check(not has_legacy_quicklook_title(page), f'{tag} reader: no section titled「AI 速览」')
+            title_probe = page.locator('#readerDrawer').evaluate_handle('''parent => {
+              const title = document.createElement('div');
+              title.className = 'drawer-section-title';
+              title.textContent = 'AI 速览';
+              return parent.appendChild(title);
+            }''')
+            try:
+                check(has_legacy_quicklook_title(page), f'{tag} reader: positive control sees legacy title')
+            finally:
+                title_probe.evaluate('e => e.remove()')
+            check(not has_legacy_quicklook_title(page), f'{tag} reader: title probe removed')
             page.locator('#drawerCloseBtn').click()
             page.goto(base + '?mode=candidates&lane=all&q=10.9999/browser-fixture-0', wait_until='networkidle')
             page.locator('#articlesStream .title-open').first.click()
