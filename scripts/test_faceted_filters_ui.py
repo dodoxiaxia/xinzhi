@@ -140,6 +140,14 @@ def main():
                 fits(page, f'{width}/results')
 
                 page.goto(zero_url, wait_until='networkidle')
+                pop = open_picker(page, 'cardioClinical')
+                journal_a_button = choice(pop, 'data-qf-pick-journal', journal_a)
+                journal_a_button.click()
+                expect(journal_a_button).to_have_attribute('aria-pressed', 'true')
+                check(params(page).get('design') == design, f'{width}: replacing a journal retains the design')
+                expect(rendered).to_have_count(len(expected))
+
+                page.goto(zero_url, wait_until='networkidle')
                 pop = open_picker(page, 'generalMedicine')
                 journal_b_button.click()
                 expect(journal_b_button).to_have_attribute('aria-pressed', 'false')
