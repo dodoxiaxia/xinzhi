@@ -23,6 +23,7 @@ from pathlib import Path
 
 import deep_reading_input as dpi
 import reading_priority as rp
+from text_hygiene import artifact_counts
 
 ROOT = Path(__file__).resolve().parents[1]
 SHANGHAI = dt.timezone(dt.timedelta(hours=8))
@@ -502,6 +503,47 @@ def evidence_units(paragraphs):
                           'text': text, 'evidenceUnit': True})
     return units
 
+def reading_text_fields(output):
+    """Yield model text fields, including explicit quotes from older drafts."""
+    if not isinstance(output, dict):
+        return
+    for key in ('titleZh', 'title_zh'):
+        if isinstance(output.get(key), str):
+            # The title validator already trims surrounding whitespace.
+            yield key, output[key].strip(' \n'), True
+    sections = output.get('sections')
+    if not isinstance(sections, dict):
+        return
+    for key in SECTION_KEYS:
+        block = sections.get(key)
+        if not isinstance(block, dict):
+            continue
+        if isinstance(block.get('text'), str):
+            yield f'sections.{key}.text', block['text'], False
+        evidence = block.get('evidence')
+        if isinstance(evidence, list):
+            for index, entry in enumerate(evidence):
+                if isinstance(entry, dict) and isinstance(entry.get('quote'), str):
+                    yield f'sections.{key}.evidence[{index}].quote', entry['quote'], False
+
+def reading_text_issues(output):
+    """Report raw artifacts without rewriting text or weakening exact evidence checks."""
+    for field, value, single_line in reading_text_fields(output):
+        counts = artifact_counts(value, single_line=single_line)
+        # Only LF and tab are allowed in body fields. The general audit also allows CR.
+        if not single_line:
+            counts['control'] += value.count('\r')
+        # The draft guard targets layered entities. The general audit also reports single layers.
+        issues = {kind: count for kind, count in counts.items()
+                  if count and kind != 'html_entity'}
+        if issues:
+            yield field, issues
+
+def validate_draft_text(output):
+    if next(reading_text_issues(output), None) is not None:
+        raise ReadingError('unrecoverable_text_artifact')
+    return output
+
 def validate_output(output, paragraphs, title):
     if isinstance(output, dict) and 'titleZh' not in output and isinstance(output.get('title_zh'), str):
         output = dict(output, titleZh=output['title_zh'])
@@ -586,13 +628,16 @@ def repair_output(output, paragraphs):
 
 def validate_or_repair(output, paragraphs, title):
     """Return (result, repaired). Raises the original validation error if repair cannot help."""
+    validate_draft_text(output)
     try:
-        return validate_output(output, paragraphs, title), False
+        result, repaired = validate_output(output, paragraphs, title), False
     except ReadingError as original:
         try:
-            return validate_output(repair_output(output, paragraphs), paragraphs, title), True
+            result, repaired = validate_output(repair_output(output, paragraphs), paragraphs, title), True
         except ReadingError:
             raise original from None
+    # The validated output can include source-bound quotes omitted by the model.
+    return validate_draft_text(result), repaired
 
 PREVIEW_WORD = re.compile(r'[\u3400-\u9fff]|[^\W_\u3400-\u9fff]+')
 PREVIEW_REFERENCE = re.compile(r'(?i)(?:\b[a-z][a-z0-9+.-]*://|\b(?:file:|www\.)|\\|'
@@ -954,7 +999,7 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
         rows.append(reservation)
         save(data, ledger)  # Must succeed before any paid POST; never retry a uncertain POST.
         try:
-            draft = model(cfg, paper, paragraphs)
+            draft = validate_draft_text(model(cfg, paper, paragraphs))
             data.setdefault('drafts', {})[identity(paper)] = {'paper': paper, 'output': draft, 'sourceParagraphs': paragraphs, 'sourceHash': source_hash, 'createdAt': now().isoformat()}
             save(data, ledger)  # Keep unreviewed content separate from published items, for repair without another paid request.
             result, repaired = validate_or_repair(draft, paragraphs, paper['title'])
