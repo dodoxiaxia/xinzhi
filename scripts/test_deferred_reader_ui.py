@@ -193,6 +193,30 @@ def main():
                 page.set_viewport_size({'width': width, 'height': height})
                 check(page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), f'loaded badges width {width}: no overflow')
 
+            # A URL search waits for its last dependency even when it comes
+            # from a different section. An ordinary library visit renders sooner.
+            stream = page.locator('#articlesStream')
+            for mode, last_part in (('library', 'radar'), ('candidates', 'library')):
+                gate['hold'] = {last_part}
+                gate['event'].clear()
+                page.goto(base + f'?mode={mode}&q=offline-missing-search-term', wait_until='domcontentloaded')
+                expect(stream.locator('.data-loading-note')).to_be_visible()
+                wait_for_parts_settled(page, sorted({'feeds', 'library', 'quicklooks', 'radar'} - {last_part}), mode)
+                gate['hold'] = set()
+                gate['event'].set()
+                expect(stream.locator('.empty-state')).to_be_visible()
+                expect(stream.locator('.data-loading-note')).to_have_count(0)
+                wait_for_data_ready(page, mode)
+            gate['hold'] = {'radar'}
+            gate['event'].clear()
+            page.goto(base + '?mode=library&lane=all', wait_until='domcontentloaded')
+            expect(stream.locator('.title-open').first).to_be_visible()
+            check(page.evaluate("XINZHI_DATA_STATE.radar === 'loading' || XINZHI_DATA_STATE.radar === 'idle'"),
+                  'Unfiltered library results do not wait for the radar part')
+            gate['hold'] = set()
+            gate['event'].set()
+            wait_for_data_ready(page, 'unfiltered library')
+
             # 2. Sources mode renders '加载中' while health is pending and offers retry on failure instead of 0 counts.
             page.set_viewport_size({'width': 1280, 'height': 800})
             gate['event'].clear()

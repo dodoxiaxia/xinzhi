@@ -160,56 +160,36 @@ def main():
                 page.goto(base + '?mode=candidates&style=a&range=all', wait_until='networkidle')
                 expect(page.locator('#articlesStream .article-card').first).to_be_visible()
                 check_badges('#articlesStream .article-card', f'{width}: detailed cards')
-                # 更多筛选 is collapsed by default on every width (a bottom sheet on phones).
-                if not page.locator('.accordion-header').first.is_visible():
-                    page.locator('#filterToggleBtn').click()
-                page.locator('.accordion-header').first.click()
-                check(page.locator('#publisherAccordion .journal-metrics-badge, #publisherAccordion .journal-metrics-details').count() == 0, f'{width}: publisher sidebar has no metric blocks')
-                button = page.locator('.accordion-group.open [data-filter-journal]').first
-                sidebar_journal = button.get_attribute('data-filter-journal')
-                expect(button.locator('.journal-filter-label')).to_have_text(sidebar_journal)
-                check(button.locator('.filter-count').count() == 0, f'{width}: sidebar journal chips carry no numbers')
+                picker = page.locator('[data-qf-jtier-menu="generalMedicine"]')
+                picker.click()
+                pop = page.locator('#qfPop')
+                expect(pop.locator('.journal-metrics-badge, .journal-metrics-details')).to_have_count(0)
+                page.locator('#qfJournalSearch').fill('JAMA')
+                button = pop.locator('[data-qf-pick-journal="JAMA"]')
+                expect(button).to_contain_text('JAMA')
                 button.focus()
                 button.press('Enter')
-                check(parse_qs(urlsplit(page.url).query).get('journal') == [sidebar_journal], f'{width}: sidebar keyboard filter retained')
-                overflow(page, f'{width}/sidebar')
-                if page.locator('#sheetClose').is_visible():
-                    page.locator('#sheetClose').click()
-                    expect(page.locator('#appSidebar')).not_to_be_visible()
-                page.locator('[data-clear="journal"]').click()
-                # Clearing the journal chip also clears its publisher; no separate publisher chip remains.
-                expect(page.locator('[data-clear="pub"], [data-clear="journal"]')).to_have_count(0)
-                if not page.locator('.accordion-header').first.is_visible():
-                    page.locator('#filterToggleBtn').click()
-                page.locator('.accordion-header').filter(has_text='The Lancet Group').click()
-                page.screenshot(path=str(out / f'publisher-sidebar-{width}.png'))
-                # The publisher/journal tree is the single journal picker (the old dropdown is gone).
-                tree_button = page.locator('.accordion-group.open [data-filter-journal]').first
-                journal = tree_button.get_attribute('data-filter-journal')
-                tree_button.click()
-                check(parse_qs(urlsplit(page.url).query).get('journal') == [journal], f'{width}: tree selects the canonical journal')
-                verified = page.evaluate('j=>window.JournalMetrics.badgeText(j)', journal)
-                expect(page.locator('.filter-badge-active .journal-metrics-badge')).to_have_count(1 if verified else 0)
-                if not page.locator('#favoriteJournalBtn').is_visible():
-                    page.locator('#filterToggleBtn').click()
-                page.locator('#favoriteJournalBtn').click()
-                expect(page.locator('#favoriteJournalBtn')).to_have_attribute('aria-pressed', 'true')
-                check(parse_qs(urlsplit(page.url).query).get('journal') == [journal], f'{width}: canonical journal filter retained after favorite')
-                check('★' in page.locator(f'[data-filter-journal="{journal}"]').first.inner_text(), f'{width}: followed journal is starred in the tree')
-                if page.locator('#sheetClose').is_visible():
-                    page.locator('#sheetClose').click()
-                    expect(page.locator('#appSidebar')).not_to_be_visible()
-                if not page.locator('#viewCompactBtn').is_visible(): page.locator('#filterToggleBtn').click()
-                page.locator('#viewCompactBtn').click()
-                if page.locator('#sheetClose').is_visible():
-                    page.locator('#sheetClose').click(); expect(page.locator('#appSidebar')).not_to_be_visible()
+                check(parse_qs(urlsplit(page.url).query).get('journal') == ['JAMA'],
+                      f'{width}: keyboard selects the canonical journal')
+                overflow(page, f'{width}/journal picker')
+                page.screenshot(path=str(out / f'journal-picker-{width}.png'))
+                follow = pop.locator('[data-qf-follow="JAMA"]')
+                follow.click()
+                expect(follow).to_have_attribute('aria-pressed', 'true')
+                check(parse_qs(urlsplit(page.url).query).get('journal') == ['JAMA'],
+                      f'{width}: canonical journal retained after following')
+                pop.locator('[data-qf-close]').click()
+                page.locator('[data-qf-clear="journal"]').click()
+                expect(page.locator('[data-qf-clear="pub"], [data-qf-clear="journal"]')).to_have_count(0)
+                picker.click()
+                expect(follow).to_have_attribute('aria-pressed', 'true')
+                pop.locator('[data-qf-close]').click()
+
+                page.goto(base + '?mode=candidates&style=a&lane=all&range=14&view=compact&sort=journal-date',
+                          wait_until='networkidle')
                 expect(page.locator('#articlesStream .compact-row').first).to_be_visible()
                 check_badges('#articlesStream .compact-row', f'{width}: compact rows')
-                if not page.locator('#sortSelector').is_visible(): page.locator('#filterToggleBtn').click()
-                page.locator('#sortSelector').select_option('journal-date')
-                if page.locator('#sheetClose').is_visible():
-                    page.locator('#sheetClose').click(); expect(page.locator('#appSidebar')).not_to_be_visible()
-                expect(page.locator('.day-heading')).to_be_visible()
+                expect(page.locator('.day-heading').first).to_be_visible()
                 overflow(page, f'{width}/filters-compact-group')
                 page.goto(base + '?mode=library&style=a&view=cards&range=all&reading=guide', wait_until='networkidle')
                 page.locator('#articlesStream [data-action="open-drawer"]').first.click()

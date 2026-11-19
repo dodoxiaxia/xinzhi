@@ -42,6 +42,8 @@ def main():
     def count(page):
         return int(page.locator('.heading-total').first.inner_text().split()[1])
 
+    search_terms = {'curated': '心电图', 'candidates': 'AI-ECG', 'library': 'Vein of Marshall'}
+
     def no_overflow(page, label):
         check(page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), label + ': page fits viewport')
         check(page.locator('#huddleModalBackdrop .modal-dialog').evaluate('(e)=>e.scrollWidth <= e.clientWidth + 1'), label + ': dialog fits viewport')
@@ -89,27 +91,27 @@ def main():
                 page.route('**/*', route)
                 for mode in ['curated', 'candidates', 'library']:
                     label = f'{mode}/{width}'
-                    page.goto(base + f'?mode={mode}&lane=all', wait_until='load')
+                    term = search_terms[mode]
+                    day = '&day=all' if mode == 'curated' else ''
+                    page.goto(base + f'?mode={mode}&lane=all{day}', wait_until='networkidle')
                     baseline = count(page)
                     check(baseline > 0, label + ': public data loaded')
-                    first_before = page.locator('.article-title').first.inner_text()
                     search = page.locator('#globalSearch')
-                    sfill(page, 'AI-ECG')
-                    expect(page.locator('[data-clear="search"]')).to_be_visible()
+                    sfill(page, term)
+                    expect(page.locator('#searchPanel [data-clear="search"]')).to_be_visible()
                     matched = count(page)
-                    check(0 < matched < baseline, label + ': AI-ECG reduces results')
+                    check(0 < matched < baseline, label + ': search reduces results')
                     scope = {'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[mode]
                     expect(page.locator('.search-scope')).to_contain_text('检索范围：' + scope)
                     expect(page.locator('.search-scope')).to_contain_text('切换栏目保留关键词')
-                    check(page.locator('.article-title').first.inner_text() != first_before, label + ': rendered list changes')
-                    check(parse_qs(urlsplit(page.url).query)['q'] == ['AI-ECG'], label + ': query reflected in URL')
+                    check(parse_qs(urlsplit(page.url).query)['q'] == [term], label + ': query reflected in URL')
                     no_overflow(page, label + '/search')
                     page.screenshot(path=str(out / f'search-{mode}-{width}.png'))
-                    records.append({'width': width, 'mode': mode, 'baseline': baseline, 'AI-ECG': matched})
-                    page.locator('[data-clear="search"]').click()
+                    records.append({'width': width, 'mode': mode, 'baseline': baseline, 'term': term, 'matched': matched})
+                    page.locator('#searchPanel [data-clear="search"]').click()
                     expect(search).to_have_value('')
                     check(count(page) == baseline, label + ': removing query restores results')
-                    search.fill('zzzz-no-match')
+                    sfill(page, 'zzzz-no-match')
                     expect(page.locator('#clearAllFiltersBtn')).to_be_visible()
                     check(count(page) == 0, label + ': no match empty state')
                     page.locator('#clearAllFiltersBtn').click()
@@ -117,28 +119,25 @@ def main():
                     check('q' not in parse_qs(urlsplit(page.url).query), label + ': reset removes query from URL')
                     check(count(page) > 0, label + ': reset restores results')
                     if mode != 'curated':
-                        tier = page.locator('[data-filter-tier]:not([data-filter-tier=""])').first
-                        if not tier.is_visible():  # 更多筛选 starts collapsed on every width
-                            page.locator('#filterToggleBtn').click()
-                        tier_name = tier.get_attribute('data-filter-tier')
+                        tier = page.locator('#qfChipRow [data-qf-jtier]').first
+                        tier_name = tier.get_attribute('data-qf-jtier')
                         tier.click()
-                        if width < 500:
-                            page.locator('#sheetClose').click()
-                        check(parse_qs(urlsplit(page.url).query)['tier'] == [tier_name], label + ': filter is applied')
+                        check(parse_qs(urlsplit(page.url).query)['jtier'] == [tier_name], label + ': filter is applied')
                         filtered_count = count(page)
-                        page.reload(wait_until='load')
+                        page.reload(wait_until='networkidle')
                         check(count(page) == filtered_count, label + ': URL filter survives reload')
-                        page.locator('[data-clear="tier"]').click()
-                        check('tier' not in parse_qs(urlsplit(page.url).query), label + ': filter chip clears URL')
-                    sfill(page, 'AI-ECG')
-                    expect(page.locator('[data-clear="search"]')).to_be_visible()
+                        page.locator('[data-qf-clear="jtier"]').click()
+                        check('jtier' not in parse_qs(urlsplit(page.url).query), label + ': filter chip clears URL')
+                    sfill(page, term)
+                    expect(page.locator('#searchPanel [data-clear="search"]')).to_be_visible()
                     saved_url, saved_count = page.url, count(page)
                     page.goto(base + '?mode=sources', wait_until='load')
                     page.go_back(wait_until='load')
                     # Chromium may restore the page from the back/forward cache, which go_back() does not wait for.
                     page.wait_for_url(saved_url)
+                    expect(page.locator('.heading-total').first).to_have_text('共 ' + str(saved_count) + ' 篇')
                     check(page.url == saved_url and count(page) == saved_count, label + ': browser Back restores query')
-                    expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
+                    expect(page.locator('#globalSearch')).to_have_value(term)
                     # In-page tab switches add one history entry each; Back returns to the previous tab with its query.
                     sources_tab = page.locator('[data-mode="sources"]')
                     if sources_tab.is_visible():
@@ -151,19 +150,19 @@ def main():
                     page.wait_for_url(saved_url)
                     expect(page.locator('.heading-total').first).to_have_text('共 ' + str(saved_count) + ' 篇')
                     check(page.url == saved_url, label + ': browser Back after tab switch restores previous tab and query')
-                    expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
+                    expect(page.locator('#globalSearch')).to_have_value(term)
                     next_mode = {'curated': 'candidates', 'candidates': 'library', 'library': 'curated'}[mode]
                     page.locator(f'[data-mode="{next_mode}"]').click()
-                    expect(page.locator('#globalSearch')).to_have_value('AI-ECG')
-                    check(parse_qs(urlsplit(page.url).query)['q'] == ['AI-ECG'], label + ': mode switch preserves query')
+                    expect(page.locator('#globalSearch')).to_have_value(term)
+                    check(parse_qs(urlsplit(page.url).query)['q'] == [term], label + ': mode switch preserves query')
                     # The (hidden) sources section keeps its own scope line once visited.
                     expect(page.locator('#streamSection .search-scope')).to_contain_text({'curated': '每日精选', 'candidates': '文献雷达', 'library': '文献库'}[next_mode])
 
                 composite = {'mode': 'library', 'lane': 'all', 'journal': 'No matching journal', 'design': 'RCT', 'range': '30'}
-                page.goto(base + '?' + urlencode(composite), wait_until='load')
+                page.goto(base + '?' + urlencode(composite), wait_until='networkidle')
                 check(count(page) == 0, f'{width}: composite filters stay at zero without widening')
                 for kind in ['journal', 'design', 'range']:
-                    expect(page.locator(f'[data-clear="{kind}"]')).to_be_visible()
+                    expect(page.locator(f'[data-qf-clear="{kind}"]')).to_be_visible()
                 expect(page.locator('#clearAllFiltersBtn')).to_be_visible()
                 page.locator('#clearAllFiltersBtn').click()
                 check(count(page) > 0, f'{width}: one click resets composite zero-result filters')
@@ -198,18 +197,19 @@ def main():
                     return {id:p.id, author:p.authors[0], doi:p.doi};
                 }''')
                 sfill(page, author_paper['author'])
-                expect(page.locator('[data-clear="search"]')).to_be_visible()
+                expect(page.locator('#searchPanel [data-clear="search"]')).to_be_visible()
                 check(count(page) > 0, f'{width}: public author search returns results')
                 check(page.locator('#articlesStream [data-paper-id="' + author_paper['id'] + '"]').count() > 0, f'{width}: author search renders the matching public paper')
                 expect(page.locator('.search-scope')).to_contain_text('检索范围：文献雷达')
                 doi = author_paper['doi']
-                page.goto(base + '?' + urlencode({'mode': 'curated', 'q': doi, 'journal': 'No matching journal', 'view': 'compact'}), wait_until='load')
+                page.goto(base + '?' + urlencode({'mode': 'curated', 'q': doi, 'journal': 'No matching journal', 'view': 'compact'}), wait_until='networkidle')
                 expect(page.locator('#activeFiltersBar .results-meta')).to_contain_text('按 DOI 全站检索')
-                check(count(page) > 0, f'{width}: exact DOI keeps its existing explicit global scope')
+                expect(page.locator('#articlesStream .compact-row[data-paper-id="' + author_paper['id'] + '"]')).to_be_visible()
                 check(parse_qs(urlsplit(page.url).query)['q'] == [doi], f'{width}: DOI query survives URL synchronization')
 
                 # Shortcuts remain available on the page, but never steal editable/modal focus.
-                page.goto(base + '?mode=library&lane=all&view=cards&q=AI-ECG', wait_until='load')
+                page.goto(base + '?' + urlencode({'mode': 'library', 'lane': 'all', 'view': 'cards',
+                                                'q': search_terms['library']}), wait_until='networkidle')
                 page.locator('#globalSearch').evaluate('(e)=>e.blur()')
                 page.keyboard.press('/')
                 check(page.evaluate('document.activeElement.id === "globalSearch"'), f'{width}: slash still focuses search from the page')
@@ -232,19 +232,19 @@ def main():
                 check(page.url == before_url, f'{width}: reader slash leaves search unchanged')
                 page.locator('#drawerCloseBtn').click()
 
-                page.goto(base + '?mode=library&lane=all', wait_until='load')
+                page.goto(base + '?mode=library&lane=all', wait_until='networkidle')
                 total = int(page.locator('#libCountBadge').text_content())
                 hidden = page.evaluate('window.LIBRARY.papers.filter(p=>p.minor).length')
                 check(count(page) == total - hidden and hidden > 0, f'{width}: count difference is minor filter')
-                expect(page.locator('#minorNote')).to_contain_text('默认隐藏更正和来信')
                 expect(page.locator('#libCountBadge')).to_have_attribute('title', '已收录题录总数，含更正 / 来信；列表按当前筛选计数')
-                if not page.locator('[data-minor]').is_visible():  # lives in 更多筛选
-                    page.locator('#filterToggleBtn').click()
-                page.locator('[data-minor]').click()
-                if page.locator('#sheetClose').is_visible():
-                    page.locator('#sheetClose').click()
+                page.locator('[data-qf="more"]').click()
+                more = page.locator('#qfPop')
+                expect(more.locator('[data-qf-minor="0"]')).to_have_attribute('aria-pressed', 'true')
+                more.locator('[data-qf-minor="1"]').click()
+                expect(more.locator('[data-qf-minor="1"]')).to_have_attribute('aria-pressed', 'true')
+                more.locator('[data-qf-close]').click()
                 check(count(page) == total, f'{width}: including minor equals total badge')
-                check('默认隐藏' not in page.locator('#minorNote').text_content(), f'{width}: explanation follows toggle')
+                expect(page.locator('[data-qf-clear="minor"]')).to_be_visible()
                 page.locator('#openHuddleBtn').click()
                 empty_actions(page, f'initial/{width}')
                 no_overflow(page, f'empty/{width}')
@@ -270,7 +270,11 @@ def main():
                 page.locator('#closeHuddleModalBtn').click()
                 page.locator(f'#articlesStream [data-action="toggle-huddle"][data-paper-id="{paper_id}"]').click()
                 page.locator('#openHuddleBtn').click()
-                page.locator('#clearHuddleBtn').click()
+                clear = page.locator('#clearHuddleBtn')
+                clear.click()
+                expect(clear).to_contain_text('确认清空')
+                expect(page.locator('#huddleModalBackdrop [data-action="remove-huddle"]')).to_have_count(1)
+                clear.click()
                 empty_actions(page, f'clear/{width}')
                 check(page.evaluate('localStorage.getItem("xinzhi_huddle_ids")') == '[]', f'{width}: clearing persists')
                 page.reload(wait_until='load')
@@ -304,7 +308,7 @@ def sfill(page, text):
     if not page.locator('#searchPanel').is_visible():
         page.locator('#searchToggleBtn').click()
     page.locator('#globalSearch').fill(text)
-    page.wait_for_timeout(450)
+    page.wait_for_function("text => new URLSearchParams(location.search).get('q') === text", arg=text)
 
 
 if __name__ == '__main__':

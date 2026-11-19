@@ -34,43 +34,47 @@ if __name__ == '__main__':
             context = browser.new_context(viewport={'width': 390, 'height': 950}); context.route('**/*', route)
             page = context.new_page(); page.on('pageerror', lambda e: errors.append(str(e)))
             page.goto(base+'?mode=candidates&lane=all&view=compact', wait_until='networkidle')
-            button = page.locator('#aiDigest [data-action="ai-brief"]'); expect(button).to_be_visible()
-            label = button.inner_text(); button.click(no_wait_after=True)
-            expect(page.locator('#aiDigest')).to_contain_text('离线测试主题')
-            partial = page.locator('#aiDigest').inner_text()
-            if fixed:
-                expect(page.locator('#aiDigest')).to_contain_text('实际纳入 2 篇')
-                expect(page.locator('#aiDigest')).to_contain_text('6 篇公开摘要未纳入')
-            else: assert '实际纳入' not in partial
-            controls['hold'] = True
-            page.reload(wait_until='networkidle'); page.clock.install()
-            page.locator('#aiDigest [data-action="ai-brief"]').click(no_wait_after=True)
-            expect(page.locator('#aiDigest')).to_contain_text('正在读取摘要')
-            page.clock.fast_forward(45001)
-            slow = page.locator('#aiDigest').inner_text()
-            if fixed: assert '用时较长' in slow
-            page.clock.fast_forward(195001)
-            stalled = page.locator('#aiDigest').inner_text()
-            if fixed:
-                assert '本次等待已到时限' in stalled, stalled  # client deadline is 170 s
-                before = len(posts)
-                page.locator('#aiDigest [data-action="brief-check"]').evaluate('e=>e.click()')
-                expect(page.locator('#aiDigest')).to_contain_text('尚未查到已保存结果')
-                assert len(posts) == before
-                assert any('task=brief' in x for x in gets)
-            else: assert '正在读取摘要并生成' in stalled
-            assert len(posts) == 2 and not errors, (posts, errors)
-            if fixed:
-                page.evaluate("localStorage.setItem('xinzhi_huddle_ids',JSON.stringify(FEEDS.items.filter(p=>p.pmid||p.doi).slice(0,3).map(p=>p.id)))")
+            digest = page.locator('#aiDigest')
+            modal = page.locator('#huddleModalBackdrop')
+            brief = modal.locator('.brief-box')
+            expect(digest).to_be_hidden()
+            page.evaluate("localStorage.setItem('xinzhi_huddle_ids',JSON.stringify(FEEDS.items.filter(p=>p.pmid||p.doi).slice(0,8).map(p=>p.id)))")
+
+            def open_brief():
                 page.reload(wait_until='networkidle')
-                page.locator('#openHuddleBtn').click(no_wait_after=True)
-                page.locator('#huddleModalBody [data-action="ai-brief"][data-mode="huddle"]').click(no_wait_after=True)
-                expect(page.locator('#huddleModalBody')).to_contain_text('正在读取摘要')
-                page.locator('#closeHuddleModalBtn').click(no_wait_after=True)
-                page.clock.fast_forward(45001)
-                assert not page.locator('#huddleModalBackdrop').evaluate('e=>e.classList.contains("open")')
-                page.clock.fast_forward(195001)
-                assert not page.locator('#huddleModalBackdrop').evaluate('e=>e.classList.contains("open")')
+                page.locator('#openHuddleBtn').click()
+                return modal.locator('[data-action="ai-brief"][data-mode="huddle"]')
+
+            button = open_brief()
+            label = button.inner_text()
+            button.click()
+            expect(brief).to_contain_text('离线测试主题')
+            partial = brief.inner_text()
+            expect(brief).to_contain_text('实际纳入 2 篇')
+            missing = len(posts[0]['items']) - 2
+            expect(brief).to_contain_text(f'{missing} 篇公开摘要未纳入')
+
+            controls['hold'] = True
+            button = open_brief()
+            page.clock.install()
+            button.click()
+            expect(brief).to_contain_text('正在读取摘要')
+            page.clock.fast_forward(45001)
+            expect(brief).to_contain_text('用时较长')
+            slow = brief.inner_text()
+            page.clock.fast_forward(195001)
+            expect(brief).to_contain_text('本次等待已到时限')
+            stalled = brief.inner_text()
+            modal.locator('[data-action="brief-check"]').click()
+            expect(brief).to_contain_text('尚未查到已保存结果')
+            assert len(posts) == 2 and any('task=brief' in x for x in gets)
+
+            open_brief().click()
+            expect(brief).to_contain_text('正在读取摘要')
+            page.locator('#closeHuddleModalBtn').click()
+            page.clock.fast_forward(240002)
+            expect(modal).to_be_hidden()
+            assert len(posts) == 3 and not errors
             for pending in held:
                 try: pending.abort()
                 except Exception: pass

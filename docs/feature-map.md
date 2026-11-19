@@ -458,7 +458,7 @@
 - **more-pop**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`；非模态筛选：打开时焦点进入；Tab/Shift+Tab 可离开并关闭；Escape/关闭按钮恢复入口焦点。
 - **more-close**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **publisher-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
-- **specialty-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
+- **specialty-options**：`[{"goto":"/?mode=candidates&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **design-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **minor-0**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **minor-1**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
@@ -505,8 +505,8 @@
 - **export-ris**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"},{"click":"[data-citation-export] summary"}]`
 - **export-warnings**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"},{"click":"[data-citation-export] summary"}]`
 - **download-form**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **translation-zh**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **translation-en**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
+- **translation-zh**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
+- **translation-en**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **digest**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **discussion**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **ai-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
@@ -517,13 +517,13 @@
 - **request-passphrase**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
 - **request-submit**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
 - **back-top**：`[{"goto":"/?mode=library&lane=all"},{"press":["body","End"]},{"wait":"#backToTopBtn"}]`
-- **translation-chinese-panel**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
-- **translation-english-panel**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"[data-abs-tab=\"en\"]"}]`
+- **translation-chinese-panel**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
+- **translation-english-panel**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"[data-abs-tab=\"en\"]"}]`
 - **empty-favorites**：`[{"click":"[data-qf=\"star\"]"}]`
-- **cached-quicklook**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
-- **quicklook-findings**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
-- **cached-study**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
-- **study-copy**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **cached-quicklook**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **quicklook-findings**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **cached-study**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **study-copy**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
 - **topic-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`；支持多选（同主题 OR，跨条件 AND）
 - **topic-all**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`
 - **topic-unclassified**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`；与具体主题互斥

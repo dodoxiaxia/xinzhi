@@ -3461,7 +3461,7 @@
         "condition": "完成所列操作后显示",
         "setup": [
           {
-            "goto": "/?mode=library&lane=all"
+            "goto": "/?mode=candidates&lane=all"
           },
           {
             "click": "[data-qf=\"more\"]"
@@ -4589,7 +4589,7 @@
         "condition": "打开已有预生成中文摘要的文献",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -4612,7 +4612,7 @@
         "condition": "打开已有预生成中文摘要的文献",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -4888,7 +4888,7 @@
         "condition": "完成所列操作后显示",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -4911,7 +4911,7 @@
         "condition": "完成所列操作后显示",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -4957,7 +4957,7 @@
         "condition": "打开已有预生成结果的文献",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -4980,7 +4980,7 @@
         "condition": "打开已有预生成结果的文献",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -5003,7 +5003,7 @@
         "condition": "打开已有预生成结果的文献",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"
@@ -5026,7 +5026,7 @@
         "condition": "打开已有预生成结果的文献",
         "setup": [
           {
-            "goto": "/?mode=candidates&q=10.1161/jaha.125.047479"
+            "goto": "/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"
           },
           {
             "click": "#articlesStream [data-action=\"open-drawer\"]"

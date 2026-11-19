@@ -1926,7 +1926,7 @@ html[data-style] #weeklyAuto .weekly-rank {
   font: 600 13px/1.4 var(--font-sans); color: var(--text-muted);
   background: none; width: auto; min-width: 1.5em; padding: 4px 0 0; border-radius: 0;
 }
-html[data-style] #weeklyAuto .weekly-card-content { display: flex; flex-direction: column; min-width: 0; width: 100%; }
+html[data-style] #weeklyAuto .weekly-card-content { display: flex; flex-direction: column; align-items: stretch; min-width: 0; width: 100%; }
 html[data-style] #weeklyAuto .weekly-card-meta {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px;
   margin: 0 0 4px; font-size: 12px; color: var(--text-muted);
@@ -2601,6 +2601,8 @@ html[data-style="a"] .qf-opt.is-on {
   height: 30px;
   min-height: 30px;
 }
+/* Extend the hit area vertically without covering the other half of the split control. */
+.qf-split .qf-chip::after { min-width: 0; }
 .qf-split .qf-chip-main { padding: 0 4px 0 10px; border-radius: 999px 0 0 999px; }
 .qf-split .qf-chip-caret { padding: 0 8px 0 2px; border-radius: 0 999px 999px 0; min-width: 22px; }
 .qf-split.is-on,
