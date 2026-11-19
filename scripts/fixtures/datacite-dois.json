@@ -1,0 +1,44 @@
+{
+  "10.48550/arxiv.1706.03762": {
+    "data": {
+      "id": "10.48550/arxiv.1706.03762",
+      "attributes": {
+        "doi": "10.48550/arxiv.1706.03762",
+        "titles": [{ "title": "Attention Is All You Need" }],
+        "publisher": "arXiv",
+        "publicationYear": 2017,
+        "dates": [
+          { "date": "2017-06-12T17:57:34Z", "dateType": "Submitted", "dateInformation": "v1" },
+          { "date": "2023-08-03T00:07:25Z", "dateType": "Updated", "dateInformation": "v7" },
+          { "date": "2017-06", "dateType": "Available", "dateInformation": "v1" },
+          { "date": "2017", "dateType": "Issued" }
+        ],
+        "container": {},
+        "creators": [
+          { "name": "Vaswani, Ashish", "givenName": "Ashish", "familyName": "Vaswani" },
+          { "name": "Shazeer, Noam", "givenName": "Noam", "familyName": "Shazeer" },
+          { "name": "Parmar, Niki", "givenName": "Niki", "familyName": "Parmar" },
+          { "name": "Uszkoreit, Jakob", "givenName": "Jakob", "familyName": "Uszkoreit" },
+          { "name": "Jones, Llion", "givenName": "Llion", "familyName": "Jones" },
+          { "name": "Gomez, Aidan N.", "givenName": "Aidan N.", "familyName": "Gomez" },
+          { "name": "Kaiser, Lukasz", "givenName": "Lukasz", "familyName": "Kaiser" },
+          { "name": "Polosukhin, Illia", "givenName": "Illia", "familyName": "Polosukhin" }
+        ]
+      }
+    }
+  },
+  "10.5281/zenodo.1463189": {
+    "data": {
+      "id": "10.5281/zenodo.1463189",
+      "attributes": {
+        "doi": "10.5281/zenodo.1463189",
+        "titles": [{ "title": "Survey Of India Topo Sheet 56H16 1966 1St Edition" }],
+        "publisher": "Zenodo",
+        "publicationYear": 2018,
+        "dates": [{ "date": "2018-10-15", "dateType": "Issued" }],
+        "container": {},
+        "creators": [{ "name": "Survey Of India" }]
+      }
+    }
+  }
+}

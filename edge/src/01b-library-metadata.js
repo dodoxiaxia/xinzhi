@@ -1,4 +1,4 @@
-// ==== edge/src/01b-library-metadata.js · Crossref backfill for supplemental catalogue records ====
+// ==== edge/src/01b-library-metadata.js · DOI metadata backfill for supplemental catalogue records ====
 // Keep retrospective metadata separate from the full-text record. KV has no compare-and-swap,
 // and an upload/verification must be able to write its PDF and status independently.
 const LIBRARY_BIBLIOGRAPHY_PREFIX = 'library:bibliography:';
@@ -41,12 +41,12 @@ async function handleLibraryMetadataBackfill(request, env) {
     let metadata;
     try { metadata = await libraryMetadata(doi, {signal:controller.signal}); }
     catch (error) {
-      if (error.code === 'library_metadata_unavailable') return result('not_in_crossref');
+      if (error.code === 'library_metadata_unavailable') return result('not_in_crossref'); // Keep the legacy result code for callers.
       if (error.code === 'library_identity') return result('identity_mismatch');
       throw error;
     } finally { clearTimeout(timer); }
     // Re-read after the external request. Match the authoritative DOI plus the current title, which can change
-    // while Crossref is queried. The title binding is checked again on every catalogue read.
+    // during the lookup. The title binding is checked again on every catalogue read.
     const base = libraryPaper(await libraryGet(env.QL_KV, key), doi);
     const latest = await libraryReadBibliography(env.QL_KV, base);
     if (!latest) return result('not_in_catalog');
