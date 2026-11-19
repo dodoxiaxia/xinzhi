@@ -163,8 +163,19 @@
     $('#readingBackBtn').focus({ preventScroll: true });
   }
 
+  function currentReadingNeighbors() {
+    const id = state.activeDrawerPaper.id;
+    if (state.mode !== 'weekly' || exactDoi(state.search)) return readingNeighbors(getFilteredArticles(), id);
+    // The rendered board already applies its own filters, category and group order.
+    const board = $('#weeklyAuto');
+    if (!board?.getClientRects().length) return null;
+    const papers = Array.from(board.querySelectorAll('.weekly-auto-item[data-paper-id]'),
+      item => allPapersMap.get(item.dataset.paperId)).filter(Boolean);
+    return readingNeighbors(papers, id);
+  }
+
   function syncReadingNeighbors() {
-    const neighbors = readingNeighbors(getFilteredArticles(), state.activeDrawerPaper.id);
+    const neighbors = currentReadingNeighbors();
     $('#readingNeighbors').hidden = !neighbors;
     $('#readingPrevBtn').disabled = !neighbors?.previous;
     $('#readingNextBtn').disabled = !neighbors?.next;
@@ -176,8 +187,7 @@
   }
 
   function turnReadingPage(direction) {
-    const neighbors = readingNeighbors(getFilteredArticles(), state.activeDrawerPaper.id);
-    const paper = neighbors?.[direction];
+    const paper = currentReadingNeighbors()?.[direction];
     if (!paper) return;
     $('#readingTocToggle').setAttribute('aria-expanded', 'false');
     openReaderDrawer(paper);
@@ -293,6 +303,9 @@
       const list = $(selector);
       if (list) observer.observe(list, { childList: true });
     });
+    const weekly = $('#weeklySection');
+    if (weekly) observer.observe(weekly, { attributes: true, attributeFilter: ['data-pane'] });
+    window.addEventListener('resize', scheduleReadingRefresh);
     for (const type of ['load', 'error']) {
       document.addEventListener(type, event => {
         if (event.target.tagName === 'SCRIPT') scheduleReadingRefresh();

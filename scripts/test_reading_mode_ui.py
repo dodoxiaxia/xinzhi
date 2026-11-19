@@ -4,7 +4,10 @@ import argparse
 import functools
 import json
 import os
+import re
+import subprocess
 import threading
+from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -45,6 +48,10 @@ PAPERS = [
     paper('reading-test-outside', '2026-03-13', 'The newest paper outside the active search'),
 ]
 LATE_PAPER = paper(LATE, '2026-03-14', 'ReadingModeFixture: New record merged while reading')
+WEEKLY_PAPERS = [
+    {**source, 'date': '2026-03-14', 'weeklyPick': rank, 'weeklyCategory': category}
+    for source, rank, category in zip(PAPERS[:3], [3, 1, 2], ['cardio', 'general', 'cardio'], strict=True)
+]
 
 
 def study():
@@ -77,6 +84,7 @@ def verify_viewport(browser, base, width, height, output):
     page.on('pageerror', lambda err: page_errors.append(str(err)))
     held = []
     delay_library = False
+    weekly_fixture = False
 
     def library_script(route):
         payload = {'papers': PAPERS, 'pdfIds': [FIRST]}
@@ -98,6 +106,16 @@ def verify_viewport(browser, base, width, height, output):
             return route.fulfill(json={'resultList': {'result': []}})
         if not route.request.url.startswith(base):
             return route.abort()
+        if weekly_fixture and path.startswith('/assets/app.'):
+            response = route.fetch()
+            feed = json.dumps({'order': {'total': len(WEEKLY_PAPERS), 'at': list(range(len(WEEKLY_PAPERS)))},
+                               'items': WEEKLY_PAPERS})
+            source, replaced = re.subn(r'^window\.FEEDS=.*;$', lambda _: f'window.FEEDS={feed};',
+                                       response.text(), count=1, flags=re.MULTILINE)
+            assert replaced == 1
+            return route.fulfill(response=response, body=source)
+        if weekly_fixture and path.startswith('/assets/data-feeds.'):
+            return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART("feeds", {"items":[],"at":[]});')
         if path.startswith('/assets/data-library.'):
             if delay_library:
                 held.append(route)
@@ -280,11 +298,47 @@ def verify_viewport(browser, base, width, height, output):
         expect(reading).to_be_hidden()
         expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_be_focused()
 
+        # The board groups papers before displaying them. Its order differs from rank and library order.
+        weekly_fixture = True
+        page.clock.set_fixed_time(datetime(2026, 3, 15, 8, tzinfo=timezone.utc))
+        board = '#weeklyAuto .weekly-auto-item'
+        page.goto(base + '?mode=weekly')
+        expect(page.locator(board)).to_have_count(len(WEEKLY_PAPERS))
+        assert page.locator(board).evaluate_all('(items) => items.map(item => item.dataset.paperId)') == [THIRD, FIRST, SECOND]
+        page.locator(f'{board}[data-paper-id="{THIRD}"] [data-action="open-drawer"]').click()
+        expand.click()
+        expect(position).to_have_text('第 1 / 共 3 篇')
+        expect(page.locator('#readingPrevBtn')).to_be_disabled()
+        page.locator('#readingNextBtn').click()
+        expect(reading_paper(FIRST)).to_be_visible()
+        page.locator('#readingNextBtn').click()
+        expect(reading_paper(SECOND)).to_be_visible()
+        expect(position).to_have_text('第 3 / 共 3 篇')
+        expect(page.locator('#readingNextBtn')).to_be_disabled()
+        page.locator('#readingPrevBtn').click()
+        expect(reading_paper(FIRST)).to_be_visible()
+
+        compact = '?mode=weekly&view=compact&wcat=cardio'
+        page.goto(base + compact + '&paper=' + THIRD)
+        expect(page.locator(f'li.weekly-row[data-paper-id="{THIRD}"]')).to_be_attached()
+        expect(position).to_have_text('第 1 / 共 2 篇')
+        page.locator('#readingNextBtn').click()
+        expect(reading_paper(FIRST)).to_be_visible()
+        expect(page.locator('#readingNextBtn')).to_be_disabled()
+        page.goto(base + compact + '&paper=' + SECOND)
+        expect(reading_paper(SECOND)).to_be_visible()
+        expect(page.locator(f'{board}[data-paper-id="{SECOND}"]')).to_have_count(0)
+        expect(page.locator('#readingNeighbors')).to_be_hidden()
+
         # The weekly read= link keeps its existing layer beneath a paper= link.
         weekly = '?mode=weekly&pane=reading&read=demo-tailored-af'
         page.goto(base + weekly + '&paper=' + FIRST)
         expect(reading_paper(FIRST)).to_be_visible()
         expect(page.get_by_role('button', name='返回列表')).to_be_focused()
+        if mobile:
+            expect(page.locator('#readingNeighbors')).to_be_hidden()
+        else:
+            expect(position).to_have_text('第 2 / 共 3 篇')
         page.go_back()
         expect(page.locator('#deepReaderClose')).to_be_focused()
         assert parse_qs(urlsplit(page.url).query)['read'] == ['demo-tailored-af']
@@ -304,7 +358,7 @@ def verify_viewport(browser, base, width, height, output):
             assert 'paper' not in parse_qs(urlsplit(page.url).query, keep_blank_values=True)
         assert not forbidden_requests, forbidden_requests
         assert not page_errors, page_errors
-        print(f'PASS {width}×{height}: layers, focus, sequence, history, deferred links, contents, layout and print')
+        print(f'PASS {width}×{height}: layers, focus, filtered and weekly sequence, history, deferred links, contents, layout and print')
     finally:
         context.close()
 
@@ -313,6 +367,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--evidence', type=Path)
     args = parser.parse_args()
+    subprocess.run(['node', 'scripts/test_reading_mode.cjs', '--public'], cwd=ROOT, check=True)
     if args.evidence:
         args.evidence = args.evidence.resolve()
         if args.evidence.is_relative_to(ROOT):

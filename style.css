@@ -2760,7 +2760,7 @@ html[data-theme="dark"] .req-status-failed, html[data-theme="dark"] .req-status-
 }
 .doi-library-notice .btn-sm { margin-left: 6px; margin-top: 4px; }
 
-/* 阅读模式与原阅读面板共用正文滚动区、题录及底部操作。 */
+/* ==== reading mode ==== */
 #drawerExpandBtn { flex: 0 0 auto; margin-inline-start: auto; }
 #readerDrawer [hidden].reading-toolbar,
 #readerDrawer [hidden].reading-neighbors,
