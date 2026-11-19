@@ -2146,6 +2146,51 @@ async function review(h, body) {
     assert.deepEqual(mrView.task.manualRelease, mrJob.verification.manualRelease);
     assert.equal(relAfterDone.task.manualRelease, undefined);
 
+    // 4c) The review runner passes the release to the verifier and only accepts a result that names the skipped check.
+    {
+      const {runReview} = require('./muse_review_runner.cjs');
+      const runnerEnv = {GITHUB_EVENT_NAME:'schedule',ACTIONS_ID_TOKEN_REQUEST_URL:'https://unit.actions.githubusercontent.com/token',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'synthetic-runtime-token'};
+      const runnerHttp = async (url, init) => {
+        if (new URL(url).hostname === 'unit.actions.githubusercontent.com') return Response.json({value:await token(h, reviewUrl, 'muse-review.yml')});
+        return h.context.worker.fetch(new Request(url, init), h.env);
+      };
+      const heldFor = async (doiValue, tag) => {
+        const held = await createHoldTask(h, doiValue, tag);
+        assert.equal((await holdReviewCall(h, reader, {doi:doiValue,taskId:held.job.id,action:'release',reason:'Runner path release'})).status, 200);
+        return held;
+      };
+      const proofFor = (t, extra = {}) => ({verified:true,pages:2,method:MANUAL,skipped:['doi_in_fulltext'],sha256:t.sha256,bytes:t.bytes,...extra});
+      // Good path: the verifier receives task.release and the result is accepted.
+      const runnerDoi = '10.1000/hold-runner-ok';
+      const okHold = await heldFor(runnerDoi, 'runner-ok');
+      let seen = null;
+      assert.equal(await runReview(runnerEnv, runnerHttp, async (bytes, t) => { seen = t; return proofFor(t); }, () => {}, async () => {}), 1);
+      assert.equal(seen.release.sha256, okHold.sha);
+      assert.deepEqual(seen.release.skipped, ['doi_in_fulltext']);
+      assert.equal(stored(h, 'library:muse-job:' + runnerDoi).state, 'available');
+      assert.equal(stored(h, 'library:paper:' + runnerDoi).paper.fulltextVerification, 'manual_release');
+      // A verifier result without the declared skip, with the wrong skip, or with the plain method for a released task is refused.
+      for (const [label, mutate] of [
+        ['no skipped', t => { const p = proofFor(t); delete p.skipped; return p; }],
+        ['wrong skipped', t => proofFor(t, {skipped:['title']})],
+        ['plain method on a released task', t => proofFor(t, {method:'dual_parser_all_pages_title_doi'})]
+      ]) {
+        const badDoi = '10.1000/hold-runner-bad-' + label.replace(/\W+/g, '-');
+        await heldFor(badDoi, 'runner-' + label.replace(/\W+/g, '-'));
+        await assert.rejects(runReview(runnerEnv, runnerHttp, async (bytes, t) => mutate(t), () => {}, async () => {}), /invalid_verification/, label);
+        assert.notEqual(stored(h, 'library:muse-job:' + badDoi).state, 'available', label);
+        // Leave the lease to expire for the next case by clearing the review pointer the failed run still holds.
+        const job = stored(h, 'library:muse-job:' + badDoi);
+        h.values.set('library:muse-job:' + badDoi, JSON.stringify({...job,reviewLeaseUntil:0}));
+      }
+      // A task that was never released: the manual-release method is refused by the runner too.
+      const plainDoi = '10.1000/hold-runner-plain';
+      seedPaper(h, plainDoi, holdTitle);
+      assert.equal((await upload(h, paperPdf(plainDoi, holdTitle), plainDoi, dsh)).status, 202);
+      for (const key of [...h.values.keys()].filter(k => k.startsWith('library:muse-review:') && !k.endsWith(stored(h, 'library:muse-job:' + plainDoi).id))) h.values.delete(key);
+      await assert.rejects(runReview(runnerEnv, runnerHttp, async (bytes, t) => { assert.equal(t.release, undefined); return proofFor(t); }, () => {}, async () => {}), /invalid_verification/);
+    }
+
     // 5) reject: deletes candidate, job failed/identity_hold_rejected/failed-awaiting-fallback, keeps sha256 & holdDecision, idempotent replay, fallback claimable.
     h = await create();
     h.env.MACHINE_HOLD_REVIEWERS = 'ddx';

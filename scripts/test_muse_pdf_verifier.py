@@ -254,5 +254,21 @@ class MuseOriginalTests(unittest.TestCase):
         self.assertFalse(verify(broken, '10.1000/exact', title, hashlib.sha256(broken.read_bytes()).hexdigest())['verified'])
 
 
+    def test_command_line_passes_the_released_hash(self):
+        import json
+        import subprocess
+        import sys
+        title = 'Exact cardiovascular trial'
+        target = self.make_pdf([title + '\n10.1000/other-paper'], 'cli-held.pdf')
+        sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        script = str(Path(__file__).with_name('muse_pdf_verifier.py'))
+        base = [sys.executable, script, str(target), '--doi', '10.1000/exact', '--title', title]
+        plain = json.loads(subprocess.run(base, capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1])
+        released = json.loads(subprocess.run(base + ['--released-sha256', sha], capture_output=True, text=True, check=True).stdout.strip().splitlines()[-1])
+        self.assertFalse(plain['verified'])
+        self.assertTrue(released['verified'])
+        self.assertEqual(released['skipped'], ['doi_in_fulltext'])
+
+
 if __name__ == '__main__':
     unittest.main()
