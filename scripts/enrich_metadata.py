@@ -478,7 +478,70 @@ def _ai_rct_hit(title, summary):
     return True, via_title
 
 
+_NOTICE_TITLE = re.compile(
+    r'^\s*(?:\[(?:articles?|correspondence|editorial)\]\s*)?[\[【]?\s*(?P<prefix>'
+    r'notice of retraction\b|retraction notice\b|expression of concern\b|'
+    r'retraction\s*(?=[:—–\]]|\.?$)|retraction of\s*(?=[:“"‘\']|(?:the )?(?:article|publication)\b)|'
+    r'(?:author|publisher) correction\b|correction to\b|correction\s*(?=[:—–\]]|\.?$)|'
+    r'erratum\b|corrigendum\b|'
+    r'(?:撤稿|勘误|更正)(?:声明|通知|启事|公告|(?=[:\s】《「“]|$))|关注声明)'
+)
+_CROSSREF_NOTICE_TYPES = {
+    'correction', 'correction-notice', 'erratum', 'corrigendum',
+    'retraction', 'retraction-notice', 'partial-retraction', 'expression-of-concern',
+}
+_CROSSREF_NOTICE_RELATIONS = {
+    'is-correction-of', 'is-erratum-for', 'is-erratum-of', 'is-retraction-of',
+    'is-expression-of-concern-for', 'is-expression-of-concern-of',
+}
+_PUBMED_NOTICE_TYPES = {
+    'retraction of publication', 'retraction notice', 'published erratum', 'erratum', 'expression of concern',
+}
+_PUBMED_NOTICE_RELATIONS = {'RetractionOf', 'ErratumFor', 'ExpressionOfConcernFor'}
+
+
+def _crossref_kind(value):
+    return re.sub(r'[\s_-]+', '-', str(value or '').strip().casefold())
+
+
+def topic_notice_reason(paper, *, title=None):
+    """Identify a notice, not the original article targeted by it."""
+    for pt in paper.get('pubTypes') or ():
+        if isinstance(pt, str) and pt.strip().casefold() in _PUBMED_NOTICE_TYPES:
+            return 'PubMed pubTypes: ' + pt.strip()
+    for relation in paper.get('pubmedRelations') or ():
+        if isinstance(relation, dict) and relation.get('type') in _PUBMED_NOTICE_RELATIONS:
+            return 'PubMed pubmedRelations: ' + relation['type']
+
+    kind = _crossref_kind(paper.get('type'))
+    if kind in _CROSSREF_NOTICE_TYPES:
+        return 'Crossref type: ' + kind
+    # update-to points from the notice to the work it updates; updated-by and
+    # inverse relations do not make that original work a notice.
+    for update in paper.get('update-to') or ():
+        if isinstance(update, dict):
+            kind = _crossref_kind(update.get('type'))
+            if kind in _CROSSREF_NOTICE_TYPES:
+                return 'Crossref update-to: ' + kind
+    relations = paper.get('relation')
+    if isinstance(relations, dict):
+        for relation, targets in relations.items():
+            if targets and _crossref_kind(relation) in _CROSSREF_NOTICE_RELATIONS:
+                return 'Crossref relation: ' + relation
+
+    title = paper.get('title') if title is None else title
+    text = unicodedata.normalize('NFKC', title).casefold() if isinstance(title, str) else ''
+    match = _NOTICE_TITLE.match(' '.join(text.split()))
+    return 'title prefix: ' + match['prefix'].strip() if match else ''
+
+
 def extract_tags(title, summary=''):
+    if topic_notice_reason({}, title=title):
+        return []
+    return _extract_topic_tags(title, summary)
+
+
+def _extract_topic_tags(title, summary):
     legacy = _legacy_tags(title, summary)[:4]
     title_text = (title or '').lower()
     legacy_title = set(_legacy_tags(title, ''))
@@ -589,15 +652,35 @@ def _overlay_entry(p, overlay):
     return chosen[0], chosen[1]
 
 
-def resolve_topic_tags(paper, title=None, summary=None):
-    """Keep human tags; preserve machine overlay order and append new regex vocabulary."""
-    title = paper.get('title', '') if title is None else title
-    summary = paper.get('summary', '') if summary is None else summary
-    regex_tags = extract_tags(title, summary)
+def _existing_human_tags(paper):
     existing_tags = paper.get('tags')
-    overlay_entry = _overlay_entry(paper, _load_tag_overlay())
     if paper.get('tagOrigin') == 'human' and isinstance(existing_tags, list) and existing_tags:
         return existing_tags
+
+
+def resolve_notice_topic_tags(paper, *, title=None):
+    """Return None for other articles; for notices retain only explicit human tags."""
+    if not topic_notice_reason(paper, title=title):
+        return None
+    existing_tags = _existing_human_tags(paper)
+    if existing_tags:
+        return existing_tags
+    overlay_entry = _overlay_entry(paper, _load_tag_overlay())
+    return overlay_entry[1] if overlay_entry and overlay_entry[0] == 'human' else []
+
+
+def resolve_topic_tags(paper, title=None, summary=None):
+    """Keep human tags; preserve machine overlay order and append new regex vocabulary."""
+    notice_tags = resolve_notice_topic_tags(paper, title=title)
+    if notice_tags is not None:
+        return notice_tags
+    title = paper.get('title', '') if title is None else title
+    summary = paper.get('summary', '') if summary is None else summary
+    regex_tags = _extract_topic_tags(title, summary)
+    existing_tags = _existing_human_tags(paper)
+    if existing_tags:
+        return existing_tags
+    overlay_entry = _overlay_entry(paper, _load_tag_overlay())
     if overlay_entry:
         origin, overlay_tags = overlay_entry
         if origin in ('machine_agreed', 'machine_reviewed'):

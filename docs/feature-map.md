@@ -150,6 +150,7 @@
 | candidates-topic-badge | 文章主题徽标 | `#articlesStream .topic-badge` | toggle | conditional · mobile/tablet/desktop · 列表显示带主题的文章 | 是 |
 | candidates-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-summary-clear | 清除筛选（保留关键词） | `[data-qf-clear="all"]` | button | conditional · mobile/tablet/desktop · 雷达存在活动筛选条件 | 是 |
 | candidates-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-scope-crossai | 心血管×AI | `[data-qf-lane="crossai"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-scope-cardio | 心血管 | `[data-qf-lane="cardio"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -186,6 +187,7 @@
 - **candidates-card**：`[]`；重复卡片检查首张；随数据更新
 - **candidates-reset-empty**：`[{"goto":"/?mode=candidates&q=feature-map-no-match-zzzz"}]`
 - **candidates-topic-badge**：`[{"goto":"/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}]`；与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示
+- **candidates-summary-clear**：`[{"goto":"/?mode=candidates&lane=all"}]`；恢复默认筛选，保留搜索框关键词
 - **candidates-scope-core**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-crossai**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-cardio**：`[{"click":"#qfScopeBtn"}]`
@@ -467,6 +469,16 @@
 | brief-completed | 已生成综述或讨论提纲 | `.brief-done` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | topic-pop-open | 展开文章主题筛选 | `[data-qf-topic-all]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}] |
 | requests-empty | 本浏览器申请记录为空 | `#requestsModalBody .empty-state` | text:当前浏览器还没有已确认的全文申请记录 | [{"click":"#openRequestsBtn"}] |
+| request-ingested | 申请：已入库、显示真实归类和阅读详情 | `.req-item:has(.req-classification) .req-status-badge` | text:已入库 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-existing | 申请：库里已有 | `.req-item:has(.req-classification) .req-status-badge` | text:库里已有 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-awaiting-intake | 申请：已取得全文、待归类入库 | `.req-item .req-status-badge` | text:已取得全文，待归类入库 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-hold | 申请：待人工核验 | `.req-item .req-status-review` | text:待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-hold-rejected | 申请：人工核验未通过 | `.req-item .req-status-review` | text:人工核验未通过，可重新提交 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-identity-conflict | 申请：题录冲突 | `.req-item .req-status-review` | text:题录冲突，待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-possible-duplicate | 申请：同题不同 DOI 仅提示 | `.req-possible-duplicate` | text:题名相同但 DOI 不同 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-open-ingested | 申请：打开静态文献阅读详情 | `.req-item:has(.req-classification) [data-action="open-request-paper"]` |  | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-pdf | DOI 检索：库里已有 PDF，不显示获取表单 | `#articlesStream .ft-badge-ready` | text:库里已有 | SKIP: 需模拟带 PDF 的静态记录，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-stale-submit | 获取全文的旧表单：库里已有，不重复提交 | `#articlesStream form[data-ft-form] .ft-error` | text:库里已有，可直接下载 | SKIP: 需模拟旧表单，由 scripts/test_request_loop_ui.py 覆盖 |
 
 <details><summary>入口操作与备注</summary>
 

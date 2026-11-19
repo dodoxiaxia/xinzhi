@@ -404,6 +404,8 @@ main.main-content { min-width: 0; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-align: left;
   font-family: var(--font-serif); font-size: 16.5px; font-weight: 600; line-height: 1.5; color: var(--text-primary); background: none; border: 0; padding: 0; cursor: pointer; width: auto;
 }
+/* long-title: keep keyboard focus inside the title's row. */
+.compact-title:focus-visible { outline-offset: -2px; }
 .compact-title:hover { color: var(--accent); }
 .compact-zh { font-family: var(--font-serif); font-size: 14px; line-height: 1.5; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .compact-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; font-size: 12.5px; color: var(--text-muted); min-width: 0; }
@@ -596,8 +598,10 @@ main.main-content { min-width: 0; }
 .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 14px 24px; border-top: 1px solid var(--border); }
 .huddle-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
 .huddle-item:last-child { border-bottom: 0; }
-.huddle-item-content h4 { font-family: var(--font-serif); font-size: 15px; line-height: 1.5; font-weight: 700; margin-bottom: 3px; }
+.huddle-item-content h4 { font-family: var(--font-serif); font-size: 15px; line-height: 1.5; font-weight: 700; margin-bottom: 3px; overflow-wrap: anywhere; }
 .huddle-item-meta { font-size: 12.5px; color: var(--text-muted); }
+/* long-title: both checkbox labels and export notices repeat the original title. */
+[data-citation-export] { overflow-wrap: anywhere; }
 
 /* ============ Weekly ============ */
 .weekly-container { max-width: 760px; margin: 0 auto; }
@@ -1103,10 +1107,14 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover { background: var(-
 .weekly-row .weekly-rank { margin-top: 1px; }
 .weekly-row-main { min-width: 0; }
 .weekly-row-title { font-size: 15.5px; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+/* long-title: the title button reaches the row edge on mobile. */
+.weekly-row-title .title-open:focus-visible { outline-offset: -2px; }
+/* long-title: keep the reading action usable beside a wrapping title. */
+.weekly-row-title .weekly-deep-badge { min-height: 32px; }
 .weekly-row-meta { display: flex; flex-wrap: wrap; gap: 2px 0; margin-top: 3px; font-size: 12.5px; color: var(--text-muted); }
 .weekly-row-meta > span + span::before { content: '·'; margin: 0 6px; }
 .weekly-row-journal { color: var(--text-secondary); }
-.weekly-row-line { margin-top: 4px; font-size: 13.5px; line-height: 1.65; color: var(--text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.weekly-row-line { margin-top: 4px; font-size: 13.5px; line-height: 1.65; color: var(--text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .weekly-row-line .content-label { margin-right: 6px; }
 .weekly-star { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--bg-card); color: var(--text-muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .weekly-star:hover { border-color: var(--accent); color: var(--accent); }
@@ -1132,6 +1140,8 @@ html[data-style="a"] .article-card .btn-sm.btn-primary:hover { background: var(-
 .deep-reading-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .deep-reading-item.active { background: var(--accent-light); box-shadow: inset 3px 0 0 var(--accent); }
 .deep-reading-item-title { font-family: var(--font-serif); font-size: 14.5px; font-weight: 700; line-height: 1.55; color: var(--text-primary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+/* long-title: never truncate a reading title that has no native full title. */
+.deep-reading-item[data-deep-reading]:not([title]) .deep-reading-item-title { -webkit-line-clamp: unset; }
 .deep-reading-item small, .deep-reading-item .deep-reading-topic { font-size: 12px; line-height: 1.6; color: var(--text-muted); overflow-wrap: anywhere; }
 .deep-reading-item .deep-reading-topic { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
 .deep-reading-go { font-size: 12.5px; color: var(--accent); }
@@ -1707,14 +1717,16 @@ html[data-style] .article-card.has-side-actions .article-title {
   margin: 0; font: 600 clamp(16px, 2.8cqi + 14px, 17px)/1.5 var(--font-sans);
   letter-spacing: 0; color: var(--text-primary);
 }
-.article-card.has-side-actions .title-open { display: block; width: 100%; padding: 0; text-align: left; }
+.article-card.has-side-actions .title-open { display: block; width: 100%; padding: 0; text-align: left; overflow-wrap: anywhere; }
+/* long-title: keep keyboard focus inside the card. */
+.article-card.has-side-actions .title-open:focus-visible { outline-offset: -2px; }
 .article-card.has-side-actions .title-open:hover { color: var(--accent); text-decoration: none; }
 .article-card.has-side-actions .article-title-en,
 .article-card.has-side-actions .article-title-en-hit {
   margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.article-card.has-side-actions .article-title-en.is-hit { white-space: normal; }
+.article-card.has-side-actions .article-title-en.is-hit { white-space: normal; overflow-wrap: anywhere; }
 html[data-style] .article-card.has-side-actions .article-gist {
   margin: 6px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--text-secondary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
@@ -2579,6 +2591,10 @@ html[data-style="a"] .qf-scope.is-on {
   font-size: 12px;
   font-weight: 400;
 }
+.qf-jlabel { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.qf-jname small { flex: 0 0 auto; white-space: nowrap; }
+.qf-jname small:last-child { min-width: 4ch; text-align: right; }
+.qf-jname:disabled { cursor: default; }
 .qf-opt-list { display: flex; flex-direction: column; padding: 0 8px; }
 .qf-opt {
   display: flex;
@@ -2674,7 +2690,7 @@ html[data-style="a"] .qf-split.is-on .qf-chip {
 .qf-suggested {
   color: var(--accent);
   font-size: 11px;
-  margin-left: 6px;
+  min-width: 2em;
   font-weight: 650;
 }
 .qf-jrow.is-empty .qf-jname { opacity: .55; }

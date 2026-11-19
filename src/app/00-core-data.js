@@ -134,6 +134,8 @@
     }
   });
   const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
+  const REQUEST_LIBRARY_PAPERS = new Set(LIBRARY.papers);
+  let requestLibraryPending = !!LIBRARY.deferred;
   const RADAR_LOAD = { state: window.RADAR_ARCHIVE || !window.RADAR_SRC ? 'loaded' : 'idle' };
   // Fetch the older radar archive only when a view needs it (ranges beyond 14 days, or an exact DOI).
   function loadRadarArchive() {
@@ -200,10 +202,39 @@
     return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
   }
   function doiTitleKey(value) {
-    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim().replace(/[\s.。!?;:,，；：]+$/u, '');
+    // Same NFKC/lowercase/punctuation rule as backfill title_key, plus existing DOI title aliases.
+    return String(value || '').replace(/^\s*\[[A-Za-z ]+\]\s*/, '').normalize('NFKC')
+      .toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/[\p{P}\p{White_Space}\u001c-\u001f]/gu, '');
   }
   function sameDoiTitle(left, right) {
-    return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
+    const key = doiTitleKey(left);
+    return !!key && key === doiTitleKey(right);
+  }
+  function requestLibraryPapers() {
+    if (requestLibraryPending && !LIBRARY.deferred && partsReady('library')) {
+      const staticPapers = new Set(STATIC_DOI_PAPERS);
+      for (const paper of LIBRARY.papers) {
+        if (staticPapers.has(paper)) REQUEST_LIBRARY_PAPERS.add(paper);
+      }
+      requestLibraryPending = false;
+    }
+    return REQUEST_LIBRARY_PAPERS;
+  }
+  function requestLibraryMatch(doi, title) {
+    const key = doiTitleKey(title);
+    if (!doi || !key) return null;
+    const library = requestLibraryPapers();
+    const preferred = exactDoiPapers(doi)[0];
+    const matches = p => exactDoi(p.doi) === doi && doiTitleKey(p.title) === key;
+    if (library.has(preferred) && matches(preferred)) return preferred;
+    for (const paper of library) {
+      if (matches(paper)) return paper;
+    }
+    return null;
+  }
+  function hasRequestLibraryPdf(doi, title) {
+    const paper = requestLibraryMatch(doi, title);
+    return !!(paper && PDF_LIBRARY_IDS.has(String(paper.id)) && pdfDownloadUrl(paper));
   }
   function supplementalPaper(raw) {
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
@@ -233,7 +264,7 @@
     p.category = lane === 'cardio' ? isCrossAI(p) ? '交叉研究' : '心血管' : lane === 'aimed' ? 'AI医疗' : lane === 'aitech' ? 'AI前沿' : '综合医学';
     return p;
   }
-  function mergeSupplementalPaper(raw) {
+  function mergeSupplementalPaper(raw, syncRequest = true) {
     const p = supplementalPaper(raw);
     if (!p) return false;
     const occupied = allPapersMap.get(p.id);
@@ -269,7 +300,7 @@
       allPapersMap.set(p.id, p);
     }
     _maxDateCache = null;
-    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(p.doi, '');
+    if (syncRequest && typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(p.doi, '');
     return true;
   }
   function exactDoiPapers(doi) {
@@ -288,7 +319,7 @@
   }
   function acquireDoiUrl(doi) { return exactDoi(doi) ? '/api/acquire?doi=' + encodeURIComponent(exactDoi(doi)) : ''; }
   function doiJobActive(job) { return job && (['queued', 'running'].includes(job.state) || job.stage === 'verifying'); }
-  function mergeDoiJob(doi, raw) {
+  function mergeDoiJob(doi, raw, syncRequest = true) {
     if (!raw) { DOI_JOBS.delete(doi); return; }
     if (typeof raw.id !== 'string' || !/^[a-f0-9-]{36}$/.test(raw.id) || raw.doi !== doi
         || !['queued', 'running', 'available', 'pending', 'review', 'failed', 'manual_needed'].includes(raw.state)) throw new Error('library_unavailable');
@@ -301,7 +332,7 @@
       sourceKind: ['reader_upload', 'open_access', 'download'].includes(raw.sourceKind) ? raw.sourceKind : '',
       reason: typeof raw.reason === 'string' && /^[a-z_]{1,40}$/.test(raw.reason) ? raw.reason : '',
       nextCheckSeconds: Number.isInteger(raw.nextCheckSeconds) && raw.nextCheckSeconds >= 15 && raw.nextCheckSeconds <= 120 ? raw.nextCheckSeconds : 15 });
-    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(doi, '');
+    if (syncRequest && typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(doi, '');
   }
   function watchDoiJob(doi) {
     if (DOI_JOB_WATCH.timer) clearTimeout(DOI_JOB_WATCH.timer);
@@ -367,6 +398,7 @@
           sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
           status: view.kind === 'ready' ? 'available' : view.kind,
           stage: job ? (job.stage || '') : (view.kind === 'ready' ? 'available' : ''),
+          reason: job?.reason,
           paperId: paper && paper.id ? String(paper.id) : '',
           checked: true
         });
@@ -411,6 +443,14 @@
     const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
     if (!doi || !input || !input.value || (button && button.disabled)) return;
     const inDrawer = !!(form.closest && form.closest('#drawerFulltext'));
+    const cardId = form.closest?.('[data-paper-id]')?.dataset.paperId;
+    const paper = inDrawer ? state.activeDrawerPaper : cardId ? allPapersMap.get(cardId) : exactDoiPapers(doi)[0];
+    if (typeof hasRequestLibraryPdf === 'function' && hasRequestLibraryPdf(doi, paper?.title)) {
+      input.value = '';
+      if (error) error.textContent = '库里已有，可直接下载';
+      else showToast('库里已有，可直接下载');
+      return;
+    }
     const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
     const prevJob = DOI_JOBS.get(doi);
     const prev = { mode: mode || 'submit', jobId: prevJob ? prevJob.id : '', jobState: prevJob ? prevJob.state : '' };
@@ -446,6 +486,7 @@
           sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
           status: result.job && result.job.stage === 'verifying' ? 'verifying' : ((result.job && result.job.state) || 'queued'),
           stage: (result.job && result.job.stage) || 'queued',
+          reason: result.job?.reason,
           paperId: matchedPaper.id ? String(matchedPaper.id) : '',
           checked: true
         });
@@ -605,11 +646,22 @@
     if (typeof loadBrowserRequests !== 'function' || typeof recordConfirmedRequest !== 'function') return;
     const clean = exactDoi(doi);
     if (!clean) return;
-    const list = loadBrowserRequests();
-    if (!list.some(r => r.doi === clean)) return;
-    const paper = exactDoiPapers(clean)[0] || DOI_FULLTEXT.get(clean) || null;
+    const previous = loadBrowserRequests().find(r => r.doi === clean);
+    if (!previous) return;
+    const supplemental = DOI_FULLTEXT.get(clean);
+    const staticPaper = typeof requestLibraryMatch === 'function'
+      ? requestLibraryMatch(clean, supplemental?.title || previous.title) : null;
+    const available = supplemental?.fulltextStatus === 'available';
+    const already = staticPaper && PDF_LIBRARY_IDS.has(String(staticPaper.id)) && pdfDownloadUrl(staticPaper);
+    const libraryState = already && (previous.libraryState === 'already_in_library' || !available) ? 'already_in_library'
+      : staticPaper && available ? 'ingested'
+      : available && typeof requestLibraryPapers === 'function' &&
+        [...requestLibraryPapers()].some(p => exactDoi(p.doi) === clean) ? 'identity_conflict'
+      : '';
+    const paper = (libraryState === 'ingested' || libraryState === 'already_in_library' ? staticPaper : null)
+      || supplemental || exactDoiPapers(clean)[0] || null;
     const job = DOI_JOBS.get(clean) || null;
-    const status = paper && paper.fulltextStatus === 'available'
+    const status = available || libraryState === 'already_in_library'
       ? 'available'
       : job && job.stage === 'verifying'
       ? 'verifying'
@@ -624,10 +676,32 @@
       journal: paper ? (paper.cleanJournal || paper.journal || '') : '',
       status,
       stage: job ? (job.stage || '') : (status === 'available' ? 'available' : ''),
+      reason: job?.reason || '',
+      libraryState,
       paperId: paper && paper.id ? String(paper.id) : '',
-      note: typeof extraNote === 'string' ? extraNote : '',
+      note: !libraryState && typeof extraNote === 'string' ? extraNote : '',
       checked: true
     });
+  }
+  function syncRequestsAfterLibraryPart() {
+    if (!LIBRARY.deferred) return;
+    // The deferred script's load event follows mergePart; capture also works after a shard retry.
+    function onLoad() {
+      if (LIBRARY.deferred || !partsReady('library')) return;
+      document.removeEventListener('load', onLoad, true);
+      loadBrowserRequests().forEach(row => {
+        if (DOI_LOOKUPS.get(row.doi)?.state === 'complete') {
+          syncExistingBrowserRequest(row.doi);
+        } else if (['ingested', 'already_in_library'].includes(row.libraryState)) {
+          const paper = requestLibraryMatch(row.doi, row.title);
+          if (paper?.id && paper.id !== row.paperId) {
+            recordConfirmedRequest({ ...row, paperId: paper.id, checked: false });
+          }
+        }
+      });
+      if ($('#requestsModalBackdrop.open')) renderRequestsModal();
+    }
+    document.addEventListener('load', onLoad, true);
   }
   let browserRequestsRefreshing = null;
   function setRefreshRequestsBusy(busy) {
@@ -644,8 +718,9 @@
         const rows = loadBrowserRequests();
         const targets = rows.filter(r => {
           if (!r || !r.doi) return false;
-          if (activeOnly) return ['queued', 'running', 'verifying', 'pending'].includes(r.status) || !DOI_FULLTEXT.has(r.doi);
-          return true;
+          if (!activeOnly || r.status !== 'available') return true;
+          return !['ingested', 'already_in_library'].includes(r.libraryState) ||
+            (!LIBRARY.deferred && !requestLibraryMatch(r.doi, r.title));
         });
         // A numeric limit is only for background/active-only probes. "刷新全部状态" omits it and must cover every saved record.
         const capped = Number.isInteger(limit) && limit > 0 ? targets.slice(0, limit) : targets;
@@ -682,16 +757,20 @@
     const run = (async () => {
       try {
         const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
-        mergeDoiJob(doi, result.job);
+        if (typeof result.found !== 'boolean') throw new Error('library_unavailable');
+        const previousJob = DOI_JOBS.get(doi);
+        mergeDoiJob(doi, result.job, false);
         if (result.found === true) {
-          if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
+          if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper, false)) {
+            if (previousJob) DOI_JOBS.set(doi, previousJob); else DOI_JOBS.delete(doi);
+            throw new Error('library_unavailable');
+          }
         } else if (result.found === false) {
           const previous = DOI_FULLTEXT.get(doi);
           if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
           DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
-          if (!result.job) syncExistingBrowserRequest(doi, '当前服务端查无该 DOI 记录或进行中任务');
         }
-        else throw new Error('library_unavailable');
+        syncExistingBrowserRequest(doi, result.found === false && !result.job ? '当前服务端查无该 DOI 记录或进行中任务' : '');
       } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
       if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
       else if (typeof $ === 'function' && $('#requestsModalBackdrop.open') && typeof renderRequestsModal === 'function') renderRequestsModal();
