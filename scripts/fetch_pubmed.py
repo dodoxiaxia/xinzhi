@@ -18,9 +18,10 @@ genuine parameter error, or a missing previous snapshot, still fails the step.
 import argparse, datetime, email.utils, hashlib, http.client, json, os, random, time, urllib.request, urllib.parse, urllib.error, xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
-from build_data import clean, classify
+from build_data import classify
 from scope_filter import scope_decision
 from source_fallbacks import ADDITIONAL_JOURNALS, journal_query
+from text_hygiene import clean_inline
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -310,43 +311,44 @@ def parse(root, excluded_out=None):
         pmid = row.findtext('./MedlineCitation/PMID')
         if article is None or not pmid:
             continue
-        title = clean(''.join(article.find('ArticleTitle').itertext())) if article.find('ArticleTitle') is not None else ''
-        journal = article.findtext('./Journal/Title') or article.findtext('./Journal/ISOAbbreviation') or 'PubMed'
+        title = clean_inline(''.join(article.find('ArticleTitle').itertext())) if article.find('ArticleTitle') is not None else ''
+        journal_abbreviation = clean_inline(article.findtext('./Journal/ISOAbbreviation'))
+        journal = clean_inline(article.findtext('./Journal/Title')) or journal_abbreviation or 'PubMed'
         doi = next((n.text for n in row.findall('./PubmedData/ArticleIdList/ArticleId') if n.get('IdType') == 'doi'), '') or ''
         
         # Authors
         authors = []
         for auth in article.findall('./AuthorList/Author'):
-            last = auth.findtext('LastName', '').strip()
-            fore = (auth.findtext('ForeName', '') or auth.findtext('Initials', '')).strip()
+            last = clean_inline(auth.findtext('LastName'))
+            fore = clean_inline(auth.findtext('ForeName') or auth.findtext('Initials'))
             if last:
                 authors.append(f"{last} {fore}".strip())
             elif auth.findtext('CollectiveName'):
-                authors.append(auth.findtext('CollectiveName').strip())
+                authors.append(clean_inline(auth.findtext('CollectiveName')))
 
         # Affiliations
         affiliations = []
         for aff in article.findall('.//AffiliationInfo/Affiliation'):
-            t = clean(''.join(aff.itertext()))
+            t = clean_inline(''.join(aff.itertext()))
             if t and t not in affiliations:
                 affiliations.append(t)
 
         # Publication types
-        pub_types = [clean(''.join(pt.itertext())) for pt in article.findall('./PublicationTypeList/PublicationType')]
+        pub_types = [clean_inline(''.join(pt.itertext())) for pt in article.findall('./PublicationTypeList/PublicationType')]
         from publication_status import pubmed_relations
 
         # MeSH terms
-        mesh_terms = [clean(''.join(m.find('DescriptorName').itertext())) for m in row.findall('.//MeshHeadingList/MeshHeading') if m.find('DescriptorName') is not None]
+        mesh_terms = [clean_inline(''.join(m.find('DescriptorName').itertext())) for m in row.findall('.//MeshHeadingList/MeshHeading') if m.find('DescriptorName') is not None]
 
         # Abstract sections
         abstract_sections = []
         for n in article.findall('./Abstract/AbstractText'):
-            label = (n.get('Label') or '').strip()
-            txt = clean(''.join(n.itertext()))
+            label = clean_inline(n.get('Label'))
+            txt = clean_inline(''.join(n.itertext()))
             if txt:
                 abstract_sections.append({'label': label, 'text': txt})
 
-        abstract = '\n\n'.join(((s['label'] + ': ') if s['label'] else '') + s['text'] for s in abstract_sections)
+        abstract = ' '.join(((s['label'] + ': ') if s['label'] else '') + s['text'] for s in abstract_sections)
 
         ad = article.find('ArticleDate')
         date_basis = 'ArticleDate'
@@ -373,12 +375,12 @@ def parse(root, excluded_out=None):
             'url': 'https://doi.org/' + doi if doi else 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/',
             'pubmed_url': 'https://pubmed.ncbi.nlm.nih.gov/' + pmid + '/',
             'journal': journal,
-            'journalAbbreviation': article.findtext('./Journal/ISOAbbreviation') or '',
+            'journalAbbreviation': journal_abbreviation,
             'date': date,
             'dateBasis': date_basis,
             'category': classify(title, journal),
             'basis': 'PubMed 官方结构化元数据',
-            'summary': clean(abstract),
+            'summary': abstract,
             'summary_truncated': False,
             'authors': authors,
             'leadAuthor': authors[0] if authors else '',

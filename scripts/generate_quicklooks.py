@@ -27,7 +27,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from build_data import clean
+from text_hygiene import clean_inline, clean_markup, model_text
 from rejection_detail import raw_excerpt
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -109,7 +109,7 @@ def minor_item(p):
 
 
 def clean_abstract(value):
-    return clean(value)
+    return clean_markup(value)
 
 
 def local_abstract(p):
@@ -133,7 +133,7 @@ def local_abstract(p):
         labels = [str(s.get('label') or '').strip().casefold() for s in sections]
         if all(re.match(r'^(conclusions?|results?|interpretation|findings|结论|结果)\b', label) for label in labels):
             return None
-        abstract = clean_abstract(' '.join(((s.get('label') + ': ') if s.get('label') else '') + s['text'] for s in sections))
+        abstract = clean_inline(' '.join(((s.get('label') + ': ') if s.get('label') else '') + s['text'] for s in sections))
     else:
         abstract = clean_abstract(p.get('summary'))
         if re.match(r'^(conclusions?|结论)\s*:', abstract, re.I):
@@ -324,10 +324,38 @@ def allowed_nums(s):
     return nums(s) | set(word_number_tokens(s))
 
 
+QUICKLOOK_TEXT = ('title_zh', 'one_line', 'design', 'limits', 'why_read')
+
+
+def normalize_model_output(value):
+    if not isinstance(value, dict):
+        return value
+
+    def field(raw, error):
+        if not isinstance(raw, str):
+            return raw
+        try:
+            return model_text(raw, single_line=True)
+        except ValueError:
+            raise QuicklookError(error) from None
+
+    out = dict(value)
+    for key in QUICKLOOK_TEXT:
+        if key in out:
+            out[key] = field(out[key], 'invalid_field_' + key)
+    if isinstance(out.get('findings'), list):
+        out['findings'] = [
+            {**finding, **{key: field(finding[key], 'invalid_finding_shape')
+                           for key in ('text', 'quote') if key in finding}}
+            if isinstance(finding, dict) else finding for finding in out['findings']
+        ]
+    return out
+
+
 def validate(o, abstract):
     if not isinstance(o, dict):
         raise QuicklookError('model_not_object')
-    fields = ('title_zh', 'one_line', 'design', 'limits', 'why_read')
+    fields = QUICKLOOK_TEXT
     for k in fields:
         maximum = 60 if k in {'one_line', 'design', 'why_read'} else 400
         if not isinstance(o.get(k), str) or not o[k].strip() or len(o[k].strip()) > maximum:
@@ -510,7 +538,7 @@ def batch(todo, have, miss, cfg, today, limit, lookup_limit, fetch=epmc, model=c
             stats['model_calls'] += 1
             raw, _usage = model(cfg, p.get('title') or '', p.get('cleanJournal') or p.get('journal', ''), info['abstract'])
             stage = 'validation'
-            item, repaired = validate_or_repair(raw, info['abstract'])
+            item, repaired = validate_or_repair(normalize_model_output(raw), info['abstract'])
             if repaired:
                 stats['repaired_without_model'] = stats.get('repaired_without_model', 0) + 1
             staged['items'][key] = item | {'abstract': info['abstract'], 'pmid': info.get('pmid', ''),

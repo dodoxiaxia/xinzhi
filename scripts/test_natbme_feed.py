@@ -13,6 +13,7 @@ from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 import build_public as builder
+from build_data import clean
 import merge_candidates
 import refresh_feeds as feeds
 from public_bundle import bundle_text
@@ -112,7 +113,7 @@ class NatBMEFeedTests(unittest.TestCase):
         expected_excluded = 0
         for el in xml_items:
             link = feeds.text(el, 'link')
-            title = feeds.clean(feeds.text(el, 'title'))
+            title = clean(feeds.text(el, 'title'))
             doi = feeds.extract_doi(link, el)
             expected_dates[link] = feeds.dateval(feeds.text(el, 'date'))
             category = feeds.classify(title, source['name'])

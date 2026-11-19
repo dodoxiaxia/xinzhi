@@ -945,6 +945,9 @@ class WantedTests(unittest.TestCase):
         for visibility in (True, False, None):
             with self.subTest(visibility=visibility), tempfile.TemporaryDirectory() as tmp:
                 root, writes = Path(tmp), []
+                planted = root / d.dpi.INPUT_DIR / 'manifest.json'
+                planted.parent.mkdir(parents=True)
+                planted.write_text('not a manifest')  # The public-fallback path must not open it.
                 def save(data, ledger):
                     writes.append(copy.deepcopy(data))
                 class Writer:
@@ -958,10 +961,12 @@ class WantedTests(unittest.TestCase):
                 with patch.object(d, 'ROOT', root), patch.object(d, 'now', return_value=WHEN), \
                         patch.object(d, 'checkpoint', return_value=writer), patch.object(d, 'discover', side_effect=discover), \
                         patch.object(d, 'model_config', return_value={}), patch.object(sys, 'argv', ['daily_fulltext.py', '--run']), \
+                        patch.object(d.dpi, 'input_directory', wraps=d.dpi.input_directory) as inputs, \
                         contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(d.main(), 0)
                 self.assertTrue(writes)
                 self.assertEqual('wanted' in writes[-1], visibility is True)
+                inputs.assert_not_called()  # The daily writer is never wired to the read-only preview.
                 self.assertNotIn('wanted', d.public_readings(writes[-1]))
 
     def test_wanted_cli_no_network_and_store_validates_entries(self):
