@@ -48,6 +48,7 @@ run() { # name, command...
 skip() { printf '%-48s SKIP  (%s)\n' "$1" "$2"; SKIPPED+=("$1: $2"); }
 
 echo "== Python unit tests (unittest discover)"
+# test_deep_reading_input.py is included by test_*.py discovery; its synthetic PDF checks require PyMuPDF.
 if python3 -c 'import fitz' >/dev/null 2>&1; then
   run "python-unittest" python3 -m unittest discover -s scripts -p 'test_*.py'
 else
