@@ -200,8 +200,11 @@ def doi_adjudication_registry():
     }}
 def public_paper(p,editorial_drafts=None):
     from abstract_quality import normalize_paper
+    from enrich_metadata import resolve_notice_topic_tags
     p=annotate_publication(normalize_paper(p), ROOT)
     out={k:v for k,v in p.items() if k in PAPER_FIELDS}
+    notice_tags=resolve_notice_topic_tags(p)
+    if notice_tags is not None:out['tags']=notice_tags
     if p.get('publicationStatus'):out['publicationStatus']=p['publicationStatus']
     if p.get('abstractStatus') in {'structured','available','missing','unverified','non_abstract_metadata'}:out['abstractStatus']=p['abstractStatus']
     if p.get('abstractSource') in {'Crossref','PubMed','RSS','Europe PMC'}:
@@ -432,15 +435,16 @@ def make_radar(candidates,tz=None,corrections=None):
         f=full.get(str(r['pmid']),{})
         atext=' '.join((x.get('l','')+': ' if x.get('l') else '')+x.get('t','') for x in f.get('a',[]))
         pts=tuple(r.get('pubTypes',()))+tuple(f.get('pt',()))
-        annotated=annotate_publication(dict(r,summary=atext,pubTypes=pts,
-            pubmedRelations=f.get('pubmedRelations',r.get('pubmedRelations',()))), ROOT)
+        paper=dict(r,summary=atext,pubTypes=pts,
+                   pubmedRelations=f.get('pubmedRelations',r.get('pubmedRelations',())))
+        annotated=annotate_publication(paper, ROOT)
         if annotated.get('publicationStatus'):
             publication_statuses[str(r['pmid'])]=annotated['publicationStatus']
         if f.get('a') and r['date']>=floor:
             absmap[str(r['pmid'])]=[[x.get('l',''),x.get('t','')] for x in f['a']]
         rows.append([r['pmid'],r.get('doi',''),r['date'],idx('jn',cj),idx('pub',classify_publisher(j,url)),
                      idx('tier',classify_clinical_tier(j,r['title'],r.get('doi',''))),idx('design',annotated['studyDesign']),
-                     [idx('tag',t) for t in resolve_topic_tags(dict(r, doi=r.get('doi'), id='pmid:'+str(r.get('pmid'))), title=r['title'], summary=atext)],r['title']])
+                     [idx('tag',t) for t in resolve_topic_tags(dict(paper,id='pmid:'+str(r['pmid'])))],r['title']])
     if not rows:return None
     lists={k:[v for v,_ in sorted(d.items(),key=lambda kv:kv[1])] for k,d in pools.items()}
     return {'v':1,'updatedAt':a.get('updatedAt'),'windowDays':a.get('windowDays'),'source':a.get('source'),**lists,'abs':absmap,'zh':{str(r[0]):corrected_title({'pmid':r[0],'doi':r[1],'title':r[8]},tz['pmid:%s'%r[0]],corrections) for r in rows if 'pmid:%s'%r[0] in tz},'rows':rows,
