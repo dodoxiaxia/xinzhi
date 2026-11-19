@@ -488,6 +488,32 @@ def make_feed(items,quicklooks,built_at,days=FEED_DAYS):
 
 RADAR_INLINE_DAYS=21  # rows this recent ship in public.js; the rest load on demand from radar.js
 
+def make_404_page():
+    return """<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>页面未找到 · 心知</title>
+</head>
+<body>
+  <main>
+    <h1>404 · 页面未找到</h1>
+    <p>此页面不存在或已移动。</p>
+    <p><a href="/">返回心知首页</a></p>
+  </main>
+</body>
+</html>
+"""
+
+def make_sitemap(built_at):
+    lastmod=datetime.datetime.fromisoformat(built_at).date().isoformat()
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://learn.dryz.info/</loc><lastmod>{lastmod}</lastmod></url>
+</urlset>
+"""
+
 def split_radar(radar,today=None):
     """Recent rows stay in the first-load bundle (radar default 14-day view and badges);
     the 365-day remainder becomes radar.js, fetched only for longer ranges or searches."""
@@ -690,7 +716,26 @@ def main():
     keep_dois=load_scope_keep_dois(ROOT/'config/public_library_scope_keeps.json')
     scope_uncertain=build_scope_uncertain_list(library['papers']+candidates['items'],pdf_ids=pdf_ids,hidden_ids=hidden_ids,hidden_dois=hidden_dois,keep_dois=keep_dois,generated_at=built_at)
     worker=worker.replace(scope_uncertain_placeholder,'const SCOPE_UNCERTAIN_LIST = '+json.dumps(worker_scope_uncertain_payload(scope_uncertain),ensure_ascii=False,separators=(',',':'))+';')
-    files={'index.html':public_index,'feed.xml':make_feed(candidates['items'],ql,built_at),'demo-reading.html':(ROOT/'demo-reading.html').read_text(),'_headers':headers,'_worker.js':worker}
+    files={
+        'index.html':public_index,
+        '404.html':make_404_page(),
+        'robots.txt':'User-agent: *\nDisallow: /api/\nSitemap: https://learn.dryz.info/sitemap.xml\n',
+        'sitemap.xml':make_sitemap(built_at),
+        'feed.xml':make_feed(candidates['items'],ql,built_at),
+        'demo-reading.html':(ROOT/'demo-reading.html').read_text(),
+        '_worker.js':worker,
+        '_headers':headers+"""/404
+  Cache-Control: public, max-age=0, must-revalidate
+/404.html
+  Cache-Control: public, max-age=0, must-revalidate
+/robots.txt
+  Cache-Control: public, max-age=300, must-revalidate
+  Content-Type: text/plain; charset=utf-8
+/sitemap.xml
+  Cache-Control: public, max-age=300, must-revalidate
+  Content-Type: application/xml; charset=utf-8
+""",
+    }
     files.update(assets)
     for value in files.values():validate_public(value)
     payloads={name:value.encode('utf-8') for name,value in files.items()}
