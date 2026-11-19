@@ -2119,7 +2119,7 @@
   function aiErrorMessage(result, task) {
     if (result?.error !== 'model_failed') return AI_ERR[result?.error] || 'AI 服务暂时出错，请稍后重试。';
     const detail = String(result.detail || '');
-    if (detail === 'unsupported_numbers') return (task === 'title' ? '译文' : 'AI 结果') + '包含与原文不符的数字，未保存。请重试。';
+    if (detail === 'unsupported_numbers') return (task === 'translate' || task === 'title' ? '译文' : 'AI 结果') + '包含与原文不符的数字，未保存。请重试。';
     if (/^(?:invalid_[a-z_]+|model_not_object|not_object)$/.test(detail)) return '模型结果未符合格式要求，未保存。请重试。';
     return AI_MODEL_ERR[detail] || AI_ERR.model_failed;
   }
