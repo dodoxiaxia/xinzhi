@@ -3959,7 +3959,7 @@ async function machineFirstPage(bytes) {
   const metadata = await machineMetadata(ctx);
   // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
   const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
 }
 async function machinePageText(ctx, pageBody) {
   const notes = ctx.notes;
@@ -4115,7 +4115,7 @@ function machineAnyDoi(text) {
 // options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
 // If normal title matching (including section-label stripping) misses, falls back in order via machineTitleVariant
-// (whole-word versus/vs./v. -> vs and stripping ™/®): checks.titleVariant = 'versus_or_mark', then 'c1_control_dropped', then 'line_number_inserted'.
+// (whole-word versus/vs./v. -> vs and stripping ™/®): checks.titleVariant = 'versus_or_mark', then 'c1_control_dropped', then 'line_number_inserted', then 'proof_marker_inserted'.
 async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
@@ -4190,6 +4190,18 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
             if (nums.length === 2 && !(nums[0] < nums[1])) return false;
             return inserted.every(item => memberAt(item.at, item.text));
           });
+          return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+        });
+      }
+      // Elsevier pre-proof PDFs print author-query markers (Q1, Q2 ...) inside the title. Needs proof-stage evidence on the page
+      // ("_proof" file marker or "Journal Pre-proof") and every inserted marker must also appear elsewhere in the shown text (the query list);
+      // page.shown excludes the raw content stream, where graphics-state operators ("Q 1 0 0 1 ...") would fake a match.
+      const proofStage = /(?:^|[^A-Za-z0-9])_proof(?![A-Za-z])|\bjournal\s+pre-?proof\b/i.test(page.shown);
+      if (proofStage) {
+        const markerCount = digits => (page.shown.match(new RegExp('(?:^|[^A-Za-z0-9])Q\\s*' + digits + '(?![0-9])', 'g')) || []).length;
+        tryVariant('proof_marker_inserted', candidate => {
+          const words = wordsFor(candidate);
+          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [2, 3], tok => /^q\d{1,2}$/.test(tok), inserted => inserted.every(item => markerCount(item.text.slice(1)) >= 2));
           return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
         });
       }

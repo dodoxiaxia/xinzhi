@@ -1097,6 +1097,75 @@ async function verifyNext(h, doi, result, reason) {
     // Even with the DOI confirmed, an extra number with no number chain through it is rejected.
     const seqNoChain = await identity(h, lnPdf(seqPageTitle, []), lnDoi, seqTitle, seqOptions);
     assert.equal(seqNoChain.verdict, 'mismatch', 'sequel without chain');
+
+    // 9c) proof_marker_inserted: only when the claimed DOI is confirmed; page shows proof-stage evidence ("_proof" / "Journal Pre-proof");
+    //     each inserted Q-number also appears elsewhere on the page (the author-query list); >=40 chars; q\d{1,2} only at original
+    //     word-space gaps; <=2 insertions. q123 / mid-word / 3 inserts / <40 / x2 / no proof evidence / no query list all fail.
+    const pmDoi = '10.9999/synthetic.proofmark';
+    const pmTitle = 'Synthetic atrial fibrillation entrenchment revisited:Early timing of AF cohorts';
+    assert(normalize(pmTitle).length >= 40);
+    const pmPdf = (pageTitle, {doi = true, proof = true, queries = ['Q 1', 'Q 2', 'Q 12']} = {}) => fixtures.multiPage({pages:[{rawContent:'BT /F1 10 Tf 1 0 0 1 72 720 Tm ' + (doi ? '(doi:' + esc(pmDoi) + ') Tj ' : '') + queries.map(q => '(' + q + ') Tj ').join('') + (proof ? '(FLA 5.7.0 DTD HRTHM12284 _proof) Tj ' : '(FLA 5.7.0 DTD HRTHM12284) Tj ') + '(' + esc(pageTitle) + ') Tj ET\n'}]});
+    for (const pageTitle of [
+      'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts',
+      'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q 2 cohorts',
+      'Synthetic Q1 atrial fibrillation entrenchment revisited: Early timing of AF Q12 cohorts'
+    ]) {
+      const ok = await identity(h, pmPdf(pageTitle), pmDoi, pmTitle);
+      assert.equal(ok.verdict, 'ok', pageTitle);
+      assert.equal(ok.level, 'full', pageTitle);
+      assert.equal(ok.checks.titleVariant, 'proof_marker_inserted', pageTitle);
+    }
+    const pmCombo = await identity(
+      h,
+      pmPdf('Synthetic atrial fibrillation vs 2.0\u00962022 entrenchment revisited: Early timing of AF Q2 cohorts'),
+      pmDoi,
+      '[Articles] Synthetic atrial fibrillation versus 2.0 \u2013 2022 entrenchment revisited:Early timing of AF cohorts'
+    );
+    assert.equal(pmCombo.verdict, 'ok');
+    assert.equal(pmCombo.checks.titlePrefix, 'section_label_dropped');
+    assert.equal(pmCombo.checks.titleVariant, 'proof_marker_inserted');
+
+    const pmNegatives = [
+      ['q123', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q123 cohorts', {queries:['Q 1', 'Q 123']}), pmTitle],
+      ['mid-word', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF cohq2orts'), pmTitle],
+      ['three-inserts', pmPdf('Synthetic Q1 atrial fibrillation Q2 entrenchment revisited: Early timing Q3 of AF cohorts', {queries:['Q 1', 'Q 2', 'Q 3']}), pmTitle],
+      ['short-title', pmPdf('Synthetic atrial Q2 timing of cohorts'), 'Synthetic atrial timing of cohorts'],
+      ['non-q-marker', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF x2 cohorts'), pmTitle],
+      ['no-proof-evidence', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {proof:false}), pmTitle],
+      ['no-query-list', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:[]}), pmTitle],
+      ['query-list-other-number', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:['Q 1', 'Q 3']}), pmTitle],
+      ['no-doi', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {doi:false}), pmTitle]
+    ];
+    for (const [label, pdf, title] of pmNegatives) {
+      const res = await identity(h, pdf, pmDoi, title, {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true});
+      assert.equal(res.verdict, 'mismatch', label);
+      assert(!('level' in res), label);
+    }
+    // Coenzyme Q10 counter-example: the page title carries "Q10" the registered title lacks; without the DOI (or without a proof stage)
+    // it must neither pass nor become title_only.
+    const coTitle = 'Coenzyme supplementation and cardiovascular outcomes in synthetic heart failure cohorts';
+    const coPage = 'Coenzyme Q10 supplementation and cardiovascular outcomes in synthetic heart failure cohorts';
+    const coOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    for (const [label, pdf] of [
+      ['coq10 no doi', pmPdf(coPage, {doi:false, queries:['Q 10']})],
+      ['coq10 doi no proof', pmPdf(coPage, {proof:false, queries:['Q 10']})],
+      ['coq10 doi, proof, no query list', pmPdf(coPage, {queries:[]})]
+    ]) {
+      const res = await identity(h, pdf, pmDoi, coTitle, coOptions);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert(!('level' in res), label);
+    }
+
+    // 9d) Normal-match and versus_or_mark precedence: exact matches never get titleVariant, even with line numbers or Q2 elsewhere on page.
+    const exactRes = await identity(h, lnPdf(lnTitle + ' Q2 appendix', [1, 2, 3, 4, 5, 6]), lnDoi, lnTitle);
+    assert.equal(exactRes.verdict, 'ok');
+    assert.equal(exactRes.level, 'full');
+    assert(!('titleVariant' in exactRes.checks));
+
+    const vsRes = await identity(h, lnPdf('Beta-blocker therapy vs placebo after myocardial infarction in synthetic cohorts', [1, 2, 3, 4, 5, 6]), lnDoi, 'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts');
+    assert.equal(vsRes.verdict, 'ok');
+    assert.equal(vsRes.level, 'full');
+    assert.equal(vsRes.checks.titleVariant, 'versus_or_mark');
   }
 
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
