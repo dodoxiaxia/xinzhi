@@ -332,11 +332,13 @@ class MuseOriginalTests(unittest.TestCase):
                 self.assertEqual(result['reason'], 'identity_mismatch', result)
 
     def test_t18_multi_item_news_stays_rejected_when_target_headline_is_absent(self):
-        target = self.make_pdf(['Medical News in Brief\nSynthetic Sleep and Recovery\n'
-                                'DOI 10.1000/exact\nA Synthetic Report on Nutrition\n'])
-        self.assertEqual(verify(target, '10.1000/exact',
-                                'Synthetic Testosterone Trial and Cardiovascular Events')['reason'],
-                         'identity_mismatch')
+        title = 'Synthetic Testosterone Trial and Cardiovascular Events'
+        news = ('Medical News in Brief\nSynthetic Sleep and Recovery\n'
+                'DOI 10.1000/exact\nA Synthetic Report on Nutrition\n')
+        for printed in ('', title.replace('Trial', 'Trial (STT)')):
+            with self.subTest(printed=printed):
+                target = self.make_pdf([news + printed])
+                self.assertEqual(verify(target, '10.1000/exact', title)['reason'], 'identity_mismatch')
 
 
 if __name__ == '__main__':

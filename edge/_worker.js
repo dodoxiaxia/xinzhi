@@ -4278,7 +4278,9 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
         });
       }
     }
-    if (!titleMatch.found) {
+    // Medical News in Brief runs multiple unrelated headlines together. Separate title/DOI
+    // hits on such a page do not justify the new fallbacks.
+    if (!titleMatch.found && !/\bmedical\s+news\s+in\s+brief\b/i.test(shown)) {
       const shownDoi = machineDoiPresent(shown, doi, true);
       const metadataDoi = doiMeta && machineDoiPresent(page.metadata.text, doi, true);
       if (shownDoi) {

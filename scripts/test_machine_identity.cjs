@@ -1217,6 +1217,10 @@ async function verifyNext(h, doi, result, reason) {
     assert.equal(resultC.checks.titleExtraction, 'text_operators');
     const inComment = fixtures.standardTextPages([[front + '% ' + showLines([spotlight])]]);
     assert.equal((await identity(h, inComment, doi, spotlight, options)).verdict, 'mismatch', 'comment is not shown');
+    const newsFront = header + '(Medical News in Brief) Tj 0 -14 Td (A Synthetic Sleep Report) Tj '
+      + '0 -14 Td (doi:' + doi + ') Tj ET\n';
+    const newsHeading = fixtures.standardTextPages([[newsFront + showLines([spotlight])]]);
+    assert.equal((await identity(h, newsHeading, doi, spotlight, options)).verdict, 'mismatch', 'news with unrelated DOI and late heading');
 
     const cover = (coverTitle = title, link = 'https://hdl.handle.net/1/synthetic') => showLines([
       'Utrecht University Repository', 'Title', coverTitle, 'Authors', 'Synthetic Author',
@@ -1273,6 +1277,8 @@ async function verifyNext(h, doi, result, reason) {
     assert.equal(meta.checks.titleVariant, 'year_prefix_dropped+acronym_inserted');
     const xmp = fixtures.customEncoding({doi:'', title:abbreviated, xmpTitle:'DOI ' + doi});
     assert.equal((await identity(h, xmp, doi, title, options)).level, 'metadata_doi');
+    const newsVariant = fixtures.multiPage({pages:[{literal:'Medical News in Brief DOI ' + doi, unicode:abbreviated}]});
+    assert.equal((await identity(h, newsVariant, doi, title, options)).verdict, 'mismatch', 'news must not use catalogue variants');
     for (const [label, printed, registered, printedDoi, metadata] of [
       ['year omitted and a word changed', title.replace('atrial', 'ventricular'), '2024 ' + title],
       ['different year', '2023 ' + abbreviated, '2024 ' + title],

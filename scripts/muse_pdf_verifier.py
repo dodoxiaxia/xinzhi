@@ -221,7 +221,8 @@ def verify(path, doi, title):
             # Both parsers already read standard-font hex text, regardless of its PDF string syntax.
             unmatched = [texts[0] for texts, clean in first_pages if not title_matches(texts[0], title, clean)]
             title_evidence = not unmatched
-            if unmatched:
+            if unmatched and not any(re.search(r'\bmedical\s+news\s+in\s+brief\b', texts[0], re.I)
+                                     for texts, _ in first_pages):
                 plain_title = TITLE_MARKUP.sub('', title)
                 candidates = (plain_title, SECTION_LABEL.sub('', plain_title))
                 if all(any(catalog_title_variant(text, candidate) for candidate in candidates)
