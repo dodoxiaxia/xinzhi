@@ -1379,6 +1379,26 @@
           "notes": ""
         },
         {
+          "id": "candidates-clear-empty-source",
+          "label": "清除筛选",
+          "selector": "#articlesStream .empty-state [data-clear=\"sidebar\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "有来源筛选且无匹配文献",
+          "setup": [
+            {
+              "goto": "/?mode=candidates&pub=AHA%20(Circulation)&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "stable": true,
+          "notes": "清除来源等筛选条件，保留搜索关键词。"
+        },
+        {
           "id": "candidates-reset-empty",
           "label": "重置所有条件",
           "selector": "#clearAllFiltersBtn",
@@ -5496,6 +5516,21 @@
         "setup": [
           {
             "click": "#searchToggleBtn"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "search-expanded-dictionary",
+        "label": "零结果时仍显示检索扩展",
+        "selector": "#activeFiltersBar [data-search-expansion]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=AF%20feature-map-no-match-zzzz"
+          },
+          {
+            "wait": "#clearAllFiltersBtn"
           }
         ],
         "expect": "visible"

@@ -142,6 +142,7 @@
 | candidates-read | 打开阅读面板 | `#articlesStream [data-action="open-drawer"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-star | 加入精选 | `#articlesStream [data-action="toggle-huddle"]` | toggle | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-source | 官网原文 | `#articlesStream .card-source` | link | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-clear-empty-source | 清除筛选 | `#articlesStream .empty-state [data-clear="sidebar"]` | button | conditional · mobile/tablet/desktop · 有来源筛选且无匹配文献 | 是 |
 | candidates-reset-empty | 重置所有条件 | `#clearAllFiltersBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-quick | 快捷筛选 | `#quickBar` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-chip-row | 快捷条 | `#qfChipRow` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
@@ -185,6 +186,7 @@
 <details><summary>入口操作与备注</summary>
 
 - **candidates-card**：`[]`；重复卡片检查首张；随数据更新
+- **candidates-clear-empty-source**：`[{"goto":"/?mode=candidates&pub=AHA%20(Circulation)&q=feature-map-no-match-zzzz"}]`；清除来源等筛选条件，保留搜索关键词。
 - **candidates-reset-empty**：`[{"goto":"/?mode=candidates&q=feature-map-no-match-zzzz"}]`
 - **candidates-topic-badge**：`[{"goto":"/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}]`；与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示
 - **candidates-summary-clear**：`[{"goto":"/?mode=candidates&lane=all"}]`；恢复默认筛选，保留搜索框关键词
@@ -442,6 +444,7 @@
 | 状态 id | 状态 | 选择器 | 预期 | 操作 |
 | --- | --- | --- | --- | --- |
 | search-expanded | 展开搜索 | `#searchToggleBtn[aria-expanded="true"]` | visible | [{"click":"#searchToggleBtn"}] |
+| search-expanded-dictionary | 零结果时仍显示检索扩展 | `#activeFiltersBar [data-search-expansion]` | visible | [{"goto":"/?mode=library&q=AF%20feature-map-no-match-zzzz"},{"wait":"#clearAllFiltersBtn"}] |
 | dark-theme | 深色模式 | `html[data-theme="dark"]` | attached | [{"goto":"/?mode=curated&theme=light"},{"click":"#themeToggle"}] |
 | light-theme | 浅色模式 | `html[data-theme="light"]` | attached | [{"goto":"/?mode=curated&theme=dark"},{"click":"#themeToggle"}] |
 | reader-open | 阅读面板已打开 | `#readerDrawer[aria-hidden="false"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}] |
