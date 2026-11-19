@@ -26,6 +26,7 @@ def main():
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f'http://127.0.0.1:{server.server_port}/'
     checks = []
+    translations = []
 
     def check(value, label):
         assert value, label
@@ -33,13 +34,21 @@ def main():
 
     def mock(route):
         url = route.request.url
-        if '/api/ai?task=translate' in url:
-            time.sleep(1.2)  # lands after the reader has interacted with the drawer
-            return route.fulfill(json={'ok': True, 'found': True, 'tr': {'abstract_zh': '延迟返回的中文译文。', 'title_zh': '延迟标题'}})
+        if '/api/ai?task=translate' in url and not translations:
+            translations.append(route)
+            return
         if '/api/' in url:
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': False})
         if not url.startswith(base):
             return route.abort('blockedbyclient')
+        if '/assets/data-library.' in url:
+            # The checked-in public library contains metadata only.
+            asset = route.fetch()
+            return route.fulfill(response=asset, body=asset.text() + '''
+                window.LIBRARY.papers.forEach(p => {
+                    if (!p.summary) p.summary = "Fictional abstract for an offline reader regression.";
+                });
+            ''')
         return route.continue_()
 
     executable = os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium'
@@ -51,7 +60,7 @@ def main():
             page = context.new_page()
 
             # Hamburg links: removed from the reader drawer footer.
-            page.goto(base + '?mode=library&lane=all&reading=abstract', wait_until='networkidle')
+            page.goto(base + '?mode=library&lane=all', wait_until='networkidle')
             page.locator('#articlesStream [data-action="open-drawer"]').first.click()
             page.locator('#readerDrawer.open').wait_for()
             check(page.locator('#drawerInstitutionLoginLink').count() == 0, 'Hamburg login removed from drawer footer')
@@ -70,7 +79,11 @@ def main():
                 details.open = true;
                 study.appendChild(details);
             }""")
-            page.get_by_text('延迟返回的中文译文。').wait_for(timeout=8000)
+            assert len(translations) == 1, 'Translation lookup is held until after the reader interaction'
+            translations[0].fulfill(json={'ok': True, 'found': True, 'tr': {
+                'abstract_zh': '延迟返回的中文译文。', 'title_zh': '延迟标题',
+            }})
+            page.locator('[data-abs-panel="zh"]').get_by_text('延迟返回的中文译文。').wait_for()
             check(page.locator('[data-drawer-region="study"] [data-marker="kept"]').count() == 1, 'unchanged drawer region is not rebuilt')
             check(page.locator('[data-drawer-region="study"] details[open]').count() == 1, 'open details survive an async update')
 

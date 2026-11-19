@@ -60,25 +60,28 @@ if __name__ == '__main__':
                         assert after == before and scope == 0, (mode, width, before, after, scope)
                     records.append({'width': width, 'mode': mode, 'before': before, 'noMatchAfter': after, 'visibleScope': scope})
                 if fixed:
-                    page.goto(base + '?mode=weekly&view=compact&tier=Unrelated', wait_until='networkidle')
-                    author = page.evaluate('FEEDS.items.find(p=>p.weeklyPick && p.authors?.length)')
+                    page.goto(base + '?mode=weekly&view=compact&lane=core&range=365&ft=none', wait_until='networkidle')
+                    board_ids = page.locator('.weekly-auto-item').evaluate_all('(cards) => cards.map(card => card.dataset.paperId)')
+                    author = page.evaluate('ids => FEEDS.items.find(p => ids.includes(p.id) && p.authors?.length)', board_ids)
+                    assert author, 'The browser fixture needs an author on a paper in the current board'
                     sfill(page, author['authors'][0])
                     expect(page.locator('#weeklyAuto .special-search-status')).to_contain_text(author['authors'][0])
                     expect(page.locator('.weekly-auto-item[data-paper-id="' + author['id'] + '"]')).to_be_visible()
-                    count = page.locator('.weekly-auto-item').count(); assert 0 < count < 24
-                    saved_url = page.url; page.reload(wait_until='networkidle')
-                    expect(page.locator('.weekly-auto-item')).to_have_count(count)
+                    expect(page.locator('.weekly-auto-item')).to_have_count(1)
+                    page.reload(wait_until='networkidle')
+                    expect(page.locator('.weekly-auto-item')).to_have_count(1)
                     sfill(page, '房颤')
                     expect(page.locator('#weeklyAuto .special-search-status')).to_contain_text('搜索：房颤')
-                    count = page.locator('.weekly-auto-item').count(); assert 0 < count < 24
+                    count = page.locator('.weekly-auto-item').count(); assert 0 < count < len(board_ids)
                     assert page.locator('#nextCandidates').inner_text() == ''
                     records.append({'width': width, 'mode': 'weekly-matched-author-chinese-reload', 'matched': count, 'hiddenOtherColumnFiltersIgnored': True})
                     page.locator('#sourceStatusBtn').click(no_wait_after=True)
                     expect(page.locator('#sourcesHealthGrid .search-scope')).to_contain_text('信源状态')
                     expect(page.locator('#globalSearch')).to_have_value('房颤')
+                    source_count = page.evaluate('SOURCE_HEALTH.sources.length')
                     sfill(page, 'bmj')
                     expect(page.locator('#sourcesHealthGrid .special-search-status')).to_contain_text('搜索：bmj')
-                    matched = page.locator('.source-item').count(); assert 0 < matched < 82
+                    matched = page.locator('.source-item').count(); assert 0 < matched < source_count
                     sfill(page, '返回非订阅内容')
                     expect(page.locator('#sourcesHealthGrid .special-search-status')).to_contain_text('搜索：返回非订阅内容')
                     failed = page.evaluate('SOURCE_HEALTH.sources.filter(s=>s.status==="not_feed").length')
@@ -88,7 +91,7 @@ if __name__ == '__main__':
                     expect(page.locator('#activeFiltersBar .doi-filter-badge:visible')).to_be_visible()
                     assert not page.locator('#sourcesSection').is_visible()
                     page.locator('#searchPanel [data-clear="search"]').click(no_wait_after=True)
-                    expect(page.locator('.source-item')).to_have_count(82)
+                    expect(page.locator('.source-item')).to_have_count(source_count)
                     records.append({'width': width, 'mode': 'source-name-status-and-doi', 'nameMatches': matched, 'failedMatches': failed, 'doiGlobalPreserved': True})
                 if width < 500:
                     page.goto(base + '?mode=candidates&lane=all&view=compact', wait_until='networkidle')

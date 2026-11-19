@@ -1,7 +1,7 @@
 'use strict';
-// Offline browser test: switching modes or DOI layout clears and hides inapplicable tool-row controls (#laneBar, #rangeBar, #ftBar).
+// Offline browser test for the visible quick filters across modes and exact DOI searches.
 const fs = require('fs'), path = require('path'), assert = require('assert');
-const { chromium } = require('playwright');
+const { chromium, expect } = require('playwright/test');
 
 const root = path.resolve(__dirname, '..');
 const origin = 'https://mode-toolrow-test.invalid';
@@ -20,21 +20,6 @@ const scripts = {
   '/data/curated.js': 'window.CURATED=' + JSON.stringify([paper]),
   '/data/quicklooks.js': 'window.QUICKLOOKS={items:{}}'
 };
-
-async function barState(page) {
-  return page.evaluate(() => ['#laneBar', '#rangeBar', '#ftBar', '#filterToggleBtn'].map(sel => {
-    const el = document.querySelector(sel);
-    return { sel, hidden: !el || el.hidden, html: el ? el.innerHTML : null };
-  }));
-}
-
-async function assertAllBarsHidden(page, label) {
-  const states = await barState(page);
-  for (const s of states) {
-    assert.strictEqual(s.hidden, true, `${label}: ${s.sel} must be hidden`);
-    if (s.sel !== '#filterToggleBtn') assert.strictEqual(s.html, '', `${label}: ${s.sel} must be emptied`);
-  }
-}
 
 async function run() {
   const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox'] });
@@ -64,42 +49,53 @@ async function run() {
   });
 
   try {
-    // 1. library -> weekly -> library -> sources
+    const scope = page.locator('#qfScopeBtn');
+    const quickBar = page.locator('#quickBar');
+    const pop = page.locator('#qfPop');
+    const topic = quickBar.locator('[data-qf="topic"]');
+    async function openScope() {
+      await expect(scope).toBeVisible();
+      await scope.click();
+      await expect(pop.locator('[data-qf-lane]').first()).toBeVisible();
+      await expect(pop.locator('[data-qf-range]').first()).toBeVisible();
+    }
+
     await page.goto(origin + '/?mode=library', { waitUntil: 'load' });
-    assert.strictEqual(await page.locator('#laneBar select').isVisible(), true, 'library shows lane select');
-    assert.strictEqual(await page.locator('#rangeBar select').isVisible(), true, 'library shows range select');
-    assert.strictEqual(await page.locator('#ftBar select').isVisible(), true, 'library shows ft select');
+    await openScope();
+    await expect(pop.locator('[data-qf-ft]').first()).toBeVisible();
 
     await page.click('.nav-tab-btn[data-mode="weekly"]');
-    await assertAllBarsHidden(page, 'library -> weekly');
+    await expect(scope).toBeHidden();
+    await expect(pop).toBeHidden();
+    await expect(topic).toBeVisible();
 
     await page.click('.nav-tab-btn[data-mode="library"]');
-    assert.strictEqual(await page.locator('#laneBar select').isVisible(), true, 'weekly -> library restores lane select');
-    assert.strictEqual(await page.locator('#rangeBar select').isVisible(), true, 'weekly -> library restores range select');
-    assert.strictEqual(await page.locator('#ftBar select').isVisible(), true, 'weekly -> library restores ft select');
+    await openScope();
+    await expect(pop.locator('[data-qf-ft]').first()).toBeVisible();
 
     await page.click('#sourceStatusBtn');
-    await assertAllBarsHidden(page, 'library -> sources');
+    await expect(quickBar).toBeHidden();
+    await expect(pop).toBeHidden();
 
-    // 2. curated -> weekly / sources also cleans up topic chips and moves #laneBar back cleanly
     await page.click('.nav-tab-btn[data-mode="curated"]');
-    assert.strictEqual(await page.locator('#streamRail #laneBar').count(), 1, 'curated puts #laneBar in rail');
-    await page.click('.nav-tab-btn[data-mode="weekly"]');
-    await assertAllBarsHidden(page, 'curated -> weekly');
-    assert.strictEqual(await page.locator('#streamLaneSlot #laneBar').count(), 1, 'curated -> weekly restores #laneBar slot');
+    await expect(scope).toBeHidden();
+    await expect(topic).toBeVisible();
+    await page.click('.nav-tab-btn[data-mode="candidates"]');
+    await openScope();
+    await expect(pop.locator('[data-qf-ft]')).toHaveCount(0);
 
-    // 3. DOI layout toggle hides bars and clearing restores target mode visibility
     await page.click('.nav-tab-btn[data-mode="library"]');
     await page.click('#searchToggleBtn');
     await page.fill('#globalSearch', '10.1001/toolrow.1');
-    await page.waitForFunction(() => !!document.querySelector('#activeFiltersBar .doi-filter-badge'));
-    await assertAllBarsHidden(page, 'library exact DOI');
+    await expect(page.locator('.doi-filter-badge')).toBeVisible();
+    await expect(quickBar).toBeHidden();
 
     await page.click('.nav-tab-btn[data-mode="weekly"]');
-    await assertAllBarsHidden(page, 'weekly exact DOI');
+    await expect(quickBar).toBeHidden();
     await page.click('#searchPanel [data-clear="search"]');
-    await page.waitForFunction(() => !document.querySelector('#weeklySection').hidden);
-    await assertAllBarsHidden(page, 'weekly after clearing DOI');
+    await expect(page.locator('#weeklySection')).toBeVisible();
+    await expect(scope).toBeHidden();
+    await expect(topic).toBeVisible();
 
     assert.deepStrictEqual(errors, [], 'no page errors');
     console.log('mode toolRow visibility checks passed');

@@ -398,7 +398,6 @@
 | digest | 综述速读 | `[data-action="ai-brief"][data-mode="digest"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | discussion | 讨论提纲 | `[data-action="ai-brief"][data-mode="huddle"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | ai-wait | 读取已有 AI 速览 | `[data-action="ai-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
-| translation-wait | 读取已有译文 | `[data-action="tr-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | brief-wait | 读取已有综述 | `[data-action="brief-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | request-fulltext | 获取全文 | `[data-ft-action="open-form"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | request-form | 全文申请 | `[data-ft-form]` | panel | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -444,8 +443,6 @@
 | ai-progress | 速览读取中或完成状态尚未确认 | `.quicklook.ai-ask [role="status"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | brief-generating | 正在生成综述或讨论提纲 | `.brief-box[aria-busy="true"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | brief-completed | 已生成综述或讨论提纲 | `.brief-done` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
-| translation-error | 译文生成失败 | `.translation-error` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
-| translation-progress | 译文读取或等待状态 | `.tr-box [role="status"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | topic-pop-open | 展开文章主题筛选 | `[data-qf-topic-all]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}] |
 | requests-empty | 本浏览器申请记录为空 | `#requestsModalBody .empty-state` | text:当前浏览器还没有已确认的全文申请记录 | [{"click":"#openRequestsBtn"}] |
 
@@ -458,7 +455,7 @@
 - **more-pop**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`；非模态筛选：打开时焦点进入；Tab/Shift+Tab 可离开并关闭；Escape/关闭按钮恢复入口焦点。
 - **more-close**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **publisher-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
-- **specialty-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
+- **specialty-options**：`[{"goto":"/?mode=candidates&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **design-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **minor-0**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
 - **minor-1**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"more\"]"}]`
@@ -505,25 +502,24 @@
 - **export-ris**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"},{"click":"[data-citation-export] summary"}]`
 - **export-warnings**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"},{"click":"[data-citation-export] summary"}]`
 - **download-form**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **translation-zh**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **translation-en**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
+- **translation-zh**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
+- **translation-en**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **digest**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **discussion**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **ai-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **translation-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **brief-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **request-fulltext**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"}]`
 - **request-form**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
 - **request-passphrase**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
 - **request-submit**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
 - **back-top**：`[{"goto":"/?mode=library&lane=all"},{"press":["body","End"]},{"wait":"#backToTopBtn"}]`
-- **translation-chinese-panel**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
-- **translation-english-panel**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"[data-abs-tab=\"en\"]"}]`
+- **translation-chinese-panel**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
+- **translation-english-panel**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"[data-abs-tab=\"en\"]"}]`
 - **empty-favorites**：`[{"click":"[data-qf=\"star\"]"}]`
-- **cached-quicklook**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
-- **quicklook-findings**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
-- **cached-study**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
-- **study-copy**：`[{"goto":"/?mode=candidates&q=10.1161/jaha.125.047479"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **cached-quicklook**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **quicklook-findings**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **cached-study**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
+- **study-copy**：`[{"goto":"/?mode=candidates&q=10.1001/jamanetworkopen.2026.37545"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`；读取离线预生成结果，不调用模型
 - **topic-options**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`；支持多选（同主题 OR，跨条件 AND）
 - **topic-all**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`
 - **topic-unclassified**：`[{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}]`；与具体主题互斥
