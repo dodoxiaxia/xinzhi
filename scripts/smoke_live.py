@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Run the t15 read-only deployment smoke checks; never submit a form."""
+"""Run the read-only deployment smoke checks; never submit a form."""
 import argparse
+from base64 import urlsafe_b64encode
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from functools import cached_property
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -14,6 +16,8 @@ import sys
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlencode, urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+from uuid import uuid4
+from xml.etree import ElementTree
 
 from check_first_screen_budget import check_first_screen_budget
 from check_guardrails import SECRET_PATTERNS
@@ -35,6 +39,10 @@ MISS_DOI = '10.99999/xinzhi-smoke-not-a-paper'
 NOTICE = re.compile(r'^\s*(?:retraction|expression of concern|erratum|(?:publisher\s+)?correction)\b', re.I)
 NOTICE_MERGED = datetime.fromisoformat('2026-11-19T12:15:20+00:00')
 NOTICE_DEPLOYED = datetime.fromisoformat('2026-11-19T12:25:10+00:00')
+PRIVATE_PATHS = ('/.local/', '/.local/private-pdfs/')
+NOT_FOUND = re.compile(r'/nonexistent-smoke-[a-f0-9]{12}')
+DIRTY_TEXT = re.compile(r'[\uFFFD\x00-\x1f\x7f-\x9f]|\\[un]')
+NAVIGATION_TIMEOUTS = (20_000, 40_000)
 BEIJING = timezone(timedelta(hours=8))
 
 
@@ -43,6 +51,10 @@ class CheckError(Exception):
 
 
 class SkipCheck(Exception):
+    pass
+
+
+class WaitCheck(Exception):
     pass
 
 
@@ -66,6 +78,53 @@ class Response:
         return self.body.decode('utf-8')
 
 
+def media_type(headers):
+    return headers.get('content-type', '').partition(';')[0].strip().lower()
+
+
+class PageMetadata(HTMLParser):
+    def __init__(self, html):
+        super().__init__()
+        self.meta = {}
+        self.links = []
+        self.feed(html)
+        self.close()
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == 'meta':
+            key = attrs.get('property') or attrs.get('name')
+            self.meta.setdefault(key, []).append(attrs.get('content') or '')
+        if tag == 'a':
+            self.links.append(attrs.get('href'))
+
+
+def absolute_https(url):
+    parsed = urlsplit(url)
+    return (parsed.scheme == 'https' and bool(parsed.hostname) and parsed.username is None
+            and not re.search(r'[\s\\]', url))
+
+
+def strings_in(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from strings_in(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings_in(item)
+
+
+def clean_text(values, label):
+    count = bad = 0
+    for value in values:
+        count += 1
+        bad += bool(DIRTY_TEXT.search(value))
+    require(not bad, f'clean {label} text', f'{bad}/{count} strings with replacement characters, controls or escapes')
+    return count
+
+
 class ReadOnlyHTTP:
     def __init__(self, base, timeout):
         parsed = urlsplit(base)
@@ -79,15 +138,19 @@ class ReadOnlyHTTP:
         self.attempts = 0
         self.write_aborts = 0
         self.other_blocks = 0
+        self.redirects_followed = 0
+        self.blocked_paths = {}
 
-    def allowed(self, url):
+    def allowed(self, url, method):
         parsed = urlsplit(url)
         if (parsed.scheme, parsed.netloc) != (urlsplit(self.base).scheme, urlsplit(self.base).netloc):
             return False
         path, query = parsed.path, parsed.query
         if path == '/':
             return True
-        if not query and (ASSET.fullmatch(path) or path in {'/icon.png', '/favicon.ico', '/demo-reading.html'}):
+        if not query and (ASSET.fullmatch(path) or path in {
+                '/icon.png', '/favicon.ico', '/demo-reading.html', '/demo-reading', '/robots.txt', '/sitemap.xml'}
+                or NOT_FOUND.fullmatch(path) or (method == 'HEAD' and path in PRIVATE_PATHS)):
             return True
         # Only these reviewed public read paths; never allow acquisition, PDF or machine routes.
         if path == '/api/ai':
@@ -103,7 +166,7 @@ class ReadOnlyHTTP:
     def _read(self, url, method):
         path = urlsplit(url).path
         require(method in METHODS, 'GET or HEAD', method)
-        require(self.allowed(url), 'allowlisted same-origin read', path)
+        require(self.allowed(url, method), 'allowlisted same-origin read', path)
         key = (method, url)
         if key not in self.cache:
             require(self.attempts < REQUEST_LIMIT, f'at most {REQUEST_LIMIT} upstream reads',
@@ -116,9 +179,10 @@ class ReadOnlyHTTP:
                 except HTTPError as exc:
                     upstream = exc
                 with upstream:
-                    body = upstream.read(BODY_LIMIT + 1)
+                    headers = {k.lower(): v for k, v in upstream.headers.items()}
+                    body = b'' if media_type(headers) == 'application/pdf' else upstream.read(BODY_LIMIT + 1)
                     require(len(body) <= BODY_LIMIT, 'bounded response body', f'{path} exceeds {BODY_LIMIT} bytes')
-                    self.cache[key] = Response(upstream.code, dict((k.lower(), v) for k, v in upstream.headers.items()), body)
+                    self.cache[key] = Response(upstream.code, headers, body)
             except (OSError, ValueError) as exc:
                 raise CheckError(f'expected HTTP response at {path}; observed {type(exc).__name__}: {exc}') from exc
         return self.cache[key]
@@ -129,26 +193,40 @@ class ReadOnlyHTTP:
     def head(self, path):
         return self._read(urljoin(self.base + '/', path), 'HEAD')
 
+    def block(self, route, url, *, write=False):
+        if write:
+            self.write_aborts += 1
+        else:
+            self.other_blocks += 1
+        if len(self.blocked_paths) < 20:
+            self.blocked_paths.setdefault(re.sub(r'[\x00-\x1f\x7f]', '', urlsplit(url).path) or '/', None)
+        route.abort()
+
     def browser_route(self, route):
         request = route.request
-        if request.method not in METHODS:
-            self.write_aborts += 1
-            route.abort()
+        url, method = request.url, request.method
+        if method not in METHODS:
+            self.block(route, url, write=True)
             return
-        if not self.allowed(request.url):
-            self.other_blocks += 1
-            route.abort()
+        if not self.allowed(url, method):
+            self.block(route, url)
             return
         try:
-            response = self._read(request.url, request.method)
-        except CheckError:
+            for hop in range(3):
+                response = self._read(url, method)
+                if not 300 <= response.status < 400:
+                    break
+                location = response.headers.get('location')
+                target = urljoin(url, location) if location else url
+                if hop == 2 or not location or not self.allowed(target, method):
+                    self.block(route, target)
+                    return
+                self.redirects_followed += 1
+                url = target
+        except (CheckError, ValueError):
             route.fulfill(status=502, body='Smoke transport could not read the response')
             return
-        if 300 <= response.status < 400:
-            self.other_blocks += 1
-            route.abort()
-            return
-        # The browser only receives these already-read bytes; no upstream cookies or redirects.
+        # The browser only receives already-read bytes and selected headers.
         headers = {k: v for k, v in response.headers.items()
                    if k in {'content-type', 'cache-control', 'content-security-policy', 'x-content-type-options'}}
         route.fulfill(status=response.status, headers=headers, body=response.body)
@@ -308,15 +386,64 @@ class PublicSite:
             info.append(f'{day}: {len(rows)} ({journals})')
         return '7 Beijing dates; journals (informational): ' + '; '.join(info)
 
+    def crawl_metadata(self):
+        missing = self.http.get('/nonexistent-smoke-' + uuid4().hex[:12])
+        require(missing.status == 404, 'unknown path HTTP 404', f'HTTP {missing.status}')
+        page = missing.text()
+        require('页面未找到' in page and '/' in PageMetadata(page).links,
+                'Chinese 404 page with a link to /', 'missing text or homepage link')
+
+        robots = self.http.get('/robots.txt')
+        require(robots.status == 200 and media_type(robots.headers) == 'text/plain',
+                'robots.txt HTTP 200 text/plain', f'HTTP {robots.status}, {media_type(robots.headers)}')
+        lines = [line.strip() for line in robots.text().splitlines()]
+        require('Disallow: /api/' in lines, 'robots.txt Disallow: /api/', 'directive absent')
+        sitemaps = [line.split(':', 1)[1].strip() for line in lines if line.lower().startswith('sitemap:')]
+        require(len(sitemaps) == 1 and absolute_https(sitemaps[0])
+                and urlsplit(sitemaps[0]).path == '/sitemap.xml',
+                'one absolute HTTPS Sitemap directive for /sitemap.xml', f'{len(sitemaps)} directives or invalid URL')
+
+        sitemap = ElementTree.fromstring(self.bytes('/sitemap.xml'))
+        ns = '{http://www.sitemaps.org/schemas/sitemap/0.9}'
+        locations = sitemap.findall('.//{*}loc')
+        require(sitemap.tag == ns + 'urlset' and locations and
+                all(loc.tag == ns + 'loc' and loc.text and absolute_https(loc.text) and
+                    urlsplit(loc.text).path == '/' and not (urlsplit(loc.text).query or urlsplit(loc.text).fragment)
+                    for loc in locations) and len(locations) == len(sitemap),
+                'sitemaps.org urlset with homepage URLs only', 'invalid namespace, structure or page URL')
+
+        meta = PageMetadata(self.html.decode('utf-8')).meta
+        for key in ('og:title', 'og:description', 'og:url', 'og:image', 'twitter:card'):
+            values = meta.get(key, [])
+            require(len(values) == 1 and values[0].strip() and
+                    (key not in {'og:url', 'og:image'} or absolute_https(values[0])),
+                    f'one valid {key}', f'{len(values)} tags or invalid content')
+        return f'Chinese HTTP 404; robots blocks /api/; {len(locations)} sitemap URLs; 5 share tags'
+
+    def private_pdfs(self):
+        for path in PRIVATE_PATHS:
+            response = self.http.head(path)
+            require(response.status == 404, f'HEAD {path} HTTP 404', f'HTTP {response.status}')
+        pdfs = [urlsplit(url).path for (_, url), response in self.http.cache.items()
+                if media_type(response.headers) == 'application/pdf']
+        require(not pdfs, 'no application/pdf responses', f'{len(pdfs)} responses at {", ".join(pdfs[:5])}')
+        return f'{len(PRIVATE_PATHS)} private HEAD probes returned 404; {len(self.http.cache)} responses, 0 PDFs'
+
     def notice_tags(self):
         from enrich_metadata import _load_tag_overlay, _overlay_entry
 
         stale = []
+        now = datetime.now(timezone.utc)
 
         def fresh(value, floor, label):
-            seen = datetime.fromisoformat(value.replace('Z', '+00:00')) if isinstance(value, str) else None
-            if seen is None or seen.tzinfo is None or seen < floor:
-                stale.append(f'{label}={value} (not yet regenerated; required ≥ {floor.isoformat()})')
+            try:
+                seen = datetime.fromisoformat(value.replace('Z', '+00:00')) if isinstance(value, str) else None
+            except ValueError:
+                seen = None
+            require(seen is not None and seen.tzinfo is not None, f'valid timestamp for {label}', 'missing or invalid')
+            if seen < floor:
+                age = (now - seen).total_seconds() / 3600
+                stale.append((age, f'{label}={value}; required ≥ {floor.isoformat()}; age {age:.1f} h'))
 
         feeds = _global(self.app, 'FEEDS')
         radar = [self.part('radar'), _global(self.bytes(self.radar_src).decode('utf-8'), 'RADAR_ARCHIVE')]
@@ -345,8 +472,11 @@ class PublicSite:
         tag_evidence = f'{len(bad)}/{len(notices)} machine/unattributed tagged notices'
         if bad:
             tag_evidence += f'; IDs: {", ".join(bad[:5])}'
-        require(not bad and not stale, 'fresh radar data and no machine/unattributed tags on notice titles',
-                '; '.join([tag_evidence, *stale]))
+        require(not bad, 'no machine/unattributed tags on notice titles', tag_evidence)
+        if stale:
+            evidence = '; '.join([tag_evidence, *(detail for _, detail in stale)])
+            require(all(age <= 36 for age, _ in stale), 'fresh radar data', 'daily refresh stalled; ' + evidence)
+            raise WaitCheck(evidence)
         return f'{len(records)} records, {len(notices)} notices, 0 machine-tagged; feeds {feeds["updatedAt"]}'
 
 
@@ -395,6 +525,7 @@ class BrowserChecks:
     def __init__(self, browser, site):
         self.browser = browser
         self.site = site
+        self.navigation = []
 
     def page(self, stack, width=1280, height=800, init=None):
         ctx = self.browser.new_context(viewport={'width': width, 'height': height}, user_agent=USER_AGENT,
@@ -409,8 +540,22 @@ class BrowserChecks:
 
     def go(self, page, **query):
         path = '/?' + urlencode(query) if query else '/'
-        response = page.goto(self.site.http.base + path, wait_until='load')
-        require(response and response.status == 200, f'{path} HTTP 200', response.status if response else 'no response')
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
+        for attempt, timeout in enumerate(NAVIGATION_TIMEOUTS, 1):
+            try:
+                response = page.goto(self.site.http.base + path, wait_until='load', timeout=timeout)
+            except PlaywrightTimeout:
+                self.navigation.append(f'navigation attempt {attempt} ({timeout / 1000:g}s): timeout')
+                if attempt == len(NAVIGATION_TIMEOUTS):
+                    raise CheckError('expected navigation to load; observed two timeouts') from None
+                continue
+            if attempt > 1:
+                status = response.status if response else 'no response'
+                self.navigation.append(f'navigation attempt {attempt} ({timeout / 1000:g}s): {status}')
+            require(response and response.status == 200, 'navigation HTTP 200',
+                    response.status if response else 'no response')
+            break
 
     def mode_ready(self, page, mode):
         tab = page.locator('.nav-tab-btn' + attr('data-mode', mode))
@@ -420,6 +565,88 @@ class BrowserChecks:
             page.locator('#weeklyAuto .weekly-head').wait_for()
         else:
             total(page)
+
+    def text_hygiene(self):
+        evidence, loaded = [], set()
+        with ExitStack() as stack:
+            page = self.page(stack)
+            page.on('response', lambda response: loaded.add(response.url) if response.status == 200 else None)
+            self.go(page)
+            for mode in ('curated', 'weekly', 'candidates', 'library'):
+                if mode != 'curated':
+                    page.locator('.nav-tab-btn' + attr('data-mode', mode)).click()
+                self.mode_ready(page, mode)
+                scope = '#weeklyAuto' if mode == 'weekly' else '#articlesStream'
+                titles = page.locator(f'{scope} [data-paper-id] .title-open:visible')
+                gists = page.locator(scope).locator(
+                    ':is(.article-gist, .weekly-row-line, .weekly-auto-line):visible')
+                titles.first.wait_for()
+                title_count = clean_text(page.locator(scope).locator(
+                    ':is(.title-open, .article-title-en, .weekly-auto-en):visible').all_text_contents(), mode + ' titles')
+                gist_count = clean_text(gists.all_text_contents(), mode + ' gists')
+                evidence.append(f'{mode}: {title_count} titles, {gist_count} gists')
+        library_path = self.site.http.base + '/' + self.site.parts['library']
+        require(library_path in loaded, 'browser-loaded library data', 'asset was not read')
+        library = self.site.part('library')
+        require(library['papers'], 'nonempty public library payload', '0 papers')
+        count = clean_text(strings_in(library), 'library payload')
+        return '; '.join([*evidence, f'library payload: {len(library["papers"])} papers, {count} strings'])
+
+    def chinese_search(self):
+        evidence = []
+        with ExitStack() as stack:
+            page = self.page(stack)
+            self.go(page, mode='library')
+            self.mode_ready(page, 'library')
+            search = page.locator('#globalSearch')
+            if not search.is_visible():
+                page.locator('#searchToggleBtn').click()
+            expansion = page.locator('[data-search-expansion]:visible')
+            for query, terms in (('房颤消融', ('atrial fibrillation', 'ablation')),
+                                 ('AF', ('atrial fibrillation',)), ('ablation', ())):
+                search.fill(query)
+                page.wait_for_function('(q) => new URL(location.href).searchParams.get("q") === q', arg=query)
+                hits = total(page)
+                if terms:
+                    expansion.wait_for()
+                    line = expansion.inner_text().strip()
+                    require(line.startswith('已按 ') and line.endswith(' 检索') and
+                            query[:2].lower() in line.lower() and all(term in line.lower() for term in terms) and hits > 0,
+                            f'expanded {query} with positive results', f'{line!r}; {hits} results')
+                    evidence.append(f'{query}: {hits} results')
+                else:
+                    require(expansion.count() == 0, 'no expansion for English ablation', 'expansion line visible')
+                    evidence.append('ablation: no expansion')
+        return '; '.join(evidence)
+
+    def shortlist_share(self):
+        storage = """() => Object.fromEntries(Object.keys(localStorage)
+            .filter(key => key.startsWith('xinzhi_huddle_')).sort().map(key => [key, localStorage.getItem(key)]))"""
+        with ExitStack() as stack:
+            page = self.page(stack)
+            self.go(page)
+            self.mode_ready(page, 'curated')
+            page.locator('#articlesStream [data-paper-id] .title-open').first.wait_for()
+            ids = page.locator('#articlesStream [data-paper-id]:has(.title-open)').evaluate_all(
+                '(rows) => [...new Set(rows.map(row => row.dataset.paperId))].slice(0, 2)')
+            require(len(ids) == 2, 'two distinct public paper IDs', len(ids))
+            page.evaluate("""() => {
+                localStorage.setItem('xinzhi_huddle_ids', '["smoke-local-only"]');
+                localStorage.setItem('xinzhi_huddle_snap', '{"smoke-local-only":{"title":"Local test entry"}}');
+            }""")
+            before = page.evaluate(storage)
+            encoded = urlsafe_b64encode('\n'.join(ids).encode('ascii')).decode('ascii').rstrip('=')
+            self.go(page, list='v1.' + encoded)
+            page.locator('#sharedShortlistBanner').wait_for()
+            rows = page.locator('#sharedShortlistRows [data-paper-id]:has(.title-open)')
+            rows.first.wait_for()
+            observed = rows.evaluate_all('(rows) => rows.map(row => row.dataset.paperId)')
+            title = page.locator('#sharedShortlistTitle').inner_text()
+            require(observed == ids and title == '正在查看分享的清单（2 篇）'
+                    and rows.locator('[data-action="toggle-huddle"]').count() == 0,
+                    'read-only share banner and both requested papers in order', f'{title!r}; {len(observed)} rows')
+            require(page.evaluate(storage) == before, 'untouched shortlist localStorage before merge', 'keys changed')
+        return '2 public papers in share order; shortlist localStorage unchanged; merge untouched'
 
     def radar(self, page):
         self.go(page, mode='candidates')
@@ -679,9 +906,11 @@ class Result:
 
 
 CHECKS = (
-    ('203', 'DataCite DOI metadata', 'no safe GET'),
+    ('203', 'DataCite DOI metadata', 'no safe GET invokes DataCite; /api/library only reads stored records'),
+    ('204', 'Library backfill review', 'offline editorial decisions are not exposed as public GET state'),
     ('205', 'Chromium layout / console', BrowserChecks.basic_layout),
     ('206', 'Radar AI journal count', BrowserChecks.journal_count),
+    ('207', 'Identity hold review', 'authenticated operator decisions are unavailable via public GET'),
     ('208', 'Reading-mode deep links', BrowserChecks.reading_links),
     ('209', 'Request record and DOI miss form', BrowserChecks.request_ui),
     ('210', 'Retired translation actions absent', BrowserChecks.no_translate),
@@ -690,9 +919,19 @@ CHECKS = (
     ('213', 'Seven-day public reading catalog', PublicSite.reading_catalog),
     ('214', 'Disabled / removable zero-count journals', BrowserChecks.zero_journals),
     ('215', 'Radar notices and data freshness', PublicSite.notice_tags),
+    ('216', 'Public text hygiene', BrowserChecks.text_hygiene),
+    ('217', 'Offline test hygiene', 'offline test assertions have no public GET surface'),
+    ('218', 'Read-only smoke runner', 'runner behavior is covered by offline fixtures'),
+    ('219', 'Chinese search and abbreviations', BrowserChecks.chinese_search),
+    ('220', 'Read-only shortlist share', BrowserChecks.shortlist_share),
+    ('221', 'Machine PDF title matching', 'machine-upload identity checks have no public GET surface'),
+    ('223', '404, crawl and share metadata', PublicSite.crawl_metadata),
+    ('224', 'Reading draft artifact rejection', 'prepublication draft rejection has no public GET surface'),
     ('assets', 'Homepage and hashed asset caching', PublicSite.assets),
     ('budget', 'First-screen size budget', PublicSite.budget),
     ('secrets', 'Credential patterns in response bodies', PublicSite.secrets),
+    # Scan after every other selected check so all responses are in the transport cache.
+    ('222', 'Private PDF staging isolation', PublicSite.private_pdfs),
 )
 BROWSER_CHECKS = {fn for _, _, fn in CHECKS if callable(fn) and hasattr(BrowserChecks, fn.__name__)}
 
@@ -707,16 +946,13 @@ def brief_error(exc):
 def run_case(pr, label, callback):
     try:
         return Result(pr, label, 'PASS', callback())
+    except WaitCheck as exc:
+        return Result(pr, label, 'WAIT', str(exc))
     except SkipCheck as exc:
         return Result(pr, label, 'SKIP', str(exc))
     except Exception as exc:
         evidence = str(exc) if isinstance(exc, CheckError) else 'expected check to complete; observed ' + brief_error(exc)
         return Result(pr, label, 'FAIL', evidence)
-
-
-def metadata_unavailable():
-    raise SkipCheck('no safe GET invokes DataCite: /api/library only reads stored records; '
-                    'metadata backfill, acquisition and machine registration are authenticated write paths')
 
 
 def browser_unavailable(reason):
@@ -764,8 +1000,8 @@ def run_checks(http, selected, use_browser):
         for pr, label, fn in CHECKS:
             if pr not in selected:
                 continue
-            if pr == '203':
-                callback = metadata_unavailable
+            if isinstance(fn, str):
+                callback = lambda: browser_unavailable(fn)
             elif fn in BROWSER_CHECKS:
                 if launch_error:
                     results.append(Result(pr, label, 'FAIL', 'expected Chromium to launch; observed ' + launch_error))
@@ -773,7 +1009,12 @@ def run_checks(http, selected, use_browser):
                 callback = getattr(checks, fn.__name__) if checks else lambda: browser_unavailable(skipped)
             else:
                 callback = getattr(site, fn.__name__)
-            results.append(run_case(pr, label, callback))
+            if checks:
+                checks.navigation.clear()
+            result = run_case(pr, label, callback)
+            if checks and checks.navigation:
+                result.evidence += '; ' + '; '.join(checks.navigation)
+            results.append(result)
     return results
 
 
@@ -834,14 +1075,16 @@ def main(argv=None):
         for row in results:
             row.evidence = redact(row.evidence)
         stats = {'upstream_reads': http.attempts, 'browser_non_get_head_aborted': http.write_aborts,
-                 'browser_other_blocked': http.other_blocks}
+                 'browser_other_blocked': http.other_blocks, 'redirects_followed': http.redirects_followed,
+                 'blocked_paths': [redact(path) for path in http.blocked_paths]}
         if args.json:
             json.dump({'results': [asdict(row) for row in results], 'transport': stats}, dest, ensure_ascii=False, indent=2)
             print(file=dest)
         if args.json != '-':
             render_table(results)
             print(f'\nTransport: {http.attempts}/{REQUEST_LIMIT} upstream GET/HEAD; '
-                  f'{http.write_aborts} browser non-GET/HEAD aborted; {http.other_blocks} other requests blocked.')
+                  f'{http.write_aborts} browser non-GET/HEAD aborted; {http.other_blocks} other requests blocked; '
+                  f"{http.redirects_followed} redirects followed; blocked paths: {', '.join(stats['blocked_paths']) or 'none'}.")
     return int(any(row.status == 'FAIL' for row in results))
 
 
