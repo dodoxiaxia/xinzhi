@@ -94,6 +94,12 @@
     '肥厚': ['hypertrophic'], '扩张型': ['dilated'], 'TAVR': ['transcatheter aortic'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
   };
   const zhTerms = Object.keys(ZH_EN).sort((a,b) => b.length - a.length);
+  const SEARCH_APOSTROPHES = /[\u2018\u2019\u201B\u02BC\u02B9\u2032\uFF07]/g;
+  const SEARCH_QUOTES = /[\u201C\u201D\u201E\u201F\u2033\uFF02]/g;
+  // 检索两侧都过它，题名/摘要里的弯引号与键盘直引号互认。
+  function foldSearch(value) {
+    return String(value == null ? '' : value).replace(SEARCH_APOSTROPHES, "'").replace(SEARCH_QUOTES, '"').toLowerCase();
+  }
   // Segment adjacent Chinese terms: 房颤消融 and 房颤 消融 both mean AND.
   // The segmentation depends only on the query, so it is planned once per query string
   // (the filter calls this for every paper; re-segmenting per paper froze 14k-row searches).
@@ -101,7 +107,7 @@
     const plans = queryMatches.plans || (queryMatches.plans = new Map());
     let plan = plans.get(q);
     if (!plan) {
-      plan = q.split(/\s+/).filter(Boolean).map(term => {
+      plan = foldSearch(q).split(/\s+/).filter(Boolean).map(term => {
         const groups = []; let rest = term;
         while (rest) {
           const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));
@@ -2705,16 +2711,16 @@
   // Filter & Sort
   function paperSearchText(p) {
     const d = paperDerived(p);
-    if (d.text === null) d.text = [
+    if (d.text === null) d.text = foldSearch([
       p.title, p.draftData?.title_zh, p.titleZh, p.cleanJournal, p.journal, p.publisher, p.doi, p.pmid, p.id,
       p.summary, ...(p.abstractSections || []).map(x => x.text), quicklookOf(p)?.title_zh,
       p.draftData?.summary, ...(p.authors || []), ...(p.tags || []),
       p.quantitativeMetrics?.trialId, p.quantitativeMetrics?.sampleSize
-    ].filter(Boolean).join(' ').toLowerCase();
+    ].filter(Boolean).join(' '));
     return d.text;
   }
   function matchesQuery(p) {
-    const q = state.search.trim().toLowerCase();
+    const q = foldSearch(state.search.trim());
     if (!q) return true;
     // List, lane counts and sidebar counts all ask again for the same keyword.
     const d = paperDerived(p);
@@ -3111,8 +3117,8 @@
     const titleBlock = `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${pid}">${zh ? esc(zh) : titleEn}</button></h3>`;
 
     // 有中文标题时，英文原题作为一行弱化副标题；英文检索命中时完整显示
-    const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
-    const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
+    const q = foldSearch(state.search || '').split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
+    const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => foldSearch(p.title || '').includes(t));
     const enLine = zh ? `<p class="article-title-en${enHit ? ' is-hit' : ''}" lang="en" title="${titleEn}">${titleEn}</p>` : '';
 
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (quicklookOf(p)?.one_line || '');
@@ -4191,9 +4197,9 @@
       meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6) || (HEALTH.pubmedFetch && HEALTH.pubmedFetch.status === 'failed'));
     }
 
-    const q = state.search.trim().toLowerCase();
-    const filtered = sources.filter(s => !q || queryMatches([s.name, s.id, s.url, s.status, sourceHealthDetails(s),
-      s.status === 'not_feed' ? '返回非订阅内容' : successful(s) ? '获取成功' : '获取异常 暂停'].filter(Boolean).join(' ').toLowerCase(), q));
+    const q = foldSearch(state.search.trim());
+    const filtered = sources.filter(s => !q || queryMatches(foldSearch([s.name, s.id, s.url, s.status, sourceHealthDetails(s),
+      s.status === 'not_feed' ? '返回非订阅内容' : successful(s) ? '获取成功' : '获取异常 暂停'].filter(Boolean).join(' ')), q));
     const shown = filtered.filter(s => !view || (view === 'ok') === successful(s));
     let group = null;
     grid.innerHTML = specialSearchStatus('信源状态（名称、订阅地址与状态）', filtered.length, sources.length, '个信源')
@@ -5227,12 +5233,12 @@
   }
   function journalListHtml(query, tierId) {
     const id = tierId || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
-    const q = String(query || '').trim().toLowerCase();
+    const q = foldSearch(String(query || '').trim());
     const rows = tierJournalRows(id);
     const subset = currentTierSubset(id);
     const whole = state.journalTier === id && !subset.length;
     const fav = new Set((state.favoriteJournals || []).map(normJournal));
-    const filtered = rows.filter(r => !q || r.name.toLowerCase().includes(q));
+    const filtered = rows.filter(r => !q || foldSearch(r.name).includes(q));
     if (!filtered.length) return '<p class="qf-empty">没有匹配的期刊</p>';
     return filtered.map(r => {
       const on = whole || subset.some(j => normJournal(j) === normJournal(r.name));

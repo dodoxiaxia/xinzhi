@@ -53,6 +53,8 @@ def main():
             page.evaluate('''(renderers) => {
               const esc = s => String(s || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
               const state = {huddle: [], search: ''};
+              // renderArticleCard 只用 foldSearch 做检索高亮；折叠规则由 test_search_fold.cjs 覆盖，这里只测布局。
+              const foldSearch = v => String(v == null ? '' : v).toLowerCase();
               const quicklookOf = () => null, publicationStatusHtml = () => '',
                 designBadgeHtml = () => '', journalMetricBadge = () => '',
                 doiStatusBlock = () => '', getPublisherClass = () => 'pub-other',

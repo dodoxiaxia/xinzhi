@@ -524,12 +524,12 @@
   }
   function journalListHtml(query, tierId) {
     const id = tierId || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
-    const q = String(query || '').trim().toLowerCase();
+    const q = foldSearch(String(query || '').trim());
     const rows = tierJournalRows(id);
     const subset = currentTierSubset(id);
     const whole = state.journalTier === id && !subset.length;
     const fav = new Set((state.favoriteJournals || []).map(normJournal));
-    const filtered = rows.filter(r => !q || r.name.toLowerCase().includes(q));
+    const filtered = rows.filter(r => !q || foldSearch(r.name).includes(q));
     if (!filtered.length) return '<p class="qf-empty">没有匹配的期刊</p>';
     return filtered.map(r => {
       const on = whole || subset.some(j => normJournal(j) === normJournal(r.name));
