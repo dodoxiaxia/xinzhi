@@ -265,7 +265,8 @@ async function crossrefTitles() {
   const answer = (h, extra = {}) => create({crossrefResponse:u => {
     const doi = decodeURIComponent(u.pathname.slice('/works/'.length));
     if (extra[doi]) return extra[doi]();
-    return official[doi] ? Response.json({message:{DOI:doi,title:[official[doi]]}}) : new Response('missing', {status:404});
+    return official[doi] ? Response.json({message:{DOI:doi,title:[official[doi]],'container-title':['Heart'],
+      author:[{given:'Jane',family:'Doe'}],'published-online':{'date-parts':[[2026,11,17]]}}}) : new Response('missing', {status:404});
   }});
   const crossrefCalls = h => h.calls.filter(call => call.url.hostname === 'api.crossref.org');
   const paperOf = (h, doi) => stored(h, 'library:paper:' + doi).paper;
@@ -317,11 +318,16 @@ async function crossrefTitles() {
   assert.equal(stored(h, 'library:machine-register:10.1000/xr.comment').paperTitle, 'A novel ageing biomarker in synthetic cohorts');
   // Markup in a Crossref title is stripped the same way as every other official title.
   assert.equal(paperOf(h, '10.1000/xr.tags').title, 'Synthetic tagged title from Crossref');
-  // Only the title comes from Crossref: the registration shape (no journal/authors/date) and the orphan rule are unchanged.
+  assert.equal(reported(h, '10.1000/xr.dash').journal, 'Heart');
+  assert.deepEqual(Array.from(reported(h, '10.1000/xr.dash').authors), ['Jane Doe']);
+  assert.equal(reported(h, '10.1000/xr.dash').date, '2026-11-17');
+  assert.equal(reported(h, '10.1000/xr.dash').dateBasis, 'Crossref published-online');
+  assert.deepEqual([paper.journal,paper.authors,paper.date], ['',[],'']);
+  // Both writes can be recovered as an interrupted registration, regardless of Crossref availability.
   for (const doi of ['10.1000/xr.dash','10.1000/xr.comment']) {
-    paper = paperOf(h, doi);
-    assert.deepEqual([paper.journal,paper.authors,paper.date], ['',[],'']);
-    assert.equal(h.context.machineOrphanPaper(stored(h, 'library:paper:' + doi), reported(h, doi)), true);
+    const record = stored(h, 'library:paper:' + doi);
+    assert.equal(record.machineRegistration, true);
+    assert.equal(h.context.machineOrphanPaper(record, reported(h, doi)), true);
   }
   assert.equal(crossrefCalls(h).length, 5);
   // A replay looks nothing up again.
