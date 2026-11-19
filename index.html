@@ -107,6 +107,21 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <section id="sharedShortlist" aria-labelledby="sharedShortlistTitle" hidden>
+        <div id="sharedShortlistBanner">
+          <h2 id="sharedShortlistTitle"></h2>
+          <div class="shortlist-share-actions">
+            <button class="btn-sm btn-primary" type="button" id="mergeSharedShortlistBtn" disabled>全部加入我的精选</button>
+            <button class="btn-sm" type="button" id="closeSharedShortlistBtn">关闭</button>
+          </div>
+          <p id="sharedShortlistNotice" role="status"></p>
+        </div>
+        <div id="sharedShortlistRows" class="articles-compact-list"></div>
+        <details id="sharedShortlistMissing" hidden>
+          <summary id="sharedShortlistMissingLabel"></summary>
+          <p id="sharedShortlistMissingIds"></p>
+        </details>
+      </section>
       <!-- Stream Section (for Candidates, Curated, Library) -->
       <section id="streamSection">
         <div class="stream-reading-layout">
@@ -274,9 +289,15 @@
 
       <div class="modal-footer">
         <button class="btn-sm" id="clearHuddleBtn">清空清单</button>
-        <div style="display: flex; gap: 8px;">
+        <div class="shortlist-share-actions">
+          <button class="btn-sm btn-share" type="button" id="copyShortlistShareBtn" disabled>复制分享链接</button>
           <button class="btn-sm btn-share" id="copyHuddleSummaryBtn">复制精选汇总</button>
           <button class="btn-sm btn-primary" id="exportHuddleMdBtn">导出 Markdown</button>
+        </div>
+        <p id="shortlistShareCopyNotice" role="status"></p>
+        <div id="shortlistShareCopyField" hidden>
+          <label for="shortlistShareCopyUrl">分享链接（请手动复制）</label>
+          <input id="shortlistShareCopyUrl" type="text" readonly dir="ltr">
         </div>
       </div>
     </div>

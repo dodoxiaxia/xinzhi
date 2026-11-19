@@ -731,6 +731,8 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    state.shortlistShare = readShortlistShareParam(new URLSearchParams(location.search));
+    renderSharedShortlist();
     const wasReading = !!$('#readerDrawer.reading-mode');
     if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
@@ -809,6 +811,15 @@
   });
   $('#exportHuddleMdBtn')?.addEventListener('click', exportHuddleMarkdown);
   $('#copyHuddleSummaryBtn')?.addEventListener('click', copyHuddleSummary);
+  $('#copyShortlistShareBtn')?.addEventListener('click', copyShortlistShare);
+  $('#mergeSharedShortlistBtn')?.addEventListener('click', mergeSharedShortlist);
+  $('#closeSharedShortlistBtn')?.addEventListener('click', () => {
+    clearShortlistShareUrl();
+    state.shortlistShare = null;
+    renderSharedShortlist();
+    ($('.nav-tab-btn.active') || $('#sourceStatusBtn'))?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0 });
+  });
   // Clearing the whole shortlist asks once more: the first tap arms the button, the second one clears.
   let clearArmTimer = null;
   $('#clearHuddleBtn')?.addEventListener('click', e => {
@@ -884,6 +895,13 @@
     if (list.length > 0) openReaderDrawer(list[0]);
   }
   if (DEFERRED) startDeferredParts();
+  // Like the reading link, wait until the deferred loader has processed script settlement.
+  for (const type of ['load', 'error']) {
+    document.addEventListener(type, event => {
+      if (state.shortlistShare !== null && event.target.tagName === 'SCRIPT') requestAnimationFrame(renderSharedShortlist);
+    }, true);
+  }
+  renderSharedShortlist();
   initReadingMode();
 
 })();

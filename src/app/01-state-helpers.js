@@ -199,6 +199,17 @@
   }
   function isCaseReport(p) { return (p && p.studyDesign) === '病例报告'; }
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
+  function readShortlistShareParam(params) {
+    const values = params.getAll('list');
+    return values.length === 0 ? null : values.length === 1 ? values[0] : '';
+  }
+  function clearShortlistShareUrl() {
+    try {
+      const url = new URL(location.href);
+      url.searchParams.delete('list');
+      history.replaceState(history.state, '', url.href);
+    } catch (e) { /* sandboxed history */ }
+  }
   function readStateFromUrl(search = window.location.search) {
     const params = new URLSearchParams(search);
     const rawMode = params.get('mode') || 'curated';
@@ -246,6 +257,7 @@
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
     mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
+    shortlistShare: readShortlistShareParam(urlParams),
     viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
     search: initialUrlState.search,

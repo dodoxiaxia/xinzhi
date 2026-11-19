@@ -80,6 +80,7 @@ for f in scripts/test_*.cjs; do
   esac
   run "$name" node "$f"
 done
+# test_shortlist_share.cjs runs via the Node discovery loop.
 
 echo "== First-screen budget"
 if [ -f public/index.html ] && [ -d public/assets ]; then
@@ -110,6 +111,7 @@ if [ "$BROWSER" = 1 ]; then
                 test_search_shortlist_ui test_search_toggle_ui test_sidebar_focus_trap_ui test_sol_gap_reader test_weekly_ui test_list_actions_ui; do
       run "$name" python3 "scripts/$name.py"
     done
+    run "test_shortlist_share_ui" python3 scripts/test_shortlist_share_ui.py
   fi
 fi
 

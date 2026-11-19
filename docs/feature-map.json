@@ -4603,6 +4603,147 @@
         "notes": ""
       },
       {
+        "id": "shortlist-copy-share-link",
+        "label": "复制分享链接",
+        "selector": "#copyShortlistShareBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开精选清单后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": "有可分享的公开题录时可复制。"
+      },
+      {
+        "id": "shortlist-copy-share-manually",
+        "label": "手动复制分享链接",
+        "selector": "#shortlistShareCopyUrl",
+        "kind": "input",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "无法写入剪贴板时显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": "只读、可选中的链接输入框。",
+        "skip": "剪贴板不可用场景由 test_shortlist_share_ui.py 模拟并验证"
+      },
+      {
+        "id": "shortlist-shared-banner",
+        "label": "正在查看分享的清单",
+        "selector": "#sharedShortlistBanner",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开带 list 参数的链接后显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-paper",
+        "label": "分享的文献行",
+        "selector": "#sharedShortlistRows .compact-row",
+        "kind": "card",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "公开题录已加载且能匹配时显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-merge",
+        "label": "全部加入我的精选",
+        "selector": "#mergeSharedShortlistBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开带 list 参数的链接后显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-close",
+        "label": "关闭分享的清单",
+        "selector": "#closeSharedShortlistBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开带 list 参数的链接后显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-missing",
+        "label": "分享链接中在本站未找到的文献",
+        "selector": "#sharedShortlistMissing",
+        "kind": "details",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "公开题录加载结束且有未找到的编号时显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.cnNzLW5vbmU"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
         "id": "shortlist-exporthuddlemdbtn",
         "label": "导出 Markdown",
         "selector": "#exportHuddleMdBtn",
