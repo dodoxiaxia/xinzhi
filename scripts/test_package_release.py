@@ -45,6 +45,38 @@ class TestPublicPackaging(unittest.TestCase):
  def test_extra_file_is_rejected(self):
   (self.root/'public/unexpected.pdf').write_bytes(b'%PDF-synthetic')
   with self.assertRaises(ValueError):public_payloads(self.root)
+ def test_private_input_only_reaches_local_zip_and_public_aliases_are_rejected(self):
+  relative = Path(packaging.INPUT_DIR) / 'synthetic-only.pdf'
+  private = self.root / relative
+  private.parent.mkdir(parents=True)
+  canary = b'%PDF-synthetic-public-zip-counterexample'
+  private.write_bytes(canary)
+  names = ('xinzhi-public.zip', '心知-公开网站包.zip', '心知-本地学习站.zip')
+  with patch.multiple(packaging, ROOT=self.root, OUT=self.root), contextlib.redirect_stdout(io.StringIO()):
+   packaging.main()
+   for name in names[:-1]:
+    with packaging.zipfile.ZipFile(self.root/name) as archive:
+     self.assertEqual(set(archive.namelist()), PUBLIC)
+     self.assertTrue(all(canary not in archive.read(member) for member in archive.namelist()))
+   with packaging.zipfile.ZipFile(self.root/names[-1]) as archive:
+    self.assertEqual(archive.read('xinzhi/' + relative.as_posix()), canary)
+   previous = [(self.root/name).read_bytes() for name in names]
+   alias = self.root/'public'/packaging.INPUT_DIR
+   alias.parent.mkdir()
+   alias.symlink_to(private.parent)
+   with self.assertRaisesRegex(ValueError, 'Public package contains a private reading input'):
+    packaging.main()
+   alias.unlink()
+   index = self.root/'public/index.html'
+   index.unlink()
+   os.link(private, index)
+   def update_index(manifest):
+    row = next(row for row in manifest['files'] if row['path']=='index.html')
+    row.update(bytes=len(canary), sha256=hashlib.sha256(canary).hexdigest())
+   self.change_manifest(update_index)
+   with self.assertRaisesRegex(ValueError, 'Public package must not contain hardlinks'):
+    packaging.main()
+   self.assertEqual([(self.root/name).read_bytes() for name in names], previous)
  def test_directory_with_allowed_filename_is_rejected(self):
   file=self.root/'public/index.html';file.unlink();file.mkdir()
   with self.assertRaises(ValueError):public_payloads(self.root)

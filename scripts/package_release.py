@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import tempfile
 import zipfile
+from deep_reading_input import INPUT_DIR
 from release_integrity import PUBLIC, is_published_file, published_files, validate_release
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT.parent
 ROOTS={'data','scripts','service','editor','public','editorial','docs'}
@@ -13,6 +14,8 @@ def public_payloads(root=ROOT):
  public=root/'public'
  if public.is_symlink() or not public.is_dir() or public.resolve().parent!=root.resolve():
   raise ValueError('Public directory must be an ordinary project directory')
+ if any(os.path.lexists(public/name) for name in (INPUT_DIR, Path(INPUT_DIR).name)):
+  raise ValueError('Public package contains a private reading input')
  names=published_files(public)
  if not PUBLIC<=set(names) or any(not is_published_file(name) for name in names):
   raise ValueError('Public directory must contain exactly the published files')
@@ -24,7 +27,10 @@ def public_payloads(root=ROOT):
  payloads={}
  for name in sorted(names):
   fd=os.open(public/name,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0))
-  with os.fdopen(fd,'rb') as stream:payloads[name]=stream.read()
+  with os.fdopen(fd,'rb') as stream:
+   if os.fstat(stream.fileno()).st_nlink != 1:
+    raise ValueError('Public package must not contain hardlinks')
+   payloads[name]=stream.read()
  validate_release(root,payloads)
  return payloads
 

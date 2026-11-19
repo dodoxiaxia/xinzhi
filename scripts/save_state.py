@@ -13,10 +13,15 @@ import datetime
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+
+from daily_fulltext import StateCheckpoint
+from deep_reading_input import INPUT_DIR
+from week_precompute_ci import existing_token_transport, state_token
 
 CHECKPOINT_MESSAGES = {
     'Checkpoint daily public full-text reading': {'data/deep-readings.json', 'data/deep-reading-ledger.json'},
@@ -30,8 +35,15 @@ class StateError(RuntimeError):
     pass
 
 
-def git(cwd, *args, check=True):
-    result = subprocess.run(['git', *args], cwd=cwd, capture_output=True, text=True)
+def git(cwd, *args, check=True, private=False):
+    flags, env = [], None
+    if private:
+        # Keep Git from rewriting or redirecting the verified destination.
+        flags = ['-c', 'http.followRedirects=false']
+        env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1')
+        env.pop('GIT_CONFIG_COUNT', None)
+        env.pop('GIT_CONFIG_PARAMETERS', None)
+    result = subprocess.run(['git', *flags, *args], cwd=cwd, capture_output=True, text=True, env=env)
     if check and result.returncode:
         # Never echo stderr: it may contain the authenticated remote URL.
         raise StateError('git_' + args[0] + '_failed')
@@ -72,20 +84,38 @@ def build(root, work):
     return target
 
 
-def push(repo, remote, expected):
-    return git(repo, 'push', '--force-with-lease=refs/heads/state:' + expected, remote, 'state', check=False).returncode == 0
+def push(repo, remote, expected, *, private=False):
+    return git(repo, 'push', '--force-with-lease=refs/heads/state:' + expected, remote, 'state',
+               check=False, private=private).returncode == 0
+
+
+def require_private_target(root, remote, expected):
+    # Check the actual push target, not the repository named in the environment.
+    match = re.fullmatch(r'https://(?:x-access-token:[A-Za-z0-9_]+@)?github\.com/'
+                         r'([A-Za-z0-9-]+/[A-Za-z0-9_.-]+?)(?:\.git)?', remote)
+    token = state_token()
+    if match and match[1].split('/')[1] not in {'.', '..'} and token:
+        writer = StateCheckpoint(root, existing_token_transport(token), match[1], expected)
+        if writer.private_state() is True:
+            return
+    raise StateError('state_private_reading_requires_private_repository')
 
 
 def save(root, remote, expected):
+    private = os.path.lexists(root / INPUT_DIR)
+    if private:
+        require_private_target(root, remote, expected)
     with tempfile.TemporaryDirectory() as tmp:
         repo = build(root, pathlib.Path(tmp))
-        if push(repo, remote, expected):
+        if push(repo, remote, expected, private=private):
             return {'status': 'saved', 'lease': 'original'}
-        git(repo, 'fetch', '-q', '--depth=' + str(MAX_CHECKPOINTS + 2), remote, 'state')
+        git(repo, 'fetch', '-q', '--depth=' + str(MAX_CHECKPOINTS + 2), remote, 'state', private=private)
         head = git(repo, 'rev-parse', 'FETCH_HEAD').stdout.strip()
         if head == expected:
             raise StateError('state_push_failed')
         paths = checkpoint_paths(repo, expected, head)
+        if private:
+            require_private_target(root, remote, head)
         for path in sorted(paths):
             blob = git(repo, 'cat-file', '-e', head + ':' + path, check=False)
             if blob.returncode:
@@ -95,7 +125,7 @@ def save(root, remote, expected):
             (root / path).write_bytes(content)
         git(repo, 'add', '-A')
         git(repo, 'commit', '-q', '--amend', '--no-edit')
-        if not push(repo, remote, head):
+        if not push(repo, remote, head, private=private):
             raise StateError('state_push_failed_after_checkpoint_merge')
         return {'status': 'saved', 'lease': 'checkpoint_merged', 'mergedPaths': sorted(paths)}
 
@@ -113,6 +143,9 @@ def main():
         result = save(pathlib.Path.cwd(), args.remote, expected)
     except StateError as error:
         print('{"status": "failed", "error": "%s"}' % error)
+        return 1
+    except (OSError, subprocess.CalledProcessError):
+        print('{"status": "failed", "error": "state_filesystem_or_git_failure"}')
         return 1
     print(json.dumps(result))
     return 0

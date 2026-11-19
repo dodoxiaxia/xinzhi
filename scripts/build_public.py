@@ -8,6 +8,7 @@ from apply_public_library import require_snapshot
 from release_integrity import (PUBLIC, input_hashes, is_reading_shard, is_published_file, ordinary_file,
                                provenance, published_files, replace_unchanged_input)
 from daily_fulltext import public_readings
+from deep_reading_input import INPUT_DIR
 from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
 from publication_dates import DATE_CORRECTIONS, canonical_publication_date
@@ -503,12 +504,18 @@ def split_radar(radar,today=None):
     return part([r for r in radar['rows'] if r[2]>=cut]),part([r for r in radar['rows'] if r[2]<cut])
 
 def validate_public(text):
-    forbidden=(r'/Users/',r'/home/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/')
+    forbidden=(r'/Users/',r'/home/',r'(?i)[A-Z]:\\(?:Users|Documents)\\',r'(?i)"(?:api_key|admin_token|password|client_secret)"\s*:',r'\.local/',
+               r'(?i)deep-reading-input[/\\]')
     for pattern in forbidden:
         if re.search(pattern,text):raise ValueError('Public build contains a private field or path')
 
 def main():
     require_fresh_sources(ROOT)  # app.js / edge/_worker.js must match their src parts
+    if any(os.path.lexists(DEST / name) for name in (INPUT_DIR, Path(INPUT_DIR).name)):
+        raise ValueError('Public directory contains a private reading input')
+    reading_file = ordinary_file(ROOT, 'data/deep-readings.json')
+    if reading_file.exists() and reading_file.stat().st_nlink != 1:
+        raise ValueError('Public reading store must not be a hardlink')
     build_before = provenance(ROOT)
     inputs_before = build_before['inputs']
     legacy_guides()  # Required publication registry, even when article lists are empty.
@@ -616,7 +623,7 @@ def main():
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
-    readings,reading_shards=split_deep_readings(public_readings(load('data/deep-readings.json') if (ROOT/'data/deep-readings.json').exists() else None))
+    readings,reading_shards=split_deep_readings(public_readings(load('data/deep-readings.json') if reading_file.exists() else None))
     radar_recent,radar_archive=split_radar(radar)
     radar_js=js('RADAR_ARCHIVE',radar_archive if radar else {'rows':[]})+'\n;window.XINZHI_RADAR_READY&&window.XINZHI_RADAR_READY();\n'
     data=dict(LIBRARY=library,FEEDS=candidates,SOURCE_HEALTH=health,CURATED=archive,QUICKLOOKS=ql,CONTENT_STATUS=status,JOURNAL_METRICS=metrics,DEEP_READINGS=readings,WEEKLY_BOARD=weekly,PREGENERATED=prepared,RADAR=radar_recent)
