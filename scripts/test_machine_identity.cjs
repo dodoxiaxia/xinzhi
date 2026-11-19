@@ -1005,5 +1005,28 @@ async function verifyNext(h, doi, result, reason) {
     assert(!('titleVariant' in normalVerdict.checks));
   }
 
+  // 9) Narrow titleVariant fallbacks after versus_or_mark.
+  {
+    const esc = text => String(text).replace(/[\\()]/g, ch => '\\' + ch);
+
+    // 9a) c1_control_dropped: U+0096 between digits, plus versus/™ reuse and section-label stripping; one letter off still fails.
+    const c1Doi = '10.9999/synthetic.c1ctrl';
+    const c1Title = 'CAD-SYNTH\u2122 2.0 \u2013 2022 Synthetic Coronary Scoring in Multicenter Cohorts';
+    const c1PageText = 'CAD-SYNTH 2.0\u00962022 Synthetic Coronary Scoring in Multicenter Cohorts';
+    for (const c1Pdf of [fixtures.flateEol({doi:c1Doi, title:c1PageText}), fixtures.customEncoding({doi:c1Doi, title:c1PageText})]) {
+      const ok = await identity(h, c1Pdf, c1Doi, c1Title);
+      assert.equal(ok.verdict, 'ok');
+      assert.equal(ok.level, 'full');
+      assert.equal(ok.checks.titleVariant, 'c1_control_dropped');
+      const withPrefix = await identity(h, c1Pdf, c1Doi, '[Articles] ' + c1Title);
+      assert.equal(withPrefix.verdict, 'ok');
+      assert.equal(withPrefix.checks.titlePrefix, 'section_label_dropped');
+      assert.equal(withPrefix.checks.titleVariant, 'c1_control_dropped');
+      const oneLetterOff = await identity(h, c1Pdf, c1Doi, c1Title.replace('Cohorts', 'Cohortx'));
+      assert.equal(oneLetterOff.verdict, 'mismatch');
+      assert.equal(oneLetterOff.reason, 'title_not_found');
+    }
+  }
+
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

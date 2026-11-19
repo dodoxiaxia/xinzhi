@@ -3149,6 +3149,7 @@ const MACHINE_IDENTITY_SECTION_LABEL = /^\s*\[[A-Za-z][A-Za-z ./-]{0,39}\]\s*/;
 const MACHINE_TITLE_MARKUP = /<\/?(?:i|b|em|strong|sub|sup|sc|scp|u|italic|bold)\b[^<>]{0,80}>/gi;
 const MACHINE_TITLE_MARKS = /[\u2122\u00ae]/g;
 const MACHINE_TITLE_VERSUS = /(?<![\p{L}\p{N}])(?:versus|vs\.?|v\.)(?![\p{L}\p{N}])/giu;
+const MACHINE_TITLE_C1_CONTROLS = /[\u0080-\u009f]/g;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -3163,6 +3164,10 @@ function machineNormalize(value) {
 // "vs" and the two trademark signs are dropped; nothing else changes.
 function machineTitleVariant(value) {
   return machineNormalize(String(value || '').replace(MACHINE_TITLE_MARKS, '').replace(MACHINE_TITLE_VERSUS, ' vs '));
+}
+// WinAnsi byte 0x96 (en dash) that some PDFs leave undecoded shows up as U+0096; C1 controls never occur in real titles.
+function machineTitleVariantNoC1(value) {
+  return machineTitleVariant(value).replace(MACHINE_TITLE_C1_CONTROLS, '');
 }
 function machineLatin1(bytes) {
   let out = '';
@@ -4002,8 +4007,8 @@ function machineAnyDoi(text) {
 // 'doi_only' (DOI on page 1, title unreadable), 'metadata_only', 'title_only' (machine uploads only, when
 // options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
-// If normal title matching (including section-label stripping) misses, falls back once via machineTitleVariant
-// (whole-word versus/vs./v. -> vs and stripping ™/®), recording checks.titleVariant = 'versus_or_mark'.
+// If normal title matching (including section-label stripping) misses, falls back in order via machineTitleVariant
+// (whole-word versus/vs./v. -> vs and stripping ™/®): checks.titleVariant = 'versus_or_mark', then 'c1_control_dropped'.
 async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
@@ -4028,20 +4033,33 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   }
   if (!titleMatch.found) {
     const variantPage = machineTitleVariant(page.text);
+    const c1Page = variantPage.replace(MACHINE_TITLE_C1_CONTROLS, '');
     const candidates = [[title, '']];
     if (hasSectionLabel) candidates.push([strippedTitle, 'section_label_dropped']);
-    for (const [candidate, prefix] of candidates) {
-      const variantExpected = machineTitleVariant(candidate);
-      if (variantExpected.length < 5) continue;
-      const retry = machineTitleOnPage(variantPage, variantExpected);
-      if (retry.found) {
-        titleMatch = retry;
-        titleVariant = 'versus_or_mark';
+    const tryVariant = (name, matchFn) => {
+      if (titleMatch.found) return;
+      for (const [candidate, prefix] of candidates) {
+        const hit = matchFn(candidate);
+        if (!hit) continue;
+        titleMatch = hit.match;
+        titleVariant = name;
         if (prefix) titlePrefix = prefix;
-        matchedExpected = variantExpected;
-        break;
+        matchedExpected = hit.expected;
+        return;
       }
-    }
+    };
+    tryVariant('versus_or_mark', candidate => {
+      const expectedVariant = machineTitleVariant(candidate);
+      if (expectedVariant.length < 5) return null;
+      const match = machineTitleOnPage(variantPage, expectedVariant);
+      return match.found ? {match, expected:expectedVariant} : null;
+    });
+    tryVariant('c1_control_dropped', candidate => {
+      const expectedC1 = machineTitleVariantNoC1(candidate);
+      if (expectedC1.length < 5 || (c1Page === variantPage && expectedC1 === machineTitleVariant(candidate))) return null;
+      const match = machineTitleOnPage(c1Page, expectedC1);
+      return match.found ? {match, expected:expectedC1} : null;
+    });
   }
   const titlePage = titleMatch.found;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
