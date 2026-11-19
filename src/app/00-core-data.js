@@ -221,6 +221,8 @@
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
       fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
+      // Set only by the server for a paper released through manual hold-review (the DOI-in-full-text check was skipped).
+      fulltextVerification: raw.fulltextStatus === 'available' && raw.fulltextVerification === 'manual_release' ? 'manual_release' : '',
       basis: '官方题录 · 非全文精读', tags: rawTags, studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
