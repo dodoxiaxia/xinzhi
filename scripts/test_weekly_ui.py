@@ -91,9 +91,10 @@ def main():
                 return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART("pregenerated",{items:window.__weeklyPrecomputed});')
         if '/api/' in path:
             calls.append({'url': path, 'method': route.request.method})
-            if controls.get('hold_study') and '/api/ai?task=study&' in path:
-                controls['pending_study'] = route
-                return
+            if controls.get('probe_study_loading') and '/api/ai?task=study&' in path:
+                reader = route.request.frame.page
+                expect(reader.locator('#drawerBody .study-box')).to_contain_text('正在检查已有结果')
+                check(has_loading_text(reader), 'Loading detector sees the pending on-demand study lookup')
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
         return route.continue_()
 
@@ -229,16 +230,13 @@ def main():
             page.locator('#drawerCloseBtn').click()
 
             # Unlike a weekly pick, a non-weekly paper with an abstract can offer both actions.
-            controls['hold_study'] = True
+            controls['probe_study_loading'] = True
             page.goto(base + '?' + urlencode({'mode': 'candidates', 'lane': 'all', 'q': ON_DEMAND_DOI}),
                       wait_until='domcontentloaded')
             page.wait_for_function('() => window.XINZHI_DATA_READY === true')
-            with page.expect_request(lambda r: r.url.startswith(base + 'api/ai?task=study&')):
+            with page.expect_response(lambda r: r.url.startswith(base + 'api/ai?task=study&')):
                 page.locator('#articlesStream .title-open').first.click()
-            expect(page.locator('#drawerBody .study-box')).to_contain_text('正在检查已有结果')
-            check(has_loading_text(page), 'Loading detector sees the pending on-demand study lookup')
-            controls.pop('pending_study').fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
-            controls['hold_study'] = False
+            controls['probe_study_loading'] = False
             for selector in on_demand_selectors:
                 expect(page.locator('#drawerBody').locator(selector)).to_be_visible()
             check(generation.count() == len(on_demand_selectors), 'Generation detector sees both real on-demand controls')
