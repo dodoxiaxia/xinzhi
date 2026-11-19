@@ -13,7 +13,7 @@ THEMES = ("light", "dark")
 CJK = "心血管临床研究结果与循证医学分析" * 5
 ENGLISH = ("Prospective cardiovascular research on clinical outcomes and patient care " * 4)[:260].rstrip()
 TOKEN = ("Pneumonia-associated-cardiomyopathy-" + "W" * 90)[:90]
-DOI_TOKEN = "10.1016/j.jacc.2026.01.0123456789abcdefghij"
+EXAMPLE_DOI = "10.1016/j.jacc.2026.01.0123456789abcdefghij"
 ESCAPED = '<b>字面标题</b> &amp; "不是标记" ' + CJK
 ESCAPED_EN = '<b>Literal title</b> &amp; "not markup"'
 FIXTURES = {
@@ -22,7 +22,7 @@ FIXTURES = {
     "T2-original": ("", ENGLISH),
     "T1-original": ("", CJK),
     "T3-token": (TOKEN, TOKEN),
-    "T3-doi": (DOI_TOKEN, DOI_TOKEN),
+    "T3-doi": (EXAMPLE_DOI, EXAMPLE_DOI),
     "T4": (ESCAPED, ESCAPED_EN),
     "T5": ("", "Clinical study"),
     "T6": ("房颤", "Atrial fibrillation"),
