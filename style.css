@@ -2759,3 +2759,168 @@ html[data-theme="dark"] .req-status-failed, html[data-theme="dark"] .req-status-
   margin-top: 10px;
 }
 .doi-library-notice .btn-sm { margin-left: 6px; margin-top: 4px; }
+
+/* ==== reading mode ==== */
+#drawerExpandBtn { flex: 0 0 auto; margin-inline-start: auto; }
+#readerDrawer [hidden].reading-toolbar,
+#readerDrawer [hidden].reading-neighbors,
+#readerDrawer #drawerCloseBtn[hidden],
+#readerDrawer #drawerExpandBtn[hidden],
+#readerDrawer #readingToc [hidden] { display: none; }
+#readerDrawer:not(.reading-mode) .reading-content-note { display: none; }
+
+#readerDrawer.reading-mode {
+  --reading-width: 760px;
+  --reading-gutter: clamp(18px, 4vw, 44px);
+  --reading-inner: min(var(--reading-width), calc(100% - 2 * var(--reading-gutter)));
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  z-index: 101;
+  border: 0;
+  box-shadow: none;
+  background: var(--bg-card);
+}
+
+.reading-mode .drawer-header {
+  display: block;
+  padding: env(safe-area-inset-top, 0px) 0 8px;
+}
+
+.reading-toolbar, .reading-neighbors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reading-toolbar, .reading-mode #drawerJournalBadges {
+  width: var(--reading-inner);
+  margin-inline: auto;
+}
+
+.reading-toolbar { justify-content: space-between; padding-block: 6px; }
+.reading-toolbar .btn-sm, .reading-toolbar .card-star { min-height: 44px; }
+.reading-toolbar .card-star {
+  width: 44px;
+  flex: 0 0 44px;
+  color: var(--text-muted);
+}
+.reading-toolbar .card-star[aria-pressed="true"] { color: var(--amber); }
+.reading-position { color: var(--text-secondary); font-size: 13px; text-align: center; }
+.reading-neighbors button:disabled { color: var(--text-muted); opacity: 0.65; }
+
+#readingProgress:not([hidden]) {
+  display: block;
+  flex: 0 0 3px;
+  inline-size: 100%;
+  block-size: 3px;
+  appearance: none;
+  border: 0;
+  background: var(--bg-secondary);
+  accent-color: var(--accent);
+}
+#readingProgress::-webkit-progress-bar { background: var(--bg-secondary); }
+#readingProgress::-webkit-progress-value { background: var(--accent); }
+#readingProgress::-moz-progress-bar { background: var(--accent); }
+
+.reading-mode #drawerBody {
+  min-height: 0;
+  padding: 24px 0 36px;
+  scroll-padding-block: 12px;
+}
+.reading-mode .drawer-region {
+  width: var(--reading-inner);
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+.reading-mode .drawer-region + .drawer-region { margin-top: 20px; }
+html[data-style] .reading-mode .drawer-title-en {
+  font-size: clamp(21px, 3.5vw, 29px);
+  line-height: 1.28;
+  text-wrap: pretty;
+}
+html[data-style] .reading-mode .drawer-title-zh { font-size: clamp(17px, 2.4vw, 21px); }
+.reading-mode :is(.structured-abstract, .abs-panel, .drawer-takeaway) { font-size: 16px; line-height: 1.75; }
+.reading-content-note {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.reading-toc:not([hidden]) { display: block; width: var(--reading-inner); margin: 8px auto 0; }
+.reading-toc nav { display: flex; flex-wrap: wrap; gap: 4px; }
+#readingTocToggle { min-height: 34px; }
+#readingTocToggle[aria-expanded="false"] + nav { display: none; }
+.reading-toc nav button {
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: start;
+}
+.reading-toc nav button:hover, .reading-toc nav button[aria-current] {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+html[data-style] #readerDrawer.reading-mode .drawer-footer {
+  padding: 4px max(var(--reading-gutter), calc((100% - var(--reading-width)) / 2)) calc(4px + env(safe-area-inset-bottom, 0px));
+  justify-content: space-between;
+}
+#readerDrawer.reading-mode .drawer-footer:not(:has(> :not([hidden]))) {
+  padding-block: 0 env(safe-area-inset-bottom, 0px);
+  border: 0;
+}
+
+@media (min-width: 1280px) {
+  .reading-toc:not([hidden]) {
+    position: absolute;
+    inset-inline-start: calc(50% + var(--reading-width) / 2 + 32px);
+    inset-block-start: 128px;
+    width: min(172px, calc(50% - var(--reading-width) / 2 - 50px));
+    margin: 0;
+    border-inline-start: 1px solid var(--border);
+    padding-inline-start: 12px;
+  }
+  #readingTocToggle { display: none; }
+  #readingTocToggle[aria-expanded="false"] + nav, .reading-toc nav { display: grid; }
+}
+@media (max-width: 540px) {
+  .reading-toolbar .btn-sm { padding-inline: 8px; white-space: nowrap; }
+  .reading-neighbors { flex: 1; justify-content: center; flex-wrap: wrap; gap: 2px 8px; }
+  .reading-position { order: 1; flex: 0 0 100%; }
+  .reading-mode #drawerBody { padding-top: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #readerDrawer.reading-mode { transition: none; }
+}
+@media print {
+  html:has(#readerDrawer.reading-mode) { background: #fff !important; color-scheme: light !important; }
+  body:has(#readerDrawer.reading-mode) { overflow: visible; }
+  body:has(#readerDrawer.reading-mode) > :not(#readerDrawer),
+  #readerDrawer.reading-mode :is(.reading-toolbar, #readingToc, #readingProgress, .drawer-footer, .ft-actions, .ft-form, button, [data-ft-download]) {
+    display: none !important;
+  }
+  #readerDrawer.reading-mode {
+    position: static;
+    display: block;
+    height: auto;
+    background: #fff;
+    --bg-card: #fff;
+    --bg-primary: #fff;
+    --bg-secondary: #f4f4f4;
+    --bg-tertiary: #eee;
+    --text-primary: #000;
+    --text-secondary: #222;
+    --text-muted: #333;
+    --accent: #000;
+  }
+  #readerDrawer.reading-mode #drawerBody { overflow: visible; padding-block: 14px; }
+  #readerDrawer.reading-mode :is(.drawer-region, #drawerJournalBadges) { width: 100%; }
+}

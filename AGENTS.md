@@ -128,7 +128,7 @@ scripts/run_all_tests.sh --no-browser  # 不需要 Chromium / public/ 的部分
 | 速览（AI 速览） | 模型根据公开摘要生成的要点，界面小节标题只写“速览” | AI 解读、一键 AI 解读、quicklook（代码：`quicklook*`、`/api/ql`） |
 | 已核对导读 | 对照期刊公开摘要核对过的中文导读 | 导读、摘要核对导读、摘要核对、guide（代码：`draftData`、`reading=guide`） |
 | 原摘要 / 中英对照 | 期刊公开摘要及机器翻译 | 摘要翻译、translation |
-| 阅读面板 | 点开文献后右侧（手机为全屏）的阅读区 | 抽屉、drawer、速读（按钮文字） |
+| 阅读面板 | 点开文献后右侧（手机为全屏）的阅读区，点开后可展开为阅读模式 | 抽屉、drawer、速读（按钮文字） |
 | 关注期刊 / 我的期刊 | 收藏的期刊及按收藏筛选（仅存本浏览器） | favorites |
 | 维护者模式 | `?maintainer=1` 开启的汉堡入口 | 汉堡登录 |
 

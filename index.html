@@ -200,8 +200,28 @@
   <div class="drawer-backdrop" id="drawerBackdrop"></div>
   <aside class="reader-drawer" id="readerDrawer" aria-modal="true" aria-hidden="true" tabindex="-1" role="dialog" aria-label="文献阅读台">
     <div class="drawer-header">
+      <div class="reading-toolbar" id="readingToolbar" hidden>
+        <button type="button" class="btn-sm" id="readingBackBtn">← 返回</button>
+        <div class="reading-neighbors" id="readingNeighbors" aria-label="篇间切换" role="group" hidden>
+          <button type="button" class="btn-sm" id="readingPrevBtn" disabled>上一篇</button>
+          <span class="reading-position" id="readingPosition" role="status"></span>
+          <button type="button" class="btn-sm" id="readingNextBtn" disabled>下一篇</button>
+        </div>
+      </div>
       <div id="drawerJournalBadges"></div>
+      <button type="button" class="btn-sm" id="drawerExpandBtn">展开阅读</button>
       <button class="drawer-close-btn" id="drawerCloseBtn" title="关闭 (Esc)" aria-label="关闭">&times;</button>
+    </div>
+
+    <progress id="readingProgress" max="100" value="0" aria-label="文章阅读进度" hidden></progress>
+    <div class="reading-toc" id="readingToc" hidden>
+      <button type="button" class="btn-sm" id="readingTocToggle" aria-expanded="false" aria-controls="readingTocNav">目录</button>
+      <nav id="readingTocNav" aria-label="阅读目录">
+        <button type="button" data-reading-region="head">题名</button>
+        <button type="button" data-reading-region="abstract">摘要</button>
+        <button type="button" data-reading-region="study">研究结构</button>
+        <button type="button" data-reading-region="fulltext">全文状态</button>
+      </nav>
     </div>
 
     <div class="drawer-body" id="drawerBody">
