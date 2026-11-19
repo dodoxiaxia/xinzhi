@@ -1747,7 +1747,6 @@
     });
     return out;
   }
-
   // ==== src/app/02-lanes.js · Relevance lanes, per-paper derived cache, quick-look data ====
   // ---- Relevance lanes: keep the reader's default view on cardiology + medical AI ----
   const CARDIO_TIERS = new Set(['心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队']);
@@ -3151,7 +3150,6 @@
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
-
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
 
   // Render Article Card
