@@ -83,7 +83,9 @@ def verify_viewport(browser, base, width, height, output):
     page_errors, forbidden_requests = [], []
     page.on('pageerror', lambda err: page_errors.append(str(err)))
     held = []
+    held_feeds = []
     delay_library = False
+    delay_feeds = False
     weekly_fixture = False
 
     def library_script(route):
@@ -116,6 +118,9 @@ def verify_viewport(browser, base, width, height, output):
             return route.fulfill(response=response, body=source)
         if weekly_fixture and path.startswith('/assets/data-feeds.'):
             return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART("feeds", {"items":[],"at":[]});')
+        if delay_feeds and path.startswith('/assets/data-feeds.'):
+            held_feeds.append(route)
+            return
         if path.startswith('/assets/data-library.'):
             if delay_library:
                 held.append(route)
@@ -261,6 +266,7 @@ def verify_viewport(browser, base, width, height, output):
 
         # Bootstrap a direct link while the owning shard is intentionally held.
         delay_library = True
+        delay_feeds = True
         fragment = '&' + urlencode({'paper': FIRST, 'theme': 'dark'}) + '#source'
         page.goto(base + LIST_QUERY + fragment, wait_until='domcontentloaded')
         page.wait_for_function("window.XINZHI_DATA_STATE?.library === 'loading'")
@@ -271,6 +277,7 @@ def verify_viewport(browser, base, width, height, output):
         expect(page.get_by_role('button', name='返回列表')).to_be_focused()
         expect(page.locator('html[data-theme="dark"]')).to_be_attached()
         expect(reading.locator('.study-fields')).to_be_attached()
+        expect(opener).to_have_count(0)
         shot('direct-link')
         shot('dark')
 
@@ -285,6 +292,10 @@ def verify_viewport(browser, base, width, height, output):
         expect(reading_paper(LATE)).to_be_visible()
         expect(reading.locator('iframe, embed, object')).to_have_count(0)
         assert parse_qs(urlsplit(page.url).query)['paper'] == [LATE] and urlsplit(page.url).fragment == 'source'
+        # The original list opener can first appear after opening the direct link.
+        delay_feeds = False
+        held_feeds.pop().continue_()
+        expect(opener).to_be_visible()
         page.go_back()
         expect(reading).to_be_hidden()
         expect(opener).to_be_focused()

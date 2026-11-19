@@ -26,6 +26,7 @@
   }
 
   let readingReturn = null;
+  let readingLinkOpenerId = null;
   let pendingReadingLink = null;
   let readingRefreshFrame = 0;
   const readingPaperParts = ['feeds', 'radar', 'library'];
@@ -51,6 +52,7 @@
     const footer = drawer.querySelector('.drawer-footer');
     const toolbar = $('#readingToolbar');
     readingReturn = drawerReturn;
+    if (!active) readingLinkOpenerId = null;
     drawer.classList.toggle('reading-mode', active);
     drawer.setAttribute('aria-label', active ? '阅读模式' : '文献阅读台');
     ['#drawerExpandBtn', '#drawerCloseBtn'].forEach(selector => { $(selector).hidden = active; });
@@ -155,6 +157,7 @@
     }
     if ($('#readerDrawer.reading-mode') && state.activeDrawerPaper?.id === id) return;
     const alreadyOpen = $('#readerDrawer.open');
+    if (!alreadyOpen && !drawerReturn) readingLinkOpenerId = id;
     openReaderDrawer(paper, { push: false, opener: readingListOpener(drawerReturn?.id || id) });
     setReadingMode(true, drawerReturn);
     if (!alreadyOpen) $('#drawerBody').scrollTop = 0;
