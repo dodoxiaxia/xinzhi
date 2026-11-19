@@ -45,23 +45,31 @@ class TestPublicPackaging(unittest.TestCase):
  def test_extra_file_is_rejected(self):
   (self.root/'public/unexpected.pdf').write_bytes(b'%PDF-synthetic')
   with self.assertRaises(ValueError):public_payloads(self.root)
- def test_private_input_only_reaches_local_zip_and_public_aliases_are_rejected(self):
-  relative = Path(packaging.INPUT_DIR) / 'synthetic-only.pdf'
+ def test_private_input_never_reaches_any_zip_and_public_aliases_are_rejected(self):
+  relative = Path('.local') / packaging.INPUT_NAME / 'synthetic-only.pdf'
   private = self.root / relative
   private.parent.mkdir(parents=True)
   canary = b'%PDF-synthetic-public-zip-counterexample'
   private.write_bytes(canary)
+  misplaced = self.root/'data'/packaging.INPUT_NAME
+  misplaced.mkdir(parents=True)
+  (misplaced/'copied.pdf').write_bytes(canary)
+  (misplaced.parent/'ordinary.txt').write_text('local-only')
+  os.link(private, misplaced.parent/'renamed.txt')
+  (misplaced.parent/'symlink.txt').symlink_to(private)
   names = ('xinzhi-public.zip', '心知-公开网站包.zip', '心知-本地学习站.zip')
   with patch.multiple(packaging, ROOT=self.root, OUT=self.root), contextlib.redirect_stdout(io.StringIO()):
    packaging.main()
-   for name in names[:-1]:
+   for name in names:
     with packaging.zipfile.ZipFile(self.root/name) as archive:
-     self.assertEqual(set(archive.namelist()), PUBLIC)
+     if name==names[-1]:
+      self.assertEqual(archive.read('xinzhi/data/ordinary.txt'), b'local-only')
+     else:
+      self.assertEqual(set(archive.namelist()), PUBLIC)
+     self.assertFalse(any(packaging.INPUT_NAME in member for member in archive.namelist()))
      self.assertTrue(all(canary not in archive.read(member) for member in archive.namelist()))
-   with packaging.zipfile.ZipFile(self.root/names[-1]) as archive:
-    self.assertEqual(archive.read('xinzhi/' + relative.as_posix()), canary)
    previous = [(self.root/name).read_bytes() for name in names]
-   alias = self.root/'public'/packaging.INPUT_DIR
+   alias = self.root/'public'/'data'/packaging.INPUT_NAME
    alias.parent.mkdir()
    alias.symlink_to(private.parent)
    with self.assertRaisesRegex(ValueError, 'Public package contains a private reading input'):

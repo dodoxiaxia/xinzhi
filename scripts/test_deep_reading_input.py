@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -207,48 +208,49 @@ class PrivateInputTests(unittest.TestCase):
         model.assert_not_called()
         fetch.assert_not_called()
 
-    def test_final_state_save_checks_actual_destination_before_copy(self):
+    def test_legacy_path_and_symlinked_staging_parent_are_not_read(self):
+        self.plant()
+        self.folder.rename(self.root / 'data' / pdf.INPUT_NAME)
+        self.assert_rejected('private_pdf_missing')
+        self.folder.parent.rmdir()
+        self.folder.parent.symlink_to(self.root / 'data')
+        self.assert_rejected('private_pdf_unsafe_directory')
+
+    def test_final_state_save_excludes_staging_and_refuses_misplaced_input(self):
         planted, _ = self.plant()
         (self.root / 'public').mkdir()
         (self.root / 'docs').mkdir()
         for name in save_state.STATE_DOCS:
             (self.root / 'docs' / name).write_text('{}')
         head = 'a' * 40
-        remote = 'https://x-access-token:fixture@github.com/owner/destination.git'
-        with patch.dict(os.environ, {'XINZHI_STATE_REPOSITORY': 'owner/other'}), \
-                patch.object(save_state, 'state_token', return_value='fixture'), \
-                patch.object(save_state, 'existing_token_transport') as transport, \
-                patch.object(save_state, 'build', wraps=save_state.build) as build, \
+        remote = 'https://github.com/owner/destination.git'
+        with patch.object(save_state, 'git') as git, \
                 patch.object(save_state, 'push') as push:
-            api = transport.return_value
-            for status, metadata in ((200, {'private': False}), (404, {}), (200, {'private': True, 'visibility': 'internal'})):
-                with self.subTest(status=status, metadata=metadata):
-                    api.return_value = status, metadata
-                    with self.assertRaisesRegex(save_state.StateError, 'state_private_reading_requires_private_repository'):
+            for rel in ('data', 'public', 'public/data'):
+                with self.subTest(directory=rel):
+                    misplaced = self.root / rel / pdf.INPUT_NAME
+                    shutil.copytree(self.folder, misplaced)
+                    with self.assertRaisesRegex(save_state.StateError, '^state_contains_private_reading_input$'):
                         save_state.save(self.root, remote, head)
-                    api.assert_called_with('GET', '/repos/owner/destination', None)
-            api.reset_mock()
-            with self.assertRaisesRegex(save_state.StateError, 'state_private_reading_requires_private_repository'):
-                save_state.save(self.root, str(self.root / 'unknown-remote'), head)
-            api.assert_not_called()
-            build.assert_not_called()
+                    shutil.rmtree(misplaced)
+            alias = self.root / 'data' / 'renamed'
+            for create_alias in (lambda: alias.symlink_to(self.folder), lambda: os.link(planted, alias)):
+                create_alias()
+                with self.assertRaisesRegex(save_state.StateError, '^state_contains_private_reading_input$'):
+                    save_state.save(self.root, remote, head)
+                alias.unlink()
+            git.assert_not_called()
             push.assert_not_called()
 
-            def inspect_private_copy(repo, destination, expected, *, private):
-                self.assertTrue(private)
+            def inspect_state(repo, destination, expected):
                 self.assertEqual((destination, expected), (remote, head))
-                self.assertEqual((repo / planted.relative_to(self.root)).read_bytes(), self.valid_pdf)
+                self.assertFalse((repo / '.local').exists())
+                self.assertEqual((repo / daily.DATA_PATH).read_bytes(), (self.root / daily.DATA_PATH).read_bytes())
+                self.assertFalse(list(repo.rglob(pdf.INPUT_NAME)))
                 return True
-            api.return_value = 200, {'private': True, 'visibility': 'private'}
-            push.side_effect = inspect_private_copy
+            push.side_effect = inspect_state
             self.assertEqual(save_state.save(self.root, remote, head), {'status': 'saved', 'lease': 'original'})
             push.assert_called_once()
-
-        with patch.object(save_state.sys, 'argv', ['save_state.py', '--remote', remote, '--expected', head]), \
-                patch.object(save_state, 'save', side_effect=OSError(str(planted))), \
-                contextlib.redirect_stdout(io.StringIO()) as log:
-            self.assertEqual(save_state.main(), 1)
-        self.assertEqual(json.loads(log.getvalue()), {'status': 'failed', 'error': 'state_filesystem_or_git_failure'})
 
     def test_offline_stage_check_prune_and_public_tree_refusal(self):
         source = self.root / 'received.pdf'
@@ -272,6 +274,22 @@ class PrivateInputTests(unittest.TestCase):
         alias.symlink_to(pdf.ROOT)
         self.assertEqual(cli('check', alias)[1]['reason'], 'private_pdf_public_checkout')
 
+    def test_stage_refuses_checkout_until_staging_is_gitignored(self):
+        source = self.root / 'received.pdf'
+        source.write_bytes(self.valid_pdf)
+        subprocess.run(['git', 'init', '-q', str(self.root)], check=True, capture_output=True)
+        args = ['stage', '--state-dir', str(self.root), '--doi', self.doi, '--pdf', str(source)]
+        for ignore, expected in (('', 'private_pdf_staging_not_gitignored'), ('.local/\n', None)):
+            (self.root / '.git/info/exclude').write_text(ignore)
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(pdf.main(args), int(expected is not None))
+            self.assertEqual(json.loads(out.getvalue()).get('reason'), expected)
+            self.assertEqual(self.folder.exists(), expected is None)
+        source.unlink()
+        subprocess.run(['git', '-C', str(self.root), 'add', '-A', '--', '.'], check=True, capture_output=True)
+        tracked = subprocess.check_output(['git', '-C', str(self.root), 'ls-files', '--', pdf.INPUT_DIR])
+        self.assertEqual(tracked, b'')
+
     def test_planted_input_never_reaches_build_or_shards(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -294,7 +312,7 @@ class PrivateInputTests(unittest.TestCase):
             for marker in ('PRIVATE_BUILD_CANARY', PRIVATE_MARK, 'private-planted-file', entry['sha256'],
                            pdf.INPUT_DIR, '%PDF-'):
                 self.assertTrue(all(marker.encode() not in raw for raw in all_outputs), marker)
-            output_alias = public / pdf.INPUT_DIR
+            output_alias = public / 'data' / pdf.INPUT_NAME
             output_alias.parent.mkdir()
             output_alias.symlink_to(planted.parent)
             with patch.object(builder, 'ROOT', root), patch.object(builder, 'DEST', public), \

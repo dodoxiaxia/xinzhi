@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import tempfile
 import zipfile
-from deep_reading_input import INPUT_DIR
+from deep_reading_input import INPUT_NAME
 from release_integrity import PUBLIC, is_published_file, published_files, validate_release
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT.parent
 ROOTS={'data','scripts','service','editor','public','editorial','docs'}
@@ -14,7 +14,7 @@ def public_payloads(root=ROOT):
  public=root/'public'
  if public.is_symlink() or not public.is_dir() or public.resolve().parent!=root.resolve():
   raise ValueError('Public directory must be an ordinary project directory')
- if any(os.path.lexists(public/name) for name in (INPUT_DIR, Path(INPUT_DIR).name)):
+ if next(public.rglob(INPUT_NAME), None) is not None:
   raise ValueError('Public package contains a private reading input')
  names=published_files(public)
  if not PUBLIC<=set(names) or any(not is_published_file(name) for name in names):
@@ -51,9 +51,9 @@ def main():
      for p in sorted(ROOT.rglob('*')):
       rel=p.relative_to(ROOT)
       if not p.is_file() or p.is_symlink() or any(s.startswith('.') or s=='__pycache__' for s in rel.parts):continue
-      if rel.parts[0]=='public':continue
+      if rel.parts[0]=='public' or INPUT_NAME in rel.parts:continue
       if rel.parts[0] not in ROOTS and str(rel) not in FILES:continue
-      if p.suffix in ('.db','.sqlite','.pyc'):continue
+      if p.suffix in ('.db','.sqlite','.pyc') or p.stat().st_nlink!=1:continue
       z.write(p,str(Path('xinzhi')/rel))
      for filename,content in payloads.items():z.writestr(str(Path('xinzhi/public')/filename),content)
      assert not any('.local' in f or 'admin-token' in f for f in z.namelist())

@@ -13,15 +13,13 @@ import datetime
 import json
 import os
 import pathlib
-import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 
-from daily_fulltext import StateCheckpoint
-from deep_reading_input import INPUT_DIR
-from week_precompute_ci import existing_token_transport, state_token
+from deep_reading_input import INPUT_DIR, INPUT_NAME
 
 CHECKPOINT_MESSAGES = {
     'Checkpoint daily public full-text reading': {'data/deep-readings.json', 'data/deep-reading-ledger.json'},
@@ -35,15 +33,8 @@ class StateError(RuntimeError):
     pass
 
 
-def git(cwd, *args, check=True, private=False):
-    flags, env = [], None
-    if private:
-        # Keep Git from rewriting or redirecting the verified destination.
-        flags = ['-c', 'http.followRedirects=false']
-        env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1')
-        env.pop('GIT_CONFIG_COUNT', None)
-        env.pop('GIT_CONFIG_PARAMETERS', None)
-    result = subprocess.run(['git', *flags, *args], cwd=cwd, capture_output=True, text=True, env=env)
+def git(cwd, *args, check=True):
+    result = subprocess.run(['git', *args], cwd=cwd, capture_output=True, text=True)
     if check and result.returncode:
         # Never echo stderr: it may contain the authenticated remote URL.
         raise StateError('git_' + args[0] + '_failed')
@@ -69,11 +60,33 @@ def checkpoint_paths(repo, expected, head):
     raise StateError('state_checkpoint_chain_too_long')
 
 
+def refuse_private_input(directory, names, *, staged):
+    directory = pathlib.Path(directory)
+    error = 'state_contains_private_reading_input'
+    if INPUT_NAME in names or INPUT_NAME in directory.resolve().parts:
+        raise StateError(error)
+    for name in names:
+        path = directory / name
+        if path.is_symlink() and INPUT_NAME in path.resolve().parts:
+            raise StateError(error)
+        if staged:
+            info = path.stat()
+            if stat.S_ISREG(info.st_mode) and info.st_nlink > 1:
+                raise StateError(error)
+    return ()
+
+
 def build(root, work):
+    staged = os.path.lexists(root / INPUT_DIR)
+
+    def guard(directory, names):
+        return refuse_private_input(directory, names, staged=staged)
+
     target = work / 's'
     (target / 'docs').mkdir(parents=True)
     for name in ('data', 'public'):
-        shutil.copytree(root / name, target / name)
+        shutil.copytree(root / name, target / name, ignore=guard)
+    guard(root / 'docs', STATE_DOCS)
     for name in STATE_DOCS:
         shutil.copy2(root / 'docs' / name, target / 'docs' / name)
     git(target, 'init', '-q', '-b', 'state')
@@ -84,38 +97,20 @@ def build(root, work):
     return target
 
 
-def push(repo, remote, expected, *, private=False):
-    return git(repo, 'push', '--force-with-lease=refs/heads/state:' + expected, remote, 'state',
-               check=False, private=private).returncode == 0
-
-
-def require_private_target(root, remote, expected):
-    # Check the actual push target, not the repository named in the environment.
-    match = re.fullmatch(r'https://(?:x-access-token:[A-Za-z0-9_]+@)?github\.com/'
-                         r'([A-Za-z0-9-]+/[A-Za-z0-9_.-]+?)(?:\.git)?', remote)
-    token = state_token()
-    if match and match[1].split('/')[1] not in {'.', '..'} and token:
-        writer = StateCheckpoint(root, existing_token_transport(token), match[1], expected)
-        if writer.private_state() is True:
-            return
-    raise StateError('state_private_reading_requires_private_repository')
+def push(repo, remote, expected):
+    return git(repo, 'push', '--force-with-lease=refs/heads/state:' + expected, remote, 'state', check=False).returncode == 0
 
 
 def save(root, remote, expected):
-    private = os.path.lexists(root / INPUT_DIR)
-    if private:
-        require_private_target(root, remote, expected)
     with tempfile.TemporaryDirectory() as tmp:
         repo = build(root, pathlib.Path(tmp))
-        if push(repo, remote, expected, private=private):
+        if push(repo, remote, expected):
             return {'status': 'saved', 'lease': 'original'}
-        git(repo, 'fetch', '-q', '--depth=' + str(MAX_CHECKPOINTS + 2), remote, 'state', private=private)
+        git(repo, 'fetch', '-q', '--depth=' + str(MAX_CHECKPOINTS + 2), remote, 'state')
         head = git(repo, 'rev-parse', 'FETCH_HEAD').stdout.strip()
         if head == expected:
             raise StateError('state_push_failed')
         paths = checkpoint_paths(repo, expected, head)
-        if private:
-            require_private_target(root, remote, head)
         for path in sorted(paths):
             blob = git(repo, 'cat-file', '-e', head + ':' + path, check=False)
             if blob.returncode:
@@ -125,7 +120,7 @@ def save(root, remote, expected):
             (root / path).write_bytes(content)
         git(repo, 'add', '-A')
         git(repo, 'commit', '-q', '--amend', '--no-edit')
-        if not push(repo, remote, head, private=private):
+        if not push(repo, remote, head):
             raise StateError('state_push_failed_after_checkpoint_merge')
         return {'status': 'saved', 'lease': 'checkpoint_merged', 'mergedPaths': sorted(paths)}
 
@@ -143,9 +138,6 @@ def main():
         result = save(pathlib.Path.cwd(), args.remote, expected)
     except StateError as error:
         print('{"status": "failed", "error": "%s"}' % error)
-        return 1
-    except (OSError, subprocess.CalledProcessError):
-        print('{"status": "failed", "error": "state_filesystem_or_git_failure"}')
         return 1
     print(json.dumps(result))
     return 0

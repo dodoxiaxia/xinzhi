@@ -16,7 +16,8 @@ import sys
 from muse_pdf_verifier import normalized as title_key, page_has_doi, title_matches, without_margin_numbers
 
 ROOT = Path(__file__).resolve().parents[1]
-INPUT_DIR = 'data/deep-reading-input'
+INPUT_NAME = 'deep-reading-input'
+INPUT_DIR = '.local/' + INPUT_NAME
 MAX_MANIFEST = 64 * 1024
 MAX_PDF = 20 * 1024 * 1024
 MAX_ITEMS = 12
@@ -143,8 +144,9 @@ def read_manifest(folder, *, optional=False):
 
 @contextmanager
 def input_directory(root, *, create=False):
-    with directory(root) as base, directory('data', parent=base, create=create) as data:
-        with directory('deep-reading-input', parent=data, create=create) as folder:
+    location = Path(INPUT_DIR)
+    with directory(root) as base, directory(location.parent, parent=base, create=create) as local:
+        with directory(location.name, parent=local, create=create) as folder:
             yield folder
 
 
@@ -374,6 +376,20 @@ def in_public_checkout(root):
                for line in remotes.stdout.splitlines())
 
 
+def require_ignored_staging(root):
+    def git(*args):
+        return subprocess.run(['git', '-C', str(root), *args], capture_output=True, timeout=5,
+                              env=dict(os.environ, LC_ALL='C'))
+
+    checkout = git('rev-parse', '--is-inside-work-tree')
+    if checkout.returncode and b'not a git repository' in checkout.stderr:
+        return
+    tracked = git('ls-files', '--', INPUT_DIR + '/')
+    if (checkout.stdout.strip() != b'true' or tracked.returncode or tracked.stdout
+            or git('check-ignore', '-q', '--', INPUT_DIR + '/').returncode):
+        raise InputError('private_pdf_staging_not_gitignored')
+
+
 def main(argv=None):
     parser = QuietParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -390,6 +406,7 @@ def main(argv=None):
             raise InputError('private_pdf_public_checkout')
         wanted, published = wanted_for(root)
         if args.command == 'stage':
+            require_ignored_staging(root)
             from daily_fulltext import doi
             key = doi(args.doi)
             if not canonical_doi(key):

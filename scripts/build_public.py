@@ -8,7 +8,7 @@ from apply_public_library import require_snapshot
 from release_integrity import (PUBLIC, input_hashes, is_reading_shard, is_published_file, ordinary_file,
                                provenance, published_files, replace_unchanged_input)
 from daily_fulltext import public_readings
-from deep_reading_input import INPUT_DIR
+from deep_reading_input import INPUT_NAME
 from editorial_review import article_key, publication_date
 from sync_public_library import load_adjudications
 from publication_dates import DATE_CORRECTIONS, canonical_publication_date
@@ -511,7 +511,7 @@ def validate_public(text):
 
 def main():
     require_fresh_sources(ROOT)  # app.js / edge/_worker.js must match their src parts
-    if any(os.path.lexists(DEST / name) for name in (INPUT_DIR, Path(INPUT_DIR).name)):
+    if next(DEST.rglob(INPUT_NAME), None) is not None:
         raise ValueError('Public directory contains a private reading input')
     reading_file = ordinary_file(ROOT, 'data/deep-readings.json')
     if reading_file.exists() and reading_file.stat().st_nlink != 1:
