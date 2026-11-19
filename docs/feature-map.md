@@ -475,6 +475,8 @@
 | request-identity-conflict | 申请：题录冲突 | `.req-item .req-status-review` | text:题录冲突，待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
 | request-possible-duplicate | 申请：同题不同 DOI 仅提示 | `.req-possible-duplicate` | text:题名相同但 DOI 不同 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
 | request-open-ingested | 申请：打开静态文献阅读详情 | `.req-item:has(.req-classification) [data-action="open-request-paper"]` |  | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-pdf | DOI 检索：库里已有 PDF，不显示获取表单 | `#articlesStream .ft-badge-ready` | text:库里已有 | SKIP: 需模拟带 PDF 的静态记录，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-stale-submit | 获取全文的旧表单：库里已有，不重复提交 | `#articlesStream form[data-ft-form] .ft-error` | text:库里已有，可直接下载 | SKIP: 需模拟旧表单，由 scripts/test_request_loop_ui.py 覆盖 |
 
 <details><summary>入口操作与备注</summary>
 

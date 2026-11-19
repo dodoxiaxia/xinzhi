@@ -207,7 +207,6 @@
     const staticPaper = ['ingested', 'already_in_library'].includes(rec.libraryState)
       ? requestLibraryMatch(rec.doi, rec.title) : null;
     const detailPaper = staticPaper || (live && (allPapersMap.get(live.id) || live));
-    // Keep the existing download binding; a looser bibliographic match only changes which record opens.
     const dlUrl = live ? pdfDownloadUrl(live) : '';
     const ft = live && fulltextState(live);
     let kind = rec.status;
@@ -227,14 +226,14 @@
     } else if (rec.reason === 'identity_hold' || rec.reason === 'identity_hold_rejected') {
       kind = 'review'; label = rec.reason === 'identity_hold' ? '待人工核验' : '人工核验未通过，可重新提交';
     }
-    const key = requestTitleKey(detailPaper?.title || rec.title);
+    const title = detailPaper?.title || rec.title;
+    const key = doiTitleKey(title);
     const otherDois = rec.status === 'available' && !rec.libraryState && key ? [...new Set(
-      [...REQUEST_LIBRARY_PAPERS].filter(p => requestTitleKey(p.title) === key)
+      [...requestLibraryPapers()].filter(p => doiTitleKey(p.title) === key)
         .map(p => exactDoi(p.doi)).filter(doi => doi && doi !== rec.doi)
     )] : [];
-    const title = detailPaper?.title || rec.title || rec.doi;
     const journal = detailPaper?.cleanJournal || detailPaper?.journal || rec.journal;
-    return { livePaper: detailPaper, staticPaper, kind, label, dlUrl, title, journal, otherDois };
+    return { livePaper: detailPaper, staticPaper, kind, label, dlUrl, title: title || rec.doi, journal, otherDois };
   }
   function renderRequestsModal() {
     const body = $('#requestsModalBody');

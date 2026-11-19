@@ -50,7 +50,7 @@ def doi_key(value):
 
 
 def bibliography_title_key(value):
-    return title_key(re.sub(r'^\s*\[[A-Za-z ]+\]\s*', '', value or ''))
+    return title_key(re.sub(r'^\s*\[[A-Za-z ]+\]\s*', '', value or '')).replace('ß', 'ss').replace('ς', 'σ')
 
 
 def classify(record, doi):

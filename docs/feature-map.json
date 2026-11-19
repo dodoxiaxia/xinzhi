@@ -6111,6 +6111,26 @@
         ],
         "stable": true,
         "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "doi-existing-pdf",
+        "label": "DOI 检索：库里已有 PDF，不显示获取表单",
+        "selector": "#articlesStream .ft-badge-ready",
+        "trigger": "按 DOI 检索已有静态 PDF 的文献",
+        "viewports": ["mobile", "tablet", "desktop"],
+        "expect": "text:库里已有",
+        "stable": true,
+        "skip": "需模拟带 PDF 的静态记录，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "doi-existing-stale-submit",
+        "label": "获取全文的旧表单：库里已有，不重复提交",
+        "selector": "#articlesStream form[data-ft-form] .ft-error",
+        "trigger": "文献已可下载时尝试提交旧表单",
+        "viewports": ["mobile", "tablet", "desktop"],
+        "expect": "text:库里已有，可直接下载",
+        "stable": true,
+        "skip": "需模拟旧表单，由 scripts/test_request_loop_ui.py 覆盖"
       }
     ]
   }

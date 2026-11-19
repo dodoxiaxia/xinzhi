@@ -189,27 +189,61 @@ def check_cards(browser, base, width, evidence):
     expect(stream.locator('a[data-ft-download]')).to_have_attribute('href', '/api/pdf?id=static-request-existing')
     if evidence:
         page.screenshot(path=evidence / f'{width}-04-existing-pdf-card.png')
+    ui.go('&q=' + quote('Fictional catalogue record'))
+    badge = stream.locator('.ft-badge-ready')
+    expect(badge).to_have_text('可下载')
+    expect(badge).to_have_attribute('title', '全文已核验，可以下载。下一步：点「下载 PDF」获取已核验的全文')
+    if evidence:
+        page.screenshot(path=evidence / f'{width}-05-normal-library-pdf-card.png')
     ui.go('&q=' + quote(PREFIX + 'no-pdf'))
     expect(stream.get_by_role('button', name='获取全文')).to_be_visible()
     expect(stream.locator('form[data-ft-form]')).to_have_count(1)
     expect(stream.locator('a[data-ft-download]')).to_have_count(0)
+    stale = stream.locator('form[data-ft-form]').evaluate('(form) => form.outerHTML')
+    ui.go('&q=' + quote(PREFIX + 'existing'))
+    expect(stream.locator('.ft-badge-ready')).to_have_text('库里已有')
+    stream.locator('.ft-status').evaluate("""(status, html) => {
+      status.insertAdjacentHTML('beforeend', html);
+      const form = status.querySelector('form[data-ft-form]');
+      form.dataset.doi = status.dataset.ftDoi;
+      form.hidden = false;
+      form.elements.passphrase.value = 'synthetic-test-value';
+      form.requestSubmit();
+    }""", stale)
+    expect(stream.locator('form[data-ft-form] .ft-error')).to_have_text('库里已有，可直接下载')
+    expect(stream.locator('form[data-ft-form] input')).to_have_value('')
     ui.go('&q=' + quote(PREFIX + 'unclassified'))
     expect(stream.locator('.ft-badge-ready')).to_have_text('已取得全文，待归类入库')
     ui.close()
-    print(f'PASS {width}px: static PDF suppresses acquisition; no-PDF counterexample; unclassified card')
+    print(f'PASS {width}px: DOI-only existing badge, normal PDF card, stale submit guard, no-PDF and unclassified cards')
 
 
 def check_startup_and_quota(browser, base):
     existing = record(PREFIX + 'existing', CASES[PREFIX + 'existing'], status='available', libraryState='already_in_library')
     available = record(PREFIX + 'later', CASES[PREFIX + 'later'])
+    recovered = record(PREFIX + 'recovered', CASES[PREFIX + 'recovered'])
     recent = [{**available, 'doi': PREFIX + f'cap-{idx}'} for idx in range(12)]
-    ui = Offline(browser, base, 1280, [existing, available, *recent])
+    ui = Offline(browser, base, 1280, [existing, available, recovered, *recent])
     ui.go()
     ui.page.wait_for_function("""(key) => JSON.parse(localStorage.getItem(key)).some(
-      r => r.doi.endsWith('cap-8') && r.lastCheckedAt)""", arg=KEY)
-    assert ui.requests == [available['doi'], *(row['doi'] for row in recent[:9])], ui.requests
+      r => r.doi.endsWith('cap-7') && r.lastCheckedAt)""", arg=KEY)
+    assert ui.requests == [available['doi'], recovered['doi'], *(row['doi'] for row in recent[:8])], ui.requests
+    saved = next(row for row in ui.saved() if row['doi'] == recovered['doi'])
+    assert (saved['status'], saved['libraryState'], saved['paperId']) == (
+        'available', 'ingested', 'static-request-recovered'), saved
+    ui.go('&q=' + quote(recovered['doi']))
+    stream = ui.page.locator('#articlesStream')
+    download = '/api/fulltext?doi=' + quote(recovered['doi'], safe='')
+    expect(stream.get_by_text('Fictional rhythm-control cohort', exact=True)).to_be_visible()
+    expect(stream.locator('.ft-badge-ready')).to_have_text('可下载')
+    expect(stream.locator('a[data-ft-download]')).to_have_attribute('href', download)
+    expect(stream.get_by_text('Fictional rhythm control cohort', exact=True)).to_have_count(0)
+    ui.modal()
+    expect(ui.row('recovered').locator('.req-status-badge')).to_have_text('已入库')
+    expect(ui.row('recovered').locator('a[data-ft-download]')).to_have_attribute('href', download)
     ui.close()
-    print('PASS startup: serial first 10 probes include available, excluding matched completed record')
+    print('PASS startup: serial cap of 10 includes manual_needed recovery and uncatalogued available')
+    print('PASS shared title match: inner hyphen resolves to the same static list card and request download')
 
     bulky = [record(PREFIX + f'quota-{idx}', CASES[PREFIX + 'failed'], status='failed',
                     title='甲' * 300, journal='乙' * 120, note='丙' * 160) for idx in range(200)]

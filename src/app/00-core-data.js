@@ -135,6 +135,7 @@
   });
   const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
   const REQUEST_LIBRARY_PAPERS = new Set(LIBRARY.papers);
+  let requestLibraryPending = !!LIBRARY.deferred;
   const RADAR_LOAD = { state: window.RADAR_ARCHIVE || !window.RADAR_SRC ? 'loaded' : 'idle' };
   // Fetch the older radar archive only when a view needs it (ranges beyond 14 days, or an exact DOI).
   function loadRadarArchive() {
@@ -201,26 +202,39 @@
     return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
   }
   function doiTitleKey(value) {
-    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim().replace(/[\s.。!?;:,，；：]+$/u, '');
+    // Same NFKC/lowercase/punctuation rule as backfill title_key, plus existing DOI title aliases.
+    return String(value || '').replace(/^\s*\[[A-Za-z ]+\]\s*/, '').normalize('NFKC')
+      .toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/[\p{P}\p{White_Space}\u001c-\u001f]/gu, '');
   }
   function sameDoiTitle(left, right) {
-    return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
+    const key = doiTitleKey(left);
+    return !!key && key === doiTitleKey(right);
   }
-  function requestTitleKey(value) {
-    // Bibliography matching mirrors Python's backfill title_key; PDF binding keeps its stricter key.
-    return String(value || '').replace(/^\s*\[[A-Za-z ]+\]\s*/, '').normalize('NFKC')
-      .toLowerCase().replace(/[\p{P}\p{White_Space}\u001c-\u001f]/gu, '');
+  function requestLibraryPapers() {
+    if (requestLibraryPending && !LIBRARY.deferred && partsReady('library')) {
+      const staticPapers = new Set(STATIC_DOI_PAPERS);
+      for (const paper of LIBRARY.papers) {
+        if (staticPapers.has(paper)) REQUEST_LIBRARY_PAPERS.add(paper);
+      }
+      requestLibraryPending = false;
+    }
+    return REQUEST_LIBRARY_PAPERS;
   }
   function requestLibraryMatch(doi, title) {
-    const key = requestTitleKey(title);
-    if (!key) return null;
+    const key = doiTitleKey(title);
+    if (!doi || !key) return null;
+    const library = requestLibraryPapers();
     const preferred = exactDoiPapers(doi)[0];
-    const matches = p => exactDoi(p.doi) === doi && requestTitleKey(p.title) === key;
-    if (REQUEST_LIBRARY_PAPERS.has(preferred) && matches(preferred)) return preferred;
-    for (const paper of REQUEST_LIBRARY_PAPERS) {
+    const matches = p => exactDoi(p.doi) === doi && doiTitleKey(p.title) === key;
+    if (library.has(preferred) && matches(preferred)) return preferred;
+    for (const paper of library) {
       if (matches(paper)) return paper;
     }
     return null;
+  }
+  function hasRequestLibraryPdf(doi, title) {
+    const paper = requestLibraryMatch(doi, title);
+    return !!(paper && PDF_LIBRARY_IDS.has(String(paper.id)) && pdfDownloadUrl(paper));
   }
   function supplementalPaper(raw) {
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
@@ -427,9 +441,14 @@
     const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
     if (!doi || !input || !input.value || (button && button.disabled)) return;
     const inDrawer = !!(form.closest && form.closest('#drawerFulltext'));
-    const staticPaper = typeof requestLibraryMatch === 'function' && requestLibraryMatch(doi,
-      (inDrawer ? state.activeDrawerPaper : exactDoiPapers(doi)[0])?.title);
-    if (staticPaper && pdfDownloadUrl(staticPaper)) return;
+    const cardId = form.closest?.('[data-paper-id]')?.dataset.paperId;
+    const paper = inDrawer ? state.activeDrawerPaper : cardId ? allPapersMap.get(cardId) : exactDoiPapers(doi)[0];
+    if (typeof hasRequestLibraryPdf === 'function' && hasRequestLibraryPdf(doi, paper?.title)) {
+      input.value = '';
+      if (error) error.textContent = '库里已有，可直接下载';
+      else showToast('库里已有，可直接下载');
+      return;
+    }
     const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
     const prevJob = DOI_JOBS.get(doi);
     const prev = { mode: mode || 'submit', jobId: prevJob ? prevJob.id : '', jobState: prevJob ? prevJob.state : '' };
@@ -634,8 +653,8 @@
     const already = staticPaper && PDF_LIBRARY_IDS.has(String(staticPaper.id)) && pdfDownloadUrl(staticPaper);
     const libraryState = already && (previous.libraryState === 'already_in_library' || !available) ? 'already_in_library'
       : staticPaper && available ? 'ingested'
-      : available && typeof REQUEST_LIBRARY_PAPERS !== 'undefined' &&
-        [...REQUEST_LIBRARY_PAPERS].some(p => exactDoi(p.doi) === clean) ? 'identity_conflict'
+      : available && typeof requestLibraryPapers === 'function' &&
+        [...requestLibraryPapers()].some(p => exactDoi(p.doi) === clean) ? 'identity_conflict'
       : '';
     const paper = (libraryState === 'ingested' || libraryState === 'already_in_library' ? staticPaper : null)
       || supplemental || exactDoiPapers(clean)[0] || null;
@@ -663,15 +682,11 @@
     });
   }
   function syncRequestsAfterLibraryPart() {
-    if (!LIBRARY.deferred || typeof window.XINZHI_PART !== 'function') return;
-    const merge = window.XINZHI_PART;
-    window.XINZHI_PART = (name, payload) => {
-      if (name === 'library' && Array.isArray(payload?.papers)) {
-        for (const paper of payload.papers) REQUEST_LIBRARY_PAPERS.add(paper);
-      }
-      merge(name, payload);
-      if (name !== 'library') return;
-      window.XINZHI_PART = merge;
+    if (!LIBRARY.deferred) return;
+    // The deferred script's load event follows mergePart; capture also works after a shard retry.
+    function onLoad() {
+      if (LIBRARY.deferred || !partsReady('library')) return;
+      document.removeEventListener('load', onLoad, true);
       loadBrowserRequests().forEach(row => {
         if (DOI_LOOKUPS.get(row.doi)?.state === 'complete') {
           syncExistingBrowserRequest(row.doi);
@@ -683,7 +698,8 @@
         }
       });
       if ($('#requestsModalBackdrop.open')) renderRequestsModal();
-    };
+    }
+    document.addEventListener('load', onLoad, true);
   }
   let browserRequestsRefreshing = null;
   function setRefreshRequestsBusy(busy) {
@@ -700,10 +716,9 @@
         const rows = loadBrowserRequests();
         const targets = rows.filter(r => {
           if (!r || !r.doi) return false;
-          if (activeOnly) return ['queued', 'running', 'verifying', 'pending'].includes(r.status) ||
-            (r.status === 'available' && (!['ingested', 'already_in_library'].includes(r.libraryState) ||
-              (!LIBRARY.deferred && !requestLibraryMatch(r.doi, r.title))));
-          return true;
+          if (!activeOnly || r.status !== 'available') return true;
+          return !['ingested', 'already_in_library'].includes(r.libraryState) ||
+            (!LIBRARY.deferred && !requestLibraryMatch(r.doi, r.title));
         });
         // A numeric limit is only for background/active-only probes. "刷新全部状态" omits it and must cover every saved record.
         const capped = Number.isInteger(limit) && limit > 0 ? targets.slice(0, limit) : targets;

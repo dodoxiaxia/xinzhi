@@ -135,6 +135,7 @@
   });
   const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
   const REQUEST_LIBRARY_PAPERS = new Set(LIBRARY.papers);
+  let requestLibraryPending = !!LIBRARY.deferred;
   const RADAR_LOAD = { state: window.RADAR_ARCHIVE || !window.RADAR_SRC ? 'loaded' : 'idle' };
   // Fetch the older radar archive only when a view needs it (ranges beyond 14 days, or an exact DOI).
   function loadRadarArchive() {
@@ -201,26 +202,39 @@
     return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
   }
   function doiTitleKey(value) {
-    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim().replace(/[\s.。!?;:,，；：]+$/u, '');
+    // Same NFKC/lowercase/punctuation rule as backfill title_key, plus existing DOI title aliases.
+    return String(value || '').replace(/^\s*\[[A-Za-z ]+\]\s*/, '').normalize('NFKC')
+      .toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/[\p{P}\p{White_Space}\u001c-\u001f]/gu, '');
   }
   function sameDoiTitle(left, right) {
-    return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
+    const key = doiTitleKey(left);
+    return !!key && key === doiTitleKey(right);
   }
-  function requestTitleKey(value) {
-    // Bibliography matching mirrors Python's backfill title_key; PDF binding keeps its stricter key.
-    return String(value || '').replace(/^\s*\[[A-Za-z ]+\]\s*/, '').normalize('NFKC')
-      .toLowerCase().replace(/[\p{P}\p{White_Space}\u001c-\u001f]/gu, '');
+  function requestLibraryPapers() {
+    if (requestLibraryPending && !LIBRARY.deferred && partsReady('library')) {
+      const staticPapers = new Set(STATIC_DOI_PAPERS);
+      for (const paper of LIBRARY.papers) {
+        if (staticPapers.has(paper)) REQUEST_LIBRARY_PAPERS.add(paper);
+      }
+      requestLibraryPending = false;
+    }
+    return REQUEST_LIBRARY_PAPERS;
   }
   function requestLibraryMatch(doi, title) {
-    const key = requestTitleKey(title);
-    if (!key) return null;
+    const key = doiTitleKey(title);
+    if (!doi || !key) return null;
+    const library = requestLibraryPapers();
     const preferred = exactDoiPapers(doi)[0];
-    const matches = p => exactDoi(p.doi) === doi && requestTitleKey(p.title) === key;
-    if (REQUEST_LIBRARY_PAPERS.has(preferred) && matches(preferred)) return preferred;
-    for (const paper of REQUEST_LIBRARY_PAPERS) {
+    const matches = p => exactDoi(p.doi) === doi && doiTitleKey(p.title) === key;
+    if (library.has(preferred) && matches(preferred)) return preferred;
+    for (const paper of library) {
       if (matches(paper)) return paper;
     }
     return null;
+  }
+  function hasRequestLibraryPdf(doi, title) {
+    const paper = requestLibraryMatch(doi, title);
+    return !!(paper && PDF_LIBRARY_IDS.has(String(paper.id)) && pdfDownloadUrl(paper));
   }
   function supplementalPaper(raw) {
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
@@ -427,9 +441,14 @@
     const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
     if (!doi || !input || !input.value || (button && button.disabled)) return;
     const inDrawer = !!(form.closest && form.closest('#drawerFulltext'));
-    const staticPaper = typeof requestLibraryMatch === 'function' && requestLibraryMatch(doi,
-      (inDrawer ? state.activeDrawerPaper : exactDoiPapers(doi)[0])?.title);
-    if (staticPaper && pdfDownloadUrl(staticPaper)) return;
+    const cardId = form.closest?.('[data-paper-id]')?.dataset.paperId;
+    const paper = inDrawer ? state.activeDrawerPaper : cardId ? allPapersMap.get(cardId) : exactDoiPapers(doi)[0];
+    if (typeof hasRequestLibraryPdf === 'function' && hasRequestLibraryPdf(doi, paper?.title)) {
+      input.value = '';
+      if (error) error.textContent = '库里已有，可直接下载';
+      else showToast('库里已有，可直接下载');
+      return;
+    }
     const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
     const prevJob = DOI_JOBS.get(doi);
     const prev = { mode: mode || 'submit', jobId: prevJob ? prevJob.id : '', jobState: prevJob ? prevJob.state : '' };
@@ -634,8 +653,8 @@
     const already = staticPaper && PDF_LIBRARY_IDS.has(String(staticPaper.id)) && pdfDownloadUrl(staticPaper);
     const libraryState = already && (previous.libraryState === 'already_in_library' || !available) ? 'already_in_library'
       : staticPaper && available ? 'ingested'
-      : available && typeof REQUEST_LIBRARY_PAPERS !== 'undefined' &&
-        [...REQUEST_LIBRARY_PAPERS].some(p => exactDoi(p.doi) === clean) ? 'identity_conflict'
+      : available && typeof requestLibraryPapers === 'function' &&
+        [...requestLibraryPapers()].some(p => exactDoi(p.doi) === clean) ? 'identity_conflict'
       : '';
     const paper = (libraryState === 'ingested' || libraryState === 'already_in_library' ? staticPaper : null)
       || supplemental || exactDoiPapers(clean)[0] || null;
@@ -663,15 +682,11 @@
     });
   }
   function syncRequestsAfterLibraryPart() {
-    if (!LIBRARY.deferred || typeof window.XINZHI_PART !== 'function') return;
-    const merge = window.XINZHI_PART;
-    window.XINZHI_PART = (name, payload) => {
-      if (name === 'library' && Array.isArray(payload?.papers)) {
-        for (const paper of payload.papers) REQUEST_LIBRARY_PAPERS.add(paper);
-      }
-      merge(name, payload);
-      if (name !== 'library') return;
-      window.XINZHI_PART = merge;
+    if (!LIBRARY.deferred) return;
+    // The deferred script's load event follows mergePart; capture also works after a shard retry.
+    function onLoad() {
+      if (LIBRARY.deferred || !partsReady('library')) return;
+      document.removeEventListener('load', onLoad, true);
       loadBrowserRequests().forEach(row => {
         if (DOI_LOOKUPS.get(row.doi)?.state === 'complete') {
           syncExistingBrowserRequest(row.doi);
@@ -683,7 +698,8 @@
         }
       });
       if ($('#requestsModalBackdrop.open')) renderRequestsModal();
-    };
+    }
+    document.addEventListener('load', onLoad, true);
   }
   let browserRequestsRefreshing = null;
   function setRefreshRequestsBusy(busy) {
@@ -700,10 +716,9 @@
         const rows = loadBrowserRequests();
         const targets = rows.filter(r => {
           if (!r || !r.doi) return false;
-          if (activeOnly) return ['queued', 'running', 'verifying', 'pending'].includes(r.status) ||
-            (r.status === 'available' && (!['ingested', 'already_in_library'].includes(r.libraryState) ||
-              (!LIBRARY.deferred && !requestLibraryMatch(r.doi, r.title))));
-          return true;
+          if (!activeOnly || r.status !== 'available') return true;
+          return !['ingested', 'already_in_library'].includes(r.libraryState) ||
+            (!LIBRARY.deferred && !requestLibraryMatch(r.doi, r.title));
         });
         // A numeric limit is only for background/active-only probes. "刷新全部状态" omits it and must cover every saved record.
         const capped = Number.isInteger(limit) && limit > 0 ? targets.slice(0, limit) : targets;
@@ -2269,14 +2284,7 @@
   }
   function fulltextState(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
-    if (url) {
-      const inLibrary = typeof REQUEST_LIBRARY_PAPERS !== 'undefined' && REQUEST_LIBRARY_PAPERS.has(p);
-      const pending = !inLibrary && typeof requestLibraryMatch === 'function' && doi &&
-        DOI_FULLTEXT.get(doi)?.fulltextStatus === 'available' && !requestLibraryMatch(doi, p.title);
-      const short = inLibrary && doi ? '库里已有' : pending ? '已取得全文，待归类入库' : '可下载';
-      return { kind: 'ready', step: 2, headline: short === '可下载' ? '全文已核验，可以下载' : short,
-        short, eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
-    }
+    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
     if (!doi) return { kind: 'none', step: -1, short: '未申请', headline: '这篇没有 DOI，无法向站内申请全文', eta: '到官网原文查看', action: 'official' };
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
@@ -2331,6 +2339,13 @@
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
     const view = fulltextView(p), doi = p && exactDoi(p.doi);
     if (!view) return '';
+    if (full && !drawer && view.action === 'download' && doi && exactDoi(state.search) === doi &&
+        typeof requestLibraryMatch === 'function') {
+      const label = hasRequestLibraryPdf(doi, p.title) ? '库里已有'
+        : DOI_FULLTEXT.get(doi)?.fulltextStatus === 'available' && !requestLibraryMatch(doi, p.title)
+        ? '已取得全文，待归类入库' : '';
+      if (label) view.short = view.headline = label;
+    }
     const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
     const officialUrl = officialArticleUrl(p);
@@ -2348,7 +2363,7 @@
     if (!full) {
       const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
       const badgeAria = view.short + '：' + badgeTitle;
-      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>' + primary + form;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
       const compactBadge = view.kind === 'none' ? '' : '<span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>';
       const compactPrimary = view.kind === 'none' ? primary.replace(/^(<(?:button|a)\b)/, '$1 title="' + esc(badgeTitle) + '"') : primary;
       return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + compactBadge + '<span class="ft-summary">' + esc(badgeTitle) + '</span>' + compactPrimary + '</span>' + form;
@@ -4374,7 +4389,6 @@
     const staticPaper = ['ingested', 'already_in_library'].includes(rec.libraryState)
       ? requestLibraryMatch(rec.doi, rec.title) : null;
     const detailPaper = staticPaper || (live && (allPapersMap.get(live.id) || live));
-    // Keep the existing download binding; a looser bibliographic match only changes which record opens.
     const dlUrl = live ? pdfDownloadUrl(live) : '';
     const ft = live && fulltextState(live);
     let kind = rec.status;
@@ -4394,14 +4408,14 @@
     } else if (rec.reason === 'identity_hold' || rec.reason === 'identity_hold_rejected') {
       kind = 'review'; label = rec.reason === 'identity_hold' ? '待人工核验' : '人工核验未通过，可重新提交';
     }
-    const key = requestTitleKey(detailPaper?.title || rec.title);
+    const title = detailPaper?.title || rec.title;
+    const key = doiTitleKey(title);
     const otherDois = rec.status === 'available' && !rec.libraryState && key ? [...new Set(
-      [...REQUEST_LIBRARY_PAPERS].filter(p => requestTitleKey(p.title) === key)
+      [...requestLibraryPapers()].filter(p => doiTitleKey(p.title) === key)
         .map(p => exactDoi(p.doi)).filter(doi => doi && doi !== rec.doi)
     )] : [];
-    const title = detailPaper?.title || rec.title || rec.doi;
     const journal = detailPaper?.cleanJournal || detailPaper?.journal || rec.journal;
-    return { livePaper: detailPaper, staticPaper, kind, label, dlUrl, title, journal, otherDois };
+    return { livePaper: detailPaper, staticPaper, kind, label, dlUrl, title: title || rec.doi, journal, otherDois };
   }
   function renderRequestsModal() {
     const body = $('#requestsModalBody');
