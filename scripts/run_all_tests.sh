@@ -91,6 +91,7 @@ if [ "$BROWSER" = 1 ]; then
   run "feature-map-walk" node scripts/feature_map_walk.cjs --viewport all
   echo "== Reading shard loading"
   run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
+  run "test_reading_mode_ui" python3 scripts/test_reading_mode_ui.py
   run "test_mwg_local_ui" python3 scripts/test_mwg_local_ui.py
   run "test_weekly_layout_ui" python3 scripts/test_weekly_layout_ui.py
   run "test_topic_multitag_ui" python3 scripts/test_topic_multitag_ui.py

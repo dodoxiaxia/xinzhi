@@ -380,6 +380,16 @@
 | reader-drawercopysharebtn | 微信群文案 | `#drawerCopyShareBtn` | button | conditional · mobile/tablet/desktop · 从任意文献卡片打开阅读面板后挂载；仅有已核对导读的文献显示此按钮 | 是 |
 | reader-drawerhuddletogglebtn | 加入精选 | `#drawerHuddleToggleBtn` | toggle | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | reader-drawerexternallink | 官网原文 | `#drawerExternalLink` | link | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reader-expand | 展开阅读 | `#drawerExpandBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-back | 返回阅读面板 | `#readingBackBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-previous | 上一篇 | `#readingPrevBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-next | 下一篇 | `#readingNextBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-position | 当前篇序 | `#readingPosition` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-progress | 文章阅读进度 | `#readingProgress` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-toc-toggle | 展开阅读目录 | `#readingTocToggle` | button | conditional · mobile/tablet · 完成所列操作后显示 | 是 |
+| reading-toc-desktop | 常驻阅读目录 | `#readingTocNav` | region | conditional · desktop · 完成所列操作后显示 | 是 |
+| reading-star | 阅读模式中的精选按钮 | `#readingToolbar #drawerHuddleToggleBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| reading-footer | 阅读模式底部操作 | `#readerDrawer.reading-mode .drawer-footer` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | reader-region-head | 题名与期刊信息 | `[data-drawer-region="head"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | reader-region-abstract | 原摘要 | `[data-drawer-region="abstract"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | reader-region-study | 研究结构与核对清单 | `[data-drawer-region="study"]` | region | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -433,6 +443,10 @@
 | dark-theme | 深色模式 | `html[data-theme="dark"]` | attached | [{"goto":"/?mode=curated&theme=light"},{"click":"#themeToggle"}] |
 | light-theme | 浅色模式 | `html[data-theme="light"]` | attached | [{"goto":"/?mode=curated&theme=dark"},{"click":"#themeToggle"}] |
 | reader-open | 阅读面板已打开 | `#readerDrawer[aria-hidden="false"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}] |
+| reading-open | 阅读模式已展开 | `#readerDrawer.reading-mode[aria-hidden="false"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}] |
+| reading-toc-open | 展开窄屏阅读目录 | `#readingTocNav [data-reading-region="abstract"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"},{"click":"#readingTocToggle"}] |
+| reading-start | 第一篇时禁用上一篇 | `#readingPrevBtn:disabled` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}] |
+| reading-return | 收起阅读模式回到阅读面板 | `#readerDrawer.open:not(.reading-mode)` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"},{"click":"#readingBackBtn"}] |
 | reader-closed | 关闭阅读面板 | `#readerDrawer[aria-hidden="true"]` | attached | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"},{"click":"#drawerCloseBtn"}] |
 | shortlist-empty | 精选清单为空 | `#huddleEmptyHelp` | text:精选清单当前为空 | [{"click":"#openHuddleBtn"}] |
 | shortlist-selected | 文献已加入精选 | `#articlesStream [data-action="toggle-huddle"][aria-pressed="true"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"}] |
@@ -489,6 +503,16 @@
 - **reader-drawercopysharebtn**：`[{"goto":"/?mode=curated&day=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；离线数据不保证含已核对导读，检查挂载状态；按钮显示条件为 paper.hasDraft。
 - **reader-drawerhuddletogglebtn**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
 - **reader-drawerexternallink**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
+- **reader-expand**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"}]`
+- **reading-back**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-previous**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-next**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-position**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-progress**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-toc-toggle**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-toc-desktop**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-star**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
+- **reading-footer**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}]`
 - **reader-region-head**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
 - **reader-region-abstract**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`
 - **reader-region-study**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；服务关闭时仍显示研究结构状态说明
