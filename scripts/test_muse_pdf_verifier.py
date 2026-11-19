@@ -1,5 +1,7 @@
 import hashlib
+import json
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -38,6 +40,21 @@ class MuseOriginalTests(unittest.TestCase):
             document.set_xml_metadata(xmp)
         document.save(target, deflate=False)
         document.close()
+        return target
+
+    def make_type1c_pdf(self, pages):
+        target = Path(self.directory.name) / 'type1c.pdf'
+        script = r"""
+const fs = require('node:fs');
+const {type1cTextPages} = require('./scripts/machine_identity_fixtures.cjs');
+const pages = JSON.parse(fs.readFileSync(0, 'utf8'));
+const pdf = type1cTextPages(encode => pages.map(lines => [lines.map((line, i) =>
+  'BT /F2 10 Tf 1 0 0 1 36 ' + (750 - i * 16) + ' Tm ' + encode(line) + ' Tj ET\n').join('')]),
+  {encodingFormat:1, charsetFormat:2, supplement:true});
+fs.writeFileSync(process.argv[1], pdf);
+"""
+        subprocess.run(['node', '-e', script, str(target)], cwd=Path(__file__).resolve().parents[1],
+                       input=json.dumps(pages), text=True, check=True)
         return target
 
     def damage_xref(self, target):
@@ -264,22 +281,40 @@ class MuseOriginalTests(unittest.TestCase):
         self.assertFalse(verify(coenzyme, doi, 'Coenzyme supplementation and cardiovascular outcomes in synthetic heart failure cohorts')['verified'])
 
 
-    def test_t18_standard_font_hex_headings_with_co_publication_or_late_heading(self):
+    def test_t18_type1c_headings_require_independent_pypdf_and_mupdf_evidence(self):
+        from pypdf import PdfReader
         doi = '10.1000/exact'
         a_title = 'Synthetic guidelines for ventricular rhythm in imaginary cohorts'
         c_title = 'Synthetic commands for pacing in an imaginary registry'
-        for prefix, shown, title in (
-            ('Synthetic co-publication notice\nDOI 10.1000/exact\nDOI 10.1000/copublished\n',
-             'Synthetic guidelines for ventricular\nrhythm in imaginary cohorts', a_title),
-            ('4207\nCardioPulse\nDOI 10.1000/exact\nGlobal Spotlights\nSynthetic authors\n',
-             c_title, c_title),
+        for lines, title in (
+            (['Synthetic co-publication notice', 'DOI ' + doi, 'DOI 10.1000/copublished',
+              'Synthetic guidelines for ventricular', 'rhythm in imaginary cohorts'], a_title),
+            (['4207', 'CardioPulse', 'DOI ' + doi, 'Global Spotlights', 'Synthetic authors', c_title], c_title),
         ):
             with self.subTest(title=title):
-                target = self.make_pdf([prefix + shown])
+                target = self.make_type1c_pdf([lines])
+                reader = PdfReader(target, strict=True)
+                self.assertNotIn(doi, reader.pages[0].extract_text())
                 with fitz.open(target) as document:
-                    self.assertRegex(document[0].read_contents(), rb'<[a-fA-F0-9]+>')
+                    self.assertIn(doi, document[0].get_text())
+                    self.assertIn('Type1', [entry[2] for entry in document[0].get_fonts() if entry[1] == 'cff'])
                 self.assertTrue(verify(target, doi, title)['verified'])
                 self.assertFalse(verify(target, doi, title.replace('imaginary', 'real'))['verified'])
+                self.assertFalse(verify(target, '10.1000/foreign', title)['verified'])
+                # The ordinary font recovery does not broaden the existing strict manual-release rules.
+                sha = hashlib.sha256(target.read_bytes()).hexdigest()
+                self.assertFalse(verify(target, doi, title, release_sha256=sha)['verified'])
+
+        printed = 'European Rhythm Association (ERA) consensus on atrial ﬁbrillation'
+        title = '2024 European Rhythm Association consensus on atrial fibrillation'
+        self.assertTrue(verify(self.make_type1c_pdf([[printed, 'DOI ' + doi]]), doi, title)['verified'])
+        self.assertFalse(verify(self.make_type1c_pdf([[printed, 'DOI 10.1000/foreign']]), doi, title)['verified'])
+
+        cover = ['Utrecht University Repository', 'Title', a_title, 'Authors', 'Synthetic Author',
+                 'Published in', 'Synthetic Journal', 'Publication Date', '2024', 'Link',
+                 'https://hdl.handle.net/1/synthetic', 'Citation', 'Synthetic citation']
+        self.assertTrue(verify(self.make_type1c_pdf([cover, [a_title, 'DOI ' + doi]]), doi, a_title)['verified'])
+        self.assertFalse(verify(self.make_type1c_pdf([cover, [a_title, 'DOI 10.1000/foreign']]), doi, a_title)['verified'])
 
     def test_t18_catalogue_year_and_acronyms_require_matching_doi(self):
         from muse_pdf_verifier import catalog_title_variant

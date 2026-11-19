@@ -250,20 +250,32 @@ function multiPage({pages, padTo = PAD_TO}) {
 }
 // Standard Type1 font, no ToUnicode. Each entry is the ordered list of /Contents streams for one page.
 // An empty entry omits /Contents to exercise physical page numbering.
-function standardTextPages(pages) {
+function standardTextPages(pages, embeddedFont = null) {
   const parts = [
     {id:1, head:'<< /Type /Catalog /Pages 2 0 R >>\n'},
     {id:2, head:''},
     {id:3, head:'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'}
   ];
   let next = 4;
+  let embeddedResource = '';
+  if (embeddedFont) {
+    const {cff, encoding, widths} = embeddedFont;
+    parts.push(
+      {id:next++, head:'<< /Type /Font /Subtype /Type1 /BaseFont /SyntheticCFF /FontDescriptor 5 0 R '
+        + '/FirstChar 0 /LastChar 255 /Widths [' + widths.join(' ') + '] ' + encoding + ' >>\n'},
+      {id:next++, head:'<< /Type /FontDescriptor /FontName /SyntheticCFF /Flags 32 /FontBBox [0 0 500 700] '
+        + '/ItalicAngle 0 /Ascent 700 /Descent -200 /CapHeight 700 /StemV 60 /FontFile3 6 0 R >>\n'},
+      {id:next++, ...stream('/Subtype /Type1C /Filter /FlateDecode', zlib.deflateSync(cff))}
+    );
+    embeddedResource = ' /F2 4 0 R';
+  }
   const kids = [];
   for (const streams of pages) {
     const id = next++;
     kids.push(id + ' 0 R');
     const contents = streams.map(() => next++ + ' 0 R');
     const dict = contents.length ? ' /Contents [' + contents.join(' ') + ']' : '';
-    parts.push({id, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >>' + dict + ' >>\n'});
+    parts.push({id, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R' + embeddedResource + ' >> >>' + dict + ' >>\n'});
     streams.forEach((content, index) => parts.push({id:id + index + 1, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(content)))}));
   }
   parts[1].head = '<< /Type /Pages /Count ' + kids.length + ' /Kids [' + kids.join(' ') + '] >>\n';
@@ -273,6 +285,79 @@ function standardTextPages(pages) {
   chunks.push(latin1('xref\n0 ' + next + '\n0000000000 65535 f \n' + entries.join('')
     + 'trailer\n<< /Size ' + next + ' /Root 1 0 R >>\nstartxref\n' + xrefAt + '\n%%EOF\n'));
   return Buffer.concat(chunks);
+}
+function cffInt(value, width) {
+  const bytes = Buffer.alloc(width);
+  bytes.writeUIntBE(value, 0, width);
+  return bytes;
+}
+function cffIndex(values) {
+  if (!values.length) return Buffer.alloc(2);
+  let end = 1;
+  const offsets = [cffInt(end, 2)];
+  for (const value of values) {
+    end += value.length;
+    offsets.push(cffInt(end, 2));
+  }
+  return Buffer.concat([cffInt(values.length, 2), Buffer.from([2]), ...offsets, ...values]);
+}
+function cffFont(glyphNames, charset, encoding, glyphCount) {
+  const glyphOutline = Buffer.from([248, 136, 189, 139, 21, 248, 36, 139, 139, 248, 136, 252, 36, 139, 139, 252, 136, 5, 14]);
+  const outlines = cffIndex([Buffer.from([14]), ...Array(glyphCount - 1).fill(glyphOutline)]);
+  const header = Buffer.from([1, 0, 4, 2]), name = cffIndex([latin1('SyntheticCFF')]), subrs = Buffer.alloc(2);
+  const strings = cffIndex(glyphNames.map(latin1));
+  const dict = (value, operator) => Buffer.concat([Buffer.from([29]), cffInt(value, 4), Buffer.from([operator])]);
+  const first = header.length + name.length + cffIndex([Buffer.alloc(18)]).length + strings.length + subrs.length;
+  const tables = [];
+  let at = first;
+  const offset = table => {
+    if (typeof table === 'number') return table;
+    tables.push(table);
+    at += table.length;
+    return at - table.length;
+  };
+  const top = cffIndex([Buffer.concat([dict(offset(charset), 15), dict(offset(encoding), 16), dict(at, 17)])]);
+  return Buffer.concat([header, name, top, strings, subrs, ...tables, outlines]);
+}
+// Tiny real CFF 1 program: one font, one simple outline per named glyph, no ToUnicode.
+// Draw receives a function that encodes text into F2 operands. Codes deliberately differ from ASCII.
+function type1cTextPages(draw, {encodingFormat = 0, charsetFormat = 0, supplement = false, encodingOverride, damage} = {}) {
+  const glyphs = new Map();
+  const glyphName = char => {
+    const ligatures = {'ﬀ':'ff', 'ﬁ':'fi', 'ﬂ':'fl', 'ﬃ':'ffi', 'ﬄ':'ffl'};
+    if (ligatures[char]) return ligatures[char] + '.fixture';
+    if (/[A-Za-z]/.test(char) && char.length === 1) return char + '.fixture';
+    const point = char.codePointAt(0).toString(16).toUpperCase();
+    return (point.length > 4 ? 'u' + point : 'uni' + point.padStart(4, '0')) + '.fixture';
+  };
+  let supplementGlyph = null;
+  const pages = draw(text => {
+    const codes = Array.from(text, char => {
+      if (!glyphs.has(char)) glyphs.set(char, {code:128 + glyphs.size, name:glyphName(char), sid:391 + glyphs.size});
+      const glyph = glyphs.get(char);
+      if (supplement && (!supplementGlyph || supplementGlyph === glyph)) {
+        supplementGlyph = glyph;
+        return 127;
+      }
+      return glyph.code;
+    });
+    return '<' + Buffer.from(codes).toString('hex') + '>';
+  });
+  const entries = [...glyphs.values()];
+  if (!entries.length || entries.length > 128) throw new Error('Expected a small synthetic glyph set');
+  const charset = charsetFormat
+    ? Buffer.concat([Buffer.from([charsetFormat]), cffInt(391, 2), cffInt(entries.length - 1, charsetFormat)])
+    : Buffer.concat([Buffer.from([0]), ...entries.map(glyph => cffInt(glyph.sid, 2))]);
+  const codes = encodingFormat
+    ? [1 | (supplement ? 128 : 0), 1, 128, entries.length - 1]
+    : [supplement ? 128 : 0, entries.length, ...entries.map(glyph => glyph.code)];
+  const encoding = Buffer.concat([Buffer.from(codes), supplement
+    ? Buffer.concat([Buffer.from([1, 127]), cffInt(supplementGlyph.sid, 2)]) : Buffer.alloc(0)]);
+  const cff = cffFont(entries.map(glyph => glyph.name), charset, encoding, entries.length + 1);
+  const widths = new Array(256).fill(500);
+  widths[128 + [...glyphs.keys()].indexOf(' ')] = 250;
+  const pdfEncoding = encodingOverride ? encodingOverride(glyphs) : '';
+  return standardTextPages(pages, {cff:damage ? damage(cff) : cff, encoding:pdfEncoding, widths});
 }
 const samples = {
   flate: {doi:'10.9999/synthetic.flate', title:'Synthetic trailing newline after compressed page content in an imaginary cohort'},
@@ -291,7 +376,7 @@ function files() {
     'custom-encoding-tounicode.pdf':customEncoding(samples.custom)
   };
 }
-module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, multiPage, standardTextPages, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
+module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, multiPage, standardTextPages, type1cTextPages, cffFont, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
 if (require.main === module) {
   fs.mkdirSync(module.exports.directory, {recursive:true});
   for (const [name, bytes] of Object.entries(files())) fs.writeFileSync(path.join(module.exports.directory, name), bytes);
