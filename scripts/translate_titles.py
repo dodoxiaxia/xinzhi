@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Chinese title translation cache (中英对照). Private cache: data/translations.json  {"pmid:123"|"doi:10.x": "中文标题"}.
-Only titles are translated here (whole 365-day archive + candidates + library). Run daily; it translates only what is missing.
+Only titles are translated here (whole 365-day archive + candidates + library).
+New titles and unusable cached titles share the daily batch limit.
 
 Config (same as generate_quicklooks.py): .local/llm.json {endpoint, api_key, model} or env XINZHI_LLM_ENDPOINT/API_KEY/MODEL.
-  python3 scripts/translate_titles.py                 # dry run: how many are missing
+  python3 scripts/translate_titles.py                 # dry run: count missing and invalid cached titles
   python3 scripts/translate_titles.py --run --limit 40   # up to 40 API calls x 30 titles (newest first)
 Output is machine translation; the site labels it 机器翻译. Numbers/drug/trial names are kept as in the original.
 """
@@ -85,7 +86,8 @@ def translated_title(value):
 
 def save_cache(have):
     tmp = OUT.with_suffix('.tmp')
-    tmp.write_text(json.dumps(have, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    tmp.write_text(json.dumps(have, ensure_ascii=False, separators=(',', ':')),
+                   encoding='utf-8', errors='backslashreplace')
     tmp.replace(OUT)
 
 
@@ -94,11 +96,12 @@ def main():
     ap.add_argument('--run', action='store_true')
     ap.add_argument('--limit', type=int, default=10)
     a = ap.parse_args()
-    previous = rj(OUT, {})
-    have = {key: title for key, value in previous.items() if (title := translated_title(value))}
-    todo = [(k, t) for k, t in collect() if k not in have]
+    have = rj(OUT, {})
+    invalid_cached = {key for key, value in have.items() if not translated_title(value)}
+    todo = [(k, t) for k, t in collect() if k not in have or k in invalid_cached]
     if not a.run:
-        print(json.dumps({'cached': len(have), 'missing': len(todo), 'calls_needed': -(-len(todo) // BATCH)}))
+        print(json.dumps({'cached': len(have) - len(invalid_cached), 'invalid_cached': len(invalid_cached),
+                          'missing': len(todo), 'calls_needed': -(-len(todo) // BATCH)}))
         return
     cfg = rj(ROOT / '.local/llm.json', {})
     cfg = {'endpoint': os.environ.get('XINZHI_LLM_ENDPOINT') or cfg.get('endpoint', ''),
@@ -107,8 +110,6 @@ def main():
     u = urllib.parse.urlparse(cfg['endpoint'])
     if not all(cfg.values()) or u.scheme != 'https' or not u.hostname:
         sys.exit('LLM config missing (.local/llm.json or XINZHI_LLM_* env)')
-    if have != previous:
-        save_cache(have)
     done = 0
     for i in range(0, min(len(todo), a.limit * BATCH), BATCH):
         chunk = todo[i:i + BATCH]
@@ -117,13 +118,18 @@ def main():
         except Exception as e:
             print('batch failed:', type(e).__name__, file=sys.stderr)
             break
+        translations = {}
         for j, (k, _) in enumerate(chunk):
             z = translated_title(res.get(str(j)))
             if z and any('一' <= c <= '鿿' for c in z):
-                have[k] = z
-                done += 1
-        save_cache(have)
-    print(json.dumps({'translated': done, 'cached': len(have), 'missing': len(todo) - done}))
+                translations[k] = z
+        if translations:
+            have.update(translations)
+            invalid_cached.difference_update(translations)
+            save_cache(have)
+            done += len(translations)
+    print(json.dumps({'translated': done, 'cached': len(have) - len(invalid_cached),
+                      'invalid_cached': len(invalid_cached), 'missing': len(todo) - done}))
 
 
 if __name__ == '__main__':

@@ -88,20 +88,63 @@ class TextHygieneTests(unittest.TestCase):
         with patch.object(archive_details, 'get', return_value={'message': {'abstract': '<jats:p>JosÃ© &amp;ge;4</jats:p>'}}):
             self.assertEqual(archive_details.crossref_abs('10.1000/example'), 'José ≥4')
 
-    def test_translation_repairs_cache_and_requeues_lossy_title(self):
+    def test_translation_dry_run_counts_invalid_cache_without_writing(self):
+        cache = {'pmid:123': '心脏�病', 'pmid:456': '阈值 &ge; 4', 'pmid:789': None}
+        titles = [('pmid:123', 'Heart disease'), ('pmid:456', 'Threshold'), ('pmid:321', 'New title')]
+        with patch.object(translate_titles, 'rj', return_value=cache), patch.object(
+            translate_titles, 'collect', return_value=titles
+        ), patch.object(translate_titles, 'call') as call, patch.object(
+            translate_titles, 'save_cache'
+        ) as save, patch.object(sys, 'argv', ['translate_titles.py']), patch('builtins.print') as log:
+            translate_titles.main()
+        self.assertEqual(json.loads(log.call_args.args[0]), {
+            'cached': 1, 'invalid_cached': 2, 'missing': 2, 'calls_needed': 1,
+        })
+        call.assert_not_called()
+        save.assert_not_called()
+
+    def test_translation_invalid_and_new_titles_share_one_batch_limit(self):
+        invalid_titles = [(f'pmid:{n}', f'Invalid cached title {n}') for n in range(500)]
+        valid_titles = [('pmid:500', 'Valid title'), ('pmid:501', 'Threshold')]
+        cache = dict.fromkeys((key for key, _ in invalid_titles), '心脏�病')
+        cache.update({'pmid:500': '有效标题', 'pmid:501': '阈值 &ge; 4'})
+        titles = valid_titles + [('pmid:502', 'New title')] + invalid_titles
+        env = {'XINZHI_LLM_ENDPOINT': 'https://example.invalid', 'XINZHI_LLM_API_KEY': 'test-only', 'XINZHI_LLM_MODEL': 'test-model'}
+        args = ['translate_titles.py', '--run', '--limit', '1']
+        with patch.object(translate_titles, 'rj', side_effect=[cache.copy(), {}]), patch.object(
+            translate_titles, 'collect', return_value=titles
+        ), patch.object(translate_titles, 'call', return_value={
+            '0': '新标题', '1': r'心脏\u2014疾病', '2': '仍有�损坏',
+        }) as call, patch.object(translate_titles, 'save_cache') as save, patch.dict(
+            os.environ, env
+        ), patch.object(sys, 'argv', args), patch('builtins.print') as log:
+            translate_titles.main()
+
+        self.assertEqual(call.call_count, 1)
+        self.assertEqual(call.call_args.args[1], ['New title'] + [title for _, title in invalid_titles[:29]])
+        save.assert_called_once_with(cache | {'pmid:0': '心脏—疾病', 'pmid:502': '新标题'})
+        self.assertEqual(json.loads(log.call_args.args[0]), {
+            'translated': 2, 'cached': 4, 'invalid_cached': 499, 'missing': 499,
+        })
+
+    def test_translation_failed_batch_leaves_old_cache_file_untouched(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / 'translations.json'
-            out.write_text(json.dumps({'pmid:123': '心脏�病', 'pmid:456': '阈值 &ge; 4'}), encoding='utf-8')
+            original = json.dumps({'pmid:123': '心脏�病', 'pmid:456': '有效标题'}, indent=2).encode('utf-8')
+            out.write_bytes(original)
             env = {'XINZHI_LLM_ENDPOINT': 'https://example.invalid', 'XINZHI_LLM_API_KEY': 'test-only', 'XINZHI_LLM_MODEL': 'test-model'}
+            titles = [('pmid:123', 'Heart disease'), ('pmid:456', 'Valid title')]
+            args = ['translate_titles.py', '--run', '--limit', '1']
             with patch.object(translate_titles, 'OUT', out), patch.object(
-                translate_titles, 'collect', return_value=[('pmid:123', 'Heart disease'), ('pmid:456', 'Threshold')]
-            ), patch.object(translate_titles, 'call', return_value={'0': r'心脏\u2014疾病'}) as call, patch.dict(
+                translate_titles, 'collect', return_value=titles
+            ), patch.object(translate_titles, 'call', side_effect=TimeoutError) as call, patch.dict(
                 os.environ, env
-            ), patch.object(sys, 'argv', ['translate_titles.py', '--run']), patch('builtins.print'):
+            ), patch.object(sys, 'argv', args), patch('builtins.print'):
                 translate_titles.main()
+
+            self.assertEqual(call.call_count, 1)
             self.assertEqual(call.call_args.args[1], ['Heart disease'])
-            self.assertEqual(json.loads(out.read_text(encoding='utf-8')), {'pmid:123': '心脏—疾病', 'pmid:456': '阈值 ≥ 4'})
-        self.assertEqual(translate_titles.translated_title('心脏�病'), '')
+            self.assertEqual(out.read_bytes(), original)
 
     def test_quicklook_cleans_model_text_before_matching_quotes(self):
         abstract = 'The study reported a threshold of ≥4. The design did not confirm causation.'
