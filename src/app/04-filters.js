@@ -369,6 +369,7 @@
         set('tag', topicTags[0] || '', '');
         set('tags', '', '');
       }
+      set('tagmode', !topicUncat && state.tagMode === 'all' ? 'all' : '', '');
       set('lane', usesLane() ? state.lane : '', 'core');
       set('sort', state.sort, 'date-desc');
       set('range', state.range, defaultRange(state.mode));
@@ -444,13 +445,14 @@
       { group: 'design', value: state.studyDesign, label: '研究设计' },
       ...(untagged
         ? [{ group: 'tag', value: 'uncategorized', displayValue: '未分类', label: '文章主题' }]
-        : tags.map(t => ({ group: 'tag', value: t, label: '文章主题' })))
+        : tags.map(t => ({ group: 'tag', value: t, label: state.tagMode === 'all' ? '文章主题（同时包含）' : '文章主题（任一）' })))
     ].filter(selection => selection.value);
   }
   function clearSidebarFilters() {
     state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
     state.tags = [];
     state.topicUnclassified = false;
+    state.tagMode = 'any';
     state.journals = [];
     state.journalTier = '';
     state.journalTierLegacy = false;
@@ -484,6 +486,7 @@
       if (state.studyDesign === '病例报告') state.excludeCaseReports = false;
     }
     if (group === 'tag') {
+      if (!value || value === 'uncategorized') state.tagMode = 'any';
       if (!value) {
         state.tag = '';
         state.tags = [];
@@ -502,7 +505,8 @@
       } else {
         state.topicUnclassified = false;
         const cur = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
-        const next = only ? [value] : (cur.includes(value) ? cur.filter(t => t !== value) : cur.concat(value));
+        const next = only ? [value] : typeof topicToggle === 'function' ? topicToggle(cur, value)
+          : (cur.includes(value) ? cur.filter(t => t !== value) : cur.concat(value));
         state.tags = next;
         state.tag = next.length === 1 ? next[0] : '';
       }
@@ -591,13 +595,14 @@
     if (state.studyDesign && p.studyDesign !== state.studyDesign) miss |= 4;
     const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
     const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
-    const pTags = typeof paperTopicTags === 'function'
-      ? paperTopicTags(p)
-      : (Array.isArray(p && p.tags) ? p.tags.map(t => typeof t === 'string' ? t.trim() : '').filter(t => t.startsWith('#')) : []);
-    if (untagged) {
-      if (pTags.length > 0) miss |= 8;
-    } else if (tags.length) {
-      if (!tags.some(t => pTags.includes(t))) miss |= 8;
+    if (untagged || tags.length) {
+      if (typeof paperMatchesTopics === 'function') {
+        if (!paperMatchesTopics(p, untagged ? ['uncategorized'] : tags, state.tagMode)) miss |= 8;
+      } else {
+        // Legacy standalone VM tests load the sidebar helpers without the topic module.
+        const pTags = paperTopicTags(p);
+        if (untagged ? pTags.length > 0 : !tags.some(t => pTags.includes(t))) miss |= 8;
+      }
     }
     return miss;
   }
@@ -841,26 +846,15 @@
     }
 
     // 4. Tags Cloud
-    const activeTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
-    const tagCounts = {};
-    base.forEach(p => {
-      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
-      pTags.forEach(t => { tagCounts[t] = 0; });
-    });
-    activeTags.forEach(t => { if (!(t in tagCounts)) tagCounts[t] = 0; });
-    facet('tag').forEach(p => {
-      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
-      pTags.forEach(t => {
-        tagCounts[t] = (tagCounts[t] || 0) + 1;
-      });
-    });
-
     const tagsCloudEl = $('#tagsCloud');
-    if (tagsCloudEl) {
-      const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+    if (tagsCloudEl && typeof topicOptionCounts === 'function') {
+      const activeTags = selectedTags();
+      const keys = [...new Set([...base.flatMap(paperTopicTags), ...activeTags])];
+      const { tags } = topicOptionCounts(facet('tag'), keys, activeTags, state.tagMode, isTopicUnclassified());
+      const sortedTags = [...tags].sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
         const isActive = activeTags.includes(tag);
-        return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)}</button>`;
+        return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)} <small>${count}</small></button>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
   }
@@ -922,4 +916,3 @@
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
-
