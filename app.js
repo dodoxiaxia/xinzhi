@@ -1176,6 +1176,9 @@
     '#AI-RCT证据', '#结构性心脏病', '#先心病', '#预防/血脂'
   ];
   const UNCLASSIFIED_TOPIC = 'uncategorized';
+  function normalizeTagMode(mode) {
+    return mode === 'all' ? 'all' : 'any';
+  }
   function paperTopicTags(p) {
     if (!p || !Array.isArray(p.tags)) return [];
     const out = [];
@@ -1374,6 +1377,7 @@
       tag: topicState.tag,
       tags: topicState.tags,
       topicUnclassified: topicState.topicUnclassified,
+      tagMode: normalizeTagMode(topicState.topicUnclassified ? null : params.get('tagmode')),
       lane: params.get('lane') || 'core',
       sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
       range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
@@ -1393,7 +1397,7 @@
   }
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
-    'studyDesign', 'tag', 'tags', 'topicUnclassified', 'lane', 'sort', 'range', 'minor', 'reading',
+    'studyDesign', 'tag', 'tags', 'topicUnclassified', 'tagMode', 'lane', 'sort', 'range', 'minor', 'reading',
     'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'journalTierLegacy', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
@@ -1412,6 +1416,7 @@
     tag: initialUrlState.tag,
     tags: initialUrlState.tags || [],
     topicUnclassified: !!initialUrlState.topicUnclassified,
+    tagMode: initialUrlState.tagMode,
     lane: initialUrlState.lane,
     sort: initialUrlState.sort,
     range: initialUrlState.range,
@@ -1658,7 +1663,6 @@
     });
     return out;
   }
-
   // ==== src/app/02-lanes.js · Relevance lanes, per-paper derived cache, quick-look data ====
   // ---- Relevance lanes: keep the reader's default view on cardiology + medical AI ----
   const CARDIO_TIERS = new Set(['心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队']);
@@ -2548,6 +2552,7 @@
         set('tag', topicTags[0] || '', '');
         set('tags', '', '');
       }
+      set('tagmode', !topicUncat && state.tagMode === 'all' ? 'all' : '', '');
       set('lane', usesLane() ? state.lane : '', 'core');
       set('sort', state.sort, 'date-desc');
       set('range', state.range, defaultRange(state.mode));
@@ -2623,13 +2628,14 @@
       { group: 'design', value: state.studyDesign, label: '研究设计' },
       ...(untagged
         ? [{ group: 'tag', value: 'uncategorized', displayValue: '未分类', label: '文章主题' }]
-        : tags.map(t => ({ group: 'tag', value: t, label: '文章主题' })))
+        : tags.map(t => ({ group: 'tag', value: t, label: state.tagMode === 'all' ? '文章主题（同时包含）' : '文章主题（任一）' })))
     ].filter(selection => selection.value);
   }
   function clearSidebarFilters() {
     state.clinicalTier = state.publisher = state.journal = state.studyDesign = state.tag = '';
     state.tags = [];
     state.topicUnclassified = false;
+    state.tagMode = 'any';
     state.journals = [];
     state.journalTier = '';
     state.journalTierLegacy = false;
@@ -2663,6 +2669,7 @@
       if (state.studyDesign === '病例报告') state.excludeCaseReports = false;
     }
     if (group === 'tag') {
+      if (!value || value === 'uncategorized') state.tagMode = 'any';
       if (!value) {
         state.tag = '';
         state.tags = [];
@@ -2681,7 +2688,8 @@
       } else {
         state.topicUnclassified = false;
         const cur = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
-        const next = only ? [value] : (cur.includes(value) ? cur.filter(t => t !== value) : cur.concat(value));
+        const next = only ? [value] : typeof topicToggle === 'function' ? topicToggle(cur, value)
+          : (cur.includes(value) ? cur.filter(t => t !== value) : cur.concat(value));
         state.tags = next;
         state.tag = next.length === 1 ? next[0] : '';
       }
@@ -2770,13 +2778,14 @@
     if (state.studyDesign && p.studyDesign !== state.studyDesign) miss |= 4;
     const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
     const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : (state.tag === 'uncategorized' || !!state.topicUnclassified);
-    const pTags = typeof paperTopicTags === 'function'
-      ? paperTopicTags(p)
-      : (Array.isArray(p && p.tags) ? p.tags.map(t => typeof t === 'string' ? t.trim() : '').filter(t => t.startsWith('#')) : []);
-    if (untagged) {
-      if (pTags.length > 0) miss |= 8;
-    } else if (tags.length) {
-      if (!tags.some(t => pTags.includes(t))) miss |= 8;
+    if (untagged || tags.length) {
+      if (typeof paperMatchesTopics === 'function') {
+        if (!paperMatchesTopics(p, untagged ? ['uncategorized'] : tags, state.tagMode)) miss |= 8;
+      } else {
+        // Legacy standalone VM tests load the sidebar helpers without the topic module.
+        const pTags = paperTopicTags(p);
+        if (untagged ? pTags.length > 0 : !tags.some(t => pTags.includes(t))) miss |= 8;
+      }
     }
     return miss;
   }
@@ -3020,26 +3029,15 @@
     }
 
     // 4. Tags Cloud
-    const activeTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
-    const tagCounts = {};
-    base.forEach(p => {
-      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
-      pTags.forEach(t => { tagCounts[t] = 0; });
-    });
-    activeTags.forEach(t => { if (!(t in tagCounts)) tagCounts[t] = 0; });
-    facet('tag').forEach(p => {
-      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : (p.tags || []);
-      pTags.forEach(t => {
-        tagCounts[t] = (tagCounts[t] || 0) + 1;
-      });
-    });
-
     const tagsCloudEl = $('#tagsCloud');
-    if (tagsCloudEl) {
-      const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+    if (tagsCloudEl && typeof topicOptionCounts === 'function') {
+      const activeTags = selectedTags();
+      const keys = [...new Set([...base.flatMap(paperTopicTags), ...activeTags])];
+      const { tags } = topicOptionCounts(facet('tag'), keys, activeTags, state.tagMode, isTopicUnclassified());
+      const sortedTags = [...tags].sort((a, b) => b[1] - a[1]);
       tagsCloudEl.innerHTML = sortedTags.map(([tag, count]) => {
         const isActive = activeTags.includes(tag);
-        return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)}</button>`;
+        return `<button type="button" class="panel-opt tag-chip${isActive ? ' active' : ''}${count ? '' : ' is-empty'}" data-filter-tag="${esc(tag)}" aria-pressed="${isActive}">${esc(tag)} <small>${count}</small></button>`;
       }).join('') || '<span class="text-muted" style="font-size:12px;">暂无标签</span>';
     }
   }
@@ -3101,7 +3099,6 @@
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
-
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
 
   // Render Article Card
@@ -3141,6 +3138,7 @@
           ${titleBlock}
           ${enLine}
           ${gistHtml}
+          ${typeof topicBadgeHtml === 'function' ? topicBadgeHtml(p) : ''}
         </div>
 
         ${cardSideActionsHtml(p)}
@@ -3171,6 +3169,7 @@
             <span class="date-badge">${esc(dateStr)}</span>
             ${designBadgeHtml(p)}
           </div>
+          ${typeof topicBadgeHtml === 'function' ? topicBadgeHtml(p) : ''}
         </div>
         ${cardSideActionsHtml(p)}
       </div>
@@ -3369,7 +3368,6 @@
   }
 
   let lastFocus = null;
-
   // ==== src/app/06-reader.js · Reading drawer and public abstracts ====
   // Slide-over Reader Drawer Open/Close
   function openReaderDrawer(paper) {
@@ -4710,6 +4708,114 @@
       list.map(p => `<div class="next-item"><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div><div class="next-item-title">${esc(p.title)}</div><div class="next-item-actions"><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入精选 ✓' : '加入精选清单'}</button><a class="btn-sm" target="_blank" rel="noopener" href="${esc(p.url || (p.doi ? 'https://doi.org/' + p.doi : '#'))}">出版商 / 题录 ↗</a></div></div>`).join('');
   }
 
+  // ==== src/app/09y-topic-match.js · Topic matching, counts and display ====
+  const TOPIC_GROUPS = [
+    ['临床亚专科', ['#房颤/电生理', '#心衰/心肌', '#卒中/抗凝', '#高血压/血管', '#冠脉介入', '#结构性心脏病', '#先心病', '#预防/血脂']],
+    ['检查与手段', ['#心电', '#影像']],
+    ['AI 与数字医学', ['#AI-ECG', '#大模型/NLP', '#AI-RCT证据', '#穿戴/远程监测']]
+  ];
+
+  function topicModeLabel(mode) {
+    return normalizeTagMode(mode) === 'all' ? '同时包含' : '任一';
+  }
+
+  function paperMatchesTopics(paper, tags, mode) {
+    if (!tags.length) return true;
+    const paperTags = paperTopicTags(paper);
+    if (tags[0] === UNCLASSIFIED_TOPIC) return paperTags.length === 0;
+    const includes = tag => paperTags.includes(tag);
+    return mode === 'all' ? tags.every(includes) : tags.some(includes);
+  }
+
+  function topicToggle(tags, tag) {
+    return tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag];
+  }
+
+  function topicResultCount(papers) {
+    if (state.mode !== 'curated') return papers.length;
+    const days = new Map();
+    for (const paper of papers) {
+      const date = publishedDate(paper);
+      days.set(date, (days.get(date) || 0) + 1);
+    }
+    const day = curatedDay([...days].sort(([a], [b]) => b.localeCompare(a)));
+    return day ? days.get(day) : papers.length;
+  }
+
+  function topicOptionCounts(papers, keys, active, mode, unclassified) {
+    const count = (tags, matchMode = mode) =>
+      topicResultCount(papers.filter(p => paperMatchesTopics(p, tags, matchMode)));
+    return {
+      clear: topicResultCount(papers),
+      unclassified: count(unclassified ? [] : [UNCLASSIFIED_TOPIC]),
+      modes: { any: count(unclassified ? [UNCLASSIFIED_TOPIC] : active, 'any'), all: count(unclassified ? [UNCLASSIFIED_TOPIC] : active, 'all') },
+      tags: new Map(keys.map(tag => [tag, count(topicToggle(active, tag))]))
+    };
+  }
+
+  function topicGroupsFor(papers, active) {
+    const extras = new Set(active.filter(tag => !TOPIC_TAGS.includes(tag)));
+    for (const paper of papers) {
+      paperTopicTags(paper).forEach(tag => { if (!TOPIC_TAGS.includes(tag)) extras.add(tag); });
+    }
+    return extras.size ? [...TOPIC_GROUPS, ['其他', [...extras]]] : TOPIC_GROUPS;
+  }
+
+  function quickTierResultCounts() {
+    const papers = qfPapers().filter(p => matchesFilters(p, false, 'pub'));
+    const tiers = new Map();
+    for (const paper of papers) {
+      const id = paperTierId(paper);
+      if (!tiers.has(id)) tiers.set(id, []);
+      tiers.get(id).push(paper);
+    }
+    const counts = new Map([...tiers].map(([id, rows]) => [id, topicResultCount(rows)]));
+    // Clicking the active whole tier removes it. A non-empty subset is replaced by the whole tier.
+    if (state.journalTier && !selectedJournals().length) {
+      const afterClear = state.publisher
+        ? papers.filter(p => (p.publisher || '其他学术刊物') === state.publisher) : papers;
+      counts.set(state.journalTier, topicResultCount(afterClear));
+    }
+    return counts;
+  }
+
+  function topicPickerHtml(papers) {
+    const active = selectedTags();
+    const unclassified = isTopicUnclassified();
+    const mode = normalizeTagMode(state.tagMode);
+    const groups = topicGroupsFor(papers, active);
+    const counts = topicOptionCounts(papers, groups.flatMap(([, tags]) => tags), active, mode, unclassified);
+    const option = (attr, value, label, on, count) =>
+      `<button type="button" class="qf-opt${on ? ' is-on' : ''}${count ? '' : ' is-empty'}" data-qf-topic${attr}="${esc(value)}" aria-pressed="${on}"><span>${esc(label)}</span> <small>${count}</small></button>`;
+    const modeButton = (key, name) =>
+      `<button type="button" class="qf-opt${mode === key && !unclassified ? ' is-on' : ''}${counts.modes[key] ? '' : ' is-empty'}" data-qf-topic-mode="${key}" aria-pressed="${mode === key && !unclassified}"${unclassified ? ' disabled' : ''}>${name} <small>${counts.modes[key]}</small></button>`;
+    const hint = unclassified ? '已选「未分类」，匹配方式不适用。' : active.length === 1 ? '单选时无区别。' : '';
+    return `<div class="topic-picker">
+      <div class="qf-pop-head"><strong>文章主题</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
+      <p class="qf-hint" id="topicModeHint">任一或同时包含所选主题，和其他筛选叠加。「未分类」与具体主题互斥。${hint}</p>
+      <div class="topic-options" role="group" aria-label="文章主题匹配方式" aria-describedby="topicModeHint">
+        ${modeButton('any', '任一 (OR)')}${modeButton('all', '同时包含 (AND)')}
+      </div>
+      <div class="topic-options">
+        ${option('-all', '1', '全部（清空文章主题筛选）', !unclassified && !active.length, counts.clear)}
+        ${option('-unclassified', '1', '未分类（无可用主题标签）', unclassified, counts.unclassified)}
+      </div>
+      ${groups.map(([name, tags]) => `<section class="topic-group" aria-label="${esc(name)}">
+        <h4>${esc(name)} <span>已选 ${tags.filter(t => active.includes(t)).length}</span></h4>
+        <div class="topic-options">${tags.map(t => option('', t, t, active.includes(t), counts.tags.get(t))).join('')}</div>
+      </section>`).join('')}
+    </div>`;
+  }
+
+  function topicBadgeHtml(paper) {
+    const tags = paperTopicTags(paper);
+    if (!tags.length) return '';
+    const active = selectedTags();
+    const visible = tags.slice(0, 3).map(tag =>
+      `<button type="button" class="topic-badge" data-filter-tag="${esc(tag)}" aria-pressed="${active.includes(tag)}">${esc(tag)}</button>`);
+    if (tags.length > 3) visible.push(`<span class="topic-badge-more" aria-label="另有 ${tags.length - 3} 个主题">+${tags.length - 3}</span>`);
+    return `<div class="topic-badges" role="group" aria-label="文章主题">${visible.join('')}</div>`;
+  }
   // ==== src/app/09z-quick-filters.js · 列表顶栏快捷筛选条 ====
   const QF_RECENT_KEY = 'xz_recent_journals';
   const QF_PRESET_KEY = 'xz_filter_presets';
@@ -4772,6 +4878,7 @@
       tag: state.tag,
       tags: typeof selectedTags === 'function' ? selectedTags().slice() : [],
       topicUnclassified: typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false,
+      tagMode: normalizeTagMode(state.tagMode),
       minor: state.minor
     };
   }
@@ -4786,6 +4893,7 @@
       : (Array.isArray(data.tags) ? data.tags.filter(t => typeof t === 'string' && t && t !== 'uncategorized')
         : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []));
     state.tag = !state.topicUnclassified && state.tags.length === 1 ? state.tags[0] : '';
+    state.tagMode = normalizeTagMode(state.topicUnclassified ? null : data.tagMode);
     state.journals = Array.isArray(data.journals) ? data.journals.slice() : [];
     state.journalTier = data.journalTier || '';
     state.journalTierLegacy = !!data.journalTierLegacy;
@@ -5078,14 +5186,16 @@
       `<button type="button" class="qf-chip${on ? ' is-on' : ''}" data-qf="${kind}" aria-pressed="${on}"${extra || ''}>${label}</button>`;
     const parts = [];
     if (vis.star) parts.push(chip('star', state.favoritesOnly ? '★' : '☆', !!state.favoritesOnly, ' aria-label="只看关注期刊" title="只看关注期刊"'));
+    const tierCounts = typeof quickTierResultCounts === 'function' && Object.values(vis.tiers).some(Boolean)
+      ? quickTierResultCounts() : null;
     (JT() && JT().tiers || []).forEach(tier => {
       if (!vis.tiers[tier.id]) return;
-      const subset = currentTierSubset(tier.id);
       const on = tierIsOn(tier.id);
-      const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
+      const count = tierCounts?.get(tier.id) || 0;
+      const label = tierCounts ? tier.short + ' · ' + count : tier.short;
       const openKind = 'jtier:' + tier.id;
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
-        <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}">${esc(label)}</button>
+        <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}${tierCounts && !count ? ' is-empty' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}${tierCounts ? '，点击后 ' + count + ' 篇' : ''}">${esc(label)}</button>
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
       </span>`);
     });
@@ -5095,7 +5205,7 @@
       const topicOn = untagged || selTags.length > 0;
       const topicLabel = untagged
         ? '文章主题 · 未分类'
-        : (selTags.length === 1 ? '文章主题 · ' + selTags[0].replace(/^#/, '') : selTags.length > 1 ? '文章主题 · ' + selTags.length + ' 项' : '文章主题');
+        : (selTags.length === 1 ? '文章主题 · ' + selTags[0].replace(/^#/, '') : selTags.length > 1 ? '文章主题 · ' + topicModeLabel(state.tagMode) + ' ' + selTags.length + ' 项' : '文章主题');
       parts.push(chip('topic', esc(topicLabel), topicOn, ' aria-haspopup="dialog" aria-expanded="' + (!!(qfOpen && qfOpen.kind === 'topic')) + '" aria-label="按文章主题筛选"'));
     }
     if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
@@ -5130,11 +5240,12 @@
     if (state.excludeCaseReports) bits.push(item('已排除病例报告', 'nocase'));
     if (state.studyDesign) bits.push(item(state.studyDesign, 'design'));
     if (state.publisher && !selectedJournals().length) bits.push(item(state.publisher, 'pub'));
+    const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag ? [state.tag] : []);
     if (typeof isTopicUnclassified === 'function' && isTopicUnclassified()) {
       bits.push(item('文章主题：未分类', 'topic', 'uncategorized'));
-    } else {
-      const selTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
-      selTags.forEach(t => bits.push(item('文章主题：' + t, 'tag', t)));
+    } else if (tags.length) {
+      const picks = tags.map(t => item(t, 'tag', t)).join('<span aria-hidden="true">、</span>');
+      bits.push(`<span class="topic-summary">文章主题（${topicModeLabel(state.tagMode)}）：${picks}</span>`);
     }
     if (usesLane() && state.minor) bits.push(item('含更正/来信', 'minor'));
     if (usesLane() && state.reading) bits.push(item('可读内容', 'reading'));
@@ -5168,8 +5279,8 @@
   function placeQfPop(anchor) {
     const pop = $('#qfPop');
     if (!pop) return;
-    const inline = state.mode === 'candidates';
     const narrow = window.innerWidth <= 600;
+    const inline = state.mode === 'candidates' || (narrow && qfOpen?.kind === 'topic');
     pop.classList.toggle('is-inline', inline);
     pop.classList.toggle('is-sheet', !inline && narrow);
     pop.hidden = false;
@@ -5313,33 +5424,7 @@
   }
 
   function topicPopHtml() {
-    const basePapers = qfPapers().filter(p => matchesFilters(p, false, 'tag'));
-    const counts = {};
-    let untaggedCount = 0;
-    basePapers.forEach(p => {
-      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : [];
-      if (!pTags.length) untaggedCount += 1;
-      else pTags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
-    });
-    const active = typeof selectedTags === 'function' ? selectedTags() : [];
-    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false;
-    const canonical = typeof TOPIC_TAGS !== 'undefined' ? TOPIC_TAGS : [];
-    const extraKeys = Object.keys(counts).concat(active)
-      .filter((t, i, a) => t && !canonical.includes(t) && a.indexOf(t) === i);
-    const allTags = canonical.concat(extraKeys);
-    const allOn = !untagged && !active.length;
-    const opts = [
-      `<button type="button" class="qf-opt${allOn ? ' is-on' : ''}" data-qf-topic-all="1" aria-pressed="${allOn}"><span>全部（清空文章主题筛选）</span> <small>${basePapers.length}</small></button>`
-    ].concat(allTags.map(t => {
-      const on = active.includes(t);
-      const n = counts[t] || 0;
-      return `<button type="button" class="qf-opt${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-topic="${esc(t)}" aria-pressed="${on}"><span>${esc(t)}</span> <small>${n}</small></button>`;
-    })).concat([
-      `<button type="button" class="qf-opt${untagged ? ' is-on' : ''}${untaggedCount ? '' : ' is-empty'}" data-qf-topic-unclassified="1" aria-pressed="${untagged}"><span>未分类（无可用主题标签）</span> <small>${untaggedCount}</small></button>`
-    ]);
-    return `<div class="qf-pop-head"><strong>文章主题</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
-      <p class="qf-hint">可多选：多个主题之间为任一命中（OR），并与期刊档、搜索、专科来源、研究设计等条件叠加（AND）。「未分类」与具体主题互斥。</p>
-      <div class="qf-opt-list">${opts.join('')}</div>`;
+    return topicPickerHtml(qfPapers().filter(p => matchesFilters(p, false, 'tag')));
   }
 
   function scopePopHtml() {
@@ -5424,7 +5509,7 @@
   }
 
   document.addEventListener('click', e => {
-    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-topic], [data-qf-topic-all], [data-qf-topic-unclassified], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-tag], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
+    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-topic], [data-qf-topic-all], [data-qf-topic-unclassified], [data-qf-topic-mode], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-tag], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
     if (!t) {
       if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop(false);
       return;
@@ -5502,6 +5587,10 @@
     }
     if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }
     if (t.hasAttribute('data-qf-reading')) { state.reading = t.getAttribute('data-qf-reading') || ''; qfApply(); return; }
+    if (t.hasAttribute('data-qf-topic-mode')) {
+      if (!isTopicUnclassified()) { state.tagMode = normalizeTagMode(t.dataset.qfTopicMode); qfApply(); }
+      return;
+    }
     if (t.hasAttribute('data-qf-topic-all')) {
       if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', '', false);
       else { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
@@ -5547,15 +5636,8 @@
       else if (key === 'tier') state.clinicalTier = '';
       else if (key === 'design') state.studyDesign = '';
       else if (key === 'pub') state.publisher = '';
-      else if (key === 'topic') { state.topicUnclassified = false; state.tags = []; state.tag = ''; }
-      else if (key === 'tag') {
-        if (val) {
-          state.tags = (typeof selectedTags === 'function' ? selectedTags() : (state.tag ? [state.tag] : [])).filter(x => x !== val);
-          state.tag = state.tags.length === 1 ? state.tags[0] : '';
-        } else {
-          state.tags = []; state.tag = ''; state.topicUnclassified = false;
-        }
-      }
+      else if (key === 'topic' || (key === 'tag' && !val)) selectSidebarFilter('tag', '');
+      else if (key === 'tag' && selectedTags().includes(val)) selectSidebarFilter('tag', val);
       else if (key === 'minor') state.minor = false;
       else if (key === 'reading') state.reading = '';
       else if (key === 'ft') state.ftFilter = '';
@@ -6192,7 +6274,7 @@
       if (type === 'lane') state.lane = 'core';
       if (type === 'minor') state.minor = false;
       if (type === 'design') state.studyDesign = '';
-      if (type === 'tag') { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
+      if (type === 'tag') selectSidebarFilter('tag', '');
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
       if (type === 'nocase') state.excludeCaseReports = false;

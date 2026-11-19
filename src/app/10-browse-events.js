@@ -595,7 +595,7 @@
       if (type === 'lane') state.lane = 'core';
       if (type === 'minor') state.minor = false;
       if (type === 'design') state.studyDesign = '';
-      if (type === 'tag') { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
+      if (type === 'tag') selectSidebarFilter('tag', '');
       if (type === 'reading') state.reading = '';
       if (type === 'favorites') state.favoritesOnly = false;
       if (type === 'nocase') state.excludeCaseReports = false;

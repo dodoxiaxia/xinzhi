@@ -60,6 +60,7 @@
       tag: state.tag,
       tags: typeof selectedTags === 'function' ? selectedTags().slice() : [],
       topicUnclassified: typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false,
+      tagMode: normalizeTagMode(state.tagMode),
       minor: state.minor
     };
   }
@@ -74,6 +75,7 @@
       : (Array.isArray(data.tags) ? data.tags.filter(t => typeof t === 'string' && t && t !== 'uncategorized')
         : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []));
     state.tag = !state.topicUnclassified && state.tags.length === 1 ? state.tags[0] : '';
+    state.tagMode = normalizeTagMode(state.topicUnclassified ? null : data.tagMode);
     state.journals = Array.isArray(data.journals) ? data.journals.slice() : [];
     state.journalTier = data.journalTier || '';
     state.journalTierLegacy = !!data.journalTierLegacy;
@@ -366,14 +368,16 @@
       `<button type="button" class="qf-chip${on ? ' is-on' : ''}" data-qf="${kind}" aria-pressed="${on}"${extra || ''}>${label}</button>`;
     const parts = [];
     if (vis.star) parts.push(chip('star', state.favoritesOnly ? '★' : '☆', !!state.favoritesOnly, ' aria-label="只看关注期刊" title="只看关注期刊"'));
+    const tierCounts = typeof quickTierResultCounts === 'function' && Object.values(vis.tiers).some(Boolean)
+      ? quickTierResultCounts() : null;
     (JT() && JT().tiers || []).forEach(tier => {
       if (!vis.tiers[tier.id]) return;
-      const subset = currentTierSubset(tier.id);
       const on = tierIsOn(tier.id);
-      const label = subset.length ? (tier.short + ' · ' + subset.length) : tier.short;
+      const count = tierCounts?.get(tier.id) || 0;
+      const label = tierCounts ? tier.short + ' · ' + count : tier.short;
       const openKind = 'jtier:' + tier.id;
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
-        <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}">${esc(label)}</button>
+        <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}${tierCounts && !count ? ' is-empty' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}${tierCounts ? '，点击后 ' + count + ' 篇' : ''}">${esc(label)}</button>
         <button type="button" class="qf-chip qf-chip-caret${on ? ' is-on' : ''}" data-qf-jtier-menu="${esc(tier.id)}" aria-haspopup="dialog" aria-expanded="${!!(qfOpen && qfOpen.kind === openKind)}" aria-label="打开${esc(tier.title)}清单"><span class="qf-caret" aria-hidden="true">▾</span></button>
       </span>`);
     });
@@ -383,7 +387,7 @@
       const topicOn = untagged || selTags.length > 0;
       const topicLabel = untagged
         ? '文章主题 · 未分类'
-        : (selTags.length === 1 ? '文章主题 · ' + selTags[0].replace(/^#/, '') : selTags.length > 1 ? '文章主题 · ' + selTags.length + ' 项' : '文章主题');
+        : (selTags.length === 1 ? '文章主题 · ' + selTags[0].replace(/^#/, '') : selTags.length > 1 ? '文章主题 · ' + topicModeLabel(state.tagMode) + ' ' + selTags.length + ' 项' : '文章主题');
       parts.push(chip('topic', esc(topicLabel), topicOn, ' aria-haspopup="dialog" aria-expanded="' + (!!(qfOpen && qfOpen.kind === 'topic')) + '" aria-label="按文章主题筛选"'));
     }
     if (vis.more) parts.push(chip('more', '⋯', qfMoreActive(), ' aria-haspopup="dialog" aria-label="更多筛选"'));
@@ -418,11 +422,12 @@
     if (state.excludeCaseReports) bits.push(item('已排除病例报告', 'nocase'));
     if (state.studyDesign) bits.push(item(state.studyDesign, 'design'));
     if (state.publisher && !selectedJournals().length) bits.push(item(state.publisher, 'pub'));
+    const tags = typeof selectedTags === 'function' ? selectedTags() : (state.tag ? [state.tag] : []);
     if (typeof isTopicUnclassified === 'function' && isTopicUnclassified()) {
       bits.push(item('文章主题：未分类', 'topic', 'uncategorized'));
-    } else {
-      const selTags = typeof selectedTags === 'function' ? selectedTags() : (state.tag && state.tag !== 'uncategorized' ? [state.tag] : []);
-      selTags.forEach(t => bits.push(item('文章主题：' + t, 'tag', t)));
+    } else if (tags.length) {
+      const picks = tags.map(t => item(t, 'tag', t)).join('<span aria-hidden="true">、</span>');
+      bits.push(`<span class="topic-summary">文章主题（${topicModeLabel(state.tagMode)}）：${picks}</span>`);
     }
     if (usesLane() && state.minor) bits.push(item('含更正/来信', 'minor'));
     if (usesLane() && state.reading) bits.push(item('可读内容', 'reading'));
@@ -456,8 +461,8 @@
   function placeQfPop(anchor) {
     const pop = $('#qfPop');
     if (!pop) return;
-    const inline = state.mode === 'candidates';
     const narrow = window.innerWidth <= 600;
+    const inline = state.mode === 'candidates' || (narrow && qfOpen?.kind === 'topic');
     pop.classList.toggle('is-inline', inline);
     pop.classList.toggle('is-sheet', !inline && narrow);
     pop.hidden = false;
@@ -601,33 +606,7 @@
   }
 
   function topicPopHtml() {
-    const basePapers = qfPapers().filter(p => matchesFilters(p, false, 'tag'));
-    const counts = {};
-    let untaggedCount = 0;
-    basePapers.forEach(p => {
-      const pTags = typeof paperTopicTags === 'function' ? paperTopicTags(p) : [];
-      if (!pTags.length) untaggedCount += 1;
-      else pTags.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
-    });
-    const active = typeof selectedTags === 'function' ? selectedTags() : [];
-    const untagged = typeof isTopicUnclassified === 'function' ? isTopicUnclassified() : false;
-    const canonical = typeof TOPIC_TAGS !== 'undefined' ? TOPIC_TAGS : [];
-    const extraKeys = Object.keys(counts).concat(active)
-      .filter((t, i, a) => t && !canonical.includes(t) && a.indexOf(t) === i);
-    const allTags = canonical.concat(extraKeys);
-    const allOn = !untagged && !active.length;
-    const opts = [
-      `<button type="button" class="qf-opt${allOn ? ' is-on' : ''}" data-qf-topic-all="1" aria-pressed="${allOn}"><span>全部（清空文章主题筛选）</span> <small>${basePapers.length}</small></button>`
-    ].concat(allTags.map(t => {
-      const on = active.includes(t);
-      const n = counts[t] || 0;
-      return `<button type="button" class="qf-opt${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-topic="${esc(t)}" aria-pressed="${on}"><span>${esc(t)}</span> <small>${n}</small></button>`;
-    })).concat([
-      `<button type="button" class="qf-opt${untagged ? ' is-on' : ''}${untaggedCount ? '' : ' is-empty'}" data-qf-topic-unclassified="1" aria-pressed="${untagged}"><span>未分类（无可用主题标签）</span> <small>${untaggedCount}</small></button>`
-    ]);
-    return `<div class="qf-pop-head"><strong>文章主题</strong><button type="button" class="qf-pop-close" data-qf-close="1" aria-label="关闭">×</button></div>
-      <p class="qf-hint">可多选：多个主题之间为任一命中（OR），并与期刊档、搜索、专科来源、研究设计等条件叠加（AND）。「未分类」与具体主题互斥。</p>
-      <div class="qf-opt-list">${opts.join('')}</div>`;
+    return topicPickerHtml(qfPapers().filter(p => matchesFilters(p, false, 'tag')));
   }
 
   function scopePopHtml() {
@@ -712,7 +691,7 @@
   }
 
   document.addEventListener('click', e => {
-    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-topic], [data-qf-topic-all], [data-qf-topic-unclassified], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-tag], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
+    const t = e.target.closest && e.target.closest('[data-qf], #qfScopeBtn, [data-qf-close], [data-qf-pick-journal], [data-qf-follow], [data-qf-jtier], [data-qf-jtier-menu], [data-qf-jtier-all], [data-qf-tier], [data-qf-design], [data-qf-topic], [data-qf-topic-all], [data-qf-topic-unclassified], [data-qf-topic-mode], [data-qf-lane], [data-qf-range], [data-qf-ft], [data-qf-pub], [data-qf-minor], [data-qf-reading], [data-qf-tag], [data-qf-preset], [data-qf-del-preset], [data-qf-clear], [data-qf-save]');
     if (!t) {
       if (qfOpen && !$('#qfPop')?.contains(e.target) && !e.target.closest('#quickBar')) closeQfPop(false);
       return;
@@ -790,6 +769,10 @@
     }
     if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }
     if (t.hasAttribute('data-qf-reading')) { state.reading = t.getAttribute('data-qf-reading') || ''; qfApply(); return; }
+    if (t.hasAttribute('data-qf-topic-mode')) {
+      if (!isTopicUnclassified()) { state.tagMode = normalizeTagMode(t.dataset.qfTopicMode); qfApply(); }
+      return;
+    }
     if (t.hasAttribute('data-qf-topic-all')) {
       if (typeof selectSidebarFilter === 'function') selectSidebarFilter('tag', '', false);
       else { state.tag = ''; state.tags = []; state.topicUnclassified = false; }
@@ -835,15 +818,8 @@
       else if (key === 'tier') state.clinicalTier = '';
       else if (key === 'design') state.studyDesign = '';
       else if (key === 'pub') state.publisher = '';
-      else if (key === 'topic') { state.topicUnclassified = false; state.tags = []; state.tag = ''; }
-      else if (key === 'tag') {
-        if (val) {
-          state.tags = (typeof selectedTags === 'function' ? selectedTags() : (state.tag ? [state.tag] : [])).filter(x => x !== val);
-          state.tag = state.tags.length === 1 ? state.tags[0] : '';
-        } else {
-          state.tags = []; state.tag = ''; state.topicUnclassified = false;
-        }
-      }
+      else if (key === 'topic' || (key === 'tag' && !val)) selectSidebarFilter('tag', '');
+      else if (key === 'tag' && selectedTags().includes(val)) selectSidebarFilter('tag', val);
       else if (key === 'minor') state.minor = false;
       else if (key === 'reading') state.reading = '';
       else if (key === 'ft') state.ftFilter = '';
