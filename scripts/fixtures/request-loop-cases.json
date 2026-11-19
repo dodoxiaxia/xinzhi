@@ -1,0 +1,405 @@
+{
+  "snapshot": [
+    {
+      "id": "static-request-ingested",
+      "doi": "10.9999/request-loop-ingested",
+      "title": "Fictional rhythm-control: a randomized trial",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified",
+      "cleanJournal": "Circulation",
+      "publisher": "AHA (Circulation)",
+      "clinicalTier": "心血管综合与其他",
+      "studyDesign": "随机试验（题录标记）",
+      "tags": [
+        "#房颤/电生理"
+      ]
+    },
+    {
+      "id": "static-request-existing",
+      "doi": "10.9999/request-loop-existing",
+      "title": "Fictional catalogue record",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    },
+    {
+      "id": "static-request-recovered",
+      "doi": "10.9999/request-loop-recovered",
+      "title": "Fictional rhythm-control cohort",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    },
+    {
+      "id": "static-request-conflict",
+      "doi": "10.9999/request-loop-conflict",
+      "title": "Fictional identity corrected version",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    },
+    {
+      "id": "static-request-alias",
+      "doi": "10.9999/request-loop-aliases",
+      "title": "[Article] Fictional long–term \"rhythm\" pattern!",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    },
+    {
+      "id": "static-request-other",
+      "doi": "10.9999/request-loop-original",
+      "title": "A synthetic publication — study",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    },
+    {
+      "id": "static-request-no-pdf",
+      "doi": "10.9999/request-loop-no-pdf",
+      "title": "Fictional record without a PDF",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    },
+    {
+      "id": "static-request-network-error",
+      "doi": "10.9999/request-loop-network-error",
+      "title": "Fictional offline request",
+      "journal": "Circulation",
+      "date": "2026-10-21",
+      "fulltextStatus": "not_verified"
+    }
+  ],
+  "pdfIds": [
+    "static-request-existing"
+  ],
+  "cases": [
+    {
+      "paper": {
+        "id": "doi-0000000000000001",
+        "doi": "10.9999/request-loop-ingested",
+        "title": "Fictional rhythm-control: a randomized trial",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "already_in_library",
+      "match": "static-request-ingested",
+      "browser": {
+        "status": "verifying",
+        "initial": {
+          "state": "pending",
+          "stage": "verifying"
+        },
+        "label": "已入库",
+        "stage": "ingested"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000002",
+        "doi": "10.9999/request-loop-existing",
+        "title": "Fictional catalogue record",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "already_in_library",
+      "match": "static-request-existing",
+      "browser": {
+        "status": "queued",
+        "found": false,
+        "label": "库里已有",
+        "stage": "already_in_library"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000017",
+        "doi": "10.9999/request-loop-recovered",
+        "title": "Fictional rhythm control cohort",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "already_in_library",
+      "match": "static-request-recovered",
+      "browser": {
+        "status": "manual_needed",
+        "job": {
+          "state": "available",
+          "stage": "available"
+        },
+        "label": "已入库",
+        "stage": "ingested"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000003",
+        "doi": "10.9999/request-loop-conflict",
+        "title": "Fictional identity corrected",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "identity_conflict",
+      "match": "static-request-conflict",
+      "browser": {
+        "status": "available",
+        "label": "题录冲突，待人工核验",
+        "stage": "identity_conflict"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000004",
+        "doi": "10.9999/REQUEST-LOOP-ALIASES",
+        "title": "Fictional long-term ‘rhythm’ pattern.",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "already_in_library",
+      "match": "static-request-alias",
+      "browser": {
+        "status": "available",
+        "label": "已入库",
+        "stage": "ingested"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000004",
+        "doi": " DOI: 10.9999/REQUEST-LOOP-ALIASES",
+        "title": "Fictional long-term ‘rhythm’ pattern.",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "already_in_library",
+      "match": "static-request-alias"
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000004",
+        "doi": "https://DX.DOI.ORG/10.9999%2Frequest-loop-aliases",
+        "title": "Fictional long-term ‘rhythm’ pattern.",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "already_in_library",
+      "match": "static-request-alias"
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000005",
+        "doi": "10.9999/request-loop-other-doi",
+        "title": "A synthetic publication — study",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "possible_duplicate",
+      "match": "static-request-other",
+      "browser": {
+        "status": "available",
+        "label": "已取得全文，待归类入库",
+        "hint": "题名相同但 DOI 不同，仅供人工核对"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000006",
+        "doi": "10.9999/request-loop-pending",
+        "title": "Fictional queued acquisition",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "queued",
+        "job": {
+          "state": "queued",
+          "stage": "queued"
+        },
+        "label": "排队下载"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000007",
+        "doi": "10.9999/request-loop-ready",
+        "title": "Atrial fibrillation: a randomized controlled trial",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "ready_to_ingest"
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000008",
+        "doi": "10.9999/request-loop-unclassified",
+        "title": "Fictional violet pebbles",
+        "journal": "Fictional Quarterly",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "ready_to_ingest",
+      "tags": [],
+      "browser": {
+        "status": "available",
+        "label": "已取得全文，待归类入库"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000009",
+        "doi": "10.9999/request-loop-no-pdf",
+        "title": "Fictional record without a PDF",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "pending",
+        "label": "待处理 / 查无进行中任务"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000010",
+        "doi": "10.9999/request-loop-verifying",
+        "title": "Fictional verification",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "verifying",
+        "job": {
+          "state": "pending",
+          "stage": "verifying"
+        },
+        "label": "核验中"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000011",
+        "doi": "10.9999/request-loop-failed",
+        "title": "Fictional failed acquisition",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "failed",
+        "job": {
+          "state": "failed",
+          "stage": "failed"
+        },
+        "label": "未取得"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000012",
+        "doi": "10.9999/request-loop-hold",
+        "title": "Fictional manual check",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "review",
+        "job": {
+          "state": "review",
+          "stage": "review",
+          "reason": "identity_hold"
+        },
+        "label": "待人工核验"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000013",
+        "doi": "10.9999/request-loop-rejected",
+        "title": "Fictional rejected acquisition",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "review",
+        "job": {
+          "state": "failed",
+          "stage": "failed",
+          "reason": "identity_hold_rejected"
+        },
+        "label": "人工核验未通过，可重新提交"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000014",
+        "doi": "10.9999/request-loop-unknown",
+        "title": "Fictional unknown reason",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "review",
+        "job": {
+          "state": "review",
+          "stage": "review",
+          "reason": "future_unknown_reason"
+        },
+        "label": "未取得 · 核验未通过"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000015",
+        "doi": "10.9999/request-loop-network-error",
+        "title": "Fictional offline request",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "pending"
+      },
+      "decision": "awaiting_fulltext",
+      "browser": {
+        "status": "invalid",
+        "error": true,
+        "label": "排队下载"
+      }
+    },
+    {
+      "paper": {
+        "id": "doi-0000000000000016",
+        "doi": "10.9999/request-loop-later",
+        "title": "Fictional new library submission",
+        "journal": "Circulation",
+        "date": "2026-10-21",
+        "fulltextStatus": "available"
+      },
+      "decision": "ready_to_ingest",
+      "browser": {
+        "status": "available",
+        "label": "已取得全文，待归类入库"
+      }
+    }
+  ]
+}

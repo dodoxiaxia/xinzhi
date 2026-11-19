@@ -17,6 +17,7 @@ def _row(sid, confidence, tags, abstain=False, paper_id=None, doi=None):
         'id': paper_id or f'id-{sid}',
         'doi': doi or f'10.0000/{sid}',
         'pmid': '',
+        'title': 'Coronary stent outcomes',
         'modelTags': tags,
         'abstain': abstain,
         'confidence': confidence,
@@ -68,6 +69,23 @@ class LowConfidenceSkipTests(unittest.TestCase):
         for item in result['additions']:
             self.assertEqual(item['tagOrigin'], 'machine_reviewed')
             self.assertEqual(item['tags'], tags)
+
+    def test_collect_writes_rejects_notices_but_keeps_corrected_papers(self):
+        tags = [self.tag]
+        rows = [
+            dict(_row('notice-title', 'high', tags), title='Corrigendum: Coronary stent outcomes'),
+            dict(_row('notice-type', 'high', tags), pubTypes=['Published Erratum']),
+            dict(_row('original', 'high', tags), pubmedRelations=[{'type': 'ErratumIn', 'pmid': '123'}]),
+        ]
+        result = write_overlay.collect_writes(rows, [], self.vocab, 'test-batch', ['title'])
+        self.assertEqual(result['abstained'], 2)
+        self.assertEqual([item['sampleId'] for item in result['additions']], ['original'])
+
+    def test_collect_writes_requires_source_title_for_new_tags(self):
+        row = _row('no-title', 'high', [self.tag])
+        del row['title']
+        with self.assertRaisesRegex(ValueError, 'source title required at no-title'):
+            write_overlay.collect_writes([row], [], self.vocab, 'test-batch', ['title'])
 
     def test_dry_run_cli_skips_low_and_writes_high_medium(self):
         tags = [self.tag]

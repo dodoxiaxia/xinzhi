@@ -18,7 +18,10 @@
   // The rail is an index only: each entry opens the reading in #deepReader.
   function dailyReadingItem(p) {
     const active = p.pmcid === activeDeepReadingId, topic = p.whySelected || p.topic;
-    return '<button type="button" class="deep-reading-item' + (active ? ' active' : '') + '" data-action="open-deep-reading" data-reading-id="' + esc(p.pmcid) + '" data-deep-reading="' + esc(p.pmcid) + '"' + (active ? ' aria-current="true"' : '') + '><span class="deep-reading-item-title">' + esc(p.titleZh || p.title) + '</span><small>' + esc(p.journal) + ' · 论文 ' + esc(p.date) + '</small>' + (topic ? '<span class="deep-reading-topic">' + esc(topic) + '</span>' : '') + '<span class="deep-reading-go">读精读 →</span></button>';
+    const title = p.titleZh || p.title || '';
+    const fullTitle = p.title && p.title !== title ? title + '\n' + p.title : title;
+    const titleAttr = Math.max(title.length, p.title?.length || 0) > 20 ? ' title="' + esc(fullTitle) + '"' : '';
+    return '<button type="button" class="deep-reading-item' + (active ? ' active' : '') + '" data-action="open-deep-reading" data-reading-id="' + esc(p.pmcid) + '" data-deep-reading="' + esc(p.pmcid) + '"' + titleAttr + (active ? ' aria-current="true"' : '') + '><span class="deep-reading-item-title">' + esc(title) + '</span><small>' + esc(p.journal) + ' · 论文 ' + esc(p.date) + '</small>' + (topic ? '<span class="deep-reading-topic">' + esc(topic) + '</span>' : '') + '<span class="deep-reading-go">读精读 →</span></button>';
   }
   function deepReadingBody(p) {
     const sections = Object.entries(DEEP_READING_LABELS).map(([key, label]) => {
@@ -338,7 +341,8 @@
     const line = cardTakeaway(p);
     const deep = readingId ? `<button type="button" class="weekly-deep-badge" data-action="open-deep-reading" data-reading-id="${esc(readingId)}">有全文精读 →</button>` : '';
     const design = p.publicationStatus?.label || p.studyDesign || '';
-    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(p.title)}">${esc(zh || p.title)}</button>${deep}</div>` +
+    const fullTitle = zh && p.title && zh !== p.title ? zh + '\n' + p.title : zh || p.title;
+    return `<li class="weekly-row weekly-auto-item" data-paper-id="${esc(p.id)}"><span class="weekly-rank">${esc(p.weeklyPick)}</span><div class="weekly-row-main"><div class="weekly-row-title"><button type="button" class="title-open" data-action="open-drawer" data-paper-id="${esc(p.id)}" title="${esc(fullTitle)}">${esc(zh || p.title)}</button>${deep}</div>` +
       publicationStatusHtml(p) + `<div class="weekly-row-meta"><span class="weekly-row-journal">${esc(cardJournalName(p))}</span>${design ? `<span>${esc(design)}</span>` : ''}<span>${esc(date)}</span></div>` +
       (line ? `<div class="weekly-row-line">${esc(line)}</div>` : '') +
       `</div>${cardSideActionsHtml(p)}</li>`;
@@ -411,4 +415,3 @@
     el.innerHTML = `<p class="weekly-next-note">公共题录中的近期心血管 / AI 论文，优先心血管与“心血管 × AI”，按研究类型与期刊自动排序，<b>尚未评估质量</b>；全文获取与共享权限需另行核验。想推荐哪篇就加入精选清单。</p>` +
       list.map(p => `<div class="next-item"><div><span class="journal-badge ${getPublisherClass(p.publisher)}">${esc(p.cleanJournal || p.journal)}</span> ${journalMetricBadge(p)} ${designBadgeHtml(p)} <span class="date-badge">${esc((p.date || '').slice(0, 10))}</span></div><div class="next-item-title">${esc(p.title)}</div><div class="next-item-actions"><button class="btn-sm ${state.huddle.includes(p.id) ? 'active' : ''}" data-action="toggle-huddle" data-paper-id="${esc(p.id)}">${state.huddle.includes(p.id) ? '已入精选 ✓' : '加入精选清单'}</button><a class="btn-sm" target="_blank" rel="noopener" href="${esc(p.url || (p.doi ? 'https://doi.org/' + p.doi : '#'))}">出版商 / 题录 ↗</a></div></div>`).join('');
   }
-

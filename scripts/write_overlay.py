@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Append reviewed model tags to the editorial overlay, or remove one batch.
 
-Model rows with abstain=true, empty modelTags, or confidence=low are treated
-as abstentions and are not written.
+Rows for publication notices, or with abstain=true, empty modelTags, or
+confidence=low, are not written. Non-abstaining rows need the source title.
 """
 import argparse
 import collections
@@ -11,6 +11,8 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+from enrich_metadata import topic_notice_reason
 
 
 def load_vocab(repo):
@@ -72,9 +74,11 @@ def collect_writes(rows, existing, vocab, batch_id, fields):
     abstentions = skipped = 0
     for row in rows:
         tags = row.get('modelTags') or []
-        if is_abstention(row):
+        if is_abstention(row) or topic_notice_reason(row):
             abstentions += 1
             continue
+        if not isinstance(row.get('title'), str) or not row['title'].strip():
+            raise ValueError(f"source title required at {row.get('sid')}")
         if (
             not isinstance(tags, list)
             or len(set(tags)) != len(tags)
