@@ -198,9 +198,20 @@ async function review(h, body) {
   const wrongTitle = paperPdf(doi, 'Unrelated nephrology cohort study');
   await error(await upload(h, wrongTitle, doi), 409, 'machine_identity_mismatch');
   assert(!h.values.has('library:muse-job:' + doi));
-  const doiOnPageTwo = pdfPages([title, doi + ' ' + title]);
+  // Page 1 has the title but prints another paper's DOI (shape of NEJMp2606894, whose page 1 ends the previous article and carries
+  // its DOI): still 409 although the right DOI is on page 2. Before the title_only level this case had no DOI on page 1 at all.
+  const doiOnPageTwo = pdfPages(['doi:10.1000/previous-article ' + title, doi + ' ' + title]);
   await error(await upload(h, doiOnPageTwo, doi), 409, 'machine_identity_mismatch');
   assert(!h.values.has('library:muse-job:' + doi));
+  {
+    // Page 1 with the title and no DOI anywhere on it (or in metadata) is accepted as title_only and still waits for verification.
+    const titleOnlyHarness = await create();
+    seedPaper(titleOnlyHarness, doi);
+    const titleOnly = await upload(titleOnlyHarness, pdfPages([title, doi + ' ' + title]), doi);
+    assert.equal(titleOnly.status, 202);
+    const titleOnlyBody = await titleOnly.json();
+    assert.equal(titleOnlyBody.task.identity, 'title_only'); assert.equal(titleOnlyBody.task.state, 'uploaded-awaiting-verification');
+  }
   const unreadable = pdfPages(['']);
   await error(await upload(h, unreadable, doi), 409, 'machine_identity_mismatch');
   seedPaper(h, '10.1000/short', 'Hi');

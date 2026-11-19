@@ -543,7 +543,7 @@ async function handleMachineUpload(request, env) {
       paper = fresh;
     }
     if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
-    const identity = await machineIdentity(bytes, paper.doi, paper.title);
+    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true});
     if (identity.verdict !== 'ok') throw new MachineIdentityFailure(identity.verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', identity.reason, identity.checks);
     const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (attempt && attempt.paused) libraryFail('library_paused', 423);

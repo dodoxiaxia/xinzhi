@@ -1,7 +1,7 @@
 'use strict';
 // Offline: first-page identity check for machine uploads, the guarded replace path and the claim reason. Synthetic PDFs only.
 // Needs DecompressionStream (Node 18+, same API as Workers). Hooked in at the end of test_muse_fulltext.cjs so CI runs it.
-const assert = require('assert'), crypto = require('crypto'), fs = require('fs'), path = require('path'), vm = require('vm');
+const assert = require('assert'), crypto = require('crypto'), fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib');
 const {setup, token} = require('./test_fulltext_auth_helpers.cjs');
 const {hash, error} = require('./test_doi_library_worker.cjs');
 const {withMd5} = require('./webcrypto_md5_shim.cjs');
@@ -18,7 +18,7 @@ async function create() {
   Object.assign(h.env, {MUSE_FULLTEXT_ENABLED:'true', MUSE_FULLTEXT_KEY:museKey, MACHINE_TOKENS:tokens});
   return h;
 }
-const identity = (h, bytes, doi, title) => run(h, 'machineIdentity')(new Uint8Array(bytes), doi, title);
+const identity = (h, bytes, doi, title, options) => run(h, 'machineIdentity')(new Uint8Array(bytes), doi, title, options);
 function latin(bytes) { return bytes.toString('latin1'); }
 function mutate(bytes, from, to) { const text = latin(bytes); assert(text.includes(from), from); return Buffer.from(text.replace(from, to), 'latin1'); }
 function seedPaper(h, doi, title, status = 'manual_needed', pdf = null) {
@@ -84,16 +84,16 @@ async function verifyNext(h, doi, result, reason) {
     const both = await identity(h, files[name], '10.9999/synthetic.other', 'Synthetic unrelated study of imaginary tides and moons');
     assert.equal(both.verdict, 'mismatch'); assert.equal(both.reason, 'identity_mismatch');
   }
-  // Lancet-family RSS section labels ("[Articles] ", "[Comment] ") are not printed on page 1: a stored title that kept the label
-  // never matches (title_not_found), the title registration now stores (label dropped) does. Synthetic text only.
+  // Lancet-family RSS section labels ("[Articles] ", "[Comment] ") are not printed on page 1: first-page identity drops
+  // the bracketed prefix as a fallback (titlePrefix='section_label_dropped'), and registration still strips it. Synthetic text only.
   for (const [label, printed] of [['[Articles] ', 'ClinicalAge, a framework for synthetic biological age estimation'], ['[Comment] ', 'A novel ageing biomarker in synthetic cohorts']]) {
     const labelDoi = '10.9999/synthetic.label', pdf = fixtures.flateEol({doi:labelDoi, title:printed});
     const kept = await identity(h, pdf, labelDoi, label + printed);
-    assert.equal(kept.verdict, 'mismatch'); assert.equal(kept.checks.title, '');
+    assert.equal(kept.verdict, 'ok'); assert.equal(kept.level, 'full'); assert.equal(kept.checks.title, 'page'); assert.equal(kept.checks.titlePrefix, 'section_label_dropped');
     const registered = run(h, 'machineRegisterItem')({doi:labelDoi, title:label + printed, source:'rss-2026-11-17-am', section:'MAIN'});
     assert.equal(registered.title, printed);
     const fixed = await identity(h, pdf, labelDoi, registered.title);
-    assert.equal(fixed.verdict, 'ok'); assert.equal(fixed.level, 'full');
+    assert.equal(fixed.verdict, 'ok'); assert.equal(fixed.level, 'full'); assert(!('titlePrefix' in fixed.checks));
   }
   // Japanese subtitles: page 1 and Crossref print "Title\u3000\u2015 Subtitle \u2015", the RSS feed (and so the library title) "Title: Subtitle".
   // Titles modelled on Circulation Reports cr-26-0249 / cr-26-0254; the PDFs are synthetic (no publisher file).
@@ -165,9 +165,14 @@ async function verifyNext(h, doi, result, reason) {
   assert.equal(wideWrong.verdict, 'mismatch'); assert.equal(wideWrong.reason, 'title_not_found'); // still no free pass for another title
   assert.equal((await identity(h, wideBytes, '10.9999/synthetic.other', wide.title)).reason, 'doi_not_found');
   assert.equal((await identity(h, wideBytes, '10.9999/synthetic.other', 'Synthetic unrelated study of imaginary tides and moons')).reason, 'identity_mismatch');
-  // A Type0 font keeps the width its codespace declares (the custom-encoding sample above is 2-byte Identity-H).
+  // A Type0 font keeps the width its codespace declares (the custom-encoding sample above is 2-byte Identity-H):
+  // the font decoder does not decode 1-byte entries, so identity only passes via the octal ligature fallback (no titleGlyph on Type1 above).
   const wideType0 = mutate(wideBytes, '/Subtype /Type1 /BaseFont /ABCDEF+SyntheticHeadline', '/Subtype /Type0 /BaseFont /ABCDEF+SyntheticHeadline');
-  assert.equal((await identity(h, wideType0, wide.doi, wide.title)).reason, 'title_not_found');
+  const wideType0Verdict = await identity(h, wideType0, wide.doi, wide.title);
+  assert.equal(wideType0Verdict.verdict, 'ok'); assert.equal(wideType0Verdict.checks.titleGlyph, 'ligature_lost');
+  assert(!('titleGlyph' in wideVerdict.checks));
+  const wideType0Content = await pageContent(wideType0);
+  assert(!run(h, 'machineNormalize')(run(h, 'machineDecodeFontText')(wideType0Content.joined, wideType0Content.fonts)).includes(run(h, 'machineNormalize')(wide.title)));
   // One TJ array cut between two /Contents streams ("]" ends the first, "TJ" starts the second): the headline's second line was dropped.
   const {split} = fixtures.samples, splitTitle = split.title.replace(' | ', ' '), splitBytes = fixtures.splitOperatorAcrossStreams(split);
   const splitVerdict = await identity(h, splitBytes, split.doi, splitTitle);
@@ -454,5 +459,141 @@ async function verifyNext(h, doi, result, reason) {
   await error(await upload(h, fixtures.flateEol({doi:pendingDoi, title:flate.title}), pendingDoi, dsh, {'x-machine-replace':'1'}), 409, 'machine_replace_unneeded');
   const protocol = await (await h.context.worker.fetch(new Request(base + '/api/machine/protocol'), h.env)).json();
   assert.equal(protocol.replace.header, 'X-Machine-Replace'); assert(protocol.identityReasons.includes('inflate_failed'));
+
+  // Relaxed first-page identity checks (synthetic PDFs built in memory; >=52 KiB so upload() accepts them).
+  function synthPdf({doiLine = '', titleLine, rawTitle = false}) {
+    const esc = text => String(text).replace(/[\\()]/g, ch => '\\' + ch);
+    const line1 = doiLine ? '(' + esc(doiLine) + ') Tj 0 -24 Td ' : '';
+    const line2 = '(' + (rawTitle ? titleLine : esc(titleLine)) + ') Tj';
+    const content = zlib.deflateSync(Buffer.from('BT 1 0 0 1 72 720 Tm /F1 12 Tf ' + line1 + line2 + ' ET\n', 'latin1'));
+    const chunks = [Buffer.from('%PDF-1.7\n%\xe2\xe3\xcf\xd3\n', 'latin1')];
+    const objs = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n',
+      null,
+      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n'
+    ];
+    for (let i = 0; i < objs.length; i++) {
+      if (objs[i]) chunks.push(Buffer.from(objs[i], 'latin1'));
+      else chunks.push(Buffer.from('4 0 obj\n<< /Filter /FlateDecode /Length ' + content.length + ' >>\nstream\n', 'latin1'), content, Buffer.from('\nendstream\nendobj\n', 'latin1'));
+    }
+    const size = chunks.reduce((n, b) => n + b.length, 0);
+    if (size < 52000) chunks.push(Buffer.from('% ' + 'filler '.repeat(Math.ceil((52000 - size) / 7)).slice(0, 52000 - size - 3) + '\n', 'latin1'));
+    chunks.push(Buffer.from('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n0\n%%EOF\n', 'latin1'));
+    return Buffer.concat(chunks);
+  }
+
+  // 1) Punctuation normalization: Unicode hyphens/dashes (U+2010/U+2011/U+2212/U+FE58) and curly apostrophe vs ASCII.
+  {
+    const jahaDoi = '10.9999/synthetic.jaha', asciiTitle = 'Edge-to-Edge Synthetic Repair in Cohort Patients';
+    for (const dash of ['\u2010', '\u2011', '\u2212', '\ufe58']) {
+      const uniTitle = 'Edge' + dash + 'to' + dash + 'Edge Synthetic Repair in Cohort Patients';
+      const uniPdf = fixtures.customEncoding({doi:jahaDoi, title:uniTitle});
+      const asciiPdf = fixtures.customEncoding({doi:jahaDoi, title:asciiTitle});
+      const a = await identity(h, uniPdf, jahaDoi, asciiTitle);
+      assert.equal(a.verdict, 'ok'); assert.equal(a.level, 'full');
+      const b = await identity(h, asciiPdf, jahaDoi, uniTitle);
+      assert.equal(b.verdict, 'ok'); assert.equal(b.level, 'full');
+    }
+    const quoteDoi = '10.9999/synthetic.quote', curly = 'Synthetic Biomarkers in Alzheimer\u2019s Disease Progression', straight = "Synthetic Biomarkers in Alzheimer's Disease Progression";
+    assert.equal((await identity(h, fixtures.customEncoding({doi:quoteDoi, title:curly}), quoteDoi, straight)).level, 'full');
+    assert.equal((await identity(h, fixtures.customEncoding({doi:quoteDoi, title:straight}), quoteDoi, curly)).level, 'full');
+    const diffLetters = await identity(h, fixtures.customEncoding({doi:jahaDoi, title:'Edge\u2010to\u2010Edge Synthetic Repair in Cohort Patients'}), jahaDoi, 'Edge-to-Side Synthetic Repair in Cohort Patients');
+    assert.equal(diffLetters.verdict, 'mismatch'); assert.equal(diffLetters.reason, 'title_not_found');
+  }
+
+  // 2) Ligature loss fallback: dropped ("Articial"), PDF octal escape ("Bene\014t" -> "014") and "\u00fe" ("þ").
+  {
+    const ligDoi = '10.9999/synthetic.ligloss';
+    const artTitle = 'Artificial Intelligence Diagnostics in Synthetic Cardiology';
+    const artPdf = fixtures.flateEol({doi:ligDoi, title:'Articial Intelligence Diagnostics in Synthetic Cardiology'});
+    const artRes = await identity(h, artPdf, ligDoi, artTitle);
+    assert.equal(artRes.verdict, 'ok'); assert.equal(artRes.level, 'full'); assert.equal(artRes.checks.titleGlyph, 'ligature_lost');
+    assert.equal((await identity(h, artPdf, ligDoi, artTitle.replace('Cardiology', 'Neurology'))).verdict, 'mismatch');
+
+    const benTitle = 'Benefit of Synthetic Statin Therapy in Older Adults';
+    const benOctalPdf = synthPdf({doiLine:'doi:' + ligDoi, titleLine:'Bene\\014t of Synthetic Statin Therapy in Older Adults', rawTitle:true});
+    const firstPage = await run(h, 'machineFirstPage')(new Uint8Array(benOctalPdf));
+    assert(firstPage.text.includes('Bene014t'), 'machinePdfStrings must read PDF octal escape \\014 as 014');
+    const octRes = await identity(h, benOctalPdf, ligDoi, benTitle);
+    assert.equal(octRes.verdict, 'ok'); assert.equal(octRes.level, 'full'); assert.equal(octRes.checks.titleGlyph, 'ligature_lost');
+
+    const benThornPdf = fixtures.flateEol({doi:ligDoi, title:'Bene\u00fet of Synthetic Statin Therapy in Older Adults'});
+    const thornRes = await identity(h, benThornPdf, ligDoi, benTitle);
+    assert.equal(thornRes.verdict, 'ok'); assert.equal(thornRes.level, 'full'); assert.equal(thornRes.checks.titleGlyph, 'ligature_lost');
+
+    const shortPdf = fixtures.flateEol({doi:ligDoi, title:'Articial t in Synthetic Journal'});
+    const shortRes = await identity(h, shortPdf, ligDoi, 'Artificial Fit');
+    assert.equal(shortRes.verdict, 'mismatch'); assert.equal(shortRes.reason, 'title_not_found');
+  }
+
+  // 3) RSS section label prefix: "[Articles] X" matches page printing X; "[Comment] Y" still mismatches.
+  {
+    const secDoi = '10.9999/synthetic.sec';
+    const secX = 'Detecting Synthetic Arrhythmia Across Ambulatory Cohorts';
+    const secPdf = fixtures.flateEol({doi:secDoi, title:secX});
+    const secOk = await identity(h, secPdf, secDoi, '[Articles] ' + secX);
+    assert.equal(secOk.verdict, 'ok'); assert.equal(secOk.level, 'full'); assert.equal(secOk.checks.titlePrefix, 'section_label_dropped');
+    const secBad = await identity(h, secPdf, secDoi, '[Comment] Unrelated Synthetic Biomarker Study');
+    assert.equal(secBad.verdict, 'mismatch'); assert.equal(secBad.reason, 'title_not_found');
+  }
+
+  // 3b) Crossref inline markup in the stored title ("<i>CYP2C19</i>", "P2Y<sub>12</sub>", shapes of NEJMoa2111749 / bmj-2024-082561):
+  // the page prints only the text inside the tags. Stripping the tags adds no other tolerance.
+  {
+    const markupDoi = '10.9999/synthetic.markup';
+    for (const [stored, printed] of [
+      ['Ticagrelor versus Clopidogrel in\n  <i>CYP2C19</i>\n  Loss-of-Function Carriers with Synthetic Stroke', 'Ticagrelor versus Clopidogrel in CYP2C19 Loss-of-Function Carriers with Synthetic Stroke'],
+      ['P2Y<sub>12</sub> inhibitor or aspirin after synthetic coronary intervention', 'P2Y12 inhibitor or aspirin after synthetic coronary intervention']]) {
+      const markupPdf = fixtures.flateEol({doi:markupDoi, title:printed});
+      const passed = await identity(h, markupPdf, markupDoi, stored);
+      assert.equal(passed.verdict, 'ok', stored); assert.equal(passed.level, 'full'); assert.equal(passed.checks.title, 'page');
+      const otherWords = await identity(h, markupPdf, markupDoi, stored.replace('aspirin', 'warfarin').replace('Ticagrelor', 'Prasugrel'));
+      assert.equal(otherWords.verdict, 'mismatch'); assert.equal(otherWords.reason, 'title_not_found');
+    }
+  }
+
+  // 4) Title-only when page 1 and metadata carry no DOI (machine uploads only; OA path stays strict).
+  const noDoi = '10.9999/synthetic.nodoi', noDoiTitle = 'Synthetic Multicenter Trial Without Printed Identifier';
+  const noDoiPdf = synthPdf({doiLine:'Synthetic Journal of Imaginary Medicine', titleLine:noDoiTitle});
+  {
+    const okTitleOnly = await identity(h, noDoiPdf, noDoi, noDoiTitle, {allowTitleOnly:true});
+    assert.equal(okTitleOnly.verdict, 'ok'); assert.equal(okTitleOnly.level, 'title_only'); assert.equal(okTitleOnly.checks.doi, ''); assert.equal(okTitleOnly.checks.doiAbsent, true);
+    const oaStrict = await identity(h, noDoiPdf, noDoi, noDoiTitle);
+    assert.equal(oaStrict.verdict, 'mismatch'); assert.equal(oaStrict.reason, 'doi_not_found');
+  }
+
+  // 5) NEJM counter-example: page 1 carries another article's DOI ("10.1056/NEJMp2611160") + title "What the Robot Still Can’t Do".
+  const nejmPdf = fixtures.customEncoding({doi:'10.1056/NEJMp2611160', title:'What the Robot Still Can\u2019t Do'});
+  {
+    const nejmMismatch = await identity(h, nejmPdf, '10.1056/NEJMp2606894', 'What the Robot Still Can\u2019t Do', {allowTitleOnly:true});
+    assert.equal(nejmMismatch.verdict, 'mismatch'); assert.equal(nejmMismatch.reason, 'doi_not_found');
+  }
+
+  // 6) Wrong papers and short titles are still refused.
+  {
+    const wrongOtherDoi = await identity(h, nejmPdf, '10.1056/NEJMp2606894', 'Synthetic Unrelated Study of Imaginary Cohorts', {allowTitleOnly:true});
+    assert.equal(wrongOtherDoi.verdict, 'mismatch'); assert.equal(wrongOtherDoi.reason, 'identity_mismatch');
+    const wrongNoDoi = await identity(h, noDoiPdf, noDoi, 'Synthetic Unrelated Study of Imaginary Cohorts', {allowTitleOnly:true});
+    assert.equal(wrongNoDoi.verdict, 'mismatch'); assert.equal(wrongNoDoi.reason, 'identity_mismatch');
+    const shortTitle = 'Synthetic Short', shortNoDoiPdf = synthPdf({doiLine:'Synthetic Journal of Imaginary Medicine', titleLine:shortTitle});
+    const shortNoDoi = await identity(h, shortNoDoiPdf, '10.9999/synthetic.shortnodoi', shortTitle, {allowTitleOnly:true});
+    assert.equal(shortNoDoi.verdict, 'mismatch'); assert.equal(shortNoDoi.reason, 'doi_not_found');
+  }
+
+  // 7) Upload endpoint: 202 with identity 'title_only' when page 1 has no DOI; 409 machine_identity_mismatch when page 1 prints another DOI.
+  {
+    seedPaper(h, noDoi, noDoiTitle);
+    const upOk = await upload(h, noDoiPdf, noDoi);
+    assert.equal(upOk.status, 202);
+    const upBody = await upOk.json();
+    assert.equal(upBody.task.identity, 'title_only');
+    assert.equal(stored(h, 'library:muse-job:' + noDoi).identityLevel, 'title_only');
+
+    seedPaper(h, '10.1056/nejmp2606894', 'What the Robot Still Can\u2019t Do');
+    await error(await upload(h, nejmPdf, '10.1056/NEJMp2606894'), 409, 'machine_identity_mismatch');
+  }
+
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
