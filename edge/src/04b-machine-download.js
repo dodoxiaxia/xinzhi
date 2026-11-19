@@ -8,7 +8,7 @@ const MACHINE_LEASE_EXTEND_MS = MUSE_LEASE_MS;
 const MACHINE_LEASE_MAX_MS = 7200000;
 const MACHINE_RETURN_LIMIT = 3;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
-const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
+const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','uploaded-awaiting-manual-review','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 // Reasons the site itself writes when it stops a task (a client never reports them).
 const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed'];
@@ -16,7 +16,7 @@ const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
   downloader:['upload','replace','status','claim','renew','return','list','requeue','register','abandoned','protocol'],
-  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol'],
+  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol','metadata-backfill'],
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
@@ -205,6 +205,7 @@ function machinePublicState(job) {
   if (job.state === 'abandoned') return 'confirmed-abandoned';
   if (job.state === 'available') return 'done';
   if (job.state === 'verifying') return 'uploaded-awaiting-verification';
+  if (job.state === 'review' && job.verificationReason === 'identity_hold') return 'uploaded-awaiting-manual-review';
   // A queued task that waited six days is still a hard failure. A lease expiry is a soft retry until the second time.
   if (job.state === 'queued' && museExpired(job)) return 'failed-awaiting-fallback';
   if (['running','uploading'].includes(job.state) && museExpired(job)) {
@@ -455,6 +456,7 @@ function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
   if (job && job.state === 'abandoned') return {type:'closed'};
   if (job && job.state === 'verifying') return job.sha256 === sha256 ? {type:'replay',job} : {type:'conflict'};
+  if (job && job.state === 'review' && job.verificationReason === 'identity_hold' && job.sha256 === sha256) return {type:'replay',job};
   if (job && ['running','uploading'].includes(job.state) && !museExpired(job) && job.claimant && job.claimant !== caller.id) return {type:'busy'};
   return {type:'accept'};
 }
@@ -496,6 +498,7 @@ function handleMachineProtocol(request, env) {
     humanGate:'exempt',
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
+    stateMapNote:'review 且 verificationReason 为 identity_hold 时对外状态为 uploaded-awaiting-manual-review（review+identity_hold → uploaded-awaiting-manual-review），表示首页印有他人 DOI 但题名相符，等待人工核对，核对前不公开、不可领取或重排。',
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS,minPdfBytes:LIBRARY_MIN_PDF_BYTES,maxPdfBytes:LIBRARY_MAX_PDF_BYTES,oversizeError:'file_too_large'},
@@ -543,7 +546,8 @@ async function handleMachineUpload(request, env) {
       paper = fresh;
     }
     if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
-    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true});
+    // X-Machine-Replace already has a verified PDF; keep mismatched DOI at 409 so it never overwrites the done job with an identity hold.
+    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:!replacing});
     if (identity.verdict !== 'ok') throw new MachineIdentityFailure(identity.verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', identity.reason, identity.checks);
     const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (attempt && attempt.paused) libraryFail('library_paused', 423);
@@ -561,7 +565,7 @@ async function handleMachineUpload(request, env) {
     if (fresh) await librarySave(env.QL_KV, fresh, null, 'library_manual_needed');
     await machineConsume(env, caller, 'upload', 1);
     const replace = replacing ? {by:caller.id,at:Date.now(),oldSha256:decision.oldSha,newSha256:sha256,previous:existing && existing.state === 'available' ? existing : null} : null;
-    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(replace ? {replace} : {})});
+    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(identity.hold ? {hold:true} : {}),...(replace ? {replace} : {})});
     return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256,identity:identity.level,...(replace ? {replace:machineReplacePublic(replace)} : {})}}, 202);
   } catch (error) {
     if (caller && error instanceof LibraryFailure && error.status === 409) {
@@ -1059,13 +1063,12 @@ function machineRegisterItem(raw) {
   if (typeof raw.section !== 'string' || !MACHINE_REGISTER_SECTIONS.includes(raw.section)) return {doi,error:'bad_section'};
   return {doi,title,source:raw.source,section:raw.section};
 }
-// The record a registration writes first (see machineRegisterOne): no journal, no authors, no publication date, no PDF, full text
-// still needed. metadataStatus cannot tell records apart (older registrations stored the checked value too, and a registration
-// with a successful Crossref lookup still does). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
+// New registrations mark the first write so retries can recover it even with complete bibliography.
+// Older registrations had no journal, authors or publication date. Keep recognizing those records too.
 // The caller must still confirm that no job and no register record exist; the register record is written last, after the job.
 function machineOrphanPaper(record, paper) {
-  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
-    && Array.isArray(paper.authors) && !paper.authors.length && !paper.date;
+  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed'
+    && (record.machineRegistration === true || (!paper.journal && !paper.authors.length && !paper.date));
 }
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
@@ -1083,9 +1086,8 @@ async function machineRegisterExisting(env, doi) {
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
-// The upload identity check looks for the stored title on page 1 of the PDF, so registration stores the Crossref title (the
-// printed one) when Crossref answers, and the submitted RSS title only as a fallback. Only the title is taken from Crossref:
-// journal, authors and date stay empty, which keeps the machineOrphanPaper shape. One lookup per new DOI, each bounded by
+// Use Crossref's title for the first-page identity check and keep the bibliography from the same lookup.
+// The submitted RSS title is the fallback. One lookup per new DOI, each bounded by
 // MACHINE_REGISTER_CROSSREF_MS; after MACHINE_REGISTER_CROSSREF_BUDGET_MS of a batch, or once Crossref limits requests, the
 // rest of the batch uses the fallback so a 50-item batch still answers well inside a client's 60 second timeout.
 const MACHINE_REGISTER_SECTION_LABEL = /^\[[A-Za-z][A-Za-z ./-]{0,39}\](?:\s+|$)/;
@@ -1096,33 +1098,33 @@ function machineRegisterLookup() {
   let stopped = false;
   return {open:() => !stopped && Date.now() - started < MACHINE_REGISTER_CROSSREF_BUDGET_MS, stop:() => { stopped = true; }};
 }
-async function machineRegisterTitle(item, lookup) {
-  // Returns {title,titleSource,metadataStatus} and, when Crossref and the submitted title differ after machineNormalize,
-  // titleMismatch:true with the submitted title kept as registeredTitle. Never throws: a failed lookup means the fallback.
-  let official = '';
+async function machineRegisterMetadata(item, lookup) {
+  let metadata;
   if (lookup && lookup.open()) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), MACHINE_REGISTER_CROSSREF_MS);
-    try { official = (await libraryMetadata(item.doi, {signal:controller.signal})).title; }
+    try { metadata = await libraryMetadata(item.doi, {signal:controller.signal}); }
     catch (error) { if (error && error.code === 'library_paused') lookup.stop(); }
     finally { clearTimeout(timer); }
   }
-  if (!official || machineNormalize(official).length < 5) return {title:item.title,titleSource:'registration',metadataStatus:'registration_title_only'};
-  const result = {title:official,titleSource:'crossref',metadataStatus:'external_bibliography_checked'};
-  return machineNormalize(official) === machineNormalize(item.title) ? result : {...result,titleMismatch:true,registeredTitle:item.title};
+  if (!metadata || machineNormalize(metadata.title).length < 5) {
+    return {title:item.title,titleSource:'registration',metadataStatus:'registration_title_only',journal:'',authors:[],date:'',datePrecision:'',dateBasis:''};
+  }
+  const titleNote = machineNormalize(metadata.title) === machineNormalize(item.title) ? {} : {titleMismatch:true,registeredTitle:item.title};
+  return {...metadata,titleSource:'crossref',...titleNote};
 }
 async function machineRegisterOne(env, caller, item, changes, lookup) {
   const now = Date.now(), id = crypto.randomUUID();
   const registration = {source:item.source,section:item.section};
   const job = {version:1,id,doi:item.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,registration};
-  const named = await machineRegisterTitle(item, lookup);
+  const named = await machineRegisterMetadata(item, lookup);
   const titleNote = {titleSource:named.titleSource,...(named.titleMismatch ? {titleMismatch:true,registeredTitle:named.registeredTitle} : {})};
-  const paper = {id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),doi:item.doi,title:named.title,journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',
-    ingestedAt:new Date(now).toISOString(),metadataStatus:named.metadataStatus,...titleNote,fulltextStatus:'manual_needed'};
+  const paper = {...named,id:named.id || 'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),
+    doi:item.doi,ingestedAt:new Date(now).toISOString(),fulltextStatus:'manual_needed'};
   // Same order as a site-owner selection: paper record, job, queue pointer. A half-written DOI would later look
   // like "already exists" and never enter the queue, so a failure removes what this call wrote.
   const local = [];
   try {
-    await librarySave(env.QL_KV, paper, null, 'library_manual_needed');
+    await librarySave(env.QL_KV, paper, null, 'library_manual_needed', 0, {machineRegistration:true});
     await musePut(env, job, {indexChanges:local});
     await libraryPut(env.QL_KV, job.queueKey, JSON.stringify({doi:item.doi,id}), {expirationTtl:604800});
     await libraryPut(env.QL_KV, MACHINE_REGISTER_PREFIX + item.doi, JSON.stringify({version:1,doi:item.doi,title:item.title,paperTitle:named.title,...titleNote,source:item.source,section:item.section,registeredBy:caller.id,registeredAt:now,taskId:id}));

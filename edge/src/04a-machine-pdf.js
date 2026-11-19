@@ -9,6 +9,10 @@
 // needs a password to open is encrypted_pdf; any other handler, method or a key that does not verify is
 // encryption_unsupported. RC4 is plain JS (no Web Crypto RC4); MD5, SHA-2 and AES use crypto.subtle.
 const MACHINE_INFLATE_MAX = 16 * 1024 * 1024;
+const MACHINE_MAX_PAGES = 200;
+const MACHINE_SCAN_INFLATE_BUDGET = 64 * 1024 * 1024;
+// Reference or listing pages cite >= 2 other DOIs alongside the claimed DOI; genuine headers/footers carry at most 1.
+const MACHINE_LATER_PAGE_MAX_OTHER_DOIS = 1;
 const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
@@ -28,6 +32,16 @@ const MACHINE_IDENTITY_SECTION_LABEL = /^\s*\[[A-Za-z][A-Za-z ./-]{0,39}\]\s*/;
 const MACHINE_TITLE_MARKUP = /<\/?(?:i|b|em|strong|sub|sup|sc|scp|u|italic|bold)\b[^<>]{0,80}>/gi;
 const MACHINE_TITLE_MARKS = /[\u2122\u00ae]/g;
 const MACHINE_TITLE_VERSUS = /(?<![\p{L}\p{N}])(?:versus|vs\.?|v\.)(?![\p{L}\p{N}])/giu;
+const MACHINE_TITLE_C1_CONTROLS = /[\u0080-\u009f]/g;
+const MACHINE_VARIANT_INSERT_MIN_LEN = 40;
+const MACHINE_VARIANT_MAX_INSERTS = 2;
+// Line-number evidence for accepted manuscripts: >= 5 consecutive positive integers (1..999) as standalone whitespace
+// tokens in page.text (ignoring PDF marked-content /MCID ids). Verified on OUP accepted manuscripts pvag097 (lines 1..18)
+// and pvag099 (lines 1..22), where "en-US" sits between margin numbers (token gap 2) while body text can separate
+// consecutive line numbers by one line of words; capping the inter-token gap at 40 accepts real line-numbered margins
+// while rejecting coincidental numbers scattered across a page.
+const MACHINE_LINE_NUMBER_MIN_RUN = 5;
+const MACHINE_LINE_NUMBER_MAX_GAP = 40;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -42,6 +56,100 @@ function machineNormalize(value) {
 // "vs" and the two trademark signs are dropped; nothing else changes.
 function machineTitleVariant(value) {
   return machineNormalize(String(value || '').replace(MACHINE_TITLE_MARKS, '').replace(MACHINE_TITLE_VERSUS, ' vs '));
+}
+function machineTitleVariantNoC1(value) {
+  return machineTitleVariant(value).replace(MACHINE_TITLE_C1_CONTROLS, '');
+}
+function machineLineNumberRuns(text) {
+  const tokens = String(text || '').split(/\s+/);
+  const ints = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (!/^[1-9]\d{0,2}$/.test(tokens[i])) continue;
+    const prev = i > 0 ? tokens[i - 1] : '';
+    if (/\/MCID$/.test(prev)) continue;
+    ints.push({index:i, value:Number(tokens[i])});
+  }
+  const runs = [];
+  for (let start = 0; start < ints.length; start++) {
+    let end = start;
+    while (
+      end + 1 < ints.length &&
+      ints[end + 1].value === ints[end].value + 1 &&
+      ints[end + 1].index - ints[end].index <= MACHINE_LINE_NUMBER_MAX_GAP
+    ) {
+      end++;
+    }
+    if (end - start + 1 >= MACHINE_LINE_NUMBER_MIN_RUN) {
+      runs.push([ints[start].value, ints[end].value]);
+      start = end;
+    }
+  }
+  return runs;
+}
+function machineMatchWordsWithInsertions(pageText, words, markerLengths, isMarker, validateMarkers) {
+  if (words.length < 2) return false;
+  const suffixes = new Array(words.length + 1);
+  suffixes[words.length] = '';
+  for (let k = words.length - 1; k >= 0; k--) suffixes[k] = words[k] + suffixes[k + 1];
+  if (suffixes[0].length < MACHINE_VARIANT_INSERT_MIN_LEN) return false;
+  const maxMarkerLen = markerLengths[markerLengths.length - 1];
+  const anchors = [];
+  if (words.length === 2) {
+    const pick = words[0].length >= words[1].length ? 0 : 1;
+    anchors.push({text:words[pick], prefixLen:pick ? words[0].length : 0, maxShift:pick ? maxMarkerLen : 0});
+  } else {
+    const total = suffixes[0].length;
+    let a = 1, lenA = words[0].length;
+    while (a + 2 < words.length && lenA < total / 3) { lenA += words[a].length; a++; }
+    let b = a + 1, lenB = words[a].length;
+    while (b + 1 < words.length && lenA + lenB < (total * 2) / 3) { lenB += words[b].length; b++; }
+    // Partitioning words into 3 contiguous slices guarantees at least one slice contains no gap insertions (at most 2 total).
+    anchors.push(
+      {text:words.slice(0, a).join(''), prefixLen:0, maxShift:0},
+      {text:words.slice(a, b).join(''), prefixLen:lenA, maxShift:Math.min(a, MACHINE_VARIANT_MAX_INSERTS) * maxMarkerLen},
+      {text:words.slice(b).join(''), prefixLen:lenA + lenB, maxShift:Math.min(b, MACHINE_VARIANT_MAX_INSERTS) * maxMarkerLen}
+    );
+    anchors.sort((x, y) => y.text.length - x.text.length);
+  }
+  const seenStarts = new Set();
+  const matchAtStart = start => {
+    if (start < 0 || seenStarts.has(start)) return false;
+    seenStarts.add(start);
+    let pos0 = start;
+    for (let i = 0; i < words.length - 1; i++) {
+      if (!pageText.startsWith(words[i], pos0)) return false;
+      pos0 += words[i].length;
+      for (const len1 of markerLengths) {
+        const m1 = pageText.slice(pos0, pos0 + len1);
+        if (m1.length !== len1 || !isMarker(m1)) continue;
+        const pos1 = pos0 + len1;
+        if (pageText.startsWith(suffixes[i + 1], pos1) && validateMarkers([m1])) return true;
+        let pos2 = pos1;
+        for (let j = i + 1; j < words.length - 1; j++) {
+          if (!pageText.startsWith(words[j], pos2)) break;
+          pos2 += words[j].length;
+          for (const len2 of markerLengths) {
+            const m2 = pageText.slice(pos2, pos2 + len2);
+            if (m2.length !== len2 || !isMarker(m2)) continue;
+            if (validateMarkers([m1, m2]) && pageText.startsWith(suffixes[j + 1], pos2 + len2)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+  for (const anchor of anchors) {
+    let from = 0;
+    while (from <= pageText.length - anchor.text.length) {
+      const at = pageText.indexOf(anchor.text, from);
+      if (at < 0) break;
+      for (let shift = 0; shift <= anchor.maxShift; shift++) {
+        if (matchAtStart(at - anchor.prefixLen - shift)) return true;
+      }
+      from = at + 1;
+    }
+  }
+  return false;
 }
 function machineLatin1(bytes) {
   let out = '';
@@ -722,11 +830,19 @@ async function machineContentText(ctx, id) {
 async function machineFirstPage(bytes) {
   const ctx = machinePdfContext(bytes), notes = ctx.notes;
   const page = await machineFirstPageObject(ctx);
+  const {strings, decoded, raw} = page ? await machinePageText(ctx, page.body) : {strings:'', decoded:'', raw:''};
+  const metadata = await machineMetadata(ctx);
+  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
+  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
+  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+}
+async function machinePageText(ctx, pageBody) {
+  const notes = ctx.notes;
   let strings = '', raw = '', decoded = '';
-  if (page) {
-    const ids = await machineContentIds(ctx, page.body);
+  if (pageBody) {
+    const ids = await machineContentIds(ctx, pageBody);
     if (!ids.length) notes.add('contents_not_found');
-    const fonts = await machinePageFonts(ctx, page.body);
+    const fonts = await machinePageFonts(ctx, pageBody);
     // A page's /Contents array is one logical stream (ISO 32000-1 7.8.2): an operator may start in one stream and end in the
     // next (a TJ array closed by "]" at the end of one and "TJ" at the start of the next), and the font selected in an
     // earlier stream stays current. Decode the streams joined, never one by one, or a title split that way is dropped.
@@ -740,10 +856,83 @@ async function machineFirstPage(bytes) {
     }
     decoded += machineDecodeFontText(joined, fonts) + '\n';
   }
-  const metadata = await machineMetadata(ctx);
-  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
-  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes};
+  return {strings, decoded, raw};
+}
+async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
+  if (!limit || limit < 1) return [];
+  const roots = [...ctx.text.matchAll(/\/Root\s+(\d+)\s+\d+\s+R/g)];
+  const rootId = roots.length ? roots[roots.length - 1][1] : '';
+  let pagesId = '';
+  if (rootId) {
+    const catalog = await machineBody(ctx, rootId);
+    pagesId = catalog && machineRefValue(catalog, 'Pages');
+  } else {
+    // Trailerless PDFs (e.g. without /Root): locate the top-level /Catalog or /Pages object.
+    let firstPagesId = '';
+    for (const [id] of ctx.index) {
+      const body = machineTopBody(ctx, id), streamAt = body.indexOf('stream');
+      const dict = streamAt >= 0 ? body.slice(0, streamAt) : body;
+      if (/\/Type\s*\/Catalog\b/.test(dict)) { pagesId = machineRefValue(dict, 'Pages'); if (pagesId) break; }
+      if (!firstPagesId && /\/Type\s*\/Pages\b/.test(dict)) firstPagesId = String(id);
+    }
+    if (!pagesId) pagesId = firstPagesId;
+  }
+  if (!pagesId) return [];
+  const out = [], seen = new Set(), stack = [{id:pagesId, depth:0}];
+  while (stack.length && out.length < limit) {
+    const {id, depth} = stack.pop();
+    const key = Number(id);
+    if (!Number.isInteger(key) || seen.has(key)) continue;
+    seen.add(key);
+    const body = await machineBody(ctx, id);
+    if (!body) continue;
+    let kids = /\/Kids\s*\[([^\]]*)\]/.exec(body);
+    if (!kids && machineRefValue(body, 'Kids')) {
+      const listed = await machineBody(ctx, machineRefValue(body, 'Kids'));
+      kids = listed && /\[([^\]]*)\]/.exec(listed);
+    }
+    if (kids) {
+      if (depth >= 32) continue;
+      const refs = machineRefList(kids[1]);
+      for (let i = refs.length - 1; i >= 0; i--) stack.push({id:refs[i], depth:depth + 1});
+    } else if (/\/Contents(?![A-Za-z0-9_])/.test(body)) {
+      out.push(body);
+    }
+  }
+  return out;
+}
+// Later-page DOI scan: only runs when page 1 already matched the title and missed the claimed DOI.
+// Stops immediately on the first valid hit, and caps traversal at MACHINE_MAX_PAGES (200) pages and cumulative
+// decompressed stream bytes at MACHINE_SCAN_INFLATE_BUDGET (64 MiB). Pages that match the claimed DOI alongside
+// more than MACHINE_LATER_PAGE_MAX_OTHER_DOIS other DOIs are treated as reference/listing pages and skipped.
+function machineDoiTokens(text) {
+  const out = new Set();
+  for (const match of String(text || '').matchAll(/10\.\d{4,9}\/[^\s"<>()\[\],;]+/gi)) {
+    const token = match[0].toLowerCase().replace(/\.+$/, '');
+    if (token && !token.endsWith('/')) out.add(token);
+  }
+  return [...out];
+}
+async function machineFindDoiOnLaterPages(ctx, doi) {
+  const pages = await machinePageBodies(ctx, MACHINE_MAX_PAGES + 1);
+  const target = libraryDoi(doi) || String(doi || '').trim().toLowerCase();
+  let inflated = 0, citedPages = 0;
+  for (let index = 1; index < pages.length; index++) {
+    if (index >= MACHINE_MAX_PAGES) return {page:0, truncated:true, citedPages};
+    const {strings, decoded, raw} = await machinePageText(ctx, pages[index]);
+    inflated += raw.length;
+    if (inflated > MACHINE_SCAN_INFLATE_BUDGET) return {page:0, truncated:true, citedPages};
+    const pageText = strings + '\n' + decoded + raw;
+    if (!machineDoiPresent(pageText, doi)) continue;
+    // Exclude the claimed DOI and mutual prefixes caused by line-wrap splits (e.g. "10.1001/jama.2022.").
+    const otherDois = machineDoiTokens(pageText).filter(token => !target.startsWith(token) && !token.startsWith(target));
+    if (otherDois.length > MACHINE_LATER_PAGE_MAX_OTHER_DOIS) {
+      citedPages++;
+      continue;
+    }
+    return {page:index + 1, ...(citedPages ? {citedPages} : {})};
+  }
+  return {page:0, citedPages};
 }
 function machineDoiPresent(text, doi) {
   const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
@@ -800,8 +989,9 @@ function machineAnyDoi(text) {
 // 'doi_only' (DOI on page 1, title unreadable), 'metadata_only', 'title_only' (machine uploads only, when
 // options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
-// If normal title matching (including section-label stripping) misses, falls back once via machineTitleVariant
-// (whole-word versus/vs./v. -> vs and stripping ™/®), recording checks.titleVariant = 'versus_or_mark'.
+// If normal title matching (including section-label stripping) misses, falls back in order via machineTitleVariant
+// (whole-word versus/vs./v. -> vs and stripping ™/®): 'versus_or_mark', 'c1_control_dropped',
+// 'line_number_inserted', and 'proof_marker_inserted'.
 async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
@@ -826,20 +1016,51 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   }
   if (!titleMatch.found) {
     const variantPage = machineTitleVariant(page.text);
+    const c1Page = variantPage.replace(MACHINE_TITLE_C1_CONTROLS, '');
     const candidates = [[title, '']];
     if (hasSectionLabel) candidates.push([strippedTitle, 'section_label_dropped']);
-    for (const [candidate, prefix] of candidates) {
-      const variantExpected = machineTitleVariant(candidate);
-      if (variantExpected.length < 5) continue;
-      const retry = machineTitleOnPage(variantPage, variantExpected);
-      if (retry.found) {
-        titleMatch = retry;
-        titleVariant = 'versus_or_mark';
+    const wordsFor = candidate => String(candidate || '').trim().split(/\s+/).map(machineTitleVariantNoC1).filter(Boolean);
+    const tryVariant = (name, matchFn) => {
+      if (titleMatch.found) return;
+      for (const [candidate, prefix] of candidates) {
+        const hit = matchFn(candidate);
+        if (!hit) continue;
+        titleMatch = hit.match;
+        titleVariant = name;
         if (prefix) titlePrefix = prefix;
-        matchedExpected = variantExpected;
-        break;
+        matchedExpected = hit.expected;
+        return;
       }
+    };
+    tryVariant('versus_or_mark', candidate => {
+      const expectedVariant = machineTitleVariant(candidate);
+      if (expectedVariant.length < 5) return null;
+      const match = machineTitleOnPage(variantPage, expectedVariant);
+      return match.found ? {match, expected:expectedVariant} : null;
+    });
+    tryVariant('c1_control_dropped', candidate => {
+      const expectedC1 = machineTitleVariantNoC1(candidate);
+      if (expectedC1.length < 5 || (c1Page === variantPage && expectedC1 === machineTitleVariant(candidate))) return null;
+      const match = machineTitleOnPage(c1Page, expectedC1);
+      return match.found ? {match, expected:expectedC1} : null;
+    });
+    const lineRuns = !titleMatch.found ? machineLineNumberRuns(page.text) : [];
+    if (lineRuns.length) {
+      tryVariant('line_number_inserted', candidate => {
+        const words = wordsFor(candidate);
+        const ok = machineMatchWordsWithInsertions(c1Page, words, [1, 2], tok => /^[1-9]\d?$/.test(tok), inserted => {
+          const nums = inserted.map(Number);
+          if (nums.length === 2 && !(nums[0] < nums[1])) return false;
+          return lineRuns.some(([from, to]) => nums[0] >= from && nums[nums.length - 1] <= to);
+        });
+        return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+      });
     }
+    tryVariant('proof_marker_inserted', candidate => {
+      const words = wordsFor(candidate);
+      const ok = machineMatchWordsWithInsertions(c1Page, words, [2, 3], tok => /^q\d{1,2}$/.test(tok), () => true);
+      return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+    });
   }
   const titlePage = titleMatch.found;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
@@ -857,8 +1078,19 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   if (doiPage && titleMeta) return {verdict:'ok', level:'metadata_title', checks};
   if (doiMeta && titleMeta) return {verdict:'ok', level:'metadata_only', checks};
   if (doiPage && !readable) return {verdict:'ok', level:'doi_only', reason:'title_not_found', checks};
-  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
-    return {verdict:'ok', level:'title_only', checks:{...checks, doi:'', doiAbsent:true}};
+  let citedPages = 0;
+  if (options && options.scanAllPages && titlePage && !doiFound) {
+    // Only scan later pages when page 1 read the title and missed the claimed DOI (stops at first valid match, <= 200 pages / 64 MiB).
+    const later = await machineFindDoiOnLaterPages(page.ctx, doi);
+    citedPages = later.citedPages || 0;
+    if (later.page) return {verdict:'ok', level:'doi_later_page', checks:{...checks, doi:'later_page', doiPage:later.page, ...(citedPages ? {citedPages} : {})}};
   }
-  return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks};
+  const laterChecks = citedPages ? {...checks, citedPages} : checks;
+  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+    return {verdict:'ok', level:'title_only', checks:{...laterChecks, doi:'', doiAbsent:true}};
+  }
+  if (options && options.holdForeignDoi && titlePage && !doiFound && (machineAnyDoi(page.text) || machineAnyDoi(page.metadata.text))) {
+    return {verdict:'ok', level:'title_mismatched_doi', hold:true, checks:{...laterChecks, foreignDoi:true}};
+  }
+  return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks:laterChecks};
 }

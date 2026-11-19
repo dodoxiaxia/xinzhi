@@ -198,16 +198,26 @@ async function review(h, body) {
   const wrongTitle = paperPdf(doi, 'Unrelated nephrology cohort study');
   await error(await upload(h, wrongTitle, doi), 409, 'machine_identity_mismatch');
   assert(!h.values.has('library:muse-job:' + doi));
-  // Page 1 has the title but prints another paper's DOI (shape of NEJMp2606894, whose page 1 ends the previous article and carries
-  // its DOI): still 409 although the right DOI is on page 2. Before the title_only level this case had no DOI on page 1 at all.
-  const doiOnPageTwo = pdfPages(['doi:10.1000/previous-article ' + title, doi + ' ' + title]);
-  await error(await upload(h, doiOnPageTwo, doi), 409, 'machine_identity_mismatch');
+  // Policy change approved by Donald: page 1 printing another DOI + matching title with claimed DOI on page 2 is now accepted as doi_later_page;
+  // page 1 printing another DOI + wrong title with no claimed DOI on any page still returns 409 machine_identity_mismatch.
+  const foreignWrongTitle = pdfPages(['doi:10.1000/previous-article Unrelated nephrology cohort study', 'Second page without claimed identifier']);
+  await error(await upload(h, foreignWrongTitle, doi), 409, 'machine_identity_mismatch');
   assert(!h.values.has('library:muse-job:' + doi));
   {
-    // Page 1 with the title and no DOI anywhere on it (or in metadata) is accepted as title_only and still waits for verification.
+    const laterHarness = await create();
+    seedPaper(laterHarness, doi);
+    const doiOnPageTwo = pdfPages(['doi:10.1000/previous-article ' + title, doi + ' ' + title]);
+    const laterRes = await upload(laterHarness, doiOnPageTwo, doi);
+    assert.equal(laterRes.status, 202);
+    const laterBody = await laterRes.json();
+    assert.equal(laterBody.task.identity, 'doi_later_page');
+    assert.equal(laterBody.task.state, 'uploaded-awaiting-verification');
+  }
+  {
+    // Page 1 with the title and no DOI anywhere in the PDF (or metadata) is accepted as title_only and still waits for verification.
     const titleOnlyHarness = await create();
     seedPaper(titleOnlyHarness, doi);
-    const titleOnly = await upload(titleOnlyHarness, pdfPages([title, doi + ' ' + title]), doi);
+    const titleOnly = await upload(titleOnlyHarness, pdfPages([title, 'Second page without identifier']), doi);
     assert.equal(titleOnly.status, 202);
     const titleOnlyBody = await titleOnly.json();
     assert.equal(titleOnlyBody.task.identity, 'title_only'); assert.equal(titleOnlyBody.task.state, 'uploaded-awaiting-verification');
@@ -1707,6 +1717,7 @@ async function review(h, body) {
 
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
+  await require('./test_library_metadata_backfill.cjs').run();
   await require('./test_machine_index.cjs').run();
   await require('./test_machine_index_heal.cjs').run();
   await require('./test_machine_orphan.cjs').run();
