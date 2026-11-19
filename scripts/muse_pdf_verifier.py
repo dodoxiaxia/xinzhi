@@ -7,6 +7,9 @@ import unicodedata
 from pathlib import Path
 
 METHOD = 'dual_parser_all_pages_title_doi'
+# A task released through POST /api/machine/hold-review may skip exactly one check, the DOI in the full text. Everything else stays.
+RELEASE_METHOD = 'dual_parser_title_manual_release'
+RELEASE_SKIPPED = ['doi_in_fulltext']
 
 
 def normalized(value):
@@ -39,6 +42,13 @@ def without_margin_numbers(runs, width):
     return '\n'.join(text for index, (text, _, _) in enumerate(runs) if index not in removed)
 
 
+def exact_title_matches(text, title, cleaned=None):
+    if normalized(title) in normalized(text):
+        return True
+    # Only the accepted-manuscript layout has this geometric cleanup fallback.
+    return 'accepted manuscript' in text.casefold() and cleaned is not None and normalized(title) in normalized(cleaned)
+
+
 def title_matches(text, title, cleaned=None):
     if normalized(title) in normalized(text):
         return True
@@ -50,11 +60,16 @@ def page_has_doi(text, pattern):
     return bool(re.search(pattern, text.casefold()))
 
 
-def verify(path, doi, title):
-    result = {'verified': False, 'pages': 0, 'method': METHOD, 'reason': 'invalid_pdf'}
+def verify(path, doi, title, release_sha256=None):
+    """release_sha256: sha256 recorded when a maintainer released this exact file; only then is the DOI-in-full-text check skipped."""
+    released = release_sha256 is not None
+    result = {'verified': False, 'pages': 0, 'method': RELEASE_METHOD if released else METHOD, 'reason': 'invalid_pdf'}
     try:
         data = Path(path).read_bytes()
         result.update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+        if released and (not re.fullmatch(r'[a-f0-9]{64}', str(release_sha256)) or result['sha256'] != release_sha256):
+            result['reason'] = 'identity_mismatch'
+            return result
         if not 51200 <= len(data) <= 20 * 1024 * 1024 or not data.startswith(b'%PDF-') or not re.search(rb'%%EOF\s*$', data[-1024:]):  # must match LIBRARY_MAX_PDF_BYTES
             return result
         if not re.fullmatch(r'10\.\d{4,9}/[^\s<>?#@\\]{1,200}', doi) or doi != doi.lower() or len(normalized(title)) < 5:
@@ -106,14 +121,15 @@ def verify(path, doi, title):
                 return result
             result['pages'] = pypdf_page_count
         pattern = r'(?<![a-z0-9])' + r'\s*'.join(re.escape(c) for c in doi) + r'(?![a-z0-9])'
-        # Each parser independently finds the title on page one and the DOI on some page.
-        if not (title_matches(pypdf_texts[0], title, cleaned_pypdf)
-                and title_matches(fitz_texts[0], title, cleaned_fitz)
-                and any(page_has_doi(text, pattern) for text in pypdf_texts)
-                and any(page_has_doi(text, pattern) for text in fitz_texts)):
+        # Each parser independently finds the title on page one and the DOI on some page. A released task skips only the DOI
+        # and then needs the strict title (no spelling variants) from both parsers.
+        title_check = exact_title_matches if released else title_matches
+        doi_ok = released or (any(page_has_doi(text, pattern) for text in pypdf_texts)
+                              and any(page_has_doi(text, pattern) for text in fitz_texts))
+        if not (title_check(pypdf_texts[0], title, cleaned_pypdf) and title_check(fitz_texts[0], title, cleaned_fitz) and doi_ok):
             result['reason'] = 'identity_mismatch'
             return result
-        result.update(verified=True, reason='verified')
+        result.update(verified=True, reason='verified', **({'skipped': list(RELEASE_SKIPPED)} if released else {}))
     except Exception:
         # No extracted text, file paths or parser exceptions leave the verifier.
         pass
@@ -125,6 +141,7 @@ def main():
     parser.add_argument('path')
     parser.add_argument('--doi', required=True)
     parser.add_argument('--title', required=True)
+    parser.add_argument('--released-sha256', default=None)
     args = parser.parse_args()
     try:
         import resource
@@ -132,7 +149,7 @@ def main():
         resource.setrlimit(resource.RLIMIT_CPU, (60, 60))
     except (ImportError, ValueError):
         pass
-    print(json.dumps(verify(args.path, args.doi, args.title)))
+    print(json.dumps(verify(args.path, args.doi, args.title, args.released_sha256)))
 
 
 if __name__ == '__main__':

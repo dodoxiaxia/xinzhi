@@ -217,5 +217,42 @@ class MuseOriginalTests(unittest.TestCase):
 
 
 
+    def test_manual_release_skips_only_the_doi_check(self):
+        title = 'Exact cardiovascular trial'
+        # The page prints another paper's DOI, never the claimed one: a normal verification rejects it.
+        target = self.make_pdf([title + '\n10.1000/other-paper', 'Second page content'], 'held.pdf')
+        sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        self.assertFalse(verify(target, '10.1000/exact', title)['verified'])
+        released = verify(target, '10.1000/exact', title, sha)
+        self.assertTrue(released['verified'], released)
+        self.assertEqual(released['skipped'], ['doi_in_fulltext'])
+        self.assertEqual(released['method'], 'dual_parser_title_manual_release')
+        self.assertEqual(released['sha256'], sha)
+        self.assertNotIn('skipped', verify(self.path, '10.1000/exact', 'Exact cardiovascular trial'))
+
+    def test_manual_release_still_needs_the_recorded_file_and_the_exact_title(self):
+        title = 'Exact cardiovascular trial'
+        target = self.make_pdf([title + '\n10.1000/other-paper'], 'held2.pdf')
+        sha = hashlib.sha256(target.read_bytes()).hexdigest()
+        # A different file than the one released.
+        swapped = self.make_pdf([title + '\n10.1000/other-paper', 'extra page'], 'swapped.pdf')
+        result = verify(swapped, '10.1000/exact', title, sha)
+        self.assertFalse(result['verified'])
+        self.assertNotIn('skipped', result)
+        self.assertFalse(verify(target, '10.1000/exact', title, 'f' * 64)['verified'])
+        self.assertFalse(verify(target, '10.1000/exact', title, 'not-a-hash')['verified'])
+        # A title that is not on the first page is rejected even when released.
+        self.assertFalse(verify(target, '10.1000/exact', 'Exact cardiovascular trials', sha)['verified'])
+        self.assertFalse(verify(target, '10.1000/exact', 'Different cardiovascular trial', sha)['verified'])
+        # The spelling-variant fallbacks do not apply to a released file: strict title only.
+        vs = self.make_pdf(['Beta-blocker therapy vs placebo after myocardial infarction\n10.1000/other-paper'], 'vs-held.pdf')
+        vs_sha = hashlib.sha256(vs.read_bytes()).hexdigest()
+        self.assertFalse(verify(vs, '10.1000/exact', 'Beta-blocker therapy versus placebo after myocardial infarction', vs_sha)['verified'])
+        # PDF structure still has to parse.
+        broken = Path(self.directory.name) / 'broken.pdf'
+        broken.write_bytes(b'%PDF-1.4\n' + b'x' * 60000)
+        self.assertFalse(verify(broken, '10.1000/exact', title, hashlib.sha256(broken.read_bytes()).hexdigest())['verified'])
+
+
 if __name__ == '__main__':
     unittest.main()
