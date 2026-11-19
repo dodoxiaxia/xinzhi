@@ -37,6 +37,7 @@
           ${titleBlock}
           ${enLine}
           ${gistHtml}
+          ${typeof topicBadgeHtml === 'function' ? topicBadgeHtml(p) : ''}
         </div>
 
         ${cardSideActionsHtml(p)}
@@ -67,6 +68,7 @@
             <span class="date-badge">${esc(dateStr)}</span>
             ${designBadgeHtml(p)}
           </div>
+          ${typeof topicBadgeHtml === 'function' ? topicBadgeHtml(p) : ''}
         </div>
         ${cardSideActionsHtml(p)}
       </div>
@@ -265,4 +267,3 @@
   }
 
   let lastFocus = null;
-
