@@ -595,5 +595,86 @@ async function verifyNext(h, doi, result, reason) {
     await error(await upload(h, nejmPdf, '10.1056/NEJMp2606894'), 409, 'machine_identity_mismatch');
   }
 
+  // 8) Title-variant fallback (whole-word versus/vs./v. and trademark marks ™/®), colon spacing, and normal-match precedence.
+  {
+    const titleVariant = run(h, 'machineTitleVariant');
+
+    // 8a) versus / vs / vs. / v. whole-word fallback.
+    const vsDoi = '10.9999/synthetic.versus';
+    const vsPageTitle = 'Efficacy of Synthetic Flecainide vs Amiodarone for Cardioversion in Cohorts';
+    const vsPdf = fixtures.customEncoding({doi:vsDoi, title:vsPageTitle});
+    for (const word of ['Versus', 'v.']) {
+      const res = await identity(h, vsPdf, vsDoi, 'Efficacy of Synthetic Flecainide ' + word + ' Amiodarone for Cardioversion in Cohorts');
+      assert.equal(res.verdict, 'ok', word);
+      assert.equal(res.level, 'full', word);
+      assert.equal(res.checks.titleVariant, 'versus_or_mark', word);
+    }
+    // "vs." already equals "vs" under machineNormalize, so it passes via normal comparison without titleVariant.
+    const vsDotRes = await identity(h, vsPdf, vsDoi, 'Efficacy of Synthetic Flecainide vs. Amiodarone for Cardioversion in Cohorts');
+    assert.equal(vsDotRes.verdict, 'ok');
+    assert.equal(vsDotRes.level, 'full');
+    assert(!('titleVariant' in vsDotRes.checks));
+    const revPdf = fixtures.customEncoding({doi:vsDoi, title:'Efficacy of Synthetic Flecainide Versus Amiodarone for Cardioversion in Cohorts'});
+    for (const word of ['vs', 'vs.']) {
+      const revRes = await identity(h, revPdf, vsDoi, 'Efficacy of Synthetic Flecainide ' + word + ' Amiodarone for Cardioversion in Cohorts');
+      assert.equal(revRes.verdict, 'ok', 'rev ' + word);
+      assert.equal(revRes.level, 'full', 'rev ' + word);
+      assert.equal(revRes.checks.titleVariant, 'versus_or_mark', 'rev ' + word);
+    }
+
+    // Counter-examples: non-whole-word substrings and different drugs still mismatch.
+    const canvsPdf = fixtures.customEncoding({doi:vsDoi, title:'Synthetic Canvs Imaging Study in Atrial Cohorts'});
+    const canvsBad = await identity(h, canvsPdf, vsDoi, 'Synthetic Canvas Imaging Study in Atrial Cohorts');
+    assert.equal(canvsBad.verdict, 'mismatch');
+    assert.equal(canvsBad.reason, 'title_not_found');
+    const dronedarone = await identity(h, vsPdf, vsDoi, 'Efficacy of Synthetic Flecainide Versus Dronedarone for Cardioversion in Cohorts');
+    assert.equal(dronedarone.verdict, 'mismatch');
+    assert.equal(dronedarone.reason, 'title_not_found');
+    assert.equal(titleVariant('Conversus Universal Advisor'), normalize('Conversus Universal Advisor'));
+
+    // Section-label stripping combined with titleVariant keeps both checks fields.
+    const prefixVs = await identity(h, vsPdf, vsDoi, '[Articles] Efficacy of Synthetic Flecainide Versus Amiodarone for Cardioversion in Cohorts');
+    assert.equal(prefixVs.verdict, 'ok');
+    assert.equal(prefixVs.level, 'full');
+    assert.equal(prefixVs.checks.titlePrefix, 'section_label_dropped');
+    assert.equal(prefixVs.checks.titleVariant, 'versus_or_mark');
+
+    // 8b) Trademark marks ™ (U+2122) / ® (U+00AE).
+    const markDoi = '10.9999/synthetic.trademark';
+    const cadPage = 'CAD-RADS 2.0 \u2013 2022 Synthetic Coronary Artery Disease Reporting and Data System';
+    const cadPdf = fixtures.customEncoding({doi:markDoi, title:cadPage});
+    const cadOk = await identity(h, cadPdf, markDoi, 'CAD-RADS\u2122 2.0 \u2013 2022 Synthetic Coronary Artery Disease Reporting and Data System');
+    assert.equal(cadOk.verdict, 'ok');
+    assert.equal(cadOk.level, 'full');
+    assert.equal(cadOk.checks.titleVariant, 'versus_or_mark');
+    const regPdf = fixtures.customEncoding({doi:markDoi, title:'SyntheticValve Transcatheter Repair in Elderly Cohorts'});
+    const regOk = await identity(h, regPdf, markDoi, 'SyntheticValve\u00ae Transcatheter Repair in Elderly Cohorts');
+    assert.equal(regOk.verdict, 'ok');
+    assert.equal(regOk.level, 'full');
+    assert.equal(regOk.checks.titleVariant, 'versus_or_mark');
+    const cadBad = await identity(h, cadPdf, markDoi, 'CAD-RADS\u2122 3.0 \u2013 2022 Synthetic Coronary Artery Disease Reporting and Data System');
+    assert.equal(cadBad.verdict, 'mismatch');
+    assert.equal(cadBad.reason, 'title_not_found');
+    assert.notEqual(titleVariant('CAD-RADS\u2122 2.0'), titleVariant('CAD-RADS 3.0'));
+
+    // 8c) Punctuation spacing (no code added; machineNormalize strips spaces and ASCII punctuation).
+    assert.equal(normalize('Atrial Fibrillation Revisited:Early Entrenchment'), normalize('Atrial Fibrillation Revisited: Early Entrenchment'));
+    const colonDoi = '10.9999/synthetic.colonspace';
+    const colonPdf = fixtures.customEncoding({doi:colonDoi, title:'Synthetic Fibrillation Begets Fibrillation Revisited: Early Entrenchment of Episodes'});
+    const colonOk = await identity(h, colonPdf, colonDoi, 'Synthetic Fibrillation Begets Fibrillation Revisited:Early Entrenchment of Episodes');
+    assert.equal(colonOk.verdict, 'ok');
+    assert.equal(colonOk.level, 'full');
+    assert(!('titleVariant' in colonOk.checks));
+    const colonBad = await identity(h, colonPdf, colonDoi, 'Synthetic Fibrillation Begets Fibrillation Revisited:Late Entrenchment of Episodes');
+    assert.equal(colonBad.verdict, 'mismatch');
+    assert.equal(colonBad.reason, 'title_not_found');
+
+    // 8d) Normal match does not trigger the titleVariant fallback.
+    const normalVerdict = await identity(h, files['flate-eol-before-endstream.pdf'], flate.doi, flate.title);
+    assert.equal(normalVerdict.verdict, 'ok');
+    assert.equal(normalVerdict.level, 'full');
+    assert(!('titleVariant' in normalVerdict.checks));
+  }
+
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -26,6 +26,8 @@ const MACHINE_NORMALIZE_PUNCT = new Set([
 const MACHINE_IDENTITY_SECTION_LABEL = /^\s*\[[A-Za-z][A-Za-z ./-]{0,39}\]\s*/;
 // Crossref titles keep JATS/HTML inline markup ("<i>CYP2C19</i>", "P2Y<sub>12</sub>"); the page prints only the text inside.
 const MACHINE_TITLE_MARKUP = /<\/?(?:i|b|em|strong|sub|sup|sc|scp|u|italic|bold)\b[^<>]{0,80}>/gi;
+const MACHINE_TITLE_MARKS = /[\u2122\u00ae]/g;
+const MACHINE_TITLE_VERSUS = /(?<![\p{L}\p{N}])(?:versus|vs\.?|v\.)(?![\p{L}\p{N}])/giu;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -34,6 +36,12 @@ function machineNormalize(value) {
     if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_PUNCT.has(code))) out += char;
   }
   return out;
+}
+// Fallback spelling variants: Heart Rhythm stores "Versus" where page 1 prints "vs"; JACC Imaging stores "CAD-RADS™" where page 1
+// has no ™ (NFKD would turn it into the letters "tm"). Both sides go through this function: whole-word versus/vs/vs./v. become
+// "vs" and the two trademark signs are dropped; nothing else changes.
+function machineTitleVariant(value) {
+  return machineNormalize(String(value || '').replace(MACHINE_TITLE_MARKS, '').replace(MACHINE_TITLE_VERSUS, ' vs '));
 }
 function machineLatin1(bytes) {
   let out = '';
@@ -792,6 +800,8 @@ function machineAnyDoi(text) {
 // 'doi_only' (DOI on page 1, title unreadable), 'metadata_only', 'title_only' (machine uploads only, when
 // options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
+// If normal title matching (including section-label stripping) misses, falls back once via machineTitleVariant
+// (whole-word versus/vs./v. -> vs and stripping ™/®), recording checks.titleVariant = 'versus_or_mark'.
 async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
@@ -803,12 +813,32 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const pageText = machineNormalize(page.text);
   let titleMatch = machineTitleOnPage(pageText, expected);
   let titlePrefix = '';
+  let titleVariant = '';
   let matchedExpected = expected;
-  if (!titleMatch.found && MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''))) {
-    const stripped = machineNormalize(String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, ''));
+  const hasSectionLabel = MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''));
+  const strippedTitle = hasSectionLabel ? String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, '') : '';
+  if (!titleMatch.found && hasSectionLabel) {
+    const stripped = machineNormalize(strippedTitle);
     if (stripped.length >= 5) {
       const retry = machineTitleOnPage(pageText, stripped);
       if (retry.found) { titleMatch = retry; titlePrefix = 'section_label_dropped'; matchedExpected = stripped; }
+    }
+  }
+  if (!titleMatch.found) {
+    const variantPage = machineTitleVariant(page.text);
+    const candidates = [[title, '']];
+    if (hasSectionLabel) candidates.push([strippedTitle, 'section_label_dropped']);
+    for (const [candidate, prefix] of candidates) {
+      const variantExpected = machineTitleVariant(candidate);
+      if (variantExpected.length < 5) continue;
+      const retry = machineTitleOnPage(variantPage, variantExpected);
+      if (retry.found) {
+        titleMatch = retry;
+        titleVariant = 'versus_or_mark';
+        if (prefix) titlePrefix = prefix;
+        matchedExpected = variantExpected;
+        break;
+      }
     }
   }
   const titlePage = titleMatch.found;
@@ -818,7 +848,8 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     title:titlePage ? 'page' : titleMeta ? 'metadata' : '',
     readable,
     ...(titleMatch.glyph ? {titleGlyph:titleMatch.glyph} : {}),
-    ...(titlePrefix ? {titlePrefix} : {})
+    ...(titlePrefix ? {titlePrefix} : {}),
+    ...(titleVariant ? {titleVariant} : {})
   };
   const doiFound = doiPage || doiMeta;
   if (doiPage && titlePage) return {verdict:'ok', level:'full', checks};
