@@ -14,7 +14,7 @@ Usage
 import argparse, datetime, json, sys, time, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from build_data import clean
+from text_hygiene import clean_inline, clean_markup
 from publication_status import pubmed_relations
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,28 +39,32 @@ def txt(e):
     return ''.join(e.itertext()).strip() if e is not None else ''
 
 
+def prose(e):
+    return clean_inline(txt(e))
+
+
 def parse_efetch(xml_bytes):
     out = {}
     root = ET.fromstring(xml_bytes)
     for art in root.iter('PubmedArticle'):
         pmid = txt(art.find('.//MedlineCitation/PMID'))
-        secs = [{'l': (a.get('Label') or a.get('NlmCategory') or '').strip(), 't': txt(a)} for a in art.findall('.//Abstract/AbstractText')]
+        secs = [{'l': clean_inline(a.get('Label') or a.get('NlmCategory')), 't': prose(a)} for a in art.findall('.//Abstract/AbstractText')]
         au = []
         af = []
         for x in art.findall('.//AuthorList/Author'):
-            n = (txt(x.find('LastName')) + ' ' + txt(x.find('Initials'))).strip() or txt(x.find('CollectiveName'))
+            n = (prose(x.find('LastName')) + ' ' + prose(x.find('Initials'))).strip() or prose(x.find('CollectiveName'))
             if n:
                 au.append(n)
             if len(af) < 3:
-                a1 = txt(x.find('AffiliationInfo/Affiliation'))
+                a1 = prose(x.find('AffiliationInfo/Affiliation'))
                 if a1 and a1 not in af:
                     af.append(a1)
         ids = {i.get('IdType'): txt(i) for i in art.findall('.//PubmedData/ArticleIdList/ArticleId')}
         out[pmid] = {'a': [s for s in secs if s['t']], 'au': au, 'af': af,
-                     'm': [txt(m) for m in art.findall('.//MeshHeadingList/MeshHeading/DescriptorName')][:15],
-                     'k': [txt(k) for k in art.findall('.//KeywordList/Keyword')][:12],
+                     'm': [prose(m) for m in art.findall('.//MeshHeadingList/MeshHeading/DescriptorName')][:15],
+                     'k': [prose(k) for k in art.findall('.//KeywordList/Keyword')][:12],
                      'd': ids.get('doi', ''), 'pmc': ids.get('pmc', ''),
-                     'pt': [txt(p) for p in art.findall('.//PublicationTypeList/PublicationType')],
+                     'pt': [prose(p) for p in art.findall('.//PublicationTypeList/PublicationType')],
                      'pubmedRelations': pubmed_relations(art),
                      'lg': txt(art.find('.//Language')), 'src': 'pubmed'}
     return out
@@ -80,20 +84,20 @@ def openalex_abs(doi):
     if not ii:
         return ''
     pos = sorted((p, w) for w, ps in ii.items() for p in ps)
-    return ' '.join(w for _, w in pos)
+    return clean_inline(' '.join(w for _, w in pos))
 
 
 def epmc_abs(doi):
     j = get('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=1&query=' + urllib.parse.quote('DOI:"%s"' % doi))
     r = (((j or {}).get('resultList') or {}).get('result') or [{}])[0]
-    t = clean(r.get('abstractText'))
+    t = clean_markup(r.get('abstractText'))
     return t if len(t) >= 200 else ''
 
 
 def crossref_abs(doi):
     j = get('https://api.crossref.org/works/%s?mailto=shijunxia1988@gmail.com' % urllib.parse.quote(doi, safe='/'))
     a = ((j or {}).get('message') or {}).get('abstract') or ''
-    return clean(a)
+    return clean_markup(a)
 
 
 def fill(limit_alt=300):

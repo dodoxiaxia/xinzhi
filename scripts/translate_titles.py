@@ -11,6 +11,7 @@ import argparse, json, os, sys, urllib.request, urllib.parse
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from resolve_dois import title_cache_key
+from text_hygiene import model_text
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/translations.json'
@@ -73,12 +74,28 @@ def call(cfg, titles):
     return json.loads(resp['choices'][0]['message']['content'])
 
 
+def translated_title(value):
+    if isinstance(value, str):
+        try:
+            return model_text(value, single_line=True)
+        except ValueError:
+            pass  # Regenerate instead of guessing the missing character.
+    return ''
+
+
+def save_cache(have):
+    tmp = OUT.with_suffix('.tmp')
+    tmp.write_text(json.dumps(have, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    tmp.replace(OUT)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--run', action='store_true')
     ap.add_argument('--limit', type=int, default=10)
     a = ap.parse_args()
-    have = rj(OUT, {})
+    previous = rj(OUT, {})
+    have = {key: title for key, value in previous.items() if (title := translated_title(value))}
     todo = [(k, t) for k, t in collect() if k not in have]
     if not a.run:
         print(json.dumps({'cached': len(have), 'missing': len(todo), 'calls_needed': -(-len(todo) // BATCH)}))
@@ -90,6 +107,8 @@ def main():
     u = urllib.parse.urlparse(cfg['endpoint'])
     if not all(cfg.values()) or u.scheme != 'https' or not u.hostname:
         sys.exit('LLM config missing (.local/llm.json or XINZHI_LLM_* env)')
+    if have != previous:
+        save_cache(have)
     done = 0
     for i in range(0, min(len(todo), a.limit * BATCH), BATCH):
         chunk = todo[i:i + BATCH]
@@ -99,13 +118,11 @@ def main():
             print('batch failed:', type(e).__name__, file=sys.stderr)
             break
         for j, (k, _) in enumerate(chunk):
-            z = str(res.get(str(j), '')).strip()
+            z = translated_title(res.get(str(j)))
             if z and any('一' <= c <= '鿿' for c in z):
                 have[k] = z
                 done += 1
-        tmp = OUT.with_suffix('.tmp')
-        tmp.write_text(json.dumps(have, ensure_ascii=False, separators=(',', ':')))
-        tmp.replace(OUT)
+        save_cache(have)
     print(json.dumps({'translated': done, 'cached': len(have), 'missing': len(todo) - done}))
 
 

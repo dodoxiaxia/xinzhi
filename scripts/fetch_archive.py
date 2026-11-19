@@ -14,7 +14,7 @@ Output: data/radar-archive.json (private working file; build_public.py turns it 
 """
 import argparse, datetime, json, re, sys, time, urllib.parse, urllib.request
 from pathlib import Path
-from build_data import clean
+from text_hygiene import clean_inline, clean_markup
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/radar-archive.json'
@@ -71,7 +71,7 @@ def parse_date(raw):
 
 
 def clean_title(t):
-    t = clean(t)
+    t = clean_markup(t)
     return t[:-1] if t.endswith('.') and not t.endswith('..') else t
 
 
@@ -95,7 +95,7 @@ def ingest(summaries):
             elif prec == 'month' and p2 == 'day':
                 date, prec = d2, p2
         rows.append({'pmid': str(pmid), 'doi': (r.get('d') or '').lower().strip(), 'title': title,
-                     'journal': (r.get('fj') or r.get('so') or '').strip(), 'date': date, 'datePrecision': prec,
+                     'journal': clean_inline(r.get('fj') or r.get('so')), 'date': date, 'datePrecision': prec,
                      'dateBasis': basis, 'pubTypes': sorted(pts)})
     return rows
 

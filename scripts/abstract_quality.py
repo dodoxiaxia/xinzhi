@@ -9,13 +9,14 @@ import re
 import unicodedata
 from html.parser import HTMLParser
 from pathlib import Path
+from text_hygiene import clean_inline
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / 'editorial/public_abstract_evidence.json'
 
 
 def plain(value):
-    return re.sub(r'\s+', ' ', value).strip()
+    return clean_inline(value)
 
 
 class AbstractMarkup(HTMLParser):

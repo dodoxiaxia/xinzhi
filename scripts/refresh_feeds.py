@@ -18,9 +18,10 @@ import urllib.request
 from urllib.parse import unquote, unquote_plus, urlsplit, urlunsplit
 import xml.etree.ElementTree as ET
 
-from build_data import clean, classify
+from build_data import classify
 from abstract_quality import abstract_fields, normalize_paper
 from scope_filter import scope_decision
+from text_hygiene import clean_inline, clean_markup
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_BYTES = 3_000_000
@@ -156,7 +157,7 @@ def feed_identifiers(entry):
             if m:
                 out['doi'] = m.group(1).lower()
         elif name == 'creator' and value and len(authors) < 50:
-            authors.append(value)
+            authors.append(clean_inline(value))
     if authors:
         out['authors'] = authors
     return out
@@ -441,7 +442,7 @@ def parse_feed(raw, source, *, checked_at=None):
     checked_at = checked_at or utcnow().isoformat()
     output, links, abstracts, scope_excluded, scope_reasons = [], 0, 0, [], Counter()
     for entry in entries:
-        title = clean(text(entry, 'title'))
+        title = clean_markup(text(entry, 'title'))
         link = text(entry, 'link') if kind != 'atom' else ''
         if not link:
             for child in entry:
@@ -471,7 +472,7 @@ def parse_feed(raw, source, *, checked_at=None):
         ids = feed_identifiers(entry)
         stable = canonical_pubmed_link(link, ids.get('pmid', ''))
         record = {'id': 'rss-' + hashlib.sha256(stable.encode()).hexdigest()[:16], 'title': title,
-                  'url': safe_url(link), 'doi': extract_doi(link, entry), 'journal': source['name'],
+                  'url': safe_url(link), 'doi': extract_doi(link, entry), 'journal': clean_inline(source['name']),
                   'date': dateval(text(entry, 'pubDate') or text(entry, 'date') or text(entry, 'published') or text(entry, 'updated')),
                   'category': category, 'basis': 'RSS 元数据 · 待编辑核验', 'summary': description[:12000],
                   'summary_truncated': len(description) > 12000, 'sourceId': source['id'],
@@ -715,9 +716,15 @@ def _previous_cache(source, previous):
                  (row.get('id') == source['id'] or row.get('source', row.get('name')) == source['name']) for row in previous.get('reports', []))
     if not linked:
         return []
-    return [dict(item, cacheStatus='retained_after_source_failure') for item in previous.get('items', [])
-            if item.get('sourceId') == source['id'] and
-            (not item.get('sourceUrl') or safe_url(item['sourceUrl']) == endpoint)]
+    retained = []
+    for item in previous.get('items', []):
+        if item.get('sourceId') != source['id'] or (item.get('sourceUrl') and safe_url(item['sourceUrl']) != endpoint):
+            continue
+        item = dict(item, cacheStatus='retained_after_source_failure')
+        if isinstance(item.get('authors'), list):
+            item['authors'] = [clean_inline(author) if isinstance(author, str) else author for author in item['authors']]
+        retained.append(item)
+    return retained
 
 
 def build_results(sources, fetched, *, previous_feeds=None, previous_health=None, now=None):
