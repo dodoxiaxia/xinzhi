@@ -1463,6 +1463,18 @@
           "notes": ""
         },
         {
+          "id": "candidates-topic-badge",
+          "label": "文章主题徽标",
+          "selector": "#articlesStream .topic-badge",
+          "kind": "toggle",
+          "visible": "conditional",
+          "viewports": ["mobile", "tablet", "desktop"],
+          "condition": "列表显示带主题的文章",
+          "setup": [{"goto": "/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}],
+          "stable": true,
+          "notes": "与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示"
+        },
+        {
           "id": "candidates-more",
           "label": "更多筛选",
           "selector": "[data-qf=\"more\"]",
@@ -2177,6 +2189,30 @@
           "notes": ""
         },
         {
+          "id": "library-topic-match",
+          "label": "文章主题匹配方式",
+          "selector": "[data-qf-topic-mode=\"all\"]",
+          "kind": "toggle",
+          "visible": "conditional",
+          "viewports": ["mobile", "tablet", "desktop"],
+          "condition": "打开文章主题，可切换任一与同时包含",
+          "setup": [{"click": "[data-qf=\"topic\"]"}],
+          "stable": true,
+          "notes": "未分类时禁用"
+        },
+        {
+          "id": "library-topic-groups",
+          "label": "文章主题分组及组内已选数",
+          "selector": "#qfPop .topic-group h4",
+          "kind": "region",
+          "visible": "conditional",
+          "viewports": ["mobile", "tablet", "desktop"],
+          "condition": "打开文章主题",
+          "setup": [{"click": "[data-qf=\"topic\"]"}],
+          "stable": true,
+          "notes": "临床亚专科、检查与手段、AI 与数字医学，额外标签列于其他"
+        },
+        {
           "id": "library-scope",
           "label": "领域与时间",
           "selector": "#qfScopeBtn",
@@ -2641,6 +2677,33 @@
           "trigger": "按 setup 的顺序操作",
           "setup": [],
           "expect": "visible"
+        },
+        {
+          "id": "library-topic-any",
+          "label": "多标签任一匹配",
+          "selector": "[data-qf-topic-mode=\"any\"][aria-pressed=\"true\"]",
+          "trigger": "打开文章主题并选择房颤/电生理与 AI-ECG",
+          "setup": [
+            {"click": "[data-qf=\"topic\"]"},
+            {"click": "[data-qf-topic=\"#房颤/电生理\"]"},
+            {"click": "[data-qf-topic=\"#AI-ECG\"]"}
+          ],
+          "expect": "visible",
+          "screenshot": true
+        },
+        {
+          "id": "library-topic-all",
+          "label": "多标签同时包含",
+          "selector": "[data-qf-topic-mode=\"all\"][aria-pressed=\"true\"]",
+          "trigger": "选中同样两项后切换为同时包含",
+          "setup": [
+            {"click": "[data-qf=\"topic\"]"},
+            {"click": "[data-qf-topic=\"#房颤/电生理\"]"},
+            {"click": "[data-qf-topic=\"#AI-ECG\"]"},
+            {"click": "[data-qf-topic-mode=\"all\"]"}
+          ],
+          "expect": "visible",
+          "screenshot": true
         },
         {
           "id": "library-sort-date-desc",

@@ -11,6 +11,9 @@
     '#AI-RCT证据', '#结构性心脏病', '#先心病', '#预防/血脂'
   ];
   const UNCLASSIFIED_TOPIC = 'uncategorized';
+  function normalizeTagMode(mode) {
+    return mode === 'all' ? 'all' : 'any';
+  }
   function paperTopicTags(p) {
     if (!p || !Array.isArray(p.tags)) return [];
     const out = [];
@@ -209,6 +212,7 @@
       tag: topicState.tag,
       tags: topicState.tags,
       topicUnclassified: topicState.topicUnclassified,
+      tagMode: normalizeTagMode(topicState.topicUnclassified ? null : params.get('tagmode')),
       lane: params.get('lane') || 'core',
       sort: ['smart', 'date-desc', 'date-asc', 'journal-date'].includes(params.get('sort')) ? params.get('sort') : 'date-desc',
       range: ['7', '14', '30', '90', '365', 'all'].includes(params.get('range')) ? params.get('range') : defaultRange(mode),
@@ -228,7 +232,7 @@
   }
   const URL_STATE_KEYS = [
     'mode', 'viewMode', 'search', 'clinicalTier', 'publisher', 'journal',
-    'studyDesign', 'tag', 'tags', 'topicUnclassified', 'lane', 'sort', 'range', 'minor', 'reading',
+    'studyDesign', 'tag', 'tags', 'topicUnclassified', 'tagMode', 'lane', 'sort', 'range', 'minor', 'reading',
     'favoritesOnly', 'excludeCaseReports', 'journals', 'journalTier', 'journalTierLegacy', 'day', 'weeklyCat', 'weeklyPane', 'sourceFilter', 'ftFilter'
   ];
   // Saved view preferences affect rendering without adding a URL parameter.
@@ -247,6 +251,7 @@
     tag: initialUrlState.tag,
     tags: initialUrlState.tags || [],
     topicUnclassified: !!initialUrlState.topicUnclassified,
+    tagMode: initialUrlState.tagMode,
     lane: initialUrlState.lane,
     sort: initialUrlState.sort,
     range: initialUrlState.range,
@@ -493,4 +498,3 @@
     });
     return out;
   }
-
