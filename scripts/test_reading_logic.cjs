@@ -2,7 +2,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const src=fs.readFileSync(require('path').join(__dirname,'../app.js'),'utf8');
 const fn=n=>{const m=src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'));if(!m)throw Error(n);return m[0];};
 const cs=n=>src.match(new RegExp('  const '+n+' =[^]*?;'))[0];
-const code=[cs('ZH_EN'),cs('zhTerms'),cs('CARDIO_TIERS'),cs('AI_RE'),cs('CARDIO_RE'),cs('_rs'),...['queryMatches','paperText','laneOf','isCrossAI','quicklookOf','hasAbstract','datePrecision','dateLabel','safeSourceUrl','rangeStart','getCuratedList','publishedDate'].map(fn)].join('\n');
+const code=[cs('ZH_EN'),cs('zhTerms'),cs('CARDIO_TIERS'),cs('AI_RE'),cs('CARDIO_RE'),cs('_rs'),cs('SEARCH_APOSTROPHES'),cs('SEARCH_QUOTES'),...['foldSearch','queryMatches','paperText','laneOf','isCrossAI','quicklookOf','hasAbstract','datePrecision','dateLabel','safeSourceUrl','rangeStart','getCuratedList','publishedDate'].map(fn)].join('\n');
 const c=vm.createContext({window:{QUICKLOOKS:{}},DEFERRED:false,partsReady:()=>true,neededParts:()=>[],state:{range:'7'},beijingToday:()=> '2026-09-30',FEEDS:{items:[],updatedAt:'2026-10-01'},LIBRARY:{papers:[]},CURATED:[{id:'keep',doi:'10.1/keep',hasDraft:true,draftData:{published:'2026-09-29'}}]});vm.runInContext(code,c);
 // Install the fixture clock after extracted helpers have defined their functions.
 c.beijingToday=()=> '2026-09-30';
@@ -76,3 +76,7 @@ console.log(incompleteCases.length+' incomplete-abstract rule assertions passed'
 require('./test_faceted_filters.cjs');
 
 require('./test_complete_abstract_false_positives.cjs');
+assert.equal(c.laneOf({title:'What the Robot Still Can’t Do',clinicalTier:'AI医疗与数字医学'}),'aimed');
+
+// 搜索弯引号/直引号互认（scripts/test_search_fold.cjs）并入这条已在 daily 发布前清单里的测试。
+require('./test_search_fold.cjs');

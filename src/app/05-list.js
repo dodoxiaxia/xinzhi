@@ -16,8 +16,8 @@
     const titleBlock = `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${pid}">${zh ? esc(zh) : titleEn}</button></h3>`;
 
     // 有中文标题时，英文原题作为一行弱化副标题；英文检索命中时完整显示
-    const q = (state.search || '').toLowerCase().split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
-    const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => String(p.title || '').toLowerCase().includes(t));
+    const q = foldSearch(state.search || '').split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
+    const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => foldSearch(p.title || '').includes(t));
     const enLine = zh ? `<p class="article-title-en${enHit ? ' is-hit' : ''}" lang="en" title="${titleEn}">${titleEn}</p>` : '';
 
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (quicklookOf(p)?.one_line || '');

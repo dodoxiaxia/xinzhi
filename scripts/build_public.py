@@ -371,7 +371,7 @@ def make_archive(candidates,library):
         if not key or key not in pool:raise ValueError('Checked article has no archived metadata: '+key)
         p=dict(pool[key]);d=dict(draft)
         from enrich_metadata import clean_journal_name, classify_publisher, classify_clinical_tier, classify_study_design, resolve_topic_tags
-        p.update(cleanJournal=clean_journal_name(p.get('journal')), publisher=classify_publisher(p.get('journal'),p.get('url')), clinicalTier=classify_clinical_tier(p.get('journal'),p.get('title','')), studyDesign=classify_study_design(p.get('title',''),p.get('summary',''),p.get('pubTypes',())), tags=resolve_topic_tags(p, title=p.get('title',''), summary=p.get('summary','')))
+        p.update(cleanJournal=clean_journal_name(p.get('journal')), publisher=classify_publisher(p.get('journal'),p.get('url')), clinicalTier=classify_clinical_tier(p.get('journal'),p.get('title',''),p.get('doi')), studyDesign=classify_study_design(p.get('title',''),p.get('summary',''),p.get('pubTypes',())), tags=resolve_topic_tags(p, title=p.get('title',''), summary=p.get('summary','')))
         d['published']=date
         p.update(hasDraft=True,draftData=d);archive.append(public_paper(p))
     return archive
@@ -439,7 +439,7 @@ def make_radar(candidates,tz=None,corrections=None):
         if f.get('a') and r['date']>=floor:
             absmap[str(r['pmid'])]=[[x.get('l',''),x.get('t','')] for x in f['a']]
         rows.append([r['pmid'],r.get('doi',''),r['date'],idx('jn',cj),idx('pub',classify_publisher(j,url)),
-                     idx('tier',classify_clinical_tier(j,r['title'])),idx('design',annotated['studyDesign']),
+                     idx('tier',classify_clinical_tier(j,r['title'],r.get('doi',''))),idx('design',annotated['studyDesign']),
                      [idx('tag',t) for t in resolve_topic_tags(dict(r, doi=r.get('doi'), id='pmid:'+str(r.get('pmid'))), title=r['title'], summary=atext)],r['title']])
     if not rows:return None
     lists={k:[v for v,_ in sorted(d.items(),key=lambda kv:kv[1])] for k,d in pools.items()}

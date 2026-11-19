@@ -83,6 +83,7 @@ const c = vm.createContext({
   }
 });
 
+vm.runInContext(src.match(/  const SEARCH_APOSTROPHES = [^\n]+/)[0] + '\n' + src.match(/  const SEARCH_QUOTES = [^\n]+/)[0] + '\n' + fn('foldSearch'), c);
 vm.runInContext([
   'exactDoi', 'safeSourceUrl', 'officialArticleUrl',
   'renderArticleCard', 'renderCompactRow', 'openReaderDrawer'

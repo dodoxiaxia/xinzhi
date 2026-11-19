@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "column": "NEJM AI in Medicine",
+  "columnUrl": "https://www.nejm.org/ai-in-medicine",
+  "note": "人工登记清单；nejm.org 对自动访问返回 Cloudflare 挑战，PubMed 与 Crossref 均无专栏/栏目字段；新增请运行 scripts/ai_column.py add。",
+  "items": [
+    {
+      "doi": "10.1056/nejmp2606894",
+      "title": "What the Robot Still Can’t Do",
+      "addedOn": "2026-11-19",
+      "evidence": "Donald 在文献雷达检索指定，经 ddx 转达（2026-11-18）；Crossref 与 PubMed（PMID 43037244）核实 DOI、题名，NEJM Perspective，2026-11-14 在线。未对照专栏页逐条核对。"
+    }
+  ]
+}
