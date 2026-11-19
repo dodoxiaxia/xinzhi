@@ -3018,15 +3018,25 @@ const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
 const MACHINE_PDF_PADDING = new Uint8Array([0x28,0xbf,0x4e,0x5e,0x4e,0x75,0x8a,0x41,0x64,0x00,0x4e,0x56,0xff,0xfa,0x01,0x08,0x2e,0x2e,0x00,0xb6,0xd0,0x68,0x3e,0x80,0x2f,0x0c,0xa9,0xfe,0x64,0x53,0x69,0x7a]);
-// En dash, em dash and horizontal bar are punctuation like the ASCII hyphen, so they are dropped too. Japanese journals print
-// subtitles as "Title\u3000\u2015 Subtitle \u2015" while RSS feeds give "Title: Subtitle"; both must normalize to the same text.
-const MACHINE_NORMALIZE_DASHES = new Set([0x2013, 0x2014, 0x2015]);
+// Punctuation normalization: non-ASCII dashes/hyphens (Wiley/JAHA/Crossref register U+2010 "\u2010" while first pages read an
+// ASCII hyphen; Japanese journals print "Title\u3000\u2015 Subtitle \u2015" for RSS "Title: Subtitle") and curly quotes /
+// apostrophes (publisher pages use "\u2019" where catalogues store "'") are dropped like ASCII punctuation. Both sides pass
+// through the same function, so only punctuation is stripped and letters/digits must still match verbatim.
+const MACHINE_NORMALIZE_PUNCT = new Set([
+  0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2043, 0x2212, 0x2E3A, 0x2E3B, 0xFE58, 0xFE63, 0xFF0D,
+  0x2018, 0x2019, 0x201A, 0x201B, 0x201C, 0x201D, 0x201E, 0x201F,
+  0x2032, 0x2033, 0x2034, 0x2035, 0x2036, 0x2037,
+  0x02BC, 0x00AB, 0x00BB
+]);
+const MACHINE_IDENTITY_SECTION_LABEL = /^\s*\[[A-Za-z][A-Za-z ./-]{0,39}\]\s*/;
+// Crossref titles keep JATS/HTML inline markup ("<i>CYP2C19</i>", "P2Y<sub>12</sub>"); the page prints only the text inside.
+const MACHINE_TITLE_MARKUP = /<\/?(?:i|b|em|strong|sub|sup|sc|scp|u|italic|bold)\b[^<>]{0,80}>/gi;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
   for (const char of stripped) {
     const code = char.codePointAt(0);
-    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_DASHES.has(code))) out += char;
+    if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_PUNCT.has(code))) out += char;
   }
   return out;
 }
@@ -3754,11 +3764,41 @@ function machineFailReason(page, doiFound, titleFound) {
   if (!doiFound && !titleFound) return 'identity_mismatch';
   return doiFound ? 'title_not_found' : 'doi_not_found';
 }
+function machineLigatureTitleMatch(pageText, expected) {
+  const ligatures = /ffi|ffl|ff|fi|fl/g;
+  const parts = expected.split(ligatures);
+  const groups = expected.match(ligatures);
+  if (!groups || groups.length > 12) return false;
+  let fixedLen = 0;
+  for (const part of parts) fixedLen += part.length;
+  if (fixedLen < 15) return false;
+  const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let pattern = escape(parts[0]);
+  for (let index = 0; index < groups.length; index++) {
+    pattern += '(?:' + groups[index] + '|\u00fe|0[0-3][0-7]|)' + escape(parts[index + 1]);
+  }
+  return new RegExp(pattern).test(pageText);
+}
+function machineTitleOnPage(pageText, expected) {
+  if (pageText.includes(expected)) return {found:true, glyph:''};
+  // Some publisher fonts (seen in MDPI PDFs) map the "fl" ligature glyph to U+00DF, so page 1 reads "Inßammation" for
+  // "Inflammation". Only after the normal match fails, and only page-side: every page "ß" is read as "fl" and the whole
+  // expected title must then appear unchanged. Nothing else is mapped, and an expected title with a real "ß" is untouched.
+  if (pageText.includes('\u00df') && pageText.replace(/\u00df/g, 'fl').includes(expected)) return {found:true, glyph:'eszett_as_fl'};
+  if (machineLigatureTitleMatch(pageText, expected)) return {found:true, glyph:'ligature_lost'};
+  return {found:false, glyph:''};
+}
+function machineAnyDoi(text) {
+  return /(?<![0-9A-Za-z])10\.\d{4,9}\s*\/\s*[^\s]/.test(String(text || ''));
+}
 // {verdict:'ok'|'invalid'|'mismatch', reason, level, doi, title}. level says how strong the evidence was:
-// 'full' (DOI and title both read from page 1), 'metadata_title' (DOI on page 1, title only from Info/XMP because
-// the page text could not be read), 'doi_only' (DOI on page 1, title unreadable), 'metadata_only'. Anything that
+// 'full' (DOI and title both read from page 1), 'metadata_doi' (title on page 1, DOI only from Info/XMP),
+// 'metadata_title' (DOI on page 1, title only from Info/XMP because the page text could not be read),
+// 'doi_only' (DOI on page 1, title unreadable), 'metadata_only', 'title_only' (machine uploads only, when
+// options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
-async function machineIdentity(bytes, doi, title) {
+async function machineIdentity(bytes, doi, rawTitle, options = {}) {
+  const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
   if (!libraryDoi(doi)) return {verdict:'invalid', reason:'doi_invalid'};
   if (expected.length < 5) return {verdict:'invalid', reason:'title_too_short'};
@@ -3766,20 +3806,34 @@ async function machineIdentity(bytes, doi, title) {
   const readable = page.readable;
   const doiPage = machineDoiPresent(page.text, doi), doiMeta = machineDoiPresent(page.metadata.text, doi);
   const pageText = machineNormalize(page.text);
-  // Some publisher fonts (seen in MDPI PDFs) map the "fl" ligature glyph to U+00DF, so page 1 reads "Inßammation" for
-  // "Inflammation". Only after the normal match fails, and only page-side: every page "ß" is read as "fl" and the whole
-  // expected title must then appear unchanged. Nothing else is mapped, and an expected title with a real "ß" is untouched.
-  const titleExact = pageText.includes(expected);
-  const titleLigature = !titleExact && pageText.includes('\u00df') && pageText.replace(/\u00df/g, 'fl').includes(expected);
-  const titlePage = titleExact || titleLigature;
+  let titleMatch = machineTitleOnPage(pageText, expected);
+  let titlePrefix = '';
+  let matchedExpected = expected;
+  if (!titleMatch.found && MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''))) {
+    const stripped = machineNormalize(String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, ''));
+    if (stripped.length >= 5) {
+      const retry = machineTitleOnPage(pageText, stripped);
+      if (retry.found) { titleMatch = retry; titlePrefix = 'section_label_dropped'; matchedExpected = stripped; }
+    }
+  }
+  const titlePage = titleMatch.found;
   const titleMeta = !readable && !titlePage && machineMetaTitleMatches(page.metadata.titles, expected);
-  const checks = {doi:doiPage ? 'page' : doiMeta ? 'metadata' : '', title:titlePage ? 'page' : titleMeta ? 'metadata' : '', readable, ...(titleLigature ? {titleGlyph:'eszett_as_fl'} : {})};
+  const checks = {
+    doi:doiPage ? 'page' : doiMeta ? 'metadata' : '',
+    title:titlePage ? 'page' : titleMeta ? 'metadata' : '',
+    readable,
+    ...(titleMatch.glyph ? {titleGlyph:titleMatch.glyph} : {}),
+    ...(titlePrefix ? {titlePrefix} : {})
+  };
   const doiFound = doiPage || doiMeta;
   if (doiPage && titlePage) return {verdict:'ok', level:'full', checks};
   if (doiFound && titlePage) return {verdict:'ok', level:'metadata_doi', checks};
   if (doiPage && titleMeta) return {verdict:'ok', level:'metadata_title', checks};
   if (doiMeta && titleMeta) return {verdict:'ok', level:'metadata_only', checks};
   if (doiPage && !readable) return {verdict:'ok', level:'doi_only', reason:'title_not_found', checks};
+  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+    return {verdict:'ok', level:'title_only', checks:{...checks, doi:'', doiAbsent:true}};
+  }
   return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks};
 }
 // ==== edge/src/04b-machine-download.js · Per-caller download queue ====
@@ -4327,7 +4381,7 @@ async function handleMachineUpload(request, env) {
       paper = fresh;
     }
     if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
-    const identity = await machineIdentity(bytes, paper.doi, paper.title);
+    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true});
     if (identity.verdict !== 'ok') throw new MachineIdentityFailure(identity.verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', identity.reason, identity.checks);
     const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (attempt && attempt.paused) libraryFail('library_paused', 423);
