@@ -4113,6 +4113,260 @@
         "notes": ""
       },
       {
+        "id": "reader-expand",
+        "label": "展开阅读",
+        "selector": "#drawerExpandBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-back",
+        "label": "返回阅读面板",
+        "selector": "#readingBackBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-previous",
+        "label": "上一篇",
+        "selector": "#readingPrevBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-next",
+        "label": "下一篇",
+        "selector": "#readingNextBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-position",
+        "label": "当前篇序",
+        "selector": "#readingPosition",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-progress",
+        "label": "文章阅读进度",
+        "selector": "#readingProgress",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-toc-toggle",
+        "label": "展开阅读目录",
+        "selector": "#readingTocToggle",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-toc-desktop",
+        "label": "常驻阅读目录",
+        "selector": "#readingTocNav",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-star",
+        "label": "阅读模式中的精选按钮",
+        "selector": "#readingToolbar #drawerHuddleToggleBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "reading-footer",
+        "label": "阅读模式底部操作",
+        "selector": "#readerDrawer.reading-mode .drawer-footer",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "完成所列操作后显示",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
         "id": "reader-region-head",
         "label": "题名与期刊信息",
         "selector": "[data-drawer-region=\"head\"]",
@@ -5281,6 +5535,90 @@
           }
         ],
         "expect": "visible"
+      },
+      {
+        "id": "reading-open",
+        "label": "阅读模式已展开",
+        "selector": "#readerDrawer.reading-mode[aria-hidden=\"false\"]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "expect": "visible",
+        "screenshot": true
+      },
+      {
+        "id": "reading-toc-open",
+        "label": "展开窄屏阅读目录",
+        "selector": "#readingTocNav [data-reading-region=\"abstract\"]",
+        "viewports": [
+          "mobile",
+          "tablet"
+        ],
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          },
+          {
+            "click": "#readingTocToggle"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "reading-start",
+        "label": "第一篇时禁用上一篇",
+        "selector": "#readingPrevBtn:disabled",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
+        "id": "reading-return",
+        "label": "收起阅读模式回到阅读面板",
+        "selector": "#readerDrawer.open:not(.reading-mode)",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&lane=all"
+          },
+          {
+            "click": "#articlesStream [data-action=\"open-drawer\"]"
+          },
+          {
+            "click": "#drawerExpandBtn"
+          },
+          {
+            "click": "#readingBackBtn"
+          }
+        ],
+        "expect": "visible",
+        "screenshot": true
       },
       {
         "id": "reader-closed",

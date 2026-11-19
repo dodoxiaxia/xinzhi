@@ -194,6 +194,7 @@
       // One press closes the topmost layer only: requests/shortlist, then reader, then full-text reading, then filters.
       if ($('#requestsModalBackdrop.open')) closeRequestsModal();
       else if ($('#huddleModalBackdrop.open')) closeHuddleModal();
+      else if ($('#readerDrawer.reading-mode')) closeReadingMode();
       else if ($('#readerDrawer.open')) closeReaderDrawer();
       else if ($('#deepReader.open')) closeDeepReading();
       else if ($('#appSidebar.open')) closeSheet();
@@ -731,7 +732,7 @@
     const entry = history.state || {};
     if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
-    if (entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
+    if (!restoreReadingHistory(entry) && entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
     const id = entry.deepReader;
     if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
     else closeDeepReading({ fromHistory: true });
@@ -835,7 +836,7 @@
 
   // Initialize
   // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.
-  try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
+  try { if (history.state && history.state.overlay !== 'reading' && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
   if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
@@ -871,11 +872,12 @@
 
   if (state.mode === 'weekly' && urlParams.get('read')) openDeepReading(urlParams.get('read'), { push: false });
 
-  if (urlParams.get('drawer') === 'first') {
+  if (urlParams.get('drawer') === 'first' && !hasReadingLink()) {
     const list = getFilteredArticles();
     if (list.length > 0) openReaderDrawer(list[0]);
   }
   if (DEFERRED) startDeferredParts();
+  initReadingMode();
 
 })();
 
