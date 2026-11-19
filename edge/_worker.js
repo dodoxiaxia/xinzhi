@@ -4231,7 +4231,7 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     if (later.page) return {verdict:'ok', level:'doi_later_page', checks:{...checks, doi:'later_page', doiPage:later.page, ...(citedPages ? {citedPages} : {})}};
   }
   const laterChecks = citedPages ? {...checks, citedPages} : checks;
-  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+  if (options && options.allowTitleOnly && titlePage && !titleVariant && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
     return {verdict:'ok', level:'title_only', checks:{...laterChecks, doi:'', doiAbsent:true}};
   }
   if (options && options.holdForeignDoi && titlePage && !doiFound && (machineAnyDoi(page.text) || machineAnyDoi(page.metadata.text))) {

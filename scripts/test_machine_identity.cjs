@@ -1166,6 +1166,23 @@ async function verifyNext(h, doi, result, reason) {
     assert.equal(vsRes.verdict, 'ok');
     assert.equal(vsRes.level, 'full');
     assert.equal(vsRes.checks.titleVariant, 'versus_or_mark');
+
+    // 9e) title_only accepts only the exact (normal, section-label-stripped) title match: no variant fallback, so a page with no DOI at all
+    //     cannot be passed by a loosened comparison.
+    const toDoi = '10.9999/synthetic.titleonly';
+    const toOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const toExact = await identity(h, fixtures.flateEol({doi:'', title:'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts'}), toDoi, 'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts', toOptions);
+    assert.equal(toExact.verdict, 'ok');
+    assert.equal(toExact.level, 'title_only');
+    for (const [label, pageTitle, title] of [
+      ['versus', 'Beta-blocker therapy vs placebo after myocardial infarction in synthetic cohorts', 'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts'],
+      ['trademark', 'SyntheticValve Transcatheter Repair in Elderly Cohorts', 'SyntheticValve\u00ae Transcatheter Repair in Elderly Cohorts'],
+      ['c1', 'CAD-SYNTH 2.0\u00962022 Synthetic Coronary Scoring in Multicenter Cohorts', 'CAD-SYNTH\u2122 2.0 \u2013 2022 Synthetic Coronary Scoring in Multicenter Cohorts']
+    ]) {
+      const res = await identity(h, fixtures.flateEol({doi:'', title:pageTitle}), toDoi, title, toOptions);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert(!('level' in res), label);
+    }
   }
 
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
