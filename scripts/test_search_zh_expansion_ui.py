@@ -52,6 +52,7 @@ def check_viewport(browser, origin, width, height, counts, evidence):
     results = {}
     try:
         note = page.locator('[data-search-expansion]')
+        scope = page.locator('#activeFiltersBar .search-scope')
         total = page.locator('#listTotal')
         search = page.locator('#globalSearch')
         for mode, expected in counts.items():
@@ -64,6 +65,7 @@ def check_viewport(browser, origin, width, height, counts, evidence):
             for query, message in (('房颤消融', ZH_NOTE), ('AF', AF_NOTE), (NO_MATCH, AF_NOTE), (ENGLISH, '')):
                 search.fill(query)
                 expect(total).to_have_text(f'共 {expected[query]} 篇')
+                expect(scope).to_have_count(1)
                 if message:
                     expect(note).to_have_count(1)
                     expect(note).to_have_text(message)
