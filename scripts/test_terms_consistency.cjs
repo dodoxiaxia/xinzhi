@@ -42,6 +42,7 @@ const listCtx = vm.createContext({
   designBadgeHtml: () => '',
   journalMetricBadge: () => ''
 });
+vm.runInContext(src.match(/  const SEARCH_APOSTROPHES = [^\n]+/)[0] + '\n' + src.match(/  const SEARCH_QUOTES = [^\n]+/)[0] + '\n' + fn('foldSearch'), listCtx);
 vm.runInContext(['isInternalSourceName', 'cardJournalName', 'huddleStarSvg', 'cardTakeaway', 'cardSideActionsHtml', 'authorAffilHtml'].map(fn).join('\n'), listCtx);
 vm.runInContext(fn('officialArticleUrl'), listCtx);
 vm.runInContext(fn('renderArticleCard'), listCtx);

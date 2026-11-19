@@ -6,6 +6,7 @@ Paper-specific interpretation belongs only to source-checked editorial content.
 import datetime, json, re, unicodedata
 from pathlib import Path
 from urllib.parse import urlsplit
+import ai_column
 from scope_filter import scope_decision
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -150,9 +151,11 @@ def classify_publisher(journal, url=''):
     return '其他学术刊物'
 
 # 3. Clinical Tier & Specialty Matrix
-def classify_clinical_tier(journal, title=''):
+def classify_clinical_tier(journal, title='', doi=''):
     # This is a source group plus explicit title cues, not a verified article specialty.
     j = clean_journal_name(journal)
+    if doi and ai_column.is_ai_column(doi):
+        return 'AI医疗与数字医学'
     jl = j.casefold()
     tl = (title or '').lower()
     if j in {'Circulation: Arrhythmia and Electrophysiology', 'JACC: Clinical Electrophysiology', 'Europace', 'Heart Rhythm', 'Heart Rhythm O2', 'Journal of Cardiovascular Electrophysiology', 'Journal of Arrhythmia', 'Pacing and Clinical Electrophysiology', 'PubMed: 房颤专病追踪', 'PubMed: 丹麦房颤队列追踪'}:
@@ -845,7 +848,7 @@ def enrich_paper(p, drafts_by_doi={}, drafts_by_url={}):
 
     pub = classify_publisher(journal, url)
     clean_j = clean_journal_name(journal)
-    tier = classify_clinical_tier(journal, title)
+    tier = classify_clinical_tier(journal, title, doi)
     design = classify_study_design(title, summary, p.get('pubTypes', ()))
     # A case-report journal is direct evidence of the article type when nothing else is known.
     if design == '研究类型待核验' and CASE_REPORT_JOURNALS.match(journal):
