@@ -85,6 +85,25 @@ def main():
         no_banned_content(page, scope, label)
         check(not page.locator('#aiDigest').is_visible(), f'{label}: AI digest entry hidden')
 
+    def digest_visibility_control(page, label):
+        digest = page.locator('#aiDigest')
+        attrs = digest.evaluate('''e => {
+          const saved = [e.getAttribute('style'), e.getAttribute('hidden')];
+          e.hidden = false;
+          e.style.setProperty('display', 'block', 'important');
+          e.style.position = 'fixed';
+          e.style.width = e.style.height = '1px';
+          return saved;
+        }''')
+        try:
+            check(digest.is_visible(), f'{label}: visibility detector sees the forced-visible digest entry')
+        finally:
+            digest.evaluate('''(e, attrs) => ['style', 'hidden'].forEach((name, i) => {
+              if (attrs[i] === null) e.removeAttribute(name);
+              else e.setAttribute(name, attrs[i]);
+            })''', attrs)
+        check(not digest.is_visible(), f'{label}: digest entry hidden again after probe')
+
     def box(locator):
         return locator.bounding_box()
 
@@ -123,6 +142,8 @@ def main():
                     scope = '#weeklySection' if mode == 'weekly' else '#articlesStream'
                     label = f'{tag} {mode} {"compact" if compact else "detailed"}'
                     no_labels(page, scope, label)
+                    if mode == 'curated' and not compact:
+                        digest_visibility_control(page, label)
                     row_class = ('.weekly-row' if compact else '.weekly-auto-item') if mode == 'weekly' else ('.compact-row' if compact else '.article-card')
                     cards = page.locator(scope + ' ' + row_class)
                     check(cards.count() > 0, f'{label}: has papers')
