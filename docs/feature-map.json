@@ -1507,6 +1507,18 @@
           "notes": ""
         },
         {
+          "id": "candidates-summary-clear",
+          "label": "清除筛选（保留关键词）",
+          "selector": "[data-qf-clear=\"all\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": ["mobile", "tablet", "desktop"],
+          "condition": "雷达存在活动筛选条件",
+          "setup": [{"goto": "/?mode=candidates&lane=all"}],
+          "stable": true,
+          "notes": "恢复默认筛选，保留搜索框关键词"
+        },
+        {
           "id": "candidates-scope-core",
           "label": "心血管+AI",
           "selector": "[data-qf-lane=\"core\"]",

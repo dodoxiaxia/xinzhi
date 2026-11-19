@@ -2591,6 +2591,10 @@ html[data-style="a"] .qf-scope.is-on {
   font-size: 12px;
   font-weight: 400;
 }
+.qf-jlabel { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.qf-jname small { flex: 0 0 auto; white-space: nowrap; }
+.qf-jname small:last-child { min-width: 4ch; text-align: right; }
+.qf-jname:disabled { cursor: default; }
 .qf-opt-list { display: flex; flex-direction: column; padding: 0 8px; }
 .qf-opt {
   display: flex;
@@ -2686,7 +2690,7 @@ html[data-style="a"] .qf-split.is-on .qf-chip {
 .qf-suggested {
   color: var(--accent);
   font-size: 11px;
-  margin-left: 6px;
+  min-width: 2em;
   font-weight: 650;
 }
 .qf-jrow.is-empty .qf-jname { opacity: .55; }
