@@ -113,6 +113,13 @@
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
     const view = fulltextView(p), doi = p && exactDoi(p.doi);
     if (!view) return '';
+    if (full && !drawer && view.action === 'download' && doi && exactDoi(state.search) === doi &&
+        typeof requestLibraryMatch === 'function') {
+      const label = hasRequestLibraryPdf(doi, p.title) ? '库里已有'
+        : DOI_FULLTEXT.get(doi)?.fulltextStatus === 'available' && !requestLibraryMatch(doi, p.title)
+        ? '已取得全文，待归类入库' : '';
+      if (label) view.short = view.headline = label;
+    }
     const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
     const officialUrl = officialArticleUrl(p);

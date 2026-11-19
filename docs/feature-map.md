@@ -467,6 +467,16 @@
 | brief-completed | 已生成综述或讨论提纲 | `.brief-done` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | topic-pop-open | 展开文章主题筛选 | `[data-qf-topic-all]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}] |
 | requests-empty | 本浏览器申请记录为空 | `#requestsModalBody .empty-state` | text:当前浏览器还没有已确认的全文申请记录 | [{"click":"#openRequestsBtn"}] |
+| request-ingested | 申请：已入库、显示真实归类和阅读详情 | `.req-item:has(.req-classification) .req-status-badge` | text:已入库 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-existing | 申请：库里已有 | `.req-item:has(.req-classification) .req-status-badge` | text:库里已有 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-awaiting-intake | 申请：已取得全文、待归类入库 | `.req-item .req-status-badge` | text:已取得全文，待归类入库 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-hold | 申请：待人工核验 | `.req-item .req-status-review` | text:待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-hold-rejected | 申请：人工核验未通过 | `.req-item .req-status-review` | text:人工核验未通过，可重新提交 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-identity-conflict | 申请：题录冲突 | `.req-item .req-status-review` | text:题录冲突，待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-possible-duplicate | 申请：同题不同 DOI 仅提示 | `.req-possible-duplicate` | text:题名相同但 DOI 不同 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-open-ingested | 申请：打开静态文献阅读详情 | `.req-item:has(.req-classification) [data-action="open-request-paper"]` |  | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-pdf | DOI 检索：库里已有 PDF，不显示获取表单 | `#articlesStream .ft-badge-ready` | text:库里已有 | SKIP: 需模拟带 PDF 的静态记录，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-stale-submit | 获取全文的旧表单：库里已有，不重复提交 | `#articlesStream form[data-ft-form] .ft-error` | text:库里已有，可直接下载 | SKIP: 需模拟旧表单，由 scripts/test_request_loop_ui.py 覆盖 |
 
 <details><summary>入口操作与备注</summary>
 

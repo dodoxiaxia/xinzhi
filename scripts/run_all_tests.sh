@@ -93,6 +93,7 @@ if [ "$BROWSER" = 1 ]; then
   run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
   run "test_reading_mode_ui" python3 scripts/test_reading_mode_ui.py
   run "test_mwg_local_ui" python3 scripts/test_mwg_local_ui.py
+  run "test_request_loop_ui" python3 scripts/test_request_loop_ui.py
   run "test_weekly_layout_ui" python3 scripts/test_weekly_layout_ui.py
   run "test_long_titles_ui" python3 scripts/test_long_titles_ui.py
   run "test_topic_multitag_ui" python3 scripts/test_topic_multitag_ui.py
