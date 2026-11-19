@@ -1026,6 +1026,77 @@ async function verifyNext(h, doi, result, reason) {
       assert.equal(oneLetterOff.verdict, 'mismatch');
       assert.equal(oneLetterOff.reason, 'title_not_found');
     }
+
+    // 9b) line_number_inserted: only when the claimed DOI is already confirmed on the page; >=40 chars; 1-2 digits only at original
+    //     word-space gaps; <=2 insertions; strictly increasing; and each inserted number is itself a member of a chain of >=5
+    //     consecutive integers (each <=40 tokens after the previous), i.e. the line-number evidence sits at the title.
+    const lnDoi = '10.9999/synthetic.linenum';
+    const lnTitle = 'Beta-blocker therapy and angina burden after myocardial infarction in synthetic cohorts';
+    assert(normalize(lnTitle).length >= 40);
+    const lnPdf = (pageTitle, trailing, withDoi = true) => fixtures.multiPage({pages:[{rawContent:'BT /F1 10 Tf 1 0 0 1 72 720 Tm ' + (withDoi ? '(doi:' + esc(lnDoi) + ') Tj ' : '') + '(' + esc(pageTitle) + ') Tj ' + trailing.map(n => '(' + n + ') Tj (margin text) Tj ').join('') + 'ET\n'}]});
+    const oneLn = await identity(h, lnPdf('Beta-blocker therapy and angina 4 burden after myocardial infarction in synthetic cohorts', [5, 6, 7, 8]), lnDoi, lnTitle);
+    assert.equal(oneLn.verdict, 'ok');
+    assert.equal(oneLn.level, 'full');
+    assert.equal(oneLn.checks.titleVariant, 'line_number_inserted');
+
+    const twoLn = await identity(h, lnPdf('Beta-blocker therapy 2 and angina burden after 3 myocardial infarction in synthetic cohorts', [4, 5, 6]), lnDoi, lnTitle);
+    assert.equal(twoLn.verdict, 'ok');
+    assert.equal(twoLn.level, 'full');
+    assert.equal(twoLn.checks.titleVariant, 'line_number_inserted');
+
+    // Stray integers between the chain members (affiliation superscripts) do not break the chain.
+    const strayLn = await identity(h, lnPdf('Beta-blocker therapy and angina 4 burden after myocardial infarction in synthetic cohorts', [1, 5, 1, 6, 2, 7, 8]), lnDoi, lnTitle);
+    assert.equal(strayLn.verdict, 'ok');
+    assert.equal(strayLn.checks.titleVariant, 'line_number_inserted');
+
+    const lnCombo = await identity(
+      h,
+      lnPdf('Beta-blocker therapy vs 2 angina 2.0\u00962022 burden after 3 myocardial infarction in synthetic cohorts', [4, 5, 6]),
+      lnDoi,
+      '[Articles] Beta-blocker therapy versus angina 2.0 \u2013 2022 burden after myocardial infarction in synthetic cohorts'
+    );
+    assert.equal(lnCombo.verdict, 'ok');
+    assert.equal(lnCombo.checks.titlePrefix, 'section_label_dropped');
+    assert.equal(lnCombo.checks.titleVariant, 'line_number_inserted');
+
+    // Negative cases: inside word, inside hyphenated word, 3 insertions, non-increasing, <40 chars, chain too short or not through
+    // the inserted number, no evidence, /MCID-only numbers, extra word.
+    const lnNegatives = [
+      ['mid-word', lnPdf('Beta-blocker therapy and angina bur2den after myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle],
+      ['mid-hyphen', lnPdf('Beta-2blocker therapy and angina burden after myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle],
+      ['three-inserts', lnPdf('Beta-blocker therapy 2 and angina 3 burden after 4 myocardial infarction in synthetic cohorts', [5, 6, 7]), lnTitle],
+      ['equal-inserts', lnPdf('Beta-blocker therapy 3 and angina burden after 3 myocardial infarction in synthetic cohorts', [4, 5, 6]), lnTitle],
+      ['decreasing-inserts', lnPdf('Beta-blocker therapy 5 and angina burden after 2 myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle],
+      ['short-title', lnPdf('Synthetic short 2 trial in cohorts', [3, 4, 5, 6]), 'Synthetic short trial in cohorts'],
+      ['short-chain', lnPdf('Beta-blocker therapy and angina 2 burden after myocardial infarction in synthetic cohorts', [3, 4, 5]), lnTitle],
+      ['chain-elsewhere', lnPdf('Beta-blocker therapy and angina 37 burden after myocardial infarction in synthetic cohorts', [1, 2, 3, 4, 5, 6, 7, 8]), lnTitle],
+      ['no-evidence', fixtures.flateEol({doi:lnDoi, title:'Beta-blocker therapy and angina 2 burden after myocardial infarction in synthetic cohorts'}), lnTitle],
+      ['extra-word', lnPdf('Beta-blocker therapy extra and angina burden after myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle]
+    ];
+    for (const [label, pdf, title] of lnNegatives) {
+      const res = await identity(h, pdf, lnDoi, title);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert.equal(res.reason, 'title_not_found', label);
+    }
+    const mcidOnlyPdf = fixtures.multiPage({pages:[{rawContent:'/P <</MCID 1 >>BDC BT /F1 10 Tf (doi:' + esc(lnDoi) + ') Tj ET EMC /P <</MCID 2 >>BDC BT (Beta-blocker therapy) Tj ET EMC /P <</MCID 3 >>BDC BT (and angina 4 burden) Tj ET EMC /P <</MCID 4 >>BDC BT (after myocardial infarction in synthetic cohorts) Tj ET EMC /P <</MCID 5 >>BDC BT (x) Tj ET EMC /P <</MCID 6 >>BDC BT (y) Tj ET EMC\n'}]});
+    const mcidRes = await identity(h, mcidOnlyPdf, lnDoi, lnTitle);
+    assert.equal(mcidRes.verdict, 'mismatch', 'mcid-only');
+    assert.equal(mcidRes.reason, 'title_not_found', 'mcid-only');
+
+    // Without the claimed DOI on the page the insertion rule never applies: a sequel ("SPRINT 2") must not pass as title_only or hold,
+    // even with a perfect number chain around it.
+    const seqTitle = 'Results of the SPRINT Trial on intensive blood pressure control in synthetic cohorts';
+    const seqPageTitle = 'Results of the SPRINT 2 Trial on intensive blood pressure control in synthetic cohorts';
+    const seqOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const seqNoDoi = await identity(h, lnPdf(seqPageTitle, [3, 4, 5, 6], false), lnDoi, seqTitle, seqOptions);
+    assert.equal(seqNoDoi.verdict, 'mismatch', 'sequel without doi');
+    assert(!('level' in seqNoDoi), 'sequel without doi must not get any level (title_only included)');
+    const seqForeign = fixtures.multiPage({pages:[{rawContent:'BT /F1 10 Tf 1 0 0 1 72 720 Tm (doi:10.1000/other.paper) Tj (' + esc(seqPageTitle) + ') Tj (3) Tj (4) Tj (5) Tj (6) Tj ET\n'}]});
+    const seqForeignRes = await identity(h, seqForeign, lnDoi, seqTitle, seqOptions);
+    assert.equal(seqForeignRes.verdict, 'mismatch', 'sequel with foreign doi');
+    // Even with the DOI confirmed, an extra number with no number chain through it is rejected.
+    const seqNoChain = await identity(h, lnPdf(seqPageTitle, []), lnDoi, seqTitle, seqOptions);
+    assert.equal(seqNoChain.verdict, 'mismatch', 'sequel without chain');
   }
 
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
