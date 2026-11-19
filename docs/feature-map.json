@@ -4703,33 +4703,6 @@
         "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
       },
       {
-        "id": "translation-wait",
-        "label": "读取已有译文",
-        "selector": "[data-action=\"tr-check\"]",
-        "kind": "button",
-        "visible": "conditional",
-        "viewports": [
-          "mobile",
-          "tablet",
-          "desktop"
-        ],
-        "condition": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          }
-        ],
-        "stable": true,
-        "notes": "综述与提纲在原容器内展开；当前源码没有独立对话框",
-        "skip": "需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果"
-      },
-      {
         "id": "brief-wait",
         "label": "读取已有综述",
         "selector": "[data-action=\"brief-check\"]",
@@ -5545,44 +5518,6 @@
         "id": "brief-completed",
         "label": "已生成综述或讨论提纲",
         "selector": ".brief-done",
-        "trigger": "用户明确生成，或查询远程已有结果后出现",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          }
-        ],
-        "expect": "visible",
-        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
-      },
-      {
-        "id": "translation-error",
-        "label": "译文生成失败",
-        "selector": ".translation-error",
-        "trigger": "用户明确生成，或查询远程已有结果后出现",
-        "setup": [
-          {
-            "goto": "/?mode=library&lane=all"
-          },
-          {
-            "click": "#articlesStream [data-action=\"open-drawer\"]"
-          },
-          {
-            "wait": "#readerDrawer[aria-hidden=\"false\"]"
-          }
-        ],
-        "expect": "visible",
-        "skip": "需要远程模型任务状态；离线遍历不提交生成请求"
-      },
-      {
-        "id": "translation-progress",
-        "label": "译文读取或等待状态",
-        "selector": ".tr-box [role=\"status\"]",
         "trigger": "用户明确生成，或查询远程已有结果后出现",
         "setup": [
           {

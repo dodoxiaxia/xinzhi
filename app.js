@@ -1799,34 +1799,19 @@
     const result = studyResultOf(record, 'study');
     if (result && result.papers.some(p => p.key === studyKey(paper))) STUDY_RESULTS[studyKey(paper)] = { state: 'done', result, cached: true, canGenerate: false };
   }
-  function translationCanGenerate(paper) {
-    return typeof paper._trCanGenerate === 'boolean' ? paper._trCanGenerate : AI_AVAIL;
-  }
-  function trCheck(paper, retry = false) {
+  function trCheck(paper) {
     const k = trKeyOf(paper);
-    if (!k || paper._trLookupState === 'loading' || paper._trState === 'loading' || (paper._trChecked && !retry)) return;
-    const previous = paper._trState, current = paperTask(paper, '_tr');
-    paper._trChecked = 1; paper._trLookupState = 'loading';
+    if (!k || paper._trChecked) return;
+    const current = paperTask(paper, '_tr');
+    paper._trChecked = 1;
     aiRun({ url: '/api/ai?task=translate&k=' + encodeURIComponent(k), current,
       ok: j => {
-        if (!j || j.ok === false) throw new Error('Translation lookup unavailable');
-        paper._trLookupState = 'done';
-        paper._trCanGenerate = typeof j.canGenerate === 'boolean' ? j.canGenerate : undefined;
-        if (j.found && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) { paper.titleZh = j.tr.title_zh; forgetPaper(paper); } paper._trState = 'done'; }
-        else if (aiTaskStatus(j) === 'waiting' || aiTaskStatus(j) === 'completed' || (previous === 'waiting' && !aiTaskStatus(j))) { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); }
-        else if (aiTaskStatus(j) === 'failed') { paper._trState = 'error'; paper._trMsg = aiErrorMessage({...j, ...j.task}, 'translate'); }
-        else paper._trState = '';
+        if (!j || j.ok === false || !j.found || !validTranslation(j.tr)) return;
+        LIVE_TR[k] = j.tr;
+        if (!paper.titleZh) { paper.titleZh = j.tr.title_zh; forgetPaper(paper); }
       },
-      fail: () => { paper._trLookupState = 'error'; if (previous === 'waiting') { paper._trState = 'waiting'; paper._trMsg = '已有译文读取失败，请重查；没有重新调用模型。'; } },
-      after: () => rerenderReader(paper) });
-  }
-  function aiTranslate(paper) {
-    const k = trKeyOf(paper); if (!k || ['loading', 'waiting'].includes(paper._trState) || paper._trLookupState === 'loading' || translationCanGenerate(paper) !== true) return;
-    const current = paperTask(paper, '_tr'); paper._trState = 'loading'; paper._trSlow = false; openReaderDrawer(paper);
-    aiRun({ url: '/api/ai', body: { task: 'translate', pmid: paper.pmid || '', doi: paper.doi || '' }, current,
-      slow: () => { paper._trSlow = true; rerenderReader(paper); },
-      ok: j => { if (j.ok && validTranslation(j.tr)) { LIVE_TR[k] = j.tr; if (!paper.titleZh) { paper.titleZh = j.tr.title_zh; forgetPaper(paper); } paper._trState = 'done'; } else if (j.error === 'in_progress' || aiTaskStatus(j) === 'waiting') { paper._trState = 'waiting'; paper._trMsg = aiWaitingMessage(j); } else { paper._trState = 'error'; paper._trMsg = aiErrorMessage(j, 'translate'); } },
-      fail: error => { paper._trState = 'waiting'; paper._trMsg = aiUnconfirmed(error); },
+      // A failed cache lookup leaves the original abstract available.
+      fail: () => {},
       after: () => rerenderReader(paper) });
   }
   function aiTitle(paper) {
@@ -1845,31 +1830,6 @@
       ok: j => { if (!j?.ok) throw Error('Title lookup unavailable'); if (j.found && j.tt?.title_zh) { paper.titleZh = j.tt.title_zh; forgetPaper(paper); paper._ttState = ''; paper._ttMsg = ''; } else if (['idle', 'failed'].includes(aiTaskStatus(j))) { paper._ttState = ''; paper._ttMsg = aiTaskStatus(j) === 'failed' ? aiErrorMessage({...j, ...j.task}, 'title') : '上次任务已结束，未查到标题译文。可点击重试。'; } else { paper._ttState = 'waiting'; paper._ttMsg = aiWaitingMessage(j); } },
       fail: () => { paper._ttState = 'waiting'; paper._ttMsg = '已有标题译文读取失败，请重查；没有重新调用模型。'; },
       after: () => rerenderReader(paper) });
-  }
-  function trBoxHtml(paper) {
-    const tr = LIVE_TR[trKeyOf(paper)];
-    if (validTranslation(tr)) return `<div class="tr-box">${tr.abstract_zh.split(/\n+/).map(t => `<p>${esc(t)}</p>`).join('')}</div>`;
-    if (DEFERRED && !partsReady('pregenerated') && (paper.pmid || paper.doi)) {
-      return PART_STATE.pregenerated === 'error'
-        ? '<div class="tr-box"><p class="ql-meta" role="status">加载失败 <button type="button" class="btn-sm" data-action="retry-part" data-part="pregenerated">重试</button></p></div>'
-        : '<div class="tr-box"><p class="ql-meta" role="status">加载中...</p></div>';
-    }
-    if (paper.weeklyPick) return '<div class="tr-box"><p class="ql-meta" role="status">本篇中文摘要尚未预生成。</p></div>';
-    if (paper._trState === 'loading') return `<div class="tr-box"><p class="ql-meta" role="status">正在翻译摘要…${paper._trSlow ? '用时较长，无需重复点击。' : ''}</p></div>`;
-    if (paper._trState === 'waiting') return `<div class="tr-box"><p class="ql-meta" role="status">${esc(paper._trMsg || aiWaitingMessage())}</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}"${paper._trLookupState === 'loading' ? ' disabled' : ''}>读取已有译文</button></div>`;
-    if (!(paper.pmid || paper.doi)) return '<p class="ql-meta" role="status">缺少文献标识，暂无法翻译。</p>';
-    if (paper._trLookupState === 'error') return `<div class="tr-box"><p class="ql-meta" role="status">译文读取失败。</p><button class="btn-sm" data-action="tr-check" data-paper-id="${esc(paper.id)}">重新读取译文</button></div>`;
-    if (paper._trLookupState !== 'done') return '<div class="tr-box"><p class="ql-meta" role="status">正在读取已有译文…</p></div>';
-    if (translationCanGenerate(paper) === null) return '<div class="tr-box"><p class="ql-meta" role="status">正在检查翻译服务…</p></div>';
-    if (!translationCanGenerate(paper)) return '<div class="tr-box"><p class="ql-meta" role="status">暂无译文，翻译服务暂不可用。</p></div>';
-    return `<div class="tr-box">${paper._trState === 'error' ? `<p class="translation-error" role="status">${esc(paper._trMsg || '译文未生成，请重试。')}</p>` : '<p class="ql-meta">暂无中文译文。</p>'}<button class="btn-sm" data-action="ai-translate" data-paper-id="${esc(paper.id)}">${paper._trState === 'error' ? '重试翻译' : '翻译摘要（中英对照）'}</button></div>`;
-  }
-  function abstractTranslationStatus(paper) {
-    if (validTranslation(LIVE_TR[trKeyOf(paper)])) return '中英对照';
-    if (paper._trState === 'loading') return '译文生成中';
-    if (paper._trState === 'waiting') return '译文状态待确认';
-    if (paper._trState === 'error' || paper._trLookupState === 'error') return '译文暂不可用';
-    return paper.weeklyPick ? '译文待预生成' : '译文未生成';
   }
   function briefItems(list) {
     const seen = new Set(), result = [];
@@ -6230,10 +6190,6 @@
 
     const ttAction = e.target.closest('[data-action="ai-title"]');
     if (ttAction) { const paper = allPapersMap.get(ttAction.dataset.paperId); if (paper) aiTitle(paper); return; }
-    const trAction = e.target.closest('[data-action="ai-translate"]');
-    if (trAction) { const paper = allPapersMap.get(trAction.dataset.paperId); if (paper) aiTranslate(paper); return; }
-    const trCheckAction = e.target.closest('[data-action="tr-check"]');
-    if (trCheckAction) { const paper = allPapersMap.get(trCheckAction.dataset.paperId); if (paper) { trCheck(paper, true); openReaderDrawer(paper); } return; }
     const abstractJump = e.target.closest('[data-action="abstract-jump"]');
     if (abstractJump) {
       const selector = abstractJump.dataset.column === 'translation' ? '.abstract-translation' : '.abstract-original';

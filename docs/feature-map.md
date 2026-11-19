@@ -398,7 +398,6 @@
 | digest | 综述速读 | `[data-action="ai-brief"][data-mode="digest"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | discussion | 讨论提纲 | `[data-action="ai-brief"][data-mode="huddle"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | ai-wait | 读取已有 AI 速览 | `[data-action="ai-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
-| translation-wait | 读取已有译文 | `[data-action="tr-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | brief-wait | 读取已有综述 | `[data-action="brief-check"]` | button | conditional · mobile/tablet/desktop · 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 · SKIP: 需要远程任务状态或服务开关；本地静态服务不提供 API，不伪造结果 | 是 |
 | request-fulltext | 获取全文 | `[data-ft-action="open-form"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | request-form | 全文申请 | `[data-ft-form]` | panel | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -444,8 +443,6 @@
 | ai-progress | 速览读取中或完成状态尚未确认 | `.quicklook.ai-ask [role="status"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | brief-generating | 正在生成综述或讨论提纲 | `.brief-box[aria-busy="true"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | brief-completed | 已生成综述或讨论提纲 | `.brief-done` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
-| translation-error | 译文生成失败 | `.translation-error` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
-| translation-progress | 译文读取或等待状态 | `.tr-box [role="status"]` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | topic-pop-open | 展开文章主题筛选 | `[data-qf-topic-all]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}] |
 | requests-empty | 本浏览器申请记录为空 | `#requestsModalBody .empty-state` | text:当前浏览器还没有已确认的全文申请记录 | [{"click":"#openRequestsBtn"}] |
 
@@ -510,7 +507,6 @@
 - **digest**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **discussion**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **ai-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
-- **translation-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **brief-wait**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}]`；综述与提纲在原容器内展开；当前源码没有独立对话框
 - **request-fulltext**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"}]`
 - **request-form**：`[{"goto":"/?mode=library&q=10.9999/feature-map-unlisted"},{"click":"[data-ft-action=\"open-form\"]"}]`
