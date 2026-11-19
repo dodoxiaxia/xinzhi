@@ -633,10 +633,6 @@
 
     const ttAction = e.target.closest('[data-action="ai-title"]');
     if (ttAction) { const paper = allPapersMap.get(ttAction.dataset.paperId); if (paper) aiTitle(paper); return; }
-    const trAction = e.target.closest('[data-action="ai-translate"]');
-    if (trAction) { const paper = allPapersMap.get(trAction.dataset.paperId); if (paper) aiTranslate(paper); return; }
-    const trCheckAction = e.target.closest('[data-action="tr-check"]');
-    if (trCheckAction) { const paper = allPapersMap.get(trCheckAction.dataset.paperId); if (paper) { trCheck(paper, true); openReaderDrawer(paper); } return; }
     const abstractJump = e.target.closest('[data-action="abstract-jump"]');
     if (abstractJump) {
       const selector = abstractJump.dataset.column === 'translation' ? '.abstract-translation' : '.abstract-original';

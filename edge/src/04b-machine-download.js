@@ -1251,22 +1251,22 @@ async function machineRegisterExisting(env, doi) {
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
-// Use Crossref's title for the first-page identity check and keep the bibliography from the same lookup.
+// Use the DOI registry's title for the first-page identity check and keep the bibliography from the same lookup.
 // The submitted RSS title is the fallback. One lookup per new DOI, each bounded by
-// MACHINE_REGISTER_CROSSREF_MS; after MACHINE_REGISTER_CROSSREF_BUDGET_MS of a batch, or once Crossref limits requests, the
+// MACHINE_REGISTER_LOOKUP_MS; after MACHINE_REGISTER_LOOKUP_BUDGET_MS of a batch, or once a registry limits requests, the
 // rest of the batch uses the fallback so a 50-item batch still answers well inside a client's 60 second timeout.
 const MACHINE_REGISTER_SECTION_LABEL = /^\[[A-Za-z][A-Za-z ./-]{0,39}\](?:\s+|$)/;
-const MACHINE_REGISTER_CROSSREF_MS = 5000;
-const MACHINE_REGISTER_CROSSREF_BUDGET_MS = 25000;
+const MACHINE_REGISTER_LOOKUP_MS = 5000;
+const MACHINE_REGISTER_LOOKUP_BUDGET_MS = 25000;
 function machineRegisterLookup() {
   const started = Date.now();
   let stopped = false;
-  return {open:() => !stopped && Date.now() - started < MACHINE_REGISTER_CROSSREF_BUDGET_MS, stop:() => { stopped = true; }};
+  return {open:() => !stopped && Date.now() - started < MACHINE_REGISTER_LOOKUP_BUDGET_MS, stop:() => { stopped = true; }};
 }
 async function machineRegisterMetadata(item, lookup) {
   let metadata;
   if (lookup && lookup.open()) {
-    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), MACHINE_REGISTER_CROSSREF_MS);
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), MACHINE_REGISTER_LOOKUP_MS);
     try { metadata = await libraryMetadata(item.doi, {signal:controller.signal}); }
     catch (error) { if (error && error.code === 'library_paused') lookup.stop(); }
     finally { clearTimeout(timer); }
@@ -1275,7 +1275,7 @@ async function machineRegisterMetadata(item, lookup) {
     return {title:item.title,titleSource:'registration',metadataStatus:'registration_title_only',journal:'',authors:[],date:'',datePrecision:'',dateBasis:''};
   }
   const titleNote = machineNormalize(metadata.title) === machineNormalize(item.title) ? {} : {titleMismatch:true,registeredTitle:item.title};
-  return {...metadata,titleSource:'crossref',...titleNote};
+  return {...metadata,titleSource:metadata.titleSource || 'crossref',...titleNote};
 }
 async function machineRegisterOne(env, caller, item, changes, lookup) {
   const now = Date.now(), id = crypto.randomUUID();

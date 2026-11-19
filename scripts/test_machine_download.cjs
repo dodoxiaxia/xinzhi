@@ -93,6 +93,117 @@ function capList(h, max = 10) {
   h.kv.list = opts => original({...opts,limit:Math.min(Number(opts.limit) || max, max)});
 }
 function stored(h, key) { const value = h.values.get(key); return value === undefined ? undefined : JSON.parse(value); }
+async function registryUploads() {
+  // Reduced recordings from GET https://api.datacite.org/dois/<doi>; fetch is stubbed throughout.
+  const fixtures = require('./fixtures/datacite-dois.json');
+  const arxiv = '10.48550/arxiv.1706.03762', zenodo = '10.5281/zenodo.1463189', missing = '10.1000/missing';
+  const crossrefUrl = doi => 'https://api.crossref.org/works/' + encodeURIComponent(doi);
+  const dataciteUrl = doi => 'https://api.datacite.org/dois/' + encodeURIComponent(doi);
+  const urls = h => h.calls.map(call => call.url.href);
+  const notFound = () => new Response(null, {status:404});
+  function fromDatacite(options = {}) {
+    return create({
+      crossrefResponse:notFound,
+      dataciteResponse:url => {
+        const fixture = fixtures[decodeURIComponent(url.pathname.slice('/dois/'.length))];
+        return fixture ? Response.json(fixture) : notFound();
+      },
+      ...options
+    });
+  }
+  const examples = [
+    [arxiv, 'Attention Is All You Need', 'arXiv',
+      ['Ashish Vaswani','Noam Shazeer','Niki Parmar','Jakob Uszkoreit','Llion Jones','Aidan N. Gomez','Lukasz Kaiser','Illia Polosukhin'], '2017', 'year'],
+    [zenodo, 'Survey Of India Topo Sheet 56H16 1966 1St Edition', 'Zenodo', ['Survey Of India'], '2018-10-15', 'day']
+  ];
+  for (const [requestedDoi, expectedTitle, journal, authors, date, datePrecision] of examples) {
+    const h = await fromDatacite();
+    const pdfDoi = requestedDoi === arxiv ? requestedDoi.replace('/arxiv.', '/arXiv.') : requestedDoi;
+    const response = await upload(h, paperPdf(pdfDoi, expectedTitle), requestedDoi);
+    assert.equal(response.status, 202);
+    const {task} = await response.json();
+    assert.equal(task.identity, 'full');
+    assert.equal(task.state, 'uploaded-awaiting-verification');
+    assert.deepEqual(urls(h), [crossrefUrl(requestedDoi), dataciteUrl(requestedDoi)]);
+    const paper = stored(h, 'library:paper:' + requestedDoi).paper;
+    assert.equal(paper.doi, requestedDoi);
+    assert.equal(paper.title, expectedTitle);
+    assert.equal(paper.journal, journal);
+    assert.deepEqual(paper.authors, authors);
+    assert.equal(paper.date, date);
+    assert.equal(paper.datePrecision, datePrecision);
+    assert.equal(paper.dateBasis, 'DataCite Issued');
+    assert.equal(paper.metadataStatus, 'external_bibliography_checked');
+  }
+
+  let h = await create();
+  const crossref = await upload(h, paperPdf(doi), doi);
+  assert.equal(crossref.status, 202);
+  assert.equal((await crossref.json()).task.identity, 'full');
+  assert.deepEqual(urls(h), [crossrefUrl(doi)]);
+  assert.equal(stored(h, 'library:paper:' + doi).paper.dateBasis, 'Crossref published-online');
+
+  h = await fromDatacite();
+  await error(await upload(h, paperPdf(missing), missing), 404, 'library_metadata_unavailable');
+  assert.deepEqual(urls(h), [crossrefUrl(missing), dataciteUrl(missing)]);
+  assert.equal(h.writes.length, 0);
+
+  for (const [options, status, code] of [
+    [{crossrefResponse:() => new Response(null, {status:503})}, 502, 'library_upstream'],
+    [{crossrefResponse:undefined,crossref:{DOI:missing}}, 409, 'library_identity']
+  ]) {
+    h = await fromDatacite(options);
+    await error(await upload(h, paperPdf(doi), doi), status, code);
+    assert.deepEqual(urls(h), [crossrefUrl(doi)]);
+  }
+
+  h = await fromDatacite({dataciteResponse:() => Response.json(fixtures[arxiv])});
+  await error(await upload(h, paperPdf(zenodo, examples[0][1]), zenodo), 409, 'library_identity');
+  assert(!stored(h, 'library:paper:' + zenodo));
+
+  h = await fromDatacite();
+  await error(await upload(h, paperPdf(arxiv, 'Unrelated synthetic title for identity testing'), arxiv), 409, 'machine_identity_mismatch');
+  assert(!stored(h, 'library:paper:' + arxiv));
+
+  for (const titleType of [null, 'Subtitle', 'AlternativeTitle', 'TranslatedTitle']) {
+    const noMainTitle = structuredClone(fixtures[zenodo]);
+    noMainTitle.data.attributes.titles = titleType ? [{title:examples[1][1],titleType}] : [];
+    h = await fromDatacite({dataciteResponse:() => Response.json(noMainTitle)});
+    const response = await upload(h, paperPdf(zenodo, examples[1][1]), zenodo);
+    assert.equal(response.status, 409, titleType || 'empty titles');
+    assert.equal((await response.json()).error, 'library_identity');
+    assert.deepEqual(urls(h), [crossrefUrl(zenodo), dataciteUrl(zenodo)]);
+    assert(!stored(h, 'library:paper:' + zenodo));
+    assert(!stored(h, 'library:muse-job:' + zenodo));
+  }
+
+  const variant = structuredClone(fixtures[zenodo]);
+  Object.assign(variant.data.attributes, {
+    titles:[{title:'A subtitle',titleType:'Subtitle'}, {title:examples[1][1],titleType:'MainTitle'}],
+    container:{title:'Synthetic container'},
+    publisher:{name:'Synthetic publisher'},
+    dates:[{dateType:'Issued',date:'2018-02-30'},{dateType:'Updated',date:'2020-03-01'}]
+  });
+  h = await fromDatacite({dataciteResponse:() => Response.json(variant)});
+  const submit = await call(h, '/api/machine/register', dsh, {
+    items:[{doi:zenodo,title:'Synthetic submitted title',source:'fixture',section:'MAIN'}]
+  });
+  assert.equal(submit.status, 200);
+  assert.equal((await submit.json()).results[0].result, 'registered');
+  assert.deepEqual(urls(h), [crossrefUrl(zenodo), dataciteUrl(zenodo)]);
+  const registered = stored(h, 'library:paper:' + zenodo).paper;
+  assert.equal(registered.title, examples[1][1]);
+  assert.equal(registered.titleSource, 'datacite');
+  assert.equal(stored(h, 'library:machine-register:' + zenodo).titleSource, 'datacite');
+  assert.equal(registered.journal, 'Synthetic container');
+  assert.equal(registered.date, '2018');
+  assert.equal(registered.datePrecision, 'year');
+  assert.equal(registered.dateBasis, 'DataCite publicationYear');
+  delete variant.data.attributes.container;
+  const paper = await h.context.libraryMetadata(zenodo, {signal:new AbortController().signal});
+  assert.equal(paper.journal, 'Synthetic publisher');
+  console.log('DOI registry fallback upload and registration tests passed (DataCite primary titles only)');
+}
 function jobPuts(h, paperDoi) { return h.writes.filter(write => write.key === 'library:muse-job:' + paperDoi); }
 function assertKept(write) { assert(write); assert(write.opts === undefined || write.opts.expirationTtl === undefined); }
 function assertWeek(write) { assert(write && write.opts && write.opts.expirationTtl === 604800); }
@@ -2163,6 +2274,7 @@ async function review(h, body) {
     assert.equal(stored(h, 'library:muse-job:' + absentDoi).state, 'failed');
   }
 
+  await registryUploads();
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_library_metadata_backfill.cjs').run();

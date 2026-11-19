@@ -247,8 +247,15 @@ async function main() {
     assert(await page.locator('[data-qf="more"].is-on').count() === 1, 'qfMoreActive turns on when topic filter is active');
     assert((await page.locator('#qfSummary').innerText()).includes('#房颤/电生理'), 'Summary shows selected topic chips');
 
+    // The tier's adjacent caret still opens the journal picker without applying the tier.
+    const generalTier = page.locator('[data-qf-jtier="generalMedicine"]');
+    await page.locator('[data-qf-jtier-menu="generalMedicine"]').click();
+    await page.locator('#qfJournalSearch').waitFor();
+    assert.equal(await generalTier.getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 2);
+    await page.locator('#qfPop [data-qf-close]').click();
     // Cross-axis AND with jtier=generalMedicine -> keeps only NEJM AF paper
-    await page.locator('[data-qf-jtier="generalMedicine"]').click();
+    await generalTier.click();
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 1, 'Topic OR intersects with jtier via AND');
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').first().getAttribute('data-paper-id'), 'cur-af-1');
 
@@ -307,6 +314,45 @@ async function main() {
     await page.goBack();
     await page.locator('#articlesStream article[data-paper-id="feed-unk-1"]').waitFor();
     assert(new URL(page.url()).searchParams.get('mode') === 'candidates', 'Back navigation restores previous mode and filters');
+
+    // Radar panels stay above the list in normal flow, including after a journal pick.
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(origin + '/?mode=candidates');
+      const total = page.locator('#listTotal');
+      const firstPaper = page.locator('#articlesStream article[data-paper-id]').first();
+      const pop = page.locator('#qfPop');
+      await firstPaper.waitFor();
+      const assertExposed = async locator => {
+        const box = await locator.boundingBox();
+        const panel = await pop.boundingBox();
+        assert(box && panel && box.y >= panel.y + panel.height, 'radar results must be below the open panel at ' + width);
+        assert(box.y >= 0 && box.y + Math.min(box.height, 40) <= 800, 'top of radar results stays onscreen at ' + width);
+        assert(await locator.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 20)));
+        }), 'radar results must not be covered at ' + width);
+      };
+      for (const trigger of ['#qfScopeBtn', '[data-qf="topic"]', '[data-qf="more"]', '[data-qf-jtier-menu="generalMedicine"]']) {
+        await page.locator(trigger).click();
+        await pop.waitFor();
+        assert.equal(await page.locator('#qfBackdrop').isVisible(), false, 'radar must not dim the list');
+        await assertExposed(total);
+        await assertExposed(firstPaper);
+        if (trigger.includes('jtier')) {
+          await pop.locator('[data-qf-pick-journal="New England Journal of Medicine"]').click();
+          assert.equal(await total.innerText(), '共 2 篇');
+          await assertExposed(firstPaper);
+        }
+        await page.keyboard.press('Escape');
+        await pop.waitFor({ state: 'hidden' });
+        assert.equal(await page.locator(trigger).evaluate(el => el === document.activeElement), true, 'Escape restores focus to the trigger');
+      }
+    }
+    await page.goto(origin + '/?mode=library');
+    await page.locator('#qfScopeBtn').click();
+    assert.equal(await page.locator('#qfPop').evaluate(el => getComputedStyle(el).position), 'fixed', 'library layout is unchanged');
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     // ==== GOAL 2: Pagination disclosure + browser-local request ledger ====
     await page.goto(origin + '/?mode=library');

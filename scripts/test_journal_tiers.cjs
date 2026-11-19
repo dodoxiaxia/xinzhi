@@ -13,6 +13,7 @@ assert.equal(tierSource, rootTierSource, 'journal-tiers.js stays identical to sr
 const stateSource = fs.readFileSync(path.join(root, 'src/app/01-state-helpers.js'), 'utf8');
 const qfSource = fs.readFileSync(path.join(root, 'src/app/09z-quick-filters.js'), 'utf8');
 const weeklySource = fs.readFileSync(path.join(root, 'src/app/09-weekly.js'), 'utf8');
+const filtersSource = fs.readFileSync(path.join(root, 'src/app/04-filters.js'), 'utf8');
 
 function createHarness() {
   const windowObj = {
@@ -303,5 +304,93 @@ ctx.state.journalTierLegacy = parsed.journalTierLegacy;
 assert.ok(idsFor().includes('natbme'));
 assert.ok(idsFor().includes('ncvr'), 'visible other + jvis=1 keeps Nature Cardiovascular Research discoverable');
 
+// Radar journal counts must use the same filters as the rendered stream.
+const radar = createHarness();
+const filtersPart = (start, end) => filtersSource.slice(filtersSource.indexOf(start), filtersSource.indexOf(end));
+Object.assign(radar, {
+  beijingToday: () => '2026-11-19',
+  paperLane: p => p.lane,
+  quicklookOf: () => null,
+  paperDerived: p => (p.derived ||= { text: null }),
+  foldSearch: s => s.toLowerCase(),
+  queryMatches: (text, q) => text.includes(q),
+  exactDoi: () => '',
+  isCaseReport: p => p.studyDesign === '病例报告'
+});
+vm.runInContext([
+  filtersPart('  function hasAbstract(', '  // 摘要明显不完整'),
+  filtersPart('  function datePrecision(', '  function dateLabel('),
+  filtersPart('  function inLane(', '  const usesLane'),
+  filtersPart('  function paperSearchText(', '  // Render Sidebar Filters')
+].join('\n'), radar);
+
+const journals = ['JAMA', 'Circulation', 'Circulation Research', 'Nature Reviews Cardiology',
+  'Nature', 'NEJM AI', 'Some Regional Cardiology Journal'];
+const eligible = { date: '2026-11-19', title: 'Heart study', lane: 'cardio',
+  summary: 'Abstract', tags: ['#心衰/心肌'], studyDesign: 'RCT', clinicalTier: '心血管' };
+radar.__papers = journals.flatMap(journal => [
+  { ...eligible, journal },
+  { ...eligible, journal, date: '2026-11-08' },
+  { ...eligible, journal, title: 'Other keyword' },
+  { ...eligible, journal, minor: true },
+  { ...eligible, journal, summary: '' },
+  { ...eligible, journal, tags: ['#其他'] },
+  { ...eligible, journal, studyDesign: '队列研究' },
+  { ...eligible, journal, clinicalTier: '综合医学与其他' },
+  { ...eligible, journal, lane: 'aitech' }
+]);
+radar.__papers.push(
+  ...Array.from({ length: 5 }, () => ({ ...eligible, journal: 'Nature Machine Intelligence', lane: 'aitech' })),
+  { ...eligible, journal: 'npj Digital Medicine' },
+  { ...eligible, journal: 'Out of scope regional journal', lane: 'aitech' }
+);
+const radarDefaults = { mode: 'candidates', lane: 'core', range: '14', search: '', publisher: '',
+  tag: '', tags: [], studyDesign: '', reading: '', clinicalTier: '', journalTier: '', journals: [], journal: '',
+  favoritesOnly: false };
+const resetRadar = extra => Object.assign(radar.state, radarDefaults, extra);
+const rowCount = (html, journal) => {
+  const row = html.split('data-qf-pick-journal="' + radar.esc(journal) + '"')[1];
+  assert.ok(row, 'missing journal row: ' + journal);
+  return Number(row.match(/<small>(\d+)<\/small>/)[1]);
+};
+resetRadar();
+const defaultAi = radar.journalListHtml('', 'ai');
+radar.toggleJournalInTier('ai', 'Nature Machine Intelligence');
+assert.equal(rowCount(defaultAi, 'Nature Machine Intelligence'), radar.getFilteredArticles().length,
+  'regression: five out-of-lane Nature Machine Intelligence papers must display as zero');
+assert.match(defaultAi, /class="qf-jrow is-empty" data-qf-journal="Nature Machine Intelligence"/);
+assert.equal(rowCount(defaultAi, 'JMIR'), 0, 'a journal that has no data stays at zero');
+
+const active = { range: '7', search: 'heart', tag: '#心衰/心肌', studyDesign: 'RCT',
+  reading: 'abstract', clinicalTier: '心血管' };
+for (const [i, tier] of jt.tiers.entries()) {
+  resetRadar(active);
+  const html = radar.journalListHtml('', tier.id);
+  const rows = radar.tierJournalRows(tier.id);
+  assert.ok(rows.length > 0, tier.short + ' must have journal rows');
+  for (const { name } of rows) {
+    resetRadar(active);
+    radar.toggleJournalInTier(tier.id, name);
+    assert.equal(rowCount(html, name), radar.getFilteredArticles().length, tier.short + ': ' + name);
+  }
+  resetRadar(active);
+  radar.selectWholeTier(tier.id);
+  const tierCount = rows.reduce((sum, { name }) => sum + rowCount(html, name), 0);
+  assert.equal(tierCount, radar.getFilteredArticles().length, tier.short + ': whole tier');
+  assert.equal(rowCount(html, journals[i]), 1, 'one eligible paper: ' + journals[i]);
+}
+resetRadar({ ...active, publisher: 'Different Publisher' });
+assert.equal(radar.getFilteredArticles().length, 0);
+assert.equal(rowCount(radar.journalListHtml('', 'ai'), 'NEJM AI'), 1, 'a journal choice replaces the publisher');
+radar.toggleJournalInTier('ai', 'NEJM AI');
+assert.equal(rowCount(radar.journalListHtml('', 'ai'), 'npj Digital Medicine'), 1, 'other eligible journals remain selectable for OR');
+radar.toggleJournalInTier('ai', 'npj Digital Medicine');
+assert.equal(radar.getFilteredArticles().length, 2);
+assert.deepEqual(Array.from(radar.state.journals), ['NEJM AI', 'npj Digital Medicine'], 'filtered-out journals do not collapse the subset to a whole tier');
+resetRadar({ ...active, favoritesOnly: true, favoriteJournals: ['NEJM AI'] });
+assert.equal(rowCount(radar.journalListHtml('', 'ai'), 'npj Digital Medicine'), 0, 'followed-only filter is retained');
+assert.equal(rowCount(radar.journalListHtml('', 'ai'), 'NEJM AI'), 1);
+resetRadar({ mode: 'library', search: 'no match' });
+assert.equal(rowCount(radar.journalListHtml('', 'ai'), 'Nature Machine Intelligence'), 5, 'non-radar counting is unchanged');
 
 console.log('journal-tiers unit checks passed');
