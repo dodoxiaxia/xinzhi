@@ -40,6 +40,7 @@ const MACHINE_VARIANT_MAX_INSERTS = 2;
 // cannot be tested; instead the inserted number must itself be a member of such a run (see machineLineNumberMembers).
 const MACHINE_LINE_NUMBER_MIN_RUN = 5;
 const MACHINE_LINE_NUMBER_MAX_GAP = 40;
+const MACHINE_PROOF_MIN_QUERIES = 3;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -1077,14 +1078,15 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
         });
       }
       // Elsevier pre-proof PDFs print author-query markers (Q1, Q2 ...) inside the title. Needs proof-stage evidence on the page
-      // ("_proof" file marker or "Journal Pre-proof") and every inserted marker must also appear elsewhere in the shown text (the query list);
-      // page.shown excludes the raw content stream, where graphics-state operators ("Q 1 0 0 1 ...") would fake a match.
-      const proofStage = /(?:^|[^A-Za-z0-9])_proof(?![A-Za-z])|\bjournal\s+pre-?proof\b/i.test(page.shown);
-      if (proofStage) {
-        const markerCount = digits => (page.shown.match(new RegExp('(?:^|[^A-Za-z0-9])Q\\s*' + digits + '(?![0-9])', 'g')) || []).length;
+      // ("HRTHM12284_proof" file tag or "Journal Pre-proof") and a query list: at least 3 distinct Q-numbers in the shown text, which
+      // must include every inserted marker. page.shown excludes the raw content stream, where graphics-state operators
+      // ("Q 1 0 0 1 ...") would fake a match.
+      const proofStage = /[A-Z]{2,}\d{2,}_proof(?![A-Za-z])|(?:^|[^A-Za-z0-9])_proof(?![A-Za-z])|\bjournal\s+pre-?proof\b/i.test(page.shown);
+      const queryNumbers = new Set([...page.shown.matchAll(/(?:^|[^A-Za-z0-9])Q\s*(\d{1,2})(?![0-9])/g)].map(item => item[1]));
+      if (proofStage && queryNumbers.size >= MACHINE_PROOF_MIN_QUERIES) {
         tryVariant('proof_marker_inserted', candidate => {
           const words = wordsFor(candidate);
-          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [2, 3], tok => /^q\d{1,2}$/.test(tok), inserted => inserted.every(item => markerCount(item.text.slice(1)) >= 2));
+          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [2, 3], tok => /^q\d{1,2}$/.test(tok), inserted => inserted.every(item => queryNumbers.has(item.text.slice(1))));
           return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
         });
       }

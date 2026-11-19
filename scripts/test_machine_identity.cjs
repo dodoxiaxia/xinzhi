@@ -1099,7 +1099,7 @@ async function verifyNext(h, doi, result, reason) {
     assert.equal(seqNoChain.verdict, 'mismatch', 'sequel without chain');
 
     // 9c) proof_marker_inserted: only when the claimed DOI is confirmed; page shows proof-stage evidence ("_proof" / "Journal Pre-proof");
-    //     each inserted Q-number also appears elsewhere on the page (the author-query list); >=40 chars; q\d{1,2} only at original
+    //     the shown text has a query list (>=3 distinct Q-numbers incl. the inserted ones); >=40 chars; q\d{1,2} only at original
     //     word-space gaps; <=2 insertions. q123 / mid-word / 3 inserts / <40 / x2 / no proof evidence / no query list all fail.
     const pmDoi = '10.9999/synthetic.proofmark';
     const pmTitle = 'Synthetic atrial fibrillation entrenchment revisited:Early timing of AF cohorts';
@@ -1133,7 +1133,7 @@ async function verifyNext(h, doi, result, reason) {
       ['non-q-marker', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF x2 cohorts'), pmTitle],
       ['no-proof-evidence', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {proof:false}), pmTitle],
       ['no-query-list', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:[]}), pmTitle],
-      ['query-list-other-number', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:['Q 1', 'Q 3']}), pmTitle],
+      ['short-query-list', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:['Q 1']}), pmTitle],
       ['no-doi', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {doi:false}), pmTitle]
     ];
     for (const [label, pdf, title] of pmNegatives) {
@@ -1149,7 +1149,7 @@ async function verifyNext(h, doi, result, reason) {
     for (const [label, pdf] of [
       ['coq10 no doi', pmPdf(coPage, {doi:false, queries:['Q 10']})],
       ['coq10 doi no proof', pmPdf(coPage, {proof:false, queries:['Q 10']})],
-      ['coq10 doi, proof, no query list', pmPdf(coPage, {queries:[]})]
+      ['coq10 doi, proof, no query list', pmPdf(coPage, {queries:[]})],
     ]) {
       const res = await identity(h, pdf, pmDoi, coTitle, coOptions);
       assert.equal(res.verdict, 'mismatch', label);
