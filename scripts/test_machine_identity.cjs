@@ -353,9 +353,17 @@ async function verifyNext(h, doi, result, reason) {
   assert.deepEqual(Object.keys(wrongBody).sort(), ['checks', 'error', 'ok', 'reason']);
   assert.equal(wrongBody.error, 'machine_identity_mismatch'); assert.equal(wrongBody.reason, 'identity_mismatch');
   assert(!h.values.has('library:muse-job:10.9999/synthetic.wrong'));
+  // Policy change approved by Donald: page 1 printing another DOI with matching title now enters manual review (202 title_mismatched_doi);
+  // a different title on the same PDF still returns 409, and a subsequent valid upload (different sha256) replaces the held file.
+  seedPaper(h, custom.doi + '.b', 'Synthetic unrelated study of imaginary tides and moons');
+  assert.equal((await upload(h, files['custom-encoding-tounicode.pdf'], custom.doi + '.b')).status, 409);
   seedPaper(h, custom.doi + '.b', custom.title);
   const weakDoi = custom.doi + '.b';
-  assert.equal((await upload(h, files['custom-encoding-tounicode.pdf'], weakDoi)).status, 409);
+  const heldWeak = await upload(h, files['custom-encoding-tounicode.pdf'], weakDoi);
+  assert.equal(heldWeak.status, 202);
+  const heldWeakBody = await heldWeak.json();
+  assert.equal(heldWeakBody.task.identity, 'title_mismatched_doi');
+  assert.equal(heldWeakBody.task.state, 'uploaded-awaiting-manual-review');
   const unreadable = fixtures.customEncoding({doi:weakDoi, title:custom.title, toUnicode:false});
   seedPaper(h, weakDoi, custom.title);
   const weak = await upload(h, unreadable, weakDoi);
@@ -582,7 +590,9 @@ async function verifyNext(h, doi, result, reason) {
     assert.equal(shortNoDoi.verdict, 'mismatch'); assert.equal(shortNoDoi.reason, 'doi_not_found');
   }
 
-  // 7) Upload endpoint: 202 with identity 'title_only' when page 1 has no DOI; 409 machine_identity_mismatch when page 1 prints another DOI.
+  // 7) Upload endpoint: 202 with identity 'title_only' when page 1 has no DOI;
+  //    under Donald's approved policy change, page 1 printing another DOI with matching title enters manual review (202 title_mismatched_doi),
+  //    while a different title still returns 409 machine_identity_mismatch.
   {
     seedPaper(h, noDoi, noDoiTitle);
     const upOk = await upload(h, noDoiPdf, noDoi);
@@ -591,8 +601,327 @@ async function verifyNext(h, doi, result, reason) {
     assert.equal(upBody.task.identity, 'title_only');
     assert.equal(stored(h, 'library:muse-job:' + noDoi).identityLevel, 'title_only');
 
-    seedPaper(h, '10.1056/nejmp2606894', 'What the Robot Still Can\u2019t Do');
+    seedPaper(h, '10.1056/nejmp2606894', 'Synthetic Unrelated Study of Imaginary Cohorts');
     await error(await upload(h, nejmPdf, '10.1056/NEJMp2606894'), 409, 'machine_identity_mismatch');
+    seedPaper(h, '10.1056/nejmp2606894', 'What the Robot Still Can\u2019t Do');
+    const heldNejm = await upload(h, nejmPdf, '10.1056/NEJMp2606894');
+    assert.equal(heldNejm.status, 202);
+    const heldNejmBody = await heldNejm.json();
+    assert.equal(heldNejmBody.task.identity, 'title_mismatched_doi');
+    assert.equal(heldNejmBody.task.state, 'uploaded-awaiting-manual-review');
+  }
+
+  // 8) Later-page DOI scan & foreign-DOI manual-review hold (machine uploads only; OA path remains strict).
+  {
+    const nejmTitle = 'What the Robot Still Can\u2019t Do';
+    const prevDoi = '10.1056/NEJMp2611160', targetDoi = '10.1056/NEJMp2606894', thirdDoi = '10.1056/NEJMp9999999';
+    const allOpts = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const scanOnlyOpts = {allowTitleOnly:true, scanAllPages:true};
+
+    // a) 3-page PDF: page 1 prints previous article's DOI + title, page 3 footer prints claimed DOI.
+    const pdfA = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'Synthetic body text on page two without any identifier',
+      'Footer DOI: ' + targetDoi
+    ]});
+    const resA = await identity(h, pdfA, targetDoi, nejmTitle, allOpts);
+    assert.equal(resA.verdict, 'ok');
+    assert.equal(resA.level, 'doi_later_page');
+    assert.equal(resA.checks.doi, 'later_page');
+    assert.equal(resA.checks.doiPage, 3);
+    assert(!resA.hold);
+    const oaA = await identity(h, pdfA, targetDoi, nejmTitle);
+    assert.equal(oaA.verdict, 'mismatch');
+    assert.equal(oaA.reason, 'doi_not_found');
+
+    // b) 3-page PDF: page 1 prints foreign DOI + title, page 3 prints another foreign DOI (claimed DOI absent everywhere).
+    const pdfB = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'Synthetic body text on page two without any identifier',
+      'Footer DOI: ' + thirdDoi
+    ]});
+    const resB = await identity(h, pdfB, targetDoi, nejmTitle, allOpts);
+    assert.equal(resB.verdict, 'ok');
+    assert.equal(resB.level, 'title_mismatched_doi');
+    assert.equal(resB.hold, true);
+    assert.equal(resB.checks.foreignDoi, true);
+    const scanOnlyB = await identity(h, pdfB, targetDoi, nejmTitle, scanOnlyOpts);
+    assert.equal(scanOnlyB.verdict, 'mismatch');
+    assert.equal(scanOnlyB.reason, 'doi_not_found');
+
+    // c) Claiming page 1's own DOI keeps level 'full'.
+    const resC = await identity(h, pdfA, prevDoi, nejmTitle, allOpts);
+    assert.equal(resC.verdict, 'ok');
+    assert.equal(resC.level, 'full');
+    assert.equal((await identity(h, pdfA, prevDoi, nejmTitle)).level, 'full');
+
+    // d) Different title + foreign DOI on page 1 + no claimed DOI on later pages -> mismatch identity_mismatch.
+    const resD = await identity(h, pdfB, targetDoi, 'Synthetic Unrelated Study of Imaginary Cohorts', allOpts);
+    assert.equal(resD.verdict, 'mismatch');
+    assert.equal(resD.reason, 'identity_mismatch');
+
+    // e) No DOI on page 1: page 2 has claimed DOI -> doi_later_page (stronger than title_only); no DOI anywhere -> title_only.
+    const noDoiTwoPagesHit = fixtures.multiPage({pages:[
+      'Synthetic Journal of Imaginary Medicine. ' + nejmTitle,
+      'Page two footer DOI: ' + targetDoi
+    ]});
+    const resE1 = await identity(h, noDoiTwoPagesHit, targetDoi, nejmTitle, allOpts);
+    assert.equal(resE1.verdict, 'ok');
+    assert.equal(resE1.level, 'doi_later_page');
+    assert.equal(resE1.checks.doiPage, 2);
+    const noDoiTwoPagesMiss = fixtures.multiPage({pages:[
+      'Synthetic Journal of Imaginary Medicine. ' + nejmTitle,
+      'Page two body text without identifier'
+    ]});
+    const resE2 = await identity(h, noDoiTwoPagesMiss, targetDoi, nejmTitle, allOpts);
+    assert.equal(resE2.verdict, 'ok');
+    assert.equal(resE2.level, 'title_only');
+    assert.equal(resE2.checks.doiAbsent, true);
+
+    // f) Page limit (MACHINE_MAX_PAGES = 200): DOI on page 201 is not scanned; DOI on page 200 passes as doi_later_page.
+    const pages201Miss = ['Synthetic Journal of Imaginary Medicine. ' + nejmTitle];
+    for (let p = 2; p <= 200; p++) pages201Miss.push('Page ' + p);
+    pages201Miss.push('DOI: ' + targetDoi);
+    const pdf201 = fixtures.multiPage({pages:pages201Miss});
+    const res201 = await identity(h, pdf201, targetDoi, nejmTitle, allOpts);
+    assert.equal(res201.verdict, 'ok');
+    assert.equal(res201.level, 'title_only');
+    const ctx201 = run(h, 'machinePdfContext')(new Uint8Array(pdf201));
+    assert.deepEqual(await run(h, 'machineFindDoiOnLaterPages')(ctx201, targetDoi), {page:0, truncated:true, citedPages:0});
+
+    const pages200Hit = ['DOI: ' + prevDoi + ' ' + nejmTitle];
+    for (let p = 2; p <= 199; p++) pages200Hit.push('Page ' + p);
+    pages200Hit.push('DOI: ' + targetDoi);
+    const pdf200Hit = fixtures.multiPage({pages:pages200Hit});
+    const res200Hit = await identity(h, pdf200Hit, targetDoi, nejmTitle, allOpts);
+    assert.equal(res200Hit.verdict, 'ok');
+    assert.equal(res200Hit.level, 'doi_later_page');
+    assert.equal(res200Hit.checks.doiPage, 200);
+
+    const pages200Miss = ['DOI: ' + prevDoi + ' ' + nejmTitle];
+    for (let p = 2; p <= 200; p++) pages200Miss.push('Page ' + p);
+    const pdf200Miss = fixtures.multiPage({pages:pages200Miss});
+    const ctx200Miss = run(h, 'machinePdfContext')(new Uint8Array(pdf200Miss));
+    assert.deepEqual(await run(h, 'machineFindDoiOnLaterPages')(ctx200Miss, targetDoi), {page:0, citedPages:0});
+
+    // Nested /Pages tree + indirect /Kids array + cycle protection (Set) in machinePageBodies, and 64 MiB inflate budget.
+    const nestedTreePdf = Buffer.from([
+      '%PDF-1.7\n',
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Count 3 /Kids 10 0 R >>\nendobj\n',
+      '10 0 obj\n[3 0 R 4 0 R]\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 20 0 R >>\nendobj\n',
+      '4 0 obj\n<< /Type /Pages /Parent 2 0 R /Count 2 /Kids [2 0 R 5 0 R 6 0 R] >>\nendobj\n',
+      '5 0 obj\n<< /Type /Page /Parent 4 0 R /Contents 21 0 R >>\nendobj\n',
+      '6 0 obj\n<< /Type /Page /Parent 4 0 R /Contents 22 0 R >>\nendobj\n',
+      '20 0 obj\n<< /Length 12 >>\nstream\n(p1) Tj\n\nendstream\nendobj\n',
+      '21 0 obj\n<< /Length 12 >>\nstream\n(p2) Tj\n\nendstream\nendobj\n',
+      '22 0 obj\n<< /Length 12 >>\nstream\n(p3) Tj\n\nendstream\nendobj\n',
+      'trailer\n<< /Root 1 0 R >>\n%%EOF\n'
+    ].join(''), 'latin1');
+    const nestedCtx = run(h, 'machinePdfContext')(new Uint8Array(nestedTreePdf));
+    const nestedBodies = await run(h, 'machinePageBodies')(nestedCtx, 10);
+    assert.equal(nestedBodies.length, 3);
+    assert(nestedBodies[0].includes('20 0 R') && nestedBodies[1].includes('21 0 R') && nestedBodies[2].includes('22 0 R'));
+
+    const bigBlank = zlib.deflateSync(Buffer.alloc(14 * 1024 * 1024, 0x20));
+    const budgetParts = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Count 7 /Kids [3 0 R 4 0 R 5 0 R 6 0 R 7 0 R 8 0 R 9 0 R] >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 13 0 R >>\nendobj\n',
+      '4 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 14 0 R >>\nendobj\n',
+      '5 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 14 0 R >>\nendobj\n',
+      '6 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 14 0 R >>\nendobj\n',
+      '7 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 14 0 R >>\nendobj\n',
+      '8 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 14 0 R >>\nendobj\n',
+      '9 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 15 0 R >>\nendobj\n'
+    ];
+    const p1Small = zlib.deflateSync(Buffer.from('BT (Synthetic Title) Tj ET\n', 'latin1'));
+    const p7Hit = zlib.deflateSync(Buffer.from('BT (' + targetDoi + ') Tj ET\n', 'latin1'));
+    const budgetPdf = Buffer.concat([
+      Buffer.from('%PDF-1.7\n' + budgetParts.join(''), 'latin1'),
+      Buffer.from('13 0 obj\n<< /Filter /FlateDecode /Length ' + p1Small.length + ' >>\nstream\n', 'latin1'), p1Small, Buffer.from('\nendstream\nendobj\n', 'latin1'),
+      Buffer.from('14 0 obj\n<< /Filter /FlateDecode /Length ' + bigBlank.length + ' >>\nstream\n', 'latin1'), bigBlank, Buffer.from('\nendstream\nendobj\n', 'latin1'),
+      Buffer.from('15 0 obj\n<< /Filter /FlateDecode /Length ' + p7Hit.length + ' >>\nstream\n', 'latin1'), p7Hit, Buffer.from('\nendstream\nendobj\n', 'latin1'),
+      Buffer.from('trailer\n<< /Root 1 0 R >>\n%%EOF\n', 'latin1')
+    ]);
+    const budgetCtx = run(h, 'machinePdfContext')(new Uint8Array(budgetPdf));
+    assert.deepEqual(await run(h, 'machineFindDoiOnLaterPages')(budgetCtx, targetDoi), {page:0, truncated:true, citedPages:0});
+
+    // g) Upload endpoint layer: held manual-review task vs doi_later_page task.
+    const hg = await create();
+    const holdDoiLower = targetDoi.toLowerCase();
+    seedPaper(hg, holdDoiLower, nejmTitle);
+    const heldUp = await upload(hg, pdfB, targetDoi);
+    assert.equal(heldUp.status, 202);
+    const heldBody = await heldUp.json();
+    assert.equal(heldBody.task.identity, 'title_mismatched_doi');
+    assert.equal(heldBody.task.state, 'uploaded-awaiting-manual-review');
+    assert.equal(heldBody.task.claimable, false);
+    const heldJob = stored(hg, 'library:muse-job:' + holdDoiLower);
+    assert.equal(heldJob.state, 'review');
+    assert.equal(heldJob.verificationReason, 'identity_hold');
+    assert.equal(heldJob.reason, 'identity_hold');
+    assert.equal(heldJob.identityLevel, 'title_mismatched_doi');
+    assert.equal(heldJob.hold, undefined);
+    assert.equal(heldJob.leaseId, undefined);
+    assert.equal(heldJob.leaseUntil, undefined);
+    assert(![...hg.values.keys()].some(key => key.startsWith('library:muse-review:')));
+    assert.notEqual(stored(hg, 'library:paper:' + holdDoiLower).paper.fulltextStatus, 'available');
+
+    // Same PDF re-uploaded -> 200 idempotent, no duplicate task or quota consumption.
+    const heldReplay = await upload(hg, pdfB, targetDoi);
+    assert.equal(heldReplay.status, 200);
+    const heldReplayBody = await heldReplay.json();
+    assert.equal(heldReplayBody.idempotent, true);
+    assert.equal(heldReplayBody.task.taskId, heldBody.task.taskId);
+    assert.equal(heldReplayBody.task.state, 'uploaded-awaiting-manual-review');
+    assert.equal(heldReplayBody.task.identity, 'title_mismatched_doi');
+
+    // /api/library?doi= never treats a held task as available, and /api/acquire HTML shows the identity_hold headline.
+    const libLookup = await (await hg.context.worker.fetch(new Request(base + '/api/library?doi=' + encodeURIComponent(holdDoiLower)), hg.env)).json();
+    assert.notEqual(libLookup.status, 'available');
+    assert.equal(libLookup.job.state, 'review');
+    assert.equal(libLookup.job.reason, 'identity_hold');
+    const acquireHtml = await (await hg.context.worker.fetch(new Request(base + '/api/acquire?doi=' + encodeURIComponent(holdDoiLower), {headers:{accept:'text/html'}}), hg.env)).text();
+    assert(acquireHtml.includes('已收到 PDF，首页印的是另一篇的 DOI，等待人工核对，核对前不公开。'));
+
+    // muse-review claim, machine claim, and requeue never pick up the held job; protocol and task lists reflect the new state.
+    assert.equal((await (await review(hg, {action:'claim'})).json()).task, null);
+    assert.equal((await (await post(hg, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json()).task, null);
+    assert.equal((await (await post(hg, '/api/machine/claim', dsh, {state:'to-download'})).json()).task, null);
+    assert.equal((await (await post(hg, '/api/machine/requeue', dsh, {dryRun:false, limit:20})).json()).requeued.length, 0);
+    const fallbackListed = await (await hg.context.worker.fetch(new Request(base + '/api/machine/tasks?state=failed-awaiting-fallback', {headers:{authorization:'Bearer ' + reader}}), hg.env)).json();
+    assert(!fallbackListed.tasks.some(task => task.doi === holdDoiLower));
+    const manualReviewListed = await (await hg.context.worker.fetch(new Request(base + '/api/machine/tasks?state=uploaded-awaiting-manual-review', {headers:{authorization:'Bearer ' + reader}}), hg.env)).json();
+    assert(manualReviewListed.tasks.some(task => task.doi === holdDoiLower && task.state === 'uploaded-awaiting-manual-review' && task.claimable === false));
+    const protoCheck = await (await hg.context.worker.fetch(new Request(base + '/api/machine/protocol'), hg.env)).json();
+    assert(protoCheck.states.includes('uploaded-awaiting-manual-review'));
+    assert(String(protoCheck.stateMapNote || '').includes('uploaded-awaiting-manual-review'));
+
+    // Uploading a different valid PDF (pdfA) supersedes the held task into verifying (doi_later_page).
+    const replaceHeld = await upload(hg, pdfA, targetDoi);
+    assert.equal(replaceHeld.status, 202);
+    const replaceHeldBody = await replaceHeld.json();
+    assert.equal(replaceHeldBody.task.identity, 'doi_later_page');
+    assert.equal(replaceHeldBody.task.state, 'uploaded-awaiting-verification');
+    assert.equal(stored(hg, 'library:muse-job:' + holdDoiLower).supersededFrom.reason, 'identity_hold');
+
+    // Fresh upload of pdfA -> 202, identity 'doi_later_page', state 'uploaded-awaiting-verification'.
+    const ha = await create();
+    seedPaper(ha, holdDoiLower, nejmTitle);
+    const laterUp = await upload(ha, pdfA, targetDoi);
+    assert.equal(laterUp.status, 202);
+    const laterUpBody = await laterUp.json();
+    assert.equal(laterUpBody.task.identity, 'doi_later_page');
+    assert.equal(laterUpBody.task.state, 'uploaded-awaiting-verification');
+    const laterJob = stored(ha, 'library:muse-job:' + holdDoiLower);
+    assert.equal(laterJob.state, 'verifying');
+    assert(ha.values.has('library:muse-review:' + laterJob.id));
+
+    // h) Reference/listing pages on later pages (>= 2 other DOIs alongside the claimed DOI) must not count as doi_later_page.
+    const refDois = ['10.9999/synthetic.ref1', '10.9999/synthetic.ref2', '10.9999/synthetic.ref3'];
+    assert.deepEqual(
+      run(h, 'machineDoiTokens')('See 10.1056/NEJMp2606894., <https://doi.org/10.1056/NEJMp2606894>; (10.9999/synthetic.ref1), [10.9999/SYNTHETIC.REF1] and "10.9999/synthetic.ref2".'),
+      ['10.1056/nejmp2606894', '10.9999/synthetic.ref1', '10.9999/synthetic.ref2']
+    );
+
+    // 8a) Page 1 foreign DOI + title, page 3 references cite claimed DOI + 3 other DOIs -> title_mismatched_doi (hold).
+    const citedForeignPdf = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'Synthetic body text on page two without identifiers',
+      'References: ' + refDois[0] + '; ' + targetDoi + '. ' + refDois[1] + ', ' + refDois[2] + '.'
+    ]});
+    const citedForeignRes = await identity(h, citedForeignPdf, targetDoi, nejmTitle, allOpts);
+    assert.equal(citedForeignRes.verdict, 'ok');
+    assert.equal(citedForeignRes.level, 'title_mismatched_doi');
+    assert.equal(citedForeignRes.hold, true);
+    assert.equal(citedForeignRes.checks.foreignDoi, true);
+    assert.equal(citedForeignRes.checks.citedPages, 1);
+    const citedScanOnly = await identity(h, citedForeignPdf, targetDoi, nejmTitle, scanOnlyOpts);
+    assert.equal(citedScanOnly.verdict, 'mismatch');
+    assert.equal(citedScanOnly.reason, 'doi_not_found');
+    assert.equal(citedScanOnly.checks.citedPages, 1);
+    assert.deepEqual(await run(h, 'machineFindDoiOnLaterPages')(run(h, 'machinePdfContext')(new Uint8Array(citedForeignPdf)), targetDoi), {page:0, citedPages:1});
+    const hc = await create();
+    seedPaper(hc, holdDoiLower, nejmTitle);
+    const citedHoldUp = await upload(hc, citedForeignPdf, targetDoi);
+    assert.equal(citedHoldUp.status, 202);
+    const citedHoldBody = await citedHoldUp.json();
+    assert.equal(citedHoldBody.task.identity, 'title_mismatched_doi');
+    assert.equal(citedHoldBody.task.state, 'uploaded-awaiting-manual-review');
+
+    // 8b) Same reference page on page 3, but page 1 carries no DOI -> title_only.
+    const citedNoDoiPdf = fixtures.multiPage({pages:[
+      'Synthetic Journal of Imaginary Medicine. ' + nejmTitle,
+      'Synthetic body text on page two without identifiers',
+      'References: ' + refDois[0] + '; ' + targetDoi + '. ' + refDois[1] + ', ' + refDois[2] + '.'
+    ]});
+    const citedNoDoiRes = await identity(h, citedNoDoiPdf, targetDoi, nejmTitle, allOpts);
+    assert.equal(citedNoDoiRes.verdict, 'ok');
+    assert.equal(citedNoDoiRes.level, 'title_only');
+    assert.equal(citedNoDoiRes.checks.doiAbsent, true);
+    assert.equal(citedNoDoiRes.checks.citedPages, 1);
+    assert(!citedNoDoiRes.hold);
+
+    // 8c) Page 2 reference/listing page (claimed DOI + 3 others), page 3 footer has only claimed DOI -> doi_later_page on page 3.
+    const citedThenFooterPdf = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'Related articles: ' + refDois[0] + ', ' + refDois[1] + ', ' + targetDoi + ', ' + refDois[2],
+      'Footer DOI: ' + targetDoi
+    ]});
+    const citedThenFooterRes = await identity(h, citedThenFooterPdf, targetDoi, nejmTitle, allOpts);
+    assert.equal(citedThenFooterRes.verdict, 'ok');
+    assert.equal(citedThenFooterRes.level, 'doi_later_page');
+    assert.equal(citedThenFooterRes.checks.doi, 'later_page');
+    assert.equal(citedThenFooterRes.checks.doiPage, 3);
+    assert.equal(citedThenFooterRes.checks.citedPages, 1);
+    assert(!citedThenFooterRes.hold);
+
+    // 8d) Hit page has claimed DOI + 1 other DOI (positive boundary) -> doi_later_page; +2 other DOIs -> skipped.
+    const oneOtherPdf = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'See companion ' + thirdDoi + ' | Footer DOI: ' + targetDoi
+    ]});
+    const oneOtherRes = await identity(h, oneOtherPdf, targetDoi, nejmTitle, allOpts);
+    assert.equal(oneOtherRes.verdict, 'ok');
+    assert.equal(oneOtherRes.level, 'doi_later_page');
+    assert.equal(oneOtherRes.checks.doi, 'later_page');
+    assert.equal(oneOtherRes.checks.doiPage, 2);
+    assert(!('citedPages' in oneOtherRes.checks));
+
+    const twoOtherPdf = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'See ' + refDois[0] + ', ' + refDois[1] + ' and ' + targetDoi
+    ]});
+    const twoOtherRes = await identity(h, twoOtherPdf, targetDoi, nejmTitle, allOpts);
+    assert.equal(twoOtherRes.verdict, 'ok');
+    assert.equal(twoOtherRes.level, 'title_mismatched_doi');
+    assert.equal(twoOtherRes.hold, true);
+    assert.equal(twoOtherRes.checks.citedPages, 1);
+
+    // 8e) Line-wrap truncation: prefix fragment ("10.1056/NEJMp26") + full claimed DOI + 1 other DOI -> still doi_later_page.
+    const prefixAndFullPdf = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'Wrapped 10.1056/NEJMp26 06894 | Footer DOI: ' + targetDoi + ' | Companion: ' + thirdDoi
+    ]});
+    const prefixAndFullRes = await identity(h, prefixAndFullPdf, targetDoi, nejmTitle, allOpts);
+    assert.equal(prefixAndFullRes.verdict, 'ok');
+    assert.equal(prefixAndFullRes.level, 'doi_later_page');
+    assert.equal(prefixAndFullRes.checks.doiPage, 2);
+    assert(!('citedPages' in prefixAndFullRes.checks));
+
+    // Also when a line break splits the claimed DOI itself with a trailing dot before the break ("10.1001/jama.2022.\n24331").
+    const jamaTarget = '10.1001/jama.2022.24331';
+    const wrappedDotPdf = fixtures.multiPage({pages:[
+      {literal:'DOI: ' + prevDoi, unicode:nejmTitle},
+      'Footer 10.1001/jama.2022.\n24331 | Companion: ' + thirdDoi
+    ]});
+    const wrappedDotRes = await identity(h, wrappedDotPdf, jamaTarget, nejmTitle, allOpts);
+    assert.equal(wrappedDotRes.verdict, 'ok');
+    assert.equal(wrappedDotRes.level, 'doi_later_page');
+    assert.equal(wrappedDotRes.checks.doiPage, 2);
+    assert(!('citedPages' in wrappedDotRes.checks));
   }
 
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
