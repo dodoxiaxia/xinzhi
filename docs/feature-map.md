@@ -401,6 +401,13 @@
 | shortlist-closehuddlemodalbtn | 关闭 | `#closeHuddleModalBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-clearhuddlebtn | 清空清单 | `#clearHuddleBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-copyhuddlesummarybtn | 复制精选汇总 | `#copyHuddleSummaryBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| shortlist-copy-share-link | 复制分享链接 | `#copyShortlistShareBtn` | button | conditional · mobile/tablet/desktop · 打开精选清单后显示 | 是 |
+| shortlist-copy-share-manually | 手动复制分享链接 | `#shortlistShareCopyUrl` | input | conditional · mobile/tablet/desktop · 无法写入剪贴板时显示 · SKIP: 剪贴板不可用场景由 test_shortlist_share_ui.py 模拟并验证 | 是 |
+| shortlist-shared-banner | 正在查看分享的清单 | `#sharedShortlistBanner` | region | conditional · mobile/tablet/desktop · 打开带 list 参数的链接后显示 | 是 |
+| shortlist-shared-paper | 分享的文献行 | `#sharedShortlistRows .compact-row` | card | conditional · mobile/tablet/desktop · 公开题录已加载且能匹配时显示 | 是 |
+| shortlist-shared-merge | 全部加入我的精选 | `#mergeSharedShortlistBtn` | button | conditional · mobile/tablet/desktop · 打开带 list 参数的链接后显示 | 是 |
+| shortlist-shared-close | 关闭分享的清单 | `#closeSharedShortlistBtn` | button | conditional · mobile/tablet/desktop · 打开带 list 参数的链接后显示 | 是 |
+| shortlist-shared-missing | 分享链接中在本站未找到的文献 | `#sharedShortlistMissing` | details | conditional · mobile/tablet/desktop · 公开题录加载结束且有未找到的编号时显示 | 是 |
 | shortlist-exporthuddlemdbtn | 导出 Markdown | `#exportHuddleMdBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-item | 已选文献 | `.huddle-item` | card | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 否 |
 | shortlist-remove | 移出 | `[data-action="remove-huddle"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -534,6 +541,13 @@
 - **shortlist-closehuddlemodalbtn**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-clearhuddlebtn**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-copyhuddlesummarybtn**：`[{"click":"#openHuddleBtn"}]`
+- **shortlist-copy-share-link**：`[{"click":"#openHuddleBtn"}]`；有可分享的公开题录时可复制。
+- **shortlist-copy-share-manually**：`[{"click":"#openHuddleBtn"}]`；只读、可选中的链接输入框。
+- **shortlist-shared-banner**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-paper**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-merge**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-close**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-missing**：`[{"goto":"/?list=v1.cnNzLW5vbmU"}]`
 - **shortlist-exporthuddlemdbtn**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-item**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`
 - **shortlist-remove**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`

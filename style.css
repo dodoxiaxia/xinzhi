@@ -603,6 +603,33 @@ main.main-content { min-width: 0; }
 /* long-title: both checkbox labels and export notices repeat the original title. */
 [data-citation-export] { overflow-wrap: anywhere; }
 
+/* ==== shortlist share ==== */
+.shortlist-share-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+#copyShortlistShareBtn, #sharedShortlistBanner button { min-width: 44px; min-height: 44px; }
+#shortlistShareCopyNotice, #shortlistShareCopyField { width: 100%; color: var(--text-secondary); font-size: 13px; }
+#shortlistShareCopyNotice:empty, #sharedShortlistNotice:empty { display: none; }
+#shortlistShareCopyField input {
+  display: block; width: 100%; min-height: 44px; margin-top: 4px; padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); background: var(--bg-secondary);
+}
+#sharedShortlist { width: 100%; max-width: 840px; margin: 0 auto; }
+#sharedShortlist:not([hidden]) ~ section,
+body:has(#sharedShortlist:not([hidden])) :is(#appSidebar, #toolRow, #quickBar, #qfSummary) { display: none !important; }
+#sharedShortlistBanner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px;
+  margin-bottom: 16px; padding: 12px 16px; color: var(--text-primary); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+#sharedShortlistTitle { font-size: 18px; }
+#sharedShortlistNotice { width: 100%; margin: 0; color: var(--text-secondary); font-size: 13px; }
+#sharedShortlistRows .topic-badge { cursor: default; }
+#sharedShortlistMissing {
+  padding: 8px 12px; color: var(--text-primary); background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+#sharedShortlistMissing summary { padding: 10px 0; cursor: pointer; }
+#sharedShortlistMissingIds { white-space: pre-line; overflow-wrap: anywhere; }
+
 /* ============ Weekly ============ */
 .weekly-container { max-width: 760px; margin: 0 auto; }
 .weekly-hero { padding: 8px 0 22px; border-bottom: 2px solid var(--ink); margin-bottom: 8px; }
