@@ -47,7 +47,7 @@ def main():
                     if width < 721:
                         check(box['y']+box['height'] <= 824, f'{width}/{reduced}: bottom controls clearance')
                     original_y = page.evaluate('window.scrollY')
-                    page.locator('.weekly-card-actions [data-action="open-drawer"]').first.evaluate('(e)=>e.click()')
+                    page.locator('.weekly-auto-item .title-open').first.evaluate('(e)=>e.click()')
                     expect(button).to_be_hidden()
                     page.locator('#drawerCloseBtn').click()
                     expect(button).to_be_visible()

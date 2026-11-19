@@ -773,7 +773,13 @@
     if (t.hasAttribute('data-qf-pub')) {
       const v = t.getAttribute('data-qf-pub');
       if (state.publisher === v && !selectedJournals().length) state.publisher = '';
-      else { state.publisher = v; state.journals = []; state.journal = ''; }
+      else {
+        state.publisher = v;
+        state.journals = [];
+        state.journal = '';
+        state.journalTier = '';
+        state.journalTierLegacy = false;
+      }
       qfApply(); return;
     }
     if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }

@@ -1,7 +1,7 @@
 'use strict';
-// Offline browser test: #rangeBar exists in #toolRow, renders in candidates/library, hides elsewhere, and fits 390px without overflow.
+// Offline browser test for the time choices in the visible scope filter.
 const fs = require('fs'), path = require('path'), assert = require('assert');
-const { chromium } = require('playwright');
+const { chromium, expect } = require('playwright/test');
 
 const root = path.resolve(__dirname, '..');
 const origin = 'https://range-bar-test.invalid';
@@ -47,51 +47,51 @@ async function run() {
         throw Error('Unexpected offline request ' + u.href);
       });
 
-      // Library: #rangeBar visible in #toolRow, filters papers, fits 390px
+      const scope = page.locator('#qfScopeBtn');
+      const pop = page.locator('#qfPop');
+      const range = value => pop.locator(`[data-qf-range="${value}"]`);
+      const ids = () => page.locator('#articlesStream article[data-paper-id]').evaluateAll(
+        elements => elements.map(e => e.dataset.paperId));
+
       await page.goto(origin + '/?mode=library', { waitUntil: 'load' });
-      assert.strictEqual(await page.locator('#toolRow #rangeBar').count(), 1, `${width}: #rangeBar inside #toolRow`);
-      assert.strictEqual(await page.locator('#rangeBar').isVisible(), true, `${width}: #rangeBar visible in library`);
+      await expect(scope).toBeVisible();
+      await scope.click();
       assert.deepStrictEqual(
-        await page.locator('#rangeBar select[data-range-select] option').evaluateAll(o => o.map(x => x.value)),
+        await pop.locator('[data-qf-range]').evaluateAll(options => options.map(e => e.dataset.qfRange)),
         ['all', '30', '90', '365'],
         `${width}: library range options`
       );
-      assert.strictEqual(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, `${width}: no horizontal overflow in library`);
-
-      if (width === 390) {
-        const boxes = await page.evaluate(() => ['#searchToggleBtn', '#laneBar .lane-select', '#rangeBar .range-select', '#ftBar select', '#filterToggleBtn'].map(s => {
-          const r = document.querySelector(s)?.getBoundingClientRect();
-          return r ? { s, x: r.x, right: r.right, y: r.y } : null;
-        }));
-        assert(boxes.every(b => b && b.x >= -1 && b.right <= 391), '390px library toolRow fits inside viewport');
-        assert(Math.max(...boxes.map(b => b.y)) - Math.min(...boxes.map(b => b.y)) < 8, '390px library toolRow stays on one row');
+      await expect(range('all')).toHaveAttribute('aria-pressed', 'true');
+      for (const element of [scope, pop, range('365')]) {
+        const box = await element.boundingBox();
+        assert(box && box.x >= -1 && box.x + box.width <= width + 1, `${width}: scope control fits`);
       }
-
-      await page.locator('#rangeBar select[data-range-select]').selectOption('30');
+      assert.strictEqual(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+      assert.deepStrictEqual(await ids(), ['p-5d', 'p-45d']);
+      await range('30').click();
       assert.strictEqual(new URL(page.url()).searchParams.get('range'), '30', `${width}: selecting range=30 updates URL`);
-      assert.strictEqual(await page.locator('#articlesStream article[data-paper-id]').count(), 1, `${width}: range=30 filters out 45d paper`);
+      assert.deepStrictEqual(await ids(), ['p-5d'], `${width}: 30d keeps only the recent paper`);
 
-      // Candidates: #rangeBar visible, default 14, switching to 90 shows 45d paper
       await page.goto(origin + '/?mode=candidates', { waitUntil: 'load' });
-      assert.strictEqual(await page.locator('#rangeBar').isVisible(), true, `${width}: #rangeBar visible in candidates`);
-      assert.strictEqual(await page.locator('#rangeBar select[data-range-select]').inputValue(), '14', `${width}: candidates default range=14`);
-      assert.strictEqual(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, `${width}: no horizontal overflow in candidates`);
-      await page.locator('#rangeBar select[data-range-select]').selectOption('90');
-      assert.strictEqual(await page.locator('#articlesStream article[data-paper-id]').count(), 2, `${width}: candidates range=90 shows both papers`);
+      await scope.click();
+      await expect(range('14')).toHaveAttribute('aria-pressed', 'true');
+      await expect(range('all')).toHaveCount(0);
+      assert.deepStrictEqual(await ids(), ['p-5d']);
+      await range('90').click();
+      assert.deepStrictEqual(await ids(), ['p-5d', 'p-45d'], `${width}: extending to 90d includes the older paper`);
 
-      // Hidden in curated / weekly / sources / exact DOI
       for (const mode of ['curated', 'weekly', 'sources']) {
         await page.goto(origin + `/?mode=${mode}`, { waitUntil: 'load' });
-        assert.strictEqual(await page.locator('#rangeBar').isVisible(), false, `${width}: #rangeBar hidden in ${mode}`);
-        assert.strictEqual(await page.locator('#rangeBar').innerHTML(), '', `${width}: #rangeBar emptied in ${mode}`);
+        await expect(scope, `${width}: no scope filter in ${mode}`).toBeHidden();
+        await expect(pop).toBeHidden();
       }
       await page.goto(origin + '/?mode=library&q=10.1001%2Frange.1', { waitUntil: 'load' });
-      assert.strictEqual(await page.locator('#rangeBar').isVisible(), false, `${width}: #rangeBar hidden during exact DOI search`);
+      await expect(scope).toBeHidden();
 
       await context.close();
     }
     assert.deepStrictEqual(errors, [], 'no page errors');
-    console.log('rangeBar UI checks passed');
+    console.log('Scope time filter checks passed at 390px and 1280px');
   } finally {
     await browser.close();
   }

@@ -38,7 +38,7 @@ def main():
         const selected=window.FEEDS.items.filter(p=>(p.pmid || p.doi) && (!p.datePrecision || p.datePrecision==='day') && p.date?.slice(0,10)>=start && p.date.slice(0,10)<=end).slice(0,count);
         if(selected.length!==count)throw Error('Not enough real recent public titles for fixture');
         window.__weeklyFixtureIds=selected.map(p=>p.id);
-        window.PREGENERATED={};window.QUICKLOOKS={};
+        window.__weeklyPrecomputed={};window.PREGENERATED={};window.QUICKLOOKS={};
         selected.forEach((p,i)=>{
           p.weeklyPick=i+1;p.weeklyCategory=['cardio','general','aimed','aitech'][i%4];
           const key=p.pmid?'pmid:'+p.pmid:'doi:'+p.doi.toLowerCase();
@@ -46,7 +46,7 @@ def main():
           const quote=p.summary || p.abstractSections?.map(s=>s.text).join(' ') || 'Public abstract test fixture';
           const row={key,pmid:p.pmid,doi:p.doi,title:p.title,journal:p.journal,status:'available',abstract_source:'离线布局测试'};
           ['question','population','design','comparator','endpoints','results'].forEach(f=>row[f]={text:NOTICE,quote:quote.slice(0,80)});
-          window.PREGENERATED[key]={
+          window.__weeklyPrecomputed[key]={
             translation:{abstract_zh:NOTICE},
             quicklook:{one_line:NOTICE,findings:[{text:NOTICE,quote:quote.slice(0,80)}],limits:NOTICE,why_read:NOTICE,design:'离线测试',abstract:quote},
             study:{schemaVersion:1,scope:'public-abstract',papers:[row],checklist:[NOTICE],generatedAt:new Date().toISOString(),caveat:NOTICE}
@@ -70,8 +70,8 @@ def main():
         if ('/assets/app.' in path and path.endswith('.js')):
             data = fixture.replace('COUNT', str(controls['count'])).replace('READY', str(controls['ready']).lower())
             return route.fulfill(content_type='application/javascript', body=bundle.replace(source, data + source))
-        if not controls['ready'] and '/assets/data-pregenerated.' in path and path.endswith('.js'):
-            return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART&&window.XINZHI_PART("pregenerated",{"items":{}});')
+        if '/assets/data-pregenerated.' in path and path.endswith('.js'):
+                return route.fulfill(content_type='application/javascript', body='window.XINZHI_PART("pregenerated",{items:window.__weeklyPrecomputed});')
         if '/api/' in path:
             calls.append({'url': path, 'method': route.request.method})
             return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': True})
@@ -154,11 +154,10 @@ def main():
                     cards = groups.first.locator('.weekly-auto-item')
                     a, b = [cards.nth(i).bounding_box() for i in [0, 1]]
                     board, deep = page.locator('#weeklyAuto').bounding_box(), page.locator('.weekly-deep-read').bounding_box()
+                    check(b['y'] > a['y'] and abs(a['x'] - b['x']) < 1, f'{count}/{width}: papers use one reading column')
                     if width > 1000:
-                        check(abs(a['y']-b['y'])<1 and b['x']>a['x'], f'{count}/{width}: two left card columns')
                         check(deep['x']>=board['x']+board['width'], f'{count}/{width}: right deep read')
                     else:
-                        check(b['y']>a['y'] and abs(a['x']-b['x'])<1, f'{count}/{width}: mobile stacked cards')
                         check(deep is None, f'{count}/{width}: readings sit behind the 全文精读 tab')
                         page.locator('[data-weekly-pane="reading"]').click()
                         check(page.locator('.weekly-deep-read').is_visible() and not page.locator('#weeklyAuto').is_visible(), f'{count}/{width}: tab shows the reading list')
@@ -173,24 +172,24 @@ def main():
             page.locator('#deepReaderClose').click()
             page.locator('[data-weekly-pane="board"]').click()
             before = len(calls)
-            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
-            expect(page.locator('.abstract-translation')).to_contain_text(NOTICE)
+            page.locator('.weekly-auto-item .title-open').first.click()
+            expect(page.locator('[data-abs-panel="zh"]')).to_contain_text(NOTICE)
             expect(page.locator('.study-box')).to_contain_text(NOTICE)
-            expect(page.locator('.ql-line')).to_contain_text(NOTICE)
+            expect(page.locator('.ql-findings li')).to_contain_text(NOTICE)
             check(len(calls) == before, 'Pre-generated reader needs no API lookup or generation')
             check('正在' not in page.locator('#drawerBody').inner_text(), 'Pre-generated reader has no loading placeholder')
             page.screenshot(path=str(out/'precomputed-reader-mobile-fixture.png'))
             page.locator('#drawerCloseBtn').click()
-            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
+            page.locator('.weekly-auto-item .title-open').first.click()
             check(len(calls) == before, 'Reopening reader does not request again')
             page.locator('#drawerCloseBtn').click()
             controls['ready'] = False
             page.goto(base+'?mode=weekly', wait_until='networkidle')
             before = len(calls)
-            page.locator('.weekly-card-actions [data-action="open-drawer"]').first.click()
-            expect(page.locator('.abstract-translation')).to_contain_text('尚未预生成')
+            page.locator('.weekly-auto-item .title-open').first.click()
+            expect(page.locator('#drawerBody .structured-abstract')).to_be_visible()
             check(page.locator('.study-box, .quicklook').count() == 0, 'Missing analysis has no empty study or AI placeholder panel')
-            check(page.locator('.abstract-pending').count() == 1, 'Missing translation keeps a full-width original reading column')
+            check(page.locator('[data-abs-tab="zh"]').count() == 0, 'Missing translation leaves the original without a language toggle')
             check(len(calls) == before, 'Missing pre-generated results do not trigger automatic calls')
             check(page.locator('[data-action="ai-translate"], [data-action="ai-study"], [data-action="ai-interpret"]').count() == 0, 'Missing weekly results never silently become model-generation controls')
             page.locator('#drawerCloseBtn').click()

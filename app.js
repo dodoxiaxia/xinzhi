@@ -974,12 +974,12 @@
     } else if (state.mode === 'sources') {
       if (name === 'health') renderSourcesHealth();
     } else if (state.mode === 'candidates') {
-      if (['feeds', 'radar', 'quicklooks'].includes(name)) {
+      if (neededParts().includes(name) || name === 'quicklooks') {
         renderSidebarFilters();
         renderStream();
       }
     } else if (state.mode === 'library') {
-      if (['library', 'quicklooks'].includes(name)) {
+      if (neededParts().includes(name) || name === 'quicklooks') {
         renderSidebarFilters();
         renderStream();
       }
@@ -2012,7 +2012,10 @@
     return `<p class="study-boundary">仅根据公开摘要生成。各篇结果不作质量排名，不合并效应量。</p><p class="study-meta">${result.generatedBy === 'metadata-only' ? '摘要获取状态 · 未调用模型' : cached ? '读取已有结果' : '本次生成'}</p>`;
   }
   function studyChecklistHtml(result) {
-    return `<details class="study-checklist"><summary>全文核对清单（待查事项）</summary><p>以下是阅读全文时需要核对的问题，并非已发现论文存在这些缺陷。</p><ul>${result.checklist.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>${result.caveat ? `<p class="study-boundary">${esc(result.caveat)}</p>` : ''}`;
+    const caveat = result.generatedBy === 'week-precompute'
+      ? '仅依据公开摘要。未阅读全文，不代表全文精读或医学审查。机械引句与数字校验不证明中文语义完全正确。'
+      : result.caveat;
+    return `<details class="study-checklist"><summary>全文核对清单（待查事项）</summary><p>以下是阅读全文时需要核对的问题，并非已发现论文存在这些缺陷。</p><ul>${result.checklist.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>${caveat ? `<p class="study-boundary">${esc(caveat)}</p>` : ''}`;
   }
   function studyResultHtml(result, requested, cached, task) {
     const rows = studyRows(result, requested);
@@ -5476,7 +5479,13 @@
     if (t.hasAttribute('data-qf-pub')) {
       const v = t.getAttribute('data-qf-pub');
       if (state.publisher === v && !selectedJournals().length) state.publisher = '';
-      else { state.publisher = v; state.journals = []; state.journal = ''; }
+      else {
+        state.publisher = v;
+        state.journals = [];
+        state.journal = '';
+        state.journalTier = '';
+        state.journalTierLegacy = false;
+      }
       qfApply(); return;
     }
     if (t.hasAttribute('data-qf-minor')) { state.minor = t.getAttribute('data-qf-minor') === '1'; qfApply(); return; }

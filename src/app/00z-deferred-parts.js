@@ -245,12 +245,12 @@
     } else if (state.mode === 'sources') {
       if (name === 'health') renderSourcesHealth();
     } else if (state.mode === 'candidates') {
-      if (['feeds', 'radar', 'quicklooks'].includes(name)) {
+      if (neededParts().includes(name) || name === 'quicklooks') {
         renderSidebarFilters();
         renderStream();
       }
     } else if (state.mode === 'library') {
-      if (['library', 'quicklooks'].includes(name)) {
+      if (neededParts().includes(name) || name === 'quicklooks') {
         renderSidebarFilters();
         renderStream();
       }

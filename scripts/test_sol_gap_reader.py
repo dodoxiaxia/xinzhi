@@ -58,8 +58,13 @@ if __name__ == '__main__':
                     page.locator(f'[data-action="open-drawer"][data-paper-id="{paper["id"]}"]:visible').first.click(no_wait_after=True)
                     expect(page.locator('.reader-drawer.open')).to_be_visible()
                     body = page.locator('#drawerBody')
-                    translated = body.locator('.abstract-translation .tr-box p:not(.translation-note)').all_text_contents()
-                    assert translated == [part for part in paper['translation']['abstract_zh'].splitlines() if part], doi
+                    chinese = body.locator('[data-abs-panel="zh"]')
+                    expect(chinese).to_be_visible()
+                    expect(chinese.locator('p')).to_have_text(
+                        [part for part in paper['translation']['abstract_zh'].splitlines() if part])
+                    body.locator('[data-abs-tab="en"]').click()
+                    expect(body.locator('[data-abs-panel="en"]')).to_be_visible()
+                    expect(chinese).to_be_hidden()
                     expect(body).to_contain_text(paper['quicklook']['findings'][0]['text'])
                     expect(body).not_to_contain_text('未经人工')
                     expect(body).not_to_contain_text('以英文原文为准')

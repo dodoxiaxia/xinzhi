@@ -247,8 +247,15 @@ async function main() {
     assert(await page.locator('[data-qf="more"].is-on').count() === 1, 'qfMoreActive turns on when topic filter is active');
     assert((await page.locator('#qfSummary').innerText()).includes('#房颤/电生理'), 'Summary shows selected topic chips');
 
+    // The tier's adjacent caret still opens the journal picker without applying the tier.
+    const generalTier = page.locator('[data-qf-jtier="generalMedicine"]');
+    await page.locator('[data-qf-jtier-menu="generalMedicine"]').click();
+    await page.locator('#qfJournalSearch').waitFor();
+    assert.equal(await generalTier.getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 2);
+    await page.locator('#qfPop [data-qf-close]').click();
     // Cross-axis AND with jtier=generalMedicine -> keeps only NEJM AF paper
-    await page.locator('[data-qf-jtier="generalMedicine"]').click();
+    await generalTier.click();
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').count(), 1, 'Topic OR intersects with jtier via AND');
     assert.equal(await page.locator('#articlesStream article[data-paper-id]').first().getAttribute('data-paper-id'), 'cur-af-1');
 

@@ -102,7 +102,10 @@ def main():
                                         self.assertGreaterEqual(text['top'], m['main']['y']-1)
                                         self.assertLessEqual(text['bottom'], m['main']['bottom']+1)
                                     self.assertGreater(m['main']['width'], m['row']['width'] * .45)
-                                    if width > 600 and (view == 'compact' or mode != 'weekly'):
+                                    if mode == 'weekly' and view == 'detailed':
+                                        self.assertAlmostEqual(m['main']['right'], m['row']['right'], delta=1)
+                                        self.assertGreaterEqual(m['actions']['y'], m['main']['bottom'])
+                                    elif width > 600:
                                         self.assertLessEqual(m['main']['right'], m['actions']['x']+1)
                                     elif width <= 600 and view == 'compact':
                                         self.assertGreaterEqual(m['actions']['y'], m['main']['bottom'])

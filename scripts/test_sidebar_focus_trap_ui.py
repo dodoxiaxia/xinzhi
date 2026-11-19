@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline browser test for #appSidebar.open Tab focus trap & focus restoration (item 10)."""
+"""Offline browser test for quick filter focus and the modal shortlist focus trap."""
 import os
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -97,7 +97,7 @@ VISIBLE_FOCUSABLES_JS = """(rootSel) => {
 
 
 def main():
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import expect, sync_playwright
 
     root = Path(__file__).resolve().parents[1]
     origin = 'https://sidebar-focus.invalid'
@@ -116,79 +116,48 @@ def main():
                 page = context.new_page()
                 page.on('pageerror', lambda e: errors.append(f'{width}: {e}'))
                 page.route('**/*', build_routes(root, origin, posts))
-                # Use candidates mode so #pgFt is hidden and #favoriteJournalBtn is disabled, verifying skipped elements.
-                page.goto(origin + '/?mode=candidates&lane=all', wait_until='networkidle')
-
-                toggle = page.locator('#filterToggleBtn')
-                sidebar = page.locator('#appSidebar')
+                page.goto(origin + '/?mode=candidates&lane=all')
+                toggle = page.locator('#qfScopeBtn')
+                pop = page.locator('#qfPop')
+                close = pop.locator('[data-qf-close]')
 
                 toggle.click()
-                page.locator('#appSidebar.open').wait_for()
-                check(page.evaluate('document.querySelector("#appSidebar").contains(document.activeElement)'), f'{width}: opening sidebar moves focus inside')
-
-                items = page.evaluate(VISIBLE_FOCUSABLES_JS, '#appSidebar.open')
-                check(len(items) >= 4, f'{width}: sidebar has visible focusables ({len(items)})')
-                check(items[0]['id'] == 'panelResetBtn', f'{width}: first focusable is panelResetBtn')
-                check(items[-1]['id'] == 'panelApplyBtn', f'{width}: last focusable is panelApplyBtn')
-                check(all(x['id'] != 'favoriteJournalBtn' for x in items), f'{width}: disabled favoriteJournalBtn excluded')
-                check(page.evaluate('!document.querySelector("#pgFt").hidden === false && ![...document.querySelectorAll("#pgFt button")].some(b => getComputedStyle(b).visibility !== "hidden" && b.getClientRects().length)'), f'{width}: hidden #pgFt buttons excluded')
-
-                # 1. At last element, Tab wraps to first
-                page.locator('#panelApplyBtn').focus()
+                expect(pop).to_have_attribute('aria-modal', 'false')
+                expect(toggle).to_have_attribute('aria-expanded', 'true')
+                expect(close).to_be_focused()
+                expect(pop.locator('[data-qf-ft]')).to_have_count(0)
                 page.keyboard.press('Tab')
-                check(page.evaluate('document.activeElement?.id === "panelResetBtn"'), f'{width}: Tab at last wraps to first')
+                check(pop.evaluate('el => el.contains(document.activeElement)'),
+                      f'{width}: Tab reaches the next filter')
 
-                # 2. At first element, Shift+Tab wraps to last
-                page.keyboard.press('Shift+Tab')
-                check(page.evaluate('document.activeElement?.id === "panelApplyBtn"'), f'{width}: Shift+Tab at first wraps to last')
+                page.keyboard.press('Escape')
+                expect(pop).to_be_hidden()
+                expect(toggle).to_have_attribute('aria-expanded', 'false')
+                expect(toggle).to_be_focused()
 
-                # 3. Full forward cycle never escapes #appSidebar
-                page.locator('#panelResetBtn').focus()
-                for step in range(len(items) + 1):
-                    page.keyboard.press('Tab')
-                    check(page.evaluate('document.querySelector("#appSidebar").contains(document.activeElement)'), f'{width}: Tab step {step} stays inside sidebar')
-                # After len(items) tabs from first -> wrapped back to second? Wait: len(items)-1 reaches last, len(items) wraps to first, len(items)+1 reaches second (#sheetClose).
-                check(page.evaluate('document.activeElement?.id === "sheetClose"'), f'{width}: full cycle wrapped cleanly through first to second')
-
-                # 4. If focus somehow sits outside sidebar while open, Tab pulls it back in
-                page.evaluate('document.activeElement?.blur()')
+                toggle.click()
+                last = pop.locator('[data-qf-range]').last
+                last.focus()
                 page.keyboard.press('Tab')
-                check(page.evaluate('document.activeElement?.id === "panelResetBtn"'), f'{width}: Tab from outside moves focus to first inside sidebar')
+                expect(pop).to_be_hidden()
+                expect(toggle).not_to_be_focused()
 
-                # 5. Expanding <details class="panel-more"> includes newly visible controls, still wrapping at panelApplyBtn
-                page.locator('.panel-more > summary').click()
-                expanded_items = page.evaluate(VISIBLE_FOCUSABLES_JS, '#appSidebar.open')
-                check(len(expanded_items) > len(items), f'{width}: expanding 更多条件 exposes more focusables')
-                page.locator('#panelApplyBtn').focus()
-                page.keyboard.press('Tab')
-                check(page.evaluate('document.activeElement?.id === "panelResetBtn"'), f'{width}: Tab wraps after expanding 更多条件')
+                toggle.click()
+                expect(close).to_be_focused()
+                close.click()
+                expect(pop).to_be_hidden()
+                expect(toggle).to_be_focused()
 
-                # 6. Nested modal (#huddleModalBackdrop.open over #appSidebar.open): only topmost is constrained
-                page.evaluate("document.getElementById('openHuddleBtn').click()")
-                page.locator('#huddleModalBackdrop.open').wait_for()
-                huddle_items = page.evaluate(VISIBLE_FOCUSABLES_JS, '#huddleModalBackdrop.open .modal-dialog')
-                check(len(huddle_items) >= 1, f'{width}: shortlist modal has focusable(s)')
+                # The shortlist is still modal, so Shift+Tab wraps within it.
+                page.locator('#openHuddleBtn').click()
+                modal = page.locator('#huddleModalBackdrop.open .modal-dialog')
                 page.locator('#closeHuddleModalBtn').focus()
                 page.keyboard.press('Shift+Tab')
-                check(page.evaluate('document.querySelector("#huddleModalBackdrop .modal-dialog").contains(document.activeElement)'), f'{width}: nested shortlist traps Shift+Tab without dropping into sidebar')
+                check(modal.evaluate('el => el.contains(document.activeElement)'),
+                      f'{width}: the shortlist keeps keyboard focus')
                 page.keyboard.press('Escape')
-                page.wait_for_timeout(100)
-                check(page.locator('#huddleModalBackdrop.open').count() == 0 and page.locator('#appSidebar.open').count() == 1, f'{width}: Esc closes topmost shortlist and keeps sidebar open')
-
-                # 7. Closing sidebar restores focus to #filterToggleBtn (via Esc and via #sheetClose)
-                page.locator('#panelResetBtn').focus()
-                page.keyboard.press('Escape')
-                page.wait_for_timeout(100)
-                check(not sidebar.evaluate('el => el.classList.contains("open")'), f'{width}: Esc closes sidebar')
-                check(toggle.get_attribute('aria-expanded') == 'false', f'{width}: aria-expanded false on close')
-                check(page.evaluate('document.activeElement?.id === "filterToggleBtn"'), f'{width}: Esc restores focus to filterToggleBtn')
-
-                toggle.click()
-                page.locator('#appSidebar.open').wait_for()
-                page.locator('#sheetClose').click()
-                page.wait_for_timeout(100)
-                check(not sidebar.evaluate('el => el.classList.contains("open")'), f'{width}: close button closes sidebar')
-                check(page.evaluate('document.activeElement?.id === "filterToggleBtn"'), f'{width}: close button restores focus to filterToggleBtn')
+                expect(modal).to_have_count(0)
+                expect(page.locator('#openHuddleBtn')).to_be_focused()
 
                 context.close()
         finally:
@@ -196,7 +165,7 @@ def main():
 
     assert not errors, f'Page errors: {errors}'
     assert not posts, f'Unexpected non-GET requests: {posts}'
-    print(f'{len(checks)} offline sidebar focus-trap assertions passed')
+    print('Offline quick filter and shortlist keyboard checks passed at 390px and 1280px')
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 'use strict';
 // Offline browser test: popstate restores search, range and shareable URL filters without writing stale state back.
 const fs = require('fs'), path = require('path'), assert = require('assert');
-const { chromium } = require('playwright');
+const { chromium, expect } = require('playwright/test');
 
 const root = path.resolve(__dirname, '..');
 const origin = 'https://popstate-test.invalid';
@@ -82,9 +82,22 @@ async function run() {
   });
 
   try {
+    const scope = page.locator('#qfScopeBtn');
+    const pop = page.locator('#qfPop');
+    const range = value => pop.locator(`[data-qf-range="${value}"]`);
+    const search = page.locator('#globalSearch');
+    const checkScope = async options => {
+      await scope.click();
+      for (const [field, value] of Object.entries(options)) {
+        await expect(pop.locator(`[data-qf-${field}="${value}"]`)).toHaveAttribute('aria-pressed', 'true');
+      }
+      await pop.locator('[data-qf-close]').click();
+    };
     // 1. Cross-mode back & forward: library (range=90, q=alpha) -> candidates (q=beta) -> Back -> Forward
     await page.goto(origin + '/?mode=library', { waitUntil: 'load' });
-    await page.locator('#rangeBar select[data-range-select]').selectOption('90');
+    await scope.click();
+    await range('90').click();
+    await pop.locator('[data-qf-close]').click();
     await page.click('#searchToggleBtn');
     await page.fill('#globalSearch', 'alpha');
     await page.waitForFunction(() => new URL(location.href).searchParams.get('q') === 'alpha');
@@ -105,14 +118,14 @@ async function run() {
     );
 
     await page.goBack();
-    await page.waitForTimeout(250);
+    await expect(search).toHaveValue('alpha');
     const backUrl = new URL(page.url());
     assert.strictEqual(backUrl.searchParams.get('mode'), 'library', 'Back restores library mode');
     assert.strictEqual(backUrl.searchParams.get('q'), 'alpha', 'Back preserves q=alpha without overwriting history');
     assert.strictEqual(backUrl.searchParams.get('range'), '90', 'Back preserves range=90 without resetting to default');
     assert.strictEqual(await page.locator('#globalSearch').inputValue(), 'alpha', 'Back restores search input');
     assert.strictEqual(await page.locator('#searchPanel').isVisible(), true, 'Back keeps search panel visible when q is non-empty');
-    assert.strictEqual(await page.locator('#rangeBar select[data-range-select]').inputValue(), '90', 'Back restores range select');
+    await checkScope({range: '90'});
     assert.deepStrictEqual(
       await page.locator('#articlesStream article[data-paper-id]').evaluateAll(els => els.map(e => e.dataset.paperId)),
       ['lib-recent', 'lib-mid'],
@@ -120,12 +133,12 @@ async function run() {
     );
 
     await page.goForward();
-    await page.waitForTimeout(250);
+    await expect(search).toHaveValue('beta');
     const fwdUrl = new URL(page.url());
     assert.strictEqual(fwdUrl.searchParams.get('mode'), 'candidates', 'Forward restores candidates mode');
     assert.strictEqual(fwdUrl.searchParams.get('q'), 'beta', 'Forward restores q=beta');
     assert.strictEqual(await page.locator('#globalSearch').inputValue(), 'beta', 'Forward restores search input');
-    assert.strictEqual(await page.locator('#rangeBar select[data-range-select]').inputValue(), '14', 'Forward restores candidates default range=14');
+    await checkScope({range: '14'});
 
     // 2. Restore additional shareable params (lane, journal, ft, sort) and same-mode popstate
     await page.goto(origin + '/?mode=library&lane=all&range=365&journal=Circulation&ft=none&q=alpha&sort=date-asc', { waitUntil: 'load' });
@@ -133,19 +146,14 @@ async function run() {
       history.pushState(null, '', '/?mode=library&lane=core&range=30&q=recent&sort=date-desc');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
-    await page.waitForTimeout(150);
-    assert.strictEqual(await page.locator('#globalSearch').inputValue(), 'recent', 'same-mode popstate updates search input');
-    assert.strictEqual(await page.locator('#rangeBar select[data-range-select]').inputValue(), '30', 'same-mode popstate updates range');
+    await expect(search).toHaveValue('recent');
+    await checkScope({range: '30', lane: 'core', ft: ''});
     assert.strictEqual(await page.locator('#sortSelector').inputValue(), 'date-desc', 'same-mode popstate updates sort');
-    assert.strictEqual(await page.locator('#laneBar select[data-lane-select]').inputValue(), 'core', 'same-mode popstate updates lane');
 
     await page.goBack();
-    await page.waitForTimeout(150);
-    assert.strictEqual(await page.locator('#globalSearch').inputValue(), 'alpha', 'back restores q=alpha');
-    assert.strictEqual(await page.locator('#rangeBar select[data-range-select]').inputValue(), '365', 'back restores range=365');
+    await expect(search).toHaveValue('alpha');
+    await checkScope({range: '365', lane: 'all', ft: 'none'});
     assert.strictEqual(await page.locator('#sortSelector').inputValue(), 'date-asc', 'back restores sort=date-asc');
-    assert.strictEqual(await page.locator('#laneBar select[data-lane-select]').inputValue(), 'all', 'back restores lane=all');
-    assert.strictEqual(await page.locator('#ftBar select[data-ft-select]').inputValue(), 'none', 'back restores ft=none');
     assert.deepStrictEqual(
       await page.locator('#articlesStream article[data-paper-id]').evaluateAll(els => els.map(e => e.dataset.paperId)),
       ['lib-mid'],
@@ -156,8 +164,7 @@ async function run() {
     await page.locator('#articlesStream [data-action="open-drawer"]').first().click();
     await page.locator('#readerDrawer.open').waitFor();
     await page.goBack();
-    await page.waitForTimeout(150);
-    assert.strictEqual(await page.locator('#readerDrawer.open').count(), 0, 'Back closes drawer');
+    await expect(page.locator('#readerDrawer')).toBeHidden();
     assert.strictEqual(new URL(page.url()).searchParams.get('q'), 'alpha', 'closing drawer keeps q=alpha');
     assert.strictEqual(new URL(page.url()).searchParams.get('range'), '365', 'closing drawer keeps range=365');
 
