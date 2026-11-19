@@ -62,6 +62,7 @@
 | `test_study_ui.cjs:136–139,149,159,163,171–173` | 非法 HTML/链接、原始错误或其他状态文字不泄漏 | 恶意内容已放入输入；E5 验证其它状态会产生相应文案。 | 保留；不是无输入的否定。 |
 | `test_ai_waiting_ui.cjs:50–52` | 无摘要时无生成动作及说明 | 是；E4/E5、同文件 52 有可生成且有摘要的正例，50 无摘要和 51 正在获取摘要是反例。 | 保留；不编辑。 |
 | `test_machine_content_labels.cjs:42`、`test_weekly_window.cjs:69`、`test_terms_consistency.cjs:59,199,221` | 拒绝旧标签、旧双语提示或旧摘要按钮文案 | E3；另查 `rg -n '阅读摘要 · 中英对照\|阅读摘要\|机器标注' src/app index.html`，无对应生产者。 | 既有约束不动；列表/阅读器里的同类短语由新正控覆盖。 |
+| #208 的 `test_reading_mode_ui.py:187` | 阅读模式不嵌入 `iframe, embed, object` | `rg -in '<(iframe\|embed\|object)\b' src/app/06*-reader.js src/app/06b-reading-mode.js index.html` 无匹配；夹具也没有注入这类元素。 | 仅记录：无嵌入物生产者，候选正控应由阅读模式测试单独处理。 |
 
 ## 搜索与精选清单
 
