@@ -9,6 +9,10 @@
 // needs a password to open is encrypted_pdf; any other handler, method or a key that does not verify is
 // encryption_unsupported. RC4 is plain JS (no Web Crypto RC4); MD5, SHA-2 and AES use crypto.subtle.
 const MACHINE_INFLATE_MAX = 16 * 1024 * 1024;
+const MACHINE_MAX_PAGES = 200;
+const MACHINE_SCAN_INFLATE_BUDGET = 64 * 1024 * 1024;
+// Reference or listing pages cite >= 2 other DOIs alongside the claimed DOI; genuine headers/footers carry at most 1.
+const MACHINE_LATER_PAGE_MAX_OTHER_DOIS = 1;
 const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
@@ -714,11 +718,19 @@ async function machineContentText(ctx, id) {
 async function machineFirstPage(bytes) {
   const ctx = machinePdfContext(bytes), notes = ctx.notes;
   const page = await machineFirstPageObject(ctx);
+  const {strings, decoded, raw} = page ? await machinePageText(ctx, page.body) : {strings:'', decoded:'', raw:''};
+  const metadata = await machineMetadata(ctx);
+  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
+  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
+  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+}
+async function machinePageText(ctx, pageBody) {
+  const notes = ctx.notes;
   let strings = '', raw = '', decoded = '';
-  if (page) {
-    const ids = await machineContentIds(ctx, page.body);
+  if (pageBody) {
+    const ids = await machineContentIds(ctx, pageBody);
     if (!ids.length) notes.add('contents_not_found');
-    const fonts = await machinePageFonts(ctx, page.body);
+    const fonts = await machinePageFonts(ctx, pageBody);
     // A page's /Contents array is one logical stream (ISO 32000-1 7.8.2): an operator may start in one stream and end in the
     // next (a TJ array closed by "]" at the end of one and "TJ" at the start of the next), and the font selected in an
     // earlier stream stays current. Decode the streams joined, never one by one, or a title split that way is dropped.
@@ -732,10 +744,83 @@ async function machineFirstPage(bytes) {
     }
     decoded += machineDecodeFontText(joined, fonts) + '\n';
   }
-  const metadata = await machineMetadata(ctx);
-  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
-  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes};
+  return {strings, decoded, raw};
+}
+async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
+  if (!limit || limit < 1) return [];
+  const roots = [...ctx.text.matchAll(/\/Root\s+(\d+)\s+\d+\s+R/g)];
+  const rootId = roots.length ? roots[roots.length - 1][1] : '';
+  let pagesId = '';
+  if (rootId) {
+    const catalog = await machineBody(ctx, rootId);
+    pagesId = catalog && machineRefValue(catalog, 'Pages');
+  } else {
+    // Trailerless PDFs (e.g. without /Root): locate the top-level /Catalog or /Pages object.
+    let firstPagesId = '';
+    for (const [id] of ctx.index) {
+      const body = machineTopBody(ctx, id), streamAt = body.indexOf('stream');
+      const dict = streamAt >= 0 ? body.slice(0, streamAt) : body;
+      if (/\/Type\s*\/Catalog\b/.test(dict)) { pagesId = machineRefValue(dict, 'Pages'); if (pagesId) break; }
+      if (!firstPagesId && /\/Type\s*\/Pages\b/.test(dict)) firstPagesId = String(id);
+    }
+    if (!pagesId) pagesId = firstPagesId;
+  }
+  if (!pagesId) return [];
+  const out = [], seen = new Set(), stack = [{id:pagesId, depth:0}];
+  while (stack.length && out.length < limit) {
+    const {id, depth} = stack.pop();
+    const key = Number(id);
+    if (!Number.isInteger(key) || seen.has(key)) continue;
+    seen.add(key);
+    const body = await machineBody(ctx, id);
+    if (!body) continue;
+    let kids = /\/Kids\s*\[([^\]]*)\]/.exec(body);
+    if (!kids && machineRefValue(body, 'Kids')) {
+      const listed = await machineBody(ctx, machineRefValue(body, 'Kids'));
+      kids = listed && /\[([^\]]*)\]/.exec(listed);
+    }
+    if (kids) {
+      if (depth >= 32) continue;
+      const refs = machineRefList(kids[1]);
+      for (let i = refs.length - 1; i >= 0; i--) stack.push({id:refs[i], depth:depth + 1});
+    } else if (/\/Contents(?![A-Za-z0-9_])/.test(body)) {
+      out.push(body);
+    }
+  }
+  return out;
+}
+// Later-page DOI scan: only runs when page 1 already matched the title and missed the claimed DOI.
+// Stops immediately on the first valid hit, and caps traversal at MACHINE_MAX_PAGES (200) pages and cumulative
+// decompressed stream bytes at MACHINE_SCAN_INFLATE_BUDGET (64 MiB). Pages that match the claimed DOI alongside
+// more than MACHINE_LATER_PAGE_MAX_OTHER_DOIS other DOIs are treated as reference/listing pages and skipped.
+function machineDoiTokens(text) {
+  const out = new Set();
+  for (const match of String(text || '').matchAll(/10\.\d{4,9}\/[^\s"<>()\[\],;]+/gi)) {
+    const token = match[0].toLowerCase().replace(/\.+$/, '');
+    if (token && !token.endsWith('/')) out.add(token);
+  }
+  return [...out];
+}
+async function machineFindDoiOnLaterPages(ctx, doi) {
+  const pages = await machinePageBodies(ctx, MACHINE_MAX_PAGES + 1);
+  const target = libraryDoi(doi) || String(doi || '').trim().toLowerCase();
+  let inflated = 0, citedPages = 0;
+  for (let index = 1; index < pages.length; index++) {
+    if (index >= MACHINE_MAX_PAGES) return {page:0, truncated:true, citedPages};
+    const {strings, decoded, raw} = await machinePageText(ctx, pages[index]);
+    inflated += raw.length;
+    if (inflated > MACHINE_SCAN_INFLATE_BUDGET) return {page:0, truncated:true, citedPages};
+    const pageText = strings + '\n' + decoded + raw;
+    if (!machineDoiPresent(pageText, doi)) continue;
+    // Exclude the claimed DOI and mutual prefixes caused by line-wrap splits (e.g. "10.1001/jama.2022.").
+    const otherDois = machineDoiTokens(pageText).filter(token => !target.startsWith(token) && !token.startsWith(target));
+    if (otherDois.length > MACHINE_LATER_PAGE_MAX_OTHER_DOIS) {
+      citedPages++;
+      continue;
+    }
+    return {page:index + 1, ...(citedPages ? {citedPages} : {})};
+  }
+  return {page:0, citedPages};
 }
 function machineDoiPresent(text, doi) {
   const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
@@ -826,8 +911,19 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   if (doiPage && titleMeta) return {verdict:'ok', level:'metadata_title', checks};
   if (doiMeta && titleMeta) return {verdict:'ok', level:'metadata_only', checks};
   if (doiPage && !readable) return {verdict:'ok', level:'doi_only', reason:'title_not_found', checks};
-  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
-    return {verdict:'ok', level:'title_only', checks:{...checks, doi:'', doiAbsent:true}};
+  let citedPages = 0;
+  if (options && options.scanAllPages && titlePage && !doiFound) {
+    // Only scan later pages when page 1 read the title and missed the claimed DOI (stops at first valid match, <= 200 pages / 64 MiB).
+    const later = await machineFindDoiOnLaterPages(page.ctx, doi);
+    citedPages = later.citedPages || 0;
+    if (later.page) return {verdict:'ok', level:'doi_later_page', checks:{...checks, doi:'later_page', doiPage:later.page, ...(citedPages ? {citedPages} : {})}};
   }
-  return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks};
+  const laterChecks = citedPages ? {...checks, citedPages} : checks;
+  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+    return {verdict:'ok', level:'title_only', checks:{...laterChecks, doi:'', doiAbsent:true}};
+  }
+  if (options && options.holdForeignDoi && titlePage && !doiFound && (machineAnyDoi(page.text) || machineAnyDoi(page.metadata.text))) {
+    return {verdict:'ok', level:'title_mismatched_doi', hold:true, checks:{...laterChecks, foreignDoi:true}};
+  }
+  return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks:laterChecks};
 }

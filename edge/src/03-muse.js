@@ -87,7 +87,7 @@ function museRecord(value, doi = '') {
       || (Object.hasOwn(value,'caller') && !MACHINE_CALLER_ID.test(value.caller))
       || (Object.hasOwn(value,'claimant') && !/^(?:muse|[a-z][a-z0-9_-]{0,31})$/.test(value.claimant))
       || (Object.hasOwn(value,'stage') && !['han','yiigle'].includes(value.stage))
-      || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'].includes(value.verificationReason))
+      || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'].includes(value.verificationReason))
       || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || (!value.source && !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || ''))))
       || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
   return value;
@@ -106,7 +106,7 @@ function museVerificationInstant(job) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
-  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
+  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
     : job.state === 'login_required' ? 'login_required'
     : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
@@ -186,7 +186,10 @@ function museTaskView(job, publicJob) {
   const received = job.source === 'reader_upload' ? '你上传的 PDF' : job.source === 'open_access' ? '开放获取的 PDF' : ' PDF';
   if (job.state === 'available') return {step:2,stopped:false,headline:'全文已核验，可以阅读和下载。',eta:'',action:'download'};
   if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未取得',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
-  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  if (job.state === 'review') {
+    if (job.verificationReason === 'identity_hold') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，首页印的是另一篇的 DOI，等待人工核对，核对前不公开。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+    return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  }
   if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未取得',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
   if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : publicJob.reason === 'queue_unclaimed' ? '下载端暂时没有领取，已转给兜底下载处理。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
@@ -333,11 +336,15 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
     const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
     if (pointer) inherited.supersededFrom = pointer;
   }
-  const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
-    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
+  const {hold, ...restExtra} = extra || {};
+  const job = hold
+    ? {version:1,id,doi,state:'review',verificationReason:'identity_hold',reason:'identity_hold',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
+        sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...restExtra}
+    : {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
+        leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...restExtra};
   await musePut(env,job);
-  await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
+  if (!hold) await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
   if (previous) await museDelete(env,previous.queueKey);
-  await museRequestReview(env);
+  if (!hold) await museRequestReview(env);
   return job;
 }

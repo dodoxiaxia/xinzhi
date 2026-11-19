@@ -203,6 +203,51 @@ function nestedDictTj({doi, title}) {
   return type0Page({cmap:tools.cmap, contentText:'BT /F2 12 Tf 1 0 0 1 72 720 Tm /Span << /Lang (en) /Info << /BBox [1 2 3 4] /Note (contains >> and << tokens) >> >> BDC '
     + tools.shown(doi) + ' Tj 0 -24 Td ' + tools.shown(title) + ' Tj EMC ET\n'});
 }
+// Multi-page synthetic PDF in memory: /Root -> /Pages -> /Kids, one FlateDecode /Contents stream per page.
+// Page entries may be plain strings or {literal?, unicode?, rawContent?}; unicode text uses a Type0 + ToUnicode font only on pages that need it.
+function multiPage({pages, padTo = PAD_TO}) {
+  const specs = pages.map(entry => typeof entry === 'string' ? {literal:entry} : (entry || {}));
+  const unicodeChars = [...new Set(specs.flatMap(spec => spec.unicode ? [...spec.unicode] : []))].sort();
+  const hasUnicode = unicodeChars.length > 0;
+  const tools = hasUnicode ? glyphTools(unicodeChars.join('')) : null;
+  const parts = [
+    {id:1, head:''},
+    {id:2, head:''},
+    {id:3, head:'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n'}
+  ];
+  let nextId = 4;
+  if (hasUnicode) {
+    const f2 = nextId++, cid = nextId++, cmapId = nextId++;
+    parts.push(
+      {id:f2, head:'<< /Type /Font /Subtype /Type0 /BaseFont /ABCDEF+SyntheticSans /Encoding /Identity-H /DescendantFonts [' + cid + ' 0 R] /ToUnicode ' + cmapId + ' 0 R >>\n'},
+      {id:cid, head:'<< /Type /Font /Subtype /CIDFontType2 /BaseFont /ABCDEF+SyntheticSans /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> >>\n'},
+      {id:cmapId, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(tools.cmap)))}
+    );
+  }
+  const kids = [];
+  for (const spec of specs) {
+    const pageId = nextId++, contentId = nextId++;
+    kids.push(pageId + ' 0 R');
+    let contentText = spec.rawContent || '';
+    if (!spec.rawContent) {
+      contentText = 'BT';
+      if (spec.literal) contentText += ' /F1 10 Tf 1 0 0 1 72 720 Tm (' + escapeText(spec.literal) + ') Tj';
+      if (spec.unicode) contentText += ' /F2 14 Tf 1 0 0 1 72 690 Tm [' + tools.shown(spec.unicode) + '] TJ';
+      contentText += ' ET\n';
+    }
+    const fontDict = spec.unicode ? '/F1 3 0 R /F2 4 0 R' : '/F1 3 0 R';
+    parts.push(
+      {id:pageId, head:'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << ' + fontDict + ' >> >> /Contents ' + contentId + ' 0 R >>\n'},
+      {id:contentId, ...stream('/Filter /FlateDecode', zlib.deflateSync(latin1(contentText)))}
+    );
+  }
+  parts[0].head = '<< /Type /Catalog /Pages 2 0 R >>\n';
+  parts[1].head = '<< /Type /Pages /Count ' + specs.length + ' /Kids [' + kids.join(' ') + '] >>\n';
+  const built = assemble(parts);
+  const chunks = padTo ? pad(built.chunks) : built.chunks;
+  chunks.push(latin1('trailer\n<< /Size ' + nextId + ' /Root 1 0 R >>\nstartxref\n0\n%%EOF\n'));
+  return Buffer.concat(chunks);
+}
 const samples = {
   flate: {doi:'10.9999/synthetic.flate', title:'Synthetic trailing newline after compressed page content in an imaginary cohort'},
   objstm: {doi:'10.9999/synthetic.objstm', title:'Synthetic page tree stored inside an object stream of an imaginary registry'},
@@ -220,7 +265,7 @@ function files() {
     'custom-encoding-tounicode.pdf':customEncoding(samples.custom)
   };
 }
-module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
+module.exports = {flateEol, objStm, customEncoding, simpleFontWideCodespace, splitOperatorAcrossStreams, bdcBBoxTj, bdcBBoxTJ, nestedDictTj, multiPage, samples, files, directory:path.join(__dirname, 'fixtures/machine-identity')};
 if (require.main === module) {
   fs.mkdirSync(module.exports.directory, {recursive:true});
   for (const [name, bytes] of Object.entries(files())) fs.writeFileSync(path.join(module.exports.directory, name), bytes);
