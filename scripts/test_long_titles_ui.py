@@ -367,7 +367,7 @@ class LongTitleChecks:
             if surface in ("S3", "S4"):
                 self.assertEqual(subtitle["title"], en)
                 if key == "T2":
-                    self.assertGreater(subtitle["sw"], subtitle["cw"] + 1)
+                    self.assertLessEqual(subtitle["sw"], subtitle["cw"] + 1)
             if subtitle["sh"] > subtitle["ch"] + 1 or subtitle["sw"] > subtitle["cw"] + 1:
                 self.assertEqual(subtitle["title"], en)
 

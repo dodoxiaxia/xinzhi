@@ -1751,9 +1751,21 @@ html[data-style] .article-card.has-side-actions .article-title {
 .article-card.has-side-actions .article-title-en,
 .article-card.has-side-actions .article-title-en-hit {
   margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.article-card.has-side-actions .article-title-en.is-hit { white-space: normal; overflow-wrap: anywhere; }
+.article-card.has-side-actions .article-title-en,
+.compact-row .article-title-en {
+  display: block; overflow-wrap: anywhere; white-space: normal;
+  font-family: var(--font-sans); font-weight: 400;
+}
+/* Only subtitles longer than two lines receive an expansion button. */
+.article-title-en > span { display: block; }
+.article-title-en[data-collapsed] > span {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.article-title-en > button {
+  display: block; padding: 0; border: 0; background: transparent; color: var(--accent);
+  font: inherit; text-decoration: underline; cursor: pointer;
+}
 html[data-style] .article-card.has-side-actions .article-gist {
   margin: 6px 0 0; font-size: 14.5px; line-height: 1.65; color: var(--text-secondary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
@@ -2026,7 +2038,7 @@ html[data-style] #weeklyAuto .content-label { display: none !important; }
   html[data-style] #weeklyAuto .weekly-group-title { margin-top: 20px; }
 }
 
-/* 英文原题：手机档（≤600）不显示，更宽保留一行浅色小字 */
+/* 英文原题：手机档（≤600）不显示，更宽显示浅色副标题 */
 @media (max-width: 600px) {
   .article-card.has-side-actions .article-title-en,
   .article-card.has-side-actions .article-title-en-hit,
@@ -2095,7 +2107,7 @@ html[data-style] .weekly-category-nav button[aria-pressed="true"] {
 }
 html[data-style] .weekly-category-nav button[aria-pressed="true"] span {
   color: var(--accent);
-  opacity: .75;
+  opacity: 1;
 }
 html[data-style] .lane-chip.active,
 html[data-style] .day-bar .lane-chip.active {
@@ -2153,7 +2165,7 @@ html[data-style] .weekly-category-nav {
 .compact-row .card-side-actions .ft-status.ft-compact,
 .weekly-auto-item .card-side-actions .ft-status.ft-compact,
 .weekly-row .card-side-actions .ft-status.ft-compact { display: inline-flex; align-items: center; gap: 4px; }
-.compact-row .article-title-en { margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compact-row .article-title-en { margin: 3px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
 .compact-row .card-icon-btn,
 .weekly-row .card-icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
