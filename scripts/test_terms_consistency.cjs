@@ -39,7 +39,8 @@ const listCtx = vm.createContext({
   doiStatusBlock: () => '',
   safeSourceUrl: () => 'https://example.org/paper',
   exactDoi: () => false,
-  designBadgeHtml: () => ''
+  designBadgeHtml: () => '',
+  topicBadgeHtml: () => ''
 });
 vm.runInContext(src.match(/  const SEARCH_APOSTROPHES = [^\n]+/)[0] + '\n' + src.match(/  const SEARCH_QUOTES = [^\n]+/)[0] + '\n' + fn('foldSearch'), listCtx);
 vm.runInContext(['isInternalSourceName', 'cardJournalName', 'huddleStarSvg', 'cardTakeaway', 'cardSideActionsHtml', 'authorAffilHtml'].map(fn).join('\n'), listCtx);

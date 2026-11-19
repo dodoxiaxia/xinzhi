@@ -33,6 +33,7 @@
 | `test_official_article_url.cjs:34` c | 使用 | URL, encodeURIComponent, decodeURIComponent, esc, state, LIVE_TR, document, $, getPublisherClass, getDesignClass, dateLabel, quicklookOf, publicationStatusHtml, doiStatusBlock, journalMetricBadge, cardJournalName, designBadgeHtml, DEFERRED, PART_STATE, partsReady, partsPending, cardTakeaway, authorAffilHtml, abstractMayBeIncomplete, forgetPaper, prioritizedDesign, huddleStarSvg, fetchPublicAbstract, openBodyOnly, lastFocus, validTranslation, trKeyOf, fulltextStatusHtml, pdfDownloadUrl, resetDlForm, pushOverlay, hydratePreGenerated, aiApiCheck, trCheck, studyCheck, studyBoxHtml, renderDrawerRegions | 保留 |
 | 同上 | 未使用 | MAINTAINER, preGeneratedOf, pdfDownloadLink, journalMetricDetails, abstractTranslationStatus, trBoxHtml, buildCitations, fulltextView, hamburgFulltextUrl | 删除；E6 |
 | 同上 | 引用但未提供 | aiWaitingMessage, prioritizeParts, pumpPartQueue | 补齐 |
+| #211 后的 `listCtx` 和 `c` | 新增引用 | topicBadgeHtml | 补齐：卡片与列表有新主题标签；这两个测试不检验主题标签。 |
 
 验证：两套 Node 测试保持原来的加载函数及断言；`test_harness_hygiene.py` 检查桩名是否在其上下文加载的函数中使用，并用临时副本检查拒绝新增死桩。
 

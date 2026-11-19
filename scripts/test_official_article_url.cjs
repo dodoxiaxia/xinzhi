@@ -46,6 +46,7 @@ const c = vm.createContext({
   journalMetricBadge: () => '',
   cardJournalName: p => (p && (p.cleanJournal || p.journal)) || '',
   designBadgeHtml: () => '',
+  topicBadgeHtml: () => '',
   DEFERRED: false,
   PART_STATE: {},
   prioritizeParts: () => {},
