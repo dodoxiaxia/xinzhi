@@ -69,6 +69,7 @@ const c = vm.createContext({
   resetDlForm: () => {},
   pushOverlay: () => {},
   hydratePreGenerated: () => {},
+  refreshReadingContent: () => assert.fail('drawer fixture must not enter reading mode'),
   aiApiCheck: () => {},
   trCheck: () => {},
   studyCheck: () => {},

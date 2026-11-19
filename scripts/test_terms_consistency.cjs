@@ -150,6 +150,7 @@ const readerCtx = vm.createContext({
   document: { activeElement: null, body: { classList: { add: () => {} } }, querySelectorAll: () => [] },
   state: { huddle: [], activeDrawerPaper: null },
   hydratePreGenerated: () => {},
+  refreshReadingContent: () => assert.fail('drawer fixture must not enter reading mode'),
   getPublisherClass: () => '',
   getDesignClass: () => '',
   dateLabel: () => '2026-10-01',

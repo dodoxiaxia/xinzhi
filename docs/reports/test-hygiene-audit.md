@@ -1,6 +1,6 @@
 # Ticket H：测试卫生审计
 
-基线：`a7a6383`。下表的行号指该未修改的 main；只改测试和本报告。浏览器使用离线公共包、拦截 API，不连生产。#211 合入后复查了同一批选择器：产品源码仍只有被排除的 `index.html:226` 标签；没有新增这四个旧标记或旧翻译动作。
+基线：`a7a6383`。下表未另注明的行号指该未修改的 main；只改测试和本报告。浏览器使用离线公共包、拦截 API，不连生产。#211、#208 和 #213 合入后复查了同一批选择器：产品源码仍只有被排除的 `index.html:246` 标签；没有新增这四个旧标记或旧翻译动作。
 
 ## 产出证据
 
@@ -34,6 +34,7 @@
 | 同上 | 未使用 | MAINTAINER, preGeneratedOf, pdfDownloadLink, journalMetricDetails, abstractTranslationStatus, trBoxHtml, buildCitations, fulltextView, hamburgFulltextUrl | 删除；E6 |
 | 同上 | 引用但未提供 | aiWaitingMessage, prioritizeParts, pumpPartQueue | 补齐 |
 | #211 后的 `listCtx` 和 `c` | 新增引用 | topicBadgeHtml | 补齐：卡片与列表有新主题标签；这两个测试不检验主题标签。 |
+| #208 后的 `readerCtx` 和 `c` | 新增引用 | refreshReadingContent | 补齐：只有正式阅读模式才应调用；两个普通阅读面板夹具若走入此分支即失败。 |
 
 验证：两套 Node 测试保持原来的加载函数及断言；`test_harness_hygiene.py` 检查桩名是否在其上下文加载的函数中使用，并用临时副本检查拒绝新增死桩。
 
