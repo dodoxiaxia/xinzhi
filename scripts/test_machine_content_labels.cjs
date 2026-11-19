@@ -32,6 +32,7 @@ const ctx = vm.createContext({
   preGeneratedOf: () => null,
   trKeyOf: p => p.id,
 });
+vm.runInContext(src.match(/  const SEARCH_APOSTROPHES = [^\n]+/)[0] + '\n' + src.match(/  const SEARCH_QUOTES = [^\n]+/)[0] + '\n' + fn('foldSearch'), ctx);
 vm.runInContext(['isInternalSourceName', 'cardJournalName', 'huddleStarSvg', 'cardTakeaway', 'cardSideActionsHtml', 'authorAffilHtml', 'officialArticleUrl', 'renderArticleCard', 'renderCompactRow', 'weeklyCard', 'weeklyRow'].map(fn).join('\n'), ctx);
 
 let checks = 0;

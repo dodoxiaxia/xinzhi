@@ -48,11 +48,11 @@ context.history = { state: null, replaceState: (_state, _title, url) => { contex
 vm.runInContext([
   'paperTopicTags', 'parseTopicParams', 'selectedTags', 'isTopicUnclassified', 'hasTopicFilter',
   'publisherForJournal', 'sidebarSelections', 'clearSidebarFilters', 'selectSidebarFilter',
-  'browseOnlyButton', 'paperDerived', 'paperSearchText', 'matchesQuery', 'selectedJournals', 'sidebarMisses', 'matchesSidebarFilters', 'matchesFilters',
+  'browseOnlyButton', 'foldSearch', 'paperDerived', 'paperSearchText', 'matchesQuery', 'selectedJournals', 'sidebarMisses', 'matchesSidebarFilters', 'matchesFilters',
   'renderSidebarFilters', 'renderActiveFilterChips', 'renderEmptyFilters', 'syncUrl', 'defaultRange'
 ].map(fn).join('\n') + '\n'
   + source.match(/  const TOPIC_TAGS = \[[^]*?\n  \];/)[0] + '\n'
-  + ['UNCLASSIFIED_TOPIC', 'PAPER_DERIVED', 'FACET_BITS'].map(name => source.match(new RegExp('  const ' + name + ' = [^\\n]+'))[0]).join('\n'), context);
+  + ['UNCLASSIFIED_TOPIC', 'PAPER_DERIVED', 'FACET_BITS', 'SEARCH_APOSTROPHES', 'SEARCH_QUOTES'].map(name => source.match(new RegExp('  const ' + name + ' = [^\\n]+'))[0]).join('\n'), context);
 let checks = 0;
 const check = (value, label) => { assert(value, label); checks++; };
 const matches = () => papers.filter(p => context.matchesFilters(p, false)).map(p => p.id).join(',');

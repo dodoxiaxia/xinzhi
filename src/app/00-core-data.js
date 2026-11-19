@@ -94,6 +94,12 @@
     '肥厚': ['hypertrophic'], '扩张型': ['dilated'], 'TAVR': ['transcatheter aortic'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
   };
   const zhTerms = Object.keys(ZH_EN).sort((a,b) => b.length - a.length);
+  const SEARCH_APOSTROPHES = /[\u2018\u2019\u201B\u02BC\u02B9\u2032\uFF07]/g;
+  const SEARCH_QUOTES = /[\u201C\u201D\u201E\u201F\u2033\uFF02]/g;
+  // 检索两侧都过它，题名/摘要里的弯引号与键盘直引号互认。
+  function foldSearch(value) {
+    return String(value == null ? '' : value).replace(SEARCH_APOSTROPHES, "'").replace(SEARCH_QUOTES, '"').toLowerCase();
+  }
   // Segment adjacent Chinese terms: 房颤消融 and 房颤 消融 both mean AND.
   // The segmentation depends only on the query, so it is planned once per query string
   // (the filter calls this for every paper; re-segmenting per paper froze 14k-row searches).
@@ -101,7 +107,7 @@
     const plans = queryMatches.plans || (queryMatches.plans = new Map());
     let plan = plans.get(q);
     if (!plan) {
-      plan = q.split(/\s+/).filter(Boolean).map(term => {
+      plan = foldSearch(q).split(/\s+/).filter(Boolean).map(term => {
         const groups = []; let rest = term;
         while (rest) {
           const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));

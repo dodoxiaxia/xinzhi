@@ -77,9 +77,9 @@
       meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6) || (HEALTH.pubmedFetch && HEALTH.pubmedFetch.status === 'failed'));
     }
 
-    const q = state.search.trim().toLowerCase();
-    const filtered = sources.filter(s => !q || queryMatches([s.name, s.id, s.url, s.status, sourceHealthDetails(s),
-      s.status === 'not_feed' ? '返回非订阅内容' : successful(s) ? '获取成功' : '获取异常 暂停'].filter(Boolean).join(' ').toLowerCase(), q));
+    const q = foldSearch(state.search.trim());
+    const filtered = sources.filter(s => !q || queryMatches(foldSearch([s.name, s.id, s.url, s.status, sourceHealthDetails(s),
+      s.status === 'not_feed' ? '返回非订阅内容' : successful(s) ? '获取成功' : '获取异常 暂停'].filter(Boolean).join(' ')), q));
     const shown = filtered.filter(s => !view || (view === 'ok') === successful(s));
     let group = null;
     grid.innerHTML = specialSearchStatus('信源状态（名称、订阅地址与状态）', filtered.length, sources.length, '个信源')

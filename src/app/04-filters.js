@@ -535,16 +535,16 @@
   // Filter & Sort
   function paperSearchText(p) {
     const d = paperDerived(p);
-    if (d.text === null) d.text = [
+    if (d.text === null) d.text = foldSearch([
       p.title, p.draftData?.title_zh, p.titleZh, p.cleanJournal, p.journal, p.publisher, p.doi, p.pmid, p.id,
       p.summary, ...(p.abstractSections || []).map(x => x.text), quicklookOf(p)?.title_zh,
       p.draftData?.summary, ...(p.authors || []), ...(p.tags || []),
       p.quantitativeMetrics?.trialId, p.quantitativeMetrics?.sampleSize
-    ].filter(Boolean).join(' ').toLowerCase();
+    ].filter(Boolean).join(' '));
     return d.text;
   }
   function matchesQuery(p) {
-    const q = state.search.trim().toLowerCase();
+    const q = foldSearch(state.search.trim());
     if (!q) return true;
     // List, lane counts and sidebar counts all ask again for the same keyword.
     const d = paperDerived(p);

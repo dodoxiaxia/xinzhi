@@ -14,7 +14,8 @@ const c = vm.createContext({Date: Clock, URL, window: {JournalMetrics: journalMe
   state: {search: ''}, queryMatches: (text, q) => text.includes(q),
   $: selector => nodes[selector.slice(1)],
   esc: text => String(text).replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]))});
-vm.runInContext(['contentDate', 'olderThan', 'safeSourceUrl', 'pubmedFetchNotice', 'sourceHealthDetails', 'specialSearchStatus', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
+vm.runInContext(src.match(/  const SEARCH_APOSTROPHES = [^\n]+/)[0] + '\n' + src.match(/  const SEARCH_QUOTES = [^\n]+/)[0], c);
+vm.runInContext(['foldSearch', 'contentDate', 'olderThan', 'safeSourceUrl', 'pubmedFetchNotice', 'sourceHealthDetails', 'specialSearchStatus', 'journalMetricBadge', 'journalMetricDetails', 'renderSourcesHealth'].map(fn).join('\n'), c);
 const details = s => c.sourceHealthDetails(s);
 assert(details({status:'filtered_empty'}).includes('不代表期刊没有新文章'));
 const excluded = details({excludedItems: {undated:2, olderThan14Days:28, future:1, unclassifiedOrInvalid:3}});
