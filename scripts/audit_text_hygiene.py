@@ -196,13 +196,50 @@ def audit(public_dir=None, data_dir=None, references=None):
     }
 
 
+def audit_readings(data_dir):
+    from daily_fulltext import DATA_PATH, reading_text_issues
+
+    store = json.loads((data_dir / Path(DATA_PATH).name).read_text(encoding='utf-8'))
+    if not isinstance(store, dict) or not isinstance(store.get('items'), list):
+        raise ValueError('invalid deep-reading store')
+    drafts = store.get('drafts', {})
+    if not isinstance(drafts, dict):
+        raise ValueError('invalid deep-reading drafts')
+
+    findings = []
+
+    def collect(record_type, record_id, output):
+        for field, artifacts in reading_text_issues(output):
+            findings.append({'record_type': record_type, 'id': record_id,
+                             'field': field, 'artifacts': artifacts})
+
+    for item in store['items']:
+        collect('reading', item.get('pmcid') or item.get('doi', ''), item)
+    for key, draft in drafts.items():
+        collect('draft', draft.get('paper', {}).get('pmcid') or key, draft.get('output'))
+    return {'readings_scanned': len(store['items']), 'drafts_scanned': len(drafts),
+            'findings': findings}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--public-dir', type=Path)
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--dash-reference', type=Path, help='JSON mapping record ID to field name to trusted source text')
     parser.add_argument('--check', action='store_true', help='exit 1 when any artifacts are found')
+    parser.add_argument('--check-readings', action='store_true',
+                        help='check only local deep-readings.json; exit 1 on findings')
     args = parser.parse_args()
+    if args.check_readings:
+        if args.public_dir is not None or args.dash_reference is not None:
+            parser.error('--check-readings only accepts local data via --data-dir')
+        try:
+            report = audit_readings(args.data_dir if args.data_dir is not None else ROOT / 'data')
+        except (OSError, ValueError) as e:
+            parser.error(str(e))
+        print(json.dumps(report, indent=2, ensure_ascii=True))
+        return int(bool(report['findings']))
+
     public_dir, data_dir = args.public_dir, args.data_dir
     if public_dir is None and data_dir is None:
         public_dir, data_dir = ROOT / 'public', ROOT / 'data'
