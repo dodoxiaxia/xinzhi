@@ -368,13 +368,13 @@
       `<button type="button" class="qf-chip${on ? ' is-on' : ''}" data-qf="${kind}" aria-pressed="${on}"${extra || ''}>${label}</button>`;
     const parts = [];
     if (vis.star) parts.push(chip('star', state.favoritesOnly ? '★' : '☆', !!state.favoritesOnly, ' aria-label="只看关注期刊" title="只看关注期刊"'));
-    const tierCounts = typeof quickTierResultCounts === 'function' && Object.values(vis.tiers).some(Boolean)
+    const tierCounts = typeof hasTopicFilter === 'function' && hasTopicFilter() && Object.values(vis.tiers).some(Boolean)
       ? quickTierResultCounts() : null;
     (JT() && JT().tiers || []).forEach(tier => {
       if (!vis.tiers[tier.id]) return;
       const on = tierIsOn(tier.id);
-      const count = tierCounts?.get(tier.id) || 0;
-      const label = tierCounts ? tier.short + ' · ' + count : tier.short;
+      const count = tierCounts ? tierCounts.get(tier.id) || 0 : currentTierSubset(tier.id).length;
+      const label = tierCounts || count ? tier.short + ' · ' + count : tier.short;
       const openKind = 'jtier:' + tier.id;
       parts.push(`<span class="qf-split${on ? ' is-on' : ''}">
         <button type="button" class="qf-chip qf-chip-main${on ? ' is-on' : ''}${tierCounts && !count ? ' is-empty' : ''}" data-qf-jtier="${esc(tier.id)}" aria-pressed="${on}" aria-label="筛选${esc(tier.title)}${tierCounts ? '，点击后 ' + count + ' 篇' : ''}">${esc(label)}</button>
