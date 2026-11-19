@@ -901,7 +901,8 @@ async function libraryMetadata(doi, context) {
     if (urls.size === 3) break;
   }
   if (urls.size) context.crossrefPdfSource = { doi, urls:[...urls] };
-  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]), journal:libraryText((message['container-title'] || [])[0] || '', 300),
+  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]),
+    journal:libraryText(Array.isArray(message['container-title']) ? message['container-title'][0] : '', 300),
     authors:(Array.isArray(message.author) ? message.author : []).slice(0, 30).map(author => libraryText([author && author.given, author && author.family].filter(Boolean).join(' '), 200)).filter(Boolean),
     url:'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/'), ...libraryPublication(message), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
 }
@@ -1059,7 +1060,7 @@ async function libraryStoredPdf(kv, record) {
   if (await pdfDigest('SHA-256', bytes) !== record.pdf.sha256) libraryFail('library_integrity', 502);
   return bytes;
 }
-async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
+async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0, { machineRegistration = false } = {}) {
   if (paper.fulltextStatus === 'pending') paper = { ...paper, fulltextReason:'temporary' };
   const key = LIBRARY_PREFIX + paper.doi;
   const current = await libraryGet(kv, key), ready = libraryPaper(current, paper.doi);
@@ -1076,7 +1077,7 @@ async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
   }
   const latestRecord = await libraryGet(kv, key), latest = libraryPaper(latestRecord, paper.doi);
   if (latest && latest.fulltextStatus === 'available') { await libraryStoredPdf(kv, latestRecord); return { paper:latest }; }
-  await libraryPut(kv, key, JSON.stringify({ version:1, paper, ...(pdf ? { pdf } : {}) }));
+  await libraryPut(kv, key, JSON.stringify({ version:1, paper, ...(pdf ? { pdf } : {}), ...(machineRegistration ? { machineRegistration:true } : {}) }));
   libraryCatalogCache.clear();
   const retryAfter = paper.fulltextStatus === 'pending' ? sourceRetryAfter || Date.now() + LIBRARY_RETRY_SECONDS * 1000 : 0;
   const priorAttempt = paper.fulltextStatus !== 'available' ? await libraryGet(kv, 'library:attempt:' + paper.doi) : null;
@@ -1089,7 +1090,7 @@ async function handleLibrary(request, env) {
     if (!env.QL_KV) libraryFail('library_not_configured', 503);
     const url = new URL(request.url);
     if (url.searchParams.has('doi')) {
-      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGetDisplay(env, LIBRARY_PREFIX + doi), doi);
+      const { doi } = libraryQuery(request), paper = await libraryPublicPaper(env, LIBRARY_PREFIX + doi, doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus,paused:false });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       const job = env.MUSE_FULLTEXT_ENABLED === 'true' ? musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi)
@@ -1109,7 +1110,8 @@ async function handleLibrary(request, env) {
     if (cachedPage && cachedPage.kv === env.QL_KV && cachedPage.until > Date.now()) return json(cachedPage.payload);
     let listing; try { listing = await env.QL_KV.list({ prefix:LIBRARY_PREFIX, limit:Number(rawLimit), ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
     if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
-    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGetDisplay(env, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
+    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX)
+      ? libraryPublicPaper(env, key.name, key.name.slice(LIBRARY_PREFIX.length)) : null))).filter(Boolean);
     const jobs = env.MUSE_FULLTEXT_ENABLED === 'true' ? (await Promise.all(papers.map(paper => musePublicJobValue(env,paper.doi)))).filter(Boolean) : [];
     const byDoi = new Map(jobs.map(job => [job.doi,job]));
     papers = papers.map(paper => byDoi.has(paper.doi) ? libraryObservedPaper(paper,null,byDoi.get(paper.doi)) : paper);
@@ -1535,6 +1537,72 @@ function scopeDecision(paper, forceKeepDois = SCOPE_FORCE_KEEP_DOIS) {
   // 8) Incomplete metadata stays conservative keep; otherwise uncertain
   if (!title || !journal) return scopeResult('keep');
   return scopeResult('uncertain', 'uncertain_scope', '主题尚不明确，保留待人工判断，不自动机器领取');
+}
+// ==== edge/src/01b-library-metadata.js · Crossref backfill for supplemental catalogue records ====
+// Keep retrospective metadata separate from the full-text record. KV has no compare-and-swap,
+// and an upload/verification must be able to write its PDF and status independently.
+const LIBRARY_BIBLIOGRAPHY_PREFIX = 'library:bibliography:';
+
+function libraryBibliographyFields(paper) {
+  return {journal:paper.journal,date:paper.date,datePrecision:paper.datePrecision,dateBasis:paper.dateBasis};
+}
+function libraryBibliographyPatch(paper, source) {
+  return {...(!paper.journal && source.journal ? {journal:source.journal} : {}),
+    ...(!paper.date && source.date ? {date:source.date,datePrecision:source.datePrecision,dateBasis:source.dateBasis} : {})};
+}
+async function libraryReadBibliography(kv, paper) {
+  if (!paper || (paper.journal && paper.date)) return paper;
+  const overlay = await libraryGet(kv, LIBRARY_BIBLIOGRAPHY_PREFIX + paper.doi);
+  return overlay?.version === 1 && overlay.title === paper.title ? {...paper,...libraryBibliographyPatch(paper, overlay)} : paper;
+}
+async function libraryPublicPaper(env, key, doi) {
+  const paper = libraryPaper(await libraryGetDisplay(env, key), doi);
+  try { return await libraryReadBibliography(env.QL_KV, paper); }
+  catch { return paper; }
+}
+function libraryBibliographyTitle(title) {
+  return title.normalize('NFKC').toLowerCase().replace(/[\p{P}\s]/gu, '');
+}
+
+async function handleLibraryMetadataBackfill(request, env) {
+  try {
+    if (request.method !== 'POST' || new URL(request.url).search) libraryFail('machine_bad_request', 405);
+    await machineAuthorize(request, env, 'metadata-backfill');
+    const input = await fulltextReadJson(request, 1024, 'machine_bad_request');
+    const doi = libraryDoi(input.doi);
+    if (!doi || doi !== input.doi || Object.keys(input).some(key => !['doi','apply'].includes(key))
+        || (Object.hasOwn(input, 'apply') && typeof input.apply !== 'boolean')) libraryFail('machine_bad_request', 400);
+    const key = LIBRARY_PREFIX + doi;
+    const current = await libraryReadBibliography(env.QL_KV, libraryPaper(await libraryGet(env.QL_KV, key), doi));
+    const result = (status, fields = {}) => json({ok:true,doi,result:status,...fields});
+    if (!current) return result('not_in_catalog');
+    if (current.journal && current.date) return result('unchanged');
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 5000);
+    let metadata;
+    try { metadata = await libraryMetadata(doi, {signal:controller.signal}); }
+    catch (error) {
+      if (error.code === 'library_metadata_unavailable') return result('not_in_crossref');
+      if (error.code === 'library_identity') return result('identity_mismatch');
+      throw error;
+    } finally { clearTimeout(timer); }
+    // Re-read after the external request. Match the authoritative DOI plus the current title, which can change
+    // while Crossref is queried. The title binding is checked again on every catalogue read.
+    const base = libraryPaper(await libraryGet(env.QL_KV, key), doi);
+    const latest = await libraryReadBibliography(env.QL_KV, base);
+    if (!latest) return result('not_in_catalog');
+    if (latest.journal && latest.date) return result('unchanged');
+    const title = libraryBibliographyTitle(metadata.title);
+    if (title.length < 5 || title !== libraryBibliographyTitle(latest.title)) return result('identity_mismatch');
+    const change = libraryBibliographyPatch(latest, metadata);
+    if (!Object.keys(change).length) return result('source_incomplete');
+    const enriched = {...latest,...change};
+    if (input.apply === true) {
+      // Persist metadata only, and keep authoritative fields on the original record ahead of the overlay.
+      await libraryPut(env.QL_KV, LIBRARY_BIBLIOGRAPHY_PREFIX + doi, JSON.stringify({version:1,title:latest.title,...libraryBibliographyPatch(base, enriched)}));
+      libraryCatalogCache.clear();
+    }
+    return result(input.apply === true ? 'updated' : 'would_update', {before:libraryBibliographyFields(latest), after:libraryBibliographyFields(enriched)});
+  } catch (error) { return machineError(error); }
 }
 // ==== edge/src/01b-scope-keeps.js · Manual force-keep DOIs (synced with config/public_library_scope_keeps.json) ====
 // Manual force-keep overrides all automated scopeDecision() rules (including not_article).
@@ -3957,7 +4025,7 @@ const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
   downloader:['upload','replace','status','claim','renew','return','list','requeue','register','abandoned','protocol'],
-  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol'],
+  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol','metadata-backfill'],
   reader:['list','abandoned','protocol']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
@@ -5004,13 +5072,12 @@ function machineRegisterItem(raw) {
   if (typeof raw.section !== 'string' || !MACHINE_REGISTER_SECTIONS.includes(raw.section)) return {doi,error:'bad_section'};
   return {doi,title,source:raw.source,section:raw.section};
 }
-// The record a registration writes first (see machineRegisterOne): no journal, no authors, no publication date, no PDF, full text
-// still needed. metadataStatus cannot tell records apart (older registrations stored the checked value too, and a registration
-// with a successful Crossref lookup still does). A paper-only DOI from any other route has a journal, authors or a date, so it is not mistaken for this.
+// New registrations mark the first write so retries can recover it even with complete bibliography.
+// Older registrations had no journal, authors or publication date. Keep recognizing those records too.
 // The caller must still confirm that no job and no register record exist; the register record is written last, after the job.
 function machineOrphanPaper(record, paper) {
-  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed' && !paper.journal
-    && Array.isArray(paper.authors) && !paper.authors.length && !paper.date;
+  return !!record && !!paper && !record.pdf && paper.fulltextStatus === 'manual_needed'
+    && (record.machineRegistration === true || (!paper.journal && !paper.authors.length && !paper.date));
 }
 async function machineRegisterExisting(env, doi) {
   // Any record of this DOI, in any state, wins. Returns null when the DOI is genuinely new.
@@ -5028,9 +5095,8 @@ async function machineRegisterExisting(env, doi) {
   if (await libraryGet(env.QL_KV, FULLTEXT_JOB_PREFIX + doi) || await libraryGet(env.QL_KV, GROK_JOB_PREFIX + doi)) return {where:'legacy_job',state:'legacy-task'};
   return null;
 }
-// The upload identity check looks for the stored title on page 1 of the PDF, so registration stores the Crossref title (the
-// printed one) when Crossref answers, and the submitted RSS title only as a fallback. Only the title is taken from Crossref:
-// journal, authors and date stay empty, which keeps the machineOrphanPaper shape. One lookup per new DOI, each bounded by
+// Use Crossref's title for the first-page identity check and keep the bibliography from the same lookup.
+// The submitted RSS title is the fallback. One lookup per new DOI, each bounded by
 // MACHINE_REGISTER_CROSSREF_MS; after MACHINE_REGISTER_CROSSREF_BUDGET_MS of a batch, or once Crossref limits requests, the
 // rest of the batch uses the fallback so a 50-item batch still answers well inside a client's 60 second timeout.
 const MACHINE_REGISTER_SECTION_LABEL = /^\[[A-Za-z][A-Za-z ./-]{0,39}\](?:\s+|$)/;
@@ -5041,33 +5107,33 @@ function machineRegisterLookup() {
   let stopped = false;
   return {open:() => !stopped && Date.now() - started < MACHINE_REGISTER_CROSSREF_BUDGET_MS, stop:() => { stopped = true; }};
 }
-async function machineRegisterTitle(item, lookup) {
-  // Returns {title,titleSource,metadataStatus} and, when Crossref and the submitted title differ after machineNormalize,
-  // titleMismatch:true with the submitted title kept as registeredTitle. Never throws: a failed lookup means the fallback.
-  let official = '';
+async function machineRegisterMetadata(item, lookup) {
+  let metadata;
   if (lookup && lookup.open()) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), MACHINE_REGISTER_CROSSREF_MS);
-    try { official = (await libraryMetadata(item.doi, {signal:controller.signal})).title; }
+    try { metadata = await libraryMetadata(item.doi, {signal:controller.signal}); }
     catch (error) { if (error && error.code === 'library_paused') lookup.stop(); }
     finally { clearTimeout(timer); }
   }
-  if (!official || machineNormalize(official).length < 5) return {title:item.title,titleSource:'registration',metadataStatus:'registration_title_only'};
-  const result = {title:official,titleSource:'crossref',metadataStatus:'external_bibliography_checked'};
-  return machineNormalize(official) === machineNormalize(item.title) ? result : {...result,titleMismatch:true,registeredTitle:item.title};
+  if (!metadata || machineNormalize(metadata.title).length < 5) {
+    return {title:item.title,titleSource:'registration',metadataStatus:'registration_title_only',journal:'',authors:[],date:'',datePrecision:'',dateBasis:''};
+  }
+  const titleNote = machineNormalize(metadata.title) === machineNormalize(item.title) ? {} : {titleMismatch:true,registeredTitle:item.title};
+  return {...metadata,titleSource:'crossref',...titleNote};
 }
 async function machineRegisterOne(env, caller, item, changes, lookup) {
   const now = Date.now(), id = crypto.randomUUID();
   const registration = {source:item.source,section:item.section};
   const job = {version:1,id,doi:item.doi,state:'queued',createdAt:now,updatedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13, '0') + ':' + id,registration};
-  const named = await machineRegisterTitle(item, lookup);
+  const named = await machineRegisterMetadata(item, lookup);
   const titleNote = {titleSource:named.titleSource,...(named.titleMismatch ? {titleMismatch:true,registeredTitle:named.registeredTitle} : {})};
-  const paper = {id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),doi:item.doi,title:named.title,journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',
-    ingestedAt:new Date(now).toISOString(),metadataStatus:named.metadataStatus,...titleNote,fulltextStatus:'manual_needed'};
+  const paper = {...named,id:named.id || 'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(item.doi))).slice(0, 16),
+    doi:item.doi,ingestedAt:new Date(now).toISOString(),fulltextStatus:'manual_needed'};
   // Same order as a site-owner selection: paper record, job, queue pointer. A half-written DOI would later look
   // like "already exists" and never enter the queue, so a failure removes what this call wrote.
   const local = [];
   try {
-    await librarySave(env.QL_KV, paper, null, 'library_manual_needed');
+    await librarySave(env.QL_KV, paper, null, 'library_manual_needed', 0, {machineRegistration:true});
     await musePut(env, job, {indexChanges:local});
     await libraryPut(env.QL_KV, job.queueKey, JSON.stringify({doi:item.doi,id}), {expirationTtl:604800});
     await libraryPut(env.QL_KV, MACHINE_REGISTER_PREFIX + item.doi, JSON.stringify({version:1,doi:item.doi,title:item.title,paperTitle:named.title,...titleNote,source:item.source,section:item.section,registeredBy:caller.id,registeredAt:now,taskId:id}));
@@ -6199,7 +6265,7 @@ const METRICS_SWITCH_KEY = 'cfg:metrics_enabled', METRICS_SWITCH_TTL_MS = 60000,
 const METRICS_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS']);
 const METRICS_ROUTES = new Set([
   '/api/machine/d1-backfill',
-  '/api/library', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
+  '/api/library', '/api/machine/metadata-backfill', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
   '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
   '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/scope-uncertain', '/api/machine/abandoned',
   '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register',
@@ -6877,6 +6943,7 @@ async function routeRequest(request, env, ctx) {
     const url = new URL(request.url);
     museReviewInstant = museReviewConfigured(env);
     if (url.pathname === '/api/library') return handleLibrary(request, env);
+    if (url.pathname === '/api/machine/metadata-backfill') return handleLibraryMetadataBackfill(request, env);
     if (url.pathname === '/api/fulltext-worker') return handleFulltextWorker(request, env);
     if (url.pathname === '/api/fulltext-import') return handleFulltextImport(request, env);
     if (url.pathname === '/api/muse/protocol') return handleMuseProtocol(request, env);

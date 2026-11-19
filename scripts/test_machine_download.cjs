@@ -1717,6 +1717,7 @@ async function review(h, body) {
 
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
+  await require('./test_library_metadata_backfill.cjs').run();
   await require('./test_machine_index.cjs').run();
   await require('./test_machine_index_heal.cjs').run();
   await require('./test_machine_orphan.cjs').run();

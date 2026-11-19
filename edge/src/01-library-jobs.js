@@ -274,7 +274,8 @@ async function libraryMetadata(doi, context) {
     if (urls.size === 3) break;
   }
   if (urls.size) context.crossrefPdfSource = { doi, urls:[...urls] };
-  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]), journal:libraryText((message['container-title'] || [])[0] || '', 300),
+  return { id:'doi-' + (await pdfDigest('SHA-256', new TextEncoder().encode(doi))).slice(0, 16), doi, title:libraryText(message.title[0]),
+    journal:libraryText(Array.isArray(message['container-title']) ? message['container-title'][0] : '', 300),
     authors:(Array.isArray(message.author) ? message.author : []).slice(0, 30).map(author => libraryText([author && author.given, author && author.family].filter(Boolean).join(' '), 200)).filter(Boolean),
     url:'https://doi.org/' + encodeURIComponent(doi).replace(/%2F/gi, '/'), ...libraryPublication(message), ingestedAt:new Date().toISOString(), metadataStatus:'external_bibliography_checked', fulltextStatus:'pending' };
 }
@@ -432,7 +433,7 @@ async function libraryStoredPdf(kv, record) {
   if (await pdfDigest('SHA-256', bytes) !== record.pdf.sha256) libraryFail('library_integrity', 502);
   return bytes;
 }
-async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
+async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0, { machineRegistration = false } = {}) {
   if (paper.fulltextStatus === 'pending') paper = { ...paper, fulltextReason:'temporary' };
   const key = LIBRARY_PREFIX + paper.doi;
   const current = await libraryGet(kv, key), ready = libraryPaper(current, paper.doi);
@@ -449,7 +450,7 @@ async function librarySave(kv, paper, fetched, error, sourceRetryAfter = 0) {
   }
   const latestRecord = await libraryGet(kv, key), latest = libraryPaper(latestRecord, paper.doi);
   if (latest && latest.fulltextStatus === 'available') { await libraryStoredPdf(kv, latestRecord); return { paper:latest }; }
-  await libraryPut(kv, key, JSON.stringify({ version:1, paper, ...(pdf ? { pdf } : {}) }));
+  await libraryPut(kv, key, JSON.stringify({ version:1, paper, ...(pdf ? { pdf } : {}), ...(machineRegistration ? { machineRegistration:true } : {}) }));
   libraryCatalogCache.clear();
   const retryAfter = paper.fulltextStatus === 'pending' ? sourceRetryAfter || Date.now() + LIBRARY_RETRY_SECONDS * 1000 : 0;
   const priorAttempt = paper.fulltextStatus !== 'available' ? await libraryGet(kv, 'library:attempt:' + paper.doi) : null;
@@ -462,7 +463,7 @@ async function handleLibrary(request, env) {
     if (!env.QL_KV) libraryFail('library_not_configured', 503);
     const url = new URL(request.url);
     if (url.searchParams.has('doi')) {
-      const { doi } = libraryQuery(request), paper = libraryPaper(await libraryGetDisplay(env, LIBRARY_PREFIX + doi), doi);
+      const { doi } = libraryQuery(request), paper = await libraryPublicPaper(env, LIBRARY_PREFIX + doi, doi);
       if (paper && paper.fulltextStatus === 'available') return json({ ok:true, found:true, paper, status:paper.fulltextStatus,paused:false });
       const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
       const job = env.MUSE_FULLTEXT_ENABLED === 'true' ? musePublicJob(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + doi),doi)
@@ -482,7 +483,8 @@ async function handleLibrary(request, env) {
     if (cachedPage && cachedPage.kv === env.QL_KV && cachedPage.until > Date.now()) return json(cachedPage.payload);
     let listing; try { listing = await env.QL_KV.list({ prefix:LIBRARY_PREFIX, limit:Number(rawLimit), ...(cursor ? { cursor } : {}) }); } catch { libraryFail('library_storage', 503); }
     if (!listing || !Array.isArray(listing.keys) || listing.keys.length > 20) libraryFail('library_storage', 503);
-    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX) ? libraryGetDisplay(env, key.name).then(record => libraryPaper(record, key.name.slice(LIBRARY_PREFIX.length))) : null))).filter(Boolean);
+    let papers = (await Promise.all(listing.keys.map(key => typeof key.name === 'string' && key.name.startsWith(LIBRARY_PREFIX)
+      ? libraryPublicPaper(env, key.name, key.name.slice(LIBRARY_PREFIX.length)) : null))).filter(Boolean);
     const jobs = env.MUSE_FULLTEXT_ENABLED === 'true' ? (await Promise.all(papers.map(paper => musePublicJobValue(env,paper.doi)))).filter(Boolean) : [];
     const byDoi = new Map(jobs.map(job => [job.doi,job]));
     papers = papers.map(paper => byDoi.has(paper.doi) ? libraryObservedPaper(paper,null,byDoi.get(paper.doi)) : paper);
