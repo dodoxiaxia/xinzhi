@@ -811,6 +811,7 @@
     SUPPLEMENTAL_LIBRARY.promise = run();
     return SUPPLEMENTAL_LIBRARY.promise;
   }
+
   // ==== src/app/00z-deferred-parts.js · Deferred data parts loader and in-place merger ====
   const DEFERRED = !!(window.XINZHI_PARTS && window.XINZHI_PARTS.parts);
   const PART_ORDER = DEFERRED ? Object.keys(window.XINZHI_PARTS.parts) : [];
@@ -1746,6 +1747,7 @@
     });
     return out;
   }
+
   // ==== src/app/02-lanes.js · Relevance lanes, per-paper derived cache, quick-look data ====
   // ---- Relevance lanes: keep the reader's default view on cardiology + medical AI ----
   const CARDIO_TIERS = new Set(['心血管旗舰顶刊', '心律失常与电生理', '心衰与重症心肌', '冠脉介入与结构', '心血管影像与表型', '脑血管与高血压', '心血管综合与其他', '定向专病与团队']);
@@ -3149,6 +3151,7 @@
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }
+
   // ==== src/app/05-list.js · Article cards, compact rows, list rendering, citations ====
 
   // Render Article Card
@@ -4496,6 +4499,7 @@
     requestsLastFocus?.focus({ preventScroll: true });
     requestsLastFocus = null;
   }
+
   // ==== src/app/08-sources-mode.js · Source health page and mode switching ====
   // Render Sources Health Grid
   function sourceHealthDetails(s) {
