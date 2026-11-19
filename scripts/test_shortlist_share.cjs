@@ -20,7 +20,7 @@ const ctx = vm.createContext({
   partsPending: () => false,
   loadRadarArchive: () => assert.fail('completed data should not reload'),
   $: id => {
-    if (!el.has(id)) el.set(id, {});
+    if (!el.has(id)) el.set(id, { dataset: {} });
     return el.get(id);
   },
   copyToClipboard: async (href, toast) => {
@@ -39,7 +39,7 @@ const functions = [
   assert(match, `missing bundle function ${name}`);
   return match[0];
 });
-vm.runInContext([...declarations, "const shortlistPaperParts = []; let pendingShortlistPrefix = '';", ...functions].join('\n'), ctx);
+vm.runInContext([...declarations, 'const shortlistPaperParts = [];', ...functions].join('\n'), ctx);
 const { buildShortlistShareUrl, decodeShortlistShare, readShortlistShareParam, publicShortlistPapers } = ctx;
 const read = href => decodeShortlistShare(new URL(href).searchParams.get('list'));
 const raw = text => 'v1.' + Buffer.from(text, 'utf8').toString('base64url');

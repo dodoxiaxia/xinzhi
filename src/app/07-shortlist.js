@@ -140,7 +140,6 @@
     return [...new Set(papers.filter(Boolean).map(paper => paper.id))];
   }
 
-  let pendingShortlistPrefix = '';
   async function copyShortlistShare() {
     const button = $('#copyShortlistShareBtn');
     const field = $('#shortlistShareCopyField');
@@ -162,12 +161,12 @@
     if (link.limited) messages.push(`链接长度或篇数已达上限，可分享前 ${link.count} 篇公开题录。`);
     if (omitted) messages.push('已略过未匹配到公开题录或重复的条目。');
     notice.textContent = messages.join('');
-    if (link.limited && pendingShortlistPrefix !== link.href) {
-      pendingShortlistPrefix = link.href;
+    if (link.limited && button.dataset.sharePrefix !== link.href) {
+      button.dataset.sharePrefix = link.href;
       button.textContent = `复制前 ${link.count} 篇的链接`;
       return;
     }
-    pendingShortlistPrefix = '';
+    delete button.dataset.sharePrefix;
     button.textContent = '复制分享链接';
     const input = $('#shortlistShareCopyUrl');
     const copied = navigator.clipboard?.writeText && await copyToClipboard(link.href, '已复制分享链接');
@@ -325,7 +324,7 @@
     const newlyOpened = !modal.classList.contains('open');
     if(newlyOpened) {
       if (shareButton) {
-        pendingShortlistPrefix = '';
+        delete shareButton.dataset.sharePrefix;
         shareButton.textContent = '复制分享链接';
         $('#shortlistShareCopyField').hidden = true;
         $('#shortlistShareCopyNotice').textContent = '';
