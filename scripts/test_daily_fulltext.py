@@ -1,20 +1,48 @@
 """Offline full-text identity, evidence, restart, public projection and payment reservation contracts."""
 import copy
+import contextlib
 import datetime as dt
+import io
 import json
+import sys
 import tempfile
 import unittest
 import urllib.parse as urllib_parse
+from collections import Counter
 from unittest.mock import patch
 from pathlib import Path
 import daily_fulltext as d
+import reading_priority as rp
 
 WHEN = dt.datetime(2026, 10, 9, 2, tzinfo=dt.timezone.utc)
 QUOTE = 'The study included 120 patients with cardiovascular disease and assessed clinical outcomes prospectively.'
 
 def paper(n=1, topic='心血管'):
-    return {'title': 'Heart outcomes study', 'journal': 'Fixture journal', 'date': '2026-10-07',
-            'doi': '10.1234/fixture' + str(n), 'pmid': str(n), 'pmcid': 'PMC' + str(n), 'topic': topic}
+    return {'title': 'Heart outcomes study', 'journal': 'Circulation', 'date': '2026-10-07',
+            'doi': '10.1234/fixture' + str(n), 'pmid': str(n), 'pmcid': 'PMC' + str(n), 'topic': topic, 'open': True}
+
+def epmc(n=1, *, access='N', journal='Circulation', title='Heart outcomes study', types=('Journal Article',)):
+    return {'id': str(n), 'source': 'MED', 'doi': paper(n)['doi'], 'pmcid': paper(n)['pmcid'],
+            'isOpenAccess': access, 'firstPublicationDate': paper(n)['date'], 'title': title,
+            'pubTypeList': {'pubType': list(types)}, 'journalInfo': {'journal': {'title': journal}}}
+
+def search_params(url):
+    return {k: values[0] for k, values in urllib_parse.parse_qs(urllib_parse.urlsplit(url).query).items()}
+
+def search_reply(rows=(), cursor=None):
+    return json.dumps({'resultList': {'result': list(rows)}, 'nextCursorMark': cursor}).encode()
+
+def fixture_replay(fixture, oa_key, board):
+    data = d.empty_data()
+    pages = [*fixture[oa_key], *fixture['journalPages']]
+    replies = iter(search_reply(rows, 'page2' if i == 3 else None) for i, rows in enumerate(pages))
+    pool, errors = d.discover(dt.date.fromisoformat(fixture['capture']['day']), lambda *_: next(replies),
+                              data=data, board=board)
+    assert not errors
+    selected = []
+    for p in d.diversity_order(pool.copy(), selected):
+        selected.append(p)
+    return pool, selected, data['wanted']
 
 def xml(p):
     body = ''.join('<sec><title>Methods and results</title><p>' + (QUOTE + ' Additional public research context. ') * 4 + '</p></sec>' for _ in range(6))
@@ -190,7 +218,12 @@ class ScopeTests(unittest.TestCase):
             urls.append(urllib_parse.unquote(url))
             return b'{"resultList": {"result": []}}'
         papers, errors = d.discover(WHEN.date(), fetch=fetch)
-        self.assertEqual((papers, errors, len(urls)), ([], [], 3))
+        self.assertEqual((papers, errors, len(urls)), ([], [], 4))
+        self.assertTrue(all('OPEN_ACCESS:Y' in url for url in urls[:3]))
+        self.assertTrue(all('pageSize=100' in url and 'FIRST_PDATE_D+desc' in url for url in urls))
+        self.assertIn('ISSN:1524-4539', urls[3])
+        self.assertIn('FIRST_PDATE:[2026-09-26+TO+2026-10-09]', urls[3])
+        self.assertNotIn('OPEN_ACCESS:Y', urls[3])
         ai_cardio, general = urls[1], urls[2]
         self.assertIn('TITLE:cardiovascular', ai_cardio)
         self.assertNotIn('TITLE_ABS:health', ai_cardio)
@@ -352,9 +385,11 @@ class SamePmcidTests(unittest.TestCase):
 class RunExitCodeTests(unittest.TestCase):
     """`--run` has no minimum count: few or no readings exit 0; only a real generation error exits non-zero."""
     def run_main(self, papers, model=None, model_config=None):
-        import contextlib, io, sys
         real_generate = d.generate
         class Writer:
+            def private_state(self):
+                return False
+
             def save(self, data, ledger):
                 d.atomic(d.ROOT / d.DATA_PATH, data)
                 d.atomic(d.ROOT / d.LEDGER_PATH, ledger)
@@ -671,6 +706,280 @@ class CheckpointTests(unittest.TestCase):
             # The ref was moved by this run; the final state save must lease on it.
             self.assertEqual((Path(tmp)/'.local/week-checkpoint-head').read_text().strip(),'c'*40)
             self.assertTrue((Path(tmp)/d.DATA_PATH).exists())
+
+
+class PriorityTests(unittest.TestCase):
+    FIXTURE = Path(__file__).with_name('fixtures') / 'deep_reading_pool_20261119.json'
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = json.loads(cls.FIXTURE.read_text(encoding='utf-8'))
+
+    def test_journal_aliases_are_exact_and_issns_match(self):
+        groups = {
+            3: ('JAMA cardiology', 'European heart journal. Digital health', 'NPJ digital medicine', 'J Am Coll Cardiol',
+                'Nature', 'Circulation', 'Lancet (London, England)', 'N Engl J Med'),
+            2: ('Circulation reports', 'JAMA network open', 'JACC. Advances', 'JMIR AI', 'JMIR medical informatics',
+                'Cardiovascular research', 'Heart rhythm', 'Eur J Heart Fail', 'JAHA',
+                'Europace : European pacing, arrhythmias, and cardiac electrophysiology'),
+            1: ('Frontiers in cardiovascular medicine', 'European heart journal open', 'BMJ open',
+                'The Egyptian heart journal : (EHJ) : official bulletin of the Egyptian Society of Cardiology'),
+            0: ('Nature communications', 'Circulation Research Methods', 'Cureus', 'PloS one', 'Medicine', 'Unlisted Journal'),
+        }
+        for expected, journals in groups.items():
+            for journal in journals:
+                with self.subTest(journal=journal):
+                    self.assertEqual(rp.journal_tier(journal), expected)
+        self.assertEqual(rp.journal_tier('Unlisted spelling', issns=('2772-963x',)), 2)
+        self.assertEqual(rp.journal_tier('Unlisted spelling', issns=('1524-4539',)), 3)
+        for issn in rp.PRIORITY_ISSNS:
+            self.assertEqual(sum((10 if c == 'X' else int(c)) * weight
+                                 for c, weight in zip(issn.replace('-', ''), range(8, 0, -1))) % 11, 0, issn)
+
+    def test_article_types_and_title_counterexample(self):
+        for minor in ('Letter', 'Comment', 'Editorial', 'News', 'Case Reports', 'Published Erratum', 'Biography'):
+            with self.subTest(minor=minor):
+                self.assertIsNone(d.candidate(epmc(access='Y', types=('Journal Article', minor)), WHEN.date()))
+        article = d.candidate(epmc(access='Y', title='Comment frequency and heart outcomes in a cohort'), WHEN.date())
+        self.assertIsNotNone(article)
+        for expected, types, title in (
+            ('original', article['pubTypes'], article['title']),
+            ('guideline', (), 'Clinical practice guidelines for heart failure'),
+            ('trial', ('Randomized Controlled Trial',), 'Heart outcomes'),
+            ('trial', (), 'Randomised study of heart outcomes'),
+            ('meta', ('Network Meta-Analysis',), 'Heart outcomes'),
+            ('meta', (), 'Systematic review of randomized heart trials'),
+            ('review', ('Review',), 'Heart outcomes'),
+        ):
+            self.assertEqual(rp.article_type(types, title), expected, title)
+
+    def test_scope_recovers_board_entries_and_preserves_catalog(self):
+        for item in self.fixture['board']:
+            if item['rank'] in (8, 10):
+                self.assertEqual(d.deep_reading_scope(item['title']), 'cardio')
+            if item['rank'] in (11, 12, 13, 14, 15, 16, 17, 21):
+                self.assertEqual(d.deep_reading_scope(item['title']), '')
+        for title in ('Liver tumour radiofrequency catheter ablation', 'Pacing strategies among amateur cyclists',
+                      'AF signaling in renal fibrosis', 'Metabolic risk in patients with renal failure',
+                      'Biliary stent outcomes', 'PCI bus throughput and latency'):
+            with self.subTest(title=title):
+                self.assertEqual(d.deep_reading_scope(title), '')
+        for title in ('Bundle branch pacing feasibility', 'Catheter ablation for accessory pathways', 'Pulmonary vein isolation',
+                      'Post-PCI outcomes', 'Drug-eluting stent failure', 'Flow CMR for structural phenotyping',
+                      'Persistent AF and repeat intervention', 'Transcatheter TAVI outcomes'):
+            self.assertEqual(d.deep_reading_scope(title), 'cardio', title)
+        for title in [*(e['title'] for e in self.fixture['published']), *self.fixture['olderTitles']]:
+            self.assertTrue(d.deep_reading_scope(title), title)
+
+    def test_board_doi_and_pmid_boost_but_not_absent_or_malformed_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / d.BOARD_PATH
+            self.assertEqual(d.read_board_ranks(path), {})
+            for content in ('invalid json', '{"items":[null]}', '{"items":[{"rank":true,"pmid":"2"}]}'):
+                path.parent.mkdir(exist_ok=True)
+                path.write_text(content)
+                self.assertEqual(d.read_board_ranks(path), {})
+            d.atomic(path, {'items': [{'rank': 2, 'doi': 'https://doi.org/10.1234/FIXTURE1'},
+                                     {'rank': 3, 'pmid': '2'}]})
+            ranks = d.read_board_ranks(path)
+        replies = iter([search_reply([epmc(n, access='Y') for n in (1, 2, 3)]), *[search_reply()] * 3])
+        found, errors = d.discover(WHEN.date(), lambda *_: next(replies), board=ranks)
+        self.assertEqual(errors, [])
+        self.assertEqual([(p['pmid'], p['boardRank']) for p in found], [('1', 2), ('2', 3), ('3', None)])
+        self.assertGreater(d.rank(found[0], WHEN.date()), d.rank(found[2], WHEN.date()))
+
+    def test_priority_order_invariants_and_reasons(self):
+        flagship = d.candidate(epmc(access='Y', types=('Clinical Trial',)), WHEN.date())
+        specialty = d.candidate(epmc(access='Y', journal='JAHA'), WHEN.date())
+        unlisted = d.candidate(epmc(access='Y', journal='PloS one', types=('Review',)), WHEN.date())
+        weak_but_boosted = dict(unlisted, topic='心血管 × AI')
+        score = lambda p, rank=None: rp.priority(p, rank, today=WHEN.date())[0]
+        self.assertGreater(score(flagship), score(weak_but_boosted, 1))
+        self.assertGreater(score(specialty), score(weak_but_boosted, 1))
+        self.assertGreater(score(flagship, 1), score(flagship, 24))
+        self.assertGreater(score(flagship), score(dict(flagship, date='2026-08-01')))
+        self.assertEqual(score(flagship, 1), score(dict(flagship, open=False), 1))
+        self.assertIn('board:1', rp.priority(flagship, 1, today=WHEN.date())[1])
+        same_day = [dict(flagship, pmcid='PMC1'), dict(flagship, pmcid='PMC2')]
+        self.assertEqual(d.order_papers(same_day, WHEN.date())[0]['pmcid'], 'PMC2')
+
+    def test_frozen_europe_pmc_pool_demonstrates_quality_and_open_shortfall(self):
+        self.assertLessEqual(self.FIXTURE.stat().st_size, 200_000)
+        board = {key: item['rank'] for item in self.fixture['board'] for key in d.lookup_keys(item)}
+        pool, selected, wanted = fixture_replay(self.fixture, 'oaFallbackPages', board)
+        self.assertTrue(pool)
+        self.assertTrue(all(d.paper_tier(p) >= 2 for p in pool))
+        self.assertEqual(len(selected), min(d.TARGET, len(pool)))
+        self.assertIn(1, [board[w['doi']] for w in wanted if w['source'] == 'board'])
+        self.assertFalse({p['doi'] for p in selected}.intersection(w['doi'] for w in wanted))
+
+        short, short_selected, _ = fixture_replay(self.fixture, 'oaShortPages', board)
+        self.assertLess(len(short), 12)
+        self.assertCountEqual(short_selected, short)
+        self.assertGreater(len(selected), len(short_selected))
+
+    def test_generate_enforces_topic_cap_and_reserve_without_fetching_paywall(self):
+        cardio = [dict(paper(n), journal='Circulation') for n in range(1, 13)]
+        cross = [dict(paper(n, '心血管 × AI'), journal='JAHA') for n in range(13, 17)]
+        ai = [dict(paper(n, 'AI 医疗'), journal='NEJM AI', title='Clinical reasoning benchmark for large language models')
+              for n in range(17, 20)]
+        closed = d.candidate_row(epmc(99, title='Guidelines for the treatment of heart disease'), WHEN.date())
+        pool = [*cardio, *cross, *ai]
+        lower = [dict(paper(n), journal='Cureus', boardRank=1) for n in range(20, 34)]
+        for candidates, expected in ((pool, (8, 1, 3)), ([*cardio[:3], ai[0]], (3, 0, 1))):
+            with self.subTest(expected=expected), patch.object(d, 'TARGET', 12):
+                data, ledger = d.empty_data(), d.empty_ledger()
+                by_pmcid = {p['pmcid']: p for p in candidates}
+                fetches, models = [], []
+                def fetch(url):
+                    fetches.append(url)
+                    return xml(by_pmcid[url.split('/')[-2]])
+                def model(cfg, paper, paragraphs):
+                    models.append(paper)
+                    return output(paragraphs[0]['id'])
+                status = d.generate(data, ledger, [closed, *candidates, *lower], WHEN, lambda *_: None, {}, fetch, model)
+                counts = Counter(p['topic'] for p in data['items'])
+                self.assertEqual(tuple(counts[t] for t in d.TOPICS), expected)
+                self.assertEqual((status['attempts'], status['state']), (sum(expected), 'complete'))
+                self.assertNotIn(closed, models)
+                self.assertFalse(any('/PMC99/' in url for url in fetches))
+
+
+class WantedTests(unittest.TestCase):
+    def test_unavailable_open_xml_is_queued_without_model_or_public_output(self):
+        data, ledger = d.empty_data(), d.empty_ledger()
+        row = epmc(access='Y')
+        pool, _, _ = self.discover(data, journal_pages=[[row]])
+        self.assertEqual(data['wanted'], [])
+
+        def fetch(_):
+            raise d.ReadingError('source_unavailable')
+
+        def model(*_):
+            self.fail('A metadata-only candidate must not reach the model')
+
+        status = d.generate(data, ledger, pool, WHEN, lambda *_: None, {}, fetch, model)
+        self.assertEqual((status['state'], status['completed'], status['attempts']), ('complete', 0, 0))
+        entry, = data['wanted']
+        self.assertEqual(entry['doi'], row['doi'])
+        self.assertEqual((entry['missingReason'], entry['downloadRoute'], entry['status']),
+                         ('source_unavailable', 'publisher_oa', 'awaiting_oa'))
+        self.assertEqual(entry['score'], d.rank(pool[0], WHEN.date())[0])
+        self.assertNotIn(row['doi'], json.dumps(d.public_readings(data)))
+
+    def discover(self, data, *, today=None, journal_pages=(), lookups=None, board=None, discover=d.discover):
+        queries = []
+        def fetch(url, _maximum):
+            params = search_params(url)
+            q = params['query']
+            queries.append(q)
+            if q.startswith('OPEN_ACCESS'):
+                return search_reply()
+            if 'ISSN:' in q:
+                page = 0 if params['cursorMark'] == '*' else 1
+                rows = journal_pages[page] if page < len(journal_pages) else []
+                return search_reply(rows, 'next' if page == 0 and len(journal_pages) > 1 else None)
+            self.assertEqual(params['pageSize'], '5')
+            result = (lookups or {}).get(q, [])
+            if isinstance(result, Exception):
+                raise result
+            return search_reply(result)
+        pool, errors = discover(today or WHEN.date(), fetch, data=data, board=board)
+        return pool, errors, queries
+
+    def test_wanted_deduplicates_on_pmid_then_rechecks_and_marks_published(self):
+        data = d.empty_data()
+        closed = epmc(5)
+        alias = dict(closed, doi='')
+        no_pmcid = dict(epmc(6, access='Y'), pmcid='')
+        pool, errors, first_queries = self.discover(data, journal_pages=[[alias, no_pmcid], [closed, epmc(7, journal='Cureus')]],
+                                                    board={'5': 8})
+        self.assertEqual((pool, errors, len(first_queries)), ([], [], 5))
+        entries = {e['pmid']: e for e in data['wanted']}
+        self.assertEqual(set(entries), {'5', '6'})
+        self.assertEqual((entries['5']['identity'], entries['5']['source'], entries['5']['status']),
+                         (closed['doi'], 'board', 'awaiting_oa'))
+        self.assertEqual((entries['5']['downloadRoute'], entries['5']['missingReason']),
+                         ('manual', 'open_access_unconfirmed'))
+        self.assertEqual((entries['6']['downloadRoute'], entries['6']['missingReason']),
+                         ('publisher_oa', 'pmcid_missing'))
+        next_day = WHEN.date() + dt.timedelta(days=1)
+        unrelated_open = epmc(9, access='Y')
+        pool, errors, queries = self.discover(data, today=next_day,
+            lookups={'DOI:"' + closed['doi'] + '"': [unrelated_open, dict(closed, isOpenAccess='Y')],
+                     'DOI:"' + no_pmcid['doi'] + '"': [no_pmcid]})
+        self.assertEqual([p['pmid'] for p in pool], ['5'])
+        self.assertEqual((errors, len(queries)), ([], 6))
+        current = {e['pmid']: e for e in data['wanted']}
+        self.assertEqual(current['5']['status'], 'now_open')
+        self.assertEqual(current['5']['lastChecked'], next_day.isoformat())
+        self.assertEqual(current['6']['status'], 'awaiting_oa')
+        d.generate(data, d.empty_ledger(), pool, WHEN + dt.timedelta(days=1), lambda *_: None, {},
+                   fetch=lambda _: xml(pool[0]), model=lambda *args: output(args[-1][0]['id']))
+        self.assertEqual(current['5']['status'], 'published')
+        self.assertTrue({'wanted', 'wantedLookup'}.isdisjoint(d.public_readings(data)))
+        self.assertEqual(len(self.discover(data, today=next_day)[2]), 4)
+
+    def test_wanted_caps_lookups_and_expires_at_thirty_days(self):
+        data = d.empty_data()
+        rows = [dict(epmc(i), doi='') for i in range(1, 68)]
+        self.discover(data, journal_pages=[rows])
+        self.assertEqual(len(data['wanted']), 60)
+        self.assertTrue(all(e['identity'].startswith('PMID:') for e in data['wanted']))
+        tomorrow = WHEN.date() + dt.timedelta(days=1)
+        selected = sorted(data['wanted'], key=lambda e: (e['lastChecked'], -e['score'], e['identity']))[0]
+        failure_query = f'EXT_ID:{selected["pmid"]} AND SRC:MED'
+        _, errors, queries = self.discover(data, today=tomorrow,
+                                           lookups={failure_query: d.ReadingError('source_unavailable')})
+        self.assertEqual((errors, len(queries[4:])), (['discovery_unavailable'], 40))
+        self.assertIn(failure_query, queries)
+        self.assertEqual(selected['status'], 'awaiting_oa')
+        self.assertEqual(selected['lastChecked'], tomorrow.isoformat())
+        self.assertEqual(len(self.discover(data, today=tomorrow)[2]), 4)
+        _, _, queries = self.discover(data, today=WHEN.date() + dt.timedelta(days=30))
+        self.assertEqual(len(queries), 4)
+        self.assertTrue(all(e['status'] == 'expired' for e in data['wanted']))
+        d.check_store(data, d.empty_ledger())
+
+    def test_wanted_is_not_created_in_public_fallback_and_not_projected_from_private(self):
+        for visibility in (True, False, None):
+            with self.subTest(visibility=visibility), tempfile.TemporaryDirectory() as tmp:
+                root, writes = Path(tmp), []
+                def save(data, ledger):
+                    writes.append(copy.deepcopy(data))
+                class Writer:
+                    private_state = lambda self: visibility
+                writer = Writer()
+                writer.save = save
+                def discover(today, **kwargs):
+                    self.assertEqual(kwargs['data'] is not None, visibility is True)
+                    pool, errors, _ = self.discover(kwargs['data'], today=today, journal_pages=[[epmc()]])
+                    return pool, errors
+                with patch.object(d, 'ROOT', root), patch.object(d, 'now', return_value=WHEN), \
+                        patch.object(d, 'checkpoint', return_value=writer), patch.object(d, 'discover', side_effect=discover), \
+                        patch.object(d, 'model_config', return_value={}), patch.object(sys, 'argv', ['daily_fulltext.py', '--run']), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(d.main(), 0)
+                self.assertTrue(writes)
+                self.assertEqual('wanted' in writes[-1], visibility is True)
+                self.assertNotIn('wanted', d.public_readings(writes[-1]))
+
+    def test_wanted_cli_no_network_and_store_validates_entries(self):
+        data = d.empty_data()
+        self.discover(data, journal_pages=[[epmc()]])
+        invalid = {**data, 'wanted': [{**data['wanted'][0], 'status': 'other'}]}
+        with self.assertRaisesRegex(d.ReadingError, 'invalid_wanted_list'):
+            d.check_store(invalid, d.empty_ledger())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            d.atomic(root / d.DATA_PATH, data)
+            stdout = io.StringIO()
+            with patch.object(d, 'ROOT', root), patch.object(d, 'fetch_bytes', side_effect=AssertionError('network')), \
+                    patch.object(d, 'discover', side_effect=AssertionError('network')), \
+                    patch.object(d, 'checkpoint', side_effect=AssertionError('checkpoint')), \
+                    patch.object(sys, 'argv', ['daily_fulltext.py', '--wanted']), contextlib.redirect_stdout(stdout):
+                self.assertEqual(d.main(), 0)
+            self.assertEqual(json.loads(stdout.getvalue()), data['wanted'])
 
 if __name__ == '__main__':
     unittest.main()
