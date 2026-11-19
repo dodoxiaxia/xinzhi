@@ -1463,6 +1463,18 @@
           "notes": ""
         },
         {
+          "id": "candidates-topic-badge",
+          "label": "文章主题徽标",
+          "selector": "#articlesStream .topic-badge",
+          "kind": "toggle",
+          "visible": "conditional",
+          "viewports": ["mobile", "tablet", "desktop"],
+          "condition": "列表显示带主题的文章",
+          "setup": [{"goto": "/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}],
+          "stable": true,
+          "notes": "与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示"
+        },
+        {
           "id": "candidates-more",
           "label": "更多筛选",
           "selector": "[data-qf=\"more\"]",
@@ -2199,18 +2211,6 @@
           "setup": [{"click": "[data-qf=\"topic\"]"}],
           "stable": true,
           "notes": "临床亚专科、检查与手段、AI 与数字医学，额外标签列于其他"
-        },
-        {
-          "id": "library-topic-badge",
-          "label": "文章主题徽标",
-          "selector": "#articlesStream .topic-badge",
-          "kind": "toggle",
-          "visible": "conditional",
-          "viewports": ["mobile", "tablet", "desktop"],
-          "condition": "列表显示带主题的文章",
-          "setup": [{"goto": "/?mode=library&lane=all&view=cards&tag=%23AI-ECG"}],
-          "stable": true,
-          "notes": "点徽标切换主题筛选；已选徽标高亮，无标签时不显示"
         },
         {
           "id": "library-scope",

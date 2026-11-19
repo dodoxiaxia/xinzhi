@@ -147,6 +147,7 @@
 | candidates-chip-row | 快捷条 | `#qfChipRow` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-favorites | 只看关注期刊 | `[data-qf="star"]` | toggle | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-topic | 文章主题 | `[data-qf="topic"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-topic-badge | 文章主题徽标 | `#articlesStream .topic-badge` | toggle | conditional · mobile/tablet/desktop · 列表显示带主题的文章 | 是 |
 | candidates-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -184,6 +185,7 @@
 
 - **candidates-card**：`[]`；重复卡片检查首张；随数据更新
 - **candidates-reset-empty**：`[{"goto":"/?mode=candidates&q=feature-map-no-match-zzzz"}]`
+- **candidates-topic-badge**：`[{"goto":"/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}]`；与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示
 - **candidates-scope-core**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-crossai**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-cardio**：`[{"click":"#qfScopeBtn"}]`
@@ -221,7 +223,6 @@
 | library-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-topic-match | 文章主题匹配方式 | `[data-qf-topic-mode="all"]` | toggle | conditional · mobile/tablet/desktop · 打开文章主题，可切换任一与同时包含 | 是 |
 | library-topic-groups | 文章主题分组及组内已选数 | `#qfPop .topic-group h4` | region | conditional · mobile/tablet/desktop · 打开文章主题 | 是 |
-| library-topic-badge | 文章主题徽标 | `#articlesStream .topic-badge` | toggle | conditional · mobile/tablet/desktop · 列表显示带主题的文章 | 是 |
 | library-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | library-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | library-scope-crossai | 心血管×AI | `[data-qf-lane="crossai"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -274,7 +275,6 @@
 - **library-reset-empty**：`[{"goto":"/?mode=library&q=feature-map-no-match-zzzz"}]`
 - **library-topic-match**：`[{"click":"[data-qf=\"topic\"]"}]`；未分类时禁用
 - **library-topic-groups**：`[{"click":"[data-qf=\"topic\"]"}]`；临床亚专科、检查与手段、AI 与数字医学，额外标签列于其他
-- **library-topic-badge**：`[{"goto":"/?mode=library&lane=all&view=cards&tag=%23AI-ECG"}]`；点徽标切换主题筛选；已选徽标高亮，无标签时不显示
 - **library-scope-core**：`[{"click":"#qfScopeBtn"}]`
 - **library-scope-crossai**：`[{"click":"#qfScopeBtn"}]`
 - **library-scope-cardio**：`[{"click":"#qfScopeBtn"}]`
