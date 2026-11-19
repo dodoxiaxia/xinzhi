@@ -1875,7 +1875,7 @@ function museRecord(value, doi = '') {
       || (Object.hasOwn(value,'caller') && !MACHINE_CALLER_ID.test(value.caller))
       || (Object.hasOwn(value,'claimant') && !/^(?:muse|[a-z][a-z0-9_-]{0,31})$/.test(value.claimant))
       || (Object.hasOwn(value,'stage') && !['han','yiigle'].includes(value.stage))
-      || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'].includes(value.verificationReason))
+      || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'].includes(value.verificationReason))
       || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || (!value.source && !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || ''))))
       || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
   return value;
@@ -1894,7 +1894,7 @@ function museVerificationInstant(job) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
-  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
+  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
     : job.state === 'login_required' ? 'login_required'
     : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
@@ -1974,7 +1974,10 @@ function museTaskView(job, publicJob) {
   const received = job.source === 'reader_upload' ? '你上传的 PDF' : job.source === 'open_access' ? '开放获取的 PDF' : ' PDF';
   if (job.state === 'available') return {step:2,stopped:false,headline:'全文已核验，可以阅读和下载。',eta:'',action:'download'};
   if (job.state === 'abandoned') return {step:0,stopped:true,stopLabel:'未取得',headline:'已确认不再获取这篇全文。',eta:'',action:'none'};
-  if (job.state === 'review') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  if (job.state === 'review') {
+    if (job.verificationReason === 'identity_hold') return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，首页印的是另一篇的 DOI，等待人工核对，核对前不公开。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+    return {step:1,stopped:true,stopLabel:'未取得',headline:'已收到 PDF，但核验没有通过，不能确认它是这篇文献的原文。',eta:'可以直接上传正确的 PDF，核验通常几分钟内完成。',action:'upload'};
+  }
   if (job.state === 'login_required') return {step:0,stopped:true,stopLabel:'未取得',headline:'这次没能自动取得全文。',eta:'可以直接上传这篇的 PDF。',action:'upload'};
   if (recoverable) return {step:0,stopped:true,stopLabel:'未取得',headline:publicJob.reason === 'queue_expired' ? '排队过久仍未被领取，任务已停止。' : publicJob.reason === 'queue_unclaimed' ? '下载端暂时没有领取，已转给兜底下载处理。' : '这次没能取得全文。',eta:'可以重新提交，不会重复下载已取得的文件。',action:'retry',secondaryUpload:true};
   if (job.state === 'verifying') return {step:1,stopped:false,headline:'已收到' + received + '，正在核验 DOI、题名与全部页面。',
@@ -2121,12 +2124,16 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
     const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
     if (pointer) inherited.supersededFrom = pointer;
   }
-  const job = {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
-    leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...extra};
+  const {hold, ...restExtra} = extra || {};
+  const job = hold
+    ? {version:1,id,doi,state:'review',verificationReason:'identity_hold',reason:'identity_hold',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
+        sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...restExtra}
+    : {version:1,id,doi,state:'verifying',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
+        leaseId:crypto.randomUUID(),leaseUntil:now,sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...restExtra};
   await musePut(env,job);
-  await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
+  if (!hold) await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + id,JSON.stringify({doi,id}),{expirationTtl:604800});
   if (previous) await museDelete(env,previous.queueKey);
-  await museRequestReview(env);
+  if (!hold) await museRequestReview(env);
   return job;
 }
 // ==== edge/src/03a-muse-index.js · Candidate index for the machine download queue ====
@@ -3014,6 +3021,10 @@ const parseKey = k => {
 // needs a password to open is encrypted_pdf; any other handler, method or a key that does not verify is
 // encryption_unsupported. RC4 is plain JS (no Web Crypto RC4); MD5, SHA-2 and AES use crypto.subtle.
 const MACHINE_INFLATE_MAX = 16 * 1024 * 1024;
+const MACHINE_MAX_PAGES = 200;
+const MACHINE_SCAN_INFLATE_BUDGET = 64 * 1024 * 1024;
+// Reference or listing pages cite >= 2 other DOIs alongside the claimed DOI; genuine headers/footers carry at most 1.
+const MACHINE_LATER_PAGE_MAX_OTHER_DOIS = 1;
 const MACHINE_READABLE_MIN_LETTERS = 20;
 const MACHINE_READABLE_MIN_RATIO = 0.5;
 const MACHINE_ENCRYPTION_REASONS = ['encrypted_pdf', 'encryption_unsupported'];
@@ -3719,11 +3730,19 @@ async function machineContentText(ctx, id) {
 async function machineFirstPage(bytes) {
   const ctx = machinePdfContext(bytes), notes = ctx.notes;
   const page = await machineFirstPageObject(ctx);
+  const {strings, decoded, raw} = page ? await machinePageText(ctx, page.body) : {strings:'', decoded:'', raw:''};
+  const metadata = await machineMetadata(ctx);
+  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
+  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
+  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+}
+async function machinePageText(ctx, pageBody) {
+  const notes = ctx.notes;
   let strings = '', raw = '', decoded = '';
-  if (page) {
-    const ids = await machineContentIds(ctx, page.body);
+  if (pageBody) {
+    const ids = await machineContentIds(ctx, pageBody);
     if (!ids.length) notes.add('contents_not_found');
-    const fonts = await machinePageFonts(ctx, page.body);
+    const fonts = await machinePageFonts(ctx, pageBody);
     // A page's /Contents array is one logical stream (ISO 32000-1 7.8.2): an operator may start in one stream and end in the
     // next (a TJ array closed by "]" at the end of one and "TJ" at the start of the next), and the font selected in an
     // earlier stream stays current. Decode the streams joined, never one by one, or a title split that way is dropped.
@@ -3737,10 +3756,83 @@ async function machineFirstPage(bytes) {
     }
     decoded += machineDecodeFontText(joined, fonts) + '\n';
   }
-  const metadata = await machineMetadata(ctx);
-  // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
-  const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes};
+  return {strings, decoded, raw};
+}
+async function machinePageBodies(ctx, limit = MACHINE_MAX_PAGES) {
+  if (!limit || limit < 1) return [];
+  const roots = [...ctx.text.matchAll(/\/Root\s+(\d+)\s+\d+\s+R/g)];
+  const rootId = roots.length ? roots[roots.length - 1][1] : '';
+  let pagesId = '';
+  if (rootId) {
+    const catalog = await machineBody(ctx, rootId);
+    pagesId = catalog && machineRefValue(catalog, 'Pages');
+  } else {
+    // Trailerless PDFs (e.g. without /Root): locate the top-level /Catalog or /Pages object.
+    let firstPagesId = '';
+    for (const [id] of ctx.index) {
+      const body = machineTopBody(ctx, id), streamAt = body.indexOf('stream');
+      const dict = streamAt >= 0 ? body.slice(0, streamAt) : body;
+      if (/\/Type\s*\/Catalog\b/.test(dict)) { pagesId = machineRefValue(dict, 'Pages'); if (pagesId) break; }
+      if (!firstPagesId && /\/Type\s*\/Pages\b/.test(dict)) firstPagesId = String(id);
+    }
+    if (!pagesId) pagesId = firstPagesId;
+  }
+  if (!pagesId) return [];
+  const out = [], seen = new Set(), stack = [{id:pagesId, depth:0}];
+  while (stack.length && out.length < limit) {
+    const {id, depth} = stack.pop();
+    const key = Number(id);
+    if (!Number.isInteger(key) || seen.has(key)) continue;
+    seen.add(key);
+    const body = await machineBody(ctx, id);
+    if (!body) continue;
+    let kids = /\/Kids\s*\[([^\]]*)\]/.exec(body);
+    if (!kids && machineRefValue(body, 'Kids')) {
+      const listed = await machineBody(ctx, machineRefValue(body, 'Kids'));
+      kids = listed && /\[([^\]]*)\]/.exec(listed);
+    }
+    if (kids) {
+      if (depth >= 32) continue;
+      const refs = machineRefList(kids[1]);
+      for (let i = refs.length - 1; i >= 0; i--) stack.push({id:refs[i], depth:depth + 1});
+    } else if (/\/Contents(?![A-Za-z0-9_])/.test(body)) {
+      out.push(body);
+    }
+  }
+  return out;
+}
+// Later-page DOI scan: only runs when page 1 already matched the title and missed the claimed DOI.
+// Stops immediately on the first valid hit, and caps traversal at MACHINE_MAX_PAGES (200) pages and cumulative
+// decompressed stream bytes at MACHINE_SCAN_INFLATE_BUDGET (64 MiB). Pages that match the claimed DOI alongside
+// more than MACHINE_LATER_PAGE_MAX_OTHER_DOIS other DOIs are treated as reference/listing pages and skipped.
+function machineDoiTokens(text) {
+  const out = new Set();
+  for (const match of String(text || '').matchAll(/10\.\d{4,9}\/[^\s"<>()\[\],;]+/gi)) {
+    const token = match[0].toLowerCase().replace(/\.+$/, '');
+    if (token && !token.endsWith('/')) out.add(token);
+  }
+  return [...out];
+}
+async function machineFindDoiOnLaterPages(ctx, doi) {
+  const pages = await machinePageBodies(ctx, MACHINE_MAX_PAGES + 1);
+  const target = libraryDoi(doi) || String(doi || '').trim().toLowerCase();
+  let inflated = 0, citedPages = 0;
+  for (let index = 1; index < pages.length; index++) {
+    if (index >= MACHINE_MAX_PAGES) return {page:0, truncated:true, citedPages};
+    const {strings, decoded, raw} = await machinePageText(ctx, pages[index]);
+    inflated += raw.length;
+    if (inflated > MACHINE_SCAN_INFLATE_BUDGET) return {page:0, truncated:true, citedPages};
+    const pageText = strings + '\n' + decoded + raw;
+    if (!machineDoiPresent(pageText, doi)) continue;
+    // Exclude the claimed DOI and mutual prefixes caused by line-wrap splits (e.g. "10.1001/jama.2022.").
+    const otherDois = machineDoiTokens(pageText).filter(token => !target.startsWith(token) && !token.startsWith(target));
+    if (otherDois.length > MACHINE_LATER_PAGE_MAX_OTHER_DOIS) {
+      citedPages++;
+      continue;
+    }
+    return {page:index + 1, ...(citedPages ? {citedPages} : {})};
+  }
+  return {page:0, citedPages};
 }
 function machineDoiPresent(text, doi) {
   const escaped = [...doi].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
@@ -3831,10 +3923,21 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   if (doiPage && titleMeta) return {verdict:'ok', level:'metadata_title', checks};
   if (doiMeta && titleMeta) return {verdict:'ok', level:'metadata_only', checks};
   if (doiPage && !readable) return {verdict:'ok', level:'doi_only', reason:'title_not_found', checks};
-  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
-    return {verdict:'ok', level:'title_only', checks:{...checks, doi:'', doiAbsent:true}};
+  let citedPages = 0;
+  if (options && options.scanAllPages && titlePage && !doiFound) {
+    // Only scan later pages when page 1 read the title and missed the claimed DOI (stops at first valid match, <= 200 pages / 64 MiB).
+    const later = await machineFindDoiOnLaterPages(page.ctx, doi);
+    citedPages = later.citedPages || 0;
+    if (later.page) return {verdict:'ok', level:'doi_later_page', checks:{...checks, doi:'later_page', doiPage:later.page, ...(citedPages ? {citedPages} : {})}};
   }
-  return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks};
+  const laterChecks = citedPages ? {...checks, citedPages} : checks;
+  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+    return {verdict:'ok', level:'title_only', checks:{...laterChecks, doi:'', doiAbsent:true}};
+  }
+  if (options && options.holdForeignDoi && titlePage && !doiFound && (machineAnyDoi(page.text) || machineAnyDoi(page.metadata.text))) {
+    return {verdict:'ok', level:'title_mismatched_doi', hold:true, checks:{...laterChecks, foreignDoi:true}};
+  }
+  return {verdict:'mismatch', reason:machineFailReason(page, doiFound, titlePage || titleMeta), checks:laterChecks};
 }
 // ==== edge/src/04b-machine-download.js · Per-caller download queue ====
 // Machine callers (a downloader, a fallback bot, a read-only caller) use their own tokens.
@@ -3846,7 +3949,7 @@ const MACHINE_LEASE_EXTEND_MS = MUSE_LEASE_MS;
 const MACHINE_LEASE_MAX_MS = 7200000;
 const MACHINE_RETURN_LIMIT = 3;
 const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected'];
-const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','done','failed-awaiting-fallback','confirmed-abandoned'];
+const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','uploaded-awaiting-manual-review','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 // Reasons the site itself writes when it stops a task (a client never reports them).
 const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed'];
@@ -4043,6 +4146,7 @@ function machinePublicState(job) {
   if (job.state === 'abandoned') return 'confirmed-abandoned';
   if (job.state === 'available') return 'done';
   if (job.state === 'verifying') return 'uploaded-awaiting-verification';
+  if (job.state === 'review' && job.verificationReason === 'identity_hold') return 'uploaded-awaiting-manual-review';
   // A queued task that waited six days is still a hard failure. A lease expiry is a soft retry until the second time.
   if (job.state === 'queued' && museExpired(job)) return 'failed-awaiting-fallback';
   if (['running','uploading'].includes(job.state) && museExpired(job)) {
@@ -4293,6 +4397,7 @@ function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
   if (job && job.state === 'abandoned') return {type:'closed'};
   if (job && job.state === 'verifying') return job.sha256 === sha256 ? {type:'replay',job} : {type:'conflict'};
+  if (job && job.state === 'review' && job.verificationReason === 'identity_hold' && job.sha256 === sha256) return {type:'replay',job};
   if (job && ['running','uploading'].includes(job.state) && !museExpired(job) && job.claimant && job.claimant !== caller.id) return {type:'busy'};
   return {type:'accept'};
 }
@@ -4334,6 +4439,7 @@ function handleMachineProtocol(request, env) {
     humanGate:'exempt',
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
+    stateMapNote:'review 且 verificationReason 为 identity_hold 时对外状态为 uploaded-awaiting-manual-review（review+identity_hold → uploaded-awaiting-manual-review），表示首页印有他人 DOI 但题名相符，等待人工核对，核对前不公开、不可领取或重排。',
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS,minPdfBytes:LIBRARY_MIN_PDF_BYTES,maxPdfBytes:LIBRARY_MAX_PDF_BYTES,oversizeError:'file_too_large'},
@@ -4381,7 +4487,8 @@ async function handleMachineUpload(request, env) {
       paper = fresh;
     }
     if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
-    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true});
+    // X-Machine-Replace already has a verified PDF; keep mismatched DOI at 409 so it never overwrites the done job with an identity hold.
+    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:!replacing});
     if (identity.verdict !== 'ok') throw new MachineIdentityFailure(identity.verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', identity.reason, identity.checks);
     const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (attempt && attempt.paused) libraryFail('library_paused', 423);
@@ -4399,7 +4506,7 @@ async function handleMachineUpload(request, env) {
     if (fresh) await librarySave(env.QL_KV, fresh, null, 'library_manual_needed');
     await machineConsume(env, caller, 'upload', 1);
     const replace = replacing ? {by:caller.id,at:Date.now(),oldSha256:decision.oldSha,newSha256:sha256,previous:existing && existing.state === 'available' ? existing : null} : null;
-    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(replace ? {replace} : {})});
+    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(identity.hold ? {hold:true} : {}),...(replace ? {replace} : {})});
     return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256,identity:identity.level,...(replace ? {replace:machineReplacePublic(replace)} : {})}}, 202);
   } catch (error) {
     if (caller && error instanceof LibraryFailure && error.status === 409) {
