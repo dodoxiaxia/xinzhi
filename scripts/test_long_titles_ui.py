@@ -222,22 +222,15 @@ def launch(pw):
     return pw.chromium.launch(headless=True, executable_path=os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium"),
                               args=["--no-sandbox"])
 
-# (width, height, row-relative x, row-relative y), measured on a7a6383.
-# Both themes gave the same rects. Allow 1 CSS px for subpixel rounding.
-SHORT_TITLE_RECTS = {
-    "S1": ((324, 23.25, 34, 16), (364, 23.25, 34, 16),
-           (501.33, 24.02, 40, 12), (662.14, 24.02, 40, 12)),
-    "S2": ((358, 24.02, 0, 12), (398, 24.02, 0, 12),
-           (732, 24.02, 0, 12), (258.19, 22.47, 10, 10)),
-    "S3": ((358, 24, 0, 36), (398, 25.5, 0, 38),
-           (517.72, 24.75, 0, 36), (672, 24.75, 0, 44)),
-    "S4": ((358, 24, 0, 16), (398, 24, 0, 16),
-           (534.91, 24.75, 0, 16), (773.33, 24.75, 0, 16)),
-    "S5": ((268, 22.5, 0, 14), (308, 22.5, 0, 14),
-           (334.31, 22.5, 0, 14), (334.31, 22.5, 0, 14)),
-    "S6": ((145.77, 21, 0, 1), (145.77, 21, 0, 1),
-           (154.61, 24, 0, 0), (154.61, 24, 0, 0)),
+# Restore only the pre-change layout declarations; focus outlines do not affect geometry.
+BEFORE_LONG_TITLE_CSS = """
+.weekly-row-title .weekly-deep-badge { min-height: auto; }
+.deep-reading-item[data-deep-reading]:not([title]) .deep-reading-item-title { -webkit-line-clamp: 2; }
+.huddle-item-content h4, [data-citation-export], .weekly-row-line,
+.article-card.has-side-actions .title-open, .article-card.has-side-actions .article-title-en.is-hit {
+  overflow-wrap: inherit;
 }
+"""
 
 FOCUS = """(e, rowSelector) => {
   const row = e.closest(rowSelector), outer = row.closest('.weekly-deep-read,.modal-body');
@@ -365,8 +358,7 @@ class LongTitleChecks:
             if key == "T4":  # This fixture must genuinely overflow two lines at all widths.
                 self.assertTrue(clipped)
         elif surface == "S4":
-            # The frozen renderer exposes English only; bilingual tooltip is a follow-up.
-            self.assertEqual(title["title"], en)
+            self.assertEqual(title["title"], combined_title(zh, en))
             if clipped:
                 self.assertEqual(title["clamp"], "2")
         else:
@@ -393,18 +385,25 @@ class LongTitleChecks:
             self.assertLessEqual(a["x"] + a["width"], p["x"] + p["width"] + 1)
 
     def test_short_title_position_and_size_unchanged(self):
+        def geometry(row, surface):
+            m = row.evaluate(MEASURE, SURFACES[surface][1:])
+            t, r = m["title"], m["row"]
+            return (t["width"], t["height"], t["x"] - r["x"], t["y"] - r["y"]), t
+
         for width in WIDTHS:
             for theme in THEMES:
                 with self.page(width, theme) as page:
+                    page.evaluate("() => document.fonts.ready.then(() => true)")
                     for surface in SURFACES:
                         with self.subTest(width=width, theme=theme, surface=surface):
-                            rows = mount(page, surface)
-                            m = measures(rows, surface)[list(FIXTURES).index("T6")]
-                            t, r = m["title"], m["row"]
-                            baseline = SHORT_TITLE_RECTS[surface][WIDTHS.index(width)]
-                            for value, expected in zip((t["width"], t["height"], t["x"]-r["x"], t["y"]-r["y"]), baseline):
-                                self.assertAlmostEqual(value, expected, delta=1)
-                            self.assertLessEqual(t["sh"], t["ch"] + 1)
+                            row = mount(page, surface).nth(list(FIXTURES).index("T6"))
+                            before = page.add_style_tag(content=BEFORE_LONG_TITLE_CSS)
+                            baseline, _ = geometry(row, surface)
+                            before.evaluate("e => e.remove()")
+                            actual, title = geometry(row, surface)
+                            for field, value, expected in zip(("width", "height", "x", "y"), actual, baseline):
+                                self.assertAlmostEqual(value, expected, delta=1, msg=field)
+                            self.assertLessEqual(title["sh"], title["ch"] + 1)
 
     def test_no_new_short_title_attributes(self):
         with self.page(390, "light") as page:
@@ -412,8 +411,20 @@ class LongTitleChecks:
                 with self.subTest(surface=surface):
                     m = measures(mount(page, surface, {"T6": FIXTURES["T6"]}), surface)[0]
                     self.assertEqual(m["title"]["title"], {
-                        "S1": combined_title(*FIXTURES["T6"]), "S4": FIXTURES["T6"][1],
+                        "S1": combined_title(*FIXTURES["T6"]), "S4": combined_title(*FIXTURES["T6"]),
                     }.get(surface))
+
+    def test_compact_title_tooltip_deduplicates_and_falls_back(self):
+        with self.page(390, "light") as page:
+            cases = {
+                "translated": ("房颤", "Atrial fibrillation", "房颤\nAtrial fibrillation"),
+                "identical": ("Clinical study", "Clinical study", "Clinical study"),
+            "no-zh": ("", "Clinical study", "Clinical study"),
+            }
+            for case, (zh, en, expected) in cases.items():
+                with self.subTest(case=case):
+                    button = mount(page, "S4", {case: (zh, en)}).get_by_role("button", name=zh or en, exact=True)
+                    expect(button).to_have_attribute("title", expected)
 
     def test_markup_stays_escaped_and_title_round_trips(self):
         zh, en = FIXTURES["T4"]
@@ -427,7 +438,7 @@ class LongTitleChecks:
                         expect(row.locator("b")).to_have_count(0)
                         if surface in ("S1", "S2", "S4"):
                             owner = row if surface == "S2" else title
-                            expect(owner).to_have_attribute("title", en if surface == "S4" else combined_title(zh, en))
+                            expect(owner).to_have_attribute("title", combined_title(zh, en))
                         if sub_sel and surface in ("S3", "S4"):
                             expect(row.locator(sub_sel)).to_have_attribute("title", en)
 
