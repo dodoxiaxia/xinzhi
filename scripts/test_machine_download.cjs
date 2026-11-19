@@ -165,9 +165,21 @@ async function registryUploads() {
   await error(await upload(h, paperPdf(arxiv, 'Unrelated synthetic title for identity testing'), arxiv), 409, 'machine_identity_mismatch');
   assert(!stored(h, 'library:paper:' + arxiv));
 
+  for (const titleType of [null, 'Subtitle', 'AlternativeTitle', 'TranslatedTitle']) {
+    const noMainTitle = structuredClone(fixtures[zenodo]);
+    noMainTitle.data.attributes.titles = titleType ? [{title:examples[1][1],titleType}] : [];
+    h = await fromDatacite({dataciteResponse:() => Response.json(noMainTitle)});
+    const response = await upload(h, paperPdf(zenodo, examples[1][1]), zenodo);
+    assert.equal(response.status, 409, titleType || 'empty titles');
+    assert.equal((await response.json()).error, 'library_identity');
+    assert.deepEqual(urls(h), [crossrefUrl(zenodo), dataciteUrl(zenodo)]);
+    assert(!stored(h, 'library:paper:' + zenodo));
+    assert(!stored(h, 'library:muse-job:' + zenodo));
+  }
+
   const variant = structuredClone(fixtures[zenodo]);
   Object.assign(variant.data.attributes, {
-    titles:[{title:'A subtitle',titleType:'Subtitle'}, ...variant.data.attributes.titles],
+    titles:[{title:'A subtitle',titleType:'Subtitle'}, {title:examples[1][1],titleType:'MainTitle'}],
     container:{title:'Synthetic container'},
     publisher:{name:'Synthetic publisher'},
     dates:[{dateType:'Issued',date:'2018-02-30'},{dateType:'Updated',date:'2020-03-01'}]
@@ -190,7 +202,7 @@ async function registryUploads() {
   delete variant.data.attributes.container;
   const paper = await h.context.libraryMetadata(zenodo, {signal:new AbortController().signal});
   assert.equal(paper.journal, 'Synthetic publisher');
-  console.log('DOI registry fallback upload and registration tests passed');
+  console.log('DOI registry fallback upload and registration tests passed (DataCite primary titles only)');
 }
 function jobPuts(h, paperDoi) { return h.writes.filter(write => write.key === 'library:muse-job:' + paperDoi); }
 function assertKept(write) { assert(write); assert(write.opts === undefined || write.opts.expirationTtl === undefined); }

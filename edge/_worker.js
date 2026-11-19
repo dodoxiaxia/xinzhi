@@ -903,7 +903,7 @@ function libraryDatacitePublication(attributes) {
 function libraryDataciteBibliography(payload, doi, context) {
   const attributes = payload?.data?.attributes;
   const titles = Array.isArray(attributes?.titles) ? attributes.titles : [];
-  const title = libraryText((titles.find(entry => entry && !entry.titleType) || titles[0])?.title);
+  const title = libraryText(titles.find(entry => entry && (!Object.hasOwn(entry, 'titleType') || entry.titleType === 'MainTitle'))?.title);
   if (context.diagnostic) context.diagnostic.reason = 'identity';
   if (!attributes || libraryDoi(attributes.doi) !== doi || !title) libraryFail('library_identity', 409);
   const publisher = typeof attributes.publisher === 'string' ? attributes.publisher : attributes.publisher?.name;
