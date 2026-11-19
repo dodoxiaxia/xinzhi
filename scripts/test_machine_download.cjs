@@ -1832,6 +1832,21 @@ async function review(h, body) {
     const holdTitle = title;
     const makeHoldPdf = tag => pdfPages(['doi:10.1000/previous-article ' + holdTitle, 'Second page ' + tag]);
     const holdReviewCall = (h, secret, body, options = {}) => call(h, '/api/machine/hold-review', secret, body, options);
+    // machineAuthorize never skips the role check: a call without a capability is refused for every valid token, and each role
+    // is let in only for the capabilities it holds.
+    {
+      const authHarness = await create();
+      const authRequest = secret => new Request(base + '/api/machine/protocol', {headers:{authorization:'Bearer ' + secret}});
+      for (const [label, secret] of [['downloader', dsh], ['fallback', fallback], ['reader', reader]]) {
+        for (const missing of [undefined, '', null]) {
+          await assert.rejects(authHarness.context.machineAuthorize(authRequest(secret), authHarness.env, missing), error => error.status === 403 && error.code === 'machine_forbidden', label + ' without a capability must be 403');
+        }
+        await assert.rejects(authHarness.context.machineAuthorize(authRequest(secret), authHarness.env, 'no_such_capability'), error => error.status === 403 && error.code === 'machine_forbidden', label + ' with an unknown capability');
+      }
+      assert.equal((await authHarness.context.machineAuthorize(authRequest(reader), authHarness.env, 'hold_review')).role, 'reader');
+      await assert.rejects(authHarness.context.machineAuthorize(authRequest(dsh), authHarness.env, 'hold_review'), error => error.status === 403 && error.code === 'machine_forbidden');
+      await assert.rejects(authHarness.context.machineAuthorize(authRequest(reader), authHarness.env, 'upload'), error => error.status === 403 && error.code === 'machine_forbidden');
+    }
     const recheckCall = async (h, targetDoi) => {
       const auth = await token(h, reviewUrl, 'muse-review.yml', {event_name:'workflow_dispatch'});
       return h.context.worker.fetch(new Request(reviewUrl, {

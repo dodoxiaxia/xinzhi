@@ -4196,7 +4196,7 @@ async function machineAuthorize(request, env, capability) {
   const caller = matched || (legacyMatch ? legacy : null);
   if (!caller) libraryFail('machine_unauthorized', 401);
   if (caller.revoked) libraryFail('machine_revoked', 401);
-  if (capability && !MACHINE_ROLE_CAPS[caller.role].includes(capability)) libraryFail('machine_forbidden', 403);
+  if (!MACHINE_ROLE_CAPS[caller.role].includes(capability)) libraryFail('machine_forbidden', 403);
   return caller;
 }
 function machineRateKey(caller, bucket) {
