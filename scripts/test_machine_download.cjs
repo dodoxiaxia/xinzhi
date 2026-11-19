@@ -1840,11 +1840,11 @@ async function review(h, body) {
         body:JSON.stringify({action:'recheck',doi:targetDoi})
       }), h.env);
     };
-    const createHoldTask = async (h, targetDoi, tag = 'hold') => {
+    const createHoldTask = async (h, targetDoi, tag = 'hold', uploader = dsh) => {
       seedPaper(h, targetDoi, holdTitle);
       const bytes = makeHoldPdf(tag);
       const writesStart = h.writes.length;
-      const res = await upload(h, bytes, targetDoi, dsh);
+      const res = await upload(h, bytes, targetDoi, uploader);
       assert.equal(res.status, 202);
       const body = await res.json();
       assert.equal(body.task.identity, 'title_mismatched_doi');
@@ -1898,9 +1898,15 @@ async function review(h, body) {
     h.env.MACHINE_HOLD_REVIEWERS = 'ddx,muse';
     await error(await holdReviewCall(h, fallback, validPayload), 403, 'machine_forbidden');
     await error(await holdReviewCall(h, museKey, validPayload), 403, 'machine_forbidden');
-    // Uploader itself (job.caller === dsh) cannot review its own upload -> 403 machine_self_review
+    // Explicit hold_review capability: the downloader role does not have it, so even a caller named in MACHINE_HOLD_REVIEWERS is refused.
     h.env.MACHINE_HOLD_REVIEWERS = 'dsh,ddx';
-    await error(await holdReviewCall(h, dsh, validPayload), 403, 'machine_self_review');
+    await error(await holdReviewCall(h, dsh, validPayload), 403, 'machine_forbidden');
+    // Uploader itself (job.caller === fallback, a role that does have hold_review) cannot review its own upload -> 403 machine_self_review
+    const selfDoi = '10.1000/hold-self-review';
+    const selfHold = await createHoldTask(h, selfDoi, 'self', fallback);
+    h.env.MACHINE_HOLD_REVIEWERS = 'fallback,ddx';
+    await error(await holdReviewCall(h, fallback, {doi:selfDoi,taskId:selfHold.job.id,action:'release',reason:'Reviewing my own upload'}), 403, 'machine_self_review');
+    assert.equal(stored(h, 'library:muse-job:' + selfDoi).state, 'review');
     // Method guard
     await error(await holdReviewCall(h, reader, null, {method:'GET'}), 405, 'machine_bad_request');
 

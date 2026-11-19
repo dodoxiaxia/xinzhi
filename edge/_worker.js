@@ -4087,8 +4087,8 @@ const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
   downloader:['upload','replace','status','claim','renew','return','list','requeue','register','abandoned','protocol'],
-  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol','metadata-backfill'],
-  reader:['list','abandoned','protocol']
+  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol','metadata-backfill','hold_review'],
+  reader:['list','abandoned','protocol','hold_review']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
 const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','encrypted_pdf','encryption_unsupported','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
@@ -4700,7 +4700,7 @@ async function handleMachineHoldReview(request, env) {
   try {
     if (request.method !== 'POST') libraryFail('machine_bad_request', 405);
     if (new URL(request.url).search) libraryFail('machine_bad_request', 400);
-    const caller = await machineAuthorize(request, env);
+    const caller = await machineAuthorize(request, env, 'hold_review');
     const reviewers = machineHoldReviewers(env);
     if (caller.legacy || !reviewers.has(caller.id)) libraryFail('machine_forbidden', 403);
     const input = await fulltextReadJson(request, 2048, 'machine_bad_request');
