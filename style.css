@@ -2581,7 +2581,7 @@ html[data-style="a"] .qf-scope.is-on {
 }
 .qf-jlabel { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .qf-jname small { flex: 0 0 auto; white-space: nowrap; }
-.qf-jcount { min-width: 4ch; text-align: right; }
+.qf-jname small:last-child { min-width: 4ch; text-align: right; }
 .qf-jname:disabled { cursor: default; }
 .qf-opt-list { display: flex; flex-direction: column; padding: 0 8px; }
 .qf-opt {

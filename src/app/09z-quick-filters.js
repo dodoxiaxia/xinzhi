@@ -555,7 +555,7 @@
       const sug = r.suggested ? '<small class="qf-suggested">建议</small>' : '';
       return `<div class="qf-jrow${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}">
         <button type="button" class="qf-jstar${starred ? ' is-starred' : ''}" data-qf-follow="${esc(r.name)}" aria-label="${starred ? '取消关注' : '关注期刊'}" aria-pressed="${starred}">${starred ? '★' : '☆'}</button>
-        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}"${disabled ? ' disabled' : ''}><span class="qf-jlabel">${esc(r.name)}</span>${sug}<small class="qf-jcount">${n}</small></button>
+        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}"${disabled ? ' disabled' : ''}><span class="qf-jlabel">${esc(r.name)}</span>${sug}<small>${n}</small></button>
       </div>`;
     }).join('');
   }
