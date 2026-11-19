@@ -684,7 +684,7 @@ function libraryPaper(record, expectedDoi = '') {
     url:'https://doi.org/' + encodeURIComponent(input.doi).replace(/%2F/gi, '/'), authors:(Array.isArray(input.authors) ? input.authors : []).map(name => libraryText(name, 200)).filter(Boolean).slice(0, 30),
     date:/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(input.date || '') ? input.date : '', datePrecision:['day','month','year'].includes(input.datePrecision) ? input.datePrecision : '',
     dateBasis:libraryText(input.dateBasis || '', 100), ingestedAt:typeof input.ingestedAt === 'string' && !isNaN(Date.parse(input.ingestedAt)) ? input.ingestedAt : '',
-    metadataStatus:LIBRARY_METADATA_STATUSES.includes(input.metadataStatus) ? input.metadataStatus : 'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
+    metadataStatus:LIBRARY_METADATA_STATUSES.includes(input.metadataStatus) ? input.metadataStatus : 'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), ...(input.fulltextStatus === 'available' && input.fulltextVerification === 'manual_release' ? { fulltextVerification:'manual_release' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
   return paper;
 }
 async function libraryGet(kv, key) {
@@ -1907,6 +1907,9 @@ const MUSE_LEASE_MS = 1200000;
 // Terminal records (available, abandoned) are written without a TTL; see musePut.
 const MUSE_QUEUE_MS = 6 * 86400000;
 const MUSE_HOLD_TTL_SECONDS = 2592000;
+// A task released through POST /api/machine/hold-review is verified with the DOI-in-full-text check skipped and nothing else.
+const MUSE_RELEASE_METHOD = 'dual_parser_title_manual_release';
+const MUSE_RELEASE_SKIPPED = ['doi_in_fulltext'];
 // 2026-11-12 plus the agreed 30-day transition. MUSE_DOWNLOAD_RETIRE_ON overrides the displayed date only.
 const MUSE_DOWNLOAD_RETIRE_ON_DEFAULT = '2026-12-12';
 const MACHINE_CALLER_ID = /^[a-z][a-z0-9_-]{0,31}$/;
@@ -1983,6 +1986,15 @@ function museHoldDecisionValid(decision) {
   if (!Number.isSafeInteger(decision.at) || decision.at < 1 || decision.at >= 8640000000000000 - 28800000) return false;
   if (typeof decision.reason !== 'string' || decision.reason.trim() !== decision.reason || decision.reason.length < 4 || decision.reason.length > 500) return false;
   return true;
+}
+// The release that lets a verifier skip the DOI-in-full-text check: only a job that went through hold-review 'release', whose audit record
+// (written by that endpoint, no TTL) names the same task, DOI and file hash as the job record now holds. Anything else returns null.
+async function museReleaseProof(env, job) {
+  if (!job || job.state !== 'verifying' || !job.holdDecision || job.holdDecision.action !== 'release' || !museHoldDecisionValid(job.holdDecision)) return null;
+  const audit = await libraryGet(env.QL_KV, MUSE_HOLD_AUDIT_PREFIX + job.id);
+  if (!audit || audit.version !== 1 || audit.action !== 'release' || audit.taskId !== job.id || audit.doi !== job.doi || audit.sha256 !== job.sha256
+      || audit.by !== job.holdDecision.by || audit.at !== job.holdDecision.at || audit.reason !== job.holdDecision.reason) return null;
+  return {by:audit.by, at:audit.at, reason:audit.reason, sha256:audit.sha256, skipped:[...MUSE_RELEASE_SKIPPED]};
 }
 function museRecord(value, doi = '') {
   if (!value || value.version !== 1 || !MUSE_UUID.test(value.id || '') || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
@@ -2870,17 +2882,23 @@ async function handleMuseReview(request, env) {
         await musePut(env,claimed);
         const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
         if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
-        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
+        const release = await museReleaseProof(env,job);
+        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId,...(release ? {release} : {})}});
       }
       return json({ok:true,task:null});
     }
-    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method','reason']);
+    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method','reason','skipped']);
     if (!['bytes','complete'].includes(input.action) || (input.action === 'bytes' && Object.keys(input).some(k => !['action','taskId','doi','leaseId'].includes(k)))) libraryFail('muse_bad_request',400);
     if (input.action === 'complete' && Object.hasOwn(input,'reason') && (input.result !== 'rejected' || !['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason))) libraryFail('muse_bad_request',400);
     const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
     if (!job || job.id !== input.taskId || job.reviewOwner !== owner || job.reviewLeaseId !== input.leaseId || job.reviewLeaseUntil < Date.now()) libraryFail('muse_stale',409);
+    // Only a hold-review release may use the manual-release method, and then a verified result must say exactly which check was skipped.
+    const manualMethod = input.action === 'complete' && input.method === MUSE_RELEASE_METHOD;
+    const release = manualMethod && job.state === 'verifying' ? await museReleaseProof(env,job) : null;
     if (input.action === 'complete' && (!['verified','rejected'].includes(input.result) || input.sha256 !== job.sha256 || input.bytes !== job.bytes
-        || input.method !== 'dual_parser_all_pages_title_doi' || !Number.isInteger(input.pages) || input.pages < 0 || input.pages > 200 || (input.result === 'verified' && input.pages < 1))) libraryFail('muse_bad_request',400);
+        || (input.method !== 'dual_parser_all_pages_title_doi' && !(manualMethod && (release || job.state !== 'verifying'))) || !Number.isInteger(input.pages) || input.pages < 0 || input.pages > 200 || (input.result === 'verified' && input.pages < 1)
+        || (manualMethod && input.result === 'verified' && JSON.stringify(input.skipped) !== JSON.stringify(MUSE_RELEASE_SKIPPED))
+        || (Object.hasOwn(input,'skipped') && !(manualMethod && input.result === 'verified')))) libraryFail('muse_bad_request',400);
     if (input.action === 'complete' && ['available','review'].includes(job.state)) return json({ok:true,job:musePublicJob(job),archive:libraryArchiveStatus()});
     if (job.state !== 'verifying') libraryFail('muse_stale',409);
     if (input.action === 'complete' && input.result === 'rejected') {
@@ -2920,14 +2938,15 @@ async function handleMuseReview(request, env) {
     const replacing = !!(job.replace && paper && record.pdf && record.pdf.sha256 === job.replace.oldSha256 && paper.fulltextStatus === 'available');
     if (!paper || paper.fulltextStatus === 'review' || (record.pdf && record.pdf.sha256 !== job.sha256 && !replacing)) libraryFail('library_identity',409);
     if (replacing) await machineReplacePdf(env.QL_KV,record,bytes,'muse_verified');
-    else await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},{bytes,source:'muse_verified'},'');
+    else await librarySave(env.QL_KV,{...paper,fulltextStatus:'available',...(release ? {fulltextVerification:'manual_release'} : {})},{bytes,source:'muse_verified'},'');
     const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi);
     if (!libraryPaper(saved,job.doi) || saved.pdf?.sha256 !== job.sha256) libraryFail('muse_sync_pending',503);
     await libraryStoredPdf(env.QL_KV,saved);
     // Muse already stored this original in its Drive inbox; record it so the archive workflow does not upload it twice.
     if (job.driveFileId) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + job.sha256,JSON.stringify({version:1,doi:job.doi,sha256:job.sha256,driveFileId:job.driveFileId,source:'muse',archivedAt:Date.now()}));
     const {replace:replaced, supersedes:_supersedes, ...kept} = job;
-    const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes},
+    const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes,
+        ...(release ? {manualRelease:{by:release.by,at:release.at,reason:release.reason,skipped:[...release.skipped]}} : {})},
       ...(replaced ? {replacedFrom:{by:replaced.by,at:replaced.at,oldSha256:replaced.oldSha256,newSha256:replaced.newSha256,verifiedAt:Date.now()}} : {})};
     // The superseded archive was written at museIntake, before this job overwrote library:muse-job:{doi}.
     // Keep supersededFrom on the done record; do not look the old task up from that single key.
@@ -4522,7 +4541,8 @@ function machineListItem(job) {
       ? {registeredSource:registration.source,section:registration.section} : {}),
     ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
     ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {}),
-    ...(museHoldDecisionValid(job.holdDecision) ? {holdDecision:job.holdDecision} : {})};
+    ...(museHoldDecisionValid(job.holdDecision) ? {holdDecision:job.holdDecision} : {}),
+    ...(job.state === 'available' && job.verification && job.verification.manualRelease ? {manualRelease:job.verification.manualRelease} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};

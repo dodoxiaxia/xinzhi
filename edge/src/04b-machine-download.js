@@ -453,7 +453,8 @@ function machineListItem(job) {
       ? {registeredSource:registration.source,section:registration.section} : {}),
     ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
     ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {}),
-    ...(museHoldDecisionValid(job.holdDecision) ? {holdDecision:job.holdDecision} : {})};
+    ...(museHoldDecisionValid(job.holdDecision) ? {holdDecision:job.holdDecision} : {}),
+    ...(job.state === 'available' && job.verification && job.verification.manualRelease ? {manualRelease:job.verification.manualRelease} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};

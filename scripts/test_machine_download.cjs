@@ -2064,6 +2064,88 @@ async function review(h, body) {
     assert.equal(afterVerifyReject.verificationReason, 'identity_mismatch');
     assert.equal(afterVerifyReject.holdDecision.action, 'release');
 
+    // 4b) Manual-release verification: only a task released through hold-review may skip the DOI-in-full-text check, and the result
+    //     records which check was skipped, by whom and why. Everything else (task, lease, file hash) stays as strict as before.
+    const MANUAL = 'dual_parser_title_manual_release';
+    const mrDoi = '10.1000/hold-manual-release-verify';
+    const mrHold = await createHoldTask(h, mrDoi, 'mr');
+    // A held task is not claimable for verification and carries no release before the decision.
+    const mrRelease = await (await holdReviewCall(h, reader, {doi:mrDoi,taskId:mrHold.job.id,action:'release',reason:'Reviewed by hand, DOI missing from text'})).json();
+    const mrClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(mrClaim.task.taskId, mrHold.job.id);
+    assert.deepEqual(Object.keys(mrClaim.task.release).sort(), ['at','by','reason','sha256','skipped']);
+    assert.equal(mrClaim.task.release.by, 'ddx');
+    assert.equal(mrClaim.task.release.sha256, mrHold.sha);
+    assert.equal(mrClaim.task.release.reason, 'Reviewed by hand, DOI missing from text');
+    assert.deepEqual(mrClaim.task.release.skipped, ['doi_in_fulltext']);
+    const mrIdentity = {action:'complete',taskId:mrClaim.task.taskId,doi:mrDoi,leaseId:mrClaim.task.leaseId,sha256:mrHold.sha,bytes:mrHold.bytes.length,pages:2};
+    // The skip must be declared exactly; a verified manual-release result without it, or with another item, is refused.
+    for (const skipped of [undefined, [], ['title'], ['doi_in_fulltext','title']]) {
+      const bad = await review(h, {...mrIdentity,result:'verified',method:MANUAL,...(skipped === undefined ? {} : {skipped})});
+      assert.equal(bad.status, 400, JSON.stringify(skipped));
+    }
+    // 'skipped' is not accepted on a normal method or on a rejection.
+    assert.equal((await review(h, {...mrIdentity,result:'verified',method:'dual_parser_all_pages_title_doi',skipped:['doi_in_fulltext']})).status, 400);
+    assert.equal((await review(h, {...mrIdentity,result:'rejected',reason:'identity_mismatch',method:MANUAL,skipped:['doi_in_fulltext']})).status, 400);
+    assert.equal(stored(h, 'library:muse-job:' + mrDoi).state, 'verifying');
+    assert.notEqual(stored(h, 'library:paper:' + mrDoi).paper.fulltextStatus, 'available');
+    const mrDone = await review(h, {...mrIdentity,result:'verified',method:MANUAL,skipped:['doi_in_fulltext']});
+    assert.equal(mrDone.status, 200);
+    const mrJob = stored(h, 'library:muse-job:' + mrDoi);
+    assert.equal(mrJob.state, 'available');
+    assert.equal(mrJob.verification.method, MANUAL);
+    assert.deepEqual(mrJob.verification.manualRelease, {by:'ddx',at:mrRelease.task.holdDecision.at,reason:'Reviewed by hand, DOI missing from text',skipped:['doi_in_fulltext']});
+    assert.equal(stored(h, 'library:paper:' + mrDoi).paper.fulltextVerification, 'manual_release');
+    const mrLib = await (await h.context.worker.fetch(new Request(base + '/api/library?doi=' + encodeURIComponent(mrDoi)), h.env)).json();
+    assert.equal(mrLib.status, 'available');
+    assert.equal(mrLib.paper.fulltextVerification, 'manual_release');
+    // A normally verified paper is not labelled.
+    assert.equal(stored(h, 'library:paper:' + relDoi).paper.fulltextVerification, undefined);
+    // Replaying the completion is idempotent and does not change the record.
+    const mrReplay = await review(h, {...mrIdentity,result:'verified',method:MANUAL,skipped:['doi_in_fulltext']});
+    assert.equal(mrReplay.status, 200);
+    assert.deepEqual(stored(h, 'library:muse-job:' + mrDoi).verification.manualRelease, mrJob.verification.manualRelease);
+
+    // The manual-release method is refused for a task that was never released (normal verifying upload) and for a tampered audit record.
+    const nrDoi = '10.1000/hold-manual-release-not-released';
+    seedPaper(h, nrDoi, holdTitle);
+    const nrBytes = paperPdf(nrDoi, holdTitle);
+    assert.equal((await upload(h, nrBytes, nrDoi, dsh)).status, 202);
+    const nrClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(nrClaim.task.doi, nrDoi);
+    assert.equal(nrClaim.task.release, undefined);
+    assert.equal((await review(h, {action:'complete',taskId:nrClaim.task.taskId,doi:nrDoi,leaseId:nrClaim.task.leaseId,sha256:hash(nrBytes),bytes:nrBytes.length,result:'verified',pages:2,method:MANUAL,skipped:['doi_in_fulltext']})).status, 400);
+    assert.equal(stored(h, 'library:muse-job:' + nrDoi).state, 'verifying');
+
+    const tamperDoi = '10.1000/hold-manual-release-tampered';
+    const tamperHold = await createHoldTask(h, tamperDoi, 'tamper');
+    assert.equal((await holdReviewCall(h, reader, {doi:tamperDoi,taskId:tamperHold.job.id,action:'release',reason:'Release then audit changed'})).status, 200);
+    const tamperAuditKey = 'library:muse-hold-audit:' + tamperHold.job.id;
+    const tamperAudit = JSON.parse(h.values.get(tamperAuditKey));
+    h.values.set(tamperAuditKey, JSON.stringify({...tamperAudit, sha256:'0'.repeat(64)}));
+    const tamperClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(tamperClaim.task.taskId, tamperHold.job.id);
+    assert.equal(tamperClaim.task.release, undefined);
+    assert.equal((await review(h, {action:'complete',taskId:tamperClaim.task.taskId,doi:tamperDoi,leaseId:tamperClaim.task.leaseId,sha256:tamperHold.sha,bytes:tamperHold.bytes.length,result:'verified',pages:2,method:MANUAL,skipped:['doi_in_fulltext']})).status, 400);
+    assert.notEqual(stored(h, 'library:paper:' + tamperDoi).paper.fulltextStatus, 'available');
+
+    // A manual-release task the verifier rejects goes back to review with its reason (title mismatch is refused even when released).
+    const mrRejDoi = '10.1000/hold-manual-release-title-reject';
+    const mrRejHold = await createHoldTask(h, mrRejDoi, 'mr-rej');
+    assert.equal((await holdReviewCall(h, reader, {doi:mrRejDoi,taskId:mrRejHold.job.id,action:'release',reason:'Release but verifier rejects the title'})).status, 200);
+    const mrRejClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(mrRejClaim.task.taskId, mrRejHold.job.id);
+    assert((await (await review(h, {action:'complete',taskId:mrRejClaim.task.taskId,doi:mrRejDoi,leaseId:mrRejClaim.task.leaseId,sha256:mrRejHold.sha,bytes:mrRejHold.bytes.length,result:'rejected',reason:'identity_mismatch',pages:2,method:MANUAL})).json()).ok);
+    assert.equal(stored(h, 'library:muse-job:' + mrRejDoi).state, 'review');
+    assert.equal(stored(h, 'library:muse-job:' + mrRejDoi).verificationReason, 'identity_mismatch');
+    assert.notEqual(stored(h, 'library:paper:' + mrRejDoi).paper.fulltextStatus, 'available');
+    // The task view (machineListItem, here via the idempotent release replay) shows the manual release on the finished task.
+    const mrView = await (await holdReviewCall(h, reader, {doi:mrDoi,taskId:mrHold.job.id,action:'release',reason:'Replay after manual verification'})).json();
+    assert.equal(mrView.idempotent, true);
+    assert.equal(mrView.task.state, 'done');
+    assert.deepEqual(mrView.task.manualRelease, mrJob.verification.manualRelease);
+    assert.equal(relAfterDone.task.manualRelease, undefined);
+
     // 5) reject: deletes candidate, job failed/identity_hold_rejected/failed-awaiting-fallback, keeps sha256 & holdDecision, idempotent replay, fallback claimable.
     h = await create();
     h.env.MACHINE_HOLD_REVIEWERS = 'ddx';

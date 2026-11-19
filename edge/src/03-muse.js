@@ -14,6 +14,9 @@ const MUSE_LEASE_MS = 1200000;
 // Terminal records (available, abandoned) are written without a TTL; see musePut.
 const MUSE_QUEUE_MS = 6 * 86400000;
 const MUSE_HOLD_TTL_SECONDS = 2592000;
+// A task released through POST /api/machine/hold-review is verified with the DOI-in-full-text check skipped and nothing else.
+const MUSE_RELEASE_METHOD = 'dual_parser_title_manual_release';
+const MUSE_RELEASE_SKIPPED = ['doi_in_fulltext'];
 // 2026-11-12 plus the agreed 30-day transition. MUSE_DOWNLOAD_RETIRE_ON overrides the displayed date only.
 const MUSE_DOWNLOAD_RETIRE_ON_DEFAULT = '2026-12-12';
 const MACHINE_CALLER_ID = /^[a-z][a-z0-9_-]{0,31}$/;
@@ -90,6 +93,15 @@ function museHoldDecisionValid(decision) {
   if (!Number.isSafeInteger(decision.at) || decision.at < 1 || decision.at >= 8640000000000000 - 28800000) return false;
   if (typeof decision.reason !== 'string' || decision.reason.trim() !== decision.reason || decision.reason.length < 4 || decision.reason.length > 500) return false;
   return true;
+}
+// The release that lets a verifier skip the DOI-in-full-text check: only a job that went through hold-review 'release', whose audit record
+// (written by that endpoint, no TTL) names the same task, DOI and file hash as the job record now holds. Anything else returns null.
+async function museReleaseProof(env, job) {
+  if (!job || job.state !== 'verifying' || !job.holdDecision || job.holdDecision.action !== 'release' || !museHoldDecisionValid(job.holdDecision)) return null;
+  const audit = await libraryGet(env.QL_KV, MUSE_HOLD_AUDIT_PREFIX + job.id);
+  if (!audit || audit.version !== 1 || audit.action !== 'release' || audit.taskId !== job.id || audit.doi !== job.doi || audit.sha256 !== job.sha256
+      || audit.by !== job.holdDecision.by || audit.at !== job.holdDecision.at || audit.reason !== job.holdDecision.reason) return null;
+  return {by:audit.by, at:audit.at, reason:audit.reason, sha256:audit.sha256, skipped:[...MUSE_RELEASE_SKIPPED]};
 }
 function museRecord(value, doi = '') {
   if (!value || value.version !== 1 || !MUSE_UUID.test(value.id || '') || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
