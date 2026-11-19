@@ -1,6 +1,6 @@
   // ==== src/app/06-reader.js · Reading drawer and public abstracts ====
   // Slide-over Reader Drawer Open/Close
-  function openReaderDrawer(paper) {
+  function openReaderDrawer(paper, { push = true, opener = document.activeElement } = {}) {
     const changedPaper = !state.activeDrawerPaper || state.activeDrawerPaper.id !== paper.id;
     hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
@@ -282,13 +282,19 @@
     if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
       try { typingEl.focus({ preventScroll: true }); if (typingSel && typingSel[0] !== null) typingEl.setSelectionRange(typingSel[0], typingSel[1]); } catch (e) { /* ignore */ }
     }
-    if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
+    if (!drawer.classList.contains('open')) {
+      lastFocus = opener;
+      if (push) pushOverlay('drawer');
+    }
     drawer.classList.add('open');
     backdrop.classList.add('open');
     if (bodyEl) bodyEl.scrollTop = changedPaper ? 0 : prevScrollTop;
-    if (changedPaper || (lastFocus && !drawer.contains(document.activeElement))) $('#drawerCloseBtn')?.focus({ preventScroll: true });
+    if (!drawer.classList.contains('reading-mode') && (changedPaper || (lastFocus && !drawer.contains(document.activeElement)))) {
+      $('#drawerCloseBtn')?.focus({ preventScroll: true });
+    }
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
+    if (drawer.classList.contains('reading-mode')) refreshReadingContent();
 
     if (!paper.weeklyPick) {
       if (!paper.hasDraft && !quicklookOf(paper) && partsReady('quicklooks', 'pregenerated')) aiApiCheck(paper);
@@ -411,7 +417,13 @@
 
   function closeReaderDrawer({ fromHistory = false } = {}) {
     if (!$('#readerDrawer.open')) return;
+    if (!fromHistory && $('#readerDrawer.reading-mode')) { closeReadingMode(); return; }
     if (!fromHistory && popOverlay('drawer')) return;
+    if ($('#readerDrawer.reading-mode')) {
+      // A shared link can open before its list row renders, and the reader can turn to another paper.
+      if (readingLinkOpenerId) lastFocus = readingListOpener(readingLinkOpenerId);
+      setReadingMode(false);
+    }
     OVERLAY_PUSHED.delete('drawer');
     if (state.activeDrawerPaper && state.activeDrawerPaper._absState === 'error') { state.activeDrawerPaper._absTries = 0; state.activeDrawerPaper._absState = ''; }
     state.activeDrawerPaper = null;
@@ -430,4 +442,3 @@
     if (restoreFocus && restoreFocus.focus) { try { restoreFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     lastFocus = null;
   }
-

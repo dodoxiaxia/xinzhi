@@ -21,10 +21,17 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import reading_priority as rp
+
 ROOT = Path(__file__).resolve().parents[1]
 SHANGHAI = dt.timezone(dt.timedelta(hours=8))
 DATA_PATH = 'data/deep-readings.json'
 LEDGER_PATH = 'data/deep-reading-ledger.json'
+BOARD_PATH = 'data/weekly-board.json'
+SEARCH_URL = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search?'
+TOPICS = ('心血管', '心血管 × AI', 'AI 医疗')
+WANTED_LIMIT, WANTED_LOOKUPS, WANTED_DAYS = 60, 40, 30
+WANTED_STATUSES = {'awaiting_oa', 'now_open', 'published', 'expired'}
 def _env_int(name, default, low, high):
     try:
         value = int(os.environ.get(name, ''))
@@ -131,6 +138,16 @@ def date_valid(value, today, days=90):
 # must reach the same verdict for a paper that was already paid for.
 SCOPE_NOT_CARDIAC = re.compile(r'lympho-?vascular|vascular invasion|vascular endothelial|portal hypertension|intracranial hypertension|ocular hypertension|heat ?stroke|chemoembol', re.I)
 SCOPE_CARDIO = re.compile(r'cardio|\bheart|cardiac|atrial|coronary|hypertensi|aort|ventric|arrhyth|fibrillation|anticoagul|myocard|blood pressure|vascular|stroke|atheroscl|dyslipid|cholesterol|\bLDL\b|thromboemb|pulmonary embol|infarct|angina|chest pain|\bECG\b|\bEKG\b|electrocardio|photoplethysmo|\bstatins?\b|valvular|\bTAV[IR]\b|\bPERT\b|pulmonary (?:arterial )?hypertension|pulmonary vascul|peripheral (?:arter|vascul)|肺栓塞|肺动脉|肺血管|主动脉|外周动脉|外周血管|卒中', re.I)
+SCOPE_EP = re.compile(
+    r'\bpacemakers?\b|\b(?:bundle branch|conduction system|leadless|his bundle) pacing\b|'
+    r'\bpulmonary veins?\b|\b(?:LAAO|Watchman|AFIB)\b|\bpercutaneous coronary intervention\b', re.I)
+SCOPE_CARDIO_CONTEXT = re.compile(r'\b(?:catheter ablation|stents?)\b|'
+                                  r'\b(?:post[- ]|after |primary )PCI\b|\bPCI (?:outcomes|recipients|versus|for)\b|'
+                                  r'\b(?:persistent|paroxysmal|nonvalvular) (?-i:AF)\b|'
+                                  r'\b(?-i:AF) (?:burden|recurrence)\b|\b(?:flow|stress) (?-i:CMR)\b', re.I)
+SCOPE_NONCARDIAC_PROCEDURE = re.compile(
+    r'tumou?r|cancer|neoplas|gallbladder|biliary|esophag|oesophag|ureter|renal|kidney|liver|hepat|thyroid|'
+    r'prostat|glaucoma|\bairway\b|\bsinus\b|intracranial', re.I)
 SCOPE_LLM = re.compile(r'large language model|language model|\bLLMs?\b|chatgpt|\bgpt-?\d|generative (?:ai|artificial)|foundation model|chatbot', re.I)
 SCOPE_AI = re.compile(r'artificial intelligence|machine learning|deep learning|neural network|\bAI\b', re.I)
 SCOPE_EVALUATION = re.compile(r'benchmark|reasoning|evaluat|assess|accuracy|performance|compar|capabilit|diagnos|validat|safety|reliab', re.I)
@@ -154,7 +171,8 @@ def deep_reading_scope(title):
     title = normalized(title or '')
     if not title:
         return ''
-    if SCOPE_CARDIO.search(SCOPE_NOT_CARDIAC.sub(' ', title)):
+    if (SCOPE_CARDIO.search(SCOPE_NOT_CARDIAC.sub(' ', title)) or SCOPE_EP.search(title) or
+            (SCOPE_CARDIO_CONTEXT.search(title) and not SCOPE_NONCARDIAC_PROCEDURE.search(title))):
         return 'cardio'
     if SCOPE_OTHER_SPECIALTY.search(title) or not MEDICAL.search(title):
         return ''
@@ -171,30 +189,77 @@ def topic_of(title, abstract=''):
     return 'AI 医疗' if scope == 'general' else ''
 
 def rank(paper, today):
-    recent = date_valid(paper['date'], today, 30)
-    text = paper['title'] + ' ' + paper.get('abstractText', '')
-    design = 3 if re.search(r'randomi[sz]ed|systematic review|meta-analysis', text, re.I) else 2 if re.search(r'prospective|external validation|multicenter', text, re.I) else 1
-    return (recent, design, paper['date'], paper['pmcid'])
+    score, _ = rp.priority(paper, paper.get('boardRank'), today=today)
+    return (score, paper['date'], paper['pmcid'])
 
-def candidate(row, today):
-    if not isinstance(row, dict) or row.get('isOpenAccess') != 'Y':
+def order_papers(papers, today):
+    return sorted((p for p in papers if paper_tier(p) >= 2),
+                  key=lambda p: rank(p, today), reverse=True)
+
+
+def pmid(value):
+    value = str(value or '')
+    return value if re.fullmatch(r'[1-9]\d*', value) else ''
+
+def lookup_keys(paper):
+    return tuple(k for k in (doi(paper.get('doi')), pmid(paper.get('pmid'))) if k)
+
+def read_board_ranks(path):
+    ranks = {}
+    try:
+        items = read(path, {}).get('items')
+        if not isinstance(items, list):
+            return {}
+        for item in items:
+            position = item.get('rank')
+            if type(position) is not int or position < 1 or not lookup_keys(item):
+                return {}
+            for key in lookup_keys(item):
+                ranks[key] = min(position, ranks.get(key, position))
+    except (OSError, ValueError, AttributeError, TypeError):
+        return {}
+    return ranks
+
+def paper_tier(paper):
+    return rp.journal_tier(paper['journal'], paper['doi'], issns=paper.get('issns', ()))
+
+def candidate_row(row, today):
+    if not isinstance(row, dict):
         return None
-    title = normalized(row.get('title', ''))
-    pubtypes = (row.get('pubTypeList') or {}).get('pubType', [])
+    title = normalized(row.get('title') or '')
+    types = row.get('pubTypeList')
+    pubtypes = types.get('pubType', []) if isinstance(types, dict) else []
     if isinstance(pubtypes, str):
         pubtypes = [pubtypes]
-    if EXCLUDED.search(title + ' ' + ' '.join(pubtypes)):
+    pubtypes = [p for p in pubtypes if isinstance(p, str)] if isinstance(pubtypes, list) else []
+    if EXCLUDED.search(title + ' ' + ' '.join(pubtypes)) or rp.article_type(pubtypes, title) == 'minor':
         return None
-    if not re.fullmatch(r'PMC\d+', str(row.get('pmcid', ''))) or not date_valid(row.get('firstPublicationDate'), today):
+    if not date_valid(row.get('firstPublicationDate'), today):
         return None
-    abstract = normalized(re.sub(r'<[^>]*>', ' ', row.get('abstractText') or ''))
+    abstract = normalized(re.sub(r'<[^>]*>', ' ', str(row.get('abstractText') or '')))
     topic = topic_of(title, abstract)
-    if not topic or not title:
+    if not topic:
         return None
-    journal = ((row.get('journalInfo') or {}).get('journal') or {}).get('title', '')
-    return {'title': title, 'journal': normalized(journal), 'date': row['firstPublicationDate'],
-            'doi': doi(row.get('doi')), 'pmid': str(row.get('id') or '') if row.get('source') == 'MED' else '',
-            'pmcid': row['pmcid'], 'topic': topic, 'abstractText': abstract}
+    info = row.get('journalInfo')
+    journal = info.get('journal') if isinstance(info, dict) else None
+    journal = journal if isinstance(journal, dict) else {}
+    issns = [i for k in ('issn', 'essn') if isinstance(i := journal.get(k), str) and i]
+    pmcid = row.get('pmcid')
+    pmcid = pmcid if isinstance(pmcid, str) and re.fullmatch(r'PMC\d+', pmcid) else ''
+    paper = {'title': title, 'journal': normalized(journal.get('title') or row.get('journalTitle') or ''),
+             'date': row['firstPublicationDate'], 'doi': doi(row.get('doi')),
+             'pmid': pmid(row.get('pmid') or (row.get('id') if row.get('source') == 'MED' else '')),
+             'pmcid': pmcid, 'open': bool(pmcid and row.get('isOpenAccess') == 'Y'), 'topic': topic,
+             'oaReported': row.get('isOpenAccess') == 'Y',
+             'abstractText': abstract, 'pubTypes': pubtypes, 'issns': issns}
+    return paper if pmcid or lookup_keys(paper) else None
+
+def is_readable(paper):
+    return paper.get('open') is True and bool(re.fullmatch(r'PMC\d+', paper.get('pmcid') or ''))
+
+def candidate(row, today):
+    paper = candidate_row(row, today)
+    return paper if paper and is_readable(paper) else None
 
 def fetch_bytes(url, maximum=8_000_000):
     request = urllib.request.Request(url, headers={'User-Agent': 'XinZhi/1.0 (public full-text learning)'})
@@ -207,7 +272,66 @@ def fetch_bytes(url, maximum=8_000_000):
         raise ReadingError('source_too_large')
     return data
 
-def discover(today, fetch=fetch_bytes):
+def search_page(fetch, query, *, size=100, cursor=None):
+    params = {'query': query, 'format': 'json', 'resultType': 'core', 'pageSize': size, 'sort': 'FIRST_PDATE_D desc'}
+    if cursor is not None:
+        params['cursorMark'] = cursor
+    result = json.loads(fetch(SEARCH_URL + urllib.parse.urlencode(params), 8_000_000))
+    rows = result['resultList']['result']
+    if not isinstance(rows, list):
+        raise ValueError('invalid_search_results')
+    return rows, result.get('nextCursorMark')
+
+def can_query(deadline):
+    return deadline is None or time.monotonic() + 25 + 160 < deadline
+
+def matching_wanted(entries, paper):
+    keys = set(lookup_keys(paper))
+    return [e for e in entries if keys.intersection(lookup_keys(e))]
+
+def track_wanted(entries, paper, today, missing_reason=''):
+    tier, readable = paper_tier(paper), is_readable(paper)
+    if tier < 2 or not lookup_keys(paper):
+        return
+    matches = matching_wanted(entries, paper)
+    if not matches and readable and not missing_reason:
+        return
+    day = today.isoformat()
+    first = min(matches, key=lambda e: e['firstSeen']) if matches else None
+    if any(e['status'] in ('expired', 'published') for e in matches):
+        return
+    if not readable and any(e['downloadRoute'] == 'publisher_oa' and e['lastChecked'] == day for e in matches):
+        return
+    reported_oa = readable or paper.get('oaReported', False)
+    reason = ('pmcid_missing' if reported_oa else 'open_access_unconfirmed')
+    if readable:
+        reason = missing_reason or 'fulltext_not_verified'
+    score, reasons = rp.priority(paper, paper.get('boardRank'), today=today)
+    doi_value = paper['doi'] or next((e['doi'] for e in matches if e['doi']), '')
+    pmid_value = paper['pmid'] or next((e['pmid'] for e in matches if e['pmid']), '')
+    entries[:] = [e for e in entries if e not in matches]
+    entries.append({
+        'identity': doi_value or 'PMID:' + pmid_value, 'doi': doi_value, 'pmid': pmid_value,
+        'title': paper['title'], 'journal': paper['journal'], 'journalTier': tier,
+        'date': paper['date'], 'score': score, 'reasons': reasons,
+        'source': 'board' if paper.get('boardRank') or any(e['source'] == 'board' for e in matches) else 'epmc-not-oa',
+        'firstSeen': first['firstSeen'] if first else day, 'lastChecked': day,
+        'status': 'now_open' if readable and not missing_reason else 'awaiting_oa',
+        'missingReason': reason,
+        'downloadRoute': 'publisher_oa' if reported_oa else 'manual',
+    })
+
+def bounded_wanted(entries):
+    return sorted(entries, key=lambda e: (e['status'] in ('awaiting_oa', 'now_open'),
+                                          e['score'], e['date'], e['identity']), reverse=True)[:WANTED_LIMIT]
+
+def mark_wanted_published(data, papers):
+    for paper in papers:
+        for entry in matching_wanted(data.get('wanted', ()), paper):
+            entry['status'] = 'published'
+            entry['missingReason'] = ''
+
+def discover(today, fetch=fetch_bytes, *, data=None, board=None, deadline=None):
     start = (today - dt.timedelta(days=89)).isoformat()
     queries = [
         '(TITLE_ABS:cardiovascular OR TITLE_ABS:heart OR TITLE_ABS:atrial OR TITLE_ABS:coronary OR TITLE_ABS:hypertension)',
@@ -217,23 +341,92 @@ def discover(today, fetch=fetch_bytes):
         '((TITLE:"large language model" OR TITLE:"large language models" OR TITLE:LLM OR TITLE:ChatGPT OR TITLE:"artificial intelligence") AND (TITLE:benchmark OR TITLE:"clinical reasoning" OR TITLE:evaluation OR TITLE:"clinical trial" OR TITLE:"clinical trials" OR TITLE:methodology OR TITLE:"reporting guideline") AND (TITLE:clinical OR TITLE:medical OR TITLE:diagnosis OR TITLE:diagnostic))',
     ]
     papers, seen, errors = [], set(), []
-    for q in queries:
-        query = 'OPEN_ACCESS:Y AND FIRST_PDATE:[' + start + ' TO ' + today.isoformat() + '] AND ' + q
-        url = 'https://www.ebi.ac.uk/europepmc/webservices/rest/search?' + urllib.parse.urlencode(
-            {'query': query, 'format': 'json', 'resultType': 'core', 'pageSize': 100, 'sort': 'FIRST_PDATE_D desc'})
+    board = board or {}
+    wanted = data.get('wanted', []) if data is not None else []
+    day = today.isoformat()
+    for entry in wanted:
+        if entry['status'] != 'published' and (today - dt.date.fromisoformat(entry['firstSeen'])).days >= WANTED_DAYS:
+            entry['status'] = 'expired'
+
+    def read_page(query, **params):
         try:
-            response = json.loads(fetch(url, 8_000_000))
-            rows = response['resultList']['result']
-            if not isinstance(rows, list):
-                raise ValueError()
-            for row in rows:
-                p = candidate(row, today)
-                if p and identity(p) not in seen:
-                    seen.add(identity(p))
-                    papers.append(p)
-        except (ReadingError, ValueError, TypeError, KeyError):
+            return search_page(fetch, query, **params)
+        except (ReadingError, ValueError, TypeError, KeyError, AttributeError):
             errors.append('discovery_unavailable')
-    return sorted(papers, key=lambda p: rank(p, today), reverse=True), errors
+            return [], None
+
+    def parse(rows):
+        for row in rows:
+            p = candidate_row(row, today)
+            if p and paper_tier(p) >= 2:
+                p['boardRank'] = min((board[k] for k in lookup_keys(p) if k in board), default=None)
+                yield p
+
+    def add(p):
+        keys = set(lookup_keys(p))
+        if p['pmcid']:
+            keys.add(p['pmcid'])
+        if not keys.intersection(seen):
+            papers.append(p)
+        seen.update(keys)
+
+    for q in queries:
+        query = 'OPEN_ACCESS:Y AND FIRST_PDATE:[' + start + ' TO ' + day + '] AND ' + q
+        rows, _ = read_page(query)
+        for paper in parse(rows):
+            if is_readable(paper):
+                add(paper)
+            if data is not None:
+                track_wanted(wanted, paper, today)
+
+    recent = (today - dt.timedelta(days=13)).isoformat()
+    journal_query = ('FIRST_PDATE:[' + recent + ' TO ' + day + '] AND (' +
+                     ' OR '.join('ISSN:' + issn for issn in rp.PRIORITY_ISSNS) + ')')
+    cursor = '*'
+    for _ in range(2):
+        if not can_query(deadline):
+            break
+        rows, next_cursor = read_page(journal_query, cursor=cursor)
+        for paper in parse(rows):
+            if paper['date'] < recent:
+                continue
+            if is_readable(paper):
+                add(paper)
+            if data is not None:
+                track_wanted(wanted, paper, today)
+        if not rows or not isinstance(next_cursor, str) or not next_cursor or next_cursor == cursor:
+            break
+        cursor = next_cursor
+
+    if data is not None:
+        budget = data.get('wantedLookup', {})
+        used = budget.get('count', 0) if budget.get('day') == day else 0
+        active = sorted((e for e in wanted if e['status'] in ('awaiting_oa', 'now_open') and e['lastChecked'] < day),
+                        key=lambda e: (e['lastChecked'], -e['score'], e['identity']))
+        for entry in active:
+            if used >= WANTED_LOOKUPS:
+                break
+            if not can_query(deadline):
+                break
+            if entry not in wanted:
+                continue
+            query = ('DOI:' + json.dumps(entry['doi'], ensure_ascii=False) if entry['doi']
+                     else f'EXT_ID:{entry["pmid"]} AND SRC:MED')
+            used += 1
+            rows, _ = read_page(query, size=5)
+            matches = [p for p in parse(rows) if set(lookup_keys(p)).intersection(lookup_keys(entry))]
+            if matches:
+                paper = max(matches, key=is_readable)
+                if is_readable(paper):
+                    add(paper)
+                track_wanted(wanted, paper, today)
+            entry['lastChecked'] = day
+        if used:
+            data['wantedLookup'] = {'day': day, 'count': used}
+        mark_wanted_published({'wanted': wanted}, data['items'])
+        # An active request has precedence over history, then retain the highest quality.
+        data['wanted'] = bounded_wanted(wanted)
+    return order_papers(papers, today), sorted(set(errors))
 
 def parse_fulltext(raw, paper):
     try:
@@ -462,6 +655,15 @@ class StateCheckpoint:
             raise ReadingError('checkpoint_invalid_ref')
         return value['object']['sha']
 
+    def private_state(self):
+        try:
+            status, repo = self.transport('GET', self.prefix, None)
+            if status == 200 and type(repo.get('private')) is bool:
+                return repo['private'] and repo.get('visibility', 'private') == 'private'
+        except Exception:
+            pass
+        return None
+
     def save(self, data, ledger):
         try:
             if self.ref() != self.head:
@@ -520,6 +722,12 @@ def check_store(data, ledger):
         raise ReadingError('invalid_reading_store')
     if not isinstance(ledger, dict) or ledger.get('schemaVersion') != 1 or not isinstance(ledger.get('days'), dict):
         raise ReadingError('invalid_reading_ledger')
+    check_wanted(data.get('wanted', []))
+    if 'wantedLookup' in data:
+        lookup = data['wantedLookup']
+        if (not isinstance(lookup, dict) or type(lookup.get('count')) is not int or not 1 <= lookup['count'] <= WANTED_LOOKUPS
+                or not isinstance(lookup.get('day'), str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', lookup['day'])):
+            raise ReadingError('invalid_wanted_list')
     seen = set()
     for item in data['items']:
         key = identity(item)
@@ -544,6 +752,33 @@ def check_store(data, ledger):
             if not isinstance(row, dict) or not row.get('identity') or row['identity'] in ids or row.get('state') not in ('started', 'validated', 'invalid', 'failed'):
                 raise ReadingError('invalid_reading_ledger')
             ids.add(row['identity'])
+
+def check_wanted(entries):
+    error = 'invalid_wanted_list'
+    if not isinstance(entries, list) or len(entries) > WANTED_LIMIT:
+        raise ReadingError(error)
+    strings = ('identity', 'doi', 'pmid', 'title', 'journal', 'date', 'firstSeen', 'lastChecked', 'status', 'source',
+               'missingReason', 'downloadRoute')
+    seen = set()
+    for entry in entries:
+        if not isinstance(entry, dict) or any(not isinstance(entry.get(k), str) for k in strings):
+            raise ReadingError(error)
+        keys = lookup_keys(entry)
+        if (not keys or seen.intersection(keys) or entry['doi'] != doi(entry['doi']) or entry['pmid'] != pmid(entry['pmid']) or
+                entry['identity'] != (entry['doi'] or 'PMID:' + entry['pmid']) or not entry['title'] or
+                entry['status'] not in WANTED_STATUSES or entry['source'] not in ('epmc-not-oa', 'board') or
+                entry['downloadRoute'] not in ('publisher_oa', 'manual') or
+                type(entry.get('journalTier')) is not int or not 2 <= entry['journalTier'] <= 3 or
+                type(entry.get('score')) is not int or entry['score'] < 0 or not isinstance(entry.get('reasons'), list) or
+                any(not isinstance(reason, str) for reason in entry['reasons'])):
+            raise ReadingError(error)
+        try:
+            published, first, checked = (dt.date.fromisoformat(entry[k]) for k in ('date', 'firstSeen', 'lastChecked'))
+            if not (published <= checked and first <= checked):
+                raise ValueError()
+        except ValueError:
+            raise ReadingError(error) from None
+        seen.update(keys)
 
 def make_item(paper, result, paragraphs, source_hash, when, generated_at=None):
     used = {e['paragraph'] for block in result['sections'].values() for e in block['evidence']}
@@ -579,6 +814,7 @@ def recover_drafts(data, ledger, when, save):
             continue
         item = make_item(draft['paper'], result, draft['sourceParagraphs'], draft['sourceHash'], when, draft['createdAt'])
         data['items'].append(item)
+        mark_wanted_published(data, (item,))
         data['drafts'].pop(key)
         request.update(state='validated', recoveredWithoutModel=True, **({'repairedWithoutModel': True} if repaired else {}))
         seen.add(key)
@@ -614,6 +850,17 @@ def generation_state(published, reason):
     """No minimum count: only a real generation error leaves a day waiting/partial."""
     return ('partial' if published else 'waiting') if generation_failed(reason) else 'complete'
 
+def diversity_order(pending, published):
+    """Apply the topic limits to successful publications, not attempts."""
+    while pending and len(published) < TARGET:
+        counts = {topic: sum(p['topic'] == topic for p in published) for topic in TOPICS}
+        ai_needed = min(2, TARGET) - counts['AI 医疗']
+        ai = [p for p in pending if p['topic'] == 'AI 医疗'] if ai_needed >= TARGET - len(published) else []
+        eligible = ai or [p for p in pending if counts[p['topic']] < 8] or pending
+        paper = eligible[0]
+        pending.remove(paper)
+        yield paper
+
 def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=call_model, deadline=None):
     check_store(data, ledger)
     today, day = when.astimezone(SHANGHAI).date(), day_of(when)
@@ -626,15 +873,8 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
     attempted = {p['identity'] for p in rows}
     # A source that already failed validation on an earlier day would only spend the budget again.
     attempted |= {r['identity'] for d, old in ledger['days'].items() if d < day for r in old if r['state'] == 'invalid'}
-    pending = [p for p in papers if p.get('topic') in ('心血管', '心血管 × AI', 'AI 医疗') and deep_reading_scope(p.get('title')) and identity(p) not in seen and p.get('pmcid') not in seen_pmcids and identity(p) not in attempted]
-    # Round-robin topics before falling back, so one theme does not occupy the entire day.
-    ordered = []
-    while pending:
-        for topic in ('心血管', '心血管 × AI', 'AI 医疗'):
-            p = next((p for p in pending if p['topic'] == topic), None)
-            if p:
-                pending.remove(p)
-                ordered.append(p)
+    pending = [p for p in papers if is_readable(p) and p.get('topic') in TOPICS and deep_reading_scope(p.get('title')) and identity(p) not in seen and p.get('pmcid') not in seen_pmcids and identity(p) not in attempted]
+    ordered = diversity_order(order_papers(pending, today), published)
     errors, fetched, stopped = [], 0, None
     if any(r['state'] == 'started' for r in rows):
         stopped = 'prior_attempt_uncertain'
@@ -652,6 +892,9 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
             paragraphs, source_hash = parse_fulltext(fetch('https://www.ebi.ac.uk/europepmc/webservices/rest/' + paper['pmcid'] + '/fullTextXML'), paper)
         except ReadingError as e:
             errors.append(e.code)
+            if 'wanted' in data:
+                track_wanted(data['wanted'], paper, today, e.code)
+                data['wanted'] = bounded_wanted(data['wanted'])
             continue
         # Local preparation happens before the reservation: a processing error here must not
         # leave a 'started' row that blocks the rest of the day as an uncertain paid attempt.
@@ -668,6 +911,7 @@ def generate(data, ledger, papers, when, save, cfg, fetch=fetch_bytes, model=cal
             item = make_item(paper, result, paragraphs, source_hash, when)
             data['items'].append(item)
             published.append(item)
+            mark_wanted_published(data, (item,))
             reservation['state'] = 'validated'
             if repaired:
                 reservation['repairedWithoutModel'] = True
@@ -775,10 +1019,17 @@ def recover_only(data, ledger, when):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--run', action='store_true', help='actual, checkpointed update using existing CI credentials')
-    parser.add_argument('--recover', action='store_true', help='model-free: publish stored drafts that now validate or repair')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--run', action='store_true', help='actual, checkpointed update using existing CI credentials')
+    mode.add_argument('--recover', action='store_true', help='model-free: publish stored drafts that now validate or repair')
+    mode.add_argument('--wanted', action='store_true', help='offline: print only the private wanted list from local state')
     args = parser.parse_args()
     data = read(ROOT / DATA_PATH, empty_data())
+    if args.wanted:
+        wanted = data.get('wanted', [])
+        check_wanted(wanted)
+        print(json.dumps(wanted, ensure_ascii=False))
+        return 0
     ledger = read(ROOT / LEDGER_PATH, empty_ledger())
     check_store(data, ledger)
     if args.recover and not args.run:
@@ -793,15 +1044,24 @@ def main():
         return 0
     try:
         writer = checkpoint(ROOT)
+        private = writer.private_state()
+        if private is None and (data.get('wanted') or data.get('wantedLookup')):
+            print(json.dumps({'reason': 'wanted_state_visibility_unconfirmed'}))
+            return 1
+        if private is not True:
+            data.pop('wanted', None)
+            data.pop('wantedLookup', None)
         resolutions = read(ROOT / RESOLUTIONS_PATH, {'entries': []}).get('entries', [])
         if apply_resolutions(ledger, resolutions):
             writer.save(data, ledger)
         recovered = recover_drafts(data, ledger, when, writer.save)
+        deadline = step_deadline()
+        papers, errors = discover(when.astimezone(SHANGHAI).date(), data=data if private is True else None,
+                                  board=read_board_ranks(ROOT / BOARD_PATH), deadline=deadline)
         cfg = model_config()
-        papers, errors = discover(when.astimezone(SHANGHAI).date())
-        result = generate(data, ledger, papers, when, writer.save, cfg, deadline=step_deadline())
+        result = generate(data, ledger, papers, when, writer.save, cfg, deadline=deadline)
         result['recoveredDrafts'] = recovered
-        print(json.dumps(result, ensure_ascii=False))
+        print(json.dumps(dict(result, discoveryErrors=errors), ensure_ascii=False))
         # Fewer readings, even none, is a normal outcome when few papers are in scope; only a real error fails.
         return 1 if generation_failed(result['reason']) else 0
     except ReadingError as e:

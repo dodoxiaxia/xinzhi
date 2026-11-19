@@ -3330,7 +3330,7 @@
   let lastFocus = null;
   // ==== src/app/06-reader.js · Reading drawer and public abstracts ====
   // Slide-over Reader Drawer Open/Close
-  function openReaderDrawer(paper) {
+  function openReaderDrawer(paper, { push = true, opener = document.activeElement } = {}) {
     const changedPaper = !state.activeDrawerPaper || state.activeDrawerPaper.id !== paper.id;
     hydratePreGenerated(paper);
     state.activeDrawerPaper = paper;
@@ -3612,13 +3612,19 @@
     if (typeof typingEl !== 'undefined' && typingEl && typingEl.isConnected && !typingEl.disabled && !typingEl.closest('[hidden]')) {
       try { typingEl.focus({ preventScroll: true }); if (typingSel && typingSel[0] !== null) typingEl.setSelectionRange(typingSel[0], typingSel[1]); } catch (e) { /* ignore */ }
     }
-    if (!drawer.classList.contains('open')) { lastFocus = document.activeElement; pushOverlay('drawer'); }
+    if (!drawer.classList.contains('open')) {
+      lastFocus = opener;
+      if (push) pushOverlay('drawer');
+    }
     drawer.classList.add('open');
     backdrop.classList.add('open');
     if (bodyEl) bodyEl.scrollTop = changedPaper ? 0 : prevScrollTop;
-    if (changedPaper || (lastFocus && !drawer.contains(document.activeElement))) $('#drawerCloseBtn')?.focus({ preventScroll: true });
+    if (!drawer.classList.contains('reading-mode') && (changedPaper || (lastFocus && !drawer.contains(document.activeElement)))) {
+      $('#drawerCloseBtn')?.focus({ preventScroll: true });
+    }
     document.body.classList.add('dialog-open');
     drawer.setAttribute('aria-hidden','false');
+    if (drawer.classList.contains('reading-mode')) refreshReadingContent();
 
     if (!paper.weeklyPick) {
       if (!paper.hasDraft && !quicklookOf(paper) && partsReady('quicklooks', 'pregenerated')) aiApiCheck(paper);
@@ -3741,7 +3747,13 @@
 
   function closeReaderDrawer({ fromHistory = false } = {}) {
     if (!$('#readerDrawer.open')) return;
+    if (!fromHistory && $('#readerDrawer.reading-mode')) { closeReadingMode(); return; }
     if (!fromHistory && popOverlay('drawer')) return;
+    if ($('#readerDrawer.reading-mode')) {
+      // A shared link can open before its list row renders, and the reader can turn to another paper.
+      if (readingLinkOpenerId) lastFocus = readingListOpener(readingLinkOpenerId);
+      setReadingMode(false);
+    }
     OVERLAY_PUSHED.delete('drawer');
     if (state.activeDrawerPaper && state.activeDrawerPaper._absState === 'error') { state.activeDrawerPaper._absTries = 0; state.activeDrawerPaper._absState = ''; }
     state.activeDrawerPaper = null;
@@ -3760,7 +3772,324 @@
     if (restoreFocus && restoreFocus.focus) { try { restoreFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
     lastFocus = null;
   }
+  // ==== src/app/06b-reading-mode.js · Expanded reading, filtered sequence and shareable URLs ====
+  function parseReadingPaper(search) {
+    const ids = new URLSearchParams(search).getAll('paper');
+    if (!ids.length) return undefined;
+    const id = ids[0];
+    return ids.length === 1 && id.length <= 160 && /^[a-z0-9]/i.test(id) && !/[^a-z0-9._:-]/i.test(id) ? id : null;
+  }
 
+  function hasReadingLink() {
+    return parseReadingPaper(location.search) !== undefined;
+  }
+
+  function readingUnderlyingDeepId() {
+    const params = new URLSearchParams(location.search);
+    return params.get('mode') === 'weekly' && params.get('read');
+  }
+
+  function readingNeighbors(papers, id) {
+    const index = papers.findIndex(paper => paper.id === id);
+    return index < 0 ? null : {
+      position: index + 1,
+      total: papers.length,
+      previous: papers[index - 1] || null,
+      next: papers[index + 1] || null
+    };
+  }
+
+  let readingReturn = null;
+  let readingLinkOpenerId = null;
+  let pendingReadingLink = null;
+  let readingRefreshFrame = 0;
+  const readingPaperParts = ['feeds', 'radar', 'library'];
+
+  function writeReadingPaper(id, entry = history.state) {
+    try {
+      const url = new URL(location.href);
+      if (id) url.searchParams.set('paper', id);
+      else url.searchParams.delete('paper');
+      history.replaceState(entry, '', url.href);
+    } catch (error) { /* sandboxed history */ }
+  }
+
+  function pushReadingHistory(id, drawerReturn) {
+    pushOverlay('reading');
+    const entry = history.state;
+    writeReadingPaper(id, entry?.overlay === 'reading' ? { ...entry, readingDrawer: drawerReturn } : entry);
+  }
+
+  function setReadingMode(active, drawerReturn = null) {
+    const drawer = $('#readerDrawer');
+    const star = $('#drawerHuddleToggleBtn');
+    const footer = drawer.querySelector('.drawer-footer');
+    const toolbar = $('#readingToolbar');
+    readingReturn = drawerReturn;
+    if (!active) readingLinkOpenerId = null;
+    drawer.classList.toggle('reading-mode', active);
+    drawer.setAttribute('aria-label', active ? '阅读模式' : '文献阅读台');
+    ['#drawerExpandBtn', '#drawerCloseBtn'].forEach(selector => { $(selector).hidden = active; });
+    [toolbar, $('#readingToc'), $('#readingProgress')].forEach(el => { el.hidden = !active; });
+    $('#readingBackBtn').setAttribute('aria-label', drawerReturn ? '返回阅读面板' : '返回列表');
+    $('#readingTocToggle').setAttribute('aria-expanded', 'false');
+    if (active) toolbar.append(star);
+    else footer.insertBefore(star, $('#drawerExternalLink'));
+  }
+
+  function expandReadingMode() {
+    const paper = state.activeDrawerPaper;
+    if (!paper || $('#readerDrawer.reading-mode')) return;
+    pendingReadingLink = null;
+    const drawerReturn = { id: paper.id, top: $('#drawerBody').scrollTop };
+    if (history.state?.overlay === 'drawer') writeReadingPaper(null, { ...history.state, readingDrawer: drawerReturn });
+    pushReadingHistory(paper.id, drawerReturn);
+    setReadingMode(true, drawerReturn);
+    $('#drawerBody').scrollTop = 0;
+    refreshReadingContent();
+    syncReadingNeighbors();
+    $('#readingBackBtn').focus({ preventScroll: true });
+  }
+
+  function readingListOpener(id) {
+    return [...document.querySelectorAll('[data-action="open-drawer"]')]
+      .find(el => el.dataset.paperId === id && el.getClientRects().length)
+      || $('.nav-tab-btn.active') || $('#sourceStatusBtn');
+  }
+
+  function restoreReadingDrawer(drawerReturn) {
+    if ($('#readerDrawer.reading-mode')) setReadingMode(false);
+    const paper = allPapersMap.get(drawerReturn.id);
+    if (paper && (!$('#readerDrawer.open') || state.activeDrawerPaper?.id !== paper.id)) {
+      openReaderDrawer(paper, { push: false, opener: readingListOpener(paper.id) });
+    }
+    if (history.state?.overlay === 'drawer') OVERLAY_PUSHED.add('drawer');
+    $('#drawerBody').scrollTop = drawerReturn.top;
+    $('#drawerExpandBtn').focus({ preventScroll: true });
+  }
+
+  function closeReadingMode() {
+    if (popOverlay('reading')) return;
+    writeReadingPaper(null);
+    if (readingReturn) restoreReadingDrawer(readingReturn);
+    else closeReaderDrawer({ fromHistory: true });
+  }
+
+  function restoreReadingHistory(entry) {
+    pendingReadingLink = null;
+    if (entry.overlay === 'reading') {
+      openReadingLink(entry);
+      return true;
+    }
+    OVERLAY_PUSHED.delete('reading');
+    if (entry.overlay === 'drawer' && entry.readingDrawer) {
+      if (!$('#readerDrawer.open') || $('#readerDrawer.reading-mode')) restoreReadingDrawer(entry.readingDrawer);
+      return true;
+    }
+    return false;
+  }
+
+  function openReadingLink(entry = history.state || {}) {
+    const id = parseReadingPaper(location.search);
+    if (id === undefined) return;
+    const restore = entry.overlay === 'reading';
+    if (id === null) {
+      writeReadingPaper(null, restore ? null : history.state);
+      showToast('没有找到这篇文献');
+      return;
+    }
+    pendingReadingLink = { id, restore, drawerReturn: restore ? entry.readingDrawer : null };
+    if (id.startsWith('doi-')) SUPPLEMENTAL_LIBRARY.promise?.then(scheduleReadingRefresh);
+    resolveReadingLink();
+  }
+
+  function resolveReadingLink() {
+    if (!pendingReadingLink) return;
+    const { id, restore, drawerReturn } = pendingReadingLink;
+    const paper = allPapersMap.get(id);
+    if (paper && state.mode === 'weekly' && urlParams.has('read') && !activeDeepReadingId && partsPending('readings')) {
+      prioritizeParts();
+      return;
+    }
+    if (!paper && (partsPending(...readingPaperParts) || RADAR_LOAD.state === 'loading'
+      || (id.startsWith('doi-') && SUPPLEMENTAL_LIBRARY.promise))) {
+      prioritizeParts();
+      return;
+    }
+    pendingReadingLink = null;
+    if (!paper) {
+      writeReadingPaper(null, restore ? null : history.state);
+      showToast('没有找到这篇文献');
+      return;
+    }
+    if (!restore) {
+      // Give a direct link a clean list entry underneath the reading entry.
+      writeReadingPaper(null);
+      pushReadingHistory(id, null);
+    } else {
+      OVERLAY_PUSHED.add('reading');
+    }
+    if ($('#readerDrawer.reading-mode') && state.activeDrawerPaper?.id === id) return;
+    const alreadyOpen = $('#readerDrawer.open');
+    if (!alreadyOpen && !drawerReturn) readingLinkOpenerId = id;
+    openReaderDrawer(paper, { push: false, opener: readingListOpener(drawerReturn?.id || id) });
+    setReadingMode(true, drawerReturn);
+    if (!alreadyOpen) $('#drawerBody').scrollTop = 0;
+    refreshReadingContent();
+    syncReadingNeighbors();
+    $('#readingBackBtn').focus({ preventScroll: true });
+  }
+
+  function currentReadingNeighbors() {
+    const id = state.activeDrawerPaper.id;
+    if (state.mode !== 'weekly' || exactDoi(state.search)) return readingNeighbors(getFilteredArticles(), id);
+    // The rendered board already applies its own filters, category and group order.
+    const board = $('#weeklyAuto');
+    if (!board?.getClientRects().length) return null;
+    const papers = Array.from(board.querySelectorAll('.weekly-auto-item[data-paper-id]'),
+      item => allPapersMap.get(item.dataset.paperId)).filter(Boolean);
+    return readingNeighbors(papers, id);
+  }
+
+  function syncReadingNeighbors() {
+    const neighbors = currentReadingNeighbors();
+    $('#readingNeighbors').hidden = !neighbors;
+    $('#readingPrevBtn').disabled = !neighbors?.previous;
+    $('#readingNextBtn').disabled = !neighbors?.next;
+    const position = neighbors ? '第 ' + neighbors.position + ' / 共 ' + neighbors.total + ' 篇' : '';
+    if ($('#readingPosition').textContent !== position) $('#readingPosition').textContent = position;
+    if (document.activeElement?.closest('#readingNeighbors') && (!neighbors || document.activeElement.disabled)) {
+      $('#readingBackBtn').focus({ preventScroll: true });
+    }
+  }
+
+  function turnReadingPage(direction) {
+    const paper = currentReadingNeighbors()?.[direction];
+    if (!paper) return;
+    $('#readingTocToggle').setAttribute('aria-expanded', 'false');
+    openReaderDrawer(paper);
+    writeReadingPaper(paper.id);
+    syncReadingNeighbors();
+    $('#readingBackBtn').focus({ preventScroll: true });
+  }
+
+  function readingRegion(key) {
+    return $('#drawerBody [data-drawer-region="' + key + '"]');
+  }
+
+  function setReadingNote(parent, text) {
+    let note = parent?.querySelector(':scope > .reading-content-note');
+    if (text && !note && parent) {
+      note = document.createElement('p');
+      note.className = 'reading-content-note';
+      parent.prepend(note);
+    }
+    if (note) {
+      if (text && note.textContent !== text) note.textContent = text;
+      note.hidden = !text;
+    }
+  }
+
+  function refreshReadingContent() {
+    const paper = state.activeDrawerPaper;
+    const view = fulltextState(paper);
+    const hasText = !!(paper.summary?.trim() || paper.abstractSections?.some(section => section?.text?.trim()));
+    const rssDescription = hasText && !paper._absFetched && !paper.weeklyPick
+      && (paper.abstractSource === 'RSS' || (!paper.abstractSource && /^RSS\b/i.test(paper.basis || '')));
+    const fulltextUnavailable = ['none', 'review', 'failed'].includes(view.kind);
+    const abstractPending = partsPending('quicklooks', 'pregenerated') || paper._absState === 'loading';
+    const abstractFailed = paper._absState === 'error'
+      || (DEFERRED && ['quicklooks', 'pregenerated'].some(name => PART_STATE[name] === 'error'));
+    const unconfirmed = !paper._absFetched && ['unverified', 'non_abstract_metadata'].includes(paper.abstractStatus);
+    let note = '';
+    if (rssDescription) note = 'RSS 短讯，非完整公开摘要';
+    else if (hasText && unconfirmed) note = '公开摘要暂不可确认';
+    else if (hasText && fulltextUnavailable) note = '仅摘要';
+    else if (!hasText && !abstractPending && !abstractFailed) note = '暂无摘要';
+    setReadingNote(readingRegion('abstract')?.querySelector('.abstract-reader'), note);
+    setReadingNote($('#drawerFulltext'), fulltextUnavailable ? '全文不可得' : '');
+
+    $('#readingTocNav').querySelectorAll('[data-reading-region]').forEach(button => {
+      const region = readingRegion(button.dataset.readingRegion);
+      button.hidden = !region;
+      if (!region) return;
+      region.id = 'reading-section-' + button.dataset.readingRegion;
+      button.setAttribute('aria-controls', region.id);
+    });
+    syncReadingProgress();
+    scheduleReadingRefresh();
+  }
+
+  function syncReadingProgress() {
+    if (!$('#readerDrawer.reading-mode')) return;
+    const body = $('#drawerBody');
+    const max = body.scrollHeight - body.clientHeight;
+    const progress = max > 0 ? Math.round(100 * body.scrollTop / max) : 100;
+    $('#readingProgress').value = progress;
+    const buttons = [...$('#readingTocNav').querySelectorAll('button:not([hidden])')];
+    const top = body.getBoundingClientRect().top + 20;
+    const current = progress === 100 && max > 0 ? buttons.at(-1)
+      : buttons.findLast(button => readingRegion(button.dataset.readingRegion)?.getBoundingClientRect().top <= top) || buttons[0];
+    buttons.forEach(button => {
+      if (button === current) button.setAttribute('aria-current', 'location');
+      else button.removeAttribute('aria-current');
+    });
+  }
+
+  function jumpReadingSection(key) {
+    const body = $('#drawerBody'), region = readingRegion(key);
+    if (!region) return;
+    body.scrollTo({
+      top: body.scrollTop + region.getBoundingClientRect().top - body.getBoundingClientRect().top - 8,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+    });
+  }
+
+  function scheduleReadingRefresh() {
+    if (readingRefreshFrame || (!pendingReadingLink && !$('#readerDrawer.reading-mode'))) return;
+    readingRefreshFrame = requestAnimationFrame(() => {
+      readingRefreshFrame = 0;
+      resolveReadingLink();
+      if ($('#readerDrawer.reading-mode')) syncReadingNeighbors();
+    });
+  }
+
+  function initReadingMode() {
+    const drawer = $('#readerDrawer');
+    if (!drawer) return;
+    $('#drawerExpandBtn').addEventListener('click', expandReadingMode);
+    $('#readingBackBtn').addEventListener('click', closeReadingMode);
+    $('#readingPrevBtn').addEventListener('click', () => turnReadingPage('previous'));
+    $('#readingNextBtn').addEventListener('click', () => turnReadingPage('next'));
+    $('#readingTocToggle').addEventListener('click', event => {
+      const toggle = event.currentTarget;
+      toggle.setAttribute('aria-expanded', String(toggle.getAttribute('aria-expanded') !== 'true'));
+      syncReadingProgress();
+    });
+    $('#readingTocNav').addEventListener('click', event => {
+      const section = event.target.closest('[data-reading-region]');
+      if (section) jumpReadingSection(section.dataset.readingRegion);
+    });
+    $('#drawerBody').addEventListener('scroll', syncReadingProgress, { passive: true });
+    $('#drawerBody').addEventListener('toggle', syncReadingProgress, true);
+    new ResizeObserver(syncReadingProgress).observe($('#drawerBody'));
+
+    // Observe existing list refreshes and deferred script settlements, including errors.
+    const observer = new MutationObserver(scheduleReadingRefresh);
+    ['#articlesStream', '#weeklyAuto', '#nextCandidates'].forEach(selector => {
+      const list = $(selector);
+      if (list) observer.observe(list, { childList: true });
+    });
+    const weekly = $('#weeklySection');
+    if (weekly) observer.observe(weekly, { attributes: true, attributeFilter: ['data-pane'] });
+    window.addEventListener('resize', scheduleReadingRefresh);
+    for (const type of ['load', 'error']) {
+      document.addEventListener(type, event => {
+        if (event.target.tagName === 'SCRIPT') scheduleReadingRefresh();
+      }, true);
+    }
+    openReadingLink();
+  }
   // ==== src/app/07-shortlist.js · Shortlist (精选清单) modal, export and copy ====
   // Morning Huddle Modal Logic
   // The shortlist keeps a small record of each paper. Radar papers older than three weeks load
@@ -5833,6 +6162,7 @@
       // One press closes the topmost layer only: requests/shortlist, then reader, then full-text reading, then filters.
       if ($('#requestsModalBackdrop.open')) closeRequestsModal();
       else if ($('#huddleModalBackdrop.open')) closeHuddleModal();
+      else if ($('#readerDrawer.reading-mode')) closeReadingMode();
       else if ($('#readerDrawer.open')) closeReaderDrawer();
       else if ($('#deepReader.open')) closeDeepReading();
       else if ($('#appSidebar.open')) closeSheet();
@@ -6368,12 +6698,17 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    const wasReading = !!$('#readerDrawer.reading-mode');
     if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
-    if (entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
-    const id = entry.deepReader;
-    if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
-    else closeDeepReading({ fromHistory: true });
+    if (!restoreReadingHistory(entry) && entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
+    const underlyingDeepId = (wasReading || entry.overlay === 'reading') && readingUnderlyingDeepId();
+    const id = entry.deepReader || underlyingDeepId;
+    if (id && state.mode === 'weekly') {
+      if (!underlyingDeepId || activeDeepReadingId !== id) openDeepReading(id, { push: false });
+      if ($('#readerDrawer.reading-mode')) $('#readingBackBtn').focus({ preventScroll: true });
+      else if (wasReading && underlyingDeepId && $('#deepReader.open') && !$('#readerDrawer.open')) $('#deepReaderClose').focus({ preventScroll: true });
+    } else closeDeepReading({ fromHistory: true });
     if (entry.overlay || entry.deepReader) return;
     const next = readStateFromUrl();
     const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
@@ -6474,7 +6809,7 @@
 
   // Initialize
   // A reload keeps history.state; a panel marker left from before the reload no longer has a panel.
-  try { if (history.state && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
+  try { if (history.state && history.state.overlay !== 'reading' && (history.state.overlay || history.state.deepReader)) history.replaceState(null, '', location.href); } catch (e) { /* sandboxed */ }
   updateHeaderBadges();
   updateHuddleCounter();
   if (typeof updateRequestsCounter === 'function') updateRequestsCounter();
@@ -6510,11 +6845,12 @@
 
   if (state.mode === 'weekly' && urlParams.get('read')) openDeepReading(urlParams.get('read'), { push: false });
 
-  if (urlParams.get('drawer') === 'first') {
+  if (urlParams.get('drawer') === 'first' && !hasReadingLink()) {
     const list = getFilteredArticles();
     if (list.length > 0) openReaderDrawer(list[0]);
   }
   if (DEFERRED) startDeferredParts();
+  initReadingMode();
 
 })();
 
