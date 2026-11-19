@@ -4,13 +4,16 @@
 const MUSE_JOB_PREFIX = 'library:muse-job:';
 const MUSE_QUEUE_PREFIX = 'library:muse-queue:';
 const MUSE_REVIEW_PREFIX = 'library:muse-review:';
+const MUSE_HOLD_AUDIT_PREFIX = 'library:muse-hold-audit:';
 const MUSE_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const MUSE_STATES = ['queued','running','uploading','verifying','login_required','available','review','failed','abandoned'];
 const MUSE_LEASE_MS = 1200000;
 // Muse has no fixed polling schedule, so an unclaimed request waits almost the whole job lifetime
 // (KV TTL 7 days) instead of dying after one day nobody ran Muse.
+// identity_hold tasks and their candidate PDFs stay for 30 days awaiting manual review.
 // Terminal records (available, abandoned) are written without a TTL; see musePut.
 const MUSE_QUEUE_MS = 6 * 86400000;
+const MUSE_HOLD_TTL_SECONDS = 2592000;
 // 2026-11-12 plus the agreed 30-day transition. MUSE_DOWNLOAD_RETIRE_ON overrides the displayed date only.
 const MUSE_DOWNLOAD_RETIRE_ON_DEFAULT = '2026-12-12';
 const MACHINE_CALLER_ID = /^[a-z][a-z0-9_-]{0,31}$/;
@@ -75,6 +78,19 @@ async function museAuthorize(request, env) {
   let difference = 0; for (let n = 0; n < 64; n++) difference |= expected.charCodeAt(n) ^ actual.charCodeAt(n);
   if (difference) libraryFail('muse_unauthorized',401);
 }
+function museIsIdentityHold(job) {
+  return !!(job && job.state === 'review' && job.verificationReason === 'identity_hold');
+}
+function museHoldDecisionValid(decision) {
+  if (!decision || typeof decision !== 'object' || Array.isArray(decision)) return false;
+  const keys = Object.keys(decision);
+  if (keys.length !== 4 || !['action','by','at','reason'].every(k => Object.hasOwn(decision, k))) return false;
+  if (decision.action !== 'release' && decision.action !== 'reject') return false;
+  if (typeof decision.by !== 'string' || !MACHINE_CALLER_ID.test(decision.by)) return false;
+  if (!Number.isSafeInteger(decision.at) || decision.at < 1 || decision.at >= 8640000000000000 - 28800000) return false;
+  if (typeof decision.reason !== 'string' || decision.reason.trim() !== decision.reason || decision.reason.length < 4 || decision.reason.length > 500) return false;
+  return true;
+}
 function museRecord(value, doi = '') {
   if (!value || value.version !== 1 || !MUSE_UUID.test(value.id || '') || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
       || (doi && value.doi !== doi) || !MUSE_STATES.includes(value.state)
@@ -88,6 +104,7 @@ function museRecord(value, doi = '') {
       || (Object.hasOwn(value,'claimant') && !/^(?:muse|[a-z][a-z0-9_-]{0,31})$/.test(value.claimant))
       || (Object.hasOwn(value,'stage') && !['han','yiigle'].includes(value.stage))
       || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'].includes(value.verificationReason))
+      || (Object.hasOwn(value,'holdDecision') && !museHoldDecisionValid(value.holdDecision))
       || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || (!value.source && !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || ''))))
       || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
   return value;
@@ -106,7 +123,7 @@ function museVerificationInstant(job) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
-  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'];
+  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold','identity_hold_rejected'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
     : job.state === 'login_required' ? 'login_required'
     : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
@@ -134,9 +151,13 @@ async function musePublicJobValue(env, doi) {
 function museTerminalRecord(job) {
   return job.state === 'available' || job.state === 'abandoned';
 }
+function museJobTtlOptions(job) {
+  if (museTerminalRecord(job)) return undefined;
+  return {expirationTtl:museIsIdentityHold(job) ? MUSE_HOLD_TTL_SECONDS : 604800};
+}
 async function musePut(env, job, options = {}) {
-  // Done and confirmed-abandoned stay in KV until deleted. Other states keep the 7-day TTL.
-  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),museTerminalRecord(job) ? undefined : {expirationTtl:604800});
+  // Done and confirmed-abandoned stay in KV until deleted. identity_hold reviews stay 30 days; other states keep the 7-day TTL.
+  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),museJobTtlOptions(job));
   libraryCatalogCache.clear();
   // Keep the machine candidate index in step with every state change. A caller that writes many tasks passes
   // indexChanges and applies them once with museIndexApply.
@@ -284,7 +305,7 @@ function museShouldSupersedePrevious(job) {
 }
 function museSupersedeSnapshot(job) {
   // Keep the record as-is, including replace / replaceRejected. Only candidateKey is dropped:
-  // it points at a temporary candidate copy that expires after seven days.
+  // it points at a temporary candidate copy that expires (7 days normally, 30 days on identity_hold).
   const skip = new Set(['candidateKey']);
   const snap = {};
   for (const [key, value] of Object.entries(job)) if (!skip.has(key)) snap[key] = value;
@@ -314,8 +335,9 @@ async function museArchiveSuperseded(env, previous, newId, doi, now) {
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   libraryRejectUploadPdfSize(bytes.length);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
+  const {hold, ...restExtra} = extra || {};
   const sha256 = await pdfDigest('SHA-256',bytes), candidateKey = 'library:muse-candidate:' + sha256;
-  await libraryPut(env.QL_KV,candidateKey,bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset + bytes.byteLength),{expirationTtl:604800});
+  await libraryPut(env.QL_KV,candidateKey,bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset + bytes.byteLength),{expirationTtl:hold ? MUSE_HOLD_TTL_SECONDS : 604800});
   let stored; try { stored = await env.QL_KV.get(candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
   if (!stored) libraryFail('muse_sync_pending',503);
   if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== sha256) libraryFail('library_integrity',502);
@@ -336,7 +358,6 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
     const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
     if (pointer) inherited.supersededFrom = pointer;
   }
-  const {hold, ...restExtra} = extra || {};
   const job = hold
     ? {version:1,id,doi,state:'review',verificationReason:'identity_hold',reason:'identity_hold',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
         sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...restExtra}

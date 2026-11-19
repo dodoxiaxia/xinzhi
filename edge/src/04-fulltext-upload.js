@@ -250,6 +250,8 @@ async function handleMuseReview(request, env) {
       if (job.state === 'available') return json({ok:true,task:null});
       const resume = job.state === 'verifying' && job.reviewOwner === owner && job.reviewLeaseUntil > Date.now();
       if (job.state !== 'review' && !resume) libraryFail('muse_stale',409);
+      // identity_hold tasks require an audited manual decision via POST /api/machine/hold-review.
+      if (museIsIdentityHold(job)) libraryFail('muse_identity_hold',409);
       const valid = museRecord({...job,state:'verifying'},input.doi);
       if (!valid) libraryFail('library_integrity',502);
       const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);

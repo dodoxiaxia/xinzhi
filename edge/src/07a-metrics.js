@@ -9,7 +9,7 @@ const METRICS_ROUTES = new Set([
   '/api/library', '/api/machine/metadata-backfill', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
   '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
   '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/scope-uncertain', '/api/machine/abandoned',
-  '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register',
+  '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register', '/api/machine/hold-review',
   '/api/drive-archive', '/api/fulltext-pending', '/api/grok-fulltext-receipt', '/api/acquire', '/api/acquire/retry',
   '/api/fulltext', '/api/fulltext-source', '/api/pdf', '/api/ql', '/api/ai'
 ]);

@@ -11,7 +11,9 @@ const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','uploaded-awaiting-manual-review','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 // Reasons the site itself writes when it stops a task (a client never reports them).
-const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed'];
+const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed','identity_hold_rejected'];
+const MACHINE_HOLD_REASON_MIN = 4;
+const MACHINE_HOLD_REASON_MAX = 500;
 const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
@@ -106,7 +108,7 @@ async function machineAuthorize(request, env, capability) {
   const caller = matched || (legacyMatch ? legacy : null);
   if (!caller) libraryFail('machine_unauthorized', 401);
   if (caller.revoked) libraryFail('machine_revoked', 401);
-  if (!MACHINE_ROLE_CAPS[caller.role].includes(capability)) libraryFail('machine_forbidden', 403);
+  if (capability && !MACHINE_ROLE_CAPS[caller.role].includes(capability)) libraryFail('machine_forbidden', 403);
   return caller;
 }
 function machineRateKey(caller, bucket) {
@@ -450,7 +452,8 @@ function machineListItem(job) {
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {}),
     ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
-    ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {})};
+    ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {}),
+    ...(museHoldDecisionValid(job.holdDecision) ? {holdDecision:job.holdDecision} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
@@ -498,7 +501,7 @@ function handleMachineProtocol(request, env) {
     humanGate:'exempt',
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
-    stateMapNote:'review 且 verificationReason 为 identity_hold 时对外状态为 uploaded-awaiting-manual-review（review+identity_hold → uploaded-awaiting-manual-review），表示首页印有他人 DOI 但题名相符，等待人工核对，核对前不公开、不可领取或重排。',
+    stateMapNote:'review 且 verificationReason 为 identity_hold 时对外状态为 uploaded-awaiting-manual-review（review+identity_hold → uploaded-awaiting-manual-review），表示首页印有他人 DOI 但题名相符，等待人工核对，核对前不公开、不可领取或重排；候选与任务保留 30 天，须经 POST /api/machine/hold-review 放行或拒绝。',
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS,minPdfBytes:LIBRARY_MIN_PDF_BYTES,maxPdfBytes:LIBRARY_MAX_PDF_BYTES,oversizeError:'file_too_large'},
@@ -508,6 +511,8 @@ function handleMachineProtocol(request, env) {
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
+    holdReview:{reviewersEnv:'MACHINE_HOLD_REVIEWERS',actions:['release','reject'],reasonMinChars:MACHINE_HOLD_REASON_MIN,reasonMaxChars:MACHINE_HOLD_REASON_MAX,holdTtlSeconds:MUSE_HOLD_TTL_SECONDS,auditKeyPattern:MUSE_HOLD_AUDIT_PREFIX + '<taskId>',
+      note:'人工核对 identity_hold 暂留条目。默认关闭；须配置 MACHINE_HOLD_REVIEWERS（逗号分隔调用方 id），旧共享密钥和原上传调用方本人均不可核对。放行后仍进双解析器核验，不直接公开；拒绝后通常删候选文件并转 failed-awaiting-fallback（identity_hold_rejected），若同 SHA 候选仍被其他在途任务共用或读取首页异常则保留候选并记录 candidateRetainedFor。'},
     identityReasons:MACHINE_IDENTITY_REASONS,
     claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
       note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
@@ -520,7 +525,167 @@ function handleMachineProtocol(request, env) {
       note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。下载端退回不是失败，任务回到待下载并保留原 FIFO，同一篇最多 3 次，超过后拒绝（machine_return_limit），只能改报失败。兜底角色退回（以及带 previousReason 的条目）回到失败待兜底并保留原原因，不会回到待下载。旧客户端不调用这两个接口即可。'},
     statusDetail:{field:'detail',maxChars:MACHINE_STATUS_DETAIL_MAX,allowed:MACHINE_STATUS_DETAILS,reasons:['source_blocked'],
       note:'POST /api/machine/status 的可选字段 detail。目前只允许在 reason 为 source_blocked 时写入 just_accepted（例如期刊仍是 Just Accepted、排版尚未完成，要等正式出版后再处理）。其他原因或状态带 detail 返回 400，并在 message 里说明。写入后出现在失败待兜底和确认放弃列表里。旧客户端可忽略。'},
-    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
+    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register',holdReview:'POST /api/machine/hold-review'}});
+}
+function machineHoldReviewers(env) {
+  const raw = env && env.MACHINE_HOLD_REVIEWERS;
+  if (raw === undefined) return new Set();
+  if (typeof raw !== 'string' || raw.length > 2000) libraryFail('machine_not_configured', 503);
+  const trimmed = raw.trim();
+  if (!trimmed) return new Set();
+  const ids = trimmed.split(',').map(part => part.trim());
+  if (ids.some(id => !MACHINE_CALLER_ID.test(id))) libraryFail('machine_not_configured', 503);
+  return new Set(ids);
+}
+function machineHoldTask(job, decision, candidateRetainedFor = '') {
+  return {...machineListItem(job), ...(job.holdDecision ? {} : {holdDecision:decision}), ...(candidateRetainedFor ? {candidateRetainedFor} : {})};
+}
+async function machineHoldVerifyCandidate(env, job) {
+  const candidateKey = typeof job.candidateKey === 'string' && job.candidateKey ? job.candidateKey : (job.sha256 ? 'library:muse-candidate:' + job.sha256 : '');
+  if (!candidateKey || candidateKey !== 'library:muse-candidate:' + job.sha256 || !/^[a-f0-9]{64}$/.test(job.sha256 || '')
+      || !Number.isInteger(job.bytes) || job.bytes < LIBRARY_MIN_PDF_BYTES || job.bytes > LIBRARY_MAX_PDF_BYTES) {
+    libraryFail('machine_hold_candidate_missing', 409);
+  }
+  let stored;
+  try { stored = await env.QL_KV.get(candidateKey, 'arrayBuffer'); } catch { libraryFail('library_storage', 503); }
+  if (!stored) libraryFail('machine_hold_candidate_missing', 409);
+  const bytes = new Uint8Array(stored);
+  if (bytes.length !== job.bytes || await pdfDigest('SHA-256', bytes) !== job.sha256) {
+    libraryFail('machine_hold_candidate_missing', 409);
+  }
+  return candidateKey;
+}
+async function machineHoldCandidateRetention(env, job, candidateKey) {
+  if (!candidateKey) return {exists:false, retainedFor:''};
+  let stored;
+  try { stored = await env.QL_KV.get(candidateKey, 'arrayBuffer'); } catch { libraryFail('library_storage', 503); }
+  if (!stored) return {exists:false, retainedFor:''};
+  let dois;
+  try {
+    const page = await machineFirstPage(new Uint8Array(stored));
+    if (!page || typeof page.text !== 'string') return {exists:true, retainedFor:'unknown'};
+    const text = page.text + '\n' + (page.metadata && typeof page.metadata.text === 'string' ? page.metadata.text : '');
+    const seen = new Set();
+    dois = [];
+    for (const token of machineDoiTokens(text)) {
+      const otherDoi = libraryDoi(token);
+      if (!otherDoi || otherDoi === job.doi || seen.has(otherDoi)) continue;
+      seen.add(otherDoi);
+      dois.push(otherDoi);
+      if (dois.length >= 5) break;
+    }
+  } catch {
+    return {exists:true, retainedFor:'unknown'};
+  }
+  for (const otherDoi of dois) {
+    const otherJob = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + otherDoi), otherDoi);
+    if (otherJob && typeof job.sha256 === 'string' && job.sha256 && otherJob.sha256 === job.sha256 && ['uploading','verifying','review'].includes(otherJob.state)) {
+      return {exists:true, retainedFor:otherDoi};
+    }
+  }
+  return {exists:true, retainedFor:''};
+}
+async function machineHoldApply(env, job, decision, auditWrite) {
+  const now = Date.now();
+  if (decision.action === 'release') {
+    const candidateKey = await machineHoldVerifyCandidate(env, job);
+    const {verificationReason:_vr, reason:_r, ...kept} = job;
+    const next = {
+      ...kept,
+      ...(kept.source || kept.driveFileId ? {} : (kept.caller ? {source:kept.caller} : {})),
+      state:'verifying',
+      leaseId:crypto.randomUUID(),
+      leaseUntil:now,
+      updatedAt:now,
+      candidateKey,
+      holdDecision:decision
+    };
+    if (!museRecord(next, job.doi)) libraryFail('library_integrity', 502);
+    if (auditWrite) await libraryPut(env.QL_KV, auditWrite.key, JSON.stringify(auditWrite.doc));
+    await musePut(env, next);
+    await libraryPut(env.QL_KV, MUSE_REVIEW_PREFIX + next.id, JSON.stringify({doi:next.doi,id:next.id}), {expirationTtl:604800});
+    await museRequestReview(env);
+    return {job:next, candidateRetainedFor:''};
+  }
+  const candidateKey = typeof job.candidateKey === 'string' && job.candidateKey ? job.candidateKey : (job.sha256 ? 'library:muse-candidate:' + job.sha256 : '');
+  const {verificationReason:_vr, candidateKey:_ck, ...kept} = job;
+  const next = {
+    ...kept,
+    state:'failed',
+    reason:'identity_hold_rejected',
+    updatedAt:now,
+    holdDecision:decision
+  };
+  if (!museRecord(next, job.doi)) libraryFail('library_integrity', 502);
+  const retention = await machineHoldCandidateRetention(env, job, candidateKey);
+  if (auditWrite) {
+    const doc = retention.retainedFor ? {...auditWrite.doc, candidateRetainedFor:retention.retainedFor} : auditWrite.doc;
+    await libraryPut(env.QL_KV, auditWrite.key, JSON.stringify(doc));
+  }
+  if (candidateKey && retention.exists && !retention.retainedFor) await museDelete(env, candidateKey);
+  await musePut(env, next);
+  if (job.queueKey) await museDelete(env, job.queueKey);
+  return {job:next, candidateRetainedFor:retention.retainedFor};
+}
+async function handleMachineHoldReview(request, env) {
+  try {
+    if (request.method !== 'POST') libraryFail('machine_bad_request', 405);
+    if (new URL(request.url).search) libraryFail('machine_bad_request', 400);
+    const caller = await machineAuthorize(request, env);
+    const reviewers = machineHoldReviewers(env);
+    if (caller.legacy || !reviewers.has(caller.id)) libraryFail('machine_forbidden', 403);
+    const input = await fulltextReadJson(request, 2048, 'machine_bad_request');
+    const keys = Object.keys(input);
+    if (keys.length !== 4 || !['doi','taskId','action','reason'].every(k => Object.hasOwn(input, k))) libraryFail('machine_bad_request', 400);
+    const doi = libraryDoi(input.doi);
+    if (!doi) libraryFail('machine_bad_request', 400);
+    if (typeof input.taskId !== 'string' || !MUSE_UUID.test(input.taskId)) libraryFail('machine_bad_request', 400);
+    if (input.action !== 'release' && input.action !== 'reject') libraryFail('machine_bad_request', 400);
+    const reason = typeof input.reason === 'string' ? input.reason.replace(/[\x00-\x1f\x7f]/g, '').trim() : '';
+    if (reason.length < MACHINE_HOLD_REASON_MIN || reason.length > MACHINE_HOLD_REASON_MAX) libraryFail('machine_bad_request', 400);
+    const auditKey = MUSE_HOLD_AUDIT_PREFIX + input.taskId;
+    const audit = await libraryGet(env.QL_KV, auditKey);
+    if (audit) {
+      if (audit.doi !== doi || audit.taskId !== input.taskId) libraryFail('machine_not_held', 409);
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      if (job && job.id === input.taskId && job.caller && job.caller === caller.id) libraryFail('machine_self_review', 403);
+      if (audit.action !== input.action) libraryFail('machine_hold_decided', 409);
+      const decision = {
+        action:audit.action,
+        by:typeof audit.by === 'string' && MACHINE_CALLER_ID.test(audit.by) ? audit.by : caller.id,
+        at:Number.isSafeInteger(audit.at) && audit.at > 0 ? audit.at : Date.now(),
+        reason:typeof audit.reason === 'string' && audit.reason.trim().length >= MACHINE_HOLD_REASON_MIN && audit.reason.trim().length <= MACHINE_HOLD_REASON_MAX ? audit.reason.trim() : reason
+      };
+      const auditRetainedFor = typeof audit.candidateRetainedFor === 'string' ? audit.candidateRetainedFor : '';
+      if (job && job.id === input.taskId && museIsIdentityHold(job)) {
+        const migrated = await machineHoldApply(env, job, decision, null);
+        return json({ok:true,idempotent:true,task:machineHoldTask(migrated.job, decision, migrated.candidateRetainedFor || auditRetainedFor)});
+      }
+      if (job && job.id === input.taskId) return json({ok:true,idempotent:true,task:machineHoldTask(job, decision, auditRetainedFor)});
+      const archived = museRecord(await libraryGet(env.QL_KV, museSupersededKey(doi, input.taskId)), doi);
+      return json({ok:true,idempotent:true,task:archived ? machineHoldTask(archived, decision, auditRetainedFor) : {doi,taskId:input.taskId,holdDecision:decision,...(auditRetainedFor ? {candidateRetainedFor:auditRetainedFor} : {})}});
+    }
+    const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    if (!job) libraryFail('machine_not_found', 404);
+    if (job.id !== input.taskId || !museIsIdentityHold(job)) libraryFail('machine_not_held', 409);
+    if (job.caller && job.caller === caller.id) libraryFail('machine_self_review', 403);
+    const now = Date.now();
+    const decision = {action:input.action,by:caller.id,at:now,reason};
+    const auditDoc = {
+      version:1,
+      doi:job.doi,
+      taskId:job.id,
+      action:input.action,
+      by:caller.id,
+      at:now,
+      reason,
+      sha256:typeof job.sha256 === 'string' ? job.sha256 : '',
+      bytes:Number.isInteger(job.bytes) ? job.bytes : 0,
+      identityLevel:typeof job.identityLevel === 'string' ? job.identityLevel : ''
+    };
+    const applied = await machineHoldApply(env, job, decision, {key:auditKey,doc:auditDoc});
+    return json({ok:true,idempotent:false,task:machineHoldTask(applied.job, decision, applied.candidateRetainedFor)});
+  } catch (error) { return machineError(error); }
 }
 async function handleMachineUpload(request, env) {
   // Exempt from librarySoftGate (30/day site-wide and 20/IP). Only the per-token counter applies.
