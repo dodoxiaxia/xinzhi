@@ -5,7 +5,7 @@ const src=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
 const fn=n=>{const m=src.match(new RegExp('  function '+n+'\\([^]*?\\n  }'));if(!m)throw Error(n);return m[0];};
 const cs=n=>src.match(new RegExp('  const '+n+' =[^]*?;'))[0];
 const start=src.indexOf('  // ---- Public-abstract study services:'),end=src.indexOf('  // ---- End public-abstract study services.');
-const code=[...['aiRequest','aiRun','aiUnconfirmed','paperTask','recordTask','rerenderReader','aiTaskStatus','aiWaitingMessage','aiLookupRecord','aiPostRecord','aiApiCheck','trCheck','aiTranslate','aiTitle','aiTitleCheck','translationCanGenerate','validTranslation','trBoxHtml','aiInterpret','aiErrorMessage'].map(fn),cs('AI_ERR'),cs('AI_MODEL_ERR'),src.slice(start,end),'const LIVE_TR={},LIVE_QL={}; let AI_AVAIL=true;const trKeyOf=p=>p.pmid?"pmid:"+p.pmid:"doi:"+p.doi;Object.assign(globalThis,{STUDY_RESULTS,COMPARE_RESULTS,LIVE_TR,LIVE_QL});'].join('\n');
+const code=[...['aiRequest','aiRun','aiUnconfirmed','paperTask','recordTask','rerenderReader','aiTaskStatus','aiWaitingMessage','aiLookupRecord','aiPostRecord','aiApiCheck','trCheck','aiTitle','aiTitleCheck','validTranslation','aiInterpret','aiErrorMessage'].map(fn),cs('AI_ERR'),cs('AI_MODEL_ERR'),src.slice(start,end),'const LIVE_TR={},LIVE_QL={}; let AI_AVAIL=true;const trKeyOf=p=>p.pmid?"pmid:"+p.pmid:"doi:"+p.doi;Object.assign(globalThis,{STUDY_RESULTS,COMPARE_RESULTS,LIVE_TR,LIVE_QL});'].join('\n');
 let calls=[],ticks=new Map(),seq=0,reply,renders=0;
 const a={id:'a',pmid:'1001',doi:'10.1000/a',title:'Public title',summary:'Never send browser summary'},b={id:'b',pmid:'1002',doi:'10.1000/b',title:'Second'};
 const state={huddle:['a','b'],huddleCompare:['a','b'],activeDrawerPaper:a};
@@ -24,7 +24,28 @@ const unknown=()=>new Promise(()=>{});let count=0;const test=async(name,f)=>{res
  await test('compare deadline and selection change retain correct group state',async()=>{const key=c.compareKey([a,b]);c.COMPARE_RESULTS[key]={state:'ready',canGenerate:true};reply=unknown;c.aiCompare();state.huddleCompare=['a'];const before=renders;fire(170000);await flush();assert.equal(c.COMPARE_RESULTS[key].state,'waiting');assert.equal(renders,before);c.aiCompare();assert.equal(calls.length,1);});
  await test('compare failure receipt reopens explicit retry without paid GET',async()=>{const key=c.compareKey([a,b]);c.COMPARE_RESULTS[key]={state:'waiting',canGenerate:false};reply=()=>json({ok:true,found:false,canGenerate:true,taskStatus:'failed',task:{status:'failed',error:'metadata_timeout'}});c.compareCheck(true);await flush();assert.equal(c.COMPARE_RESULTS[key].state,'error');assert(c.compareBoxHtml([a,b]).includes('公开摘要读取超时'));assert.equal(calls[0].options.method,undefined);});
  await test('quicklook interruption waits; read-only idle recovery',async()=>{a._aiState='none';reply=()=>Promise.reject(Error('secret upstream'));c.aiInterpret(a);await flush();assert.equal(a._aiState,'waiting');c.aiInterpret(a);assert.equal(calls.length,1);reply=()=>json({ok:true,found:false,canGenerate:true,taskStatus:'idle'});c.aiApiCheck(a,true);await flush();assert.equal(a._aiState,'none');assert.equal(calls.length,2);assert.equal(calls[1].options.method,undefined);});
- await test('translation timeout blocks duplicate billing and shows cache check',async()=>{a._trLookupState='done';a._trCanGenerate=true;reply=unknown;c.aiTranslate(a);fire(170000);await flush();assert.equal(a._trState,'waiting');assert(c.trBoxHtml(a).includes('读取已有译文'));c.aiTranslate(a);assert.equal(calls.length,1);reply=()=>json({ok:true,found:true,tr:{abstract_zh:'已有译文'},taskStatus:'completed'});c.trCheck(a,true);await flush();assert.equal(a._trState,'done');assert.equal(c.LIVE_TR['pmid:1001'].abstract_zh,'已有译文');});
+ await test('cached translation is loaded once with GET',async()=>{
+   reply=()=>json({ok:true,found:true,tr:{abstract_zh:'已有译文',title_zh:'已有标题'}});
+   c.trCheck(a);
+   c.trCheck(a);
+   await flush();
+   assert.equal(c.LIVE_TR['pmid:1001'].abstract_zh,'已有译文');
+   assert.equal(a.titleZh,'已有标题');
+   assert.equal(calls.length,1);
+   assert.equal(calls[0].url,'/api/ai?task=translate&k=pmid%3A1001');
+   assert.equal(calls[0].options.method,undefined);
+   delete a.titleZh;
+ });
+ await test('translation lookup timeout does not retry or generate',async()=>{
+   reply=unknown;
+   c.trCheck(a);
+   fire(15000);
+   await flush();
+   c.trCheck(a);
+   assert.equal(calls.length,1);
+   assert.equal(calls[0].options.method,undefined);
+   assert.equal(c.LIVE_TR['pmid:1001'],undefined);
+ });
  await test('title interruption is recovered with title GET only',async()=>{reply=unknown;c.aiTitle(a);fire(170000);await flush();assert.equal(a._ttState,'waiting');c.aiTitle(a);assert.equal(calls.length,1);reply=()=>json({ok:true,found:true,tt:{title_zh:'已有标题'},taskStatus:'completed'});c.aiTitleCheck(a);await flush();assert.equal(a.titleZh,'已有标题');assert(calls[1].url.includes('task=title'));assert.equal(calls[1].options.method,undefined);});
  await test('no public abstract hides study generate CTA and does not claim to read the abstract',async()=>{const cpaper={id:'c',pmid:'1003',doi:'10.1000/c',title:'No abstract'};c.STUDY_RESULTS['pmid:1003']={state:'ready',canGenerate:true};const html=c.studyBoxHtml(cpaper);assert(html.includes('暂无公开摘要'),html);assert(!html.includes('点击后由模型读取公开摘要'),html);assert(!html.includes('data-action="ai-study"'),html);assert(!html.includes('提取研究结构与核对清单'),html);});
  await test('abstract still being fetched shows loading, then the empty notice only after the fetch ends',async()=>{const cpaper={id:'c2',pmid:'1004',doi:'10.1000/c2',title:'Fetching',_absState:'loading'};c.STUDY_RESULTS['pmid:1004']={state:'ready',canGenerate:true};let html=c.studyBoxHtml(cpaper);assert(html.includes('正在获取摘要…'),html);assert(!html.includes('暂无公开摘要'),html);assert(!html.includes('data-action="ai-study"'),html);cpaper._absState='none';html=c.studyBoxHtml(cpaper);assert(html.includes('暂无公开摘要，无法提取研究结构'),html);assert(!html.includes('正在获取摘要…'),html);cpaper._absState='error';html=c.studyBoxHtml(cpaper);assert(html.includes('暂无公开摘要，无法提取研究结构'),html);cpaper._absState='loading';cpaper.abstractSections=[{label:'',text:'Arrived'}];html=c.studyBoxHtml(cpaper);assert(!html.includes('正在获取摘要…'),html);assert(html.includes('提取研究结构与核对清单'),html);});

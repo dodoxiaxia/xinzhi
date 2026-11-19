@@ -531,9 +531,8 @@ main.main-content { min-width: 0; }
 .btn-cite:hover { border-color: var(--text-primary); color: var(--text-primary); }
 
 /* AI blocks */
-.quicklook, .brief-box, .tr-box { padding: 12px 14px; margin: 0 0 12px; background: var(--bg-secondary); border: 0; border-radius: var(--radius-md); }
+.quicklook, .brief-box { padding: 12px 14px; margin: 0 0 12px; background: var(--bg-secondary); border: 0; border-radius: var(--radius-md); }
 .brief-box { margin: 8px 0 14px; }
-.tr-box { margin: 12px 0 0; }
 .quicklook .drawer-section-title { border-bottom: 0; padding-bottom: 0; margin-bottom: 6px; }
 .ql-flag { font-weight: 400; color: var(--amber); margin-left: 4px; }
 .ql-line { margin: 6px 0; line-height: 1.8; }
@@ -541,8 +540,7 @@ main.main-content { min-width: 0; }
 .ql-findings { margin: 8px 0; padding-left: 18px; }
 .ql-findings li { margin-bottom: 8px; line-height: 1.75; }
 .ql-findings blockquote { margin: 3px 0 0; padding-left: 10px; border-left: 2px solid var(--border-subtle); font-size: 12.5px; color: var(--text-muted); font-style: italic; }
-.tr-box p, .brief-box p { margin: 4px 0; line-height: 1.8; }
-.tr-head { margin-bottom: 4px; }
+.brief-box p { margin: 4px 0; line-height: 1.8; }
 .brief-done ul, .brief-done ol { margin: 6px 0; padding-left: 20px; }
 .brief-papers small { color: var(--text-muted); }
 .ql-title { color: var(--text-primary); }
@@ -771,7 +769,7 @@ html[data-style="a"] .view-toggle { border-radius: 8px; } html[data-style="a"] .
 html[data-style="a"] aside.sidebar .sidebar-card { padding: 16px 18px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; }
 html[data-style="a"] .filter-item-btn.active { background: var(--accent-light); color: var(--accent); }
 html[data-style="a"] .tag-chip.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-html[data-style="a"] .quicklook, html[data-style="a"] .brief-box, html[data-style="a"] .tr-box { background: var(--bg-secondary); }
+html[data-style="a"] .quicklook, html[data-style="a"] .brief-box { background: var(--bg-secondary); }
 html[data-style="a"] .drawer-section-title { border-bottom-color: var(--border); }
 html[data-style="a"] .home-intro { border-top-color: var(--accent); }
 @media (max-width: 720px) { html[data-style="a"] .article-card { padding: 16px 16px 14px; } html[data-style="a"] .app-container { padding-top: 12px; } html[data-style="a"] .compact-row { padding: 12px 14px; } }
@@ -908,10 +906,6 @@ body.dialog-open .back-to-top { display: none; }
   .abstract-jump-nav { display: flex; position: sticky; top: -1px; z-index: 2; gap: 8px; padding: 8px 0 12px; margin-bottom: 10px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
   .abstract-jump-nav .btn-sm { flex: 1; min-height: 44px; justify-content: center; }
 }
-.abstract-reader .tr-box { margin: 0; padding: 0; background: none; border: 0; }
-.abstract-reader .tr-box > p { margin: 0 0 14px; font-size: 16px; line-height: 1.9; }
-.abstract-reader .tr-box .ql-meta, .abstract-reader .tr-box .translation-note { font-size: 12px; color: var(--text-muted); }
-.abstract-reader .tr-box .translation-error { font-size: 13px; color: var(--amber); }
 
 /* Curated: long abstracts stay in one wide reading column; tools sit to the right. */
 .app-container.curated-layout .main-content { max-width: none; }
