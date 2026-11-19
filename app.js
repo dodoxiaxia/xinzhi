@@ -3307,10 +3307,12 @@
 
     const titleBlock = `<h3 class="article-title"><button class="title-open" data-action="open-drawer" data-paper-id="${pid}">${zh ? esc(zh) : titleEn}</button></h3>`;
 
-    // 有中文标题时，英文原题作为一行弱化副标题；英文检索命中时完整显示
+    // 英文检索命中时直接显示完整原题。
     const q = foldSearch(state.search || '').split(/\s+/).filter(t => t.length > 1 && /[a-z]/.test(t));
     const enHit = zh && q.length && !exactDoi(state.search) && q.some(t => foldSearch(p.title || '').includes(t));
-    const enLine = zh ? `<p class="article-title-en${enHit ? ' is-hit' : ''}" lang="en" title="${titleEn}">${titleEn}</p>` : '';
+    const enLine = !zh || !titleEn ? '' : enHit
+      ? `<p class="article-title-en is-hit" lang="en" title="${titleEn}">${titleEn}</p>`
+      : `<english-title class="article-title-en" title="${titleEn}"><span lang="en">${titleEn}</span></english-title>`;
 
     const gist = p.hasDraft ? (p.draftData?.summary || '') : (quicklookOf(p)?.one_line || '');
     const gistHtml = gist ? `<p class="article-gist${p.hasDraft ? '' : ' gist-ai'}">${esc(gist)}</p>` : '';
@@ -3352,7 +3354,7 @@
       <div class="compact-row" data-paper-id="${pid}">
         <div class="compact-main">
           <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${pid}" title="${zh && zh !== p.title ? esc(zh + '\n' + p.title) : titleEn}">${zh ? esc(zh) : titleEn}</button>
-          ${zh ? `<p class="article-title-en" lang="en" title="${titleEn}">${titleEn}</p>` : ''}
+          ${zh && titleEn ? `<english-title class="article-title-en" title="${titleEn}"><span lang="en">${titleEn}</span></english-title>` : ''}
           ${publicationStatusHtml(p)}
           ${doiBlock}
           <div class="compact-meta">
@@ -3365,6 +3367,38 @@
         ${cardSideActionsHtml(p)}
       </div>
     `;
+  }
+
+  // Short subtitles stay plain text. Recheck wrapping after font or column size changes.
+  if (typeof ResizeObserver === 'function' && window.customElements) {
+    const titleSizes = new ResizeObserver(entries => {
+      for (const { target: text } of entries) {
+        const title = text.parentElement;
+        if (!title || !title.isConnected) continue;
+        const needsToggle = text.scrollHeight > 2 * parseFloat(getComputedStyle(text).lineHeight) + 1;
+        const button = title.querySelector('button');
+        if (!needsToggle) {
+          button?.remove();
+          title.removeAttribute('data-collapsed');
+        } else if (!button) {
+          const toggle = document.createElement('button');
+          toggle.type = 'button';
+          toggle.textContent = '展开英文原题';
+          toggle.setAttribute('aria-expanded', 'false');
+          title.setAttribute('data-collapsed', '');
+          toggle.onclick = () => {
+            const collapsed = title.toggleAttribute('data-collapsed');
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.textContent = collapsed ? '展开英文原题' : '收起英文原题';
+          };
+          title.append(toggle);
+        }
+      }
+    });
+    customElements.define('english-title', class extends HTMLElement {
+      connectedCallback() { titleSizes.observe(this.firstElementChild); }
+      disconnectedCallback() { titleSizes.unobserve(this.firstElementChild); }
+    });
   }
 
   // Main Render Stream
@@ -3498,8 +3532,15 @@
     if (groupBy && state.mode !== 'curated') {
       const maxD = maxDate();
       const recentCut = maxD ? (() => { const d = new Date(maxD.slice(0, 10) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 45); return d.toISOString().slice(0, 10); })() : '';
-      const keyOf = p => groupBy === 'journal' ? (p.cleanJournal || p.journal || '未标注期刊')
-        : (datePrecision(p)==='month' ? p.date.slice(0,7)+' · 刊期（日未核验）' : ((p.date || '') >= recentCut ? (p.date || '日期待核验').slice(0, 10) : ((p.date || '').slice(0, 7) || '日期待核验')));
+      const currentMonth = beijingToday().slice(0, 7);
+      const keyOf = p => {
+        if (groupBy === 'journal') return p.cleanJournal || p.journal || '未标注期刊';
+        const month = (p.date || '').slice(0, 7);
+        if (datePrecision(p) === 'month') {
+          return month > currentMonth ? `即将出版 · ${month} 刊期` : `${month} · 刊期（日未核验）`;
+        }
+        return (p.date || '') >= recentCut ? (p.date || '日期待核验').slice(0, 10) : month || '日期待核验';
+      };
       const totals = new Map();
       filtered.forEach(p => { const k = keyOf(p); totals.set(k, (totals.get(k) || 0) + 1); });
       const groups = new Map();
@@ -5278,7 +5319,11 @@
   let demoReadingRequest = null;
   function loadDemoReading() {
     if (!demoReadingRequest) {
-      demoReadingRequest = fetch('demo-reading.html', { headers: { accept: 'text/html' } })
+      const options = { headers: { accept: 'text/html' } };
+      // The unbundled source preview serves files by their literal names.
+      const path = DEFERRED ? 'demo-reading' : 'demo-reading.html';
+      demoReadingRequest = fetch(path, options)
+        .then(r => DEFERRED && r.status === 404 ? fetch('demo-reading.html', options) : r)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
       demoReadingRequest.catch(() => { demoReadingRequest = null; });
     }

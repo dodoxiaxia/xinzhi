@@ -247,7 +247,11 @@
   let demoReadingRequest = null;
   function loadDemoReading() {
     if (!demoReadingRequest) {
-      demoReadingRequest = fetch('demo-reading.html', { headers: { accept: 'text/html' } })
+      const options = { headers: { accept: 'text/html' } };
+      // The unbundled source preview serves files by their literal names.
+      const path = DEFERRED ? 'demo-reading' : 'demo-reading.html';
+      demoReadingRequest = fetch(path, options)
+        .then(r => DEFERRED && r.status === 404 ? fetch('demo-reading.html', options) : r)
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
       demoReadingRequest.catch(() => { demoReadingRequest = null; });
     }
