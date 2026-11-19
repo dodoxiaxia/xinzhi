@@ -3780,6 +3780,11 @@
     return parseReadingPaper(location.search) !== undefined;
   }
 
+  function readingUnderlyingDeepId() {
+    const params = new URLSearchParams(location.search);
+    return params.get('mode') === 'weekly' && params.get('read');
+  }
+
   function readingNeighbors(papers, id) {
     const index = papers.findIndex(paper => paper.id === id);
     return index < 0 ? null : {
@@ -3896,6 +3901,10 @@
     if (!pendingReadingLink) return;
     const { id, restore, drawerReturn } = pendingReadingLink;
     const paper = allPapersMap.get(id);
+    if (paper && state.mode === 'weekly' && urlParams.has('read') && !activeDeepReadingId && partsPending('readings')) {
+      prioritizeParts();
+      return;
+    }
     if (!paper && (partsPending(...readingPaperParts) || RADAR_LOAD.state === 'loading'
       || (id.startsWith('doi-') && SUPPLEMENTAL_LIBRARY.promise))) {
       prioritizeParts();
@@ -6669,12 +6678,17 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    const wasReading = !!$('#readerDrawer.reading-mode');
     if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
     if (!restoreReadingHistory(entry) && entry.overlay !== 'drawer') closeReaderDrawer({ fromHistory: true });
-    const id = entry.deepReader;
-    if (id && state.mode === 'weekly') openDeepReading(id, { push: false });
-    else closeDeepReading({ fromHistory: true });
+    const underlyingDeepId = (wasReading || entry.overlay === 'reading') && readingUnderlyingDeepId();
+    const id = entry.deepReader || underlyingDeepId;
+    if (id && state.mode === 'weekly') {
+      if (!underlyingDeepId || activeDeepReadingId !== id) openDeepReading(id, { push: false });
+      if ($('#readerDrawer.reading-mode')) $('#readingBackBtn').focus({ preventScroll: true });
+      else if (wasReading && underlyingDeepId && $('#deepReader.open') && !$('#readerDrawer.open')) $('#deepReaderClose').focus({ preventScroll: true });
+    } else closeDeepReading({ fromHistory: true });
     if (entry.overlay || entry.deepReader) return;
     const next = readStateFromUrl();
     const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])

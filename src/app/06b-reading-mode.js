@@ -10,6 +10,11 @@
     return parseReadingPaper(location.search) !== undefined;
   }
 
+  function readingUnderlyingDeepId() {
+    const params = new URLSearchParams(location.search);
+    return params.get('mode') === 'weekly' && params.get('read');
+  }
+
   function readingNeighbors(papers, id) {
     const index = papers.findIndex(paper => paper.id === id);
     return index < 0 ? null : {
@@ -126,6 +131,10 @@
     if (!pendingReadingLink) return;
     const { id, restore, drawerReturn } = pendingReadingLink;
     const paper = allPapersMap.get(id);
+    if (paper && state.mode === 'weekly' && urlParams.has('read') && !activeDeepReadingId && partsPending('readings')) {
+      prioritizeParts();
+      return;
+    }
     if (!paper && (partsPending(...readingPaperParts) || RADAR_LOAD.state === 'loading'
       || (id.startsWith('doi-') && SUPPLEMENTAL_LIBRARY.promise))) {
       prioritizeParts();

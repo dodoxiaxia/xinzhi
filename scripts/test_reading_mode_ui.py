@@ -163,7 +163,6 @@ def verify_viewport(browser, base, width, height, output):
         }''', DOWNLOADS)
         assert reading.locator('iframe, embed, object').count() == 0
         shot('full-reading')
-        shot('flow-01-expand')
 
         # Keyboard cycle and reduced-motion anchor scrolling, with both bars held in view.
         page.keyboard.press('Shift+Tab')
@@ -207,7 +206,6 @@ def verify_viewport(browser, base, width, height, output):
         expect(reading.get_by_text('全文不可得', exact=True)).to_be_attached()
         expect(reading.locator('a[data-ft-download]:visible')).to_have_count(0)
         shot('abstract-only')
-        shot('flow-02-next')
         page.locator('#readingNextBtn').click()
         expect(reading_paper(THIRD)).to_be_visible()
         expect(reading.get_by_text('暂无摘要', exact=True)).to_be_visible()
@@ -223,13 +221,25 @@ def verify_viewport(browser, base, width, height, output):
         expect(body).to_have_attribute('data-paper-id', FIRST)
         assert abs(body.evaluate('(el) => el.scrollTop') - preceding_scroll) <= 1
         assert 'paper' not in parse_qs(urlsplit(page.url).query)
-        shot('flow-03-return')
         page.go_forward()
         expect(reading_paper(THIRD)).to_be_visible()
         page.keyboard.press('Escape')
         expect(expand).to_be_focused()
         page.keyboard.press('Escape')
         expect(opener).to_be_focused()
+
+        # Capture an uninterrupted expand → next → return sequence, using the toolbar.
+        opener.click()
+        expand.click()
+        expect(reading_paper(FIRST)).to_be_visible()
+        shot('flow-01-expand')
+        page.locator('#readingNextBtn').click()
+        expect(reading_paper(SECOND)).to_be_visible()
+        shot('flow-02-next')
+        back.click()
+        expect(expand).to_be_focused()
+        expect(body).to_have_attribute('data-paper-id', FIRST)
+        shot('flow-03-return')
 
         # Bootstrap a direct link while the owning shard is intentionally held.
         delay_library = True
@@ -269,6 +279,20 @@ def verify_viewport(browser, base, width, height, output):
         page.get_by_role('button', name='返回列表').click()
         expect(reading).to_be_hidden()
         expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_be_focused()
+
+        # The weekly read= link keeps its existing layer beneath a paper= link.
+        weekly = '?mode=weekly&pane=reading&read=demo-tailored-af'
+        page.goto(base + weekly + '&paper=' + FIRST)
+        expect(reading_paper(FIRST)).to_be_visible()
+        expect(page.get_by_role('button', name='返回列表')).to_be_focused()
+        page.go_back()
+        expect(page.locator('#deepReaderClose')).to_be_focused()
+        assert parse_qs(urlsplit(page.url).query)['read'] == ['demo-tailored-af']
+        assert 'paper' not in parse_qs(urlsplit(page.url).query)
+        page.go_forward()
+        expect(reading_paper(FIRST)).to_be_visible()
+        expect(page.get_by_role('button', name='返回列表')).to_be_focused()
+        assert parse_qs(urlsplit(page.url).query)['read'] == ['demo-tailored-af']
 
         for bad in ['paper=gone-paper', 'paper=', 'paper=first&paper=second',
                     urlencode({'paper': '<b id="unexpected-url-markup">x</b>'})]:
