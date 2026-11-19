@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Exercise the smoke CLI end to end on a tiny loopback site, never production."""
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
+from types import SimpleNamespace
 import json
 import random
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlsplit
 
 import smoke_live as smoke
@@ -20,12 +21,17 @@ CSS = 'assets/style.000000000002.css'
 ARCHIVE = 'assets/radar.000000000003.js'
 SHARD = 'shards/readings-2026-11.000000000004.js'
 PARTS = {part: f'assets/data-{part}.{index:012x}.js'
-         for index, part in enumerate(('feeds', 'radar', 'readings'), 5)}
+         for index, part in enumerate(('feeds', 'radar', 'readings', 'library'), 5)}
 BROWSER_PRS = ','.join(pr for pr, _, fn in smoke.CHECKS if fn in smoke.BROWSER_CHECKS)
-STATIC_CHECKS = '203,213,215,assets,budget,secrets'
+STATIC_CHECKS = '203,204,207,213,215,217,218,221,222,223,224,assets,budget,secrets'
 
 HTML = f'''<!doctype html><html lang="zh"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta property="og:title" content="Fixture">
+<meta property="og:description" content="Description">
+<meta property="og:url" content="https://fixture.invalid/">
+<meta property="og:image" content="https://fixture.invalid/icon.png">
+<meta name="twitter:card" content="summary">
 <link rel="stylesheet" href="{CSS}">
 <body style="margin:0"><nav id="nav"></nav><div id="main"></div><div id="toast"></div>
 <button id="openRequestsBtn">申请记录</button><div id="requestsModalBackdrop" hidden>
@@ -43,13 +49,24 @@ function render() {
     '<button class="nav-tab-btn ' + (m === mode ? 'active' : '') + '" data-mode="' + m + '">' + m + '</button>').join('');
   const n = tags.length === 2 ? (and ? 1 : 5) : tags[0] === 'A' ? 3 : tags[0] === 'B' ? 3 : 6;
   main.innerHTML = '<div id="listTotal">共 ' + (zero ? 0 : journal ? (broken.includes("206") ? 4 : 3) : n) + ' 篇</div>' +
-    '<article data-paper-id="p1"><button data-action="open-drawer">paper</button></article>';
-  main.querySelector('article').outerHTML = '<div id="articlesStream">' +
-    main.querySelector('article').outerHTML + '</div>';
+    '<div id="articlesStream">' + ids.map(id => '<article data-paper-id="' + id +
+    '"><button class="title-open" data-action="open-drawer">' +
+    (broken.includes("216") ? 'Bad \ufffd title' : 'Clean café 中文 title') +
+    '</button><p class="article-gist">Good gist</p></article>').join('') + '</div>';
   if (mode === 'weekly') main.innerHTML += '<div id="weeklyAuto"><div class="weekly-head">榜单</div>' +
-    '<div class="weekly-row" style="max-width:300px" data-paper-id="p3"><button class="title-open">' +
+    '<div class="weekly-row weekly-auto-item" style="max-width:300px" data-paper-id="p3"><button class="title-open">' +
     (broken.includes("212") ? '<span style="position:relative;left:300px">Title outside row</span>' : 'The longest weekly paper title') +
     '</button></div></div><button id="weeklyPaneReadingTab">全文精读</button>';
+  if (mode === 'library') {
+    main.innerHTML += '<button id="searchToggleBtn">搜索</button>' +
+      '<input id="globalSearch" hidden><div id="activeFiltersBar"></div>';
+    if (!document.querySelector('script[data-library]')) {
+      const loader = document.createElement('script');
+      loader.dataset.library = '';
+      loader.src = XINZHI_PARTS.parts.library.src;
+      document.head.append(loader);
+    }
+  }
   if (mode === 'candidates') main.innerHTML += '<button data-qf-jtier-menu="ai">AI期刊</button>' +
     '<button id="searchToggleBtn">搜索</button><input id="globalSearch" hidden><button data-qf="topic">主题</button>' +
     '<div id="qfPop"></div>';
@@ -108,11 +125,31 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => {
   if (e.target.id !== 'globalSearch') return;
+  if (mode === 'library') {
+    const q = e.target.value, url = new URL(location.href);
+    url.searchParams.set('q', q);
+    const expansions = {房颤消融: '房颤 → atrial fibrillation；消融 → ablation', AF: 'AF → atrial fibrillation'};
+    const terms = expansions[q] || (broken.includes('search-english') ? 'ablation → spurious' : '');
+    $('#activeFiltersBar').innerHTML = terms && !(broken.includes('219') && q === 'AF')
+      ? '<span data-search-expansion>已按 ' + terms + ' 检索</span>' : '';
+    $('#listTotal').textContent = '共 ' + (terms && !broken.includes('search-zero') ? 4 : 0) + ' 篇';
+    history.replaceState(null, '', url);
+    return;
+  }
   zero = true;
   $('#listTotal').textContent = '共 0 篇';
   journalMenu();
 });
+window.XINZHI_PART = () => {};
 render();
+if (query.has('list')) {
+  const shared = atob(query.get('list').slice(3).replace(/-/g, '+').replace(/_/g, '/')).split('\n');
+  const visible = broken.includes('220') ? shared.slice(0, 1) : shared;
+  main.insertAdjacentHTML('beforeend', '<div id="sharedShortlistBanner"><h2 id="sharedShortlistTitle">' +
+    '正在查看分享的清单（' + visible.length + ' 篇）</h2></div><div id="sharedShortlistRows">' +
+    visible.map(id => '<div data-paper-id="' + id + '"><button class="title-open">Paper</button></div>').join('') + '</div>');
+  if (broken.includes('share-write')) localStorage.setItem('xinzhi_huddle_ids', JSON.stringify(shared));
+}
 if (query.has('paper')) {
   if (ids.includes(query.get('paper'))) drawer(query.get('paper'), true);
   else {
@@ -130,7 +167,9 @@ def fixtures(broken=()):
     now = max(datetime.now(smoke.BEIJING), smoke.NOTICE_DEPLOYED.astimezone(smoke.BEIJING))
     day = now.date().isoformat()
     today = datetime.now(smoke.BEIJING).date().isoformat()
-    timestamp = '2026-11-18T00:00:00+00:00' if 'old' in broken else now.isoformat()
+    timestamp = now.isoformat()
+    age = 40 if 'old' in broken else 2 if 'waiting' in broken else None
+    radar_stamp = (datetime.now(timezone.utc) - timedelta(hours=age)).isoformat() if age else timestamp
     reading = dict(pmcid='PMCfixture', title='Longest public reading', titleZh='最长的公开精读题名',
                    journal='Fixture Journal', date=day, publishedOn=today,
                    sourceUrl='https://europepmc.org/articles/PMCfixture', scope='public-fulltext-body')
@@ -142,7 +181,7 @@ def fixtures(broken=()):
         readings['wanted'] = []
     paper_rows = [{'id': f'p{i}', 'title': f'Public title {i}', 'tags': []} for i in range(1, 4)]
     feeds = {'updatedAt': timestamp, 'items': paper_rows}
-    radar = {'updatedAt': timestamp, 'rows': [], 'tag': ['#预防/血脂']}
+    radar = {'updatedAt': radar_stamp, 'rows': [], 'tag': ['#预防/血脂']}
     archive = {**radar, 'rows': [['123456789', '', day, 0, 0, 0, 0,
                                  [0] if '215' in broken else [], 'Retraction of: Public title']]}
     manifest = {'parts': {name: {'src': path} for name, path in PARTS.items()}}
@@ -156,21 +195,35 @@ def fixtures(broken=()):
     if 'secrets' in broken:
         css += '/*' + 'AK' + 'IA' + 'A1B2C3D4E5F6G7H8' + '*/'
     html = HTML.replace('DISCLOSURE', '' if '209' in broken else '<small>仅此浏览器保存</small>')
+    if 'og-duplicate' in broken:
+        html += '<meta property="og:title" content="Duplicate">'
+    robots = 'User-agent: *\nSitemap: https://fixture.invalid/sitemap.xml\n'
+    if '223' not in broken:
+        robots += 'Disallow: /api/\n'
+    sitemap_path = '/api/x' if 'sitemap-api' in broken else '/?paper=p1' if 'sitemap-paper' in broken else '/'
+    sitemap = ('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+               f'<url><loc>https://fixture.invalid{sitemap_path}</loc></url></urlset>')
     documents = {
+        '/robots.txt': (robots, 'text/plain'),
+        '/sitemap.xml': (sitemap, 'application/xml'),
+        '/demo-reading': ('Demo', 'text/html'),
         '/': (html, 'text/html'),
         '/' + APP: (app, 'application/javascript'),
         '/' + CSS: (css, 'text/css'),
         '/' + ARCHIVE: (js('RADAR_ARCHIVE', archive), 'application/javascript'),
         '/' + SHARD: ('', 'application/javascript'),
     }
-    for name, payload in {'feeds': {'items': []}, 'radar': radar, 'readings': readings}.items():
+    library = {'papers': paper_rows}
+    if 'library-text' in broken:
+        library['papers'] = [{'title': r'Literal \u1234 residue'}]
+    for name, payload in {'feeds': {'items': []}, 'radar': radar, 'readings': readings, 'library': library}.items():
         body = 'window.XINZHI_PART&&window.XINZHI_PART(' + json.dumps(name) + ',' + json.dumps(payload) + ');'
         documents['/' + PARTS[name]] = (body, 'application/javascript')
     return documents, broken
 
 
 @contextmanager
-def serve(broken=(), redirect=False):
+def serve(broken=(), redirects=None):
     documents, broken = fixtures(broken)
     calls = []
 
@@ -181,9 +234,9 @@ def serve(broken=(), redirect=False):
         def do_GET(self):
             calls.append((self.command, self.path, self.headers.get('User-Agent')))
             url = urlsplit(self.path)
-            if redirect and url.path == '/':
-                self.send_response(302)
-                self.send_header('Location', '/icon.png')
+            if redirects and url.path in redirects:
+                self.send_response(308)
+                self.send_header('Location', redirects[url.path])
                 self.end_headers()
                 return
             if url.path == '/api/library':
@@ -191,7 +244,17 @@ def serve(broken=(), redirect=False):
                 body, content_type = json.dumps(payload), 'application/json'
             else:
                 body, content_type = documents.get(url.path, ('', 'text/plain'))
-            self.send_response(200 if url.path in documents or url.path == '/api/library' else 404)
+            status = 200 if url.path in documents or url.path == '/api/library' else 404
+            if smoke.NOT_FOUND.fullmatch(url.path):
+                body = '<h1>页面未找到</h1><a href="/">首页</a>'
+                if 'unknown-200' in broken:
+                    status = 200
+            if url.path in smoke.PRIVATE_PATHS:
+                if '222' in broken:
+                    status = 200
+                if 'pdf' in broken:
+                    content_type = 'Application/PDF'
+            self.send_response(status)
             self.send_header('Content-Type', content_type + '; charset=utf-8')
             if url.path in documents and url.path != '/' and not ('assets' in broken and url.path == '/' + CSS):
                 self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
@@ -251,7 +314,9 @@ class SmokeTests(unittest.TestCase):
         with serve() as (base, calls):
             code, data = invoke(base, '--no-browser', '--only', STATIC_CHECKS)
         expected = dict.fromkeys(STATIC_CHECKS.split(','), 'PASS')
-        expected['203'] = 'SKIP'
+        for pr, _, check in smoke.CHECKS:
+            if pr in expected and isinstance(check, str):
+                expected[pr] = 'SKIP'
         try:
             import brotli  # noqa: F401
         except ImportError:
@@ -260,6 +325,10 @@ class SmokeTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(all(ua == smoke.USER_AGENT and method in smoke.METHODS for method, _, ua in calls))
         self.assertTrue(any(path == '/' + SHARD and method == 'HEAD' for method, path, _ in calls))
+        self.assertEqual({method for method, _, _ in calls}, {'GET', 'HEAD'})
+        self.assertEqual(smoke.METHODS, {'GET', 'HEAD'})
+        self.assertEqual([method for method, path, _ in calls if path in smoke.PRIVATE_PATHS],
+                         ['HEAD'] * len(smoke.PRIVATE_PATHS))
         self.assertFalse(any('/api/' in path for _, path, _ in calls))
         self.assertLessEqual(len(calls), smoke.REQUEST_LIMIT)
 
@@ -271,13 +340,67 @@ class SmokeTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertNotIn('A1B2C3D4E5F6G7H8', json.dumps(data))
 
-    def test_catalog_duplicate_and_stale_radar_are_failures(self):
-        with serve(('duplicate', 'old')) as (base, _):
-            code, data = invoke(base, '--no-browser', '--only', '213,215')
-        self.assert_report(data, {'213': 'FAIL', '215': 'FAIL'})
-        self.assertEqual(code, 1)
-        self.assertIn('duplicate ID/DOI', data['results'][0]['evidence'])
-        self.assertIn('2026-11-18T00:00:00+00:00', data['results'][1]['evidence'])
+    def test_wait_and_stalled_radar(self):
+        floor = datetime.now(timezone.utc) - timedelta(hours=1)
+        with patch.object(smoke, 'NOTICE_DEPLOYED', floor):
+            for problems, status, age in ((('waiting',), 'WAIT', 2), (('old',), 'FAIL', 40)):
+                with self.subTest(status=status), serve(problems) as (base, _):
+                    code, data = invoke(base, '--no-browser', '--only', '215,221,224')
+                    self.assert_report(data, {'215': status, '221': 'SKIP', '224': 'SKIP'})
+                    self.assertEqual(code, int(status == 'FAIL'))
+                    evidence = data['results'][0]['evidence']
+                    self.assertIn(f'age {age}.0 h', evidence)
+                    self.assertIn(f'required ≥ {floor.isoformat()}', evidence)
+                    self.assertIn('recent radar updatedAt=', evidence)
+                    self.assertEqual('daily refresh stalled' in evidence, status == 'FAIL')
+            with serve(('duplicate', 'waiting', '215')) as (base, _):
+                code, data = invoke(base, '--no-browser', '--only', '213,215')
+                self.assert_report(data, {'213': 'FAIL', '215': 'FAIL'})
+                self.assertEqual(code, 1)
+                self.assertIn('duplicate ID/DOI', data['results'][0]['evidence'])
+                self.assertIn('1/1 machine/unattributed', data['results'][1]['evidence'])
+
+    def test_static_probe_regressions(self):
+        for fault, pr in (('223', '223'), ('unknown-200', '223'), ('sitemap-api', '223'),
+                          ('sitemap-paper', '223'), ('og-duplicate', '223'), ('222', '222'), ('pdf', '222')):
+            with self.subTest(fault=fault), serve((fault,)) as (base, _):
+                code, data = invoke(base, '--no-browser', '--only', pr)
+                self.assertEqual(code, 1)
+                self.assert_report(data, {pr: 'FAIL'})
+
+    @require_browser
+    def test_browser_probe_counterexamples(self):
+        for fault, pr in (('library-text', '216'), ('search-english', '219'), ('search-zero', '219'),
+                          ('share-write', '220')):
+            with self.subTest(fault=fault), serve((fault,)) as (base, _):
+                code, data = invoke(base, '--only', pr)
+                self.assertEqual(code, 1)
+                self.assert_report(data, {pr: 'FAIL'})
+
+    def test_text_artifact_classes(self):
+        self.assertEqual(smoke.clean_text(['正常 café', 'ablation/n'], 'fixture'), 2)
+        for value in ('\ufffd', '\x00', '\n', '\x85', r'\n', r'\u12'):
+            with self.subTest(value=value), self.assertRaises(smoke.CheckError):
+                smoke.clean_text([value], 'fixture')
+
+    @require_browser
+    def test_navigation_timeout_only_retried_once(self):
+        from playwright.sync_api import TimeoutError
+
+        checks = smoke.BrowserChecks(None, smoke.PublicSite(smoke.ReadOnlyHTTP('http://localhost', 2)))
+        page = Mock()
+        ok = SimpleNamespace(status=200)
+        for outcomes, status in (((TimeoutError('fixture timeout'), ok), 'PASS'), ((TimeoutError('fixture timeout'), TimeoutError('fixture timeout')), 'FAIL'),
+                                 ((SimpleNamespace(status=503),), 'FAIL')):
+            with self.subTest(outcomes=outcomes):
+                page.reset_mock()
+                checks.navigation.clear()
+                page.goto.side_effect = outcomes
+                result = smoke.run_case('205', 'navigation', lambda: checks.go(page))
+                self.assertEqual(result.status, status)
+                self.assertEqual([call.kwargs['timeout'] for call in page.goto.call_args_list],
+                                 list(smoke.NAVIGATION_TIMEOUTS[:len(outcomes)]))
+                self.assertEqual(len(checks.navigation), 2 if len(outcomes) == 2 else 0)
 
     @require_browser
     def test_browser_checks_pass_and_fail_on_real_chromium(self):
@@ -307,14 +430,51 @@ class SmokeTests(unittest.TestCase):
             self.assertFalse(any(method not in smoke.METHODS for method, _, _ in calls))
 
     def test_http_refuses_write_disallowed_get_and_redirect(self):
-        with serve(redirect=True) as (base, calls):
+        with serve(redirects={'/': '/icon.png'}) as (base, calls):
             http = smoke.ReadOnlyHTTP(base, 2)
             with self.assertRaisesRegex(smoke.CheckError, 'GET or HEAD'):
                 http._read(base + '/', 'POST')
             with self.assertRaisesRegex(smoke.CheckError, 'allowlisted'):
                 http.get('/api/acquire?doi=10.1234/test-fixture')
-            self.assertEqual(http.get('/').status, 302)
+            self.assertEqual(http.get('/').status, 308)
+            with self.assertRaisesRegex(smoke.CheckError, 'allowlisted'):
+                http.get(smoke.PRIVATE_PATHS[0])
         self.assertEqual(calls, [('GET', '/', smoke.USER_AGENT)])
+
+    def test_browser_route_redirect_policy(self):
+        start = '/demo-reading.html'
+        for method, redirects, paths, blocked in (
+            ('GET', {start: '/demo-reading'}, [start, '/demo-reading'], None),
+            ('HEAD', {start: '/demo-reading'}, [start, '/demo-reading'], None),
+            ('GET', {}, ['/demo-reading'], None),
+            ('GET', {start: '/api/acquire?doi=hidden'}, [start], '/api/acquire'),
+            ('GET', {start: 'https://other.invalid/demo-reading'}, [start], '/demo-reading'),
+            ('GET', {start: '/icon.png', '/icon.png': '/favicon.ico', '/favicon.ico': '/demo-reading'},
+             [start, '/icon.png', '/favicon.ico'], '/demo-reading'),
+        ):
+            with self.subTest(method=method, redirects=redirects), serve(redirects=redirects) as (base, calls):
+                http = smoke.ReadOnlyHTTP(base, 2)
+                route = Mock(request=SimpleNamespace(method=method, url=base + paths[0]))
+                http.browser_route(route)
+                self.assertEqual([(m, p) for m, p, _ in calls], [(method, path) for path in paths])
+                self.assertEqual(http.redirects_followed, len(paths) - 1)
+                self.assertEqual(list(http.blocked_paths), [blocked] if blocked else [])
+                if blocked:
+                    route.abort.assert_called_once()
+                    route.fulfill.assert_not_called()
+                else:
+                    route.abort.assert_not_called()
+                    self.assertEqual(route.fulfill.call_args.kwargs['status'], 200)
+
+    def test_blocked_paths_are_bounded_deduplicated_and_queryless(self):
+        http = smoke.ReadOnlyHTTP('http://localhost', 2)
+        for index in range(25):
+            for query in ('q=first', 'q=second'):
+                http.browser_route(Mock(request=SimpleNamespace(
+                    method='GET', url=f'{http.base}/blocked-{index}?{query}')))
+        self.assertEqual(http.other_blocks, 50)
+        self.assertEqual(list(http.blocked_paths), [f'/blocked-{index}' for index in range(20)])
+        self.assertEqual(http.attempts, 0)
 
     def test_shared_budget_caps_requests_and_reuses_responses(self):
         with serve() as (base, calls), patch.object(smoke, 'REQUEST_LIMIT', 2):
