@@ -2429,6 +2429,15 @@ html[data-style="a"] .qf-scope.is-on {
   border-radius: 12px;
   max-height: 70vh;
 }
+.qf-pop.is-inline {
+  position: relative;
+  z-index: auto;
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 32px));
+  max-height: min(260px, 34vh);
+  margin: 0 auto;
+  box-shadow: none;
+}
 .qf-pop-head {
   display: flex;
   align-items: center;

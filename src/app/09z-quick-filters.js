@@ -151,9 +151,9 @@
     }
     return paperTierId(p) === state.journalTier;
   }
-  function journalNamesInColumn() {
+  function journalNamesInColumn(papers = qfPapers()) {
     const counts = new Map();
-    qfPapers().forEach(p => {
+    papers.forEach(p => {
       const name = paperJournalKey(p);
       if (!name) return;
       const canon = name;
@@ -448,7 +448,7 @@
     const hadFocus = $('#qfPop')?.contains(document.activeElement);
     qfOpen = null;
     const pop = $('#qfPop'), back = $('#qfBackdrop');
-    if (pop) { pop.hidden = true; pop.innerHTML = ''; pop.classList.remove('is-sheet'); }
+    if (pop) { pop.hidden = true; pop.innerHTML = ''; pop.classList.remove('is-sheet', 'is-inline'); }
     if (back) back.hidden = true;
     $$('.qf-chip[aria-expanded="true"], #qfScopeBtn').forEach(b => b.setAttribute('aria-expanded', 'false'));
     if (restoreFocus && hadFocus && anchor && !anchor.hidden) anchor.focus({ preventScroll: true });
@@ -456,12 +456,14 @@
   function placeQfPop(anchor) {
     const pop = $('#qfPop');
     if (!pop) return;
+    const inline = state.mode === 'candidates';
     const narrow = window.innerWidth <= 600;
-    pop.classList.toggle('is-sheet', narrow);
+    pop.classList.toggle('is-inline', inline);
+    pop.classList.toggle('is-sheet', !inline && narrow);
     pop.hidden = false;
     const back = $('#qfBackdrop');
-    if (back) back.hidden = false;
-    if (narrow || !anchor) {
+    if (back) back.hidden = inline;
+    if (inline || narrow || !anchor) {
       pop.style.left = '';
       pop.style.top = '';
       pop.style.width = '';
@@ -526,18 +528,22 @@
     const id = tierId || (qfOpen && qfOpen.kind && qfOpen.kind.slice(0, 6) === 'jtier:' ? qfOpen.kind.slice(6) : '');
     const q = foldSearch(String(query || '').trim());
     const rows = tierJournalRows(id);
+    // A journal pick replaces the source facet; count each journal under all the remaining radar filters.
+    const scopedCounts = state.mode === 'candidates'
+      ? journalNamesInColumn(qfPapers().filter(p => matchesFilters(p, false, 'pub'))) : null;
     const subset = currentTierSubset(id);
     const whole = state.journalTier === id && !subset.length;
     const fav = new Set((state.favoriteJournals || []).map(normJournal));
     const filtered = rows.filter(r => !q || foldSearch(r.name).includes(q));
     if (!filtered.length) return '<p class="qf-empty">没有匹配的期刊</p>';
     return filtered.map(r => {
+      const n = scopedCounts ? (scopedCounts.get(normJournal(r.name))?.n || 0) : r.n;
       const on = whole || subset.some(j => normJournal(j) === normJournal(r.name));
       const starred = fav.has(normJournal(r.name));
       const sug = r.suggested ? '<small class="qf-suggested">建议</small>' : '';
-      return `<div class="qf-jrow${on ? ' is-on' : ''}${r.n ? '' : ' is-empty'}" data-qf-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}">
+      return `<div class="qf-jrow${on ? ' is-on' : ''}${n ? '' : ' is-empty'}" data-qf-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}">
         <button type="button" class="qf-jstar${starred ? ' is-starred' : ''}" data-qf-follow="${esc(r.name)}" aria-label="${starred ? '取消关注' : '关注期刊'}" aria-pressed="${starred}">${starred ? '★' : '☆'}</button>
-        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}">${esc(r.name)}${sug}<small>${r.n}</small></button>
+        <button type="button" class="qf-jname" data-qf-pick-journal="${esc(r.name)}" data-qf-journal-tier="${esc(id)}" aria-pressed="${on}">${esc(r.name)}${sug}<small>${n}</small></button>
       </div>`;
     }).join('');
   }
