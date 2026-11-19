@@ -86,6 +86,20 @@ async function helpers() {
   assert.equal(c.fulltextFilterBucket(kept), 'ready');
   assert.equal(c.fulltextFilterBucket(pending), 'none');
   assert.equal(c.fulltextFilterBucket(manual), 'failed');
+  // A paper released by hand review (DOI-in-full-text check skipped) is labelled 人工放行; ordinary and not-yet-available papers are not.
+  c.mergeSupplementalPaper({ ...apiPaper('10.1234/released', 'Released clinical title', 'available'), fulltextVerification: 'manual_release' });
+  c.mergeSupplementalPaper(apiPaper('10.1234/verified', 'Verified clinical title', 'available'));
+  c.mergeSupplementalPaper({ ...apiPaper('10.1234/forged', 'Forged clinical title', 'pending'), fulltextVerification: 'manual_release' });
+  c.mergeSupplementalPaper({ ...apiPaper('10.1234/odd', 'Odd clinical title', 'available'), fulltextVerification: 'anything_else' });
+  const releasedPaper = c.LIBRARY.papers.find(p => p.doi === '10.1234/released'), verifiedPaper = c.LIBRARY.papers.find(p => p.doi === '10.1234/verified');
+  const forgedPaper = c.LIBRARY.papers.find(p => p.doi === '10.1234/forged'), oddPaper = c.LIBRARY.papers.find(p => p.doi === '10.1234/odd');
+  for (const html of [c.pdfDownloadLink(releasedPaper), c.fulltextStatusHtml(releasedPaper, true), c.fulltextStatusHtml(releasedPaper, true, true)])
+    assert(html.includes('人工放行') && html.includes('ft-badge-ready'), 'released paper is labelled and still downloadable');
+  assert(c.pdfDownloadLink(releasedPaper).includes('data-ft-download'), 'the download button is kept');
+  assert.equal(c.fulltextFilterBucket(releasedPaper), 'ready');
+  for (const other of [verifiedPaper, forgedPaper, oddPaper]) assert(!c.pdfDownloadLink(other).includes('人工放行') && !c.fulltextStatusHtml(other, true).includes('人工放行'), other.doi + ' is not labelled');
+  assert(c.pdfDownloadLink(verifiedPaper).includes('可下载') && c.fulltextStatusHtml(verifiedPaper, true).includes('全文已核验，可以下载'));
+  assert.equal(forgedPaper.fulltextVerification, ''); assert.equal(oddPaper.fulltextVerification, '');
   c.mergeDoiJob(pending.doi, { ...job, state: 'queued', stage: 'queued' });
   assert.equal(c.fulltextFilterBucket(pending), 'queued');
   c.mergeDoiJob(pending.doi, { ...job, state: 'running', stage: 'running' });

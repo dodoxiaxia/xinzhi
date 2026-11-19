@@ -82,7 +82,10 @@
     const journal = typeof raw.journal === 'string' ? raw.journal.trim().slice(0, 120) : '';
     const sourceMode = typeof raw.sourceMode === 'string' ? raw.sourceMode.trim().slice(0, 32) : '';
     const note = typeof raw.note === 'string' ? raw.note.trim().slice(0, 160) : '';
-    return { doi, title, journal, sourceMode, requestedAt, status, stage, paperId, lastCheckedAt, note };
+    const clean = { doi, title, journal, sourceMode, requestedAt, status, stage, paperId, lastCheckedAt, note };
+    if (status === 'available' && ['ingested', 'already_in_library', 'identity_conflict'].includes(raw.libraryState)) clean.libraryState = raw.libraryState;
+    if (['identity_hold', 'identity_hold_rejected'].includes(raw.reason)) clean.reason = raw.reason;
+    return clean;
   }
   function loadBrowserRequests() {
     try {
@@ -141,6 +144,8 @@
       requestedAt: (prev && prev.requestedAt) || entry.requestedAt || now,
       status: BROWSER_REQ_STATUSES.includes(entry.status) ? entry.status : (prev ? prev.status : 'queued'),
       stage: typeof entry.stage === 'string' ? entry.stage : (prev ? prev.stage : ''),
+      libraryState: entry.libraryState,
+      reason: entry.reason,
       paperId: typeof entry.paperId === 'string' && entry.paperId ? entry.paperId : (prev ? prev.paperId : ''),
       lastCheckedAt: entry.checked === false ? (prev ? prev.lastCheckedAt : '') : now,
       note: typeof entry.note === 'string' ? entry.note : (prev ? prev.note : '')
@@ -194,6 +199,17 @@
   }
   function isCaseReport(p) { return (p && p.studyDesign) === '病例报告'; }
   function defaultRange(m) { return m === 'candidates' ? '14' : 'all'; }
+  function readShortlistShareParam(params) {
+    const values = params.getAll('list');
+    return values.length === 0 ? null : values.length === 1 ? values[0] : '';
+  }
+  function clearShortlistShareUrl() {
+    try {
+      const url = new URL(location.href);
+      url.searchParams.delete('list');
+      history.replaceState(history.state, '', url.href);
+    } catch (e) { /* sandboxed history */ }
+  }
   function readStateFromUrl(search = window.location.search) {
     const params = new URLSearchParams(search);
     const rawMode = params.get('mode') || 'curated';
@@ -241,6 +257,7 @@
   const savedTheme = safeGet('xinzhi_theme');
   const state = {
     mode: initialUrlState.mode, // 'curated' | 'weekly' | 'candidates' | 'library' | 'sources'
+    shortlistShare: readShortlistShareParam(urlParams),
     viewMode: initialUrlState.viewMode, // 'cards' | 'compact'
     theme: window.XINZHI_BOOT ? window.XINZHI_BOOT.theme : validTheme(urlParams.get('theme')) ? urlParams.get('theme') : validTheme(savedTheme) ? savedTheme : ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'),
     search: initialUrlState.search,

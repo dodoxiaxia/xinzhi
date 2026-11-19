@@ -6,12 +6,21 @@ const {promisify} = require('util'),execFile = promisify(require('child_process'
 const ENDPOINT = 'https://learn.dryz.info/api/muse/review';
 const CLAIM_IDLE_POLLS = 9, CLAIM_IDLE_MS = 15000;
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+const RELEASE_METHOD = 'dual_parser_title_manual_release', FULL_METHOD = 'dual_parser_all_pages_title_doi';
+function validRelease(release, sha256) {
+  return !!release && typeof release === 'object' && !Array.isArray(release) && release.sha256 === sha256
+    && typeof release.by === 'string' && Number.isSafeInteger(release.at) && typeof release.reason === 'string'
+    && JSON.stringify(release.skipped) === JSON.stringify(['doi_in_fulltext']);
+}
 async function verifyOriginal(bytes, task) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(),'xinzhi-muse-'));
   try {
     const file = path.join(directory,'original.pdf');
     await fs.writeFile(file,bytes,{mode:0o600});
-    const result = await execFile('python3',[path.join(__dirname,'muse_pdf_verifier.py'),file,'--doi',task.doi,'--title',task.title],{timeout:90000,maxBuffer:8192});
+    const args = [path.join(__dirname,'muse_pdf_verifier.py'),file,'--doi',task.doi,'--title',task.title];
+    // A task released through hold-review skips only the DOI-in-full-text check; the verifier also pins the file to the released hash.
+    if (task.release) args.push('--released-sha256',task.release.sha256);
+    const result = await execFile('python3',args,{timeout:90000,maxBuffer:8192});
     return JSON.parse(result.stdout);
   } finally { await fs.rm(directory,{recursive:true,force:true}); }
 }
@@ -54,17 +63,20 @@ async function runReview(env = process.env, http = fetch, verify = verifyOrigina
     if (!task || typeof task.doi !== 'string' || !/^10\.\d{4,9}\/[\x21-\x7e]{1,200}$/.test(task.doi) || /[<>?#@\\]/.test(task.doi)
         || task.doi !== task.doi.toLowerCase() || (recheckDoi && task.doi !== recheckDoi) || typeof task.title !== 'string' || !task.title || task.title.length > 800
         || !uuid.test(task.taskId || '') || !uuid.test(task.leaseId || '') || !/^[a-f0-9]{64}$/.test(task.sha256 || '')
-        || !Number.isInteger(task.bytes) || task.bytes < 51200 || task.bytes > 20 * 1024 * 1024) throw new Error('invalid_candidate');
+        || !Number.isInteger(task.bytes) || task.bytes < 51200 || task.bytes > 20 * 1024 * 1024
+        || (Object.hasOwn(task,'release') && !validRelease(task.release,task.sha256))) throw new Error('invalid_candidate');
     const identity = {taskId:task.taskId,doi:task.doi,leaseId:task.leaseId};
     const bytes = await call({action:'bytes',...identity},true);
     if (bytes.length !== task.bytes || crypto.createHash('sha256').update(bytes).digest('hex') !== task.sha256) throw new Error('invalid_candidate');
     let proof;
     try { proof = await verify(bytes,task); }
-    catch { proof = {verified:false,pages:0,sha256:task.sha256,bytes:task.bytes,method:'dual_parser_all_pages_title_doi'}; }
-    if (!proof || proof.sha256 !== task.sha256 || proof.bytes !== task.bytes || proof.method !== 'dual_parser_all_pages_title_doi'
+    catch { proof = {verified:false,pages:0,sha256:task.sha256,bytes:task.bytes,method:task.release ? RELEASE_METHOD : FULL_METHOD}; }
+    // The method must match how the verifier was called; a verified manual release must name the one check it skipped, nothing else may.
+    const skippedOk = task.release && proof && proof.verified ? JSON.stringify(proof.skipped) === JSON.stringify(['doi_in_fulltext']) : !proof || !Object.hasOwn(proof,'skipped');
+    if (!proof || proof.sha256 !== task.sha256 || proof.bytes !== task.bytes || proof.method !== (task.release ? RELEASE_METHOD : FULL_METHOD) || !skippedOk
         || typeof proof.verified !== 'boolean' || !Number.isInteger(proof.pages) || proof.pages < 0 || proof.pages > 200 || (proof.verified && proof.pages < 1)) throw new Error('invalid_verification');
     const reason = !proof.verified && ['invalid_pdf','invalid_identity','identity_mismatch'].includes(proof.reason) ? proof.reason : '';
-    const input = {action:'complete',...identity,result:proof.verified ? 'verified' : 'rejected',sha256:proof.sha256,bytes:proof.bytes,pages:proof.pages,method:proof.method,...(reason ? {reason} : {})};
+    const input = {action:'complete',...identity,result:proof.verified ? 'verified' : 'rejected',sha256:proof.sha256,bytes:proof.bytes,pages:proof.pages,method:proof.method,...(task.release && proof.verified ? {skipped:proof.skipped} : {}),...(reason ? {reason} : {})};
     let done;
     for (let retry = 0; retry < 3; retry++) {
       try { done = await call(input); break; }

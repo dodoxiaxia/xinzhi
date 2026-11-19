@@ -91,9 +91,43 @@
     '人工智能': ['artificial intelligence'], '机器学习': ['machine learning'], '深度学习': ['deep learning'], '预测模型': ['prediction model'],
     '随机对照': ['randomized', 'randomised'], '荟萃': ['meta-analysis'], '综述': ['review'], '指南': ['guideline'], '共识': ['consensus'],
     '心脏': ['cardiac', 'heart'], '血管': ['vascular'], '心血管': ['cardiovascular'], '血栓': ['thrombo'], '出血': ['bleeding', 'hemorrhage'],
-    '肥厚': ['hypertrophic'], '扩张型': ['dilated'], 'TAVR': ['transcatheter aortic'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
+    '肥厚': ['hypertrophic'], '扩张型': ['dilated'], '二尖瓣': ['mitral'], '三尖瓣': ['tricuspid']
   };
-  const zhTerms = Object.keys(ZH_EN).sort((a,b) => b.length - a.length);
+  // Record the original keys before adding whole-word translations. New compounds
+  // can then widen a search while retaining matches from an older segmentation.
+  const zhTerms = ((legacy, additions) => ({
+    keys: Object.keys(Object.assign(ZH_EN, additions)).sort((a, b) => b.length - a.length), legacy
+  }))(new Set(Object.keys(ZH_EN)), {
+    '心包炎': ['pericarditis'], '心包': ['pericardium', 'pericardial', 'pericarditis'],
+    '主动脉夹层': ['aortic dissection', 'aortic dissections', 'dissection of the aorta'],
+    '动脉粥样硬化': ['atherosclerosis', 'atherosclerotic'], '心源性休克': ['cardiogenic shock'],
+    '房间隔缺损': ['atrial septal defect', 'atrial septal defects'], '卵圆孔未闭': ['patent foramen ovale'],
+    '晕厥': ['syncope', 'syncopal'], '长QT': ['long QT', 'QT prolongation', 'prolonged QT', 'LQTS'],
+    '希氏束起搏': ['His bundle pacing', 'His-bundle pacing'],
+    '左束支起搏': ['left bundle branch pacing', 'left bundle-branch pacing', 'left bundle branch area pacing'],
+    '传导阻滞': ['atrioventricular block', 'atrioventricular blocks', 'heart block', 'bundle branch block', 'conduction block'],
+    '心脏再同步': ['cardiac resynchronization therapy', 'cardiac resynchronisation therapy'],
+    '肌钙蛋白': ['troponin', 'troponins'], '利钠肽': ['natriuretic peptide', 'natriuretic peptides', 'NT-proBNP'],
+    '心脏移植': ['heart transplantation', 'heart transplant', 'heart transplants', 'cardiac transplantation'],
+    '睡眠呼吸暂停': ['sleep apnea', 'sleep apnoea'], '川崎病': ['Kawasaki disease', "Kawasaki's disease"],
+    '钙化积分': ['calcium score', 'calcium scoring', 'calcium scores', 'Agatston score'], '斑块': ['plaque', 'plaques'],
+    '肥胖': ['obesity', 'obese', 'adiposity'], '肾': ['renal', 'kidney', 'kidneys'],
+    '房早': ['premature atrial contraction', 'premature atrial contractions', 'atrial ectopy', 'atrial extrasystoles'],
+    '室早': ['premature ventricular contraction', 'premature ventricular contractions', 'ventricular ectopy', 'ventricular extrasystoles', 'PVCs'],
+    '心动过速': ['tachycardia', 'tachycardias'], '心动过缓': ['bradycardia', 'bradycardias'],
+    '冠脉CT': ['coronary computed tomography angiography', 'coronary CT angiography', 'coronary computed tomography', 'coronary CT'],
+    '心肌灌注': ['myocardial perfusion'], '胆固醇': ['cholesterol', 'hypercholesterolemia', 'hypercholesterolaemia'],
+    '炎症': ['inflammation', 'inflammatory'],
+    '肿瘤心脏病': ['cardio-oncology', 'cardiooncology', 'onco-cardiology'],
+    '妊娠': ['pregnancy', 'pregnant', 'gestational', 'preeclampsia', 'pre-eclampsia'],
+    '儿童': ['children', 'child', 'childhood', 'pediatric', 'paediatric', 'infant', 'infants', 'adolescent', 'adolescents'],
+    '老年': ['elderly', 'older adult', 'older adults', 'older patients', 'geriatric', 'geriatrics', 'octogenarians'],
+    '女性': ['women', 'woman', 'female', 'females'], '男性': ['men', 'man', 'male', 'males'],
+    '射血分数保留': ['heart failure with preserved ejection fraction'],
+    '射血分数降低': ['heart failure with reduced ejection fraction'],
+    '体外膜肺氧合': ['extracorporeal membrane oxygenation'],
+    '钠葡萄糖协同转运蛋白2': ['sodium-glucose cotransporter 2']
+  });
   const SEARCH_APOSTROPHES = /[\u2018\u2019\u201B\u02BC\u02B9\u2032\uFF07]/g;
   const SEARCH_QUOTES = /[\u201C\u201D\u201E\u201F\u2033\uFF02]/g;
   // 检索两侧都过它，题名/摘要里的弯引号与键盘直引号互认。
@@ -103,27 +137,109 @@
   // Segment adjacent Chinese terms: 房颤消融 and 房颤 消融 both mean AND.
   // The segmentation depends only on the query, so it is planned once per query string
   // (the filter calls this for every paper; re-segmenting per paper froze 14k-row searches).
-  function queryMatches(text, q) {
+  function queryMatches(text, q, explain = false) {
     const plans = queryMatches.plans || (queryMatches.plans = new Map());
     let plan = plans.get(q);
     if (!plan) {
-      plan = foldSearch(q).split(/\s+/).filter(Boolean).map(term => {
-        const groups = []; let rest = term;
-        while (rest) {
-          const zh = zhTerms.find(k => rest.startsWith(k.toLowerCase()));
-          if (zh) { groups.push([zh.toLowerCase(), ...ZH_EN[zh].map(x=>x.toLowerCase())]); rest = rest.slice(zh.length); }
-          else {
-            const next = [...rest].findIndex((_,i) => i>0 && zhTerms.some(k=>rest.slice(i).startsWith(k.toLowerCase())));
-            const n = next > 0 ? next : rest.length;
-            groups.push([rest.slice(0,n)]); rest = rest.slice(n);
-          }
+      const escapePattern = value => foldSearch(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      const whole = value => new RegExp('\\b' + escapePattern(value) + '\\b');
+      const families = [
+        [['AF'], ['atrial fibrillation']],
+        [['HFpEF'], ['heart failure with preserved ejection fraction']],
+        [['HFrEF'], ['heart failure with reduced ejection fraction']],
+        [['TAVI', 'TAVR'], ['transcatheter aortic valve implantation', 'transcatheter aortic valve replacement']],
+        [['PCI'], ['percutaneous coronary intervention', 'percutaneous coronary interventions']],
+        [['CRT'], ['cardiac resynchronization therapy', 'cardiac resynchronisation therapy']],
+        [['LBBAP'], ['left bundle branch area pacing', 'left bundle branch-area pacing', 'left bundle-branch area pacing']],
+        [['HBP'], ['His bundle pacing', 'His-bundle pacing']],
+        [['SGLT2', 'SGLT2i'], ['sodium-glucose cotransporter 2', 'sodium glucose cotransporter 2', 'sodium-glucose co-transporter 2']],
+        [['ECMO'], ['extracorporeal membrane oxygenation']],
+        [['CCTA'], ['coronary computed tomography angiography', 'coronary CT angiography']],
+        [['PFO'], ['patent foramen ovale']],
+        [['ASD'], ['atrial septal defect', 'atrial septal defects']],
+        [['AVB'], ['atrioventricular block', 'atrioventricular blocks']],
+        [['LQTS'], ['long QT syndrome']],
+        [['NT-proBNP'], ['N-terminal pro-B-type natriuretic peptide']],
+        [['PVC', 'PVCs'], ['premature ventricular contraction', 'premature ventricular contractions']],
+        [['PAC', 'PACs'], ['premature atrial contraction', 'premature atrial contractions']]
+      ];
+      const aliases = new Map();
+      const phrases = new Map();
+      const forms = new Map();
+      for (const [short, long] of families) {
+        const variants = [...short, ...long];
+        const family = { variants, pattern: new RegExp('\\b(?:' + variants.map(escapePattern).join('|') + ')\\b') };
+        for (const name of variants) forms.set(foldSearch(name), variants);
+        for (const name of short) aliases.set(foldSearch(name), { name, ...family });
+        for (const name of long) {
+          const words = foldSearch(name).split(' ');
+          if (!phrases.has(words[0])) phrases.set(words[0], []);
+          phrases.get(words[0]).push({ name, words, ...family });
         }
-        return { term, groups };
-      });
+      }
+      const matches = (text, alternatives) => alternatives.some(a => typeof a === 'string' ? text.includes(a) : a.test(text));
+      const expansion = new Map();
+      const describe = (name, variants) => expansion.set(name, [...new Set(variants)].filter(v => v !== name));
+      const keys = zhTerms.keys.map(name => [name, foldSearch(name)]);
+      const legacyKeys = keys.filter(([name]) => zhTerms.legacy.has(name));
+      const segment = (term, terms) => {
+        const parts = [];
+        for (let start = 0; start < term.length;) {
+          const zh = terms.find(([, key]) => term.startsWith(key, start));
+          if (zh) { parts.push({ zh: zh[0], term: zh[1] }); start += zh[1].length; continue; }
+          let end = start + 1;
+          while (end < term.length && !terms.some(([, key]) => term.startsWith(key, end))) end++;
+          parts.push({ term: term.slice(start, end) });
+          start = end;
+        }
+        return parts;
+      };
+      const compile = ({ zh, term }, report) => {
+        if (zh) {
+          const translations = ZH_EN[zh];
+          const related = translations.flatMap(v => forms.get(foldSearch(v)) || []);
+          if (report) describe(zh, [...translations, ...related]);
+          const translated = zhTerms.legacy.has(zh) ? translations.map(foldSearch) : translations.map(whole);
+          return [term, ...translated, ...related.filter(v => !translations.includes(v)).map(whole)];
+        }
+        const alias = aliases.get(term);
+        if (!alias) return [term];
+        // TAVR previously expanded to this broader prefix, including e.g. valve-in-valve titles.
+        const legacy = term === 'tavr' ? ['transcatheter aortic'] : [];
+        if (report) describe(alias.name, [...alias.variants, ...legacy]);
+        return [alias.pattern, ...legacy];
+      };
+      const tests = [];
+      const words = foldSearch(q).split(/\s+/).filter(Boolean);
+      for (let i = 0; i < words.length;) {
+        const term = words[i];
+        const phrase = phrases.get(term)?.find(p => p.words.every((word, j) => word === words[i + j]));
+        if (phrase) {
+          describe(phrase.name, phrase.variants);
+          tests.push(text => phrase.words.every(word => text.includes(word)) || phrase.pattern.test(text));
+          i += phrase.words.length;
+          continue;
+        }
+        i++;
+        const parts = segment(term, keys);
+        const groups = parts.map(part => compile(part, true));
+        const shadowed = parts.some(part => part.zh && !zhTerms.legacy.has(part.zh) &&
+          legacyKeys.some(([, key]) => part.term.includes(key)));
+        if (parts.length === 1 && !shadowed) {
+          const [only] = groups;
+          tests.push(only.length === 1 && typeof only[0] === 'string' ? text => text.includes(term) : text => matches(text, only));
+          continue;
+        }
+        const previous = shadowed ? segment(term, legacyKeys).map(part => compile(part, false)) : null;
+        const hasAlias = parts.some(part => !part.zh && aliases.has(part.term));
+        tests.push(text => (!hasAlias && text.includes(term)) || groups.every(group => matches(text, group)) ||
+          (previous && previous.every(group => matches(text, group))));
+      }
+      plan = { tests, expansion: [...expansion] };
       if (plans.size > 50) plans.clear();
       plans.set(q, plan);
     }
-    return plan.every(({ term, groups }) => text.includes(term) || groups.every(alts=>alts.some(a=>text.includes(a))));
+    return explain ? plan.expansion : plan.tests.every(test => test(text));
   }
 
   // All papers indexed by ID
@@ -134,6 +250,8 @@
     }
   });
   const STATIC_DOI_PAPERS = [...CURATED, ...FEEDS.items, ...LIBRARY.papers];
+  const REQUEST_LIBRARY_PAPERS = new Set(LIBRARY.papers);
+  let requestLibraryPending = !!LIBRARY.deferred;
   const RADAR_LOAD = { state: window.RADAR_ARCHIVE || !window.RADAR_SRC ? 'loaded' : 'idle' };
   // Fetch the older radar archive only when a view needs it (ranges beyond 14 days, or an exact DOI).
   function loadRadarArchive() {
@@ -200,10 +318,39 @@
     return doi ? 'https://dx-1doi-1org-10039f8q70087.emedien3.sub.uni-hamburg.de/' + encodeURIComponent(doi).replace(/%2F/gi, '/') : '';
   }
   function doiTitleKey(value) {
-    return String(value || '').trim().replace(/^\[[A-Za-z ]+\]\s*/, '').normalize('NFKC').toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/\s+/g, ' ').trim().replace(/[\s.。!?;:,，；：]+$/u, '');
+    // Same NFKC/lowercase/punctuation rule as backfill title_key, plus existing DOI title aliases.
+    return String(value || '').replace(/^\s*\[[A-Za-z ]+\]\s*/, '').normalize('NFKC')
+      .toLowerCase().replace(/ß/g, 'ss').replace(/ς/g, 'σ').replace(/[\p{P}\p{White_Space}\u001c-\u001f]/gu, '');
   }
   function sameDoiTitle(left, right) {
-    return !!doiTitleKey(left) && doiTitleKey(left) === doiTitleKey(right);
+    const key = doiTitleKey(left);
+    return !!key && key === doiTitleKey(right);
+  }
+  function requestLibraryPapers() {
+    if (requestLibraryPending && !LIBRARY.deferred && partsReady('library')) {
+      const staticPapers = new Set(STATIC_DOI_PAPERS);
+      for (const paper of LIBRARY.papers) {
+        if (staticPapers.has(paper)) REQUEST_LIBRARY_PAPERS.add(paper);
+      }
+      requestLibraryPending = false;
+    }
+    return REQUEST_LIBRARY_PAPERS;
+  }
+  function requestLibraryMatch(doi, title) {
+    const key = doiTitleKey(title);
+    if (!doi || !key) return null;
+    const library = requestLibraryPapers();
+    const preferred = exactDoiPapers(doi)[0];
+    const matches = p => exactDoi(p.doi) === doi && doiTitleKey(p.title) === key;
+    if (library.has(preferred) && matches(preferred)) return preferred;
+    for (const paper of library) {
+      if (matches(paper)) return paper;
+    }
+    return null;
+  }
+  function hasRequestLibraryPdf(doi, title) {
+    const paper = requestLibraryMatch(doi, title);
+    return !!(paper && PDF_LIBRARY_IDS.has(String(paper.id)) && pdfDownloadUrl(paper));
   }
   function supplementalPaper(raw) {
     if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !/^doi-[a-f0-9]{16}$/.test(raw.id)) return null;
@@ -221,6 +368,8 @@
       url: 'https://doi.org/' + doi, ingestedAt: typeof raw.ingestedAt === 'string' ? raw.ingestedAt.slice(0, 60) : '',
       metadataStatus: 'external_bibliography_checked',
       fulltextStatus: ['available', 'pending', 'review', 'manual_needed'].includes(raw.fulltextStatus) ? raw.fulltextStatus : 'pending',
+      // Set only by the server for a paper released through manual hold-review (the DOI-in-full-text check was skipped).
+      fulltextVerification: raw.fulltextStatus === 'available' && raw.fulltextVerification === 'manual_release' ? 'manual_release' : '',
       basis: '官方题录 · 非全文精读', tags: rawTags, studyDesign: '研究类型待核验', quantitativeMetrics: {}
     };
     normalizePaper(p);
@@ -231,7 +380,7 @@
     p.category = lane === 'cardio' ? isCrossAI(p) ? '交叉研究' : '心血管' : lane === 'aimed' ? 'AI医疗' : lane === 'aitech' ? 'AI前沿' : '综合医学';
     return p;
   }
-  function mergeSupplementalPaper(raw) {
+  function mergeSupplementalPaper(raw, syncRequest = true) {
     const p = supplementalPaper(raw);
     if (!p) return false;
     const occupied = allPapersMap.get(p.id);
@@ -267,7 +416,7 @@
       allPapersMap.set(p.id, p);
     }
     _maxDateCache = null;
-    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(p.doi, '');
+    if (syncRequest && typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(p.doi, '');
     return true;
   }
   function exactDoiPapers(doi) {
@@ -286,7 +435,7 @@
   }
   function acquireDoiUrl(doi) { return exactDoi(doi) ? '/api/acquire?doi=' + encodeURIComponent(exactDoi(doi)) : ''; }
   function doiJobActive(job) { return job && (['queued', 'running'].includes(job.state) || job.stage === 'verifying'); }
-  function mergeDoiJob(doi, raw) {
+  function mergeDoiJob(doi, raw, syncRequest = true) {
     if (!raw) { DOI_JOBS.delete(doi); return; }
     if (typeof raw.id !== 'string' || !/^[a-f0-9-]{36}$/.test(raw.id) || raw.doi !== doi
         || !['queued', 'running', 'available', 'pending', 'review', 'failed', 'manual_needed'].includes(raw.state)) throw new Error('library_unavailable');
@@ -299,7 +448,7 @@
       sourceKind: ['reader_upload', 'open_access', 'download'].includes(raw.sourceKind) ? raw.sourceKind : '',
       reason: typeof raw.reason === 'string' && /^[a-z_]{1,40}$/.test(raw.reason) ? raw.reason : '',
       nextCheckSeconds: Number.isInteger(raw.nextCheckSeconds) && raw.nextCheckSeconds >= 15 && raw.nextCheckSeconds <= 120 ? raw.nextCheckSeconds : 15 });
-    if (typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(doi, '');
+    if (syncRequest && typeof syncExistingBrowserRequest === 'function') syncExistingBrowserRequest(doi, '');
   }
   function watchDoiJob(doi) {
     if (DOI_JOB_WATCH.timer) clearTimeout(DOI_JOB_WATCH.timer);
@@ -365,6 +514,7 @@
           sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
           status: view.kind === 'ready' ? 'available' : view.kind,
           stage: job ? (job.stage || '') : (view.kind === 'ready' ? 'available' : ''),
+          reason: job?.reason,
           paperId: paper && paper.id ? String(paper.id) : '',
           checked: true
         });
@@ -409,6 +559,14 @@
     const doi = exactDoi(form.dataset.doi), input = form.querySelector('input[name="passphrase"]'), error = form.querySelector('.ft-error'), button = form.querySelector('button[type="submit"]');
     if (!doi || !input || !input.value || (button && button.disabled)) return;
     const inDrawer = !!(form.closest && form.closest('#drawerFulltext'));
+    const cardId = form.closest?.('[data-paper-id]')?.dataset.paperId;
+    const paper = inDrawer ? state.activeDrawerPaper : cardId ? allPapersMap.get(cardId) : exactDoiPapers(doi)[0];
+    if (typeof hasRequestLibraryPdf === 'function' && hasRequestLibraryPdf(doi, paper?.title)) {
+      input.value = '';
+      if (error) error.textContent = '库里已有，可直接下载';
+      else showToast('库里已有，可直接下载');
+      return;
+    }
     const mode = form.dataset.mode, route = mode === 'muse-retry' ? '/api/muse/retry' : mode === 'legacy-retry' ? '/api/acquire/retry' : '/api/acquire';
     const prevJob = DOI_JOBS.get(doi);
     const prev = { mode: mode || 'submit', jobId: prevJob ? prevJob.id : '', jobState: prevJob ? prevJob.state : '' };
@@ -444,6 +602,7 @@
           sourceMode: typeof state !== 'undefined' ? (state.mode || '') : '',
           status: result.job && result.job.stage === 'verifying' ? 'verifying' : ((result.job && result.job.state) || 'queued'),
           stage: (result.job && result.job.stage) || 'queued',
+          reason: result.job?.reason,
           paperId: matchedPaper.id ? String(matchedPaper.id) : '',
           checked: true
         });
@@ -603,11 +762,22 @@
     if (typeof loadBrowserRequests !== 'function' || typeof recordConfirmedRequest !== 'function') return;
     const clean = exactDoi(doi);
     if (!clean) return;
-    const list = loadBrowserRequests();
-    if (!list.some(r => r.doi === clean)) return;
-    const paper = exactDoiPapers(clean)[0] || DOI_FULLTEXT.get(clean) || null;
+    const previous = loadBrowserRequests().find(r => r.doi === clean);
+    if (!previous) return;
+    const supplemental = DOI_FULLTEXT.get(clean);
+    const staticPaper = typeof requestLibraryMatch === 'function'
+      ? requestLibraryMatch(clean, supplemental?.title || previous.title) : null;
+    const available = supplemental?.fulltextStatus === 'available';
+    const already = staticPaper && PDF_LIBRARY_IDS.has(String(staticPaper.id)) && pdfDownloadUrl(staticPaper);
+    const libraryState = already && (previous.libraryState === 'already_in_library' || !available) ? 'already_in_library'
+      : staticPaper && available ? 'ingested'
+      : available && typeof requestLibraryPapers === 'function' &&
+        [...requestLibraryPapers()].some(p => exactDoi(p.doi) === clean) ? 'identity_conflict'
+      : '';
+    const paper = (libraryState === 'ingested' || libraryState === 'already_in_library' ? staticPaper : null)
+      || supplemental || exactDoiPapers(clean)[0] || null;
     const job = DOI_JOBS.get(clean) || null;
-    const status = paper && paper.fulltextStatus === 'available'
+    const status = available || libraryState === 'already_in_library'
       ? 'available'
       : job && job.stage === 'verifying'
       ? 'verifying'
@@ -622,10 +792,32 @@
       journal: paper ? (paper.cleanJournal || paper.journal || '') : '',
       status,
       stage: job ? (job.stage || '') : (status === 'available' ? 'available' : ''),
+      reason: job?.reason || '',
+      libraryState,
       paperId: paper && paper.id ? String(paper.id) : '',
-      note: typeof extraNote === 'string' ? extraNote : '',
+      note: !libraryState && typeof extraNote === 'string' ? extraNote : '',
       checked: true
     });
+  }
+  function syncRequestsAfterLibraryPart() {
+    if (!LIBRARY.deferred) return;
+    // The deferred script's load event follows mergePart; capture also works after a shard retry.
+    function onLoad() {
+      if (LIBRARY.deferred || !partsReady('library')) return;
+      document.removeEventListener('load', onLoad, true);
+      loadBrowserRequests().forEach(row => {
+        if (DOI_LOOKUPS.get(row.doi)?.state === 'complete') {
+          syncExistingBrowserRequest(row.doi);
+        } else if (['ingested', 'already_in_library'].includes(row.libraryState)) {
+          const paper = requestLibraryMatch(row.doi, row.title);
+          if (paper?.id && paper.id !== row.paperId) {
+            recordConfirmedRequest({ ...row, paperId: paper.id, checked: false });
+          }
+        }
+      });
+      if ($('#requestsModalBackdrop.open')) renderRequestsModal();
+    }
+    document.addEventListener('load', onLoad, true);
   }
   let browserRequestsRefreshing = null;
   function setRefreshRequestsBusy(busy) {
@@ -642,8 +834,9 @@
         const rows = loadBrowserRequests();
         const targets = rows.filter(r => {
           if (!r || !r.doi) return false;
-          if (activeOnly) return ['queued', 'running', 'verifying', 'pending'].includes(r.status) || !DOI_FULLTEXT.has(r.doi);
-          return true;
+          if (!activeOnly || r.status !== 'available') return true;
+          return !['ingested', 'already_in_library'].includes(r.libraryState) ||
+            (!LIBRARY.deferred && !requestLibraryMatch(r.doi, r.title));
         });
         // A numeric limit is only for background/active-only probes. "刷新全部状态" omits it and must cover every saved record.
         const capped = Number.isInteger(limit) && limit > 0 ? targets.slice(0, limit) : targets;
@@ -680,16 +873,20 @@
     const run = (async () => {
       try {
         const result = await libraryJson('/api/library?doi=' + encodeURIComponent(doi));
-        mergeDoiJob(doi, result.job);
+        if (typeof result.found !== 'boolean') throw new Error('library_unavailable');
+        const previousJob = DOI_JOBS.get(doi);
+        mergeDoiJob(doi, result.job, false);
         if (result.found === true) {
-          if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper)) throw new Error('library_unavailable');
+          if (!result.paper || exactDoi(result.paper.doi) !== doi || !mergeSupplementalPaper(result.paper, false)) {
+            if (previousJob) DOI_JOBS.set(doi, previousJob); else DOI_JOBS.delete(doi);
+            throw new Error('library_unavailable');
+          }
         } else if (result.found === false) {
           const previous = DOI_FULLTEXT.get(doi);
           if (previous) DOI_FULLTEXT.set(doi, { ...previous, fulltextStatus: 'pending' });
           DOI_LOOKUPS.set(doi, { state: 'complete', found: false });
-          if (!result.job) syncExistingBrowserRequest(doi, '当前服务端查无该 DOI 记录或进行中任务');
         }
-        else throw new Error('library_unavailable');
+        syncExistingBrowserRequest(doi, result.found === false && !result.job ? '当前服务端查无该 DOI 记录或进行中任务' : '');
       } catch (e) { DOI_LOOKUPS.set(doi, { state: e.status === 404 ? 'unsupported' : 'error' }); }
       if (exactDoi(state.search) === doi || DOI_TOUCHED.has(doi)) refreshSupplementalView();
       else if (typeof $ === 'function' && $('#requestsModalBackdrop.open') && typeof renderRequestsModal === 'function') renderRequestsModal();
@@ -732,4 +929,3 @@
     SUPPLEMENTAL_LIBRARY.promise = run();
     return SUPPLEMENTAL_LIBRARY.promise;
   }
-

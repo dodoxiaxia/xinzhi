@@ -142,6 +142,7 @@
 | candidates-read | 打开阅读面板 | `#articlesStream [data-action="open-drawer"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-star | 加入精选 | `#articlesStream [data-action="toggle-huddle"]` | toggle | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-source | 官网原文 | `#articlesStream .card-source` | link | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-clear-empty-source | 清除筛选 | `#articlesStream .empty-state [data-clear="sidebar"]` | button | conditional · mobile/tablet/desktop · 有来源筛选且无匹配文献 | 是 |
 | candidates-reset-empty | 重置所有条件 | `#clearAllFiltersBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-quick | 快捷筛选 | `#quickBar` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-chip-row | 快捷条 | `#qfChipRow` | region | always · mobile/tablet/desktop · 进入本栏目 | 是 |
@@ -150,6 +151,7 @@
 | candidates-topic-badge | 文章主题徽标 | `#articlesStream .topic-badge` | toggle | conditional · mobile/tablet/desktop · 列表显示带主题的文章 | 是 |
 | candidates-more | 更多筛选 | `[data-qf="more"]` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
 | candidates-scope | 领域与时间 | `#qfScopeBtn` | button | always · mobile/tablet/desktop · 进入本栏目 | 是 |
+| candidates-summary-clear | 清除筛选（保留关键词） | `[data-qf-clear="all"]` | button | conditional · mobile/tablet/desktop · 雷达存在活动筛选条件 | 是 |
 | candidates-scope-core | 心血管+AI | `[data-qf-lane="core"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-scope-crossai | 心血管×AI | `[data-qf-lane="crossai"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | candidates-scope-cardio | 心血管 | `[data-qf-lane="cardio"]` | chip | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -184,8 +186,10 @@
 <details><summary>入口操作与备注</summary>
 
 - **candidates-card**：`[]`；重复卡片检查首张；随数据更新
+- **candidates-clear-empty-source**：`[{"goto":"/?mode=candidates&pub=AHA%20(Circulation)&q=feature-map-no-match-zzzz"}]`；清除来源等筛选条件，保留搜索关键词。
 - **candidates-reset-empty**：`[{"goto":"/?mode=candidates&q=feature-map-no-match-zzzz"}]`
 - **candidates-topic-badge**：`[{"goto":"/?mode=candidates&lane=all&view=cards&tag=%23%E6%88%BF%E9%A2%A4%2F%E7%94%B5%E7%94%9F%E7%90%86"}]`；与文献库、每日精选共用。点徽标切换主题；已选高亮，无标签时不显示
+- **candidates-summary-clear**：`[{"goto":"/?mode=candidates&lane=all"}]`；恢复默认筛选，保留搜索框关键词
 - **candidates-scope-core**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-crossai**：`[{"click":"#qfScopeBtn"}]`
 - **candidates-scope-cardio**：`[{"click":"#qfScopeBtn"}]`
@@ -399,6 +403,13 @@
 | shortlist-closehuddlemodalbtn | 关闭 | `#closeHuddleModalBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-clearhuddlebtn | 清空清单 | `#clearHuddleBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-copyhuddlesummarybtn | 复制精选汇总 | `#copyHuddleSummaryBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
+| shortlist-copy-share-link | 复制分享链接 | `#copyShortlistShareBtn` | button | conditional · mobile/tablet/desktop · 打开精选清单后显示 | 是 |
+| shortlist-copy-share-manually | 手动复制分享链接 | `#shortlistShareCopyUrl` | input | conditional · mobile/tablet/desktop · 无法写入剪贴板时显示 · SKIP: 剪贴板不可用场景由 test_shortlist_share_ui.py 模拟并验证 | 是 |
+| shortlist-shared-banner | 正在查看分享的清单 | `#sharedShortlistBanner` | region | conditional · mobile/tablet/desktop · 打开带 list 参数的链接后显示 | 是 |
+| shortlist-shared-paper | 分享的文献行 | `#sharedShortlistRows .compact-row` | card | conditional · mobile/tablet/desktop · 公开题录已加载且能匹配时显示 | 是 |
+| shortlist-shared-merge | 全部加入我的精选 | `#mergeSharedShortlistBtn` | button | conditional · mobile/tablet/desktop · 打开带 list 参数的链接后显示 | 是 |
+| shortlist-shared-close | 关闭分享的清单 | `#closeSharedShortlistBtn` | button | conditional · mobile/tablet/desktop · 打开带 list 参数的链接后显示 | 是 |
+| shortlist-shared-missing | 分享链接中在本站未找到的文献 | `#sharedShortlistMissing` | details | conditional · mobile/tablet/desktop · 公开题录加载结束且有未找到的编号时显示 | 是 |
 | shortlist-exporthuddlemdbtn | 导出 Markdown | `#exportHuddleMdBtn` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
 | shortlist-item | 已选文献 | `.huddle-item` | card | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 否 |
 | shortlist-remove | 移出 | `[data-action="remove-huddle"]` | button | conditional · mobile/tablet/desktop · 完成所列操作后显示 | 是 |
@@ -440,6 +451,7 @@
 | 状态 id | 状态 | 选择器 | 预期 | 操作 |
 | --- | --- | --- | --- | --- |
 | search-expanded | 展开搜索 | `#searchToggleBtn[aria-expanded="true"]` | visible | [{"click":"#searchToggleBtn"}] |
+| search-expanded-dictionary | 零结果时仍显示检索扩展 | `#activeFiltersBar [data-search-expansion]` | visible | [{"goto":"/?mode=library&q=AF%20feature-map-no-match-zzzz"},{"wait":"#clearAllFiltersBtn"}] |
 | dark-theme | 深色模式 | `html[data-theme="dark"]` | attached | [{"goto":"/?mode=curated&theme=light"},{"click":"#themeToggle"}] |
 | light-theme | 浅色模式 | `html[data-theme="light"]` | attached | [{"goto":"/?mode=curated&theme=dark"},{"click":"#themeToggle"}] |
 | reader-open | 阅读面板已打开 | `#readerDrawer[aria-hidden="false"]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"wait":"#readerDrawer[aria-hidden=\"false\"]"}] |
@@ -467,6 +479,16 @@
 | brief-completed | 已生成综述或讨论提纲 | `.brief-done` | visible | SKIP: 需要远程模型任务状态；离线遍历不提交生成请求 |
 | topic-pop-open | 展开文章主题筛选 | `[data-qf-topic-all]` | visible | [{"goto":"/?mode=library&lane=all"},{"click":"[data-qf=\"topic\"]"}] |
 | requests-empty | 本浏览器申请记录为空 | `#requestsModalBody .empty-state` | text:当前浏览器还没有已确认的全文申请记录 | [{"click":"#openRequestsBtn"}] |
+| request-ingested | 申请：已入库、显示真实归类和阅读详情 | `.req-item:has(.req-classification) .req-status-badge` | text:已入库 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-existing | 申请：库里已有 | `.req-item:has(.req-classification) .req-status-badge` | text:库里已有 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-awaiting-intake | 申请：已取得全文、待归类入库 | `.req-item .req-status-badge` | text:已取得全文，待归类入库 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-hold | 申请：待人工核验 | `.req-item .req-status-review` | text:待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-hold-rejected | 申请：人工核验未通过 | `.req-item .req-status-review` | text:人工核验未通过，可重新提交 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-identity-conflict | 申请：题录冲突 | `.req-item .req-status-review` | text:题录冲突，待人工核验 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-possible-duplicate | 申请：同题不同 DOI 仅提示 | `.req-possible-duplicate` | text:题名相同但 DOI 不同 | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| request-open-ingested | 申请：打开静态文献阅读详情 | `.req-item:has(.req-classification) [data-action="open-request-paper"]` |  | SKIP: 需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-pdf | DOI 检索：库里已有 PDF，不显示获取表单 | `#articlesStream .ft-badge-ready` | text:库里已有 | SKIP: 需模拟带 PDF 的静态记录，由 scripts/test_request_loop_ui.py 覆盖 |
+| doi-existing-stale-submit | 获取全文的旧表单：库里已有，不重复提交 | `#articlesStream form[data-ft-form] .ft-error` | text:库里已有，可直接下载 | SKIP: 需模拟旧表单，由 scripts/test_request_loop_ui.py 覆盖 |
 
 <details><summary>入口操作与备注</summary>
 
@@ -522,6 +544,13 @@
 - **shortlist-closehuddlemodalbtn**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-clearhuddlebtn**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-copyhuddlesummarybtn**：`[{"click":"#openHuddleBtn"}]`
+- **shortlist-copy-share-link**：`[{"click":"#openHuddleBtn"}]`；有可分享的公开题录时可复制。
+- **shortlist-copy-share-manually**：`[{"click":"#openHuddleBtn"}]`；只读、可选中的链接输入框。
+- **shortlist-shared-banner**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-paper**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-merge**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-close**：`[{"goto":"/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"}]`
+- **shortlist-shared-missing**：`[{"goto":"/?list=v1.cnNzLW5vbmU"}]`
 - **shortlist-exporthuddlemdbtn**：`[{"click":"#openHuddleBtn"}]`
 - **shortlist-item**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`
 - **shortlist-remove**：`[{"goto":"/?mode=library&lane=all"},{"click":"#articlesStream [data-action=\"toggle-huddle\"]"},{"click":"#openHuddleBtn"}]`

@@ -493,13 +493,14 @@
     const openReqPaperBtn = e.target.closest('[data-action="open-request-paper"]');
     if (openReqPaperBtn) {
       const doi = exactDoi(openReqPaperBtn.dataset.doi);
-      const paper = (doi && exactDoiPapers(doi)[0]) || (doi && DOI_FULLTEXT.get(doi)) || null;
+      const record = loadBrowserRequests().find(row => row.doi === doi);
+      const paper = record && resolveBrowserRequestView(record).livePaper;
       if (paper) {
         if ($('#requestsModalBackdrop.open') && typeof closeRequestsModal === 'function') {
           try { history.replaceState(null, '', location.href); } catch (err) { /* sandboxed */ }
           closeRequestsModal({ fromHistory: true });
         }
-        openReaderDrawer(allPapersMap.get(paper.id) || paper);
+        openReaderDrawer(paper);
       } else if (doi) {
         state.search = doi;
         state.page = 1;
@@ -730,6 +731,8 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    state.shortlistShare = readShortlistShareParam(new URLSearchParams(location.search));
+    renderSharedShortlist();
     const wasReading = !!$('#readerDrawer.reading-mode');
     if (entry.overlay !== 'requests' && typeof closeRequestsModal === 'function') closeRequestsModal({ fromHistory: true });
     if (entry.overlay !== 'huddle') closeHuddleModal({ fromHistory: true });
@@ -808,6 +811,15 @@
   });
   $('#exportHuddleMdBtn')?.addEventListener('click', exportHuddleMarkdown);
   $('#copyHuddleSummaryBtn')?.addEventListener('click', copyHuddleSummary);
+  $('#copyShortlistShareBtn')?.addEventListener('click', copyShortlistShare);
+  $('#mergeSharedShortlistBtn')?.addEventListener('click', mergeSharedShortlist);
+  $('#closeSharedShortlistBtn')?.addEventListener('click', () => {
+    clearShortlistShareUrl();
+    state.shortlistShare = null;
+    renderSharedShortlist();
+    ($('.nav-tab-btn.active') || $('#sourceStatusBtn'))?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0 });
+  });
   // Clearing the whole shortlist asks once more: the first tap arms the button, the second one clears.
   let clearArmTimer = null;
   $('#clearHuddleBtn')?.addEventListener('click', e => {
@@ -852,6 +864,7 @@
   if (typeof loadBrowserRequests === 'function' && loadBrowserRequests().length && typeof refreshBrowserRequests === 'function') {
     refreshBrowserRequests({ activeOnly: true, limit: 10 });
   }
+  syncRequestsAfterLibraryPart();
   const refreshLibraryAfterReturn = () => {
     if (SUPPLEMENTAL_LIBRARY.promise) return;
     const doi = exactDoi(state.search);
@@ -882,6 +895,13 @@
     if (list.length > 0) openReaderDrawer(list[0]);
   }
   if (DEFERRED) startDeferredParts();
+  // Like the reading link, wait until the deferred loader has processed script settlement.
+  for (const type of ['load', 'error']) {
+    document.addEventListener(type, event => {
+      if (state.shortlistShare !== null && event.target.tagName === 'SCRIPT') requestAnimationFrame(renderSharedShortlist);
+    }, true);
+  }
+  renderSharedShortlist();
   initReadingMode();
 
 })();

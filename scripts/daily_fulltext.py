@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Daily, source-grounded AI full-text readings from public Europe PMC articles only.
 
-No private PDFs, browser dependency, extra scheduler, or automatic provider retry.
+The private PDF preview is in-memory only and is not called by the daily pipeline.
 Paid attempts are durably reserved on the existing state branch before dispatch.
 The public build projects a small allowlist; source paragraphs and the ledger stay private.
 """
@@ -21,6 +21,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import deep_reading_input as dpi
 import reading_priority as rp
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -592,6 +593,55 @@ def validate_or_repair(output, paragraphs, title):
             return validate_output(repair_output(output, paragraphs), paragraphs, title), True
         except ReadingError:
             raise original from None
+
+PREVIEW_WORD = re.compile(r'[\u3400-\u9fff]|[^\W_\u3400-\u9fff]+')
+PREVIEW_REFERENCE = re.compile(r'(?i)(?:\b[a-z][a-z0-9+.-]*://|\b(?:file:|www\.)|\\|'
+                               r'(?:^|\s)(?:\.{0,2}/|~/)[\w.-]|[0-9a-f]{64}|\.pdf\b|deep-reading-input)')
+
+def preview_private_reading(writer, wanted, paper, today, *, model, fetch=fetch_bytes):
+    """Read-only preview with an explicitly supplied model; never changes wanted or calls save."""
+    if writer.private_state() is not True:
+        return None
+    check_wanted(wanted)
+    key = doi(paper.get('doi'))
+    entry = next((row for row in wanted if row['doi'] == key and row['status'] in dpi.ACTIVE), None)
+    if (not entry or not dpi.canonical_doi(key) or not date_valid(entry['date'], today)
+            or not deep_reading_scope(entry['title'])):
+        return None
+    if is_readable(paper):
+        try:
+            parse_fulltext(fetch('https://www.ebi.ac.uk/europepmc/webservices/rest/' + paper['pmcid'] + '/fullTextXML'), paper)
+        except ReadingError:
+            pass
+        else:
+            return None  # Normal daily generation owns usable OA XML.
+    with dpi.input_directory(writer.root) as folder:
+        item = dpi.read_manifest(folder).get(key)
+        if item is None:
+            raise dpi.InputError('private_pdf_not_staged')
+        units = evidence_units(dpi.read_pdf(folder, item, entry['title']))
+    if sum(len(unit['text']) for unit in units) > MAX_TEXT:
+        raise dpi.InputError('private_pdf_text_limit')
+    draft = model({field: entry[field] for field in ('doi', 'title', 'journal')}, units)
+    result, _ = validate_or_repair(draft, units, entry['title'])
+    source = ' '.join(word for unit in units for word in PREVIEW_WORD.findall(unit['text'].casefold()))
+    for value in (result['titleZh'], *(section['text'] for section in result['sections'].values())):
+        words = PREVIEW_WORD.findall(value.casefold())
+        if PREVIEW_REFERENCE.search(value) or any(' '.join(words[i:i+26]) in source for i in range(len(words) - 25)):
+            raise ReadingError('private_pdf_output_contains_source')
+    for section in result['sections'].values():
+        evidence, remaining = [], 100 // len(SECTION_KEYS)
+        for excerpt in section['evidence']:
+            quote = excerpt['quote']
+            tokens = list(PREVIEW_WORD.finditer(quote))
+            count = min(25, remaining, len(tokens))
+            if count and not PREVIEW_REFERENCE.search(quote):
+                evidence.append({'quote': quote[:tokens[count-1].end()]})
+                remaining -= count
+            if not remaining:
+                break
+        section['evidence'] = evidence
+    return result
 
 def model_config():
     cfg = {'endpoint': os.environ.get('XINZHI_LLM_ENDPOINT', ''), 'api_key': os.environ.get('XINZHI_LLM_API_KEY', ''), 'model': os.environ.get('XINZHI_LLM_MODEL', '')}

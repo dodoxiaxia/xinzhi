@@ -14,9 +14,12 @@ import json
 import os
 import pathlib
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+
+from deep_reading_input import INPUT_DIR, INPUT_NAME
 
 CHECKPOINT_MESSAGES = {
     'Checkpoint daily public full-text reading': {'data/deep-readings.json', 'data/deep-reading-ledger.json'},
@@ -57,11 +60,33 @@ def checkpoint_paths(repo, expected, head):
     raise StateError('state_checkpoint_chain_too_long')
 
 
+def refuse_private_input(directory, names, *, staged):
+    directory = pathlib.Path(directory)
+    error = 'state_contains_private_reading_input'
+    if INPUT_NAME in names or INPUT_NAME in directory.resolve().parts:
+        raise StateError(error)
+    for name in names:
+        path = directory / name
+        if path.is_symlink() and INPUT_NAME in path.resolve().parts:
+            raise StateError(error)
+        if staged:
+            info = path.stat()
+            if stat.S_ISREG(info.st_mode) and info.st_nlink > 1:
+                raise StateError(error)
+    return ()
+
+
 def build(root, work):
+    staged = os.path.lexists(root / INPUT_DIR)
+
+    def guard(directory, names):
+        return refuse_private_input(directory, names, staged=staged)
+
     target = work / 's'
     (target / 'docs').mkdir(parents=True)
     for name in ('data', 'public'):
-        shutil.copytree(root / name, target / name)
+        shutil.copytree(root / name, target / name, ignore=guard)
+    guard(root / 'docs', STATE_DOCS)
     for name in STATE_DOCS:
         shutil.copy2(root / 'docs' / name, target / 'docs' / name)
     git(target, 'init', '-q', '-b', 'state')

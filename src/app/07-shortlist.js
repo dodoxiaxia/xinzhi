@@ -44,6 +44,212 @@
     if (state.activeDrawerPaper?.id === paperId) openReaderDrawer(state.activeDrawerPaper);
   }
 
+  const SHORTLIST_SHARE_LIMIT = 60;
+  const SHORTLIST_SHARE_URL_LIMIT = 2000;
+  const SHORTLIST_SHARE_ID_LIMIT = 160;
+  const shortlistPaperParts = ['feeds', 'library', 'radar'];
+
+  function shortlistIdKey(id) {
+    if (typeof id !== 'string' || !id || id.length > SHORTLIST_SHARE_ID_LIMIT || /[^\x21-\x7e]/.test(id)) return '';
+    if (/^10\.\d{4,9}\/[a-z0-9._/%()+;:\-=]+$/i.test(id)) return id.toLowerCase();
+    const pmid = /^(?:pmid-)?([1-9]\d{0,9})$/i.exec(id);
+    if (pmid) return 'pmid-' + pmid[1];
+    return /^[a-z0-9][a-z0-9._-]*$/i.test(id) ? id : '';
+  }
+
+  function encodeShortlistShare(ids) {
+    return 'v1.' + btoa(ids.join('\n')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function decodeShortlistShare(value) {
+    const ids = [];
+    let ignored = false;
+    if (typeof value !== 'string' || value.length >= SHORTLIST_SHARE_URL_LIMIT || !value.startsWith('v1.')
+      || value.length === 3 || /[^a-z0-9_-]/i.test(value.slice(3))) {
+      return { ids, ignored: true };
+    }
+    let tokens;
+    try {
+      tokens = atob(value.slice(3).replace(/-/g, '+').replace(/_/g, '/')).split('\n');
+    } catch (e) {
+      return { ids, ignored: true };
+    }
+    const seen = new Set();
+    for (const id of tokens) {
+      const key = shortlistIdKey(id);
+      if (!key || seen.has(key) || ids.length >= SHORTLIST_SHARE_LIMIT) {
+        ignored = true;
+        continue;
+      }
+      ids.push(id);
+      seen.add(key);
+    }
+    return { ids, ignored };
+  }
+
+  function buildShortlistShareUrl(pageUrl, ids) {
+    const url = new URL(pageUrl);
+    // Start from the page itself. Filters, request parameters, and reader state stay in this browser.
+    url.search = '';
+    url.hash = '';
+    const accepted = [];
+    const seen = new Set();
+    let limited = false;
+    for (const id of ids) {
+      const key = shortlistIdKey(id);
+      if (!key || seen.has(key)) continue;
+      url.searchParams.set('list', encodeShortlistShare([...accepted, id]));
+      if (accepted.length >= SHORTLIST_SHARE_LIMIT || url.href.length >= SHORTLIST_SHARE_URL_LIMIT) {
+        limited = true;
+        break;
+      }
+      accepted.push(id);
+      seen.add(key);
+    }
+    if (!accepted.length) return { href: '', count: 0, limited };
+    url.searchParams.set('list', encodeShortlistShare(accepted));
+    return { href: url.href, count: accepted.length, limited };
+  }
+
+  function publicShortlistPapers(ids) {
+    const wanted = new Set(ids.map(shortlistIdKey).filter(Boolean));
+    const matches = new Map();
+    const aliases = new Map();
+    if (!wanted.size) return [];
+    // Static published records include deferred parts and the radar archive once loaded.
+    // The broader drawer index also includes supplemental lookups and is unsuitable here.
+    for (const paper of STATIC_DOI_PAPERS) {
+      const key = shortlistIdKey(paper.id);
+      if (!key) continue;
+      if (wanted.has(key) && !matches.has(key)) matches.set(key, paper);
+      const doi = exactDoi(paper.doi);
+      const pmid = paper.pmid ? 'pmid-' + paper.pmid : '';
+      for (const alias of [doi, pmid]) {
+        if (wanted.has(alias) && !aliases.has(alias)) aliases.set(alias, paper);
+      }
+    }
+    return ids.map(id => {
+      const key = shortlistIdKey(id);
+      return matches.get(key) || aliases.get(key);
+    });
+  }
+
+  function shareableHuddleIds(ids) {
+    const papers = publicShortlistPapers(ids);
+    // Use the canonical public record ID even if a saved selection used an alias.
+    return [...new Set(papers.filter(Boolean).map(paper => paper.id))];
+  }
+
+  async function copyShortlistShare() {
+    const button = $('#copyShortlistShareBtn');
+    const field = $('#shortlistShareCopyField');
+    const notice = $('#shortlistShareCopyNotice');
+    field.hidden = true;
+    const publicIds = shareableHuddleIds(state.huddle);
+    const omitted = new Set(state.huddle).size - publicIds.length;
+    if (omitted && (partsPending(...shortlistPaperParts) || RADAR_LOAD.state === 'loading' || RADAR_LOAD.state === 'idle')) {
+      loadRadarArchive();
+      notice.textContent = '正在查找可分享的公开题录，请稍后再复制。';
+      return;
+    }
+    const link = buildShortlistShareUrl(location.href, publicIds);
+    if (!link.href) {
+      notice.textContent = '清单中没有可通过链接分享的公开题录。';
+      return;
+    }
+    const messages = [];
+    if (link.limited) messages.push(`链接长度或篇数已达上限，可分享前 ${link.count} 篇公开题录。`);
+    if (omitted) messages.push('已略过未匹配到公开题录或重复的条目。');
+    notice.textContent = messages.join('');
+    if (link.limited && button.dataset.sharePrefix !== link.href) {
+      button.dataset.sharePrefix = link.href;
+      button.textContent = `复制前 ${link.count} 篇的链接`;
+      return;
+    }
+    delete button.dataset.sharePrefix;
+    button.textContent = '复制分享链接';
+    const input = $('#shortlistShareCopyUrl');
+    const copied = navigator.clipboard?.writeText && await copyToClipboard(link.href, '已复制分享链接');
+    if (!copied && $('#huddleModalBackdrop.open')) {
+      field.hidden = false;
+      input.value = link.href;
+      input.focus();
+      input.select();
+    }
+  }
+
+  let renderedShortlistShare = null;
+  let sharedShortlistIds = [];
+  function renderSharedShortlist() {
+    const view = $('#sharedShortlist');
+    if (!view) return;
+    const value = state.shortlistShare;
+    view.hidden = value === null;
+    if (view.hidden) {
+      renderedShortlistShare = null;
+      sharedShortlistIds = [];
+      $('#sharedShortlistRows').replaceChildren();
+      return;
+    }
+    if (value === renderedShortlistShare) return;
+    const { ids, ignored } = decodeShortlistShare(value);
+    const pending = ids.length > 0 && partsPending(...shortlistPaperParts);
+    const matches = pending ? [] : publicShortlistPapers(ids);
+    const missing = ids.filter((id, index) => !matches[index]);
+    if (!pending && missing.length) loadRadarArchive();
+    const loading = pending || (missing.length > 0 && RADAR_LOAD.state === 'loading');
+    const failed = !partsReady(...shortlistPaperParts) || RADAR_LOAD.state === 'error';
+    const papers = new Map();
+    if (!loading) {
+      for (const paper of matches) if (paper && !papers.has(paper.id)) papers.set(paper.id, paper);
+    }
+    sharedShortlistIds = [...papers.keys()];
+    const count = loading ? ids.length : sharedShortlistIds.length;
+    $('#sharedShortlistTitle').textContent = `正在查看分享的清单（${count} 篇）`;
+    $('#mergeSharedShortlistBtn').disabled = sharedShortlistIds.length === 0;
+    const messages = [];
+    const duplicateMatches = !loading && matches.length - missing.length > papers.size;
+    if (ignored || duplicateMatches) messages.push('已忽略无效、重复或超出限制的分享条目。');
+    if (loading) messages.push('正在查找公开题录…');
+    $('#sharedShortlistNotice').textContent = messages.join('');
+    const missingGroup = $('#sharedShortlistMissing');
+    missingGroup.hidden = loading || !missing.length;
+    missingGroup.open = false;
+    $('#sharedShortlistMissingLabel').textContent = failed
+      ? `${missing.length} 篇暂无法确认（部分题录加载失败，请刷新重试）`
+      : `${missing.length} 篇在本站未找到`;
+    $('#sharedShortlistMissingIds').textContent = missing.join('\n');
+    if (loading) {
+      $('#sharedShortlistRows').replaceChildren();
+      return;
+    }
+    const rows = document.createElement('template');
+    rows.innerHTML = [...papers.values()].map(renderCompactRow).join('');
+    rows.content.querySelectorAll('.card-side-actions, .ft-status, .fulltext-state').forEach(node => node.remove());
+    rows.content.querySelectorAll('button.topic-badge').forEach(button => {
+      const badge = document.createElement('span');
+      badge.className = button.className;
+      badge.textContent = button.textContent;
+      button.replaceWith(badge);
+    });
+    $('#sharedShortlistRows').replaceChildren(rows.content);
+    renderedShortlistShare = value;
+  }
+
+  function mergeSharedShortlist() {
+    const existing = new Set([...state.huddle, ...shareableHuddleIds(state.huddle)]);
+    const added = sharedShortlistIds.filter(id => !existing.has(id));
+    if (!added.length) {
+      showToast('这些文献已在你的精选清单中');
+      return;
+    }
+    state.huddle.push(...added);
+    updateHuddleCounter();
+    renderStream();
+    if (state.mode === 'weekly') renderWeeklyAuto();
+    showToast(`已加入 ${added.length} 篇到你的精选清单`);
+  }
+
   let huddleLastFocus=null;
   function openHuddleModal() {
     const modal = $('#huddleModalBackdrop');
@@ -54,6 +260,8 @@
 
     const list = huddlePapers();
     const missing = state.huddle.filter(id => !huddlePaper(id));
+    const shareButton = $('#copyShortlistShareBtn');
+    if (shareButton) shareButton.disabled = state.huddle.length === 0;
     // Shortlists saved before records were kept: fetch the radar archive once to find older papers.
     if (missing.some(id => id.startsWith('pmid-')) && RADAR_LOAD.state === 'idle') loadRadarArchive();
     if (!DEFERRED || partsSettled('feeds', 'library', 'radar')) {
@@ -114,7 +322,16 @@
     window.CITATION_EXPORT?.mount(body, list, { formatter: buildCitations, copy: copyToClipboard, today: beijingToday });
 
     const newlyOpened = !modal.classList.contains('open');
-    if(newlyOpened) { huddleLastFocus=document.activeElement; pushOverlay('huddle'); }
+    if(newlyOpened) {
+      if (shareButton) {
+        delete shareButton.dataset.sharePrefix;
+        shareButton.textContent = '复制分享链接';
+        $('#shortlistShareCopyField').hidden = true;
+        $('#shortlistShareCopyNotice').textContent = '';
+      }
+      huddleLastFocus=document.activeElement;
+      pushOverlay('huddle');
+    }
     modal.classList.add('open'); document.body.classList.add('dialog-open');
     if(newlyOpened) $('#closeHuddleModalBtn')?.focus({preventScroll:true});
     else if (focusAction) {
@@ -203,41 +420,37 @@
     el.textContent = loadBrowserRequests().length;
   }
   function resolveBrowserRequestView(rec) {
-    const livePaper = (typeof exactDoiPapers === 'function' && exactDoiPapers(rec.doi)[0])
-      || (typeof DOI_FULLTEXT !== 'undefined' && DOI_FULLTEXT.get(rec.doi))
-      || null;
-    const liveJob = typeof DOI_JOBS !== 'undefined' ? DOI_JOBS.get(rec.doi) : null;
-    let kind = rec.status || 'queued';
-    let label = '已记录';
-    if (livePaper && typeof fulltextState === 'function') {
-      const ft = fulltextState(livePaper);
-      if (ft.kind === 'ready') { kind = 'ready'; label = '可下载'; }
-      else if (ft.kind === 'verifying') { kind = 'verifying'; label = '核验中'; }
-      else if (ft.kind === 'queued' || ft.kind === 'running') { kind = ft.kind; label = '排队下载'; }
-      else if (ft.kind === 'failed' || ft.kind === 'review') { kind = ft.kind; label = ft.short || '未取得'; }
-      else if (liveJob && liveJob.state) { kind = liveJob.state; label = '已记录'; }
-    } else if (liveJob) {
-      if (liveJob.stage === 'verifying') { kind = 'verifying'; label = '核验中'; }
-      else if (['queued', 'running'].includes(liveJob.state)) { kind = liveJob.state; label = '排队下载'; }
-      else if (['failed', 'manual_needed', 'review'].includes(liveJob.state)) { kind = liveJob.state; label = '未取得'; }
-    } else if (rec.status === 'available') {
-      kind = 'ready'; label = '可下载（待核对）';
-    } else if (rec.status === 'verifying') {
-      kind = 'verifying'; label = '核验中';
-    } else if (rec.status === 'queued' || rec.status === 'running') {
-      kind = rec.status; label = '排队下载';
-    } else if (['failed', 'manual_needed', 'review'].includes(rec.status)) {
-      kind = rec.status; label = '未取得';
-    } else if (rec.status === 'pending') {
-      kind = 'pending'; label = '待处理 / 查无进行中任务';
+    const live = exactDoiPapers(rec.doi)[0] || DOI_FULLTEXT.get(rec.doi);
+    const staticPaper = ['ingested', 'already_in_library'].includes(rec.libraryState)
+      ? requestLibraryMatch(rec.doi, rec.title) : null;
+    const detailPaper = staticPaper || (live && (allPapersMap.get(live.id) || live));
+    const dlUrl = live ? pdfDownloadUrl(live) : '';
+    const ft = live && fulltextState(live);
+    let kind = rec.status;
+    let label = {
+      queued: '排队下载', running: '排队下载', verifying: '核验中',
+      failed: '未取得', manual_needed: '未取得', review: ft?.kind === 'review' ? ft.short : '未取得',
+      pending: '待处理 / 查无进行中任务',
+    }[rec.status] || '已记录';
+    if (rec.status === 'available') {
+      kind = 'ready';
+      label = rec.libraryState === 'ingested' && (staticPaper || LIBRARY.deferred) ? '已入库'
+        : rec.libraryState === 'already_in_library' && (staticPaper || LIBRARY.deferred) ? '库里已有'
+        : '已取得全文，待归类入库';
+      if (rec.libraryState === 'identity_conflict') {
+        kind = 'review'; label = '题录冲突，待人工核验';
+      }
+    } else if (rec.reason === 'identity_hold' || rec.reason === 'identity_hold_rejected') {
+      kind = 'review'; label = rec.reason === 'identity_hold' ? '待人工核验' : '人工核验未通过，可重新提交';
     }
-    const dlUrl = livePaper && typeof pdfDownloadUrl === 'function' ? pdfDownloadUrl(livePaper) : '';
-    const title = (livePaper && livePaper.title) || rec.title || rec.doi;
-    const journal = (livePaper && (livePaper.cleanJournal || livePaper.journal)) || rec.journal || '';
-    const detailPaper = livePaper && typeof allPapersMap !== 'undefined' && allPapersMap.get(livePaper.id)
-      ? allPapersMap.get(livePaper.id)
-      : livePaper;
-    return { livePaper: detailPaper, kind, label, dlUrl, title, journal };
+    const title = detailPaper?.title || rec.title;
+    const key = doiTitleKey(title);
+    const otherDois = rec.status === 'available' && !rec.libraryState && key ? [...new Set(
+      [...requestLibraryPapers()].filter(p => doiTitleKey(p.title) === key)
+        .map(p => exactDoi(p.doi)).filter(doi => doi && doi !== rec.doi)
+    )] : [];
+    const journal = detailPaper?.cleanJournal || detailPaper?.journal || rec.journal;
+    return { livePaper: detailPaper, staticPaper, kind, label, dlUrl, title: title || rec.doi, journal, otherDois };
   }
   function renderRequestsModal() {
     const body = $('#requestsModalBody');
@@ -245,7 +458,7 @@
     const list = loadBrowserRequests();
     updateRequestsCounter();
     const refreshAllBtn = $('#refreshRequestsBtn');
-    if (refreshAllBtn) refreshAllBtn.disabled = list.length === 0;
+    if (refreshAllBtn) refreshAllBtn.disabled = list.length === 0 || !!browserRequestsRefreshing;
     const disclosure = `<p class="req-disclosure" role="note">仅保存在这台设备的这个浏览器（localStorage）中，不是账号同步，也不是服务器持久账本；状态刷新按完整 DOI 点查，不受默认领域筛选或动态补录前 100 条分页上限影响。仅在服务器确认提交或查到记录后才保存，网络不确定时不会自动重新排队。</p>`;
     if (!list.length) {
       body.innerHTML = disclosure + `<div class="empty-state" style="padding:24px;">
@@ -278,7 +491,10 @@
           ${srcLabel ? `<span>· 来自${esc(srcLabel)}</span>` : ''}
           ${timeText ? `<span>· 申请于 ${esc(timeText)}</span>` : ''}
           ${checkedText ? `<span>· ${esc(checkedText)}</span>` : ''}
+          ${v.dlUrl ? '<span>· 全文可下载</span>' : ''}
         </div>
+        ${v.staticPaper ? `<p class="req-item-note req-classification">期刊档：${esc(v.staticPaper.clinicalTier || '未分类')} · 出版方：${esc(v.staticPaper.publisher || '未分类')} · 研究设计：${esc(v.staticPaper.studyDesign || '未分类')} · 主题标签：${esc(v.staticPaper.tags?.join('、') || '未分类')}</p>` : ''}
+        ${v.otherDois.length ? `<p class="req-item-note req-possible-duplicate">题名相同但 DOI 不同，仅供人工核对：${esc(v.otherDois.join('、'))}</p>` : ''}
         ${rec.note ? `<p class="req-item-note">${esc(rec.note)}</p>` : ''}
         <div class="req-item-actions">
           ${detailHtml}
@@ -315,4 +531,3 @@
     requestsLastFocus?.focus({ preventScroll: true });
     requestsLastFocus = null;
   }
-

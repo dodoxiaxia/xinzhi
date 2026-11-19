@@ -58,7 +58,13 @@
   }
   function fulltextState(p) {
     const doi = p && exactDoi(p.doi), job = doi ? DOI_JOBS.get(doi) : null, url = p ? pdfDownloadUrl(p) : '';
-    if (url) return { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    if (url) {
+      // A paper released by a maintainer after hand review: say so, so it is not mistaken for a fully machine-verified one.
+      const manual = !!(doi && DOI_FULLTEXT.get(doi) && DOI_FULLTEXT.get(doi).fulltextVerification === 'manual_release');
+      return manual
+        ? { kind: 'ready', step: 2, manual: true, headline: '全文经人工放行，可以下载', short: '人工放行', eta: '首页题名与文件校验已通过；全文里没有 DOI，由维护者人工放行。点「下载 PDF」获取', action: 'download', url }
+        : { kind: 'ready', step: 2, headline: '全文已核验，可以下载', short: '可下载', eta: '点「下载 PDF」获取已核验的全文', action: 'download', url };
+    }
     if (!doi) return { kind: 'none', step: -1, short: '未申请', headline: '这篇没有 DOI，无法向站内申请全文', eta: '到官网原文查看', action: 'official' };
     const record = DOI_FULLTEXT.get(doi), received = job && job.sourceKind === 'reader_upload' ? '已收到你上传的 PDF' : job && job.sourceKind === 'open_access' ? '已取得开放获取的 PDF' : '已收到 PDF';
     if (job && doiJobActive(job)) {
@@ -113,6 +119,13 @@
     if (conflict) return ftMaintainerMode() ? '<span class="fulltext-state fulltext-review" title="官方题名：' + esc(conflict.title) + '">维护者：题录对应待核实</span>' : '';
     const view = fulltextView(p), doi = p && exactDoi(p.doi);
     if (!view) return '';
+    if (full && !drawer && view.action === 'download' && doi && exactDoi(state.search) === doi &&
+        typeof requestLibraryMatch === 'function') {
+      const label = hasRequestLibraryPdf(doi, p.title) ? '库里已有'
+        : DOI_FULLTEXT.get(doi)?.fulltextStatus === 'available' && !requestLibraryMatch(doi, p.title)
+        ? '已取得全文，待归类入库' : '';
+      if (label) view.short = view.headline = label;
+    }
     const job = doi && DOI_JOBS.get(doi), safeDoi = esc(doi || '');
     const upload = doi && view.upload ? '<a class="ft-link" href="/api/muse/reader-upload?doi=' + encodeURIComponent(doi) + '" target="_blank" rel="noopener">已有 PDF？直接上传</a>' : '';
     const officialUrl = officialArticleUrl(p);
@@ -130,7 +143,7 @@
     if (!full) {
       const badgeTitle = view.headline + (view.eta ? '。' + view.eta : '');
       const badgeAria = view.short + '：' + badgeTitle;
-      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">可下载</span>' + primary + form;
+      if (view.action === 'download') return '<span class="ft-badge ft-badge-ready" role="status" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>' + primary + form;
       const compactBadge = view.kind === 'none' ? '' : '<span class="ft-badge ft-badge-' + view.kind + '" title="' + esc(badgeTitle) + '" aria-label="' + esc(badgeAria) + '">' + esc(view.short) + '</span>';
       const compactPrimary = view.kind === 'none' ? primary.replace(/^(<(?:button|a)\b)/, '$1 title="' + esc(badgeTitle) + '"') : primary;
       return '<span class="ft-status ft-compact ft-' + view.kind + '" role="status" data-ft-doi="' + safeDoi + '">' + compactBadge + '<span class="ft-summary">' + esc(badgeTitle) + '</span>' + compactPrimary + '</span>' + form;
@@ -871,6 +884,11 @@
     if (state.search) {
       const scope = { curated: '每日精选', candidates: '文献雷达', library: '文献库' }[state.mode] || '当前栏目';
       chips += `<span class="filter-badge-active search-scope" role="status">检索范围：${scope} · 当前筛选；切换栏目保留关键词</span>`;
+      const expansion = queryMatches('', foldSearch(state.search.trim()), true);
+      if (expansion.length) {
+        const terms = expansion.map(([term, alternatives]) => `${term} → ${alternatives.join(' / ')}`).join('；');
+        chips += `<span class="filter-badge-active" role="status" data-search-expansion>已按 ${esc(terms)} 检索</span>`;
+      }
     }
     container.innerHTML = chips;
     if (typeof renderQfSummary === 'function') renderQfSummary();
@@ -912,7 +930,7 @@
       : state.mode === 'curated' ? '当前条件下没有精选，可清除筛选或查看文献雷达。' : '当前领域、时间、关键词与筛选条件下暂无匹配。';
     const heading = noFollowed ? '还没有关注期刊' : '没有找到匹配的文献';
     return `<div class="empty-state"><h3>${heading}</h3><p>${message}</p><div class="empty-filter-actions">${suggestions}
-      ${selections.length ? '<button type="button" class="btn-sm" data-clear="sidebar">清空左侧筛选</button>' : ''}
+      ${selections.length ? `<button type="button" class="btn-sm" data-clear="sidebar">${state.mode === 'candidates' ? '清除筛选' : '清空左侧筛选'}</button>` : ''}
       ${state.search ? '<button type="button" class="btn-sm" data-clear="search">清除关键词</button>' : ''}
       <button type="button" class="btn-sm btn-primary" id="clearAllFiltersBtn">重置所有条件</button></div></div>`;
   }

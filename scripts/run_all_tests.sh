@@ -48,6 +48,7 @@ run() { # name, command...
 skip() { printf '%-48s SKIP  (%s)\n' "$1" "$2"; SKIPPED+=("$1: $2"); }
 
 echo "== Python unit tests (unittest discover)"
+# test_deep_reading_input.py is included by test_*.py discovery; its synthetic PDF checks require PyMuPDF.
 if python3 -c 'import fitz' >/dev/null 2>&1; then
   run "python-unittest" python3 -m unittest discover -s scripts -p 'test_*.py'
 else
@@ -64,6 +65,7 @@ sys.exit(not unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful())
 PY
 fi
 run "service-unittest" python3 -m unittest discover -s service/tests -t .
+run "smoke-live-offline" python3 scripts/test_smoke_live.py
 run "text-hygiene" python3 scripts/test_text_hygiene.py --check-built
 
 # Browser-driven Node tests (need Playwright + Chromium).
@@ -80,6 +82,7 @@ for f in scripts/test_*.cjs; do
   esac
   run "$name" node "$f"
 done
+# test_shortlist_share.cjs runs via the Node discovery loop.
 
 echo "== First-screen budget"
 if [ -f public/index.html ] && [ -d public/assets ]; then
@@ -94,8 +97,12 @@ if [ "$BROWSER" = 1 ]; then
   run "test_reading_shards_ui" python3 scripts/test_reading_shards_ui.py
   run "test_reading_mode_ui" python3 scripts/test_reading_mode_ui.py
   run "test_mwg_local_ui" python3 scripts/test_mwg_local_ui.py
+  run "test_request_loop_ui" python3 scripts/test_request_loop_ui.py
   run "test_weekly_layout_ui" python3 scripts/test_weekly_layout_ui.py
+  run "test_long_titles_ui" python3 scripts/test_long_titles_ui.py
   run "test_topic_multitag_ui" python3 scripts/test_topic_multitag_ui.py
+  run "test_radar_filter_followup_ui" python3 scripts/test_radar_filter_followup_ui.py
+  run "test_search_zh_expansion_ui" python3 scripts/test_search_zh_expansion_ui.py
   echo "== Browser tests (Python + Playwright)"
   if [ ! -f public/index.html ] || [ ! -d public/assets ]; then
     skip "python browser tests" "public/ not built (python3 scripts/build_public.py)"
@@ -106,6 +113,7 @@ if [ "$BROWSER" = 1 ]; then
                 test_search_shortlist_ui test_search_toggle_ui test_sidebar_focus_trap_ui test_sol_gap_reader test_weekly_ui test_list_actions_ui; do
       run "$name" python3 "scripts/$name.py"
     done
+    run "test_shortlist_share_ui" python3 scripts/test_shortlist_share_ui.py
   fi
 fi
 

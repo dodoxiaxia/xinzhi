@@ -924,5 +924,266 @@ async function verifyNext(h, doi, result, reason) {
     assert(!('citedPages' in wrappedDotRes.checks));
   }
 
+  // 8) Title-variant fallback (whole-word versus/vs./v. and trademark marks ™/®), colon spacing, and normal-match precedence.
+  {
+    const titleVariant = run(h, 'machineTitleVariant');
+
+    // 8a) versus / vs / vs. / v. whole-word fallback.
+    const vsDoi = '10.9999/synthetic.versus';
+    const vsPageTitle = 'Efficacy of Synthetic Flecainide vs Amiodarone for Cardioversion in Cohorts';
+    const vsPdf = fixtures.customEncoding({doi:vsDoi, title:vsPageTitle});
+    for (const word of ['Versus', 'v.']) {
+      const res = await identity(h, vsPdf, vsDoi, 'Efficacy of Synthetic Flecainide ' + word + ' Amiodarone for Cardioversion in Cohorts');
+      assert.equal(res.verdict, 'ok', word);
+      assert.equal(res.level, 'full', word);
+      assert.equal(res.checks.titleVariant, 'versus_or_mark', word);
+    }
+    // "vs." already equals "vs" under machineNormalize, so it passes via normal comparison without titleVariant.
+    const vsDotRes = await identity(h, vsPdf, vsDoi, 'Efficacy of Synthetic Flecainide vs. Amiodarone for Cardioversion in Cohorts');
+    assert.equal(vsDotRes.verdict, 'ok');
+    assert.equal(vsDotRes.level, 'full');
+    assert(!('titleVariant' in vsDotRes.checks));
+    const revPdf = fixtures.customEncoding({doi:vsDoi, title:'Efficacy of Synthetic Flecainide Versus Amiodarone for Cardioversion in Cohorts'});
+    for (const word of ['vs', 'vs.']) {
+      const revRes = await identity(h, revPdf, vsDoi, 'Efficacy of Synthetic Flecainide ' + word + ' Amiodarone for Cardioversion in Cohorts');
+      assert.equal(revRes.verdict, 'ok', 'rev ' + word);
+      assert.equal(revRes.level, 'full', 'rev ' + word);
+      assert.equal(revRes.checks.titleVariant, 'versus_or_mark', 'rev ' + word);
+    }
+
+    // Counter-examples: non-whole-word substrings and different drugs still mismatch.
+    const canvsPdf = fixtures.customEncoding({doi:vsDoi, title:'Synthetic Canvs Imaging Study in Atrial Cohorts'});
+    const canvsBad = await identity(h, canvsPdf, vsDoi, 'Synthetic Canvas Imaging Study in Atrial Cohorts');
+    assert.equal(canvsBad.verdict, 'mismatch');
+    assert.equal(canvsBad.reason, 'title_not_found');
+    const dronedarone = await identity(h, vsPdf, vsDoi, 'Efficacy of Synthetic Flecainide Versus Dronedarone for Cardioversion in Cohorts');
+    assert.equal(dronedarone.verdict, 'mismatch');
+    assert.equal(dronedarone.reason, 'title_not_found');
+    assert.equal(titleVariant('Conversus Universal Advisor'), normalize('Conversus Universal Advisor'));
+
+    // Section-label stripping combined with titleVariant keeps both checks fields.
+    const prefixVs = await identity(h, vsPdf, vsDoi, '[Articles] Efficacy of Synthetic Flecainide Versus Amiodarone for Cardioversion in Cohorts');
+    assert.equal(prefixVs.verdict, 'ok');
+    assert.equal(prefixVs.level, 'full');
+    assert.equal(prefixVs.checks.titlePrefix, 'section_label_dropped');
+    assert.equal(prefixVs.checks.titleVariant, 'versus_or_mark');
+
+    // 8b) Trademark marks ™ (U+2122) / ® (U+00AE).
+    const markDoi = '10.9999/synthetic.trademark';
+    const cadPage = 'CAD-RADS 2.0 \u2013 2022 Synthetic Coronary Artery Disease Reporting and Data System';
+    const cadPdf = fixtures.customEncoding({doi:markDoi, title:cadPage});
+    const cadOk = await identity(h, cadPdf, markDoi, 'CAD-RADS\u2122 2.0 \u2013 2022 Synthetic Coronary Artery Disease Reporting and Data System');
+    assert.equal(cadOk.verdict, 'ok');
+    assert.equal(cadOk.level, 'full');
+    assert.equal(cadOk.checks.titleVariant, 'versus_or_mark');
+    const regPdf = fixtures.customEncoding({doi:markDoi, title:'SyntheticValve Transcatheter Repair in Elderly Cohorts'});
+    const regOk = await identity(h, regPdf, markDoi, 'SyntheticValve\u00ae Transcatheter Repair in Elderly Cohorts');
+    assert.equal(regOk.verdict, 'ok');
+    assert.equal(regOk.level, 'full');
+    assert.equal(regOk.checks.titleVariant, 'versus_or_mark');
+    const cadBad = await identity(h, cadPdf, markDoi, 'CAD-RADS\u2122 3.0 \u2013 2022 Synthetic Coronary Artery Disease Reporting and Data System');
+    assert.equal(cadBad.verdict, 'mismatch');
+    assert.equal(cadBad.reason, 'title_not_found');
+    assert.notEqual(titleVariant('CAD-RADS\u2122 2.0'), titleVariant('CAD-RADS 3.0'));
+
+    // 8c) Punctuation spacing (no code added; machineNormalize strips spaces and ASCII punctuation).
+    assert.equal(normalize('Atrial Fibrillation Revisited:Early Entrenchment'), normalize('Atrial Fibrillation Revisited: Early Entrenchment'));
+    const colonDoi = '10.9999/synthetic.colonspace';
+    const colonPdf = fixtures.customEncoding({doi:colonDoi, title:'Synthetic Fibrillation Begets Fibrillation Revisited: Early Entrenchment of Episodes'});
+    const colonOk = await identity(h, colonPdf, colonDoi, 'Synthetic Fibrillation Begets Fibrillation Revisited:Early Entrenchment of Episodes');
+    assert.equal(colonOk.verdict, 'ok');
+    assert.equal(colonOk.level, 'full');
+    assert(!('titleVariant' in colonOk.checks));
+    const colonBad = await identity(h, colonPdf, colonDoi, 'Synthetic Fibrillation Begets Fibrillation Revisited:Late Entrenchment of Episodes');
+    assert.equal(colonBad.verdict, 'mismatch');
+    assert.equal(colonBad.reason, 'title_not_found');
+
+    // 8d) Normal match does not trigger the titleVariant fallback.
+    const normalVerdict = await identity(h, files['flate-eol-before-endstream.pdf'], flate.doi, flate.title);
+    assert.equal(normalVerdict.verdict, 'ok');
+    assert.equal(normalVerdict.level, 'full');
+    assert(!('titleVariant' in normalVerdict.checks));
+  }
+
+  // 9) Narrow titleVariant fallbacks after versus_or_mark.
+  {
+    const esc = text => String(text).replace(/[\\()]/g, ch => '\\' + ch);
+
+    // 9a) c1_control_dropped: U+0096 between digits, plus versus/™ reuse and section-label stripping; one letter off still fails.
+    const c1Doi = '10.9999/synthetic.c1ctrl';
+    const c1Title = 'CAD-SYNTH\u2122 2.0 \u2013 2022 Synthetic Coronary Scoring in Multicenter Cohorts';
+    const c1PageText = 'CAD-SYNTH 2.0\u00962022 Synthetic Coronary Scoring in Multicenter Cohorts';
+    for (const c1Pdf of [fixtures.flateEol({doi:c1Doi, title:c1PageText}), fixtures.customEncoding({doi:c1Doi, title:c1PageText})]) {
+      const ok = await identity(h, c1Pdf, c1Doi, c1Title);
+      assert.equal(ok.verdict, 'ok');
+      assert.equal(ok.level, 'full');
+      assert.equal(ok.checks.titleVariant, 'c1_control_dropped');
+      const withPrefix = await identity(h, c1Pdf, c1Doi, '[Articles] ' + c1Title);
+      assert.equal(withPrefix.verdict, 'ok');
+      assert.equal(withPrefix.checks.titlePrefix, 'section_label_dropped');
+      assert.equal(withPrefix.checks.titleVariant, 'c1_control_dropped');
+      const oneLetterOff = await identity(h, c1Pdf, c1Doi, c1Title.replace('Cohorts', 'Cohortx'));
+      assert.equal(oneLetterOff.verdict, 'mismatch');
+      assert.equal(oneLetterOff.reason, 'title_not_found');
+    }
+
+    // 9b) line_number_inserted: only when the claimed DOI is already confirmed on the page; >=40 chars; 1-2 digits only at original
+    //     word-space gaps; <=2 insertions; strictly increasing; and each inserted number is itself a member of a chain of >=5
+    //     consecutive integers (each <=40 tokens after the previous), i.e. the line-number evidence sits at the title.
+    const lnDoi = '10.9999/synthetic.linenum';
+    const lnTitle = 'Beta-blocker therapy and angina burden after myocardial infarction in synthetic cohorts';
+    assert(normalize(lnTitle).length >= 40);
+    const lnPdf = (pageTitle, trailing, withDoi = true) => fixtures.multiPage({pages:[{rawContent:'BT /F1 10 Tf 1 0 0 1 72 720 Tm ' + (withDoi ? '(doi:' + esc(lnDoi) + ') Tj ' : '') + '(' + esc(pageTitle) + ') Tj ' + trailing.map(n => '(' + n + ') Tj (margin text) Tj ').join('') + 'ET\n'}]});
+    const oneLn = await identity(h, lnPdf('Beta-blocker therapy and angina 4 burden after myocardial infarction in synthetic cohorts', [5, 6, 7, 8]), lnDoi, lnTitle);
+    assert.equal(oneLn.verdict, 'ok');
+    assert.equal(oneLn.level, 'full');
+    assert.equal(oneLn.checks.titleVariant, 'line_number_inserted');
+
+    const twoLn = await identity(h, lnPdf('Beta-blocker therapy 2 and angina burden after 3 myocardial infarction in synthetic cohorts', [4, 5, 6]), lnDoi, lnTitle);
+    assert.equal(twoLn.verdict, 'ok');
+    assert.equal(twoLn.level, 'full');
+    assert.equal(twoLn.checks.titleVariant, 'line_number_inserted');
+
+    // Stray integers between the chain members (affiliation superscripts) do not break the chain.
+    const strayLn = await identity(h, lnPdf('Beta-blocker therapy and angina 4 burden after myocardial infarction in synthetic cohorts', [1, 5, 1, 6, 2, 7, 8]), lnDoi, lnTitle);
+    assert.equal(strayLn.verdict, 'ok');
+    assert.equal(strayLn.checks.titleVariant, 'line_number_inserted');
+
+    const lnCombo = await identity(
+      h,
+      lnPdf('Beta-blocker therapy vs 2 angina 2.0\u00962022 burden after 3 myocardial infarction in synthetic cohorts', [4, 5, 6]),
+      lnDoi,
+      '[Articles] Beta-blocker therapy versus angina 2.0 \u2013 2022 burden after myocardial infarction in synthetic cohorts'
+    );
+    assert.equal(lnCombo.verdict, 'ok');
+    assert.equal(lnCombo.checks.titlePrefix, 'section_label_dropped');
+    assert.equal(lnCombo.checks.titleVariant, 'line_number_inserted');
+
+    // Negative cases: inside word, inside hyphenated word, 3 insertions, non-increasing, <40 chars, chain too short or not through
+    // the inserted number, no evidence, /MCID-only numbers, extra word.
+    const lnNegatives = [
+      ['mid-word', lnPdf('Beta-blocker therapy and angina bur2den after myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle],
+      ['mid-hyphen', lnPdf('Beta-2blocker therapy and angina burden after myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle],
+      ['three-inserts', lnPdf('Beta-blocker therapy 2 and angina 3 burden after 4 myocardial infarction in synthetic cohorts', [5, 6, 7]), lnTitle],
+      ['equal-inserts', lnPdf('Beta-blocker therapy 3 and angina burden after 3 myocardial infarction in synthetic cohorts', [4, 5, 6]), lnTitle],
+      ['decreasing-inserts', lnPdf('Beta-blocker therapy 5 and angina burden after 2 myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle],
+      ['short-title', lnPdf('Synthetic short 2 trial in cohorts', [3, 4, 5, 6]), 'Synthetic short trial in cohorts'],
+      ['short-chain', lnPdf('Beta-blocker therapy and angina 2 burden after myocardial infarction in synthetic cohorts', [3, 4, 5]), lnTitle],
+      ['chain-elsewhere', lnPdf('Beta-blocker therapy and angina 37 burden after myocardial infarction in synthetic cohorts', [1, 2, 3, 4, 5, 6, 7, 8]), lnTitle],
+      ['no-evidence', fixtures.flateEol({doi:lnDoi, title:'Beta-blocker therapy and angina 2 burden after myocardial infarction in synthetic cohorts'}), lnTitle],
+      ['extra-word', lnPdf('Beta-blocker therapy extra and angina burden after myocardial infarction in synthetic cohorts', [3, 4, 5, 6]), lnTitle]
+    ];
+    for (const [label, pdf, title] of lnNegatives) {
+      const res = await identity(h, pdf, lnDoi, title);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert.equal(res.reason, 'title_not_found', label);
+    }
+    const mcidOnlyPdf = fixtures.multiPage({pages:[{rawContent:'/P <</MCID 1 >>BDC BT /F1 10 Tf (doi:' + esc(lnDoi) + ') Tj ET EMC /P <</MCID 2 >>BDC BT (Beta-blocker therapy) Tj ET EMC /P <</MCID 3 >>BDC BT (and angina 4 burden) Tj ET EMC /P <</MCID 4 >>BDC BT (after myocardial infarction in synthetic cohorts) Tj ET EMC /P <</MCID 5 >>BDC BT (x) Tj ET EMC /P <</MCID 6 >>BDC BT (y) Tj ET EMC\n'}]});
+    const mcidRes = await identity(h, mcidOnlyPdf, lnDoi, lnTitle);
+    assert.equal(mcidRes.verdict, 'mismatch', 'mcid-only');
+    assert.equal(mcidRes.reason, 'title_not_found', 'mcid-only');
+
+    // Without the claimed DOI on the page the insertion rule never applies: a sequel ("SPRINT 2") must not pass as title_only or hold,
+    // even with a perfect number chain around it.
+    const seqTitle = 'Results of the SPRINT Trial on intensive blood pressure control in synthetic cohorts';
+    const seqPageTitle = 'Results of the SPRINT 2 Trial on intensive blood pressure control in synthetic cohorts';
+    const seqOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const seqNoDoi = await identity(h, lnPdf(seqPageTitle, [3, 4, 5, 6], false), lnDoi, seqTitle, seqOptions);
+    assert.equal(seqNoDoi.verdict, 'mismatch', 'sequel without doi');
+    assert(!('level' in seqNoDoi), 'sequel without doi must not get any level (title_only included)');
+    const seqForeign = fixtures.multiPage({pages:[{rawContent:'BT /F1 10 Tf 1 0 0 1 72 720 Tm (doi:10.1000/other.paper) Tj (' + esc(seqPageTitle) + ') Tj (3) Tj (4) Tj (5) Tj (6) Tj ET\n'}]});
+    const seqForeignRes = await identity(h, seqForeign, lnDoi, seqTitle, seqOptions);
+    assert.equal(seqForeignRes.verdict, 'mismatch', 'sequel with foreign doi');
+    // Even with the DOI confirmed, an extra number with no number chain through it is rejected.
+    const seqNoChain = await identity(h, lnPdf(seqPageTitle, []), lnDoi, seqTitle, seqOptions);
+    assert.equal(seqNoChain.verdict, 'mismatch', 'sequel without chain');
+
+    // 9c) proof_marker_inserted: only when the claimed DOI is confirmed; page shows proof-stage evidence ("_proof" / "Journal Pre-proof");
+    //     the shown text has a query list (>=3 distinct Q-numbers incl. the inserted ones); >=40 chars; q\d{1,2} only at original
+    //     word-space gaps; <=2 insertions. q123 / mid-word / 3 inserts / <40 / x2 / no proof evidence / no query list all fail.
+    const pmDoi = '10.9999/synthetic.proofmark';
+    const pmTitle = 'Synthetic atrial fibrillation entrenchment revisited:Early timing of AF cohorts';
+    assert(normalize(pmTitle).length >= 40);
+    const pmPdf = (pageTitle, {doi = true, proof = true, queries = ['Q 1', 'Q 2', 'Q 12']} = {}) => fixtures.multiPage({pages:[{rawContent:'BT /F1 10 Tf 1 0 0 1 72 720 Tm ' + (doi ? '(doi:' + esc(pmDoi) + ') Tj ' : '') + queries.map(q => '(' + q + ') Tj ').join('') + (proof ? '(FLA 5.7.0 DTD HRTHM12284 _proof) Tj ' : '(FLA 5.7.0 DTD HRTHM12284) Tj ') + '(' + esc(pageTitle) + ') Tj ET\n'}]});
+    for (const pageTitle of [
+      'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts',
+      'Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q 2 cohorts',
+      'Synthetic Q1 atrial fibrillation entrenchment revisited: Early timing of AF Q12 cohorts'
+    ]) {
+      const ok = await identity(h, pmPdf(pageTitle), pmDoi, pmTitle);
+      assert.equal(ok.verdict, 'ok', pageTitle);
+      assert.equal(ok.level, 'full', pageTitle);
+      assert.equal(ok.checks.titleVariant, 'proof_marker_inserted', pageTitle);
+    }
+    const pmCombo = await identity(
+      h,
+      pmPdf('Synthetic atrial fibrillation vs 2.0\u00962022 entrenchment revisited: Early timing of AF Q2 cohorts'),
+      pmDoi,
+      '[Articles] Synthetic atrial fibrillation versus 2.0 \u2013 2022 entrenchment revisited:Early timing of AF cohorts'
+    );
+    assert.equal(pmCombo.verdict, 'ok');
+    assert.equal(pmCombo.checks.titlePrefix, 'section_label_dropped');
+    assert.equal(pmCombo.checks.titleVariant, 'proof_marker_inserted');
+
+    const pmNegatives = [
+      ['q123', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q123 cohorts', {queries:['Q 1', 'Q 123']}), pmTitle],
+      ['mid-word', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF cohq2orts'), pmTitle],
+      ['three-inserts', pmPdf('Synthetic Q1 atrial fibrillation Q2 entrenchment revisited: Early timing Q3 of AF cohorts', {queries:['Q 1', 'Q 2', 'Q 3']}), pmTitle],
+      ['short-title', pmPdf('Synthetic atrial Q2 timing of cohorts'), 'Synthetic atrial timing of cohorts'],
+      ['non-q-marker', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF x2 cohorts'), pmTitle],
+      ['no-proof-evidence', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {proof:false}), pmTitle],
+      ['no-query-list', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:[]}), pmTitle],
+      ['short-query-list', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {queries:['Q 1']}), pmTitle],
+      ['no-doi', pmPdf('Synthetic atrial fibrillation entrenchment revisited: Early timing of AF Q2 cohorts', {doi:false}), pmTitle]
+    ];
+    for (const [label, pdf, title] of pmNegatives) {
+      const res = await identity(h, pdf, pmDoi, title, {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true});
+      assert.equal(res.verdict, 'mismatch', label);
+      assert(!('level' in res), label);
+    }
+    // Coenzyme Q10 counter-example: the page title carries "Q10" the registered title lacks; without the DOI (or without a proof stage)
+    // it must neither pass nor become title_only.
+    const coTitle = 'Coenzyme supplementation and cardiovascular outcomes in synthetic heart failure cohorts';
+    const coPage = 'Coenzyme Q10 supplementation and cardiovascular outcomes in synthetic heart failure cohorts';
+    const coOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    for (const [label, pdf] of [
+      ['coq10 no doi', pmPdf(coPage, {doi:false, queries:['Q 10']})],
+      ['coq10 doi no proof', pmPdf(coPage, {proof:false, queries:['Q 10']})],
+      ['coq10 doi, proof, no query list', pmPdf(coPage, {queries:[]})],
+    ]) {
+      const res = await identity(h, pdf, pmDoi, coTitle, coOptions);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert(!('level' in res), label);
+    }
+
+    // 9d) Normal-match and versus_or_mark precedence: exact matches never get titleVariant, even with line numbers or Q2 elsewhere on page.
+    const exactRes = await identity(h, lnPdf(lnTitle + ' Q2 appendix', [1, 2, 3, 4, 5, 6]), lnDoi, lnTitle);
+    assert.equal(exactRes.verdict, 'ok');
+    assert.equal(exactRes.level, 'full');
+    assert(!('titleVariant' in exactRes.checks));
+
+    const vsRes = await identity(h, lnPdf('Beta-blocker therapy vs placebo after myocardial infarction in synthetic cohorts', [1, 2, 3, 4, 5, 6]), lnDoi, 'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts');
+    assert.equal(vsRes.verdict, 'ok');
+    assert.equal(vsRes.level, 'full');
+    assert.equal(vsRes.checks.titleVariant, 'versus_or_mark');
+
+    // 9e) title_only accepts only the exact (normal, section-label-stripped) title match: no variant fallback, so a page with no DOI at all
+    //     cannot be passed by a loosened comparison.
+    const toDoi = '10.9999/synthetic.titleonly';
+    const toOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true};
+    const toExact = await identity(h, fixtures.flateEol({doi:'', title:'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts'}), toDoi, 'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts', toOptions);
+    assert.equal(toExact.verdict, 'ok');
+    assert.equal(toExact.level, 'title_only');
+    for (const [label, pageTitle, title] of [
+      ['versus', 'Beta-blocker therapy vs placebo after myocardial infarction in synthetic cohorts', 'Beta-blocker therapy versus placebo after myocardial infarction in synthetic cohorts'],
+      ['trademark', 'SyntheticValve Transcatheter Repair in Elderly Cohorts', 'SyntheticValve\u00ae Transcatheter Repair in Elderly Cohorts'],
+      ['c1', 'CAD-SYNTH 2.0\u00962022 Synthetic Coronary Scoring in Multicenter Cohorts', 'CAD-SYNTH\u2122 2.0 \u2013 2022 Synthetic Coronary Scoring in Multicenter Cohorts']
+    ]) {
+      const res = await identity(h, fixtures.flateEol({doi:'', title:pageTitle}), toDoi, title, toOptions);
+      assert.equal(res.verdict, 'mismatch', label);
+      assert(!('level' in res), label);
+    }
+  }
+
   console.log('Machine identity: tolerant inflate, object streams, ToUnicode, metadata fallback, reason codes, guarded replace and claim reason passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

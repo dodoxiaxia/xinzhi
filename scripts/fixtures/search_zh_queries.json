@@ -1,0 +1,502 @@
+{
+  "baseline": "26e9df487df3bfd069937ffb3cab8a620186aa46",
+  "oldZhEn": {
+    "房颤": [
+      "atrial fibrillation"
+    ],
+    "房扑": [
+      "atrial flutter"
+    ],
+    "心衰": [
+      "heart failure"
+    ],
+    "心力衰竭": [
+      "heart failure"
+    ],
+    "消融": [
+      "ablation"
+    ],
+    "射频": [
+      "radiofrequency"
+    ],
+    "冷冻": [
+      "cryo"
+    ],
+    "脉冲场": [
+      "pulsed field"
+    ],
+    "冠脉": [
+      "coronary"
+    ],
+    "冠心病": [
+      "coronary artery disease",
+      "coronary"
+    ],
+    "心梗": [
+      "myocardial infarction"
+    ],
+    "心肌梗死": [
+      "myocardial infarction"
+    ],
+    "高血压": [
+      "hypertension"
+    ],
+    "卒中": [
+      "stroke"
+    ],
+    "中风": [
+      "stroke"
+    ],
+    "起搏": [
+      "pacing",
+      "pacemaker"
+    ],
+    "除颤": [
+      "defibrillator"
+    ],
+    "瓣膜": [
+      "valve",
+      "valvular"
+    ],
+    "主动脉": [
+      "aortic",
+      "aorta"
+    ],
+    "心肌病": [
+      "cardiomyopathy"
+    ],
+    "心肌炎": [
+      "myocarditis"
+    ],
+    "淀粉样": [
+      "amyloid"
+    ],
+    "肺动脉高压": [
+      "pulmonary hypertension",
+      "pulmonary arterial hypertension"
+    ],
+    "心脏骤停": [
+      "cardiac arrest"
+    ],
+    "猝死": [
+      "sudden cardiac death",
+      "sudden death"
+    ],
+    "左心耳": [
+      "left atrial appendage"
+    ],
+    "抗凝": [
+      "anticoagul"
+    ],
+    "血脂": [
+      "lipid",
+      "cholesterol"
+    ],
+    "他汀": [
+      "statin"
+    ],
+    "糖尿病": [
+      "diabetes"
+    ],
+    "心电图": [
+      "electrocardiogram",
+      "ECG"
+    ],
+    "心电": [
+      "ECG",
+      "electrocardio"
+    ],
+    "超声": [
+      "echocardiograph",
+      "ultrasound"
+    ],
+    "磁共振": [
+      "magnetic resonance",
+      "CMR"
+    ],
+    "影像": [
+      "imaging"
+    ],
+    "支架": [
+      "stent"
+    ],
+    "介入": [
+      "intervention",
+      "PCI"
+    ],
+    "搭桥": [
+      "bypass",
+      "CABG"
+    ],
+    "先心": [
+      "congenital"
+    ],
+    "先天性": [
+      "congenital"
+    ],
+    "心律失常": [
+      "arrhythmia"
+    ],
+    "室速": [
+      "ventricular tachycardia"
+    ],
+    "室颤": [
+      "ventricular fibrillation"
+    ],
+    "心脏康复": [
+      "cardiac rehabilitation"
+    ],
+    "穿戴": [
+      "wearable"
+    ],
+    "大模型": [
+      "large language model",
+      "LLM"
+    ],
+    "语言模型": [
+      "language model"
+    ],
+    "人工智能": [
+      "artificial intelligence"
+    ],
+    "机器学习": [
+      "machine learning"
+    ],
+    "深度学习": [
+      "deep learning"
+    ],
+    "预测模型": [
+      "prediction model"
+    ],
+    "随机对照": [
+      "randomized",
+      "randomised"
+    ],
+    "荟萃": [
+      "meta-analysis"
+    ],
+    "综述": [
+      "review"
+    ],
+    "指南": [
+      "guideline"
+    ],
+    "共识": [
+      "consensus"
+    ],
+    "心脏": [
+      "cardiac",
+      "heart"
+    ],
+    "血管": [
+      "vascular"
+    ],
+    "心血管": [
+      "cardiovascular"
+    ],
+    "血栓": [
+      "thrombo"
+    ],
+    "出血": [
+      "bleeding",
+      "hemorrhage"
+    ],
+    "肥厚": [
+      "hypertrophic"
+    ],
+    "扩张型": [
+      "dilated"
+    ],
+    "TAVR": [
+      "transcatheter aortic"
+    ],
+    "二尖瓣": [
+      "mitral"
+    ],
+    "三尖瓣": [
+      "tricuspid"
+    ]
+  },
+  "queries": {
+    "心包炎": [
+      "pmid-42867067"
+    ],
+    "心包": [
+      "pmid-43043914"
+    ],
+    "主动脉夹层": [
+      "pmid-43004935"
+    ],
+    "动脉粥样硬化": [
+      "pmid-43046873"
+    ],
+    "心源性休克": [
+      "pmid-43050586"
+    ],
+    "房间隔缺损": [
+      "pmid-42863884"
+    ],
+    "卵圆孔未闭": [
+      "pmid-43039685"
+    ],
+    "晕厥": [
+      "pmid-43046868"
+    ],
+    "长QT": [
+      "pmid-42748473"
+    ],
+    "希氏束起搏": [
+      "pmid-43046970"
+    ],
+    "左束支起搏": [
+      "pmid-43044946"
+    ],
+    "传导阻滞": [
+      "pmid-43036879"
+    ],
+    "心脏再同步": [
+      "pmid-43007251"
+    ],
+    "SGLT2": [
+      "pmid-42948880"
+    ],
+    "肌钙蛋白": [
+      "pmid-43041129"
+    ],
+    "利钠肽": [
+      "pmid-43048904"
+    ],
+    "心脏移植": [
+      "pmid-42999953"
+    ],
+    "ECMO": [
+      "pmid-42521444"
+    ],
+    "睡眠呼吸暂停": [
+      "pmid-43002163"
+    ],
+    "川崎病": [
+      "pmid-43018034"
+    ],
+    "钙化积分": [
+      "pmid-42993103"
+    ],
+    "斑块": [
+      "pmid-43043987"
+    ],
+    "肥胖": [
+      "pmid-43046877"
+    ],
+    "肾": [
+      "pmid-43046965"
+    ],
+    "房早": [
+      "pmid-41853846"
+    ],
+    "室早": [
+      "pmid-42927632"
+    ],
+    "心动过速": [
+      "pmid-43039126"
+    ],
+    "心动过缓": [
+      "pmid-42611001"
+    ],
+    "冠脉CT": [
+      "pmid-43043987"
+    ],
+    "心肌灌注": [
+      "pmid-43046970"
+    ],
+    "胆固醇": [
+      "pmid-43018066"
+    ],
+    "炎症": [
+      "pmid-43048775"
+    ],
+    "肿瘤心脏病": [
+      "pmid-42885793"
+    ],
+    "妊娠": [
+      "pmid-43050201"
+    ],
+    "儿童": [
+      "pmid-43050809"
+    ],
+    "老年": [
+      "pmid-43051980"
+    ],
+    "女性": [
+      "pmid-43050201"
+    ],
+    "AF": [
+      "a09c1cee056e7385",
+      "48fed256f2ecd85b"
+    ],
+    "HFpEF": [
+      "26331e3a063c8721"
+    ],
+    "TAVI": [
+      "pmid-43051980"
+    ],
+    "TAVR": [
+      "pmid-43051980"
+    ],
+    "PCI": [
+      "f188f2386b35e6f1"
+    ],
+    "CRT": [
+      "pmid-43007251"
+    ],
+    "LBBAP": [
+      "pmid-43044946"
+    ],
+    "HBP": [
+      "pmid-43046970"
+    ],
+    "CCTA": [
+      "pmid-43043987"
+    ],
+    "PFO": [
+      "pmid-43039685"
+    ],
+    "ASD": [
+      "pmid-42863884"
+    ],
+    "AVB": [
+      "pmid-43001763"
+    ],
+    "HFrEF": [
+      "pmid-43045048"
+    ],
+    "NT-proBNP": [
+      "pmid-42944673"
+    ],
+    "atrial fibrillation": [
+      "cd620f6cb74be51f"
+    ],
+    "heart failure with preserved ejection fraction": [
+      "b544babef185ad99"
+    ],
+    "percutaneous coronary intervention": [
+      "pmid-43051979"
+    ],
+    "cardiac resynchronization therapy": [
+      "pmid-43007251"
+    ],
+    "left bundle branch area pacing": [
+      "pmid-43044946"
+    ],
+    "atrial fibrillation ablation": [
+      "pmid-43045045"
+    ],
+    "房颤消融": [
+      "pmid-43045045",
+      "a09c1cee056e7385"
+    ],
+    "房颤 消融": [
+      "pmid-43045045"
+    ],
+    "心衰 SGLT2": [
+      "pmid-42975393"
+    ],
+    "房颤 抗凝": [
+      "pmid-43046978"
+    ],
+    "肥胖 心衰": [
+      "pmid-43000472"
+    ],
+    "左束支起搏 心衰": [
+      "pmid-42946317"
+    ],
+    "男性": [
+      "pmid-42987715"
+    ],
+    "心电图 房颤": [
+      "pmid-43038808"
+    ],
+    "高血压 妊娠": [
+      "pmid-43046966"
+    ],
+    "冠心病 支架": [
+      "pmid-43026577"
+    ],
+    "心肌炎": [
+      "pmid-43039686"
+    ],
+    "大模型": [
+      "pmid-43052083",
+      "1b8e3feb6f3448c7"
+    ],
+    "electrophysiology": [
+      "pmid-43002702"
+    ],
+    "heart failure with preserved ejection fraction and atrial fibrillation": [
+      "pmid-41771070"
+    ],
+    "心脏 猝死": [
+      "pmid-42994712"
+    ]
+  },
+  "records": {
+    "pmid-42867067": "The 'ten commandments' for the 2025 European Society of Cardiology guidelines on myocarditis and pericarditis",
+    "pmid-43043914": "Epicardial Pulsed Field Ablation Across the Intact Pericardium: Feasibility, Safety Margins, and Tissue Selectivity in a Porcine Model.",
+    "pmid-43004935": "Angio-invasive mucormycosis mimicking an aortic dissection in a patient with chronic febrile aplasia.",
+    "pmid-43046873": "Weekly Journal Scan: Can we detect and REACT early enough to change the trajectory of subclinical atherosclerosis?",
+    "pmid-43050586": "Rehabilitation across the hemodynamic continuum: Opportunities for better functional recovery in cardiogenic shock.",
+    "pmid-42863884": "Novel Iatrogenic Atrial Septal Defect Closure Method for Peri-Cannular Left-Atrial Thrombosis During LAVA-ECMO Explant",
+    "pmid-43039685": "Incomplete device apposition after patent foramen ovale transcatheter closure: cause for concern or innocent bystander?",
+    "pmid-43046868": "Evaluation of the ESC Guideline based risk stratification of syncope patients in the emergency department A post-hoc analysis of the SYNERGY-trial.",
+    "pmid-42748473": "Antiemetic-associated QT prolongation: a clinical review and risk-stratified prescribing framework for long QT syndrome",
+    "pmid-43046970": "Short- and Long-Term Effects of His Bundle Pacing on Myocardial Perfusion, Metabolism, and Function.",
+    "pmid-43044946": "Reversal of Bipolar Current of Injury During Left Bundle Branch Area Pacing Lead Implantation: A Marker of Deep Septal Lead Position.",
+    "pmid-43036879": "Early Left Bundle Branch Pacing for Complete Left Bundle Branch Block and Left Ventricular Ejection Fraction of 36%-50%: The EARLY-RESYNC Randomized Trial.",
+    "pmid-43007251": "Safety and Efficacy of Omecamtiv Mecarbil by QRS Duration and Cardiac Resynchronization Therapy in GALACTIC-HF.",
+    "pmid-42948880": "Cardiac Electrophysiological Impact of Sodium Glucose Cotransporter 2 Inhibitors: A Comprehensive Review",
+    "pmid-43041129": "Macrotroponins and prognostic value of cardiac troponin I in the general population: the ACE 1950 study.",
+    "pmid-43048904": "Novel opportunities to tackle heart failure with natriuretic peptides.",
+    "pmid-42999953": "Dapagliflozin for Renal Protection in Heart Transplant Recipients: A Randomized Clinical Trial.",
+    "pmid-42521444": "Micro-axial flow pump vs veno-arterial extracorporeal membrane oxygenation for high-risk percutaneous coronary interventions: a randomized trial",
+    "pmid-43002163": "Orforglipron for Obstructive Sleep Apnea: Research Summary.",
+    "pmid-43018034": "Safety and Efficacy of Apixaban Therapy for Coronary Artery Aneurysms After Kawasaki Disease.",
+    "pmid-42993103": "Beyond the Coronary Artery Calcium Score: CTA-Defined Plaque Analysis and Calcium Density in Primary Prevention",
+    "pmid-43043987": "Polarimetric Characterization of CCTA-Defined High-Risk Coronary Plaques: Linking Morphology to Fibrous Matrix Organization and Lipid Burden.",
+    "pmid-43046877": "Intrapancreatic fat as a window into the multiorgan adiposity landscape of cardiovascular-kidney-metabolic syndrome?",
+    "pmid-43046965": "Shifting the Pressure-Natriuresis Curve: The Cellular Mechanisms of Female Renal Resilience.",
+    "pmid-41853846": "Memantine for Premature Atrial Contractions: A Phase 2 Randomized Clinical Trial",
+    "pmid-42927632": "Coupling Interval Variability of Outflow Tract Premature Ventricular Contractions: A Poincaré Plot-Based Assessment",
+    "pmid-43039126": "Purkinje-Targeted Catheter Ablation for Refractory Ventricular Fibrillation and Polymorphic Ventricular Tachycardia: A Systematic Review, Network Meta-Analysis, and Meta-Regression.",
+    "pmid-42611001": "Cardioneuroablation for Symptomatic Bradycardia in Heterotaxy Syndrome With Interrupted Inferior Vena Cava: A Novel Case",
+    "pmid-43018066": "Evaluating the Low-Density Lipoprotein Cholesterol Paradox in Heart Failure With Reduced Ejection Fraction.",
+    "pmid-43048775": "Postoperative Inflammatory Response After Cardiac Surgery: Magnitude, Timing, and Prognosis.",
+    "pmid-42885793": "Contemporary Management and Rechallenge Practices for 5-Fluorouracil-Associated Cardiotoxicity: Insights From an International Cardio-Oncology Society Survey",
+    "pmid-43050201": "Anemia and Iron Status in Pregnant and Postpartum Women With Acute Heart Failure.",
+    "pmid-43050809": "Universal ECG Screening for School-Age Children: A Pediatric Cardiology and Public Health Perspective.",
+    "pmid-43051980": "Nationwide transcatheter aortic valve implantation rollout and cardiac-origin out-of-hospital cardiac arrest in the elderly.",
+    "a09c1cee056e7385": "Enhancing Persistent Atrial Fibrillation Ablation: The Added Value of Vein of Marshall Ethanol Infusion in a Tailored Strategy",
+    "48fed256f2ecd85b": "Anticoagulation Outcomes in Nursing Home Residents With Atrial Fibrillation and ADL Disability",
+    "26331e3a063c8721": "Automated assessment of echocardiograms to aid diagnosis of heart failure with preserved ejection fraction",
+    "f188f2386b35e6f1": "Left Ventricular Unloading in High-Risk Percutaneous Coronary Intervention",
+    "pmid-43001763": "Left Bundle-Branch Pacing versus Right Ventricular Pacing for Atrioventricular Block.",
+    "pmid-43045048": "Adherence and outcomes in HFrEF: timing of exposure assessment and outcome follow-up.",
+    "pmid-42944673": "NT-proBNP and Clinical Outcomes in Patients With HFrEF According to Atrial Fibrillation: Insights From QUEST",
+    "cd620f6cb74be51f": "Sex-Specific Outcomes After Catheter Ablation for AF in Left Ventricular Systolic Dysfunction",
+    "b544babef185ad99": "HFpEF and MASLD: converging mechanisms and clinical implications",
+    "pmid-43051979": "Percutaneous coronary intervention versus coronary artery bypass grafting in dialysis patients with three-vessel coronary artery disease: 5-year outcomes from the CREDO-Kyoto PCI/CABG registries.",
+    "pmid-43045045": "Controversy: Adjunctive ablation lesions are needed beyond pulmonary vein isolation in treating persistent atrial fibrillation: Pro and Contra.",
+    "pmid-42975393": "Implications of SGLT2 Inhibitors, GLP-1RAs, and Nonsteroidal MRAs on the Anticipated Burden of Heart Failure",
+    "pmid-43046978": "Left Atrial Appendage Closure Versus Anticoagulation for Stroke Prevention in Atrial Fibrillation: A Meta-Analysis of Randomized Controlled Trials.",
+    "pmid-43000472": "Hemodynamic effects of semaglutide in individuals with heart failure with preserved ejection fraction and obesity: a placebo-controlled randomized clinical trial.",
+    "pmid-42946317": "Left bundle branch pacing vs left ventricular septal pacing in the same patients with heart failure and left bundle branch block",
+    "pmid-42987715": "Androgen Imbalance, Cardiovascular-Kidney-Metabolic Syndrome Stages, and Mortality in Men.",
+    "pmid-43038808": "Deep Learning With Longitudinal Electrocardiograms Predicts Atrial Fibrillation Better Than a Single Electrocardiogram.",
+    "pmid-43046966": "Biological Aging Associates With Preeclampsia and Gestational Hypertension",
+    "pmid-43026577": "Diabetes mellitus and 10-year clinical outcomes after percutaneous coronary intervention with drug-eluting stents: insights from the DECADE cooperation.",
+    "pmid-43039686": "Cross-specialty Triple M syndrome clinical practice guide: immune checkpoint inhibitor associated myasthenia-myositis-myocarditis overlap syndrome.",
+    "pmid-43052083": "Bias and equity in large language model-based applications for health care: a scoping review.",
+    "1b8e3feb6f3448c7": "Monitoring Changes in Clinical Trial Primary Outcomes Using Large Language Models",
+    "pmid-43002702": "Technology and Intelligence: Staying on Target for the Next Decade of Electrophysiology.",
+    "pmid-41771070": "Heart rate and atrial fibrillation/flutter in HFmrEF/HFpEF: a participant-level analysis across five randomized clinical trials",
+    "pmid-42994712": "Metabolic Dysfunction-Associated Steatotic Liver Disease and Sudden Cardiac Death: Epidemiology, Mechanisms, Risk Stratification, and Prevention."
+  }
+}

@@ -684,7 +684,7 @@ function libraryPaper(record, expectedDoi = '') {
     url:'https://doi.org/' + encodeURIComponent(input.doi).replace(/%2F/gi, '/'), authors:(Array.isArray(input.authors) ? input.authors : []).map(name => libraryText(name, 200)).filter(Boolean).slice(0, 30),
     date:/^\d{4}(?:-\d{2})?(?:-\d{2})?$/.test(input.date || '') ? input.date : '', datePrecision:['day','month','year'].includes(input.datePrecision) ? input.datePrecision : '',
     dateBasis:libraryText(input.dateBasis || '', 100), ingestedAt:typeof input.ingestedAt === 'string' && !isNaN(Date.parse(input.ingestedAt)) ? input.ingestedAt : '',
-    metadataStatus:LIBRARY_METADATA_STATUSES.includes(input.metadataStatus) ? input.metadataStatus : 'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
+    metadataStatus:LIBRARY_METADATA_STATUSES.includes(input.metadataStatus) ? input.metadataStatus : 'external_bibliography_checked', fulltextStatus:input.fulltextStatus, ...(input.fulltextStatus === 'pending' && input.fulltextReason === 'temporary' ? { fulltextReason:'temporary' } : {}), ...(input.fulltextStatus === 'available' && input.fulltextVerification === 'manual_release' ? { fulltextVerification:'manual_release' } : {}), basis:'官方题录来源关联 · 未做医学全文审阅' };
   return paper;
 }
 async function libraryGet(kv, key) {
@@ -1897,13 +1897,19 @@ async function handleFulltextImport(request, env) {
 const MUSE_JOB_PREFIX = 'library:muse-job:';
 const MUSE_QUEUE_PREFIX = 'library:muse-queue:';
 const MUSE_REVIEW_PREFIX = 'library:muse-review:';
+const MUSE_HOLD_AUDIT_PREFIX = 'library:muse-hold-audit:';
 const MUSE_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const MUSE_STATES = ['queued','running','uploading','verifying','login_required','available','review','failed','abandoned'];
 const MUSE_LEASE_MS = 1200000;
 // Muse has no fixed polling schedule, so an unclaimed request waits almost the whole job lifetime
 // (KV TTL 7 days) instead of dying after one day nobody ran Muse.
+// identity_hold tasks and their candidate PDFs stay for 30 days awaiting manual review.
 // Terminal records (available, abandoned) are written without a TTL; see musePut.
 const MUSE_QUEUE_MS = 6 * 86400000;
+const MUSE_HOLD_TTL_SECONDS = 2592000;
+// A task released through POST /api/machine/hold-review is verified with the DOI-in-full-text check skipped and nothing else.
+const MUSE_RELEASE_METHOD = 'dual_parser_title_manual_release';
+const MUSE_RELEASE_SKIPPED = ['doi_in_fulltext'];
 // 2026-11-12 plus the agreed 30-day transition. MUSE_DOWNLOAD_RETIRE_ON overrides the displayed date only.
 const MUSE_DOWNLOAD_RETIRE_ON_DEFAULT = '2026-12-12';
 const MACHINE_CALLER_ID = /^[a-z][a-z0-9_-]{0,31}$/;
@@ -1968,6 +1974,28 @@ async function museAuthorize(request, env) {
   let difference = 0; for (let n = 0; n < 64; n++) difference |= expected.charCodeAt(n) ^ actual.charCodeAt(n);
   if (difference) libraryFail('muse_unauthorized',401);
 }
+function museIsIdentityHold(job) {
+  return !!(job && job.state === 'review' && job.verificationReason === 'identity_hold');
+}
+function museHoldDecisionValid(decision) {
+  if (!decision || typeof decision !== 'object' || Array.isArray(decision)) return false;
+  const keys = Object.keys(decision);
+  if (keys.length !== 4 || !['action','by','at','reason'].every(k => Object.hasOwn(decision, k))) return false;
+  if (decision.action !== 'release' && decision.action !== 'reject') return false;
+  if (typeof decision.by !== 'string' || !MACHINE_CALLER_ID.test(decision.by)) return false;
+  if (!Number.isSafeInteger(decision.at) || decision.at < 1 || decision.at >= 8640000000000000 - 28800000) return false;
+  if (typeof decision.reason !== 'string' || decision.reason.trim() !== decision.reason || decision.reason.length < 4 || decision.reason.length > 500) return false;
+  return true;
+}
+// The release that lets a verifier skip the DOI-in-full-text check: only a job that went through hold-review 'release', whose audit record
+// (written by that endpoint, no TTL) names the same task, DOI and file hash as the job record now holds. Anything else returns null.
+async function museReleaseProof(env, job) {
+  if (!job || job.state !== 'verifying' || !job.holdDecision || job.holdDecision.action !== 'release' || !museHoldDecisionValid(job.holdDecision)) return null;
+  const audit = await libraryGet(env.QL_KV, MUSE_HOLD_AUDIT_PREFIX + job.id);
+  if (!audit || audit.version !== 1 || audit.action !== 'release' || audit.taskId !== job.id || audit.doi !== job.doi || audit.sha256 !== job.sha256
+      || audit.by !== job.holdDecision.by || audit.at !== job.holdDecision.at || audit.reason !== job.holdDecision.reason) return null;
+  return {by:audit.by, at:audit.at, reason:audit.reason, sha256:audit.sha256, skipped:[...MUSE_RELEASE_SKIPPED]};
+}
 function museRecord(value, doi = '') {
   if (!value || value.version !== 1 || !MUSE_UUID.test(value.id || '') || !libraryDoi(value.doi) || libraryDoi(value.doi) !== value.doi
       || (doi && value.doi !== doi) || !MUSE_STATES.includes(value.state)
@@ -1981,6 +2009,7 @@ function museRecord(value, doi = '') {
       || (Object.hasOwn(value,'claimant') && !/^(?:muse|[a-z][a-z0-9_-]{0,31})$/.test(value.claimant))
       || (Object.hasOwn(value,'stage') && !['han','yiigle'].includes(value.stage))
       || (Object.hasOwn(value,'verificationReason') && !['invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'].includes(value.verificationReason))
+      || (Object.hasOwn(value,'holdDecision') && !museHoldDecisionValid(value.holdDecision))
       || (['uploading','verifying'].includes(value.state) && (!/^[a-f0-9]{64}$/.test(value.sha256 || '') || !Number.isInteger(value.bytes) || value.bytes < 51200 || value.bytes > LIBRARY_MAX_PDF_BYTES || (!value.source && !/^[A-Za-z0-9_-]{10,200}$/.test(value.driveFileId || ''))))
       || (value.state === 'verifying' && value.candidateKey !== 'library:muse-candidate:' + value.sha256)) return null;
   return value;
@@ -1999,7 +2028,7 @@ function museVerificationInstant(job) {
 function musePublicJob(value, doi = '') {
   const job = museRecord(value,doi); if (!job) return null;
   const expired = museExpired(job);
-  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold'];
+  const kept = ['lease_expired','queue_expired','queue_unclaimed','agent_failed','not_oa','han_login','han_quota','source_blocked','wrong_paper','other','invalid_pdf','invalid_identity','identity_mismatch','verification_rejected','identity_hold','identity_hold_rejected'];
   const reason = expired ? job.state === 'queued' ? 'queue_expired' : 'lease_expired'
     : job.state === 'login_required' ? 'login_required'
     : job.state === 'review' ? (kept.includes(job.verificationReason) ? job.verificationReason : 'verification_rejected')
@@ -2027,9 +2056,13 @@ async function musePublicJobValue(env, doi) {
 function museTerminalRecord(job) {
   return job.state === 'available' || job.state === 'abandoned';
 }
+function museJobTtlOptions(job) {
+  if (museTerminalRecord(job)) return undefined;
+  return {expirationTtl:museIsIdentityHold(job) ? MUSE_HOLD_TTL_SECONDS : 604800};
+}
 async function musePut(env, job, options = {}) {
-  // Done and confirmed-abandoned stay in KV until deleted. Other states keep the 7-day TTL.
-  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),museTerminalRecord(job) ? undefined : {expirationTtl:604800});
+  // Done and confirmed-abandoned stay in KV until deleted. identity_hold reviews stay 30 days; other states keep the 7-day TTL.
+  await libraryPut(env.QL_KV,MUSE_JOB_PREFIX + job.doi,JSON.stringify(job),museJobTtlOptions(job));
   libraryCatalogCache.clear();
   // Keep the machine candidate index in step with every state change. A caller that writes many tasks passes
   // indexChanges and applies them once with museIndexApply.
@@ -2177,7 +2210,7 @@ function museShouldSupersedePrevious(job) {
 }
 function museSupersedeSnapshot(job) {
   // Keep the record as-is, including replace / replaceRejected. Only candidateKey is dropped:
-  // it points at a temporary candidate copy that expires after seven days.
+  // it points at a temporary candidate copy that expires (7 days normally, 30 days on identity_hold).
   const skip = new Set(['candidateKey']);
   const snap = {};
   for (const [key, value] of Object.entries(job)) if (!skip.has(key)) snap[key] = value;
@@ -2207,8 +2240,9 @@ async function museArchiveSuperseded(env, previous, newId, doi, now) {
 async function museIntake(env, doi, bytes, source, previous, extra = {}) {
   libraryRejectUploadPdfSize(bytes.length);
   try { libraryValidatePdf(bytes); } catch { libraryFail('muse_bad_pdf',415); }
+  const {hold, ...restExtra} = extra || {};
   const sha256 = await pdfDigest('SHA-256',bytes), candidateKey = 'library:muse-candidate:' + sha256;
-  await libraryPut(env.QL_KV,candidateKey,bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset + bytes.byteLength),{expirationTtl:604800});
+  await libraryPut(env.QL_KV,candidateKey,bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset + bytes.byteLength),{expirationTtl:hold ? MUSE_HOLD_TTL_SECONDS : 604800});
   let stored; try { stored = await env.QL_KV.get(candidateKey,'arrayBuffer'); } catch { libraryFail('library_storage',503); }
   if (!stored) libraryFail('muse_sync_pending',503);
   if (await pdfDigest('SHA-256',new Uint8Array(stored)) !== sha256) libraryFail('library_integrity',502);
@@ -2229,7 +2263,6 @@ async function museIntake(env, doi, bytes, source, previous, extra = {}) {
     const pointer = await museArchiveSuperseded(env, previous, id, doi, now);
     if (pointer) inherited.supersededFrom = pointer;
   }
-  const {hold, ...restExtra} = extra || {};
   const job = hold
     ? {version:1,id,doi,state:'review',verificationReason:'identity_hold',reason:'identity_hold',source,createdAt:now,updatedAt:now,receivedAt:now,queueKey:MUSE_QUEUE_PREFIX + String(now).padStart(13,'0') + ':' + id,
         sha256,bytes:bytes.length,candidateKey,...(callerName ? {caller:callerName} : {}),...inherited,...restExtra}
@@ -2814,6 +2847,8 @@ async function handleMuseReview(request, env) {
       if (job.state === 'available') return json({ok:true,task:null});
       const resume = job.state === 'verifying' && job.reviewOwner === owner && job.reviewLeaseUntil > Date.now();
       if (job.state !== 'review' && !resume) libraryFail('muse_stale',409);
+      // identity_hold tasks require an audited manual decision via POST /api/machine/hold-review.
+      if (museIsIdentityHold(job)) libraryFail('muse_identity_hold',409);
       const valid = museRecord({...job,state:'verifying'},input.doi);
       if (!valid) libraryFail('library_integrity',502);
       const record = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi), paper = libraryPaper(record,job.doi);
@@ -2847,17 +2882,23 @@ async function handleMuseReview(request, env) {
         await musePut(env,claimed);
         const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
         if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
-        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
+        const release = await museReleaseProof(env,job);
+        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId,...(release ? {release} : {})}});
       }
       return json({ok:true,task:null});
     }
-    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method','reason']);
+    museTaskInput(input,['action','taskId','doi','leaseId','sha256','bytes','result','pages','method','reason','skipped']);
     if (!['bytes','complete'].includes(input.action) || (input.action === 'bytes' && Object.keys(input).some(k => !['action','taskId','doi','leaseId'].includes(k)))) libraryFail('muse_bad_request',400);
     if (input.action === 'complete' && Object.hasOwn(input,'reason') && (input.result !== 'rejected' || !['invalid_pdf','invalid_identity','identity_mismatch'].includes(input.reason))) libraryFail('muse_bad_request',400);
     const job = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + input.doi),input.doi);
     if (!job || job.id !== input.taskId || job.reviewOwner !== owner || job.reviewLeaseId !== input.leaseId || job.reviewLeaseUntil < Date.now()) libraryFail('muse_stale',409);
+    // Only a hold-review release may use the manual-release method, and then a verified result must say exactly which check was skipped.
+    const manualMethod = input.action === 'complete' && input.method === MUSE_RELEASE_METHOD;
+    const release = manualMethod && job.state === 'verifying' ? await museReleaseProof(env,job) : null;
     if (input.action === 'complete' && (!['verified','rejected'].includes(input.result) || input.sha256 !== job.sha256 || input.bytes !== job.bytes
-        || input.method !== 'dual_parser_all_pages_title_doi' || !Number.isInteger(input.pages) || input.pages < 0 || input.pages > 200 || (input.result === 'verified' && input.pages < 1))) libraryFail('muse_bad_request',400);
+        || (input.method !== 'dual_parser_all_pages_title_doi' && !(manualMethod && (release || job.state !== 'verifying'))) || !Number.isInteger(input.pages) || input.pages < 0 || input.pages > 200 || (input.result === 'verified' && input.pages < 1)
+        || (manualMethod && input.result === 'verified' && JSON.stringify(input.skipped) !== JSON.stringify(MUSE_RELEASE_SKIPPED))
+        || (Object.hasOwn(input,'skipped') && !(manualMethod && input.result === 'verified')))) libraryFail('muse_bad_request',400);
     if (input.action === 'complete' && ['available','review'].includes(job.state)) return json({ok:true,job:musePublicJob(job),archive:libraryArchiveStatus()});
     if (job.state !== 'verifying') libraryFail('muse_stale',409);
     if (input.action === 'complete' && input.result === 'rejected') {
@@ -2897,14 +2938,15 @@ async function handleMuseReview(request, env) {
     const replacing = !!(job.replace && paper && record.pdf && record.pdf.sha256 === job.replace.oldSha256 && paper.fulltextStatus === 'available');
     if (!paper || paper.fulltextStatus === 'review' || (record.pdf && record.pdf.sha256 !== job.sha256 && !replacing)) libraryFail('library_identity',409);
     if (replacing) await machineReplacePdf(env.QL_KV,record,bytes,'muse_verified');
-    else await librarySave(env.QL_KV,{...paper,fulltextStatus:'available'},{bytes,source:'muse_verified'},'');
+    else await librarySave(env.QL_KV,{...paper,fulltextStatus:'available',...(release ? {fulltextVerification:'manual_release'} : {})},{bytes,source:'muse_verified'},'');
     const saved = await libraryGet(env.QL_KV,LIBRARY_PREFIX + job.doi);
     if (!libraryPaper(saved,job.doi) || saved.pdf?.sha256 !== job.sha256) libraryFail('muse_sync_pending',503);
     await libraryStoredPdf(env.QL_KV,saved);
     // Muse already stored this original in its Drive inbox; record it so the archive workflow does not upload it twice.
     if (job.driveFileId) await libraryPut(env.QL_KV,DRIVE_ARCHIVE_PREFIX + job.sha256,JSON.stringify({version:1,doi:job.doi,sha256:job.sha256,driveFileId:job.driveFileId,source:'muse',archivedAt:Date.now()}));
     const {replace:replaced, supersedes:_supersedes, ...kept} = job;
-    const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes},
+    const done = {...kept,state:'available',updatedAt:Date.now(),verification:{method:input.method,pages:input.pages,sha256:job.sha256,bytes:job.bytes,
+        ...(release ? {manualRelease:{by:release.by,at:release.at,reason:release.reason,skipped:[...release.skipped]}} : {})},
       ...(replaced ? {replacedFrom:{by:replaced.by,at:replaced.at,oldSha256:replaced.oldSha256,newSha256:replaced.newSha256,verifiedAt:Date.now()}} : {})};
     // The superseded archive was written at museIntake, before this job overwrote library:muse-job:{doi}.
     // Keep supersededFrom on the done record; do not look the old task up from that single key.
@@ -3147,6 +3189,17 @@ const MACHINE_NORMALIZE_PUNCT = new Set([
 const MACHINE_IDENTITY_SECTION_LABEL = /^\s*\[[A-Za-z][A-Za-z ./-]{0,39}\]\s*/;
 // Crossref titles keep JATS/HTML inline markup ("<i>CYP2C19</i>", "P2Y<sub>12</sub>"); the page prints only the text inside.
 const MACHINE_TITLE_MARKUP = /<\/?(?:i|b|em|strong|sub|sup|sc|scp|u|italic|bold)\b[^<>]{0,80}>/gi;
+const MACHINE_TITLE_MARKS = /[\u2122\u00ae]/g;
+const MACHINE_TITLE_VERSUS = /(?<![\p{L}\p{N}])(?:versus|vs\.?|v\.)(?![\p{L}\p{N}])/giu;
+const MACHINE_TITLE_C1_CONTROLS = /[\u0080-\u009f]/g;
+const MACHINE_VARIANT_INSERT_MIN_LEN = 40;
+const MACHINE_VARIANT_MAX_INSERTS = 2;
+// Line-number evidence for accepted manuscripts: a chain of >= 5 consecutive positive integers (1..999) as standalone whitespace
+// tokens (ignoring PDF marked-content /MCID ids), each at most 40 tokens after the previous. The text extractor keeps no coordinates, so "left margin"
+// cannot be tested; instead the inserted number must itself be a member of such a run (see machineLineNumberMembers).
+const MACHINE_LINE_NUMBER_MIN_RUN = 5;
+const MACHINE_LINE_NUMBER_MAX_GAP = 40;
+const MACHINE_PROOF_MIN_QUERIES = 3;
 function machineNormalize(value) {
   const stripped = String(value || '').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g, '');
   let out = '';
@@ -3155,6 +3208,116 @@ function machineNormalize(value) {
     if ((code >= 48 && code <= 57) || (code >= 97 && code <= 122) || (code > 127 && !MACHINE_NORMALIZE_PUNCT.has(code))) out += char;
   }
   return out;
+}
+// Fallback spelling variants: Heart Rhythm stores "Versus" where page 1 prints "vs"; JACC Imaging stores "CAD-RADS™" where page 1
+// has no ™ (NFKD would turn it into the letters "tm"). Both sides go through this function: whole-word versus/vs/vs./v. become
+// "vs" and the two trademark signs are dropped; nothing else changes.
+function machineTitleVariant(value) {
+  return machineNormalize(String(value || '').replace(MACHINE_TITLE_MARKS, '').replace(MACHINE_TITLE_VERSUS, ' vs '));
+}
+// WinAnsi byte 0x96 (en dash) that some PDFs leave undecoded shows up as U+0096; C1 controls never occur in real titles.
+function machineTitleVariantNoC1(value) {
+  return machineTitleVariant(value).replace(MACHINE_TITLE_C1_CONTROLS, '');
+}
+// Token indexes (in page.text.split(/\s+/)) that belong to a chain of >= 5 integers counting up by one, each at most 40 tokens after
+// the previous one. Other integers in between (affiliation superscripts, page sizes) are skipped. The inserted line number of a title
+// must be one of these tokens, so the evidence sits at the title rather than anywhere on the page.
+function machineLineNumberMembers(tokens) {
+  const ints = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (!/^[1-9]\d{0,2}$/.test(tokens[i])) continue;
+    if (i > 0 && /\/MCID$/.test(tokens[i - 1])) continue;
+    ints.push({index:i, value:Number(tokens[i])});
+  }
+  const members = new Set();
+  for (let start = 0; start < ints.length; start++) {
+    const chain = [start];
+    let last = ints[start];
+    for (let j = start + 1; j < ints.length && ints[j].index - last.index <= MACHINE_LINE_NUMBER_MAX_GAP; j++) {
+      if (ints[j].value !== last.value + 1) continue;
+      chain.push(j);
+      last = ints[j];
+    }
+    if (chain.length >= MACHINE_LINE_NUMBER_MIN_RUN) for (const k of chain) members.add(ints[k].index);
+  }
+  return members;
+}
+// Normalizes page text token by token so a position in the normalized string maps back to its token.
+function machineTokenizedPage(text) {
+  const tokens = String(text || '').split(/\s+/);
+  const spans = [];
+  let norm = '';
+  for (const token of tokens) {
+    const piece = machineTitleVariantNoC1(token);
+    spans.push({start:norm.length, end:norm.length + piece.length, piece});
+    norm += piece;
+  }
+  return {tokens, spans, norm};
+}
+function machineMatchWordsWithInsertions(pageText, words, markerLengths, isMarker, validateMarkers) {
+  if (words.length < 2) return false;
+  const suffixes = new Array(words.length + 1);
+  suffixes[words.length] = '';
+  for (let k = words.length - 1; k >= 0; k--) suffixes[k] = words[k] + suffixes[k + 1];
+  if (suffixes[0].length < MACHINE_VARIANT_INSERT_MIN_LEN) return false;
+  const maxMarkerLen = markerLengths[markerLengths.length - 1];
+  const anchors = [];
+  if (words.length === 2) {
+    const pick = words[0].length >= words[1].length ? 0 : 1;
+    anchors.push({text:words[pick], prefixLen:pick ? words[0].length : 0, maxShift:pick ? maxMarkerLen : 0});
+  } else {
+    const total = suffixes[0].length;
+    let a = 1, lenA = words[0].length;
+    while (a + 2 < words.length && lenA < total / 3) { lenA += words[a].length; a++; }
+    let b = a + 1, lenB = words[a].length;
+    while (b + 1 < words.length && lenA + lenB < (total * 2) / 3) { lenB += words[b].length; b++; }
+    // Partitioning words into 3 contiguous slices guarantees at least one slice contains no gap insertions (at most 2 total).
+    anchors.push(
+      {text:words.slice(0, a).join(''), prefixLen:0, maxShift:0},
+      {text:words.slice(a, b).join(''), prefixLen:lenA, maxShift:Math.min(a, MACHINE_VARIANT_MAX_INSERTS) * maxMarkerLen},
+      {text:words.slice(b).join(''), prefixLen:lenA + lenB, maxShift:Math.min(b, MACHINE_VARIANT_MAX_INSERTS) * maxMarkerLen}
+    );
+    anchors.sort((x, y) => y.text.length - x.text.length);
+  }
+  const seenStarts = new Set();
+  const matchAtStart = start => {
+    if (start < 0 || seenStarts.has(start)) return false;
+    seenStarts.add(start);
+    let pos0 = start;
+    for (let i = 0; i < words.length - 1; i++) {
+      if (!pageText.startsWith(words[i], pos0)) return false;
+      pos0 += words[i].length;
+      for (const len1 of markerLengths) {
+        const m1 = pageText.slice(pos0, pos0 + len1);
+        if (m1.length !== len1 || !isMarker(m1)) continue;
+        const pos1 = pos0 + len1;
+        if (pageText.startsWith(suffixes[i + 1], pos1) && validateMarkers([{text:m1, at:pos0}])) return true;
+        let pos2 = pos1;
+        for (let j = i + 1; j < words.length - 1; j++) {
+          if (!pageText.startsWith(words[j], pos2)) break;
+          pos2 += words[j].length;
+          for (const len2 of markerLengths) {
+            const m2 = pageText.slice(pos2, pos2 + len2);
+            if (m2.length !== len2 || !isMarker(m2)) continue;
+            if (validateMarkers([{text:m1, at:pos0}, {text:m2, at:pos2}]) && pageText.startsWith(suffixes[j + 1], pos2 + len2)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+  for (const anchor of anchors) {
+    let from = 0;
+    while (from <= pageText.length - anchor.text.length) {
+      const at = pageText.indexOf(anchor.text, from);
+      if (at < 0) break;
+      for (let shift = 0; shift <= anchor.maxShift; shift++) {
+        if (matchAtStart(at - anchor.prefixLen - shift)) return true;
+      }
+      from = at + 1;
+    }
+  }
+  return false;
 }
 function machineLatin1(bytes) {
   let out = '';
@@ -3839,7 +4002,7 @@ async function machineFirstPage(bytes) {
   const metadata = await machineMetadata(ctx);
   // Real text is mostly letters; glyph ids of a custom encoding come out as control and high bytes.
   const mostlyLetters = value => { const shown = value.replace(/\s/g, ''), letters = shown.replace(/[^A-Za-z]/g, '').length; return letters >= MACHINE_READABLE_MIN_LETTERS && letters >= shown.length * MACHINE_READABLE_MIN_RATIO; };
-  return {text:strings + '\n' + decoded + raw, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
+  return {text:strings + '\n' + decoded + raw, shown:strings + '\n' + decoded, readable:mostlyLetters(strings) || mostlyLetters(decoded), metadata, notes:new Set(notes), ctx};
 }
 async function machinePageText(ctx, pageBody) {
   const notes = ctx.notes;
@@ -3994,6 +4157,8 @@ function machineAnyDoi(text) {
 // 'doi_only' (DOI on page 1, title unreadable), 'metadata_only', 'title_only' (machine uploads only, when
 // options.allowTitleOnly: title read on page 1 and neither page 1 nor metadata carries any DOI). Anything that
 // is not 'full' is still only a candidate: it waits for the independent dual-parser verification.
+// If normal title matching (including section-label stripping) misses, falls back in order via machineTitleVariant
+// (whole-word versus/vs./v. -> vs and stripping ™/®): checks.titleVariant = 'versus_or_mark', then 'c1_control_dropped', then 'line_number_inserted', then 'proof_marker_inserted'.
 async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const title = String(rawTitle || '').replace(MACHINE_TITLE_MARKUP, '');
   const expected = machineNormalize(title);
@@ -4005,12 +4170,85 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
   const pageText = machineNormalize(page.text);
   let titleMatch = machineTitleOnPage(pageText, expected);
   let titlePrefix = '';
+  let titleVariant = '';
   let matchedExpected = expected;
-  if (!titleMatch.found && MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''))) {
-    const stripped = machineNormalize(String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, ''));
+  const hasSectionLabel = MACHINE_IDENTITY_SECTION_LABEL.test(String(title || ''));
+  const strippedTitle = hasSectionLabel ? String(title || '').replace(MACHINE_IDENTITY_SECTION_LABEL, '') : '';
+  if (!titleMatch.found && hasSectionLabel) {
+    const stripped = machineNormalize(strippedTitle);
     if (stripped.length >= 5) {
       const retry = machineTitleOnPage(pageText, stripped);
       if (retry.found) { titleMatch = retry; titlePrefix = 'section_label_dropped'; matchedExpected = stripped; }
+    }
+  }
+  if (!titleMatch.found) {
+    const variantPage = machineTitleVariant(page.text);
+    const c1Page = variantPage.replace(MACHINE_TITLE_C1_CONTROLS, '');
+    const candidates = [[title, '']];
+    if (hasSectionLabel) candidates.push([strippedTitle, 'section_label_dropped']);
+    const tryVariant = (name, matchFn) => {
+      if (titleMatch.found) return;
+      for (const [candidate, prefix] of candidates) {
+        const hit = matchFn(candidate);
+        if (!hit) continue;
+        titleMatch = hit.match;
+        titleVariant = name;
+        if (prefix) titlePrefix = prefix;
+        matchedExpected = hit.expected;
+        return;
+      }
+    };
+    tryVariant('versus_or_mark', candidate => {
+      const expectedVariant = machineTitleVariant(candidate);
+      if (expectedVariant.length < 5) return null;
+      const match = machineTitleOnPage(variantPage, expectedVariant);
+      return match.found ? {match, expected:expectedVariant} : null;
+    });
+    tryVariant('c1_control_dropped', candidate => {
+      const expectedC1 = machineTitleVariantNoC1(candidate);
+      if (expectedC1.length < 5 || (c1Page === variantPage && expectedC1 === machineTitleVariant(candidate))) return null;
+      const match = machineTitleOnPage(c1Page, expectedC1);
+      return match.found ? {match, expected:expectedC1} : null;
+    });
+    // Insertion fallbacks (below) are only allowed once the claimed DOI is already confirmed (full / metadata_doi): without that, a
+    // different paper whose title merely has an extra number would pass ("SPRINT 2 Trial" vs "SPRINT Trial").
+    const doiConfirmed = doiPage || doiMeta;
+    const wordsFor = candidate => String(candidate || '').trim().split(/\s+/).map(machineTitleVariantNoC1).filter(Boolean);
+    if (!titleMatch.found && doiConfirmed) {
+      const tokenized = machineTokenizedPage(page.text);
+      const members = machineLineNumberMembers(tokenized.tokens);
+      const memberAt = (at, text) => {
+        for (let i = 0; i < tokenized.spans.length; i++) {
+          const span = tokenized.spans[i];
+          if (span.start > at) break;
+          if (span.start === at && span.piece === text && members.has(i)) return true;
+        }
+        return false;
+      };
+      if (members.size) {
+        tryVariant('line_number_inserted', candidate => {
+          const words = wordsFor(candidate);
+          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [1, 2], tok => /^[1-9]\d?$/.test(tok), inserted => {
+            const nums = inserted.map(item => Number(item.text));
+            if (nums.length === 2 && !(nums[0] < nums[1])) return false;
+            return inserted.every(item => memberAt(item.at, item.text));
+          });
+          return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+        });
+      }
+      // Elsevier pre-proof PDFs print author-query markers (Q1, Q2 ...) inside the title. Needs proof-stage evidence on the page
+      // ("HRTHM12284_proof" file tag or "Journal Pre-proof") and a query list: at least 3 distinct Q-numbers in the shown text, which
+      // must include every inserted marker. page.shown excludes the raw content stream, where graphics-state operators
+      // ("Q 1 0 0 1 ...") would fake a match.
+      const proofStage = /[A-Z]{2,}\d{2,}_proof(?![A-Za-z])|(?:^|[^A-Za-z0-9])_proof(?![A-Za-z])|\bjournal\s+pre-?proof\b/i.test(page.shown);
+      const queryNumbers = new Set([...page.shown.matchAll(/(?:^|[^A-Za-z0-9])Q\s*(\d{1,2})(?![0-9])/g)].map(item => item[1]));
+      if (proofStage && queryNumbers.size >= MACHINE_PROOF_MIN_QUERIES) {
+        tryVariant('proof_marker_inserted', candidate => {
+          const words = wordsFor(candidate);
+          const ok = machineMatchWordsWithInsertions(tokenized.norm, words, [2, 3], tok => /^q\d{1,2}$/.test(tok), inserted => inserted.every(item => queryNumbers.has(item.text.slice(1))));
+          return ok ? {match:{found:true, glyph:''}, expected:words.join('')} : null;
+        });
+      }
     }
   }
   const titlePage = titleMatch.found;
@@ -4020,7 +4258,8 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     title:titlePage ? 'page' : titleMeta ? 'metadata' : '',
     readable,
     ...(titleMatch.glyph ? {titleGlyph:titleMatch.glyph} : {}),
-    ...(titlePrefix ? {titlePrefix} : {})
+    ...(titlePrefix ? {titlePrefix} : {}),
+    ...(titleVariant ? {titleVariant} : {})
   };
   const doiFound = doiPage || doiMeta;
   if (doiPage && titlePage) return {verdict:'ok', level:'full', checks};
@@ -4036,7 +4275,7 @@ async function machineIdentity(bytes, doi, rawTitle, options = {}) {
     if (later.page) return {verdict:'ok', level:'doi_later_page', checks:{...checks, doi:'later_page', doiPage:later.page, ...(citedPages ? {citedPages} : {})}};
   }
   const laterChecks = citedPages ? {...checks, citedPages} : checks;
-  if (options && options.allowTitleOnly && titlePage && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
+  if (options && options.allowTitleOnly && titlePage && !titleVariant && !doiFound && matchedExpected.length >= 20 && !machineAnyDoi(page.text) && !machineAnyDoi(page.metadata.text)) {
     return {verdict:'ok', level:'title_only', checks:{...laterChecks, doi:'', doiAbsent:true}};
   }
   if (options && options.holdForeignDoi && titlePage && !doiFound && (machineAnyDoi(page.text) || machineAnyDoi(page.metadata.text))) {
@@ -4057,13 +4296,15 @@ const MACHINE_VERIFICATION_REASONS = ['invalid_pdf','invalid_identity','identity
 const MACHINE_PUBLIC_STATES = ['to-download','downloading','uploaded-awaiting-verification','uploaded-awaiting-manual-review','done','failed-awaiting-fallback','confirmed-abandoned'];
 const MACHINE_STAGE_TAGS = ['han','yiigle'];
 // Reasons the site itself writes when it stops a task (a client never reports them).
-const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed'];
+const MACHINE_AUTO_REASONS = ['lease_expired','queue_expired','agent_failed','queue_unclaimed','identity_hold_rejected'];
+const MACHINE_HOLD_REASON_MIN = 4;
+const MACHINE_HOLD_REASON_MAX = 500;
 const MACHINE_STATUS_DETAIL_MAX = 500;
 const MACHINE_STATUS_DETAILS = ['just_accepted'];
 const MACHINE_ROLE_CAPS = {
   downloader:['upload','replace','status','claim','renew','return','list','requeue','register','abandoned','protocol'],
-  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol','metadata-backfill'],
-  reader:['list','abandoned','protocol']
+  fallback:['upload','replace','status','abandon','claim','renew','return','list','abandoned','protocol','metadata-backfill','hold_review'],
+  reader:['list','abandoned','protocol','hold_review']
 };
 const MACHINE_UPLOAD_DAILY_DEFAULT = 80;
 const MACHINE_IDENTITY_REASONS = ['doi_invalid','title_too_short','page_tree_not_found','contents_not_found','encrypted_pdf','encryption_unsupported','objstm_unsupported','inflate_failed','filter_unsupported','page_text_empty','doi_not_found','title_not_found','identity_mismatch'];
@@ -4496,7 +4737,9 @@ function machineListItem(job) {
     ...(registration && MACHINE_REGISTER_SOURCE.test(registration.source || '') && MACHINE_REGISTER_SECTIONS.includes(registration.section)
       ? {registeredSource:registration.source,section:registration.section} : {}),
     ...((state === 'failed-awaiting-fallback' || state === 'confirmed-abandoned') && job.detail === 'just_accepted' ? {detail:job.detail} : {}),
-    ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {})};
+    ...(machineAutoFallback(job) ? {autoFallback:machineAutoFallback(job)} : {}),
+    ...(museHoldDecisionValid(job.holdDecision) ? {holdDecision:job.holdDecision} : {}),
+    ...(job.state === 'available' && job.verification && job.verification.manualRelease ? {manualRelease:job.verification.manualRelease} : {})};
 }
 function machineUploadDecision(job, paper, sha256, caller) {
   if ((paper && paper.fulltextStatus === 'available') || (job && job.state === 'available')) return {type:'done'};
@@ -4544,7 +4787,7 @@ function handleMachineProtocol(request, env) {
     humanGate:'exempt',
     states:MACHINE_PUBLIC_STATES,
     stateMap:{queued:'to-download',running:'downloading',uploading:'downloading',verifying:'uploaded-awaiting-verification',available:'done',failed:'failed-awaiting-fallback',login_required:'failed-awaiting-fallback',review:'failed-awaiting-fallback',abandoned:'confirmed-abandoned'},
-    stateMapNote:'review 且 verificationReason 为 identity_hold 时对外状态为 uploaded-awaiting-manual-review（review+identity_hold → uploaded-awaiting-manual-review），表示首页印有他人 DOI 但题名相符，等待人工核对，核对前不公开、不可领取或重排。',
+    stateMapNote:'review 且 verificationReason 为 identity_hold 时对外状态为 uploaded-awaiting-manual-review（review+identity_hold → uploaded-awaiting-manual-review），表示首页印有他人 DOI 但题名相符，等待人工核对，核对前不公开、不可领取或重排；候选与任务保留 30 天，须经 POST /api/machine/hold-review 放行或拒绝。',
     failureReasons:MACHINE_FAILURE_REASONS,verificationReasons:MACHINE_VERIFICATION_REASONS,stageTags:MACHINE_STAGE_TAGS,
     limits:{uploadDailyDefault:MACHINE_UPLOAD_DAILY_DEFAULT,uploadDailyEnv:'MACHINE_UPLOAD_DAILY_LIMIT',requeueDailyDefault:MACHINE_REQUEUE_DAILY_DEFAULT,requeueDailyEnv:'MACHINE_REQUEUE_DAILY_LIMIT',requeuePerCall:50,emptyClaimRetrySeconds:MACHINE_EMPTY_CLAIM_RETRY_SECONDS,claimScanMax:MACHINE_CLAIM_SCAN_MAX,claimScanLimitRetrySeconds:MACHINE_CLAIM_SCAN_LIMIT_RETRY_SECONDS,
       registerDailyDefault:MACHINE_REGISTER_DAILY_DEFAULT,registerDailyEnv:'MACHINE_REGISTER_DAILY_LIMIT',registerMaxItems:MACHINE_REGISTER_MAX_ITEMS,listLimitDefault:MACHINE_LIST_LIMIT_DEFAULT,listLimitMax:MACHINE_LIST_LIMIT_MAX,listScanPagesMax:MACHINE_LIST_SCAN_PAGES_MAX,listScanPageKeys:MACHINE_LIST_SCAN_PAGE_KEYS,minPdfBytes:LIBRARY_MIN_PDF_BYTES,maxPdfBytes:LIBRARY_MAX_PDF_BYTES,oversizeError:'file_too_large'},
@@ -4554,6 +4797,8 @@ function handleMachineProtocol(request, env) {
     registerSections:MACHINE_REGISTER_SECTIONS,registerSourcePattern:MACHINE_REGISTER_SOURCE.source,
     legacyMuse:{retireOn:museRetireOn(env),autoDisable:false,closed:museLegacyClosed(env),closedEndpoints:museLegacyClosed(env) ? MUSE_LEGACY_ENDPOINTS : [],endpoints:['/api/muse/claim','/api/muse/receipt','/api/muse/upload','/api/muse/retry']},
     replace:{header:'X-Machine-Replace',value:'1',roles:['downloader','fallback'],legacyMuse:false,note:'覆盖已完成原件：重新全套首页身份检查与双解析器核验，计入当日上传额度；核验通过前旧原件继续可下载。'},
+    holdReview:{reviewersEnv:'MACHINE_HOLD_REVIEWERS',actions:['release','reject'],reasonMinChars:MACHINE_HOLD_REASON_MIN,reasonMaxChars:MACHINE_HOLD_REASON_MAX,holdTtlSeconds:MUSE_HOLD_TTL_SECONDS,auditKeyPattern:MUSE_HOLD_AUDIT_PREFIX + '<taskId>',
+      note:'人工核对 identity_hold 暂留条目。默认关闭；须配置 MACHINE_HOLD_REVIEWERS（逗号分隔调用方 id），旧共享密钥和原上传调用方本人均不可核对。放行后仍进双解析器核验，不直接公开；拒绝后通常删候选文件并转 failed-awaiting-fallback（identity_hold_rejected），若同 SHA 候选仍被其他在途任务共用或读取首页异常则保留候选并记录 candidateRetainedFor。'},
     identityReasons:MACHINE_IDENTITY_REASONS,
     claimable:{field:'claimable',unclaimableReasonField:'unclaimableReason',unclaimableReasons:['verification_failed'],
       note:'列表保持六个对外状态。内部状态为 review（核验未通过）的条目仍列在 failed-awaiting-fallback，但 claimable 为 false，并带 unclaimableReason: verification_failed。领取和重排仍会跳过它们，请直接上传正式版 PDF。旧客户端可忽略这两个新字段。'},
@@ -4566,7 +4811,167 @@ function handleMachineProtocol(request, env) {
       note:'仅当前未过期租约的持有人可 POST /api/machine/renew 或 /api/machine/return。每次续期 +20 分钟，从领取开始最多 120 分钟，到上限后拒绝（machine_lease_limit）。下载端退回不是失败，任务回到待下载并保留原 FIFO，同一篇最多 3 次，超过后拒绝（machine_return_limit），只能改报失败。兜底角色退回（以及带 previousReason 的条目）回到失败待兜底并保留原原因，不会回到待下载。旧客户端不调用这两个接口即可。'},
     statusDetail:{field:'detail',maxChars:MACHINE_STATUS_DETAIL_MAX,allowed:MACHINE_STATUS_DETAILS,reasons:['source_blocked'],
       note:'POST /api/machine/status 的可选字段 detail。目前只允许在 reason 为 source_blocked 时写入 just_accepted（例如期刊仍是 Just Accepted、排版尚未完成，要等正式出版后再处理）。其他原因或状态带 detail 返回 400，并在 message 里说明。写入后出现在失败待兜底和确认放弃列表里。旧客户端可忽略。'},
-    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register'}});
+    endpoints:{upload:'PUT /api/machine/upload',status:'POST /api/machine/status',tasks:'GET /api/machine/tasks',abandoned:'GET /api/machine/abandoned',claim:'POST /api/machine/claim',renew:'POST /api/machine/renew',return:'POST /api/machine/return',requeue:'POST /api/machine/requeue',register:'POST /api/machine/register',holdReview:'POST /api/machine/hold-review'}});
+}
+function machineHoldReviewers(env) {
+  const raw = env && env.MACHINE_HOLD_REVIEWERS;
+  if (raw === undefined) return new Set();
+  if (typeof raw !== 'string' || raw.length > 2000) libraryFail('machine_not_configured', 503);
+  const trimmed = raw.trim();
+  if (!trimmed) return new Set();
+  const ids = trimmed.split(',').map(part => part.trim());
+  if (ids.some(id => !MACHINE_CALLER_ID.test(id))) libraryFail('machine_not_configured', 503);
+  return new Set(ids);
+}
+function machineHoldTask(job, decision, candidateRetainedFor = '') {
+  return {...machineListItem(job), ...(job.holdDecision ? {} : {holdDecision:decision}), ...(candidateRetainedFor ? {candidateRetainedFor} : {})};
+}
+async function machineHoldVerifyCandidate(env, job) {
+  const candidateKey = typeof job.candidateKey === 'string' && job.candidateKey ? job.candidateKey : (job.sha256 ? 'library:muse-candidate:' + job.sha256 : '');
+  if (!candidateKey || candidateKey !== 'library:muse-candidate:' + job.sha256 || !/^[a-f0-9]{64}$/.test(job.sha256 || '')
+      || !Number.isInteger(job.bytes) || job.bytes < LIBRARY_MIN_PDF_BYTES || job.bytes > LIBRARY_MAX_PDF_BYTES) {
+    libraryFail('machine_hold_candidate_missing', 409);
+  }
+  let stored;
+  try { stored = await env.QL_KV.get(candidateKey, 'arrayBuffer'); } catch { libraryFail('library_storage', 503); }
+  if (!stored) libraryFail('machine_hold_candidate_missing', 409);
+  const bytes = new Uint8Array(stored);
+  if (bytes.length !== job.bytes || await pdfDigest('SHA-256', bytes) !== job.sha256) {
+    libraryFail('machine_hold_candidate_missing', 409);
+  }
+  return candidateKey;
+}
+async function machineHoldCandidateRetention(env, job, candidateKey) {
+  if (!candidateKey) return {exists:false, retainedFor:''};
+  let stored;
+  try { stored = await env.QL_KV.get(candidateKey, 'arrayBuffer'); } catch { libraryFail('library_storage', 503); }
+  if (!stored) return {exists:false, retainedFor:''};
+  let dois;
+  try {
+    const page = await machineFirstPage(new Uint8Array(stored));
+    if (!page || typeof page.text !== 'string') return {exists:true, retainedFor:'unknown'};
+    const text = page.text + '\n' + (page.metadata && typeof page.metadata.text === 'string' ? page.metadata.text : '');
+    const seen = new Set();
+    dois = [];
+    for (const token of machineDoiTokens(text)) {
+      const otherDoi = libraryDoi(token);
+      if (!otherDoi || otherDoi === job.doi || seen.has(otherDoi)) continue;
+      seen.add(otherDoi);
+      dois.push(otherDoi);
+      if (dois.length >= 5) break;
+    }
+  } catch {
+    return {exists:true, retainedFor:'unknown'};
+  }
+  for (const otherDoi of dois) {
+    const otherJob = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + otherDoi), otherDoi);
+    if (otherJob && typeof job.sha256 === 'string' && job.sha256 && otherJob.sha256 === job.sha256 && ['uploading','verifying','review'].includes(otherJob.state)) {
+      return {exists:true, retainedFor:otherDoi};
+    }
+  }
+  return {exists:true, retainedFor:''};
+}
+async function machineHoldApply(env, job, decision, auditWrite) {
+  const now = Date.now();
+  if (decision.action === 'release') {
+    const candidateKey = await machineHoldVerifyCandidate(env, job);
+    const {verificationReason:_vr, reason:_r, ...kept} = job;
+    const next = {
+      ...kept,
+      ...(kept.source || kept.driveFileId ? {} : (kept.caller ? {source:kept.caller} : {})),
+      state:'verifying',
+      leaseId:crypto.randomUUID(),
+      leaseUntil:now,
+      updatedAt:now,
+      candidateKey,
+      holdDecision:decision
+    };
+    if (!museRecord(next, job.doi)) libraryFail('library_integrity', 502);
+    if (auditWrite) await libraryPut(env.QL_KV, auditWrite.key, JSON.stringify(auditWrite.doc));
+    await musePut(env, next);
+    await libraryPut(env.QL_KV, MUSE_REVIEW_PREFIX + next.id, JSON.stringify({doi:next.doi,id:next.id}), {expirationTtl:604800});
+    await museRequestReview(env);
+    return {job:next, candidateRetainedFor:''};
+  }
+  const candidateKey = typeof job.candidateKey === 'string' && job.candidateKey ? job.candidateKey : (job.sha256 ? 'library:muse-candidate:' + job.sha256 : '');
+  const {verificationReason:_vr, candidateKey:_ck, ...kept} = job;
+  const next = {
+    ...kept,
+    state:'failed',
+    reason:'identity_hold_rejected',
+    updatedAt:now,
+    holdDecision:decision
+  };
+  if (!museRecord(next, job.doi)) libraryFail('library_integrity', 502);
+  const retention = await machineHoldCandidateRetention(env, job, candidateKey);
+  if (auditWrite) {
+    const doc = retention.retainedFor ? {...auditWrite.doc, candidateRetainedFor:retention.retainedFor} : auditWrite.doc;
+    await libraryPut(env.QL_KV, auditWrite.key, JSON.stringify(doc));
+  }
+  if (candidateKey && retention.exists && !retention.retainedFor) await museDelete(env, candidateKey);
+  await musePut(env, next);
+  if (job.queueKey) await museDelete(env, job.queueKey);
+  return {job:next, candidateRetainedFor:retention.retainedFor};
+}
+async function handleMachineHoldReview(request, env) {
+  try {
+    if (request.method !== 'POST') libraryFail('machine_bad_request', 405);
+    if (new URL(request.url).search) libraryFail('machine_bad_request', 400);
+    const caller = await machineAuthorize(request, env, 'hold_review');
+    const reviewers = machineHoldReviewers(env);
+    if (caller.legacy || !reviewers.has(caller.id)) libraryFail('machine_forbidden', 403);
+    const input = await fulltextReadJson(request, 2048, 'machine_bad_request');
+    const keys = Object.keys(input);
+    if (keys.length !== 4 || !['doi','taskId','action','reason'].every(k => Object.hasOwn(input, k))) libraryFail('machine_bad_request', 400);
+    const doi = libraryDoi(input.doi);
+    if (!doi) libraryFail('machine_bad_request', 400);
+    if (typeof input.taskId !== 'string' || !MUSE_UUID.test(input.taskId)) libraryFail('machine_bad_request', 400);
+    if (input.action !== 'release' && input.action !== 'reject') libraryFail('machine_bad_request', 400);
+    const reason = typeof input.reason === 'string' ? input.reason.replace(/[\x00-\x1f\x7f]/g, '').trim() : '';
+    if (reason.length < MACHINE_HOLD_REASON_MIN || reason.length > MACHINE_HOLD_REASON_MAX) libraryFail('machine_bad_request', 400);
+    const auditKey = MUSE_HOLD_AUDIT_PREFIX + input.taskId;
+    const audit = await libraryGet(env.QL_KV, auditKey);
+    if (audit) {
+      if (audit.doi !== doi || audit.taskId !== input.taskId) libraryFail('machine_not_held', 409);
+      const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+      if (job && job.id === input.taskId && job.caller && job.caller === caller.id) libraryFail('machine_self_review', 403);
+      if (audit.action !== input.action) libraryFail('machine_hold_decided', 409);
+      const decision = {
+        action:audit.action,
+        by:typeof audit.by === 'string' && MACHINE_CALLER_ID.test(audit.by) ? audit.by : caller.id,
+        at:Number.isSafeInteger(audit.at) && audit.at > 0 ? audit.at : Date.now(),
+        reason:typeof audit.reason === 'string' && audit.reason.trim().length >= MACHINE_HOLD_REASON_MIN && audit.reason.trim().length <= MACHINE_HOLD_REASON_MAX ? audit.reason.trim() : reason
+      };
+      const auditRetainedFor = typeof audit.candidateRetainedFor === 'string' ? audit.candidateRetainedFor : '';
+      if (job && job.id === input.taskId && museIsIdentityHold(job)) {
+        const migrated = await machineHoldApply(env, job, decision, null);
+        return json({ok:true,idempotent:true,task:machineHoldTask(migrated.job, decision, migrated.candidateRetainedFor || auditRetainedFor)});
+      }
+      if (job && job.id === input.taskId) return json({ok:true,idempotent:true,task:machineHoldTask(job, decision, auditRetainedFor)});
+      const archived = museRecord(await libraryGet(env.QL_KV, museSupersededKey(doi, input.taskId)), doi);
+      return json({ok:true,idempotent:true,task:archived ? machineHoldTask(archived, decision, auditRetainedFor) : {doi,taskId:input.taskId,holdDecision:decision,...(auditRetainedFor ? {candidateRetainedFor:auditRetainedFor} : {})}});
+    }
+    const job = museRecord(await libraryGet(env.QL_KV, MUSE_JOB_PREFIX + doi), doi);
+    if (!job) libraryFail('machine_not_found', 404);
+    if (job.id !== input.taskId || !museIsIdentityHold(job)) libraryFail('machine_not_held', 409);
+    if (job.caller && job.caller === caller.id) libraryFail('machine_self_review', 403);
+    const now = Date.now();
+    const decision = {action:input.action,by:caller.id,at:now,reason};
+    const auditDoc = {
+      version:1,
+      doi:job.doi,
+      taskId:job.id,
+      action:input.action,
+      by:caller.id,
+      at:now,
+      reason,
+      sha256:typeof job.sha256 === 'string' ? job.sha256 : '',
+      bytes:Number.isInteger(job.bytes) ? job.bytes : 0,
+      identityLevel:typeof job.identityLevel === 'string' ? job.identityLevel : ''
+    };
+    const applied = await machineHoldApply(env, job, decision, {key:auditKey,doc:auditDoc});
+    return json({ok:true,idempotent:false,task:machineHoldTask(applied.job, decision, applied.candidateRetainedFor)});
+  } catch (error) { return machineError(error); }
 }
 async function handleMachineUpload(request, env) {
   // Exempt from librarySoftGate (30/day site-wide and 20/IP). Only the per-token counter applies.
@@ -6305,7 +6710,7 @@ const METRICS_ROUTES = new Set([
   '/api/library', '/api/machine/metadata-backfill', '/api/fulltext-worker', '/api/fulltext-import', '/api/muse/protocol', '/api/muse/request', '/api/muse/retry',
   '/api/muse/claim', '/api/muse/receipt', '/api/muse/upload', '/api/muse/reader-upload', '/api/muse/review',
   '/api/machine/protocol', '/api/machine/upload', '/api/machine/status', '/api/machine/tasks', '/api/machine/scope-uncertain', '/api/machine/abandoned',
-  '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register',
+  '/api/machine/claim', '/api/machine/renew', '/api/machine/return', '/api/machine/requeue', '/api/machine/register', '/api/machine/hold-review',
   '/api/drive-archive', '/api/fulltext-pending', '/api/grok-fulltext-receipt', '/api/acquire', '/api/acquire/retry',
   '/api/fulltext', '/api/fulltext-source', '/api/pdf', '/api/ql', '/api/ai'
 ]);
@@ -6423,7 +6828,7 @@ async function pdfArchiveRun(env, items) {
 //
 // Excluded prefixes (not mirrored):
 //   - library:pdf:（PDF 二进制，已有 R2 备份，文献记录里有 sha256 和大小，行里放不下）
-//   - library:muse-candidate:（待核验的 PDF 二进制，7 天 TTL）
+//   - library:muse-candidate:（待核验的 PDF 二进制，常规 7 天 TTL；identity_hold 待人工核对时 30 天 TTL）
 //   - library:lock:、library:cap:、library:ip:（锁和读者限流计数，短期）
 //   - library:machine-rate:（机器调用方每日配额和观察计数，2 天 TTL，属限流计数）
 //   - library:diagnostic:、library:muse-review-dispatch（缓存/短期标记）
@@ -7002,6 +7407,7 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/api/machine/return') return handleMachineReturn(request, env);
     if (url.pathname === '/api/machine/requeue') return handleMachineRequeue(request, env);
     if (url.pathname === '/api/machine/register') return handleMachineRegister(request, env);
+    if (url.pathname === '/api/machine/hold-review') return handleMachineHoldReview(request, env);
     if (url.pathname === '/api/machine/d1-backfill') return handleMachineD1Backfill(request, env);
     if (url.pathname === '/api/drive-archive') return handleDriveArchive(request, env);
     if (url.pathname === '/api/fulltext-pending') return handleFulltextPending(request, env);

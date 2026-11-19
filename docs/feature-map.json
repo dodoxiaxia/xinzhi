@@ -1379,6 +1379,26 @@
           "notes": ""
         },
         {
+          "id": "candidates-clear-empty-source",
+          "label": "清除筛选",
+          "selector": "#articlesStream .empty-state [data-clear=\"sidebar\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": [
+            "mobile",
+            "tablet",
+            "desktop"
+          ],
+          "condition": "有来源筛选且无匹配文献",
+          "setup": [
+            {
+              "goto": "/?mode=candidates&pub=AHA%20(Circulation)&q=feature-map-no-match-zzzz"
+            }
+          ],
+          "stable": true,
+          "notes": "清除来源等筛选条件，保留搜索关键词。"
+        },
+        {
           "id": "candidates-reset-empty",
           "label": "重置所有条件",
           "selector": "#clearAllFiltersBtn",
@@ -1505,6 +1525,18 @@
           "setup": [],
           "stable": true,
           "notes": ""
+        },
+        {
+          "id": "candidates-summary-clear",
+          "label": "清除筛选（保留关键词）",
+          "selector": "[data-qf-clear=\"all\"]",
+          "kind": "button",
+          "visible": "conditional",
+          "viewports": ["mobile", "tablet", "desktop"],
+          "condition": "雷达存在活动筛选条件",
+          "setup": [{"goto": "/?mode=candidates&lane=all"}],
+          "stable": true,
+          "notes": "恢复默认筛选，保留搜索框关键词"
         },
         {
           "id": "candidates-scope-core",
@@ -4571,6 +4603,147 @@
         "notes": ""
       },
       {
+        "id": "shortlist-copy-share-link",
+        "label": "复制分享链接",
+        "selector": "#copyShortlistShareBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开精选清单后显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": "有可分享的公开题录时可复制。"
+      },
+      {
+        "id": "shortlist-copy-share-manually",
+        "label": "手动复制分享链接",
+        "selector": "#shortlistShareCopyUrl",
+        "kind": "input",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "无法写入剪贴板时显示",
+        "setup": [
+          {
+            "click": "#openHuddleBtn"
+          }
+        ],
+        "stable": true,
+        "notes": "只读、可选中的链接输入框。",
+        "skip": "剪贴板不可用场景由 test_shortlist_share_ui.py 模拟并验证"
+      },
+      {
+        "id": "shortlist-shared-banner",
+        "label": "正在查看分享的清单",
+        "selector": "#sharedShortlistBanner",
+        "kind": "region",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开带 list 参数的链接后显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-paper",
+        "label": "分享的文献行",
+        "selector": "#sharedShortlistRows .compact-row",
+        "kind": "card",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "公开题录已加载且能匹配时显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-merge",
+        "label": "全部加入我的精选",
+        "selector": "#mergeSharedShortlistBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开带 list 参数的链接后显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-close",
+        "label": "关闭分享的清单",
+        "selector": "#closeSharedShortlistBtn",
+        "kind": "button",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "打开带 list 参数的链接后显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.YTc2YTNmZDVlMGU3MGZkNw"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
+        "id": "shortlist-shared-missing",
+        "label": "分享链接中在本站未找到的文献",
+        "selector": "#sharedShortlistMissing",
+        "kind": "details",
+        "visible": "conditional",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "condition": "公开题录加载结束且有未找到的编号时显示",
+        "setup": [
+          {
+            "goto": "/?list=v1.cnNzLW5vbmU"
+          }
+        ],
+        "stable": true,
+        "notes": ""
+      },
+      {
         "id": "shortlist-exporthuddlemdbtn",
         "label": "导出 Markdown",
         "selector": "#exportHuddleMdBtn",
@@ -5489,6 +5662,21 @@
         "expect": "visible"
       },
       {
+        "id": "search-expanded-dictionary",
+        "label": "零结果时仍显示检索扩展",
+        "selector": "#activeFiltersBar [data-search-expansion]",
+        "trigger": "按 setup 的顺序操作",
+        "setup": [
+          {
+            "goto": "/?mode=library&q=AF%20feature-map-no-match-zzzz"
+          },
+          {
+            "wait": "#clearAllFiltersBtn"
+          }
+        ],
+        "expect": "visible"
+      },
+      {
         "id": "dark-theme",
         "label": "深色模式",
         "selector": "html[data-theme=\"dark\"]",
@@ -5960,6 +6148,177 @@
           }
         ],
         "expect": "text:当前浏览器还没有已确认的全文申请记录"
+      },
+      {
+        "id": "request-ingested",
+        "label": "申请：已入库、显示真实归类和阅读详情",
+        "selector": ".req-item:has(.req-classification) .req-status-badge",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:已入库",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-existing",
+        "label": "申请：库里已有",
+        "selector": ".req-item:has(.req-classification) .req-status-badge",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:库里已有",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-awaiting-intake",
+        "label": "申请：已取得全文、待归类入库",
+        "selector": ".req-item .req-status-badge",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:已取得全文，待归类入库",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-hold",
+        "label": "申请：待人工核验",
+        "selector": ".req-item .req-status-review",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:待人工核验",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-hold-rejected",
+        "label": "申请：人工核验未通过",
+        "selector": ".req-item .req-status-review",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:人工核验未通过，可重新提交",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-identity-conflict",
+        "label": "申请：题录冲突",
+        "selector": ".req-item .req-status-review",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:题录冲突，待人工核验",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-possible-duplicate",
+        "label": "申请：同题不同 DOI 仅提示",
+        "selector": ".req-possible-duplicate",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "expect": "text:题名相同但 DOI 不同",
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "request-open-ingested",
+        "label": "申请：打开静态文献阅读详情",
+        "selector": ".req-item:has(.req-classification) [data-action=\"open-request-paper\"]",
+        "trigger": "已有申请；公开题录或任务状态与夹具匹配",
+        "viewports": [
+          "mobile",
+          "tablet",
+          "desktop"
+        ],
+        "setup": [
+          {
+            "click": "#openRequestsBtn"
+          }
+        ],
+        "stable": true,
+        "skip": "需要本地申请记录和模拟任务/快照，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "doi-existing-pdf",
+        "label": "DOI 检索：库里已有 PDF，不显示获取表单",
+        "selector": "#articlesStream .ft-badge-ready",
+        "trigger": "按 DOI 检索已有静态 PDF 的文献",
+        "viewports": ["mobile", "tablet", "desktop"],
+        "expect": "text:库里已有",
+        "stable": true,
+        "skip": "需模拟带 PDF 的静态记录，由 scripts/test_request_loop_ui.py 覆盖"
+      },
+      {
+        "id": "doi-existing-stale-submit",
+        "label": "获取全文的旧表单：库里已有，不重复提交",
+        "selector": "#articlesStream form[data-ft-form] .ft-error",
+        "trigger": "文献已可下载时尝试提交旧表单",
+        "viewports": ["mobile", "tablet", "desktop"],
+        "expect": "text:库里已有，可直接下载",
+        "stable": true,
+        "skip": "需模拟旧表单，由 scripts/test_request_loop_ui.py 覆盖"
       }
     ]
   }

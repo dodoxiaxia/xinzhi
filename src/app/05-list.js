@@ -59,7 +59,7 @@
     return `
       <div class="compact-row" data-paper-id="${pid}">
         <div class="compact-main">
-          <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${pid}" title="${titleEn}">${zh ? esc(zh) : titleEn}</button>
+          <button class="compact-title title-open" data-action="open-drawer" data-paper-id="${pid}" title="${zh && zh !== p.title ? esc(zh + '\n' + p.title) : titleEn}">${zh ? esc(zh) : titleEn}</button>
           ${zh ? `<p class="article-title-en" lang="en" title="${titleEn}">${titleEn}</p>` : ''}
           ${publicationStatusHtml(p)}
           ${doiBlock}

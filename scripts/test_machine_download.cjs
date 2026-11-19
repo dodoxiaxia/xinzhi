@@ -1826,6 +1826,602 @@ async function review(h, body) {
     assert.equal(afterClaim.leaseId, secondClaim.task.leaseId);
   }
 
+  // ---- identity_hold retention (30 days), /api/machine/hold-review (release / reject / auth / audit / idempotency / recovery), and recheck guard ----
+  {
+    const HOLD_TTL = 2592000;
+    const holdTitle = title;
+    const makeHoldPdf = tag => pdfPages(['doi:10.1000/previous-article ' + holdTitle, 'Second page ' + tag]);
+    const holdReviewCall = (h, secret, body, options = {}) => call(h, '/api/machine/hold-review', secret, body, options);
+    // machineAuthorize never skips the role check: a call without a capability is refused for every valid token, and each role
+    // is let in only for the capabilities it holds.
+    {
+      const authHarness = await create();
+      const authRequest = secret => new Request(base + '/api/machine/protocol', {headers:{authorization:'Bearer ' + secret}});
+      for (const [label, secret] of [['downloader', dsh], ['fallback', fallback], ['reader', reader]]) {
+        for (const missing of [undefined, '', null]) {
+          await assert.rejects(authHarness.context.machineAuthorize(authRequest(secret), authHarness.env, missing), error => error.status === 403 && error.code === 'machine_forbidden', label + ' without a capability must be 403');
+        }
+        await assert.rejects(authHarness.context.machineAuthorize(authRequest(secret), authHarness.env, 'no_such_capability'), error => error.status === 403 && error.code === 'machine_forbidden', label + ' with an unknown capability');
+      }
+      assert.equal((await authHarness.context.machineAuthorize(authRequest(reader), authHarness.env, 'hold_review')).role, 'reader');
+      await assert.rejects(authHarness.context.machineAuthorize(authRequest(dsh), authHarness.env, 'hold_review'), error => error.status === 403 && error.code === 'machine_forbidden');
+      await assert.rejects(authHarness.context.machineAuthorize(authRequest(reader), authHarness.env, 'upload'), error => error.status === 403 && error.code === 'machine_forbidden');
+    }
+    const recheckCall = async (h, targetDoi) => {
+      const auth = await token(h, reviewUrl, 'muse-review.yml', {event_name:'workflow_dispatch'});
+      return h.context.worker.fetch(new Request(reviewUrl, {
+        method:'POST',
+        headers:{authorization:'Bearer ' + auth,'content-type':'application/json'},
+        body:JSON.stringify({action:'recheck',doi:targetDoi})
+      }), h.env);
+    };
+    const createHoldTask = async (h, targetDoi, tag = 'hold', uploader = dsh) => {
+      seedPaper(h, targetDoi, holdTitle);
+      const bytes = makeHoldPdf(tag);
+      const writesStart = h.writes.length;
+      const res = await upload(h, bytes, targetDoi, uploader);
+      assert.equal(res.status, 202);
+      const body = await res.json();
+      assert.equal(body.task.identity, 'title_mismatched_doi');
+      assert.equal(body.task.state, 'uploaded-awaiting-manual-review');
+      const sha = hash(bytes);
+      const newWrites = h.writes.slice(writesStart);
+      const candWrite = newWrites.find(w => w.key === 'library:muse-candidate:' + sha);
+      const jobWrite = newWrites.filter(w => w.key === 'library:muse-job:' + targetDoi).at(-1);
+      assert(candWrite && candWrite.opts && candWrite.opts.expirationTtl >= HOLD_TTL, 'hold candidate TTL >= 30d');
+      assert.equal(candWrite.opts.expirationTtl, HOLD_TTL);
+      assert(jobWrite && jobWrite.opts && jobWrite.opts.expirationTtl >= HOLD_TTL, 'hold job TTL >= 30d');
+      assert.equal(jobWrite.opts.expirationTtl, HOLD_TTL);
+      return {bytes, sha, body, job:stored(h, 'library:muse-job:' + targetDoi)};
+    };
+
+    // 1) Protocol registration & non-hold upload keeps 7-day TTL.
+    h = await create();
+    const holdProto = await (await h.context.worker.fetch(new Request(base + '/api/machine/protocol'), h.env)).json();
+    assert.equal(holdProto.endpoints.holdReview, 'POST /api/machine/hold-review');
+    assert.equal(holdProto.holdReview.reviewersEnv, 'MACHINE_HOLD_REVIEWERS');
+    assert.equal(holdProto.holdReview.holdTtlSeconds, HOLD_TTL);
+    assert.deepEqual(holdProto.holdReview.actions, ['release', 'reject']);
+    const normalDoi = '10.1000/hold-control-normal';
+    seedPaper(h, normalDoi, holdTitle);
+    const normalPdf = paperPdf(normalDoi, holdTitle);
+    assert.equal((await upload(h, normalPdf, normalDoi, dsh)).status, 202);
+    assertWeek(h.writes.find(w => w.key === 'library:muse-candidate:' + hash(normalPdf)));
+    assertWeek(jobPuts(h, normalDoi).at(-1));
+
+    // 2) Auth, config, role-independent reviewers, legacy muse block, and self-review block.
+    h = await create();
+    const authDoi = '10.1000/hold-auth-case';
+    const authHold = await createHoldTask(h, authDoi, 'auth');
+    const validPayload = {doi:authDoi,taskId:authHold.job.id,action:'release',reason:'Verified supplement matching target'};
+    // No Authorization header / wrong token / revoked token -> 401
+    await error(await h.context.worker.fetch(new Request(base + '/api/machine/hold-review', {
+      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(validPayload)
+    }), h.env), 401, 'machine_unauthorized');
+    await error(await holdReviewCall(h, unknown, validPayload), 401, 'machine_unauthorized');
+    await error(await holdReviewCall(h, revoked, validPayload), 401, 'machine_revoked');
+    // Default closed when MACHINE_HOLD_REVIEWERS is unset or empty -> 403
+    await error(await holdReviewCall(h, reader, validPayload), 403, 'machine_forbidden');
+    h.env.MACHINE_HOLD_REVIEWERS = '   ';
+    await error(await holdReviewCall(h, reader, validPayload), 403, 'machine_forbidden');
+    // Malformed MACHINE_HOLD_REVIEWERS -> 503 machine_not_configured
+    for (const badReviewers of ['BadId', 'ddx,', ',ddx', 'ddx,,fallback', '123abc']) {
+      h.env.MACHINE_HOLD_REVIEWERS = badReviewers;
+      await error(await holdReviewCall(h, reader, validPayload), 503, 'machine_not_configured');
+    }
+    // Caller not in MACHINE_HOLD_REVIEWERS -> 403; legacy shared muse key -> 403 even if 'muse' appears in reviewers
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx,muse';
+    await error(await holdReviewCall(h, fallback, validPayload), 403, 'machine_forbidden');
+    await error(await holdReviewCall(h, museKey, validPayload), 403, 'machine_forbidden');
+    // Explicit hold_review capability: the downloader role does not have it, so even a caller named in MACHINE_HOLD_REVIEWERS is refused.
+    h.env.MACHINE_HOLD_REVIEWERS = 'dsh,ddx';
+    await error(await holdReviewCall(h, dsh, validPayload), 403, 'machine_forbidden');
+    // Uploader itself (job.caller === fallback, a role that does have hold_review) cannot review its own upload -> 403 machine_self_review
+    const selfDoi = '10.1000/hold-self-review';
+    const selfHold = await createHoldTask(h, selfDoi, 'self', fallback);
+    h.env.MACHINE_HOLD_REVIEWERS = 'fallback,ddx';
+    await error(await holdReviewCall(h, fallback, {doi:selfDoi,taskId:selfHold.job.id,action:'release',reason:'Reviewing my own upload'}), 403, 'machine_self_review');
+    assert.equal(stored(h, 'library:muse-job:' + selfDoi).state, 'review');
+    // Method guard
+    await error(await holdReviewCall(h, reader, null, {method:'GET'}), 405, 'machine_bad_request');
+
+    // Re-create clean harness for validation, non-held states, and query string checks.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx,fallback';
+    const valDoi = '10.1000/hold-validation-case';
+    const valHold = await createHoldTask(h, valDoi, 'val');
+    await error(await call(h, '/api/machine/hold-review?x=1', reader, {doi:valDoi,taskId:valHold.job.id,action:'release',reason:'Valid reason'}), 400, 'machine_bad_request');
+    for (const badBody of [
+      {doi:valDoi,taskId:valHold.job.id,action:'release',reason:'Valid reason',extra:1},
+      {doi:valDoi,taskId:valHold.job.id,action:'release'},
+      {doi:valDoi,taskId:valHold.job.id,action:'approve',reason:'Valid reason'},
+      {doi:valDoi,taskId:valHold.job.id,action:'release',reason:'abc'},
+      {doi:valDoi,taskId:valHold.job.id,action:'release',reason:'   abc   '},
+      {doi:valDoi,taskId:valHold.job.id,action:'release',reason:'x'.repeat(501)},
+      {doi:'not-a-doi',taskId:valHold.job.id,action:'release',reason:'Valid reason'},
+      {doi:valDoi,taskId:'not-a-uuid',action:'release',reason:'Valid reason'}
+    ]) {
+      await error(await holdReviewCall(h, reader, badBody), 400, 'machine_bad_request');
+    }
+    await error(await holdReviewCall(h, reader, null, {raw:'{not-json'}), 400, 'machine_bad_request');
+    await error(await holdReviewCall(h, reader, {doi:valDoi,taskId:valHold.job.id,action:'release',reason:'x'.repeat(2100)}), 413, 'machine_bad_request');
+    // Missing job -> 404; taskId mismatch -> 409 machine_not_held
+    await error(await holdReviewCall(h, reader, {doi:'10.1000/does-not-exist',taskId:valHold.job.id,action:'release',reason:'Valid reason'}), 404, 'machine_not_found');
+    await error(await holdReviewCall(h, reader, {doi:valDoi,taskId:crypto.randomUUID(),action:'release',reason:'Valid reason'}), 409, 'machine_not_held');
+    // Non-hold states (verifying, available, failed, review+identity_mismatch) -> 409 machine_not_held
+    for (const [label, state, extra] of [
+      ['verifying', 'verifying', {source:'dsh',sha256:'a'.repeat(64),bytes:60000,candidateKey:'library:muse-candidate:' + 'a'.repeat(64)}],
+      ['available', 'available', {}],
+      ['failed', 'failed', {reason:'not_oa'}],
+      ['review-mismatch', 'review', {verificationReason:'identity_mismatch',reason:'identity_mismatch',source:'dsh'}]
+    ]) {
+      const sDoi = '10.1000/hold-nonheld-' + label;
+      const sJob = putJob(h, sDoi, state, Date.now(), extra);
+      await error(await holdReviewCall(h, reader, {doi:sDoi,taskId:sJob.id,action:'release',reason:'Valid reason'}), 409, 'machine_not_held');
+    }
+
+    // 3) recheck on identity_hold -> 409 muse_identity_hold; normal review+identity_mismatch recheck still succeeds.
+    await error(await recheckCall(h, valDoi), 409, 'muse_identity_hold');
+    assert.equal(stored(h, 'library:muse-job:' + valDoi).state, 'review');
+    assert.equal(stored(h, 'library:muse-job:' + valDoi).verificationReason, 'identity_hold');
+    const mismatchDoi = '10.1000/recheck-normal-mismatch';
+    const mismatchPdf = paperPdf(mismatchDoi, holdTitle);
+    const mismatchSha = hash(mismatchPdf);
+    seedPaper(h, mismatchDoi, holdTitle);
+    assert.equal((await upload(h, mismatchPdf, mismatchDoi, dsh)).status, 202);
+    const mismatchClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(mismatchClaim.task.doi, mismatchDoi);
+    assert.equal((await review(h, {
+      action:'complete',taskId:mismatchClaim.task.taskId,doi:mismatchDoi,leaseId:mismatchClaim.task.leaseId,
+      sha256:mismatchSha,bytes:mismatchPdf.length,result:'rejected',reason:'identity_mismatch',pages:1,method:'dual_parser_all_pages_title_doi'
+    })).status, 200);
+    assert.equal((await recheckCall(h, mismatchDoi)).status, 200);
+
+    // 4) release: 200, verifying, review pointer, paper not available, idempotency, audit, 409 on reject, then muse-review verification preserves holdDecision.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx,fallback';
+    const relDoi = '10.1000/hold-release-case';
+    const relHold = await createHoldTask(h, relDoi, 'release');
+    const relAuditKey = 'library:muse-hold-audit:' + relHold.job.id;
+    const relRes = await holdReviewCall(h, reader, {
+      doi:'HTTPS://DOI.ORG/' + relDoi.toUpperCase(),
+      taskId:relHold.job.id,
+      action:'release',
+      reason:'  Page 3 shows correct article supplement  '
+    });
+    assert.equal(relRes.status, 200);
+    const relBody = await relRes.json();
+    assert.equal(relBody.ok, true);
+    assert.equal(relBody.idempotent, false);
+    assert.equal(relBody.task.doi, relDoi);
+    assert.equal(relBody.task.taskId, relHold.job.id);
+    assert.equal(relBody.task.state, 'uploaded-awaiting-verification');
+    assert.equal(relBody.task.claimable, true);
+    assert.equal(relBody.task.holdDecision.action, 'release');
+    assert.equal(relBody.task.holdDecision.by, 'ddx');
+    assert.equal(relBody.task.holdDecision.reason, 'Page 3 shows correct article supplement');
+    assert.equal(typeof relBody.task.holdDecision.at, 'number');
+
+    const relJobAfter = stored(h, 'library:muse-job:' + relDoi);
+    assert.equal(relJobAfter.state, 'verifying');
+    assert.equal(relJobAfter.verificationReason, undefined);
+    assert.equal(relJobAfter.reason, undefined);
+    assert(/^[a-f0-9-]{36}$/.test(relJobAfter.leaseId));
+    assert(relJobAfter.leaseUntil >= relHold.job.updatedAt);
+    assert(relJobAfter.updatedAt >= relHold.job.updatedAt);
+    assert.deepEqual(relJobAfter.holdDecision, relBody.task.holdDecision);
+    assertWeek(jobPuts(h, relDoi).at(-1));
+    assert(h.values.has('library:muse-review:' + relHold.job.id));
+    assertWeek(h.writes.filter(w => w.key === 'library:muse-review:' + relHold.job.id).at(-1));
+    assert.notEqual(stored(h, 'library:paper:' + relDoi).paper.fulltextStatus, 'available');
+    const libBeforeVerify = await (await h.context.worker.fetch(new Request(base + '/api/library?doi=' + encodeURIComponent(relDoi)), h.env)).json();
+    assert.notEqual(libBeforeVerify.status, 'available');
+    assert.equal(libBeforeVerify.job.state, 'pending');
+
+    const relAuditRaw = h.values.get(relAuditKey);
+    assert(relAuditRaw);
+    assertKept(h.writes.filter(w => w.key === relAuditKey).at(-1));
+    const relAudit = JSON.parse(relAuditRaw);
+    assert.deepEqual(Object.keys(relAudit).sort(), ['action','at','by','bytes','doi','identityLevel','reason','sha256','taskId','version']);
+    assert.equal(relAudit.version, 1);
+    assert.equal(relAudit.doi, relDoi);
+    assert.equal(relAudit.taskId, relHold.job.id);
+    assert.equal(relAudit.action, 'release');
+    assert.equal(relAudit.by, 'ddx');
+    assert.equal(typeof relAudit.at, 'number');
+    assert.equal(relAudit.reason, 'Page 3 shows correct article supplement');
+    assert.equal(relAudit.sha256, relHold.sha);
+    assert.equal(relAudit.bytes, relHold.bytes.length);
+    assert.equal(relAudit.identityLevel, 'title_mismatched_doi');
+
+    // Repeat release -> 200 idempotent:true and audit untouched; reject -> 409 machine_hold_decided; wrong DOI with same taskId -> 409 machine_not_held.
+    const relReplay = await holdReviewCall(h, reader, {doi:relDoi,taskId:relHold.job.id,action:'release',reason:'Repeated check'});
+    assert.equal(relReplay.status, 200);
+    const relReplayBody = await relReplay.json();
+    assert.equal(relReplayBody.idempotent, true);
+    assert.deepEqual(relReplayBody.task.holdDecision, relBody.task.holdDecision);
+    assert.equal(h.values.get(relAuditKey), relAuditRaw);
+    await error(await holdReviewCall(h, reader, {doi:relDoi,taskId:relHold.job.id,action:'reject',reason:'Changed mind'}), 409, 'machine_hold_decided');
+    await error(await holdReviewCall(h, reader, {doi:'10.1000/other-doi',taskId:relHold.job.id,action:'release',reason:'Wrong doi'}), 409, 'machine_not_held');
+
+    // Complete muse-review verification on the released task: paper becomes available, job preserves holdDecision.
+    const claimedVerify = await (await review(h, {action:'claim'})).json();
+    assert.equal(claimedVerify.task.taskId, relHold.job.id);
+    const doneVerify = await review(h, {
+      action:'complete',taskId:claimedVerify.task.taskId,doi:relDoi,leaseId:claimedVerify.task.leaseId,
+      sha256:relHold.sha,bytes:relHold.bytes.length,result:'verified',pages:2,method:'dual_parser_all_pages_title_doi'
+    });
+    assert.equal(doneVerify.status, 200);
+    assert.equal(stored(h, 'library:paper:' + relDoi).paper.fulltextStatus, 'available');
+    assert.equal(stored(h, 'library:muse-job:' + relDoi).state, 'available');
+    assert.deepEqual(stored(h, 'library:muse-job:' + relDoi).holdDecision, relBody.task.holdDecision);
+    const libAfterVerify = await (await h.context.worker.fetch(new Request(base + '/api/library?doi=' + encodeURIComponent(relDoi)), h.env)).json();
+    assert.equal(libAfterVerify.status, 'available');
+    // Replaying release after done -> still idempotent:true; reject -> 409 machine_hold_decided.
+    const relAfterDone = await (await holdReviewCall(h, reader, {doi:relDoi,taskId:relHold.job.id,action:'release',reason:'Post verify replay'})).json();
+    assert.equal(relAfterDone.idempotent, true);
+    assert.equal(relAfterDone.task.state, 'done');
+    assert.deepEqual(relAfterDone.task.holdDecision, relBody.task.holdDecision);
+    await error(await holdReviewCall(h, reader, {doi:relDoi,taskId:relHold.job.id,action:'reject',reason:'Post verify reject'}), 409, 'machine_hold_decided');
+
+    // Also verify holdDecision survives a subsequent muse-review rejection -> review(identity_mismatch).
+    const relRejDoi = '10.1000/hold-release-then-verify-reject';
+    const relRejHold = await createHoldTask(h, relRejDoi, 'rel-rej');
+    assert.equal((await holdReviewCall(h, reader, {doi:relRejDoi,taskId:relRejHold.job.id,action:'release',reason:'Try full verification'})).status, 200);
+    const claimedRejVerify = await (await review(h, {action:'claim'})).json();
+    assert.equal(claimedRejVerify.task.taskId, relRejHold.job.id);
+    assert.equal((await review(h, {
+      action:'complete',taskId:claimedRejVerify.task.taskId,doi:relRejDoi,leaseId:claimedRejVerify.task.leaseId,
+      sha256:relRejHold.sha,bytes:relRejHold.bytes.length,result:'rejected',reason:'identity_mismatch',pages:2,method:'dual_parser_all_pages_title_doi'
+    })).status, 200);
+    const afterVerifyReject = stored(h, 'library:muse-job:' + relRejDoi);
+    assert.equal(afterVerifyReject.state, 'review');
+    assert.equal(afterVerifyReject.verificationReason, 'identity_mismatch');
+    assert.equal(afterVerifyReject.holdDecision.action, 'release');
+
+    // 4b) Manual-release verification: only a task released through hold-review may skip the DOI-in-full-text check, and the result
+    //     records which check was skipped, by whom and why. Everything else (task, lease, file hash) stays as strict as before.
+    const MANUAL = 'dual_parser_title_manual_release';
+    const mrDoi = '10.1000/hold-manual-release-verify';
+    const mrHold = await createHoldTask(h, mrDoi, 'mr');
+    // A held task is not claimable for verification and carries no release before the decision.
+    const mrRelease = await (await holdReviewCall(h, reader, {doi:mrDoi,taskId:mrHold.job.id,action:'release',reason:'Reviewed by hand, DOI missing from text'})).json();
+    const mrClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(mrClaim.task.taskId, mrHold.job.id);
+    assert.deepEqual(Object.keys(mrClaim.task.release).sort(), ['at','by','reason','sha256','skipped']);
+    assert.equal(mrClaim.task.release.by, 'ddx');
+    assert.equal(mrClaim.task.release.sha256, mrHold.sha);
+    assert.equal(mrClaim.task.release.reason, 'Reviewed by hand, DOI missing from text');
+    assert.deepEqual(mrClaim.task.release.skipped, ['doi_in_fulltext']);
+    const mrIdentity = {action:'complete',taskId:mrClaim.task.taskId,doi:mrDoi,leaseId:mrClaim.task.leaseId,sha256:mrHold.sha,bytes:mrHold.bytes.length,pages:2};
+    // The skip must be declared exactly; a verified manual-release result without it, or with another item, is refused.
+    for (const skipped of [undefined, [], ['title'], ['doi_in_fulltext','title']]) {
+      const bad = await review(h, {...mrIdentity,result:'verified',method:MANUAL,...(skipped === undefined ? {} : {skipped})});
+      assert.equal(bad.status, 400, JSON.stringify(skipped));
+    }
+    // 'skipped' is not accepted on a normal method or on a rejection.
+    assert.equal((await review(h, {...mrIdentity,result:'verified',method:'dual_parser_all_pages_title_doi',skipped:['doi_in_fulltext']})).status, 400);
+    assert.equal((await review(h, {...mrIdentity,result:'rejected',reason:'identity_mismatch',method:MANUAL,skipped:['doi_in_fulltext']})).status, 400);
+    assert.equal(stored(h, 'library:muse-job:' + mrDoi).state, 'verifying');
+    assert.notEqual(stored(h, 'library:paper:' + mrDoi).paper.fulltextStatus, 'available');
+    const mrDone = await review(h, {...mrIdentity,result:'verified',method:MANUAL,skipped:['doi_in_fulltext']});
+    assert.equal(mrDone.status, 200);
+    const mrJob = stored(h, 'library:muse-job:' + mrDoi);
+    assert.equal(mrJob.state, 'available');
+    assert.equal(mrJob.verification.method, MANUAL);
+    assert.deepEqual(mrJob.verification.manualRelease, {by:'ddx',at:mrRelease.task.holdDecision.at,reason:'Reviewed by hand, DOI missing from text',skipped:['doi_in_fulltext']});
+    assert.equal(stored(h, 'library:paper:' + mrDoi).paper.fulltextVerification, 'manual_release');
+    const mrLib = await (await h.context.worker.fetch(new Request(base + '/api/library?doi=' + encodeURIComponent(mrDoi)), h.env)).json();
+    assert.equal(mrLib.status, 'available');
+    assert.equal(mrLib.paper.fulltextVerification, 'manual_release');
+    // A normally verified paper is not labelled.
+    assert.equal(stored(h, 'library:paper:' + relDoi).paper.fulltextVerification, undefined);
+    // Replaying the completion is idempotent and does not change the record.
+    const mrReplay = await review(h, {...mrIdentity,result:'verified',method:MANUAL,skipped:['doi_in_fulltext']});
+    assert.equal(mrReplay.status, 200);
+    assert.deepEqual(stored(h, 'library:muse-job:' + mrDoi).verification.manualRelease, mrJob.verification.manualRelease);
+
+    // The manual-release method is refused for a task that was never released (normal verifying upload) and for a tampered audit record.
+    const nrDoi = '10.1000/hold-manual-release-not-released';
+    seedPaper(h, nrDoi, holdTitle);
+    const nrBytes = paperPdf(nrDoi, holdTitle);
+    assert.equal((await upload(h, nrBytes, nrDoi, dsh)).status, 202);
+    const nrClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(nrClaim.task.doi, nrDoi);
+    assert.equal(nrClaim.task.release, undefined);
+    assert.equal((await review(h, {action:'complete',taskId:nrClaim.task.taskId,doi:nrDoi,leaseId:nrClaim.task.leaseId,sha256:hash(nrBytes),bytes:nrBytes.length,result:'verified',pages:2,method:MANUAL,skipped:['doi_in_fulltext']})).status, 400);
+    assert.equal(stored(h, 'library:muse-job:' + nrDoi).state, 'verifying');
+
+    const tamperDoi = '10.1000/hold-manual-release-tampered';
+    const tamperHold = await createHoldTask(h, tamperDoi, 'tamper');
+    assert.equal((await holdReviewCall(h, reader, {doi:tamperDoi,taskId:tamperHold.job.id,action:'release',reason:'Release then audit changed'})).status, 200);
+    const tamperAuditKey = 'library:muse-hold-audit:' + tamperHold.job.id;
+    const tamperAudit = JSON.parse(h.values.get(tamperAuditKey));
+    h.values.set(tamperAuditKey, JSON.stringify({...tamperAudit, sha256:'0'.repeat(64)}));
+    const tamperClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(tamperClaim.task.taskId, tamperHold.job.id);
+    assert.equal(tamperClaim.task.release, undefined);
+    assert.equal((await review(h, {action:'complete',taskId:tamperClaim.task.taskId,doi:tamperDoi,leaseId:tamperClaim.task.leaseId,sha256:tamperHold.sha,bytes:tamperHold.bytes.length,result:'verified',pages:2,method:MANUAL,skipped:['doi_in_fulltext']})).status, 400);
+    assert.notEqual(stored(h, 'library:paper:' + tamperDoi).paper.fulltextStatus, 'available');
+
+    // A manual-release task the verifier rejects goes back to review with its reason (title mismatch is refused even when released).
+    const mrRejDoi = '10.1000/hold-manual-release-title-reject';
+    const mrRejHold = await createHoldTask(h, mrRejDoi, 'mr-rej');
+    assert.equal((await holdReviewCall(h, reader, {doi:mrRejDoi,taskId:mrRejHold.job.id,action:'release',reason:'Release but verifier rejects the title'})).status, 200);
+    const mrRejClaim = await (await review(h, {action:'claim'})).json();
+    assert.equal(mrRejClaim.task.taskId, mrRejHold.job.id);
+    assert((await (await review(h, {action:'complete',taskId:mrRejClaim.task.taskId,doi:mrRejDoi,leaseId:mrRejClaim.task.leaseId,sha256:mrRejHold.sha,bytes:mrRejHold.bytes.length,result:'rejected',reason:'identity_mismatch',pages:2,method:MANUAL})).json()).ok);
+    assert.equal(stored(h, 'library:muse-job:' + mrRejDoi).state, 'review');
+    assert.equal(stored(h, 'library:muse-job:' + mrRejDoi).verificationReason, 'identity_mismatch');
+    assert.notEqual(stored(h, 'library:paper:' + mrRejDoi).paper.fulltextStatus, 'available');
+    // The task view (machineListItem, here via the idempotent release replay) shows the manual release on the finished task.
+    const mrView = await (await holdReviewCall(h, reader, {doi:mrDoi,taskId:mrHold.job.id,action:'release',reason:'Replay after manual verification'})).json();
+    assert.equal(mrView.idempotent, true);
+    assert.equal(mrView.task.state, 'done');
+    assert.deepEqual(mrView.task.manualRelease, mrJob.verification.manualRelease);
+    assert.equal(relAfterDone.task.manualRelease, undefined);
+
+    // 4c) The review runner passes the release to the verifier and only accepts a result that names the skipped check.
+    {
+      const {runReview} = require('./muse_review_runner.cjs');
+      const runnerEnv = {GITHUB_EVENT_NAME:'schedule',ACTIONS_ID_TOKEN_REQUEST_URL:'https://unit.actions.githubusercontent.com/token',ACTIONS_ID_TOKEN_REQUEST_TOKEN:'synthetic-runtime-token'};
+      const runnerHttp = async (url, init) => {
+        if (new URL(url).hostname === 'unit.actions.githubusercontent.com') return Response.json({value:await token(h, reviewUrl, 'muse-review.yml')});
+        return h.context.worker.fetch(new Request(url, init), h.env);
+      };
+      const heldFor = async (doiValue, tag) => {
+        const held = await createHoldTask(h, doiValue, tag);
+        assert.equal((await holdReviewCall(h, reader, {doi:doiValue,taskId:held.job.id,action:'release',reason:'Runner path release'})).status, 200);
+        return held;
+      };
+      const proofFor = (t, extra = {}) => ({verified:true,pages:2,method:MANUAL,skipped:['doi_in_fulltext'],sha256:t.sha256,bytes:t.bytes,...extra});
+      // Good path: the verifier receives task.release and the result is accepted.
+      const runnerDoi = '10.1000/hold-runner-ok';
+      const okHold = await heldFor(runnerDoi, 'runner-ok');
+      let seen = null;
+      assert.equal(await runReview(runnerEnv, runnerHttp, async (bytes, t) => { seen = t; return proofFor(t); }, () => {}, async () => {}), 1);
+      assert.equal(seen.release.sha256, okHold.sha);
+      assert.deepEqual(seen.release.skipped, ['doi_in_fulltext']);
+      assert.equal(stored(h, 'library:muse-job:' + runnerDoi).state, 'available');
+      assert.equal(stored(h, 'library:paper:' + runnerDoi).paper.fulltextVerification, 'manual_release');
+      // A verifier result without the declared skip, with the wrong skip, or with the plain method for a released task is refused.
+      for (const [label, mutate] of [
+        ['no skipped', t => { const p = proofFor(t); delete p.skipped; return p; }],
+        ['wrong skipped', t => proofFor(t, {skipped:['title']})],
+        ['plain method on a released task', t => proofFor(t, {method:'dual_parser_all_pages_title_doi'})]
+      ]) {
+        const badDoi = '10.1000/hold-runner-bad-' + label.replace(/\W+/g, '-');
+        await heldFor(badDoi, 'runner-' + label.replace(/\W+/g, '-'));
+        await assert.rejects(runReview(runnerEnv, runnerHttp, async (bytes, t) => mutate(t), () => {}, async () => {}), /invalid_verification/, label);
+        assert.notEqual(stored(h, 'library:muse-job:' + badDoi).state, 'available', label);
+        // Leave the lease to expire for the next case by clearing the review pointer the failed run still holds.
+        const job = stored(h, 'library:muse-job:' + badDoi);
+        h.values.set('library:muse-job:' + badDoi, JSON.stringify({...job,reviewLeaseUntil:0}));
+      }
+      // A task that was never released: the manual-release method is refused by the runner too.
+      const plainDoi = '10.1000/hold-runner-plain';
+      seedPaper(h, plainDoi, holdTitle);
+      assert.equal((await upload(h, paperPdf(plainDoi, holdTitle), plainDoi, dsh)).status, 202);
+      for (const key of [...h.values.keys()].filter(k => k.startsWith('library:muse-review:') && !k.endsWith(stored(h, 'library:muse-job:' + plainDoi).id))) h.values.delete(key);
+      await assert.rejects(runReview(runnerEnv, runnerHttp, async (bytes, t) => { assert.equal(t.release, undefined); return proofFor(t); }, () => {}, async () => {}), /invalid_verification/);
+    }
+
+    // 5) reject: deletes candidate, job failed/identity_hold_rejected/failed-awaiting-fallback, keeps sha256 & holdDecision, idempotent replay, fallback claimable.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx';
+    const rejDoi = '10.1000/hold-reject-case';
+    const rejHold = await createHoldTask(h, rejDoi, 'reject');
+    const rejAuditKey = 'library:muse-hold-audit:' + rejHold.job.id;
+    const maxReason = 'r'.repeat(500);
+    const rejRes = await holdReviewCall(h, reader, {doi:rejDoi,taskId:rejHold.job.id,action:'reject',reason:maxReason});
+    assert.equal(rejRes.status, 200);
+    const rejBody = await rejRes.json();
+    assert.equal(rejBody.ok, true);
+    assert.equal(rejBody.idempotent, false);
+    assert.equal(rejBody.task.state, 'failed-awaiting-fallback');
+    assert.equal(rejBody.task.reason, 'identity_hold_rejected');
+    assert.equal(rejBody.task.claimable, true);
+    assert.equal(rejBody.task.holdDecision.action, 'reject');
+    assert.equal(rejBody.task.holdDecision.by, 'ddx');
+    assert.equal(rejBody.task.holdDecision.reason, maxReason);
+    assert.equal(h.values.has('library:muse-candidate:' + rejHold.sha), false);
+
+    const rejJobAfter = stored(h, 'library:muse-job:' + rejDoi);
+    assert.equal(rejJobAfter.state, 'failed');
+    assert.equal(rejJobAfter.reason, 'identity_hold_rejected');
+    assert.equal(rejJobAfter.verificationReason, undefined);
+    assert.equal(rejJobAfter.sha256, rejHold.sha);
+    assert.deepEqual(rejJobAfter.holdDecision, rejBody.task.holdDecision);
+    const rejAuditRaw = h.values.get(rejAuditKey);
+    assert(rejAuditRaw);
+    assertKept(h.writes.filter(w => w.key === rejAuditKey).at(-1));
+    const rejAudit = JSON.parse(rejAuditRaw);
+    assert.equal(rejAudit.action, 'reject');
+    assert.equal(rejAudit.doi, rejDoi);
+    assert.equal(rejAudit.taskId, rejHold.job.id);
+    assert.equal(rejAudit.by, 'ddx');
+    assert.equal(typeof rejAudit.at, 'number');
+    assert.equal(rejAudit.reason, maxReason);
+    assert.equal(rejAudit.sha256, rejHold.sha);
+    assert.equal(rejAudit.bytes, rejHold.bytes.length);
+    assert.equal(rejAudit.identityLevel, 'title_mismatched_doi');
+
+    const rejReplay = await (await holdReviewCall(h, reader, {doi:rejDoi,taskId:rejHold.job.id,action:'reject',reason:'Retry reject'})).json();
+    assert.equal(rejReplay.idempotent, true);
+    assert.equal(h.values.get(rejAuditKey), rejAuditRaw);
+    await error(await holdReviewCall(h, reader, {doi:rejDoi,taskId:rejHold.job.id,action:'release',reason:'Try release'}), 409, 'machine_hold_decided');
+
+    const failedList = await (await call(h, '/api/machine/tasks?state=failed-awaiting-fallback', reader, null, {method:'GET'})).json();
+    assert(failedList.tasks.some(t => t.doi === rejDoi && t.reason === 'identity_hold_rejected' && t.claimable === true && t.holdDecision.action === 'reject'));
+    const claimedFallback = await (await call(h, '/api/machine/claim', fallback, {state:'failed-awaiting-fallback'})).json();
+    assert.equal(claimedFallback.task.doi, rejDoi);
+    assert.equal(claimedFallback.task.holdDecision.action, 'reject');
+    assert.equal(stored(h, 'library:muse-job:' + rejDoi).previousReason, 'identity_hold_rejected');
+    assert.deepEqual(stored(h, 'library:muse-job:' + rejDoi).holdDecision, rejBody.task.holdDecision);
+
+    // Fallback uploads correct PDF -> supersedes old task while keeping old holdDecision in superseded archive; old taskId replay stays idempotent.
+    const fixedPdf = paperPdf(rejDoi, holdTitle);
+    const fixedUp = await upload(h, fixedPdf, rejDoi, fallback);
+    assert.equal(fixedUp.status, 202);
+    const supersededRej = stored(h, 'library:muse-superseded:' + rejDoi + ':' + rejHold.job.id);
+    assert.equal(supersededRej.holdDecision.action, 'reject');
+    const rejAfterSupersede = await (await holdReviewCall(h, reader, {doi:rejDoi,taskId:rejHold.job.id,action:'reject',reason:'After supersede'})).json();
+    assert.equal(rejAfterSupersede.idempotent, true);
+    assert.deepEqual(rejAfterSupersede.task.holdDecision, rejBody.task.holdDecision);
+
+    // 6) Interrupted migration recovery: manual audit written while job is still review+identity_hold.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx';
+    const recRelDoi = '10.1000/hold-recover-release';
+    const recRelHold = await createHoldTask(h, recRelDoi, 'recover-release');
+    const recRelAudit = {
+      version:1,doi:recRelDoi,taskId:recRelHold.job.id,action:'release',by:'ddx',
+      at:Date.now() - 5000,reason:'Manual interrupted release',sha256:recRelHold.sha,bytes:recRelHold.bytes.length,identityLevel:'title_mismatched_doi'
+    };
+    const recRelAuditJson = JSON.stringify(recRelAudit);
+    h.values.set('library:muse-hold-audit:' + recRelHold.job.id, recRelAuditJson);
+    const recRelRes = await holdReviewCall(h, reader, {doi:recRelDoi,taskId:recRelHold.job.id,action:'release',reason:'Retry interrupted release'});
+    assert.equal(recRelRes.status, 200);
+    const recRelBody = await recRelRes.json();
+    assert.equal(recRelBody.idempotent, true);
+    assert.equal(recRelBody.task.state, 'uploaded-awaiting-verification');
+    assert.equal(recRelBody.task.holdDecision.at, recRelAudit.at);
+    assert.equal(recRelBody.task.holdDecision.reason, recRelAudit.reason);
+    assert.equal(stored(h, 'library:muse-job:' + recRelDoi).state, 'verifying');
+    assert(h.values.has('library:muse-review:' + recRelHold.job.id));
+    assert.equal(h.values.get('library:muse-hold-audit:' + recRelHold.job.id), recRelAuditJson);
+
+    const recRejDoi = '10.1000/hold-recover-reject';
+    const recRejHold = await createHoldTask(h, recRejDoi, 'recover-reject');
+    const recRejAudit = {
+      version:1,doi:recRejDoi,taskId:recRejHold.job.id,action:'reject',by:'ddx',
+      at:Date.now() - 3000,reason:'Manual interrupted reject',sha256:recRejHold.sha,bytes:recRejHold.bytes.length,identityLevel:'title_mismatched_doi'
+    };
+    h.values.set('library:muse-hold-audit:' + recRejHold.job.id, JSON.stringify(recRejAudit));
+    const recRejRes = await holdReviewCall(h, reader, {doi:recRejDoi,taskId:recRejHold.job.id,action:'reject',reason:'Retry interrupted reject'});
+    assert.equal(recRejRes.status, 200);
+    const recRejBody = await recRejRes.json();
+    assert.equal(recRejBody.idempotent, true);
+    assert.equal(recRejBody.task.state, 'failed-awaiting-fallback');
+    assert.equal(recRejBody.task.reason, 'identity_hold_rejected');
+    assert.equal(h.values.has('library:muse-candidate:' + recRejHold.sha), false);
+    assert.equal(stored(h, 'library:muse-job:' + recRejDoi).state, 'failed');
+
+    // 7) release when candidate missing or corrupted -> 409 machine_hold_candidate_missing and no audit written.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx';
+    const missDoi = '10.1000/hold-candidate-missing';
+    const missHold = await createHoldTask(h, missDoi, 'missing-cand');
+    h.values.delete('library:muse-candidate:' + missHold.sha);
+    await error(await holdReviewCall(h, reader, {doi:missDoi,taskId:missHold.job.id,action:'release',reason:'Candidate missing check'}), 409, 'machine_hold_candidate_missing');
+    assert.equal(h.values.has('library:muse-hold-audit:' + missHold.job.id), false);
+    assert.equal(stored(h, 'library:muse-job:' + missDoi).state, 'review');
+
+    const badShaDoi = '10.1000/hold-candidate-corrupt';
+    const badShaHold = await createHoldTask(h, badShaDoi, 'corrupt-cand');
+    h.values.set('library:muse-candidate:' + badShaHold.sha, Buffer.alloc(badShaHold.bytes.length, 0x25));
+    await error(await holdReviewCall(h, reader, {doi:badShaDoi,taskId:badShaHold.job.id,action:'release',reason:'Candidate corrupt check'}), 409, 'machine_hold_candidate_missing');
+    assert.equal(h.values.has('library:muse-hold-audit:' + badShaHold.job.id), false);
+    assert.equal(stored(h, 'library:muse-job:' + badShaDoi).state, 'review');
+
+    // 8) reject preserves shared candidate when another active job with the same sha256 owns a first-page DOI.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx';
+    const sharedDoiB = '10.1000/hold-shared-companion-b';
+    const sharedDoiA = '10.1000/hold-shared-companion-a';
+    seedPaper(h, sharedDoiB, holdTitle);
+    seedPaper(h, sharedDoiA, holdTitle);
+    const sharedPdf = paperPdf(sharedDoiB, holdTitle);
+    const sharedSha = hash(sharedPdf);
+
+    const upB = await upload(h, sharedPdf, sharedDoiB, dsh);
+    assert.equal(upB.status, 202);
+    const bodyB = await upB.json();
+    assert.equal(bodyB.task.state, 'uploaded-awaiting-verification');
+    assert.equal(bodyB.task.sha256, sharedSha);
+    assert.equal(stored(h, 'library:muse-job:' + sharedDoiB).state, 'verifying');
+
+    const upA = await upload(h, sharedPdf, sharedDoiA, dsh);
+    assert.equal(upA.status, 202);
+    const bodyA = await upA.json();
+    assert.equal(bodyA.task.identity, 'title_mismatched_doi');
+    assert.equal(bodyA.task.state, 'uploaded-awaiting-manual-review');
+    assert.equal(bodyA.task.sha256, sharedSha);
+    const jobA = stored(h, 'library:muse-job:' + sharedDoiA);
+    assert.equal(jobA.sha256, sharedSha);
+
+    const sharedRejRes = await holdReviewCall(h, reader, {
+      doi:sharedDoiA,
+      taskId:jobA.id,
+      action:'reject',
+      reason:'Misattributed upload for A; PDF belongs to companion paper B'
+    });
+    assert.equal(sharedRejRes.status, 200);
+    const sharedRejBody = await sharedRejRes.json();
+    assert.equal(sharedRejBody.ok, true);
+    assert.equal(sharedRejBody.idempotent, false);
+    assert.equal(sharedRejBody.task.state, 'failed-awaiting-fallback');
+    assert.equal(sharedRejBody.task.reason, 'identity_hold_rejected');
+    assert.equal(sharedRejBody.task.candidateRetainedFor, sharedDoiB);
+    assert.equal(h.values.has('library:muse-candidate:' + sharedSha), true);
+
+    const jobAAfter = stored(h, 'library:muse-job:' + sharedDoiA);
+    assert.equal(jobAAfter.state, 'failed');
+    assert.equal(jobAAfter.reason, 'identity_hold_rejected');
+    assert.equal(jobAAfter.candidateRetainedFor, undefined);
+
+    const sharedAudit = stored(h, 'library:muse-hold-audit:' + jobA.id);
+    assert.equal(sharedAudit.action, 'reject');
+    assert.equal(sharedAudit.candidateRetainedFor, sharedDoiB);
+
+    const sharedRejReplay = await (await holdReviewCall(h, reader, {doi:sharedDoiA,taskId:jobA.id,action:'reject',reason:'Replay reject A'})).json();
+    assert.equal(sharedRejReplay.idempotent, true);
+    assert.equal(sharedRejReplay.task.candidateRetainedFor, sharedDoiB);
+
+    const claimB = await (await review(h, {action:'claim'})).json();
+    assert.equal(claimB.task.doi, sharedDoiB);
+    assert.equal(claimB.task.taskId, bodyB.task.taskId);
+    const bytesB = await review(h, {action:'bytes',taskId:claimB.task.taskId,doi:sharedDoiB,leaseId:claimB.task.leaseId});
+    assert.equal(bytesB.status, 200);
+    assert.deepEqual(Buffer.from(await bytesB.arrayBuffer()), sharedPdf);
+    const verifyB = await review(h, {
+      action:'complete',taskId:claimB.task.taskId,doi:sharedDoiB,leaseId:claimB.task.leaseId,
+      sha256:sharedSha,bytes:sharedPdf.length,result:'verified',pages:1,method:'dual_parser_all_pages_title_doi'
+    });
+    assert.equal(verifyB.status, 200);
+    assert.equal(stored(h, 'library:paper:' + sharedDoiB).paper.fulltextStatus, 'available');
+
+    // 9) reject retains candidate with candidateRetainedFor:'unknown' when first-page parsing throws, and skips deletion cleanly when candidate is already absent.
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx';
+    const errDoi = '10.1000/hold-reject-firstpage-error';
+    const errHold = await createHoldTask(h, errDoi, 'firstpage-err');
+    vm.runInContext('machineFirstPage = async () => { throw new Error("synthetic first-page failure"); };', h.context);
+    const errRejRes = await holdReviewCall(h, reader, {doi:errDoi,taskId:errHold.job.id,action:'reject',reason:'Reject while first-page parse throws'});
+    assert.equal(errRejRes.status, 200);
+    const errRejBody = await errRejRes.json();
+    assert.equal(errRejBody.task.state, 'failed-awaiting-fallback');
+    assert.equal(errRejBody.task.reason, 'identity_hold_rejected');
+    assert.equal(errRejBody.task.candidateRetainedFor, 'unknown');
+    assert.equal(h.values.has('library:muse-candidate:' + errHold.sha), true);
+    assert.equal(stored(h, 'library:muse-hold-audit:' + errHold.job.id).candidateRetainedFor, 'unknown');
+    assert.equal(stored(h, 'library:muse-job:' + errDoi).candidateRetainedFor, undefined);
+
+    h = await create();
+    h.env.MACHINE_HOLD_REVIEWERS = 'ddx';
+    const absentDoi = '10.1000/hold-reject-absent-candidate';
+    const absentHold = await createHoldTask(h, absentDoi, 'absent-cand');
+    h.values.delete('library:muse-candidate:' + absentHold.sha);
+    const absentRejRes = await holdReviewCall(h, reader, {doi:absentDoi,taskId:absentHold.job.id,action:'reject',reason:'Reject after candidate already expired'});
+    assert.equal(absentRejRes.status, 200);
+    const absentRejBody = await absentRejRes.json();
+    assert.equal(absentRejBody.task.state, 'failed-awaiting-fallback');
+    assert.equal(absentRejBody.task.reason, 'identity_hold_rejected');
+    assert.equal(absentRejBody.task.candidateRetainedFor, undefined);
+    assert.equal(stored(h, 'library:muse-hold-audit:' + absentHold.job.id).candidateRetainedFor, undefined);
+    assert.equal(stored(h, 'library:muse-job:' + absentDoi).state, 'failed');
+  }
+
   await registryUploads();
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
