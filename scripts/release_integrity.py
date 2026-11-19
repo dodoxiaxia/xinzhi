@@ -9,7 +9,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-PUBLIC = {'index.html', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js'}
+PUBLIC = {
+    'index.html', 'feed.xml', 'icon.png', 'demo-reading.html', '_headers', '_worker.js',
+    '404.html', 'robots.txt', 'sitemap.xml',
+}
 # Month shards and assets are content-addressed; only matching names are publishable.
 READING_SHARD_RE = re.compile(r'^shards/readings-(?:\d{4}-\d{2}|undated)\.[0-9a-f]{12}\.js$')
 
