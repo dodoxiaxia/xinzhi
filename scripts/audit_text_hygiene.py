@@ -18,6 +18,7 @@ ID = re.compile(r'^(?:\d+|PMC\d+|(?:pmid[-:]|rss-)[\w-]+|(?:doi:)?10\.\d{4,9}/\S
 INLINE = {
     'title', 'titleZh', 'title_zh', 'name', 'label', 'journal', 'cleanJournal',
     'journalAbbreviation', 'author', 'authors', 'leadAuthor', 'lastAuthor', 'one_line',
+    'sampleSize', 'followUp', 'effectSizes',
 }
 PROSE = INLINE | {
     'abstract', 'abstract_zh', 'summary', 'description', 'snippet', 'text', 'quote', 'section',
@@ -26,7 +27,7 @@ PROSE = INLINE | {
     'tags', 'pubTypes', 'publisher', 'category', 'clinicalTier', 'studyDesign', 'topic',
     'aliases', 'basis', 'dateBasis', 'reason', 'detail', 'error', 'failureReason', 'checklist',
     'caveat', 'question', 'population', 'endpoints', 'results', 'practice', 'comparator',
-    'highlights', 'takeaway', 'body', 'note', 'message',
+    'highlights', 'takeaway', 'body', 'note', 'notice', 'message',
 }
 DATA_WRITER = {
     'feeds': 'refresh_feeds.py', 'pubmed': 'fetch_pubmed.py',
@@ -78,6 +79,8 @@ def public_payloads(root):
 
 def source_script(corpus, surface, field, record):
     """Attribute by writer of the value when provenance or the payload schema identifies it."""
+    if 'quantitativeMetrics' in field.split('.'):
+        return 'enrich_metadata.py (metric extraction)'
     if corpus == 'data' and surface in DATA_WRITER:
         return DATA_WRITER[surface]
     if corpus == 'public' and surface in PUBLIC_WRITER:

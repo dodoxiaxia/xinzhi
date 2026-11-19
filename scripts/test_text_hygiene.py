@@ -135,7 +135,8 @@ class TextHygieneTests(unittest.TestCase):
             public = {
                 'CURATED': [{'id': 'rss-test', 'title': r'Title \u2014 here', 'url': 'https://example.invalid/?x=1&amp;y=2'}],
                 'CONTENT_STATUS': {}, 'JOURNAL_METRICS': {}, 'FEEDS': {'items': [
-                    {'id': 'rss-test-2', 'summary': 'JosÃ©', 'authors': ['First,\nSecond']},
+                    {'id': 'rss-test-2', 'summary': 'JosÃ©', 'authors': ['First,\nSecond'],
+                     'quantitativeMetrics': {'effectSizes': 'OR &#8805; 2', 'trialId': 'NCT03701234'}},
                 ]}, 'LIBRARY': {'papers': [], 'pdfIds': []}, 'SOURCE_HEALTH': {},
                 'DEEP_READINGS': readings,
             }
@@ -153,6 +154,7 @@ class TextHygieneTests(unittest.TestCase):
                 'unicode_escape': ('refresh_feeds.py', ['rss-test']),
                 'mojibake': ('refresh_feeds.py', ['rss-test-2']),
                 'control': ('refresh_feeds.py', ['rss-test-2']),
+                'html_entity': ('enrich_metadata.py (metric extraction)', ['rss-test-2']),
                 'nested_html_entity': ('daily_fulltext.py', ['PMC123']),
                 'bare_dash_residue': ('fetch_archive.py', ['123']),
             })
