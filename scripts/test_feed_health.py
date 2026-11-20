@@ -13,6 +13,7 @@ import urllib.error
 import refresh_feeds as feeds
 
 
+LIBRARY_FIXTURE = Path(__file__).resolve().parents[1] / 'editorial/public_library_snapshot.json'
 NOW = datetime.datetime(2026, 10, 7, 6, tzinfo=datetime.timezone.utc)
 CHECKED = NOW.isoformat()
 SOURCE = {'id': 's1', 'name': 'Heart', 'url': 'https://example.org/rss', 'enabled': True}
@@ -291,9 +292,9 @@ class HealthTests(OfflineTests):
         self.assertEqual(feeds.eligible(item, NOW), (False, 'future'))
 
     def test_no_permanent_source_filter_and_enabled_scope_stays_website_only(self):
-        library = json.loads((feeds.ROOT / 'data/library.json').read_text())
+        library = json.loads(LIBRARY_FIXTURE.read_text())
         chosen = feeds.select_sources(library, all_sources=True, extra_path=Path('/nonexistent/extra_feeds.json'))
-        # 期望数从 state 里的 library.json 推出来：启用的源加上 OpenAI News。
+        # 期望数从跟踪的公开文献库快照推出来：启用的源加上 OpenAI News。
         # 不写死数字，这样在 state 里停用或启用某个源时，发布前验证不会被卡住。
         expected = sum(1 for row in library['feeds'] if row['enabled'] or row['name'] == 'OpenAI News')
         self.assertGreater(expected, 1)
@@ -303,7 +304,7 @@ class HealthTests(OfflineTests):
         self.assertEqual({row['url'] for row in chosen}, {row['url'] for row in library['feeds'] if row['enabled'] or row['name'] == 'OpenAI News'})
 
     def test_main_collects_once_and_writes_current_health_despite_old_blocked_status(self):
-        library = json.loads((feeds.ROOT / 'data/library.json').read_text())
+        library = json.loads(LIBRARY_FIXTURE.read_text())
         chosen = feeds.select_sources(library, all_sources=True, extra_path=Path('/nonexistent/extra_feeds.json'))
         expected = len(chosen)
         self.assertGreater(expected, 1)
