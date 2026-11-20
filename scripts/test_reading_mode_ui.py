@@ -367,6 +367,71 @@ def verify_viewport(browser, base, width, height, output):
             expect(reading).to_be_hidden()
             expect(opener).to_be_visible()
             assert 'paper' not in parse_qs(urlsplit(page.url).query, keep_blank_values=True)
+
+        if mobile:
+            page.close()
+            page = context.new_page()
+            page.set_default_timeout(5500)
+            page.on('pageerror', lambda err: page_errors.append(str(err)))
+            page.goto(base + '?mode=candidates&lane=all&range=14&q=ReadingModeFixture&other=kept')
+            expect(page.locator('.nav-tab-btn[data-mode="candidates"]')).to_have_class(re.compile(r'\bactive\b'))
+            expect(page.locator('#rangeBar select[data-range-select]')).to_have_value('14')
+            page.locator('.nav-tab-btn[data-mode="library"]').click()
+            expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_have_class(re.compile(r'\bactive\b'))
+            expect(page.locator('#rangeBar select[data-range-select]')).to_have_value('all')
+            history_opener = page.locator(f'{OPENER}[data-paper-id="{FIRST}"]').first
+            expect(history_opener).to_be_visible()
+            history_body = page.locator('#drawerBody')
+            history_opener.click()
+            page.evaluate("document.querySelector('#drawerBody').scrollTop = 160")
+            drawer_scroll = history_body.evaluate('(el) => el.scrollTop')
+            assert drawer_scroll > 0
+            page.locator('#drawerExpandBtn').click()
+            expect(reading_paper(FIRST)).to_be_visible()
+            history_position = page.locator('#readingPosition')
+            expect(history_position).to_have_text(f'第 1 / 共 {len(PAPERS) - 1} 篇')
+            page.evaluate("""() => history.replaceState(
+                {...history.state, restoreHistoryMarker: 'preserved'}, '', location.href)""")
+
+            page.evaluate('history.go(-3)')
+            page.wait_for_function("""() => new URL(location.href).searchParams.get('mode') === 'candidates'
+                && !document.querySelector('#readerDrawer.open')""")
+            expect(page.locator('.nav-tab-btn[data-mode="candidates"]')).to_have_class(re.compile(r'\bactive\b'))
+            expect(page.locator('#rangeBar select[data-range-select]')).to_have_value('14')
+
+            page.evaluate('history.go(3)')
+            page.wait_for_function("""() => new URL(location.href).searchParams.get('mode') === 'library'
+                && document.querySelector('#readerDrawer.open.reading-mode')""")
+            expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_have_class(re.compile(r'\bactive\b'))
+            expect(page.locator('#rangeBar select[data-range-select]')).to_have_value('all')
+            expect(page.locator('#globalSearch')).to_have_value('ReadingModeFixture')
+            expect(page.locator('#readingBackBtn')).to_be_focused()
+            expect(history_position).to_have_text(f'第 1 / 共 {len(PAPERS) - 1} 篇')
+            params = parse_qs(urlsplit(page.url).query)
+            assert params['q'] == ['ReadingModeFixture'] and params['other'] == ['kept']
+            assert params['paper'] == [FIRST] and 'range' not in params
+            assert page.evaluate("history.state.restoreHistoryMarker") == 'preserved'
+            assert page.evaluate('history.state.readingDrawer.top') == drawer_scroll
+
+            page.locator('#readingNextBtn').click()
+            expect(reading_paper(SECOND)).to_be_visible()
+            expect(history_position).to_have_text(f'第 2 / 共 {len(PAPERS) - 1} 篇')
+            page.locator('#readingPrevBtn').click()
+            expect(reading_paper(FIRST)).to_be_visible()
+            expect(history_position).to_have_text(f'第 1 / 共 {len(PAPERS) - 1} 篇')
+
+            page.go_back()
+            expect(page.locator('#readerDrawer.open')).to_be_visible()
+            expect(page.locator(READING)).to_have_count(0)
+            expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_have_class(re.compile(r'\bactive\b'))
+            expect(page.locator('#drawerExpandBtn')).to_be_focused()
+            assert 'paper' not in parse_qs(urlsplit(page.url).query)
+            assert abs(history_body.evaluate('(el) => el.scrollTop') - drawer_scroll) <= 1
+            page.go_forward()
+            expect(reading_paper(FIRST)).to_be_visible()
+            expect(page.locator('#readingBackBtn')).to_be_focused()
+            assert parse_qs(urlsplit(page.url).query)['paper'] == [FIRST]
+
         assert not forbidden_requests, forbidden_requests
         assert not page_errors, page_errors
         print(f'PASS {width}×{height}: layers, focus, filtered and weekly sequence, history, deferred links, contents, layout and print')

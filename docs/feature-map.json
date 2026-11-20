@@ -2711,6 +2711,21 @@
           "expect": "visible"
         },
         {
+          "id": "library-reading-underlay",
+          "label": "阅读模式下文献库仍选中",
+          "selector": "[data-mode=\"library\"].active",
+          "trigger": "按 setup 的顺序操作",
+          "setup": [
+            {
+              "click": "#articlesStream [data-action=\"open-drawer\"]"
+            },
+            {
+              "click": "#drawerExpandBtn"
+            }
+          ],
+          "expect": "visible"
+        },
+        {
           "id": "library-topic-any",
           "label": "多标签任一匹配",
           "selector": "[data-qf-topic-mode=\"any\"][aria-pressed=\"true\"]",
