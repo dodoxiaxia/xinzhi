@@ -2715,7 +2715,7 @@ html[data-style="a"] .qf-opt.is-on {
 /* Extend the hit area vertically without covering the other half of the split control. */
 .qf-split .qf-chip::after { min-width: 0; }
 .qf-split .qf-chip-main { padding: 0 4px 0 10px; border-radius: 999px 0 0 999px; }
-.qf-split .qf-chip-caret { padding: 0 8px 0 2px; border-radius: 0 999px 999px 0; min-width: 22px; }
+.qf-split .qf-chip-caret { padding: 0 8px 0 2px; border-radius: 0 999px 999px 0; min-width: 24px; }
 .qf-split.is-on,
 html[data-style="a"] .qf-split.is-on {
   background: var(--accent-light);
