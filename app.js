@@ -2729,7 +2729,11 @@
 
   function historyStateWithPage(extra = {}, source = history.state) {
     const existing = source && typeof source === 'object' ? source : {};
-    return Object.assign({}, existing, extra, { page: validHistoryPage(state.page) });
+    const next = Object.assign({}, existing, extra);
+    if (validHistoryPage(state.page) > 1 || Object.prototype.hasOwnProperty.call(existing, 'page')) {
+      next.page = validHistoryPage(state.page);
+    }
+    return next;
   }
 
   function syncUrl() {
@@ -2780,11 +2784,15 @@
         || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
-      const existing = history.state && typeof history.state === 'object' ? history.state : {};
-      const histState = Object.assign({}, existing, {
-        journalTierLegacy: !!state.journalTierLegacy,
-        page: Number.isSafeInteger(state.page) && state.page > 0 ? state.page : 1
-      });
+      const existing = history.state && typeof history.state === 'object' ? history.state : null;
+      const page = Number.isSafeInteger(state.page) && state.page > 0 ? state.page : 1;
+      const pageStateNeeded = page > 1 || (existing && Object.prototype.hasOwnProperty.call(existing, 'page'));
+      let histState = existing ? Object.assign({}, existing) : null;
+      if (histState || state.journalTier || pageStateNeeded) {
+        histState = Object.assign({}, histState || {});
+        if (existing || state.journalTier) histState.journalTierLegacy = !!state.journalTierLegacy;
+        if (pageStateNeeded) histState.page = page;
+      }
       history.replaceState(histState, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
   }
