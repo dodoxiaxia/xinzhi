@@ -182,6 +182,21 @@
       const describe = (name, variants) => expansion.set(name, [...new Set(variants)].filter(v => v !== name));
       const keys = zhTerms.keys.map(name => [name, foldSearch(name)]);
       const legacyKeys = keys.filter(([name]) => zhTerms.legacy.has(name));
+      const appendLiteral = (parts, literal) => {
+        let start = 0;
+        // An alias can border Han text, even when that text has no dictionary entry.
+        for (const match of literal.matchAll(/\b[a-z0-9]+(?:-[a-z0-9]+)*\b/g)) {
+          const [alias] = match;
+          const end = match.index + alias.length;
+          const touchesHan = /\p{Script=Han}$/u.test(literal.slice(0, match.index)) ||
+            /^\p{Script=Han}/u.test(literal.slice(end));
+          if (!aliases.has(alias) || !touchesHan) continue;
+          if (start < match.index) parts.push({ term: literal.slice(start, match.index) });
+          parts.push({ term: alias });
+          start = end;
+        }
+        if (start < literal.length) parts.push({ term: literal.slice(start) });
+      };
       const segment = (term, terms) => {
         const parts = [];
         for (let start = 0; start < term.length;) {
@@ -189,7 +204,7 @@
           if (zh) { parts.push({ zh: zh[0], term: zh[1] }); start += zh[1].length; continue; }
           let end = start + 1;
           while (end < term.length && !terms.some(([, key]) => term.startsWith(key, end))) end++;
-          parts.push({ term: term.slice(start, end) });
+          appendLiteral(parts, term.slice(start, end));
           start = end;
         }
         return parts;
