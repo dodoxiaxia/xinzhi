@@ -2723,6 +2723,15 @@
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
+  function validHistoryPage(page) {
+    return Number.isSafeInteger(page) && page > 0 ? page : 1;
+  }
+
+  function historyStateWithPage(extra = {}, source = history.state) {
+    const existing = source && typeof source === 'object' ? source : {};
+    return Object.assign({}, existing, extra, { page: validHistoryPage(state.page) });
+  }
+
   function syncUrl() {
     if (typeof syncSearchPanel === 'function') syncSearchPanel();
     try {
@@ -2771,9 +2780,11 @@
         || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
-      const histState = history.state && typeof history.state === 'object'
-        ? Object.assign({}, history.state, { journalTierLegacy: !!state.journalTierLegacy })
-        : (state.journalTier ? { journalTierLegacy: !!state.journalTierLegacy } : history.state);
+      const existing = history.state && typeof history.state === 'object' ? history.state : {};
+      const histState = Object.assign({}, existing, {
+        journalTierLegacy: !!state.journalTierLegacy,
+        page: Number.isSafeInteger(state.page) && state.page > 0 ? state.page : 1
+      });
       history.replaceState(histState, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
   }
@@ -2784,7 +2795,13 @@
   function pushOverlay(name) {
     try {
       if (OVERLAY_PUSHED.has(name) && history.state && history.state.overlay === name) return;
-      history.pushState({ overlay: name }, '', location.href);
+      const current = history.state && typeof history.state === 'object' ? history.state : {};
+      const scrollY = current.overlay && Number.isSafeInteger(current.scrollY) && current.scrollY >= 0
+        ? current.scrollY : Math.round(window.scrollY);
+      window.invalidateHistoryScrollRestore?.();
+      history.replaceState(historyStateWithPage({ scrollY }, current), '', location.href);
+      const overlayState = historyStateWithPage({ overlay: name, scrollY }, current);
+      history.pushState(overlayState, '', location.href);
       OVERLAY_PUSHED.add(name);
     } catch (e) { /* file:// or sandboxed */ }
   }
@@ -4107,6 +4124,13 @@
     writeReadingPaper(id, entry?.overlay === 'reading' ? { ...entry, readingDrawer: drawerReturn } : entry);
   }
 
+  function syncDrawerFooterHeight() {
+    const footer = $('#readerDrawer .drawer-footer');
+    if (!footer) return;
+    document.documentElement.style.setProperty('--drawer-foot-h', Math.ceil(footer.getBoundingClientRect().height) + 'px');
+  }
+  window.syncDrawerFooterHeight = syncDrawerFooterHeight;
+
   function setReadingMode(active, drawerReturn = null) {
     const drawer = $('#readerDrawer');
     const star = $('#drawerHuddleToggleBtn');
@@ -4122,6 +4146,7 @@
     $('#readingTocToggle').setAttribute('aria-expanded', 'false');
     if (active) toolbar.append(star);
     else footer.insertBefore(star, $('#drawerExternalLink'));
+    syncDrawerFooterHeight();
   }
 
   function expandReadingMode() {
@@ -4142,6 +4167,12 @@
     return [...document.querySelectorAll('[data-action="open-drawer"]')]
       .find(el => el.dataset.paperId === id && el.getClientRects().length)
       || $('.nav-tab-btn.active') || $('#sourceStatusBtn');
+  }
+
+  function refreshReadingDrawerOpener() {
+    const paper = state.activeDrawerPaper;
+    if (!paper || !$('#readerDrawer.open')) return;
+    lastFocus = readingListOpener(paper.id);
   }
 
   function restoreReadingDrawer(drawerReturn) {
@@ -5023,11 +5054,12 @@
   }
 
   // Switch App Mode (Candidates, Curated, Library, Weekly, Sources)
-  function switchMode(newMode, keepRange) {
+  function switchMode(newMode, keepRange, restoreHistoryPage = false) {
+    const historyPage = restoreHistoryPage ? validHistoryPage(history.state?.page) : 1;
     if (newMode !== 'weekly') closeDeepReading({ fromHistory: true });
     if (!keepRange && newMode !== state.mode) state.range = defaultRange(newMode);
     state.mode = newMode;
-    state.page = 1;
+    state.page = historyPage;
     const search = $('#globalSearch');
     if (search) {
       search.placeholder = newMode === 'sources' ? '搜索信源名称、地址或状态…' : newMode === 'weekly' ? '搜索当前榜题名、作者、DOI…' : '搜索当前栏目题名、DOI…';
@@ -5083,7 +5115,6 @@
       renderStream();
     }
   }
-
 
   // ==== src/app/09-weekly.js · 近7天榜 board and full-text reading panel ====
   let deepReadingHistoryLimit = 12;
@@ -6600,7 +6631,13 @@
     btn.addEventListener('click', () => {
       if (btn.dataset.mode === state.mode) return switchMode(btn.dataset.mode);
       // A new entry per tab, so the phone Back button returns to the previous tab.
-      try { history.pushState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
+      try {
+        invalidateHistoryScrollRestore();
+        const scrollY = Math.round(window.scrollY);
+        history.replaceState(historyStateWithPage({ scrollY }), '', location.href);
+        const freshState = { page: 1, scrollY: 0, journalTierLegacy: !!state.journalTierLegacy };
+        history.pushState(freshState, '', location.href);
+      } catch (e) { /* file:// or sandboxed */ }
       switchMode(btn.dataset.mode);
       if (DEFERRED) prioritizeParts();
     });
@@ -7214,14 +7251,27 @@
   $('#deepReaderClose')?.addEventListener('click', () => closeDeepReading());
   ['#deepReaderPrev', '#deepReaderNext'].forEach(sel => $(sel)?.addEventListener('click', e => { const id = e.currentTarget.dataset.readingId; if (id) openDeepReading(id); }));
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
+  let historyScrollRestoreGeneration = 0;
+  function invalidateHistoryScrollRestore() {
+    historyScrollRestoreGeneration += 1;
+  }
+  window.invalidateHistoryScrollRestore = invalidateHistoryScrollRestore;
+  window.addEventListener('wheel', invalidateHistoryScrollRestore, { passive: true });
+  window.addEventListener('touchstart', invalidateHistoryScrollRestore, { passive: true });
+  window.addEventListener('pointerdown', invalidateHistoryScrollRestore, { passive: true });
+  document.addEventListener('keydown', invalidateHistoryScrollRestore, true);
   window.addEventListener('popstate', () => {
+    const scrollRestoreGeneration = ++historyScrollRestoreGeneration;
     const entry = history.state || {};
+    const historyPage = validHistoryPage(entry.page);
+    const historyScrollTop = Number.isSafeInteger(entry.scrollY) && entry.scrollY >= 0 ? entry.scrollY : null;
     const next = readStateFromUrl();
     const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
       ? JSON.stringify(state[k]) !== JSON.stringify(next[k])
       : state[k] !== next[k]);
     const legacyChanged = typeof entry.journalTierLegacy === 'boolean'
       && state.journalTierLegacy !== entry.journalTierLegacy;
+    const pageChanged = state.page !== historyPage;
     const stateChanged = urlChanged || legacyChanged;
     clearTimeout(searchTimer);
     viewInUrl = next.viewInUrl;
@@ -7249,10 +7299,22 @@
       const focus = document.activeElement;
       const drawerBody = $('#drawerBody');
       const drawerScrollTop = drawerBody?.scrollTop;
-      switchMode(next.mode, true);
+      switchMode(next.mode, true, true);
+      refreshReadingDrawerOpener();
       if (focus?.isConnected && document.activeElement !== focus) focus.focus({ preventScroll: true });
       if (drawerBody && drawerScrollTop !== undefined) drawerBody.scrollTop = drawerScrollTop;
       if (DEFERRED) prioritizeParts();
+    } else if (pageChanged) {
+      state.page = historyPage;
+      renderStream();
+      refreshReadingDrawerOpener();
+    }
+    if (historyScrollTop !== null) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (scrollRestoreGeneration === historyScrollRestoreGeneration) {
+          window.scrollTo({ top: historyScrollTop, behavior: 'instant' });
+        }
+      }));
     }
   });
 
@@ -7450,9 +7512,9 @@
 
   // 阅读台底部固定栏的实测高度，供正文底部留白使用（栏高 + 安全区），内容再短也不会盖住最后一个按钮。
   (() => {
-    const foot = document.querySelector('.drawer-footer');
+    const foot = document.querySelector('#readerDrawer .drawer-footer');
     if (!foot) return;
-    const sync = () => document.documentElement.style.setProperty('--drawer-foot-h', Math.ceil(foot.getBoundingClientRect().height) + 'px');
+    const sync = window.syncDrawerFooterHeight;
     sync();
     if (window.ResizeObserver) new ResizeObserver(sync).observe(foot);
     window.addEventListener('resize', sync);

@@ -46,6 +46,13 @@
     writeReadingPaper(id, entry?.overlay === 'reading' ? { ...entry, readingDrawer: drawerReturn } : entry);
   }
 
+  function syncDrawerFooterHeight() {
+    const footer = $('#readerDrawer .drawer-footer');
+    if (!footer) return;
+    document.documentElement.style.setProperty('--drawer-foot-h', Math.ceil(footer.getBoundingClientRect().height) + 'px');
+  }
+  window.syncDrawerFooterHeight = syncDrawerFooterHeight;
+
   function setReadingMode(active, drawerReturn = null) {
     const drawer = $('#readerDrawer');
     const star = $('#drawerHuddleToggleBtn');
@@ -61,6 +68,7 @@
     $('#readingTocToggle').setAttribute('aria-expanded', 'false');
     if (active) toolbar.append(star);
     else footer.insertBefore(star, $('#drawerExternalLink'));
+    syncDrawerFooterHeight();
   }
 
   function expandReadingMode() {
@@ -81,6 +89,12 @@
     return [...document.querySelectorAll('[data-action="open-drawer"]')]
       .find(el => el.dataset.paperId === id && el.getClientRects().length)
       || $('.nav-tab-btn.active') || $('#sourceStatusBtn');
+  }
+
+  function refreshReadingDrawerOpener() {
+    const paper = state.activeDrawerPaper;
+    if (!paper || !$('#readerDrawer.open')) return;
+    lastFocus = readingListOpener(paper.id);
   }
 
   function restoreReadingDrawer(drawerReturn) {

@@ -352,6 +352,15 @@
   }
 
   // URL <-> state sync so filtered views are shareable / survive refresh
+  function validHistoryPage(page) {
+    return Number.isSafeInteger(page) && page > 0 ? page : 1;
+  }
+
+  function historyStateWithPage(extra = {}, source = history.state) {
+    const existing = source && typeof source === 'object' ? source : {};
+    return Object.assign({}, existing, extra, { page: validHistoryPage(state.page) });
+  }
+
   function syncUrl() {
     if (typeof syncSearchPanel === 'function') syncSearchPanel();
     try {
@@ -400,9 +409,11 @@
         || state.ftFilter || state.range !== defaultRange(state.mode) || state.favoritesOnly || state.excludeCaseReports || (usesLane() && (state.lane !== 'core' || state.minor || state.reading));
       if (viewInUrl || filteredView) u.searchParams.set('view', state.viewMode);
       else u.searchParams.delete('view');
-      const histState = history.state && typeof history.state === 'object'
-        ? Object.assign({}, history.state, { journalTierLegacy: !!state.journalTierLegacy })
-        : (state.journalTier ? { journalTierLegacy: !!state.journalTierLegacy } : history.state);
+      const existing = history.state && typeof history.state === 'object' ? history.state : {};
+      const histState = Object.assign({}, existing, {
+        journalTierLegacy: !!state.journalTierLegacy,
+        page: Number.isSafeInteger(state.page) && state.page > 0 ? state.page : 1
+      });
       history.replaceState(histState, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) { /* file:// or sandboxed */ }
   }
@@ -413,7 +424,13 @@
   function pushOverlay(name) {
     try {
       if (OVERLAY_PUSHED.has(name) && history.state && history.state.overlay === name) return;
-      history.pushState({ overlay: name }, '', location.href);
+      const current = history.state && typeof history.state === 'object' ? history.state : {};
+      const scrollY = current.overlay && Number.isSafeInteger(current.scrollY) && current.scrollY >= 0
+        ? current.scrollY : Math.round(window.scrollY);
+      window.invalidateHistoryScrollRestore?.();
+      history.replaceState(historyStateWithPage({ scrollY }, current), '', location.href);
+      const overlayState = historyStateWithPage({ overlay: name, scrollY }, current);
+      history.pushState(overlayState, '', location.href);
       OVERLAY_PUSHED.add(name);
     } catch (e) { /* file:// or sandboxed */ }
   }

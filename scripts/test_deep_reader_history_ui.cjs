@@ -110,7 +110,7 @@ async function run() {
     await page.waitForFunction(() => !document.getElementById('deepReader').classList.contains('open'));
     ok(await page.evaluate(() => window.__backCalls) === 0, 'after reload close button skips history.back');
     ok(page.url() === origin + '/?mode=weekly&pane=reading', 'after reload close button returns URL to list');
-    ok(await page.evaluate(() => history.state === null), 'after reload close leaves clean history.state');
+    ok(await page.evaluate(() => history.state?.page === 1 && !history.state.deepReader), 'after reload close clears deepReader but keeps page state');
 
     // Reload again with Esc and backdrop close paths
     await page.click('[data-action="open-deep-reading"][data-reading-id="PMC102"]');

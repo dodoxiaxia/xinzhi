@@ -8,7 +8,7 @@ def sfill(page, text):
 
 
 if __name__ == '__main__':
-    import functools, json, os, sys, threading
+    import functools, json, os, re, sys, threading
     from pathlib import Path
     from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
     from urllib.parse import urlsplit
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or '/usr/bin/chromium', args=['--no-sandbox'])
-            for width in [320, 390, 1440]:
+            for width in [320, 390, 884, 1280, 1440]:
                 context = browser.new_context(viewport={'width': width, 'height': 850})
                 context.route('**/*', route)
                 page = context.new_page(); page.set_default_timeout(15000)
@@ -118,6 +118,121 @@ if __name__ == '__main__':
                                     size = page.locator(target).bounding_box(); assert round(size['height']) >= 44 and round(size['width']) >= 44, (style, theme, target, size)
                                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                         records.append({'width': width, 'mode': 'all-mobile-appearances', 'legacyStyleLinks': 4, 'themes': 2, 'minimumTouchSize': 44})
+                if width in [390, 884, 1280, 1440]:
+                    page.goto(base + '?mode=library&lane=all&range=all&view=cards', wait_until='networkidle')
+                    page.wait_for_function('window.LIBRARY && Array.isArray(LIBRARY.papers)')
+                    page_len = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]').count()
+                    assert page_len > 0, 'The local public library fixture needs at least one first-page record'
+                    page.locator('[data-qf-jtier="cardioClinical"]').click()
+                    page.locator('[data-qf-jtier="cardioClinical"]').click()
+                    clinical = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]')
+                    expect(clinical.first).to_be_visible()
+                    page.evaluate('''pageLen => {
+                        const buttons = [...document.querySelectorAll('#articlesStream [data-action="open-drawer"][data-paper-id]')];
+                        const sourceIds = new Set(buttons.map(button => button.dataset.paperId));
+                        const source = LIBRARY.papers.filter(paper => sourceIds.has(paper.id));
+                        if (!source.length) throw new Error('The clinical archive fixture needs a source record');
+                        let serial = 0;
+                        const copies = Array.from({length: pageLen * 4 + 1}, (_, index) => {
+                            const paper = source[index % source.length];
+                            serial += 1;
+                            return {
+                                ...paper,
+                                id: `history-pagination-fixture-${serial}`,
+                                doi: `10.9999/history-pagination-fixture-${serial}`,
+                                title: `HistoryRestorationFixture ${serial}`,
+                            };
+                        });
+                        LIBRARY.papers.push(...copies);
+                        return copies.length;
+                    }''', page_len)
+                    copy_count = page_len * 4 + 1
+                    page.locator('[data-qf-jtier="cardioClinical"]').click()
+                    page.locator('[data-qf-jtier="cardioClinical"]').click()
+                    first_batch = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]').evaluate_all('(buttons) => buttons.map(button => button.dataset.paperId)')
+                    assert len(first_batch) == page_len, (page_len, first_batch)
+                    previous_ids = first_batch
+                    for _ in range(2):
+                        expect(page.locator('#loadMoreBtn')).to_be_visible()
+                        page.locator('#loadMoreBtn').click()
+                        ids = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]').evaluate_all('(buttons) => buttons.map(button => button.dataset.paperId)')
+                        assert len(ids) == len(previous_ids) + page_len, (page_len, len(previous_ids), len(ids))
+                        previous_ids = ids
+                    expected_ids = ids
+                    last_opener = page.locator(f'#articlesStream [data-action="open-drawer"][data-paper-id="{expected_ids[-1]}"]')
+                    last_opener.scroll_into_view_if_needed()
+                    page.mouse.move(width / 2, 740)
+                    page.mouse.wheel(0, 10000)
+                    page.wait_for_function('''() => Math.abs(window.scrollY - (document.documentElement.scrollHeight - innerHeight)) <= 1''')
+                    saved_scroll = page.evaluate('''() => ({top: window.scrollY, height: document.documentElement.scrollHeight,
+                        clientHeight: document.documentElement.clientHeight})''')
+                    page.evaluate('''document.querySelector('.nav-tab-btn[data-mode="candidates"]').click()''')
+                    expect(page.locator('.nav-tab-btn[data-mode="candidates"]')).to_have_class(re.compile(r'\bactive\b'))
+                    page.go_back()
+                    page.wait_for_function('''document.querySelector('.nav-tab-btn[data-mode="library"].active')''')
+                    page.evaluate('''() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))''')
+                    restored_ids = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]').evaluate_all('(buttons) => buttons.map(button => button.dataset.paperId)')
+                    restored_scroll = page.evaluate('''() => ({top: window.scrollY, height: document.documentElement.scrollHeight,
+                        clientHeight: document.documentElement.clientHeight, page: history.state?.page})''')
+                    assert restored_ids == expected_ids, {'expected': expected_ids, 'restored': restored_ids}
+                    assert restored_ids[-1] == expected_ids[-1]
+                    assert abs(restored_scroll['top'] - saved_scroll['top']) <= 1, {'saved': saved_scroll, 'restored': restored_scroll}
+                    if width == 1280:
+                        page.evaluate('''() => {
+                            window.__historyScrollUserTarget = Math.min(120, document.documentElement.scrollHeight - innerHeight);
+                            window.__historyScrollCalls = [];
+                            window.__historyScrollNativeTo = window.scrollTo.bind(window);
+                            window.scrollTo = (...args) => {
+                                const target = typeof args[0] === 'object' ? args[0].top : args[1];
+                                window.__historyScrollCalls.push(target);
+                                return window.__historyScrollNativeTo(...args);
+                            };
+                            window.__historyWheelSeen = false;
+                            window.addEventListener('wheel', () => { window.__historyWheelSeen = true; }, {once: true});
+                            window.addEventListener('popstate', () => {
+                                window.scrollTo({top: window.__historyScrollUserTarget, behavior: 'instant'});
+                                window.__historyScrollCallIndex = window.__historyScrollCalls.length;
+                                document.body.dispatchEvent(new WheelEvent('wheel', {deltaY: 1, bubbles: true, cancelable: true}));
+                            }, {once: true});
+                        }''')
+                        page.go_forward()
+                        expect(page.locator('.nav-tab-btn[data-mode="candidates"]')).to_have_class(re.compile(r'\bactive\b'))
+                        user_scroll = page.evaluate('window.__historyScrollUserTarget')
+                        page.evaluate('''() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))))''')
+                        pending_scroll = page.evaluate('''() => {
+                            const result = {
+                                top: window.scrollY,
+                                calls: window.__historyScrollCalls.slice(window.__historyScrollCallIndex),
+                                wheelSeen: window.__historyWheelSeen,
+                            };
+                            window.scrollTo = window.__historyScrollNativeTo;
+                            return result;
+                        }''')
+                        assert user_scroll > 0 and pending_scroll['top'] > 0 and pending_scroll['wheelSeen'] and 0 not in pending_scroll['calls'], {
+                            'userScroll': user_scroll, 'afterPendingRestore': pending_scroll
+                        }
+                        page.go_back()
+                        expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_have_class(re.compile(r'\bactive\b'))
+                        page.evaluate('''() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))''')
+                        restored_scroll = page.evaluate('''() => ({top: window.scrollY})''')
+                        assert abs(restored_scroll['top'] - saved_scroll['top']) <= 1, {
+                            'saved': saved_scroll['top'], 'restored': restored_scroll['top']
+                        }
+                    sfill(page, 'HistoryRestorationFixture')
+                    fresh_ids = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]').evaluate_all('(buttons) => buttons.map(button => button.dataset.paperId)')
+                    expect(page.locator('#loadMoreBtn')).to_be_visible()
+                    assert len(fresh_ids) == page_len, {'pageSize': page_len, 'freshFilterCount': len(fresh_ids)}
+                    if width == 1280:
+                        page.evaluate('''() => {
+                            history.replaceState({...history.state, overlay: 'drawer', deepReader: 'stale', readingDrawer: {id: 'stale'}}, '', location.href);
+                            document.querySelector('.nav-tab-btn[data-mode="candidates"]').click();
+                        }''')
+                        new_nav_state = page.evaluate('history.state')
+                        assert set(new_nav_state) == {'page', 'scrollY', 'journalTierLegacy'}, new_nav_state
+                    records.append({'width': width, 'mode': 'clinical-archive-history-page', 'pageSize': page_len,
+                                    'loadedIds': expected_ids, 'restoredIds': restored_ids, 'lastId': restored_ids[-1],
+                                    'savedScroll': saved_scroll['top'], 'restoredScroll': restored_scroll['top'],
+                                    'freshFilterCount': len(fresh_ids), 'fixtureCopies': copy_count})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 context.close()
             browser.close()

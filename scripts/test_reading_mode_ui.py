@@ -439,9 +439,134 @@ def verify_viewport(browser, base, width, height, output):
         context.close()
 
 
+def verify_history_case(browser, base, width, height, case):
+    mobile = width == 390
+    context = browser.new_context(viewport={'width': width, 'height': height},
+                                  is_mobile=mobile, has_touch=mobile, reduced_motion='reduce')
+    page = context.new_page()
+    page.set_default_timeout(5500)
+    errors = []
+    page.on('pageerror', lambda err: errors.append(str(err)))
+
+    def mock(route):
+        url = urlsplit(route.request.url)
+        if url.path.startswith('/api/'):
+            return route.fulfill(json={'ok': True, 'found': False, 'canGenerate': False, 'papers': []})
+        if url.hostname == 'www.ebi.ac.uk':
+            return route.fulfill(json={'resultList': {'result': []}})
+        if not route.request.url.startswith(base):
+            return route.abort()
+        if url.path.startswith('/assets/data-library.'):
+            payload = {'papers': PAPERS, 'pdfIds': []}
+            return route.fulfill(content_type='application/javascript',
+                                 body='window.XINZHI_PART("library", ' + json.dumps(payload) + ');')
+        return route.continue_()
+
+    page.route('**/*', mock)
+    try:
+        page.goto(base + (LIST_QUERY if case == 'bottom' else '?mode=library&lane=all'))
+        opener = page.locator(f'{OPENER}[data-paper-id="{FIRST}"]').first
+
+        if case == 'bottom':
+            list_scroll = page.evaluate('''() => {
+                history.replaceState({...history.state, scrollY: 0}, '', location.href);
+                window.scrollTo({top: 120, behavior: 'instant'});
+                return window.scrollY;
+            }''')
+            assert list_scroll > 0, list_scroll
+            expect(opener).to_be_visible()
+            opener.click()
+            overlay_scroll = page.evaluate('history.state?.scrollY')
+            assert abs(overlay_scroll - list_scroll) <= 1, {'listScroll': list_scroll, 'overlayScroll': overlay_scroll}
+            body = page.locator('#drawerBody')
+            expand = page.locator('#drawerExpandBtn')
+            saved = body.evaluate('''el => {
+                el.scrollTop = el.scrollHeight;
+                const footer = document.querySelector('.drawer-footer');
+                return {
+                    top: el.scrollTop,
+                    scrollHeight: el.scrollHeight,
+                    clientHeight: el.clientHeight,
+                    footerHeight: Math.ceil(footer.getBoundingClientRect().height),
+                    footerVariable: getComputedStyle(document.documentElement).getPropertyValue('--drawer-foot-h').trim(),
+                };
+            }''')
+            assert saved['scrollHeight'] > saved['clientHeight'] and saved['top'] > 100, saved
+            expand.click()
+            expect(page.locator(READING)).to_be_visible()
+            page.wait_for_function('''() => {
+                const footer = document.querySelector('.reading-mode .drawer-footer');
+                return footer && parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--drawer-foot-h'))
+                    === Math.ceil(footer.getBoundingClientRect().height);
+            }''')
+            reading = body.evaluate('''el => ({
+                top: el.scrollTop,
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight,
+                footerHeight: Math.ceil(document.querySelector('.drawer-footer').getBoundingClientRect().height),
+                footerVariable: getComputedStyle(document.documentElement).getPropertyValue('--drawer-foot-h').trim(),
+            })''')
+            page.go_back()
+            expect(page.locator('#readerDrawer.open')).to_be_visible()
+            immediate = body.evaluate('''el => ({
+                top: el.scrollTop,
+                scrollHeight: el.scrollHeight,
+                clientHeight: el.clientHeight,
+                footerHeight: Math.ceil(document.querySelector('.drawer-footer').getBoundingClientRect().height),
+                footerVariable: getComputedStyle(document.documentElement).getPropertyValue('--drawer-foot-h').trim(),
+            })''')
+            settled = page.evaluate('''() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
+                const body = document.querySelector('#drawerBody');
+                const footer = document.querySelector('.drawer-footer');
+                resolve({
+                    top: body.scrollTop,
+                    scrollHeight: body.scrollHeight,
+                    clientHeight: body.clientHeight,
+                    footerHeight: Math.ceil(footer.getBoundingClientRect().height),
+                    footerVariable: getComputedStyle(document.documentElement).getPropertyValue('--drawer-foot-h').trim(),
+                });
+            })))''')
+            assert abs(settled['top'] - saved['top']) <= 1, {'saved': saved, 'reading': reading, 'immediate': immediate, 'settled': settled}
+            assert not errors, errors
+            print(f'PASS {width}×{height}: drawer-bottom-return {json.dumps({"saved": saved, "reading": reading, "immediate": immediate, "settled": settled}, ensure_ascii=False)}')
+            return
+
+        expect(opener).to_be_visible()
+        library_ids = set(page.locator(f'{OPENER}[data-paper-id]').evaluate_all('(buttons) => buttons.map(button => button.dataset.paperId)'))
+        page.locator('.nav-tab-btn[data-mode="candidates"]').click()
+        radar_ids = page.locator('#articlesStream [data-action="open-drawer"][data-paper-id]').evaluate_all('(buttons) => buttons.map(button => button.dataset.paperId)')
+        paper_id = next((candidate for candidate in radar_ids if candidate not in library_ids), None)
+        assert paper_id, {'library': sorted(library_ids), 'radar': radar_ids}
+        radar_opener = page.locator(f'#articlesStream [data-action="open-drawer"][data-paper-id="{paper_id}"]').first
+        expect(radar_opener).to_be_visible()
+        radar_opener.click()
+        page.locator('#drawerExpandBtn').click()
+        expect(page.locator(f'{READING} #drawerBody[data-paper-id="{paper_id}"]')).to_be_visible()
+        page.go_back()
+        expect(page.locator(f'#readerDrawer.open #drawerBody[data-paper-id="{paper_id}"]')).to_be_visible()
+        page.go_back()
+        expect(page.locator('#readerDrawer.open')).to_have_count(0)
+        page.go_back()
+        expect(page.locator('.nav-tab-btn[data-mode="library"]')).to_have_class(re.compile(r'\bactive\b'))
+        page.evaluate('history.go(2)')
+        page.wait_for_function('''id => document.querySelector('#readerDrawer.open #drawerBody[data-paper-id="' + id + '"]')
+            && document.querySelector('.nav-tab-btn[data-mode="candidates"].active')''', arg=paper_id)
+        expect(page.locator('#drawerExpandBtn')).to_be_focused()
+        page.keyboard.press('Tab')
+        expect(page.locator('#drawerCloseBtn')).to_be_focused()
+        page.keyboard.press('Enter')
+        restored_opener = page.locator(f'#articlesStream [data-action="open-drawer"][data-paper-id="{paper_id}"]').first
+        expect(restored_opener).to_be_focused()
+        assert not errors, errors
+        print(f'PASS {width}×{height}: cross-mode drawer history focus returned to radar paper {paper_id}')
+    finally:
+        context.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--evidence', type=Path)
+    parser.add_argument('--history-case', choices=('bottom', 'focus'))
     args = parser.parse_args()
     subprocess.run(['node', 'scripts/test_reading_mode.cjs', '--public'], cwd=ROOT, check=True)
     if args.evidence:
@@ -455,8 +580,16 @@ def main():
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH', '/usr/bin/chromium'),
                                                  args=['--no-sandbox'])
-            for width, height in [(1280, 800), (390, 844)]:
-                verify_viewport(browser, f'http://127.0.0.1:{server.server_port}/', width, height, args.evidence)
+            base = f'http://127.0.0.1:{server.server_port}/'
+            if args.history_case:
+                for width, height in [(390, 844), (884, 884), (1280, 800)]:
+                    verify_history_case(browser, base, width, height, args.history_case)
+            else:
+                for width, height in [(1280, 800), (390, 844)]:
+                    verify_viewport(browser, base, width, height, args.evidence)
+                for case in ('bottom', 'focus'):
+                    for width, height in [(390, 844), (884, 884), (1280, 800)]:
+                        verify_history_case(browser, base, width, height, case)
             browser.close()
     finally:
         server.shutdown()
