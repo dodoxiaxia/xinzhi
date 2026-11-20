@@ -731,6 +731,22 @@
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
   window.addEventListener('popstate', () => {
     const entry = history.state || {};
+    const next = readStateFromUrl();
+    const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
+      ? JSON.stringify(state[k]) !== JSON.stringify(next[k])
+      : state[k] !== next[k]);
+    const legacyChanged = typeof entry.journalTierLegacy === 'boolean'
+      && state.journalTierLegacy !== entry.journalTierLegacy;
+    const stateChanged = urlChanged || legacyChanged;
+    clearTimeout(searchTimer);
+    viewInUrl = next.viewInUrl;
+    URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
+    if (typeof entry.journalTierLegacy === 'boolean') state.journalTierLegacy = entry.journalTierLegacy;
+    if (searchInput) searchInput.value = state.search;
+    if (sortSelect) sortSelect.value = state.sort;
+    $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
+    $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
+    syncSearchPanel();
     state.shortlistShare = readShortlistShareParam(new URLSearchParams(location.search));
     renderSharedShortlist();
     const wasReading = !!$('#readerDrawer.reading-mode');
@@ -744,23 +760,15 @@
       if ($('#readerDrawer.reading-mode')) $('#readingBackBtn').focus({ preventScroll: true });
       else if (wasReading && underlyingDeepId && $('#deepReader.open') && !$('#readerDrawer.open')) $('#deepReaderClose').focus({ preventScroll: true });
     } else closeDeepReading({ fromHistory: true });
-    if (entry.overlay || entry.deepReader) return;
-    const next = readStateFromUrl();
-    const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
-      ? JSON.stringify(state[k]) !== JSON.stringify(next[k])
-      : state[k] !== next[k]);
-    if (!urlChanged) return;
-    clearTimeout(searchTimer);
-    viewInUrl = next.viewInUrl;
-    URL_STATE_KEYS.forEach(k => { state[k] = next[k]; });
-    if (entry && typeof entry.journalTierLegacy === 'boolean') state.journalTierLegacy = entry.journalTierLegacy;
-    if (searchInput) searchInput.value = state.search;
-    if (sortSelect) sortSelect.value = state.sort;
-    $('#viewCardsBtn')?.classList.toggle('active', state.viewMode === 'cards');
-    $('#viewCompactBtn')?.classList.toggle('active', state.viewMode === 'compact');
-    syncSearchPanel();
-    switchMode(next.mode, true);
-    if (DEFERRED) prioritizeParts();
+    if (stateChanged) {
+      const focus = document.activeElement;
+      const drawerBody = $('#drawerBody');
+      const drawerScrollTop = drawerBody?.scrollTop;
+      switchMode(next.mode, true);
+      if (focus?.isConnected && document.activeElement !== focus) focus.focus({ preventScroll: true });
+      if (drawerBody && drawerScrollTop !== undefined) drawerBody.scrollTop = drawerScrollTop;
+      if (DEFERRED) prioritizeParts();
+    }
   });
 
   $('#drawerCopyShareBtn')?.addEventListener('click', () => {

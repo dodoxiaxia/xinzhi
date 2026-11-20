@@ -254,6 +254,7 @@
 | 状态 id | 状态 | 选择器 | 预期 | 操作 |
 | --- | --- | --- | --- | --- |
 | library-selected | 文献库已选中 | `[data-mode="library"].active` | visible | [] |
+| library-reading-underlay | 阅读模式下文献库仍选中 | `[data-mode="library"].active` | visible | [{"click":"#articlesStream [data-action=\"open-drawer\"]"},{"click":"#drawerExpandBtn"}] |
 | library-topic-any | 多标签任一匹配 | `[data-qf-topic-mode="any"][aria-pressed="true"]` | visible | [{"click":"[data-qf=\"topic\"]"},{"click":"[data-qf-topic=\"#房颤/电生理\"]"},{"click":"[data-qf-topic=\"#AI-ECG\"]"}] |
 | library-topic-all | 多标签同时包含 | `[data-qf-topic-mode="all"][aria-pressed="true"]` | visible | [{"click":"[data-qf=\"topic\"]"},{"click":"[data-qf-topic=\"#房颤/电生理\"]"},{"click":"[data-qf-topic=\"#AI-ECG\"]"},{"click":"[data-qf-topic-mode=\"all\"]"}] |
 | library-sort-date-desc | 最新在前 | `#sortSelector option[value="date-desc"]` | attached | [{"select":["#sortSelector","date-desc"]}] |
