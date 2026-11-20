@@ -252,7 +252,7 @@ Exit code: 0
 
 - 未对 `learn.dryz.info` 或任何 production/state/Secret/付费模型服务运行测试，未进行 post-deploy smoke；部署后由 ddx 记录 release run 和完整 pass/fail 列表，任何失败都不接受。
 - 未从零安装依赖；所有运行复用现有 Python venv、Node、Playwright 与 Chrome。Node 缺包场景只删除一次性副本中的 Playwright，没有改共享安装。
-- 不把离线 fixture 浏览器结果外推为线上部署状态；没有创建 PR，也未运行 PR/CI workflow。
+- 不把离线 fixture 浏览器结果外推为线上部署状态；验收运行时尚未创建 PR，也未运行 PR/CI workflow。
 - 新增/修改的 Markdown 未做视觉渲染检查。
 
 ## 有什么风险
@@ -260,4 +260,3 @@ Exit code: 0
 - main 的 pristine baseline 确实未通过（`98 passed, 6 failed, 2 skipped`）；缺失运行时 `data/`、`public/` 可解释相关失败，但这只说明基线不便携，不证明当前 main 全部测试为绿。附件基线 `4cdd352` 的 `82/20/3` 与 e40c `--no-browser` 的 `74/2/18` 是不同运行，不能互相替换。
 - `--no-browser` 有意跳过全部浏览器项目；Node 缺包配置也只验证了正确 `SKIP` 行为。完整浏览器本地证据仅来自已安装 Playwright/Chrome 且使用离线 fixture 的 fresh clone。
 - `--no-fetch` 使 canonical referee 可能过期；本次实际使用的 `origin/main` SHA 与日期已记录，未联网更新远端 ref。
-- 临时错误字面量的精确键入原因因无保存的中间 patch 无法证实；最终文件与基线断言 AST 已对照，所有旧断言均保留。
