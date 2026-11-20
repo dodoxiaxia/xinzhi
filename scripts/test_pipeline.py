@@ -1,10 +1,14 @@
-import unittest,sys,json,tempfile
+import hashlib,unittest,sys,json,tempfile,subprocess
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).parent))
 from refresh_feeds import parse,dateval
 from build_data import clean,classify
 from release_integrity import PUBLIC,is_published_file,published_files
 ROOT=Path(__file__).resolve().parents[1]
+LIBRARY_FIXTURE=ROOT/'editorial/public_library_snapshot.json'
+def tree_hashes(root):
+ return {p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()
+         for p in sorted(root.rglob('*')) if p.is_file() and not p.is_symlink()}
 class PipelineTests(unittest.TestCase):
  def test_rss_namespaced_date(self):
   raw=b'<rss xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><item><title>AI-enabled cardiac screening</title><link>https://example.com/paper</link><dc:date>2026-09-29</dc:date></item></channel></rss>'
@@ -21,16 +25,27 @@ class PipelineTests(unittest.TestCase):
  def test_unknown_date_not_today(self):self.assertEqual(dateval('not dated'),'')
  def test_strips_source_markup(self):self.assertEqual(clean('<b>Heart &amp; AI</b>'),'Heart & AI')
  def test_library_unique_and_paths_not_exposed(self):
-  data=json.loads((ROOT/'data/library.json').read_text());ids=[p['id'] for p in data['papers']]
+  data=json.loads(LIBRARY_FIXTURE.read_text());ids=[p['id'] for p in data['papers']]
   self.assertEqual(len(ids),len(set(ids)));self.assertNotIn('/Users/',json.dumps(data));self.assertEqual(data['stats']['papers'],len(ids))
  def test_public_allowlist(self):
-  files=set(published_files(ROOT/'public'))
-  self.assertTrue(PUBLIC.issubset(files))
-  self.assertTrue(all(is_published_file(p) for p in files))
-  source=(ROOT/'public/index.html').read_text()
-  # v14 reads saved theme/style before paint. Preferences are allowed; private
-  # library data and credentials still must not appear in the static page.
-  for forbidden in ('weeklyNotes','当前路径','/Users/','data/library.js','reviewer','QA临时记录','GITHUB_LIBRARY_TOKEN','PDF_DOWNLOAD_PASSPHRASE'):
-   self.assertNotIn(forbidden,source)
-  self.assertNotIn('library.json',str(files))
+  with tempfile.TemporaryDirectory() as directory:
+   root=Path(directory)
+   source_root=ROOT
+   fixture_root=root/'source'
+   before_docs=tree_hashes(source_root/'docs')
+   built=subprocess.run(['bash','-c','source "$1" && prepare_fixture_workspace "$2" "$3" "$4"',
+                         'xinzhi-public-allowlist',str(source_root/'scripts/run_all_tests.sh'),
+                         str(source_root),str(fixture_root),str(root/'offline-guard')],
+                        cwd=source_root,text=True,capture_output=True)
+   self.assertEqual(built.returncode,0,built.stdout+built.stderr)
+   self.assertEqual(before_docs,tree_hashes(source_root/'docs'))
+   files=set(published_files(fixture_root/'public'))
+   self.assertTrue(PUBLIC.issubset(files))
+   self.assertTrue(all(is_published_file(p) for p in files))
+   source=(fixture_root/'public/index.html').read_text()
+   # v14 reads saved theme/style before paint. Preferences are allowed; private
+   # library data and credentials still must not appear in the static page.
+   for forbidden in ('weeklyNotes','当前路径','/Users/','data/library.js','reviewer','QA临时记录','GITHUB_LIBRARY_TOKEN','PDF_DOWNLOAD_PASSPHRASE'):
+    self.assertNotIn(forbidden,source)
+   self.assertNotIn('library.json',str(files))
 if __name__=='__main__':unittest.main()
