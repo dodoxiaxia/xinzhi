@@ -151,6 +151,23 @@ function unitChecks() {
   assert(matches('Heart failure with SGLT2 inhibition', '心衰SGLT2'));
   assert(matches('Coronary interventions after myocardial infarction', '冠脉CT'), 'retain old coronary + ct substring match');
   assert(matches('Aortic changes · 夹层', '主动脉夹层'), 'retain old mixed-language match');
+  const paperSearchText = vm.runInNewContext([
+    fold, constant('PAPER_DERIVED'), fn('paperDerived'), fn('paperSearchText'), 'paperSearchText'
+  ].join('\n'), { quicklookOf: () => null });
+  const valvePaper = { title: 'Transcatheter aortic valve-in-valve outcomes', titleZh: '术后随访' };
+  const valveText = paperSearchText(valvePaper);
+  assert(baseline.queryMatches(valveText, 'TAVR术后'), 'the original table found this paper');
+  for (const q of ['TAVR术后', '术后tavr']) {
+    assert(current.queryMatches(valveText, q), 'match TAVR and Chinese text across paper fields: ' + q);
+    assert.equal(current.queryMatches('', q, true)[0][0], 'TAVR');
+    assert(!matches(valvePaper.title, q), 'require the Chinese part: ' + q);
+  }
+  const pciPaper = { title: 'Percutaneous coronary intervention outcomes', summary: '术后随访' };
+  assert(current.queryMatches(paperSearchText(pciPaper), 'PCI术后'));
+  assert(!matches('SPCI 术后随访', 'PCI术后'), 'require a whole abbreviation in paper text');
+  assert(!current.queryMatches(paperSearchText(pciPaper), 'SPCI术后'), 'embedded query abbreviation stays literal');
+  assert.equal(current.queryMatches('', 'SPCI术后', true).length, 0);
+  assert(matches('N-terminal pro-B-type natriuretic peptide 术后', '术后NT-proBNP'));
   assert(matches('fibrillation in the left atrial region', 'atrial fibrillation'), 'retain old English AND match');
   assert(matches('What the Robot Still Can’t Do', "Can't"), 'apostrophe folding');
   assert(!matches('What the Robot Still Can’t Do', 'Cant'), 'apostrophe not deleted');
