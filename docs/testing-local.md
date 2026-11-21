@@ -24,13 +24,17 @@ bash scripts/run_all_tests.sh --print-env
 ## 运行方式
 
 ```sh
-bash scripts/run_all_tests.sh                 # 默认：data/ 不存在时构建离线夹具
+bash scripts/run_all_tests.sh                 # 默认：浏览器测试使用当前源码的隔离构建
 bash scripts/run_all_tests.sh --fixture       # 在全新隔离源码副本中构建并运行
 bash scripts/run_all_tests.sh --no-fixture    # 禁止自动生成，现有 data/、public/ 原样使用
 bash scripts/run_all_tests.sh --no-browser    # 运行非浏览器测试，浏览器项目逐项显示 SKIP 原因
 ```
 
-默认模式只在 `data/` 完全不存在时生成夹具。若 `data/` 已存在（包括空目录或部分数据），不会补齐、覆盖或删除它，而是打印“using existing data as-is”。默认夹具的生成和 `build_public.py` 都在隔离源码副本中进行；只把 Git 忽略的 `data/` 与缺失的 `public/` 复制回工作树，绝不把构建产生的 `docs/public-manifest.json` 等跟踪文件写回。
+默认模式启用浏览器测试时，总是在隔离的当前源码副本中构建 `public/` 并在那里运行测试，避免使用切换分支后留下的旧公开产物。若原工作树已有 `data/`，runner 只复制其中的常规文件到隔离副本，不合成夹具、不补齐或修复部分数据；随后离线运行 `build_public.py`。原工作树的 `data/`、`public/` 和 `docs/` 保持不变。数据目录或其内容含符号链接、FIFO 等非常规文件时，准备步骤会报错并停止，不会回退到原 `public/` 运行测试。
+
+若原工作树没有 `data/`，默认模式仍在隔离副本中生成离线夹具；为兼容现有行为，只把忽略的 `data/` 和缺失的 `public/` 发布回原工作树。若原工作树已有 `public/`，不会覆盖它；浏览器测试仍在隔离副本中运行，因此不会读到该旧产物。夹具和公开构建产生的 `docs/public-manifest.json` 等跟踪文件不会写回原工作树。
+
+`--no-browser` 保留默认旧行为以避免无浏览器检查时额外构建：已有 `data/` 按原样使用，缺少 `data/` 时生成离线夹具；浏览器条目逐项跳过。`--no-fixture` 则始终不生成或重建 `data/`、`public/`，并按原样使用已有文件；在该模式中，若刚切换源码分支且需要浏览器测试，请先为当前分支运行 `python3 scripts/build_public.py`。
 
 `--fixture` 不读取或修改原工作树中的 `data/`、`public/`、`.local/`、密钥文件或符号链接；它在新的源码副本中生成夹具、构建公开输出并在那里运行测试。夹具使用仓库内已提交的测试输入，不调用网络或模型；生成/构建进程带有 Python socket 与 Node 网络 API 拒绝守卫。该模式的日志保存在 `$HOME/xinzhi-test-logs/`，不随临时工作副本清理。`--fixture` 与 `--no-fixture` 不能同时使用。
 
