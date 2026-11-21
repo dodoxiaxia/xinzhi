@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shlex
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -335,6 +336,201 @@ if print_summary; then exit 31; fi
             for relative in ('data/library.json', 'public/index.html'):
                 ignored = subprocess.run(['git', '-C', str(source), 'check-ignore', '-q', '--', relative])
                 self.assertEqual(ignored.returncode, 0, f'{relative} must remain ignored')
+
+    def test_auto_browser_main_uses_current_source_copy_for_existing_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            copied = source_shell(f'copy_source_tree {shlex.quote(str(ROOT))} {shlex.quote(str(source))}')
+            self.assertEqual(copied.returncode, 0, copied.stdout + copied.stderr)
+            generated = subprocess.run(
+                [sys.executable, str(source / 'scripts/fixtures/build_browser_data.py'), str(source / 'data')],
+                cwd=source, text=True, capture_output=True
+            )
+            self.assertEqual(generated.returncode, 0, generated.stdout + generated.stderr)
+
+            marker = source / 'data' / '_runner_harness_input_marker.txt'
+            marker.write_text('retain this existing input\n', encoding='utf-8')
+            public = source / 'public'
+            (public / 'assets').mkdir(parents=True)
+            (public / 'index.html').write_text('STALE_MAIN_PUBLIC\n', encoding='utf-8')
+            (public / 'assets' / 'stale.js').write_text('stale\n', encoding='utf-8')
+            before = {name: checksum_tree(source / name) for name in ('data', 'public', 'docs')}
+            capture = root / 'suite-root.txt'
+            env = os.environ.copy()
+            env.update({'HARNESS_ROOT': str(source), 'HARNESS_CAPTURE': str(capture),
+                        'XINZHI_TEST_LOG_DIR': str(root / 'test-logs')})
+            result = source_shell('''
+runner_root() { printf '%s\\n' "$HARNESS_ROOT"; }
+initialize_environment() { :; }
+print_environment() { :; }
+run_suite() {
+  local suite_root="$1" app_ref
+  [[ "$suite_root" != "$HARNESS_ROOT" ]] || exit 41
+  [[ -f "$suite_root/data/_runner_harness_input_marker.txt" ]] || exit 42
+  [[ -f "$suite_root/public/index.html" ]] || exit 43
+  ! grep -q STALE_MAIN_PUBLIC "$suite_root/public/index.html" || exit 44
+  app_ref="$(grep -oE 'assets/app\\.[a-f0-9]+\\.js' "$suite_root/public/index.html" | head -n 1)"
+  [[ -n "$app_ref" && -f "$suite_root/public/$app_ref" ]] || exit 45
+  printf '%s\\n%s\\n' "$suite_root" "$app_ref" > "$HARNESS_CAPTURE"
+}
+main
+''', env=env)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            selected_root, app_ref = capture.read_text(encoding='utf-8').splitlines()
+            self.assertNotEqual(Path(selected_root), source)
+            self.assertRegex(app_ref, r'^assets/app\.[a-f0-9]+\.js$')
+            self.assertEqual(before, {name: checksum_tree(source / name) for name in ('data', 'public', 'docs')})
+
+    def test_auto_browser_setup_failure_never_runs_suite_on_old_public(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            copied = source_shell(f'copy_source_tree {shlex.quote(str(ROOT))} {shlex.quote(str(source))}')
+            self.assertEqual(copied.returncode, 0, copied.stdout + copied.stderr)
+            (source / 'data').mkdir()
+            (source / 'data' / 'library.json').write_text('{invalid json\n', encoding='utf-8')
+            (source / 'public' / 'assets').mkdir(parents=True)
+            (source / 'public' / 'index.html').write_text('STALE_MAIN_PUBLIC\n', encoding='utf-8')
+            before = {name: checksum_tree(source / name) for name in ('data', 'public', 'docs')}
+            capture = root / 'suite-ran.txt'
+            env = os.environ.copy()
+            env.update({'HARNESS_ROOT': str(source), 'HARNESS_CAPTURE': str(capture),
+                        'XINZHI_TEST_LOG_DIR': str(root / 'test-logs')})
+            result = source_shell('''
+runner_root() { printf '%s\\n' "$HARNESS_ROOT"; }
+initialize_environment() { :; }
+print_environment() { :; }
+run_suite() { printf '%s\\n' "$1" > "$HARNESS_CAPTURE"; }
+main
+''', env=env)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn('offline-fixture', result.stdout)
+            self.assertIn('test suite not launched: isolated auto fixture preparation failed', result.stderr)
+            self.assertFalse(capture.exists())
+            self.assertIn('FileNotFoundError', (root / 'test-logs' / 'offline-fixture.log').read_text())
+            self.assertEqual(before, {name: checksum_tree(source / name) for name in ('data', 'public', 'docs')})
+
+    def test_existing_data_copy_rejects_symlinks_and_non_regular_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = root / 'data'
+            data.mkdir()
+            marker = data / 'regular.txt'
+            marker.write_text('regular\n', encoding='utf-8')
+            symlink = data / 'linked.txt'
+            symlink.symlink_to(marker)
+            symlink_result = source_shell(
+                f'copy_existing_data {shlex.quote(str(data))} {shlex.quote(str(root / "symlink-copy"))}'
+            )
+            self.assertNotEqual(symlink_result.returncode, 0)
+            self.assertIn('contains a symlink', symlink_result.stderr)
+            self.assertFalse((root / 'symlink-copy').exists())
+            symlink.unlink()
+
+            fifo = data / 'pipe'
+            os.mkfifo(fifo)
+            fifo_result = source_shell(
+                f'copy_existing_data {shlex.quote(str(data))} {shlex.quote(str(root / "fifo-copy"))}'
+            )
+            self.assertNotEqual(fifo_result.returncode, 0)
+            self.assertIn('contains a non-regular file', fifo_result.stderr)
+            self.assertFalse((root / 'fifo-copy').exists())
+
+    def test_existing_data_copy_preserves_empty_directories_and_rejects_root_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            empty_data = root / 'empty-data'
+            (empty_data / 'nested' / 'still-empty').mkdir(parents=True)
+            destination = root / 'empty-copy'
+            copied = source_shell(
+                f'copy_existing_data {shlex.quote(str(empty_data))} {shlex.quote(str(destination))}'
+            )
+            self.assertEqual(copied.returncode, 0, copied.stdout + copied.stderr)
+            self.assertTrue(destination.is_dir())
+            self.assertTrue((destination / 'nested' / 'still-empty').is_dir())
+            self.assertEqual({path.relative_to(destination).as_posix() for path in destination.rglob('*')},
+                             {'nested', 'nested/still-empty'})
+
+            external_data = root / 'external-data'
+            external_data.mkdir()
+            (external_data / 'marker.txt').write_text('external\n', encoding='utf-8')
+            data_symlink = root / 'data-symlink'
+            data_symlink.symlink_to(external_data, target_is_directory=True)
+            rejected_destination = root / 'rejected-copy'
+            rejected = source_shell(
+                f'copy_existing_data {shlex.quote(str(data_symlink))} '
+                f'{shlex.quote(str(rejected_destination))}'
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn('must be a real directory', rejected.stderr)
+            self.assertFalse(rejected_destination.exists())
+
+    def test_auto_fixture_does_not_replace_preexisting_public_when_data_is_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            copied = source_shell(f'copy_source_tree {shlex.quote(str(ROOT))} {shlex.quote(str(source))}')
+            self.assertEqual(copied.returncode, 0, copied.stdout + copied.stderr)
+            initialized = subprocess.run(['git', '-C', str(source), 'init', '--quiet'],
+                                         text=True, capture_output=True)
+            self.assertEqual(initialized.returncode, 0, initialized.stdout + initialized.stderr)
+            public = source / 'public'
+            public.mkdir()
+            (public / 'index.html').write_text('preexisting public\n', encoding='utf-8')
+            before_public = checksum_tree(public)
+            before_docs = checksum_tree(source / 'docs')
+            capture = root / 'suite-root.txt'
+            env = os.environ.copy()
+            env.update({'HARNESS_ROOT': str(source), 'HARNESS_CAPTURE': str(capture),
+                        'XINZHI_TEST_LOG_DIR': str(root / 'test-logs')})
+            result = source_shell('''
+runner_root() { printf '%s\\n' "$HARNESS_ROOT"; }
+initialize_environment() { :; }
+print_environment() { :; }
+run_suite() {
+  local suite_root="$1" app_ref
+  [[ "$suite_root" != "$HARNESS_ROOT" ]] || exit 51
+  [[ -f "$suite_root/data/library.json" && -f "$suite_root/public/index.html" ]] || exit 52
+  [[ "$(<"$HARNESS_ROOT/public/index.html")" = 'preexisting public' ]] || exit 53
+  app_ref="$(grep -oE 'assets/app\\.[a-f0-9]+\\.js' "$suite_root/public/index.html" | head -n 1)"
+  [[ -n "$app_ref" && -f "$suite_root/public/$app_ref" ]] || exit 54
+  printf '%s\\n%s\\n' "$suite_root" "$app_ref" > "$HARNESS_CAPTURE"
+}
+main
+''', env=env)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            selected_root, app_ref = capture.read_text(encoding='utf-8').splitlines()
+            self.assertNotEqual(Path(selected_root), source)
+            self.assertRegex(app_ref, r'^assets/app\.[a-f0-9]+\.js$')
+            self.assertTrue((source / 'data' / 'library.json').is_file())
+            self.assertEqual(before_public, checksum_tree(public))
+            self.assertEqual(before_docs, checksum_tree(source / 'docs'))
+
+    def test_auto_no_browser_keeps_existing_data_and_public_as_is(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            (source / 'data').mkdir()
+            (source / 'data' / 'marker.txt').write_text('data marker\n', encoding='utf-8')
+            (source / 'public' / 'assets').mkdir(parents=True)
+            (source / 'public' / 'index.html').write_text('existing public\n', encoding='utf-8')
+            before = {name: checksum_tree(source / name) for name in ('data', 'public')}
+            capture = root / 'suite-root.txt'
+            env = os.environ.copy()
+            env.update({'HARNESS_ROOT': str(source), 'HARNESS_CAPTURE': str(capture),
+                        'XINZHI_TEST_LOG_DIR': str(root / 'test-logs')})
+            result = source_shell('''
+runner_root() { printf '%s\\n' "$HARNESS_ROOT"; }
+initialize_environment() { :; }
+print_environment() { :; }
+run_suite() { printf '%s\\n' "$1" > "$HARNESS_CAPTURE"; }
+main --no-browser
+''', env=env)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(capture.read_text(encoding='utf-8').strip(), str(source))
+            self.assertEqual(before, {name: checksum_tree(source / name) for name in ('data', 'public')})
 
     def test_fixture_copy_builds_in_isolation_without_changing_existing_files(self):
         with tempfile.TemporaryDirectory() as directory:
