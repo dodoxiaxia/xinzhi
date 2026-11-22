@@ -2,7 +2,7 @@
 # Run the offline test suite; local setup and fixture options are documented in
 # docs/testing-local.md.
 #
-#   scripts/run_all_tests.sh                      # auto fixture when data/ is absent
+#   scripts/run_all_tests.sh                      # browser AUTO builds in an isolated current-source copy
 #   scripts/run_all_tests.sh --fixture             # fresh isolated source copy
 #   scripts/run_all_tests.sh --no-fixture          # use existing files as-is
 #   scripts/run_all_tests.sh --no-browser          # skip browser-driven entries
@@ -24,6 +24,8 @@ usage() {
 Usage: bash scripts/run_all_tests.sh [--fixture | --no-fixture] [--no-browser]
        bash scripts/run_all_tests.sh --print-env
 
+  no options     browser-enabled AUTO builds and runs an isolated current-source copy;
+                 if data/ is absent, the copy uses the offline fixture
   --fixture      build and run in a fresh source copy; leave current files untouched
   --no-fixture   never generate fixture files; use existing data/ and public/ as-is
   --no-browser   skip browser-driven tests (non-browser tests still run)
@@ -334,22 +336,114 @@ root.mkdir(parents=True, exist_ok=True)
 PY
 }
 
-build_offline_fixture() {
-  local root="$1" guard_dir="$2" pythonpath node_options
-  if [[ -e "$root/data" || -L "$root/data" || -e "$root/public" || -L "$root/public" ]]; then
-    echo 'isolated fixture root unexpectedly contains data/ or public/' >&2
-    return 1
-  fi
+build_offline_outputs() {
+  local root="$1" guard_dir="$2" include_fixture_data="$3" pythonpath node_options
   write_offline_guards "$guard_dir" || return 1
   pythonpath="$guard_dir:$root/scripts${PYTHONPATH:+:$PYTHONPATH}"
   node_options="${NODE_OPTIONS:+$NODE_OPTIONS }--require=$guard_dir/offline-network-guard.cjs"
   (
     cd "$root" || exit 1
-    PYTHONPATH="$pythonpath" PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS="$node_options" \
-      python3 scripts/fixtures/build_browser_data.py "$root/data" &&
+    if [[ "$include_fixture_data" = yes ]]; then
+      PYTHONPATH="$pythonpath" PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS="$node_options" \
+        python3 scripts/fixtures/build_browser_data.py "$root/data" || exit $?
+    fi
     PYTHONPATH="$pythonpath" PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS="$node_options" \
       python3 scripts/build_public.py
   )
+}
+
+build_offline_fixture() {
+  local root="$1" guard_dir="$2"
+  if [[ -e "$root/data" || -L "$root/data" || -e "$root/public" || -L "$root/public" ]]; then
+    echo 'isolated fixture root unexpectedly contains data/ or public/' >&2
+    return 1
+  fi
+  build_offline_outputs "$root" "$guard_dir" yes
+}
+
+copy_existing_data() {
+  python3 - "$1" "$2" <<'PY'
+import os
+from pathlib import Path
+import shutil
+import stat
+import sys
+
+source, destination = map(Path, sys.argv[1:])
+try:
+    source_mode = source.lstat().st_mode
+except OSError as error:
+    raise SystemExit(f'cannot inspect existing data path {source}: {error}')
+if not stat.S_ISDIR(source_mode):
+    raise SystemExit(f'existing data path must be a real directory, not a symlink or non-directory: {source}')
+if destination.exists() or destination.is_symlink():
+    raise SystemExit(f'isolated data destination already exists: {destination}')
+
+files = []
+directories = []
+pending = [source]
+while pending:
+    directory = pending.pop()
+    try:
+        with os.scandir(directory) as scan:
+            entries = sorted(scan, key=lambda entry: entry.name)
+    except OSError as error:
+        raise SystemExit(f'cannot inspect existing data directory {directory}: {error}')
+    for entry in entries:
+        path = Path(entry.path)
+        try:
+            mode = entry.stat(follow_symlinks=False).st_mode
+        except OSError as error:
+            raise SystemExit(f'cannot inspect existing data entry {path}: {error}')
+        if stat.S_ISLNK(mode):
+            raise SystemExit(f'existing data contains a symlink; refusing to follow it: {path}')
+        if stat.S_ISDIR(mode):
+            directories.append(path)
+            pending.append(path)
+        elif stat.S_ISREG(mode):
+            files.append(path)
+        else:
+            raise SystemExit(f'existing data contains a non-regular file: {path}')
+
+try:
+    destination.mkdir(parents=True)
+except OSError as error:
+    raise SystemExit(f'cannot create isolated data destination {destination}: {error}')
+for path in sorted(directories, key=lambda entry: entry.relative_to(source).as_posix()):
+    target = destination / path.relative_to(source)
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise SystemExit(f'cannot create isolated data directory {target}: {error}')
+for path in sorted(files, key=lambda entry: entry.relative_to(source).as_posix()):
+    target = destination / path.relative_to(source)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copy2(path, target)
+    except OSError as error:
+        raise SystemExit(f'cannot copy existing data entry {path}: {error}')
+print(f'copied {len(files)} regular files from existing data into isolated workspace')
+PY
+}
+
+build_public_from_existing_data() {
+  local root="$1" guard_dir="$2"
+  if [[ ! -d "$root/data" || -L "$root/data" ]]; then
+    echo 'isolated existing-data workspace is missing a real data/ directory' >&2
+    return 1
+  fi
+  if [[ -e "$root/public" || -L "$root/public" ]]; then
+    echo 'isolated existing-data workspace unexpectedly contains public/' >&2
+    return 1
+  fi
+  build_offline_outputs "$root" "$guard_dir" no
+}
+
+prepare_auto_browser_workspace() {
+  local root="$1" destination="$2" guard_dir="$3"
+  copy_source_tree "$root" "$destination" || return 1
+  copy_existing_data "$root/data" "$destination/data" || return 1
+  build_public_from_existing_data "$destination" "$guard_dir"
 }
 
 prepare_fixture_workspace() {
@@ -575,20 +669,41 @@ main() {
       run_suite "$root"
       ;;
     auto)
-      if [[ -e "$root/data" || -L "$root/data" ]]; then
-        prepare_selected_fixture "$root" '' '' || return 2
-      else
-        SCRATCH_DIR="$(mktemp -d "${TMPDIR:-/tmp}/xinzhi-test-fixture.XXXXXX")" || return 2
+      if [[ "$BROWSER_ENABLED" = 1 ]]; then
+        SCRATCH_DIR="$(mktemp -d "${TMPDIR:-/tmp}/xinzhi-test-auto.XXXXXX")" || return 2
         trap cleanup_scratch EXIT
-        run 'offline-fixture' prepare_selected_fixture "$root" "$SCRATCH_DIR/source" "$SCRATCH_DIR/guard"
-        fixture_status="$LAST_RUN_STATUS"
-        if [[ "$fixture_status" = 0 && "${AUTO_FIXTURE_RESULT:-}" = built ]]; then
-          echo 'offline fixture built (no state data)'
-        elif [[ "$fixture_status" != 0 ]]; then
-          echo 'offline fixture setup failed; dependent browser checks will not be launched' >&2
+        if [[ -e "$root/data" || -L "$root/data" ]]; then
+          run 'offline-fixture' prepare_auto_browser_workspace "$root" "$SCRATCH_DIR/source" "$SCRATCH_DIR/guard"
+        else
+          run 'offline-fixture' prepare_selected_fixture "$root" "$SCRATCH_DIR/source" "$SCRATCH_DIR/guard"
         fi
+        fixture_status="$LAST_RUN_STATUS"
+        if [[ "$fixture_status" = 0 && -f "$SCRATCH_DIR/source/public/index.html" && -d "$SCRATCH_DIR/source/public/assets" ]]; then
+          run_suite "$SCRATCH_DIR/source"
+        else
+          if [[ "$fixture_status" = 0 ]]; then
+            FAILED+=(offline-fixture-output)
+            echo 'isolated auto fixture is missing public output; refusing to use the original public/' >&2
+          else
+            echo 'test suite not launched: isolated auto fixture preparation failed' >&2
+          fi
+        fi
+      else
+        if [[ -e "$root/data" || -L "$root/data" ]]; then
+          prepare_selected_fixture "$root" '' '' || return 2
+        else
+          SCRATCH_DIR="$(mktemp -d "${TMPDIR:-/tmp}/xinzhi-test-fixture.XXXXXX")" || return 2
+          trap cleanup_scratch EXIT
+          run 'offline-fixture' prepare_selected_fixture "$root" "$SCRATCH_DIR/source" "$SCRATCH_DIR/guard"
+          fixture_status="$LAST_RUN_STATUS"
+          if [[ "$fixture_status" = 0 && "${AUTO_FIXTURE_RESULT:-}" = built ]]; then
+            echo 'offline fixture built (no state data)'
+          elif [[ "$fixture_status" != 0 ]]; then
+            echo 'offline fixture setup failed; dependent browser checks will not be launched' >&2
+          fi
+        fi
+        run_suite "$root"
       fi
-      run_suite "$root"
       ;;
   esac
   print_summary

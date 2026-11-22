@@ -115,7 +115,13 @@
     btn.addEventListener('click', () => {
       if (btn.dataset.mode === state.mode) return switchMode(btn.dataset.mode);
       // A new entry per tab, so the phone Back button returns to the previous tab.
-      try { history.pushState(null, '', location.href); } catch (e) { /* file:// or sandboxed */ }
+      try {
+        invalidateHistoryScrollRestore();
+        const scrollY = Math.round(window.scrollY);
+        history.replaceState(historyStateWithPage({ scrollY }), '', location.href);
+        const freshState = { page: 1, scrollY: 0, journalTierLegacy: !!state.journalTierLegacy };
+        history.pushState(freshState, '', location.href);
+      } catch (e) { /* file:// or sandboxed */ }
       switchMode(btn.dataset.mode);
       if (DEFERRED) prioritizeParts();
     });
@@ -729,14 +735,27 @@
   $('#deepReaderClose')?.addEventListener('click', () => closeDeepReading());
   ['#deepReaderPrev', '#deepReaderNext'].forEach(sel => $(sel)?.addEventListener('click', e => { const id = e.currentTarget.dataset.readingId; if (id) openDeepReading(id); }));
   $('#deepReaderBody')?.addEventListener('scroll', () => requestAnimationFrame(syncDeepReaderToc), { passive: true });
+  let historyScrollRestoreGeneration = 0;
+  function invalidateHistoryScrollRestore() {
+    historyScrollRestoreGeneration += 1;
+  }
+  window.invalidateHistoryScrollRestore = invalidateHistoryScrollRestore;
+  window.addEventListener('wheel', invalidateHistoryScrollRestore, { passive: true });
+  window.addEventListener('touchstart', invalidateHistoryScrollRestore, { passive: true });
+  window.addEventListener('pointerdown', invalidateHistoryScrollRestore, { passive: true });
+  document.addEventListener('keydown', invalidateHistoryScrollRestore, true);
   window.addEventListener('popstate', () => {
+    const scrollRestoreGeneration = ++historyScrollRestoreGeneration;
     const entry = history.state || {};
+    const historyPage = validHistoryPage(entry.page);
+    const historyScrollTop = Number.isSafeInteger(entry.scrollY) && entry.scrollY >= 0 ? entry.scrollY : null;
     const next = readStateFromUrl();
     const urlChanged = URL_STATE_KEYS.some(k => Array.isArray(state[k])
       ? JSON.stringify(state[k]) !== JSON.stringify(next[k])
       : state[k] !== next[k]);
     const legacyChanged = typeof entry.journalTierLegacy === 'boolean'
       && state.journalTierLegacy !== entry.journalTierLegacy;
+    const pageChanged = state.page !== historyPage;
     const stateChanged = urlChanged || legacyChanged;
     clearTimeout(searchTimer);
     viewInUrl = next.viewInUrl;
@@ -764,10 +783,22 @@
       const focus = document.activeElement;
       const drawerBody = $('#drawerBody');
       const drawerScrollTop = drawerBody?.scrollTop;
-      switchMode(next.mode, true);
+      switchMode(next.mode, true, true);
+      refreshReadingDrawerOpener();
       if (focus?.isConnected && document.activeElement !== focus) focus.focus({ preventScroll: true });
       if (drawerBody && drawerScrollTop !== undefined) drawerBody.scrollTop = drawerScrollTop;
       if (DEFERRED) prioritizeParts();
+    } else if (pageChanged) {
+      state.page = historyPage;
+      renderStream();
+      refreshReadingDrawerOpener();
+    }
+    if (historyScrollTop !== null) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (scrollRestoreGeneration === historyScrollRestoreGeneration) {
+          window.scrollTo({ top: historyScrollTop, behavior: 'instant' });
+        }
+      }));
     }
   });
 

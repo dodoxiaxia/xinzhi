@@ -111,11 +111,12 @@
   }
 
   // Switch App Mode (Candidates, Curated, Library, Weekly, Sources)
-  function switchMode(newMode, keepRange) {
+  function switchMode(newMode, keepRange, restoreHistoryPage = false) {
+    const historyPage = restoreHistoryPage ? validHistoryPage(history.state?.page) : 1;
     if (newMode !== 'weekly') closeDeepReading({ fromHistory: true });
     if (!keepRange && newMode !== state.mode) state.range = defaultRange(newMode);
     state.mode = newMode;
-    state.page = 1;
+    state.page = historyPage;
     const search = $('#globalSearch');
     if (search) {
       search.placeholder = newMode === 'sources' ? '搜索信源名称、地址或状态…' : newMode === 'weekly' ? '搜索当前榜题名、作者、DOI…' : '搜索当前栏目题名、DOI…';
@@ -171,5 +172,4 @@
       renderStream();
     }
   }
-
 
