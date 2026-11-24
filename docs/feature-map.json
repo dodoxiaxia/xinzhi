@@ -116,7 +116,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": false,
-          "notes": "重复卡片检查首张；随数据更新"
+          "notes": "重复卡片检查首张；随数据更新；列表题名最多两行省略，不设单独展开控件"
         },
         {
           "id": "curated-read",
@@ -132,7 +132,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": true,
-          "notes": ""
+          "notes": "打开阅读面板查看完整题名"
         },
         {
           "id": "curated-star",
@@ -413,7 +413,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": true,
-          "notes": ""
+          "notes": "周榜标题最多两行省略，打开阅读面板查看完整题名"
         },
         {
           "id": "weekly-cards",
@@ -693,7 +693,7 @@
             }
           ],
           "stable": true,
-          "notes": ""
+          "notes": "完整显示题名并允许换行"
         },
         {
           "id": "deepreaderbody-small",
@@ -877,7 +877,7 @@
             }
           ],
           "stable": true,
-          "notes": ""
+          "notes": "完整显示题名并允许换行"
         },
         {
           "id": "deepreaderbody-wide",
@@ -1328,7 +1328,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": false,
-          "notes": "重复卡片检查首张；随数据更新"
+          "notes": "重复卡片检查首张；随数据更新；列表题名最多两行省略，不设单独展开控件"
         },
         {
           "id": "candidates-read",
@@ -1344,7 +1344,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": true,
-          "notes": ""
+          "notes": "打开阅读面板查看完整题名"
         },
         {
           "id": "candidates-star",
@@ -2070,7 +2070,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": false,
-          "notes": "重复卡片检查首张；随数据更新"
+          "notes": "重复卡片检查首张；随数据更新；列表题名最多两行省略，不设单独展开控件"
         },
         {
           "id": "library-read",
@@ -2086,7 +2086,7 @@
           "condition": "进入本栏目",
           "setup": [],
           "stable": true,
-          "notes": ""
+          "notes": "打开阅读面板查看完整题名"
         },
         {
           "id": "library-star",

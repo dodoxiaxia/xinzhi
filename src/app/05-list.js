@@ -77,38 +77,6 @@
     `;
   }
 
-  // Short subtitles stay plain text. Recheck wrapping after font or column size changes.
-  if (typeof ResizeObserver === 'function' && window.customElements) {
-    const titleSizes = new ResizeObserver(entries => {
-      for (const { target: text } of entries) {
-        const title = text.parentElement;
-        if (!title || !title.isConnected) continue;
-        const needsToggle = text.scrollHeight > 2 * parseFloat(getComputedStyle(text).lineHeight) + 1;
-        const button = title.querySelector('button');
-        if (!needsToggle) {
-          button?.remove();
-          title.removeAttribute('data-collapsed');
-        } else if (!button) {
-          const toggle = document.createElement('button');
-          toggle.type = 'button';
-          toggle.textContent = '展开英文原题';
-          toggle.setAttribute('aria-expanded', 'false');
-          title.setAttribute('data-collapsed', '');
-          toggle.onclick = () => {
-            const collapsed = title.toggleAttribute('data-collapsed');
-            toggle.setAttribute('aria-expanded', String(!collapsed));
-            toggle.textContent = collapsed ? '展开英文原题' : '收起英文原题';
-          };
-          title.append(toggle);
-        }
-      }
-    });
-    customElements.define('english-title', class extends HTMLElement {
-      connectedCallback() { titleSizes.observe(this.firstElementChild); }
-      disconnectedCallback() { titleSizes.unobserve(this.firstElementChild); }
-    });
-  }
-
   // Main Render Stream
   function applyDoiSearchLayout(doi) {
     const special = state.mode === 'weekly' || state.mode === 'sources';

@@ -29,6 +29,9 @@ ABSTRACT = [
         ('Conclusions', 'The findings support further evaluation of the intervention in community settings. '),
     )
 ]
+LONG_TITLE_EN = ('ReadingModeFixture: Pneumonia-associated cardiomyopathy ' + 'W' * 90
+                 + ' cardiovascular outcomes and follow-up in a multicenter clinical study ') * 2
+LONG_TITLE_ZH = '超长中文心血管临床研究标题与随访结局分析' * 6
 
 
 def paper(id_, date, title, **fields):
@@ -39,8 +42,7 @@ def paper(id_, date, title, **fields):
 
 
 PAPERS = [
-    paper(FIRST, '2026-03-12', 'ReadingModeFixture: Home monitoring and cardiovascular outcomes',
-          titleZh='家庭监测与心血管结局：多中心随机研究'),
+    paper(FIRST, '2026-03-12', LONG_TITLE_EN, titleZh=LONG_TITLE_ZH),
     paper(SECOND, '2026-03-11', 'ReadingModeFixture: Follow-up after a cardiovascular event'),
     paper(THIRD, '2026-03-10', 'ReadingModeFixture: Cardiovascular outcomes registry', abstractSections=[]),
     paper(RSS, '2026-03-09', 'ReadingModeFixture: A note from the journal feed', abstractSections=[],
@@ -67,6 +69,48 @@ def study():
             'generatedAt': '2026-03-15T08:00:00Z', 'caveat': '摘要信息有限',
             'papers': [{'key': 'doi:' + PAPERS[0]['doi'], 'title': PAPERS[0]['title'], 'status': 'available',
                         'abstract_source': 'PubMed', 'source_url': PAPERS[0]['url'], **fields}]}
+
+
+def assert_two_line_title(locator, expected):
+    expect(locator).to_be_visible()
+    expect(locator).to_have_text(expected)
+    metrics = locator.evaluate('''e => {
+        const style = getComputedStyle(e);
+        const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5;
+        return {clamp: style.webkitLineClamp, scrollWidth: e.scrollWidth, clientWidth: e.clientWidth,
+                height: e.clientHeight, lineHeight, documentWidth: document.documentElement.scrollWidth,
+                viewportWidth: document.documentElement.clientWidth};
+    }''')
+    assert metrics['clamp'] == '2' and metrics['scrollWidth'] <= metrics['clientWidth'] + 1
+    assert metrics['height'] <= metrics['lineHeight'] * 2 + 1, metrics
+    assert metrics['documentWidth'] <= metrics['viewportWidth'] + 1, metrics
+
+
+def assert_full_title_fits(page):
+    for selector, expected in (('.drawer-title-en', LONG_TITLE_EN), ('.drawer-title-zh', LONG_TITLE_ZH)):
+        title = page.locator('#drawerBody ' + selector)
+        expect(title).to_be_visible()
+        expect(title).to_have_text(expected)
+        metrics = title.evaluate('''e => {
+            const style = getComputedStyle(e);
+            return {text: e.textContent, wrap: style.overflowWrap, clamp: style.webkitLineClamp,
+                    scrollWidth: e.scrollWidth, clientWidth: e.clientWidth,
+                    documentWidth: document.documentElement.scrollWidth,
+                    viewportWidth: document.documentElement.clientWidth};
+        }''')
+        assert metrics['text'] == expected and metrics['wrap'] == 'anywhere' and metrics['clamp'] == 'none', metrics
+        assert metrics['scrollWidth'] <= metrics['clientWidth'] + 1, metrics
+        assert metrics['documentWidth'] <= metrics['viewportWidth'] + 1, metrics
+
+
+def assert_list_titles(page, width):
+    assert_two_line_title(page.locator('#articlesStream .article-title .title-open').first, LONG_TITLE_ZH)
+    subtitle = page.locator('#articlesStream .article-title-en').first
+    if width == 390:
+        expect(subtitle).to_be_hidden()
+    else:
+        assert_two_line_title(subtitle, LONG_TITLE_EN)
+        expect(subtitle.get_by_role('button')).to_have_count(0)
 
 
 class StaticHandler(SimpleHTTPRequestHandler):
@@ -140,7 +184,7 @@ def verify_viewport(browser, base, width, height, output):
 
     def open_toc(key):
         toc = page.locator(f'[data-reading-region="{key}"]')
-        if mobile and not toc.is_visible():
+        if not toc.is_visible():
             page.locator('#readingTocToggle').click()
         toc.click()
 
@@ -150,6 +194,8 @@ def verify_viewport(browser, base, width, height, output):
         page.goto(base + LIST_QUERY)
         opener = page.locator(f'{OPENER}[data-paper-id="{FIRST}"]').first
         expect(page.locator(OPENER).first).to_have_attribute('data-paper-id', FIRST)
+        assert_list_titles(page, width)
+        shot('list')
         opener.click()
         expand = page.locator('#drawerExpandBtn')
         body = page.locator('#drawerBody')
@@ -157,6 +203,7 @@ def verify_viewport(browser, base, width, height, output):
         expect(page.locator(READING)).to_have_count(0)
         assert 'paper' not in parse_qs(urlsplit(page.url).query)
         expect(page.locator('#drawerBody .study-fields')).to_be_attached()
+        assert_full_title_fits(page)
         shot('drawer')
         page.locator('#drawerCloseBtn').click()
         expect(opener).to_be_focused()
@@ -169,6 +216,7 @@ def verify_viewport(browser, base, width, height, output):
         assert preceding_scroll > 0
         expand.click()
         expect(reading_paper(FIRST)).to_be_visible()
+        assert_full_title_fits(page)
         reading = page.get_by_role('dialog', name='阅读模式')
         expect(reading).to_have_attribute('aria-modal', 'true')
         back = page.get_by_role('button', name='返回阅读面板')
@@ -192,11 +240,13 @@ def verify_viewport(browser, base, width, height, output):
         expect(page.locator('#drawerExternalLink')).to_be_focused()
         page.keyboard.press('Tab')
         expect(back).to_be_focused()
-        if mobile:
+        if width <= 920:
             expect(page.locator('#readingTocNav')).to_be_hidden()
         else:
             expect(page.locator('#readingTocNav')).to_be_visible()
-            assert body.locator('[data-drawer-region="head"]').bounding_box()['width'] == 760
+            gutter = max(18, min(width * 0.04, 44))
+            expected_width = min(760, width - 2 * gutter)
+            assert abs(body.locator('[data-drawer-region="head"]').bounding_box()['width'] - expected_width) < 1
         page.evaluate('''() => {
             const body = document.querySelector('#drawerBody');
             const native = body.scrollTo.bind(body);
@@ -316,6 +366,13 @@ def verify_viewport(browser, base, width, height, output):
         page.goto(base + '?mode=weekly')
         expect(page.locator(board)).to_have_count(len(WEEKLY_PAPERS))
         assert page.locator(board).evaluate_all('(items) => items.map(item => item.dataset.paperId)') == [THIRD, FIRST, SECOND]
+        assert_two_line_title(page.locator(f'{board}[data-paper-id="{FIRST}"] .weekly-auto-title .title-open'),
+                              LONG_TITLE_ZH)
+        weekly_english = page.locator(f'{board}[data-paper-id="{FIRST}"] .weekly-auto-en')
+        if width == 390:
+            expect(weekly_english).to_be_hidden()
+        else:
+            assert_two_line_title(weekly_english, LONG_TITLE_EN)
         page.locator(f'{board}[data-paper-id="{THIRD}"] [data-action="open-drawer"]').click()
         expand.click()
         expect(position).to_have_text('第 1 / 共 3 篇')
@@ -346,7 +403,7 @@ def verify_viewport(browser, base, width, height, output):
         page.goto(base + weekly + '&paper=' + FIRST)
         expect(reading_paper(FIRST)).to_be_visible()
         expect(page.get_by_role('button', name='返回列表')).to_be_focused()
-        if mobile:
+        if width <= 920:
             expect(page.locator('#readingNeighbors')).to_be_hidden()
         else:
             expect(position).to_have_text('第 2 / 共 3 篇')
@@ -585,7 +642,7 @@ def main():
                 for width, height in [(390, 844), (884, 884), (1280, 800)]:
                     verify_history_case(browser, base, width, height, args.history_case)
             else:
-                for width, height in [(1280, 800), (390, 844)]:
+                for width, height in [(390, 844), (768, 800), (1280, 800)]:
                     verify_viewport(browser, base, width, height, args.evidence)
                 for case in ('bottom', 'focus'):
                     for width, height in [(390, 844), (884, 884), (1280, 800)]:
