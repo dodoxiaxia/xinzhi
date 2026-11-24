@@ -180,6 +180,10 @@ def fixtures(broken=()):
     if '213' in broken:
         readings['wanted'] = []
     paper_rows = [{'id': f'p{i}', 'title': f'Public title {i}', 'tags': []} for i in range(1, 4)]
+    if 'shortlist-single' in broken:
+        paper_rows = paper_rows[:1]
+    elif 'shortlist-empty' in broken:
+        paper_rows = []
     feeds = {'updatedAt': timestamp, 'items': paper_rows}
     radar = {'updatedAt': radar_stamp, 'rows': [], 'tag': ['#预防/血脂']}
     archive = {**radar, 'rows': [['123456789', '', day, 0, 0, 0, 0,
@@ -376,6 +380,15 @@ class SmokeTests(unittest.TestCase):
                 code, data = invoke(base, '--only', pr)
                 self.assertEqual(code, 1)
                 self.assert_report(data, {pr: 'FAIL'})
+
+        for fault, count in (('shortlist-single', 1), ('shortlist-empty', 0)):
+            with self.subTest(fault=fault), serve((fault,)) as (base, _):
+                code, data = invoke(base, '--only', '220')
+                self.assertEqual(code, 0)
+                self.assert_report(data, {'220': 'WAIT'})
+                evidence = data['results'][0]['evidence']
+                self.assertIn(f'{count} distinct public paper IDs', evidence)
+                self.assertIn('waiting for curated data refresh', evidence)
 
     def test_text_artifact_classes(self):
         self.assertEqual(smoke.clean_text(['正常 café', 'ablation/n'], 'fixture'), 2)
