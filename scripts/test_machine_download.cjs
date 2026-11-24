@@ -219,6 +219,97 @@ async function review(h, body) {
   const auth = await token(h, reviewUrl, 'muse-review.yml');
   return h.context.worker.fetch(new Request(reviewUrl, {method:'POST',headers:{authorization:'Bearer ' + auth,'content-type':'application/json'},body:JSON.stringify(body)}), h.env);
 }
+// A record registered while the DOI lookup failed keeps the shortened RSS title (shape of JAMA Netw Open 2026.45071: RSS
+// "Medicare and Cardiac Medications", Crossref and page 1 the full headline). Synthetic PDFs and a stubbed registry only.
+async function registryTitleRetry() {
+  const retryDoi = '10.1000/rss-short-title', shortTitle = 'Synthetic Medicare and Cardiac Medications';
+  const fullTitle = 'Synthetic Medicare Price Negotiation, Generic Availability, and Costs for Cardiac Medications';
+  const crossrefUrl = 'https://api.crossref.org/works/' + encodeURIComponent(retryDoi);
+  const registry = (registryTitle, extra = {}) => () => Response.json({message:{DOI:retryDoi,title:[registryTitle],'container-title':['Synthetic Journal'],...extra}});
+  const registryCalls = h => h.calls.filter(c => c.url.hostname === 'api.crossref.org' || c.url.hostname === 'api.datacite.org').map(c => c.url.href);
+  const seedShort = h => h.values.set('library:paper:' + retryDoi, JSON.stringify({version:1,paper:{id:'doi-' + hash(retryDoi).slice(0, 16),doi:retryDoi,title:shortTitle,journal:'',authors:[],date:'',datePrecision:'',dateBasis:'',ingestedAt:'2026-11-20T00:30:36.606Z',metadataStatus:'registration_title_only',fulltextStatus:'manual_needed'}}));
+  const rejected = async (response, reason) => {
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.error, 'machine_identity_mismatch');
+    assert.equal(body.reason, reason);
+    assert.equal(body.checks.title, '');
+    assert(!('titleSource' in body.checks));
+    return body;
+  };
+  const noTask = h => assert.equal(stored(h, 'library:muse-job:' + retryDoi), undefined);
+
+  // RSS short title + the right PDF: page 1 has the claimed DOI and the registry title, so the second pass is 'full'.
+  let h = await create({crossrefResponse:registry(fullTitle)});
+  seedShort(h);
+  const accepted = await upload(h, paperPdf(retryDoi, fullTitle), retryDoi);
+  assert.equal(accepted.status, 202);
+  assert.equal((await accepted.json()).task.identity, 'full');
+  assert.deepEqual(registryCalls(h), [crossrefUrl]);
+  const job = stored(h, 'library:muse-job:' + retryDoi);
+  assert.equal(job.identityLevel, 'full');
+  assert.equal(job.identityTitle, fullTitle);
+  assert.equal(job.identityTitleSource, 'crossref');
+  // The catalogue record is not rewritten; the verifier is handed the title the upload matched.
+  assert.equal(stored(h, 'library:paper:' + retryDoi).paper.title, shortTitle);
+  const claimed = (await (await review(h, {action:'claim'})).json()).task;
+  assert.equal(claimed.doi, retryDoi);
+  assert.equal(claimed.title, fullTitle);
+
+  // Without the second pass the same upload is the 409 seen in production.
+  const before = await create();
+  const original = await before.context.machineIdentity(new Uint8Array(paperPdf(retryDoi, fullTitle)), retryDoi, shortTitle, {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:true});
+  assert.equal(original.verdict, 'mismatch');
+  assert.equal(original.reason, 'title_not_found');
+  assert.equal(original.checks.doi, 'page');
+
+  // The claimed DOI is not on page 1 (here: only on page 2, like a news item whose DOI is in the footer of the last page):
+  // no registry lookup and the short title still fails.
+  h = await create({crossrefResponse:registry(fullTitle)});
+  seedShort(h);
+  await rejected(await upload(h, pdfPages([fullTitle + ' synthetic news body', 'synthetic footer ' + retryDoi]), retryDoi), 'identity_mismatch');
+  assert.deepEqual(registryCalls(h), []);
+  noTask(h);
+  h = await create({crossrefResponse:registry(fullTitle)});
+  seedShort(h);
+  await rejected(await upload(h, pdfPages(['10.1000/other-paper ' + fullTitle]), retryDoi), 'identity_mismatch');
+  assert.deepEqual(registryCalls(h), []);
+  noTask(h);
+
+  // The registry title is not on the page either: still a mismatch after one lookup.
+  h = await create({crossrefResponse:registry('Synthetic unrelated registry headline about tides and moons')});
+  seedShort(h);
+  const both = await rejected(await upload(h, paperPdf(retryDoi, fullTitle), retryDoi), 'title_not_found');
+  assert.equal(both.checks.doi, 'page');
+  assert.deepEqual(registryCalls(h), [crossrefUrl]);
+  noTask(h);
+
+  // A failed lookup (server error, network error, a record for another DOI, no usable title) keeps the original mismatch.
+  for (const [label, response] of [
+    ['503', () => new Response(null, {status:503})],
+    ['network', () => { throw new TypeError('synthetic network failure'); }],
+    ['other doi', () => Response.json({message:{DOI:'10.1000/other-paper',title:[fullTitle]}})],
+    ['empty title', () => Response.json({message:{DOI:retryDoi,title:['']}})]
+  ]) {
+    h = await create({crossrefResponse:response});
+    seedShort(h);
+    const failed = await rejected(await upload(h, paperPdf(retryDoi, fullTitle), retryDoi), 'title_not_found');
+    assert.equal(failed.checks.doi, 'page', label);
+    assert.deepEqual(registryCalls(h), [crossrefUrl], label);
+    noTask(h);
+  }
+
+  // A catalogue title that already matches never triggers the lookup.
+  h = await create({crossrefResponse:registry(fullTitle)});
+  seedShort(h);
+  const direct = await upload(h, paperPdf(retryDoi, shortTitle), retryDoi);
+  assert.equal(direct.status, 202);
+  assert.deepEqual(registryCalls(h), []);
+  const directJob = stored(h, 'library:muse-job:' + retryDoi);
+  assert.equal(directJob.identityTitle, undefined);
+  assert.equal(directJob.identityTitleSource, undefined);
+  assert.equal((await (await review(h, {action:'claim'})).json()).task.title, shortTitle);
+}
 (async () => {
   for (const secret of [dsh, fallback, reader, revoked, unknown, museKey]) assert(/^[A-Za-z0-9_-]{32,128}$/.test(secret));
 
@@ -2423,6 +2514,7 @@ async function review(h, body) {
   }
 
   await registryUploads();
+  await registryTitleRetry();
   console.log('machine download tests passed');
   await require('./test_machine_register.cjs').run();
   await require('./test_library_metadata_backfill.cjs').run();

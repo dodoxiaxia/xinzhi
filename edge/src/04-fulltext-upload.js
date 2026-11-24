@@ -230,6 +230,11 @@ async function handleMuseUpload(request, env) {
     return json({ok:true,job:musePublicJob(verifying),verified:false,archive:libraryArchiveStatus()});
   } catch (error) { return museError(error); }
 }
+// A machine upload that only matched through the DOI registry title (machineRegistryTitleRetry) is verified against that
+// same title; every other task keeps the catalogue title.
+function museReviewTitle(job, paper) {
+  return ['crossref','datacite'].includes(job.identityTitleSource) && libraryText(job.identityTitle) ? libraryText(job.identityTitle) : paper.title;
+}
 async function handleMuseReview(request, env) {
   try {
     if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'muse_bad_request',protocolVersion:3},405);
@@ -270,7 +275,7 @@ async function handleMuseReview(request, env) {
       await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
       const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
       if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
-      return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
+      return json({ok:true,task:{taskId:job.id,doi:job.doi,title:museReviewTitle(job,paper),sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
     }
     if (input.action === 'claim') {
       if (Object.keys(input).length !== 1) libraryFail('muse_bad_request',400);
@@ -286,7 +291,7 @@ async function handleMuseReview(request, env) {
         const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
         if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
         const release = await museReleaseProof(env,job);
-        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId,...(release ? {release} : {})}});
+        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:museReviewTitle(job,paper),sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId,...(release ? {release} : {})}});
       }
       return json({ok:true,task:null});
     }
