@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <title>"Cardiovascular diabetology"[Journal]</title>
+    <link>https://pubmed.ncbi.nlm.nih.gov/</link>
+    <description>PubMed RSS fixture for publication date regression</description>
+    <item>
+      <title>Glycemic risk stratification in older adults with heart failure: the prognostic role of HbA1c in an aging society</title>
+      <link>https://pubmed.ncbi.nlm.nih.gov/43073955/?utm_source=Other&amp;utm_medium=rss&amp;ff=20261124191905</link>
+      <description>CONCLUSIONS: Among adults aged &gt;=80 years with HF, HbA1c retained clinically meaningful prognostic value only at higher levels.</description>
+      <content:encoded>&lt;div&gt;&lt;p style="color: #4aa564;"&gt;&lt;b&gt;Cardiovasc Diabetol&lt;/b&gt;. 2026 Aug 28;25(1):343. doi: 10.1186/s12933-026-03344-4.&lt;/p&gt;&lt;p&gt;&lt;b&gt;ABSTRACT&lt;/b&gt;&lt;/p&gt;&lt;p&gt;BACKGROUND: Glycated haemoglobin (HbA1c) is central to diabetes mellitus management in heart failure.&lt;/p&gt;&lt;p&gt;PMID:43073955 | PMC:PMC13791621 | DOI:10.1186/s12933-026-03344-4&lt;/p&gt;&lt;/div&gt;</content:encoded>
+      <guid isPermaLink="false">pubmed:43073955</guid>
+      <pubDate>Mon, 23 Nov 2026 06:00:00 -0500</pubDate>
+      <dc:creator>Ehud Grossman</dc:creator>
+      <dc:date>2026-11-23</dc:date>
+      <dc:source>Cardiovascular diabetology</dc:source>
+      <dc:title>Glycemic risk stratification in older adults with heart failure: the prognostic role of HbA1c in an aging society</dc:title>
+      <dc:identifier>pmid:43073955</dc:identifier>
+      <dc:identifier>pmc:PMC13791621</dc:identifier>
+      <dc:identifier>doi:10.1186/s12933-026-03344-4</dc:identifier>
+    </item>
+    <item>
+      <title>Glycemic variability and heart failure hospitalizations in type 2 diabetes: a prospective cohort study</title>
+      <link>https://pubmed.ncbi.nlm.nih.gov/99900001/?utm_source=Other&amp;utm_medium=rss&amp;ff=20261124191905</link>
+      <description>CONCLUSIONS: Higher visit-to-visit HbA1c variability predicted incident heart failure hospitalization in patients with type 2 diabetes.</description>
+      <content:encoded>&lt;div&gt;&lt;p style="color: #4aa564;"&gt;&lt;b&gt;Cardiovasc Diabetol&lt;/b&gt;. 2026 Nov 23;25(1):401. doi: 10.1000/synthetic-cvd-nov23.&lt;/p&gt;&lt;p&gt;&lt;b&gt;ABSTRACT&lt;/b&gt;&lt;/p&gt;&lt;p&gt;METHODS: Prospective cohort study evaluating heart failure outcomes in adults with diabetes.&lt;/p&gt;&lt;p&gt;PMID:99900001 | DOI:10.1000/synthetic-cvd-nov23&lt;/p&gt;&lt;/div&gt;</content:encoded>
+      <guid isPermaLink="false">pubmed:99900001</guid>
+      <pubDate>Mon, 23 Nov 2026 06:00:00 -0500</pubDate>
+      <dc:creator>Ann Lee</dc:creator>
+      <dc:date>2026-11-23</dc:date>
+      <dc:source>Cardiovascular diabetology</dc:source>
+      <dc:title>Glycemic variability and heart failure hospitalizations in type 2 diabetes: a prospective cohort study</dc:title>
+      <dc:identifier>pmid:99900001</dc:identifier>
+      <dc:identifier>doi:10.1000/synthetic-cvd-nov23</dc:identifier>
+    </item>
+  </channel>
+</rss>

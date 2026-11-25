@@ -304,6 +304,71 @@ def commit_output(path, data):
         tmp.unlink(missing_ok=True)
         raise
 
+PUBMED_MONTHS = {
+    'jan': 1, 'january': 1, 'feb': 2, 'february': 2, 'mar': 3, 'march': 3,
+    'apr': 4, 'april': 4, 'may': 5, 'jun': 6, 'june': 6, 'jul': 7, 'july': 7,
+    'aug': 8, 'august': 8, 'sep': 9, 'sept': 9, 'september': 9,
+    'oct': 10, 'october': 10, 'nov': 11, 'november': 11, 'dec': 12, 'december': 12,
+}
+
+
+def _pubmed_month_number(raw):
+    val = clean_inline(raw).rstrip('.')
+    if val.isdigit():
+        num = int(val)
+        return num if 1 <= num <= 12 else None
+    return PUBMED_MONTHS.get(val.lower())
+
+
+def _parse_pubmed_date_node(node):
+    if node is None:
+        return '', 'unknown'
+    year = clean_inline(node.findtext('Year', ''))
+    month = _pubmed_month_number(node.findtext('Month', ''))
+    day_raw = clean_inline(node.findtext('Day', ''))
+    if year.isdigit() and month and day_raw.isdigit():
+        try:
+            when = datetime.date(int(year), month, int(day_raw))
+            return when.isoformat(), 'day'
+        except ValueError:
+            pass
+    if year.isdigit():
+        if month:
+            return f'{int(year):04d}-{month:02d}', 'month'
+        return f'{int(year):04d}', 'year'
+    medline = clean_inline(node.findtext('MedlineDate', ''))
+    return (medline, 'unknown') if medline else ('', 'unknown')
+
+
+def extract_pubmed_publication_date(row, article):
+    """Prefer publisher dates (ArticleDate, then full JournalIssue PubDate); use entrez only as fallback."""
+    article_dates = article.findall('ArticleDate')
+    electronic = [n for n in article_dates if (n.get('DateType') or '').lower() == 'electronic']
+    ad_candidates = electronic + [n for n in article_dates if n not in electronic]
+    partial = None
+    for ad in ad_candidates:
+        d, prec = _parse_pubmed_date_node(ad)
+        if prec == 'day':
+            return d, 'day', 'ArticleDate'
+        if d and partial is None:
+            partial = (d, prec, 'ArticleDate')
+
+    pub_node = article.find('./Journal/JournalIssue/PubDate')
+    pub_date, pub_prec = _parse_pubmed_date_node(pub_node)
+    if pub_prec == 'day':
+        return pub_date, 'day', 'JournalIssue PubDate'
+    if pub_date and partial is None:
+        partial = (pub_date, pub_prec, 'JournalIssue PubDate')
+
+    for status in ('entrez', 'pubmed'):
+        hist_node = row.find(f'./PubmedData/History/PubMedPubDate[@PubStatus="{status}"]')
+        hd, hprec = _parse_pubmed_date_node(hist_node)
+        if hprec == 'day':
+            return hd, 'day', f'PubMed {status} 收录日（兜底）'
+
+    return partial or ('', 'unknown', 'ArticleDate')
+
+
 def parse(root, excluded_out=None):
     items = []
     for row in root.findall('.//PubmedArticle'):
@@ -350,22 +415,7 @@ def parse(root, excluded_out=None):
 
         abstract = ' '.join(((s['label'] + ': ') if s['label'] else '') + s['text'] for s in abstract_sections)
 
-        ad = article.find('ArticleDate')
-        date_basis = 'ArticleDate'
-        if ad is None:
-            ad = article.find('./Journal/JournalIssue/PubDate')
-            date_basis = 'JournalIssue PubDate'
-        date = ''
-        if ad is not None:
-            year = ad.findtext('Year', '')
-            month = ad.findtext('Month', '')
-            day = ad.findtext('Day', '')
-            if year and month.isdigit() and day.isdigit():
-                date = f'{year}-{int(month):02d}-{int(day):02d}'
-            elif year:
-                date = year + (('-' + month.zfill(2)) if month.isdigit() else '')
-            else:
-                date = ad.findtext('MedlineDate', '')
+        date, date_precision, date_basis = extract_pubmed_publication_date(row, article)
 
         item = {
             'id': 'pmid-' + pmid,
@@ -377,6 +427,7 @@ def parse(root, excluded_out=None):
             'journal': journal,
             'journalAbbreviation': journal_abbreviation,
             'date': date,
+            'datePrecision': date_precision,
             'dateBasis': date_basis,
             'category': classify(title, journal),
             'basis': 'PubMed 官方结构化元数据',

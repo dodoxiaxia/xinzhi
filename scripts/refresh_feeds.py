@@ -92,14 +92,18 @@ def text(element, key):
     return ''
 
 
-def abstract_text(element):
-    for key in ('description', 'summary', 'abstract'):
+def element_markup(element, *keys):
+    for key in keys:
         for child in element:
             if local(child.tag) == key:
                 value = (child.text or '') + ''.join(ET.tostring(node, encoding='unicode') for node in child)
                 if value.strip():
                     return value
     return ''
+
+
+def abstract_text(element):
+    return element_markup(element, 'description', 'summary', 'abstract')
 
 
 def dateval(raw):
@@ -142,6 +146,71 @@ def sciencedirect_metadata(summary):
         meta.update(date=when.isoformat(), datePrecision='day',
                     dateBasis='ScienceDirect RSS“Available online”日期' if d.group('online') else 'ScienceDirect RSS 刊期日期')
     return meta
+
+
+PUBMED_MONTHS = {
+    **MONTHS,
+    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+    'jul': 7, 'aug': 8, 'sep': 9, 'sept': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+}
+PUBMED_EPUB_DATE_RE = re.compile(r'\bEpub\s+(?P<year>\d{4})\s+(?P<month>[A-Za-z]+)\s+(?P<day>\d{1,2})\b', re.I)
+PUBMED_CITATION_DATE_RE = re.compile(r'(?:^|\.)\s*(?P<year>\d{4})\s+(?P<month>[A-Za-z]+)\s+(?P<day>\d{1,2})(?=\s*[;.,:]|$)')
+
+
+def _is_pubmed_rss_entry(entry, link='', source=None, ids=None):
+    source_host = (urlsplit((source or {}).get('url', '')).hostname or '').lower()
+    link_host = (urlsplit(link or '').hostname or '').lower()
+    if source_host == 'pubmed.ncbi.nlm.nih.gov' or link_host == 'pubmed.ncbi.nlm.nih.gov':
+        return True
+    if (ids or {}).get('pmid'):
+        return True
+    return text(entry, 'guid').lower().startswith('pubmed:')
+
+
+def _pubmed_citation_header(raw):
+    if not raw:
+        return ''
+    unescaped = html.unescape(raw)
+    m = re.search(r'<p\b[^>]*>(.*?)</p>', unescaped, re.I | re.S)
+    chunk = m.group(1) if m else re.split(r'(?:<p\b[^>]*>\s*<b>\s*(?:NO\s+)?ABSTRACT\b|\bABSTRACT\b)', unescaped, maxsplit=1, flags=re.I)[0]
+    cleaned = clean_inline(re.sub(r'<[^>]+>', ' ', chunk))
+    return cleaned
+
+
+def _parse_pubmed_day_match(match):
+    if not match:
+        return None
+    month = PUBMED_MONTHS.get(match.group('month').rstrip('.').lower())
+    if not month:
+        return None
+    try:
+        return datetime.datetime(int(match.group('year')), month, int(match.group('day')), tzinfo=datetime.timezone.utc)
+    except ValueError:
+        return None
+
+
+def pubmed_rss_metadata(entry, *, link='', source=None, ids=None):
+    """Extract publisher publication date from PubMed RSS citation markup.
+
+    PubMed RSS <pubDate> and <dc:date> carry the Entrez indexing timestamp, not the
+    publisher publication date. Prefer an explicit Epub date or full YYYY Mon DD
+    citation date, leaving <pubDate> only as a fallback when neither exists.
+    """
+    if not _is_pubmed_rss_entry(entry, link=link, source=source, ids=ids):
+        return None
+    raw = element_markup(entry, 'encoded')
+    if not raw:
+        raw = element_markup(entry, 'description', 'summary')
+    header = _pubmed_citation_header(raw)
+    if not header:
+        return None
+    epub = _parse_pubmed_day_match(PUBMED_EPUB_DATE_RE.search(header))
+    if epub:
+        return {'date': epub.isoformat(), 'datePrecision': 'day', 'dateBasis': 'PubMed RSS 引文 Epub 日期'}
+    published = _parse_pubmed_day_match(PUBMED_CITATION_DATE_RE.search(header))
+    if published:
+        return {'date': published.isoformat(), 'datePrecision': 'day', 'dateBasis': 'PubMed RSS 引文发表日'}
+    return None
 
 
 def feed_identifiers(entry):
@@ -487,6 +556,13 @@ def parse_feed(raw, source, *, checked_at=None):
             record['doi'] = ids['doi']
         if ids.get('authors') and not record.get('authors'):
             record['authors'] = ids['authors']
+        pm_meta = pubmed_rss_metadata(entry, link=link, source=source, ids=ids)
+        if pm_meta:
+            if record['date']:
+                record['entrezDate'] = record['date']
+            record.update(pm_meta)
+        elif _is_pubmed_rss_entry(entry, link=link, source=source, ids=ids) and record['date']:
+            record['dateBasis'] = 'PubMed RSS pubDate 收录日（兜底）'
         meta = sciencedirect_metadata(description)
         if meta:
             if record['date']:
