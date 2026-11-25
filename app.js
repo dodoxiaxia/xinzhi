@@ -5031,8 +5031,12 @@
       meta.classList.toggle('source-report-stale', olderThan(HEALTH.checkedAt,6) || (HEALTH.pubmedFetch && HEALTH.pubmedFetch.status === 'failed'));
     }
 
+    const sourceStatusLabel = s => s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '获取成功 · 暂无入选' : successful(s) ? '获取成功' :
+      s.status === 'stale_feed' ? '订阅源停更' : s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'not_checked_host_blocked' ? '同主机暂停检查' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
+    // stale_feed sources were already parsed; "未获取" is reserved for this-round fetch failures.
+    const countsAvailable = s => successful(s) || s.status === 'stale_feed';
     const q = foldSearch(state.search.trim());
-    const filtered = sources.filter(s => !q || queryMatches(foldSearch([s.name, s.id, s.url, s.status, sourceHealthDetails(s),
+    const filtered = sources.filter(s => !q || queryMatches(foldSearch([s.name, s.id, s.url, s.status, sourceHealthDetails(s), sourceStatusLabel(s),
       s.status === 'not_feed' ? '返回非订阅内容' : successful(s) ? '获取成功' : '获取异常 暂停'].filter(Boolean).join(' ')), q));
     const shown = filtered.filter(s => !view || (view === 'ok') === successful(s));
     let group = null;
@@ -5044,8 +5048,11 @@
       // Problems come first; a heading marks where each group starts.
       const heading = group === isOk ? '' : `<h3 class="source-group-title">${isOk ? '获取成功' : '需要关注'} <span>${shown.filter(x => successful(x) === isOk).length}</span></h3>`;
       group = isOk;
-      const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '获取成功 · 暂无入选' : isOk ? '获取成功' :
-        s.status === 'stale_feed' ? '订阅源停更' : s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'not_checked_host_blocked' ? '同主机暂停检查' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
+      const statusLabel = sourceStatusLabel(s);
+      const countRaw = countsAvailable(s) ? esc(s.rawItems ?? s.items ?? '未统计') : '未获取';
+      const countAbs = countsAvailable(s) ? esc(s.itemsWithAbstracts ?? '未统计') : '未获取';
+      const latest = s.status === 'stale_feed' && s.staleFeed && s.staleFeed.latestItemDate
+        ? `<div><dt>最新条目</dt><dd>${esc(s.staleFeed.latestItemDate)}</dd></div>` : '';
       return heading + `
         <article class="source-item${isOk ? '' : ' source-needs-attention'}">
           <div class="source-item-head">
@@ -5055,7 +5062,7 @@
             </span>
           </div>
           <div class="source-journal-metrics">${journalMetricBadge(s.name)}${journalMetricDetails(s.name)}</div>
-          <dl class="source-counts"><div><dt>原始条目</dt><dd>${isOk ? esc(s.rawItems ?? s.items ?? '未统计') : '未获取'}</dd></div><div><dt>近 14 天</dt><dd>${esc(s.eligibleItems ?? '待统计')}</dd></div><div><dt>含摘要</dt><dd>${isOk ? esc(s.itemsWithAbstracts ?? '未统计') : '未获取'}</dd></div></dl>
+          <dl class="source-counts"><div><dt>原始条目</dt><dd>${countRaw}</dd></div><div><dt>近 14 天</dt><dd>${esc(s.eligibleItems ?? '待统计')}</dd></div><div><dt>含摘要</dt><dd>${countAbs}</dd></div>${latest}</dl>
           ${s.cachedItems ? `<p class="source-cache-note">保留 ${esc(s.cachedItems)} 条旧缓存 · 最近缓存 ${esc(contentDate(s.lastCachedFetchAt || s.lastSuccessfulAt))}</p>` : ''}
           ${sourceHealthDetails(s) ? `<p class="source-detail-note">${esc(sourceHealthDetails(s))}</p>` : ''}
           <div class="source-item-foot"><span>检查 ${esc(contentDate(s.checkedAt || HEALTH.checkedAt))}</span>${safeSourceUrl({url:s.url}) ? `<a href="${esc(safeSourceUrl({url:s.url}))}" target="_blank" rel="noopener">查看订阅源 ↗</a>` : ''}</div>

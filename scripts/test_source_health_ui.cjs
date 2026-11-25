@@ -116,9 +116,43 @@ assert(nodes.sourcesHealthGrid.innerHTML.includes('pubmed_upstream_timeout'));
 assert(nodes.sourcesHealthGrid.innerHTML.includes('HTTP 400'));
 console.log('PubMed fetch failure is visible in source-health with status code and fixed category.');
 
-const staleRow = {name:'Circulation', url:'https://example.org/circ', status:'stale_feed', staleFeed:{latestItemDate:'2026-11-03', alternativeSource:'PubMed', alternativeLatestDate:'2026-11-23'}};
+const staleRow = {name:'Circulation', url:'https://example.org/circ', status:'stale_feed', staleFeed:{latestItemDate:'2026-11-03', alternativeSource:'PubMed', alternativeLatestDate:'2026-11-23'}, rawItems:53, eligibleItems:0, itemsWithAbstracts:12};
 assert(details(staleRow).includes('2026-11-03') && details(staleRow).includes('PubMed') && details(staleRow).includes('2026-11-23'));
 c.HEALTH.sources = [staleRow];
 c.state.search = '';
 c.renderSourcesHealth();
 assert(nodes.sourcesHealthGrid.innerHTML.includes('订阅源停更'));
+
+// Searching 停更 must match stale_feed sources even though raw status is English stale_feed.
+const missedFetch = {name:'Unavailable source', url:'https://example.org/rss', status:'not_feed'};
+const freshOk = {name:'Nature Medicine', url:'https://example.org/nm', status:'ok', rawItems:8, eligibleItems:3, itemsWithAbstracts:8};
+c.HEALTH.sources = [staleRow, missedFetch, freshOk];
+c.state.search = '停更';
+c.renderSourcesHealth();
+const staleSearchHtml = nodes.sourcesHealthGrid.innerHTML;
+assert(staleSearchHtml.includes('Circulation'), 'searching 停更 should find the stale_feed source');
+assert(staleSearchHtml.includes('订阅源停更'));
+assert(!staleSearchHtml.includes('Unavailable source'), 'searching 停更 must not list an unfetched source');
+assert(!staleSearchHtml.includes('Nature Medicine'), 'searching 停更 must not list a fresh successful source');
+
+// Counts: stale_feed was already parsed, so show observed counts and latest item date, never 未获取.
+// A this-round miss (not_feed) still says 未获取.
+c.state.search = '';
+c.renderSourcesHealth();
+const countBlocks = nodes.sourcesHealthGrid.innerHTML.split('<article').slice(1);
+const staleCard = countBlocks.find(block => block.includes('Circulation'));
+const missedCard = countBlocks.find(block => block.includes('Unavailable source'));
+const freshCard = countBlocks.find(block => block.includes('Nature Medicine'));
+assert(staleCard, 'stale_feed card is rendered');
+assert(missedCard, 'unfetched card is rendered');
+assert(freshCard, 'successful card is rendered');
+assert(staleCard.includes('<dt>原始条目</dt><dd>53</dd>'), 'stale_feed shows parsed raw item count');
+assert(staleCard.includes('<dt>含摘要</dt><dd>12</dd>'), 'stale_feed shows parsed abstract count');
+assert(staleCard.includes('<dt>最新条目</dt><dd>2026-11-03</dd>'), 'stale_feed shows latest RSS item date');
+assert(!staleCard.includes('未获取'), 'stale_feed must not be labelled as not fetched this round');
+assert(missedCard.includes('<dt>原始条目</dt><dd>未获取</dd>'), 'this-round fetch failure still says 未获取');
+assert(missedCard.includes('<dt>含摘要</dt><dd>未获取</dd>'));
+assert(!missedCard.includes('<dt>最新条目</dt>'), 'unfetched sources have no latest-item count');
+assert(freshCard.includes('<dt>原始条目</dt><dd>8</dd>'));
+assert(!freshCard.includes('未获取'));
+console.log('stale_feed search and count wording assertions passed');
