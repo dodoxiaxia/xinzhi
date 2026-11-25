@@ -583,8 +583,8 @@ def main():
     corrections=load_corrections(ROOT)
     from week_precompute import editorial_title
     editorial_titles=load('editorial/public_title_translations.json') if (ROOT/'editorial/public_title_translations.json').exists() else {'entries':{}}
-    from resolve_dois import title_cache_key
-    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower()) or (tz.get(title_cache_key(q.get('title'))) if not q.get('doi') and not q.get('pmid') else None)
+    from resolve_dois import translation_title_key
+    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower()) or (tz.get(translation_title_key(q.get('title'))) if not q.get('doi') and not q.get('pmid') else None)
     for q in candidates['items']+library['papers']:
         z=zhkey(q) or ('' if q.get('titleZh') else editorial_title(q,editorial_titles))
         if z:q['titleZh']=z
@@ -652,6 +652,52 @@ def main():
             if key in ql:
                 try:validate_week_task('quicklook',ql[key],row)
                 except ValueError:ql.pop(key)  # Preserve original cache; hide stale evidence from this board.
+    from title_translation_hold import (load_ledger, save_ledger, partition, paper_key,
+                                        seen_times, weekly_coverage, alert_rows)
+    times={**seen_times(c['items']), **seen_times(l['papers'])}
+    ledger=load_ledger(ROOT)
+    candidates['items'],held_c,legacy_c,ledger=partition(candidates['items'],now,ledger,times)
+    library_keys={paper_key(p) for p in library['papers'] if paper_key(p)}
+    library['papers'],held_l,legacy_l,ledger=partition(library['papers'],now,ledger,times,legacy_keys=library_keys)
+    library['pdfIds']=pdf_identity.downloadable_ids(library['papers'],pdf_keys,set(library_quality['pdfBindingHoldIds']))
+    held_w,legacy_w,held_cat,legacy_cat,held_r,legacy_r=[],[],[],[],[],[]
+    if weekly:
+        weekly['items'],held_w,legacy_w,ledger=partition(weekly['items'],now,ledger,times)
+        weekly['coverage']=weekly_coverage(weekly['items'])
+    if editorial_catalog:
+        editorial_catalog['items'],held_cat,legacy_cat,ledger=partition(editorial_catalog['items'],now,ledger,times)
+        editorial_catalog['coverage']=weekly_coverage(editorial_catalog['items'])
+    prepared=pregenerated_map(editorial_catalog)
+    prepared.update(pregenerated_map(weekly))
+    if radar and radar.get('rows'):
+        zhmap=radar.get('zh') or {}
+        radar_papers=[{'pmid':row[0],'doi':row[1],'date':row[2],'title':row[8],'titleZh':zhmap.get(str(row[0])) or ''} for row in radar['rows']]
+        kept_r,held_r,legacy_r,ledger=partition(radar_papers,now,ledger,times)
+        kept_pmids={str(p.get('pmid') or '') for p in kept_r}
+        radar['rows']=[row for row in radar['rows'] if str(row[0]) in kept_pmids]
+        radar['zh']={str(r[0]):zhmap[str(r[0])] for r in radar['rows'] if str(r[0]) in zhmap}
+    save_ledger(ROOT,ledger)
+    def _uniq(rows):
+        seen,out=set(),[]
+        for row in rows:
+            key=row.get('key') or row.get('doi') or row.get('id')
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(row)
+        return out
+    held_alerts=_uniq(alert_rows(held_c+held_l+held_w+held_cat+held_r))
+    legacy_alerts=_uniq(alert_rows(legacy_c+legacy_l+legacy_w+legacy_cat+legacy_r))
+    if held_alerts:
+        print('TITLE TRANSLATION HOLD: %s papers kept off public lists until a qualified Chinese title exists'%len(held_alerts))
+        for row in held_alerts:
+            print('  %s  %s  %s'%(row['doi'] or row['id'] or row['key'], row['reason'], row['title']))
+    if legacy_alerts:
+        print('TITLE TRANSLATION ALERT: %s approved library papers remain visible without a Chinese title'%len(legacy_alerts))
+        for row in legacy_alerts:
+            print('  %s  %s  %s'%(row['doi'] or row['id'] or row['key'], row['reason'], row['title']))
+    title_hold_counts={'titles_held':len(held_alerts),'titles_held_alerts':held_alerts,
+                       'titles_legacy_missing_zh':len(legacy_alerts),'titles_legacy_missing_zh_alerts':legacy_alerts}
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
@@ -790,7 +836,7 @@ def main():
     # The receipt describes the bytes we constructed and validated, never replacements.
     manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
     assert PUBLIC<={p['path'] for p in manifest}==set(payloads)
-    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'assetLimit':{**thresholds,'warnings':size_warnings},'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {},'deep_readings':len(readings['items']),'deep_readings_today':sum(p.get('publishedOn')==datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date().isoformat() for p in readings['items'])},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'assetLimit':{**thresholds,'warnings':size_warnings},'contentStatus':status,'counts':{'radar':len(candidates['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {},'deep_readings':len(readings['items']),'deep_readings_today':sum(p.get('publishedOn')==datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date().isoformat() for p in readings['items']),**title_hold_counts},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     # curated-archive is both input and sanitized output; record its final bytes.
     build_after=provenance(ROOT)
     expected_inputs=dict(inputs_before)
