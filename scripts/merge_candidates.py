@@ -5,7 +5,7 @@ from pathlib import Path
 from publication_dates import canonical_publication_date
 import resolve_dois
 from scope_filter import scope_decision
-from source_fallbacks import detect_stale_feeds
+from source_fallbacks import detect_stale_feeds, public_window_days
 from refresh_feeds import write_json_js
 ROOT=Path(__file__).resolve().parents[1]
 # Same title identity as resolve_dois: RSS titles such as "[Articles] X" must match PubMed's "X".
@@ -23,7 +23,8 @@ def main():
   p=canonical_publication_date(source_record)
   try:age=(now.date()-datetime.date.fromisoformat(p['date'][:10])).days
   except ValueError:excluded+=1;continue
-  if not 0<=age<=14:excluded+=1;continue
+  window=public_window_days(p.get('journal',''), path=ROOT/'config/crossref_fallback.json')
+  if not 0<=age<=window:excluded+=1;continue
   keys={p.get('doi','').lower(),p['url'],titlekey(p['title'])}-{''}
   if keys & seen:continue
   seen.update(keys)

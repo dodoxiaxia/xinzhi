@@ -573,6 +573,10 @@ class CrossrefFallbackTests(OfflineTestCase):
         self.assertEqual(allowlist['NEJM AI']['issns'], ['2836-9386'])
         self.assertEqual(allowlist['NEJM AI']['category'], 'AI医疗')
         self.assertTrue(allowlist['NEJM AI']['enabled'])
+        self.assertEqual(allowlist['NEJM AI']['windowDays'], 75)
+        self.assertTrue(allowlist['NEJM AI']['complement'])
+        self.assertIsNone(allowlist['Circulation']['windowDays'])
+        self.assertFalse(allowlist['Circulation']['complement'])
 
         sources = [{
             'id': 'nejm-ai-pub',
@@ -590,9 +594,60 @@ class CrossrefFallbackTests(OfflineTestCase):
             },
             {
                 'DOI': '10.1056/AIoa2600136',
-                'title': ['Older than 14 days for public feed'],
+                'title': ['Previous-issue paper at day 33, inside the 75-day public window'],
                 'published-print': {'date-parts': [[2026, 10, 22]]},
                 'issued': {'date-parts': [[2026, 10, 22]]},
+                'type': 'journal-article',
+            },
+            {
+                'DOI': '10.1056/AIoa2500888',
+                'title': ['Older than 75 days for the NEJM AI public window'],
+                'published-online': {'date-parts': [[2026, 9, 5]]},
+                'type': 'journal-article',
+            },
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_min_root(root, sources)
+            calls = []
+            out = fcf.run(
+                root,
+                now=NOW,
+                fetcher=lambda params: calls.append(params) or {'message': {'total-results': len(works), 'items': works}},
+                sleep=lambda _: None,
+            )
+            self.assertEqual(len(calls), 1)
+            self.assertIn('issn:2836-9386', calls[0]['filter'])
+            self.assertIn('from-pub-date:2026-09-10', calls[0]['filter'])
+            self.assertEqual(out['journals'], ['NEJM AI'])
+            nejm_report = next(r for r in out['journalReports'] if r['journal'] == 'NEJM AI')
+            self.assertEqual(nejm_report['windowDays'], 75)
+            self.assertEqual(
+                [item['doi'] for item in out['items']],
+                ['10.1056/aioa2600590', '10.1056/aioa2600136'],
+            )
+
+
+    def test_nejm_ai_complement_runs_when_official_rss_is_ok(self):
+        sources = [
+            {
+                'id': 'nejm-ai-pub',
+                'name': 'NEJM AI',
+                'url': 'https://ai.nejm.org/action/showFeed?jc=ai&type=etoc&feed=rss',
+                'status': 'ok',
+            },
+            {
+                'id': 'circ-pub',
+                'name': 'Circulation',
+                'url': 'https://www.ahajournals.org/action/showFeed?jc=circ&type=etoc&feed=rss',
+                'status': 'ok',
+            },
+        ]
+        works = [
+            {
+                'DOI': '10.1056/AIoa2600136',
+                'title': ['Previous issue original research still in the 75-day window'],
+                'published-online': {'date-parts': [[2026, 9, 24]]},
                 'type': 'journal-article',
             },
         ]
@@ -609,8 +664,10 @@ class CrossrefFallbackTests(OfflineTestCase):
             self.assertEqual(len(calls), 1)
             self.assertIn('issn:2836-9386', calls[0]['filter'])
             self.assertEqual(out['journals'], ['NEJM AI'])
-            # Public Crossref fallback keeps its 14-day window separate from 45-day task reconciliation.
-            self.assertEqual([item['doi'] for item in out['items']], ['10.1056/aioa2600590'])
+            self.assertEqual([item['doi'] for item in out['items']], ['10.1056/aioa2600136'])
+            circ = next(r for r in out['journalReports'] if r['journal'] == 'Circulation')
+            self.assertFalse(circ['triggered'])
+            self.assertEqual(circ['reason'], 'publisher_not_failed')
 
 
 if __name__ == '__main__':

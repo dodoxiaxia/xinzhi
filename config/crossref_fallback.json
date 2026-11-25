@@ -1,28 +1,39 @@
 {
   "version": 1,
-  "description": "Crossref 期刊增量备用源显式白名单：仅在同刊出版社 RSS 源本轮失败，或状态为 stale_feed / filtered_empty（源停滞或14天窗内无条目）时触发。会议摘要与期刊组分/整期 PDF 不会进入公开订阅包。",
+  "description": "Crossref 期刊增量备用源显式白名单：默认仅在同刊出版社 RSS 源本轮失败，或状态为 stale_feed / filtered_empty（源停滞或默认14天窗内无条目）时触发。complement=true 的期刊在官网 RSS 成功时仍补查，用于当期目录换期后找回上一期；windowDays 可按刊加长，未写的仍为 14 天。会议摘要与期刊组分/整期 PDF 不会进入公开订阅包。",
   "journals": [
     {
       "journal": "Cardiovascular Diabetology",
-      "issns": ["1475-2840"],
+      "issns": [
+        "1475-2840"
+      ],
       "category": "心血管",
       "enabled": true
     },
     {
       "journal": "Annals of Internal Medicine",
-      "issns": ["0003-4819"],
+      "issns": [
+        "0003-4819"
+      ],
       "category": "综合医学",
       "enabled": true
     },
     {
       "journal": "NEJM AI",
-      "issns": ["2836-9386"],
+      "issns": [
+        "2836-9386"
+      ],
       "category": "AI医疗",
-      "enabled": true
+      "enabled": true,
+      "windowDays": 75,
+      "complement": true
     },
     {
       "journal": "Circulation",
-      "issns": ["0009-7322", "1524-4539"],
+      "issns": [
+        "0009-7322",
+        "1524-4539"
+      ],
       "category": "心血管",
       "enabled": true,
       "includeDoiPrefixes": [
@@ -33,7 +44,9 @@
     },
     {
       "journal": "JACC: Basic to Translational Science",
-      "issns": ["2452-302X"],
+      "issns": [
+        "2452-302X"
+      ],
       "aliases": [
         "JACC: BTS"
       ],

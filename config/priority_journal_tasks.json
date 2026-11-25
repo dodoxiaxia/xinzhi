@@ -1,31 +1,55 @@
 {
   "version": 1,
-  "description": "重点期刊按官网目录或 Crossref 自动建下载任务配置：默认只建研究论文和综述（勘误、撤稿、通讯和社论不建），支持分刊类型白名单覆写，对账窗口与公开 feed 的 14 天窗口分开。",
-  "reconcileWindowDays": 45,
+  "description": "重点期刊按官网目录或 Crossref 自动建下载任务配置：默认只建研究论文和综述（勘误、撤稿、通讯和社论不建），支持分刊类型白名单覆写。对账窗口与公开 feed 的默认 14 天窗口分开；对只提供当期目录的月刊，窗口需覆盖上一期（默认 75 天）。",
+  "reconcileWindowDays": 75,
   "minReconcileWindowDays": 45,
   "dailyCap": 20,
   "maxDailyCap": 20,
-  "defaultAllowedTypes": ["research", "review"],
-  "excludedTypes": ["erratum", "retraction", "letter", "editorial", "concern", "case_study", "other"],
+  "defaultAllowedTypes": [
+    "research",
+    "review"
+  ],
+  "excludedTypes": [
+    "erratum",
+    "retraction",
+    "letter",
+    "editorial",
+    "concern",
+    "case_study",
+    "other"
+  ],
   "journals": [
     {
       "journal": "NEJM AI",
-      "issns": ["2836-9386"],
-      "aliases": ["NEJM AI"],
-      "rssUrls": ["https://ai.nejm.org/action/showFeed?jc=ai&type=etoc&feed=rss"],
+      "issns": [
+        "2836-9386"
+      ],
+      "aliases": [
+        "NEJM AI"
+      ],
+      "rssUrls": [
+        "https://ai.nejm.org/action/showFeed?jc=ai&type=etoc&feed=rss"
+      ],
       "section": "MAIN",
       "source": "priority-journal-reconcile",
       "enabled": true,
-      "sources": ["crossref", "rss"],
-      "reconcileWindowDays": 45,
-      "allowedTypes": ["research", "review"],
+      "sources": [
+        "crossref",
+        "rss"
+      ],
+      "reconcileWindowDays": 75,
+      "allowedTypes": [
+        "research",
+        "review"
+      ],
       "doiPrefixTypes": {
         "10.1056/aioa": "research",
         "10.1056/aira": "review",
         "10.1056/aics": "case_study",
         "10.1056/ailtr": "letter",
         "10.1056/aie": "editorial",
-        "10.1056/aip": "editorial"
+        "10.1056/aip": "editorial",
+        "10.1056/ai-s": "other"
       }
     }
   ]

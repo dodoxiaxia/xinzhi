@@ -351,3 +351,51 @@ def detect_stale_feeds(health, pubmed, crossref=None, *, now=None, stale_days=ST
     if marked:
         health['summary'] = dict(Counter(r.get('status') for r in health['sources'] if isinstance(r, dict) and r.get('status')))
     return marked
+
+
+DEFAULT_PUBLIC_WINDOW_DAYS = 14
+_PUBLIC_WINDOW_MAPS = {}
+
+
+def _public_window_map(path=None):
+    """Map journal_key -> windowDays for allowlisted journals that opt into a longer public catch-up."""
+    from pathlib import Path as _Path
+    import json
+    target = (_Path(path) if path else _Path(__file__).resolve().parents[1] / 'config/crossref_fallback.json').resolve()
+    cached = _PUBLIC_WINDOW_MAPS.get(target)
+    if cached is not None:
+        return cached
+    mapping = {}
+    try:
+        data = json.loads(target.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError):
+        _PUBLIC_WINDOW_MAPS[target] = mapping
+        return mapping
+    for row in (data.get('journals') or []) if isinstance(data, dict) else []:
+        if not isinstance(row, dict):
+            continue
+        days = row.get('windowDays')
+        if type(days) is not int or days < DEFAULT_PUBLIC_WINDOW_DAYS:
+            continue
+        names = [row.get('journal'), *(row.get('aliases') or [])]
+        for name in names:
+            key = journal_key(name or '')
+            if key:
+                mapping[key] = days
+    _PUBLIC_WINDOW_MAPS[target] = mapping
+    return mapping
+
+
+def public_window_days(journal, default=DEFAULT_PUBLIC_WINDOW_DAYS, path=None):
+    """Public RSS/merge/Crossref window for a journal; default remains 14 days."""
+    if type(default) is not int or default < 1:
+        default = DEFAULT_PUBLIC_WINDOW_DAYS
+    key = journal_key(journal or '')
+    if not key:
+        return default
+    return _public_window_map(path).get(key, default)
+
+
+def reset_public_window_cache():
+    """Test helper: drop the cached per-journal public window maps."""
+    _PUBLIC_WINDOW_MAPS.clear()
