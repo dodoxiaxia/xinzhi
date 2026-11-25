@@ -69,7 +69,7 @@ INPUTS = (
     'editorial/public_library_snapshot.json', 'editorial/public_library_snapshot_manifest.json',
     'index.html', 'app.js', 'citation-export.js', 'style.css', 'icon.png', 'demo-reading.html', 'edge/_worker.js',
     'journal-metrics.js', 'journal-tiers.js', 'config/journal-metrics.json', 'scripts/journal_metrics.py',
-    'scripts/public_split.py', 'scripts/public_bundle.py', 'scripts/build_public.py', 'scripts/title_translation_hold.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
+    'scripts/public_split.py', 'scripts/public_bundle.py', 'scripts/build_public.py', 'scripts/title_translation_hold.py', 'scripts/source_title_quality.py', 'scripts/release_integrity.py', 'scripts/enrich_metadata.py',
     'scripts/publication_status.py', 'config/publication-status.json',
     'scripts/editorial_review.py', 'scripts/refresh_feeds.py', 'scripts/build_data.py',
     'scripts/source_fallbacks.py', 'editorial/legacy_published_guides.json', 'data/pubmed.json',

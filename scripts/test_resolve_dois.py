@@ -38,6 +38,11 @@ class ResolveDoisTest(unittest.TestCase):
         # The RSS section tag and markup do not change a title's identity.
         self.assertEqual(rd.title_key(LANCET['title']), rd.title_key('Conversational <i>diagnostic</i> artificial intelligence in ambulatory primary care: a prospective feasibility study'))
         self.assertEqual(rd.title_cache_key('short'), '')
+        self.assertEqual(rd.title_cache_key('The Silent Consensus'), '')
+        self.assertTrue(rd.translation_title_key('The Silent Consensus').startswith('title:'))
+        self.assertEqual(rd.translation_title_key('The Silent Consensus'), rd.translation_title_key('the silent consensus'))
+        self.assertEqual(rd.translation_title_key('short'), 'title:' + __import__('hashlib').sha1(b'short').hexdigest()[:20])
+        self.assertEqual(rd.translation_title_key(''), '')
 
     def test_pii_lookup_requires_matching_title(self):
         calls = []

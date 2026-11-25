@@ -5,18 +5,18 @@ Qualified means the original title already contains Han characters, or titleZh
 does (after the existing hygiene / source-number checks, which this module
 does not relax). Machine titles are still stored by translate_titles.py.
 
-Fallback: if a paper has been missing a qualified title for HOLD_HOURS, it
-is published with the English title and counted as a fallback so the daily
-receipt can surface it. Waiting forever would hide literature after a
-persistent model or validator rejection. 24 hours covers one full daily
-translate run plus the timed fast batches; newer papers still appear the
-same day once a timed run writes a usable title.
+New papers without a qualified Chinese title are never published in English.
+Failed or missing translations stay in the queue and are listed in the build
+receipt. Papers already in the approved public-library snapshot stay listed
+even if the Chinese title is still missing, so existing inventory is not
+withdrawn.
 """
 import datetime
 import json
 from pathlib import Path
 
-HOLD_HOURS = 24
+from source_title_quality import usable_source_title
+
 LEDGER = 'data/title-translation-hold.json'
 
 
@@ -35,8 +35,8 @@ def paper_key(paper):
         return 'pmid:%s' % paper['pmid']
     if paper.get('doi'):
         return 'doi:%s' % str(paper['doi']).lower()
-    from resolve_dois import title_cache_key
-    return title_cache_key(paper.get('title')) or ''
+    from resolve_dois import translation_title_key
+    return translation_title_key(paper.get('title')) or ''
 
 
 def parse_time(value):
@@ -77,14 +77,26 @@ def seen_times(papers):
     return out
 
 
+def missing_reason(paper, reasons=None):
+    key = paper_key(paper)
+    if reasons and key in reasons:
+        return reasons[key]
+    ok, reason = usable_source_title(paper)
+    if not ok:
+        return reason
+    if paper.get('titleZh') and not has_han(paper.get('titleZh') or paper.get('title_zh') or ''):
+        return 'translation_rejected_no_han'
+    return 'translation_missing'
+
+
 def load_ledger(root):
     path = Path(root) / LEDGER
     if not path.is_file():
-        return {'schemaVersion': 1, 'holdHours': HOLD_HOURS, 'entries': {}}
+        return {'schemaVersion': 2, 'entries': {}}
     try:
         raw = json.loads(path.read_text())
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
-        return {'schemaVersion': 1, 'holdHours': HOLD_HOURS, 'entries': {}}
+        return {'schemaVersion': 2, 'entries': {}}
     entries = raw.get('entries') if isinstance(raw, dict) else None
     if not isinstance(entries, dict):
         entries = {}
@@ -92,42 +104,52 @@ def load_ledger(root):
     for key, row in entries.items():
         if not isinstance(key, str) or not isinstance(row, dict):
             continue
-        if parse_time(row.get('firstMissingAt')):
-            clean[key] = {k: row[k] for k in ('firstMissingAt', 'fallbackAt') if k in row and isinstance(row[k], str)}
-    return {'schemaVersion': 1, 'holdHours': HOLD_HOURS, 'entries': clean}
+        item = {k: row[k] for k in ('firstMissingAt', 'reason', 'doi', 'title', 'status')
+                if k in row and isinstance(row[k], str)}
+        if item:
+            clean[key] = item
+    return {'schemaVersion': 2, 'entries': clean}
 
 
 def save_ledger(root, ledger):
     path = Path(root) / LEDGER
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {'schemaVersion': 1, 'holdHours': HOLD_HOURS, 'entries': ledger.get('entries') or {}}
+    payload = {'schemaVersion': 2, 'entries': ledger.get('entries') or {}}
     tmp = path.with_suffix('.tmp')
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     tmp.replace(path)
 
 
-def missing_since(paper, ledger, now, times_by_key=None, legacy_keys=None):
+def missing_since(paper, ledger, now, times_by_key=None):
     key = paper_key(paper)
     entry = (ledger.get('entries') or {}).get(key) or {}
-    stamp = parse_time(entry.get('firstMissingAt')) or earliest_seen(paper, times_by_key)
-    if stamp:
-        return stamp
-    if legacy_keys and key in legacy_keys:
-        return now - datetime.timedelta(hours=HOLD_HOURS)
-    return now
+    return parse_time(entry.get('firstMissingAt')) or earliest_seen(paper, times_by_key) or now
 
 
 def decision(paper, now, ledger, times_by_key=None, legacy_keys=None):
     if has_qualified_zh_title(paper):
         return 'ready'
-    age = now - missing_since(paper, ledger, now, times_by_key, legacy_keys)
-    return 'hold' if age < datetime.timedelta(hours=HOLD_HOURS) else 'fallback'
+    key = paper_key(paper)
+    if legacy_keys and key in legacy_keys:
+        return 'legacy'
+    return 'hold'
 
 
-def partition(papers, now, ledger, times_by_key=None, legacy_keys=None):
-    """Split papers into visible / held / fallback and return an updated ledger."""
+def entry_for(paper, now, ledger, times_by_key, status, reasons):
+    first = missing_since(paper, ledger, now, times_by_key)
+    row = {'firstMissingAt': iso(first), 'status': status, 'reason': missing_reason(paper, reasons)}
+    if paper.get('doi'):
+        row['doi'] = str(paper['doi'])
+    title = (paper.get('title') or '')[:200]
+    if title:
+        row['title'] = title
+    return row
+
+
+def partition(papers, now, ledger, times_by_key=None, legacy_keys=None, reasons=None):
+    """Split papers into visible / held / legacy and return an updated ledger."""
     entries = dict(ledger.get('entries') or {})
-    visible, held, fallback = [], [], []
+    visible, held, legacy = [], [], []
     for paper in papers:
         key = paper_key(paper)
         status = decision(paper, now, {'entries': entries}, times_by_key, legacy_keys)
@@ -136,18 +158,27 @@ def partition(papers, now, ledger, times_by_key=None, legacy_keys=None):
             if key:
                 entries.pop(key, None)
             continue
-        first = missing_since(paper, {'entries': entries}, now, times_by_key, legacy_keys)
         if key:
-            row = {'firstMissingAt': iso(first)}
-            if status == 'fallback':
-                row['fallbackAt'] = iso(now)
-            entries[key] = row
+            entries[key] = entry_for(paper, now, {'entries': entries}, times_by_key, status, reasons)
         if status == 'hold':
             held.append(paper)
         else:
-            fallback.append(paper)
+            legacy.append(paper)
             visible.append(paper)
-    return visible, held, fallback, {'schemaVersion': 1, 'holdHours': HOLD_HOURS, 'entries': entries}
+    return visible, held, legacy, {'schemaVersion': 2, 'entries': entries}
+
+
+def alert_rows(papers, reasons=None):
+    rows = []
+    for paper in papers:
+        rows.append({
+            'key': paper_key(paper),
+            'doi': str(paper.get('doi') or ''),
+            'id': str(paper.get('id') or ''),
+            'reason': missing_reason(paper, reasons),
+            'title': (paper.get('title') or '')[:160],
+        })
+    return rows
 
 
 def weekly_coverage(items, tasks=('translate', 'study', 'quicklook')):

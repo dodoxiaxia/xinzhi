@@ -583,8 +583,8 @@ def main():
     corrections=load_corrections(ROOT)
     from week_precompute import editorial_title
     editorial_titles=load('editorial/public_title_translations.json') if (ROOT/'editorial/public_title_translations.json').exists() else {'entries':{}}
-    from resolve_dois import title_cache_key
-    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower()) or (tz.get(title_cache_key(q.get('title'))) if not q.get('doi') and not q.get('pmid') else None)
+    from resolve_dois import translation_title_key
+    def zhkey(q):return tz.get('pmid:%s'%q.get('pmid')) or tz.get('doi:%s'%str(q.get('doi') or '').lower()) or (tz.get(translation_title_key(q.get('title'))) if not q.get('doi') and not q.get('pmid') else None)
     for q in candidates['items']+library['papers']:
         z=zhkey(q) or ('' if q.get('titleZh') else editorial_title(q,editorial_titles))
         if z:q['titleZh']=z
@@ -653,40 +653,51 @@ def main():
                 try:validate_week_task('quicklook',ql[key],row)
                 except ValueError:ql.pop(key)  # Preserve original cache; hide stale evidence from this board.
     from title_translation_hold import (load_ledger, save_ledger, partition, paper_key,
-                                        seen_times, weekly_coverage, HOLD_HOURS)
+                                        seen_times, weekly_coverage, alert_rows)
     times={**seen_times(c['items']), **seen_times(l['papers'])}
     ledger=load_ledger(ROOT)
-    candidates['items'],held_c,fallback_c,ledger=partition(candidates['items'],now,ledger,times)
+    candidates['items'],held_c,legacy_c,ledger=partition(candidates['items'],now,ledger,times)
     library_keys={paper_key(p) for p in library['papers'] if paper_key(p)}
-    library['papers'],held_l,fallback_l,ledger=partition(library['papers'],now,ledger,times,legacy_keys=library_keys)
+    library['papers'],held_l,legacy_l,ledger=partition(library['papers'],now,ledger,times,legacy_keys=library_keys)
     library['pdfIds']=pdf_identity.downloadable_ids(library['papers'],pdf_keys,set(library_quality['pdfBindingHoldIds']))
-    held_w,fallback_w,held_cat,fallback_cat,held_r,fallback_r=[],[],[],[],[],[]
+    held_w,legacy_w,held_cat,legacy_cat,held_r,legacy_r=[],[],[],[],[],[]
     if weekly:
-        weekly['items'],held_w,fallback_w,ledger=partition(weekly['items'],now,ledger,times)
+        weekly['items'],held_w,legacy_w,ledger=partition(weekly['items'],now,ledger,times)
         weekly['coverage']=weekly_coverage(weekly['items'])
     if editorial_catalog:
-        editorial_catalog['items'],held_cat,fallback_cat,ledger=partition(editorial_catalog['items'],now,ledger,times)
+        editorial_catalog['items'],held_cat,legacy_cat,ledger=partition(editorial_catalog['items'],now,ledger,times)
         editorial_catalog['coverage']=weekly_coverage(editorial_catalog['items'])
     prepared=pregenerated_map(editorial_catalog)
     prepared.update(pregenerated_map(weekly))
     if radar and radar.get('rows'):
         zhmap=radar.get('zh') or {}
         radar_papers=[{'pmid':row[0],'doi':row[1],'date':row[2],'title':row[8],'titleZh':zhmap.get(str(row[0])) or ''} for row in radar['rows']]
-        kept_r,held_r,fallback_r,ledger=partition(radar_papers,now,ledger,times)
+        kept_r,held_r,legacy_r,ledger=partition(radar_papers,now,ledger,times)
         kept_pmids={str(p.get('pmid') or '') for p in kept_r}
         radar['rows']=[row for row in radar['rows'] if str(row[0]) in kept_pmids]
         radar['zh']={str(r[0]):zhmap[str(r[0])] for r in radar['rows'] if str(r[0]) in zhmap}
     save_ledger(ROOT,ledger)
-    def _hold_keys(rows):
-        return {paper_key(p) for p in rows if paper_key(p)}
-    held_keys=_hold_keys(held_c)|_hold_keys(held_l)|_hold_keys(held_w)|_hold_keys(held_cat)|_hold_keys(held_r)
-    fallback_keys=_hold_keys(fallback_c)|_hold_keys(fallback_l)|_hold_keys(fallback_w)|_hold_keys(fallback_cat)|_hold_keys(fallback_r)
-    if held_keys:
-        print('holding %s papers without a qualified Chinese title for up to %s hours'%(len(held_keys),HOLD_HOURS))
-    if fallback_keys:
-        sample=', '.join(sorted(fallback_keys)[:12])
-        print('publishing %s papers in English after title-translation wait: %s'%(len(fallback_keys),sample))
-    title_hold_counts={'titles_held':len(held_keys),'titles_fallback_english':len(fallback_keys),'title_hold_hours':HOLD_HOURS}
+    def _uniq(rows):
+        seen,out=set(),[]
+        for row in rows:
+            key=row.get('key') or row.get('doi') or row.get('id')
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(row)
+        return out
+    held_alerts=_uniq(alert_rows(held_c+held_l+held_w+held_cat+held_r))
+    legacy_alerts=_uniq(alert_rows(legacy_c+legacy_l+legacy_w+legacy_cat+legacy_r))
+    if held_alerts:
+        print('TITLE TRANSLATION HOLD: %s papers kept off public lists until a qualified Chinese title exists'%len(held_alerts))
+        for row in held_alerts:
+            print('  %s  %s  %s'%(row['doi'] or row['id'] or row['key'], row['reason'], row['title']))
+    if legacy_alerts:
+        print('TITLE TRANSLATION ALERT: %s approved library papers remain visible without a Chinese title'%len(legacy_alerts))
+        for row in legacy_alerts:
+            print('  %s  %s  %s'%(row['doi'] or row['id'] or row['key'], row['reason'], row['title']))
+    title_hold_counts={'titles_held':len(held_alerts),'titles_held_alerts':held_alerts,
+                       'titles_legacy_missing_zh':len(legacy_alerts),'titles_legacy_missing_zh_alerts':legacy_alerts}
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)

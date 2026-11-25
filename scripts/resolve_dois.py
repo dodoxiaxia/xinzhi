@@ -59,6 +59,17 @@ def title_cache_key(title):
     return 'title:' + hashlib.sha1(key.encode()).hexdigest()[:20] if len(key) >= 20 else ''
 
 
+def translation_title_key(title):
+    """Translation-cache key for title-only papers, including short headlines.
+
+    title_cache_key stays strict (20+ normalised characters) so Crossref DOI
+    resolution does not key on weak short strings. Title translation still
+    needs a stable key for items such as OpenAI News headlines.
+    """
+    key = title_key(title)
+    return 'title:' + hashlib.sha1(key.encode()).hexdigest()[:20] if key else ''
+
+
 def cache_key(item):
     pii = pii_of(item.get('url'))
     if pii:
