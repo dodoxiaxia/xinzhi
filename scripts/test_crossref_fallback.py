@@ -356,5 +356,51 @@ class CrossrefFallbackTests(OfflineTestCase):
             self.assertEqual(out_pages['apiCalls'], 3)
 
 
+    def test_nejm_ai_is_in_crossref_fallback_allowlist_and_triggers_on_rss_failure(self):
+        allowlist = {row['journal']: row for row in fcf.load_allowlist(fcf.CONFIG_PATH)}
+        self.assertIn('NEJM AI', allowlist)
+        self.assertEqual(allowlist['NEJM AI']['issns'], ['2836-9386'])
+        self.assertEqual(allowlist['NEJM AI']['category'], 'AI医疗')
+        self.assertTrue(allowlist['NEJM AI']['enabled'])
+
+        sources = [{
+            'id': 'nejm-ai-pub',
+            'name': 'NEJM AI',
+            'url': 'https://ai.nejm.org/action/showFeed?jc=ai&type=etoc&feed=rss',
+            'status': 'http_error',
+            'httpStatus': 403,
+        }]
+        works = [
+            {
+                'DOI': '10.1056/AIoa2600590',
+                'title': ['Opportunistic Risk Assessment of Major Osteoporotic Fractures from Routine Chest Radiographs'],
+                'published-online': {'date-parts': [[2026, 11, 16]]},
+                'type': 'journal-article',
+            },
+            {
+                'DOI': '10.1056/AIoa2600136',
+                'title': ['Older than 14 days for public feed'],
+                'published-print': {'date-parts': [[2026, 10, 22]]},
+                'issued': {'date-parts': [[2026, 10, 22]]},
+                'type': 'journal-article',
+            },
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_min_root(root, sources)
+            calls = []
+            out = fcf.run(
+                root,
+                now=NOW,
+                fetcher=lambda params: calls.append(params) or {'message': {'total-results': len(works), 'items': works}},
+                sleep=lambda _: None,
+            )
+            self.assertEqual(len(calls), 1)
+            self.assertIn('issn:2836-9386', calls[0]['filter'])
+            self.assertEqual(out['journals'], ['NEJM AI'])
+            # Public Crossref fallback keeps its 14-day window separate from 45-day task reconciliation.
+            self.assertEqual([item['doi'] for item in out['items']], ['10.1056/aioa2600590'])
+
+
 if __name__ == '__main__':
     unittest.main()
