@@ -84,7 +84,9 @@ class PublicationDateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); synthetic_root(root)
             raw = {'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                   'items': [paper(date='2026-10-04', doi='10.1000/other', id='other'), paper()]}
+                   'items': [paper(date='2026-10-04', doi='10.1000/other', id='other',
+                                  titleZh='其他抗凝治疗研究'),
+                             paper(titleZh='养老院居民抗凝治疗结局')]}
             candidates = root / 'data/candidates.json'; candidates.write_text(json.dumps(raw))
             original_candidates = candidates.read_bytes()
             original_library = (root / 'data/library.json').read_bytes()
