@@ -41,7 +41,25 @@ REQUEST_TIMEOUT = 12
 PAUSE_SECONDS = 0.5
 DEFAULT_TIME_BUDGET = 45
 WINDOW_DAYS = 14
-FAILED_PUBLISHER_STATUSES = {'not_feed', 'http_error', 'parse_error', 'network_error', 'not_checked_host_blocked'}
+FAILED_PUBLISHER_STATUSES = {
+    'not_feed', 'http_error', 'parse_error', 'network_error', 'not_checked_host_blocked',
+    # Official RSS parsed but lagged behind PubMed/Crossref, or produced no in-window items.
+    'stale_feed', 'filtered_empty',
+}
+EXCLUDED_CROSSREF_TYPES = frozenset({
+    'component', 'proceedings-article', 'proceedings', 'peer-review',
+    'journal', 'journal-issue', 'journal-volume', 'book-chapter', 'book-part',
+    'book-section', 'posted-content', 'dataset', 'report-component', 'entry',
+})
+# Meeting abstracts (AHA Scientific Sessions) land as journal-article with suppl DOIs.
+MEETING_ABSTRACT_DOI_RE = re.compile(r'(?i)(?:\.suppl(?:ement)?[_-]?\d*|/suppl[_-]?\d*|circ\.\d+\.suppl)')
+MEETING_ABSTRACT_TITLE_RE = re.compile(r'(?i)^\s*abstract(?:s)?(?:\s+\d+|(?:\s+from\b))')
+MEETING_ABSTRACT_ISSUE_RE = re.compile(r'(?i)^\s*suppl')
+# Elsevier issue-level objects (Full Issue PDF, Editorial Board) use an S-ISSN DOI.
+ISSUE_COMPONENT_DOI_RE = re.compile(r'(?i)^10\.1016/s\d{4}-\d{3}[0-9x]\(')
+ISSUE_COMPONENT_TITLE_RE = re.compile(
+    r'(?i)^\s*(full issue pdf|editorial board|cover(?: image)?|table of contents|masthead)\s*$'
+)
 
 
 class CrossrefBudgetExceeded(RuntimeError):
@@ -73,11 +91,21 @@ def load_allowlist(path=None):
         if not journal or not issns or any(not ISSN_RE.fullmatch(issn) for issn in issns):
             raise ValueError(f'crossref_fallback.json invalid journal or ISSN for {journal!r}')
         aliases = [clean_inline(a) for a in (row.get('aliases') or []) if clean_inline(a)]
+        prefixes = []
+        for raw in (row.get('includeDoiPrefixes') or []):
+            prefix = str(raw or '').strip().lower()
+            if prefix:
+                prefixes.append(prefix)
         entries.append({
             'journal': journal,
             'issns': issns,
             'category': category,
             'aliases': aliases,
+            'includeDoiPrefixes': prefixes,
+            # Crossref `query` is a loose bibliographic match. Only send it when it
+            # actually narrows the window (Circulation sessions abstracts). For
+            # Elsevier stems such as 10.1016/j.jacbts it can return 0 hits.
+            'queryDoiPrefixes': row.get('queryDoiPrefixes') is True,
             'enabled': row.get('enabled') is True,
         })
     return entries
@@ -88,6 +116,57 @@ def is_pubmed_hosted(url):
         return (urlsplit(str(url or '')).hostname or '').lower() == 'pubmed.ncbi.nlm.nih.gov'
     except ValueError:
         return False
+
+
+def doi_prefix_query(entry):
+    """Build a Crossref query that keeps allowlisted DOI prefixes, or None."""
+    prefixes = entry.get('includeDoiPrefixes') or []
+    if not prefixes:
+        return None
+    parts = []
+    for prefix in prefixes:
+        token = prefix.rstrip('.').upper()
+        if token:
+            parts.append(token)
+    if not parts:
+        return None
+    if len(parts) == 1:
+        return parts[0]
+    return '(' + ' OR '.join(parts) + ')'
+
+
+def _crossref_title(work):
+    titles = work.get('title') if isinstance(work, dict) else None
+    if isinstance(titles, list) and titles:
+        return clean_inline(titles[0] or '')
+    return clean_inline(titles or '')
+
+
+def exclusion_reason(work, entry=None):
+    """Return a stable reason when a Crossref work should not enter the public feed.
+
+    Conference abstracts and issue-level component objects are often typed as
+    journal-article, so DOI / title / issue checks sit alongside the type list.
+    """
+    if not isinstance(work, dict):
+        return 'invalid'
+    work_type = str(work.get('type') or '').strip()
+    if work_type and work_type in EXCLUDED_CROSSREF_TYPES:
+        return 'excluded_type'
+    if work_type and work_type != 'journal-article':
+        return 'excluded_type'
+    doi = str(work.get('DOI') or '').strip().lower()
+    title = _crossref_title(work)
+    issue = str(work.get('issue') or '').strip()
+    if ISSUE_COMPONENT_DOI_RE.search(doi) or ISSUE_COMPONENT_TITLE_RE.match(title):
+        return 'excluded_component'
+    if (MEETING_ABSTRACT_DOI_RE.search(doi) or MEETING_ABSTRACT_TITLE_RE.match(title)
+            or MEETING_ABSTRACT_ISSUE_RE.match(issue)):
+        return 'meeting_abstract'
+    prefixes = (entry or {}).get('includeDoiPrefixes') or []
+    if prefixes and doi and not any(doi.startswith(prefix) for prefix in prefixes):
+        return 'excluded_doi_prefix'
+    return ''
 
 
 def failed_publisher_sources(health):
@@ -157,6 +236,9 @@ def normalize_crossref_work(work, entry, *, checked_at, today=None, window_days=
     """Convert one Crossref work dict into a candidate item, or return (None, reason)."""
     if not isinstance(work, dict):
         return None, 'invalid'
+    blocked = exclusion_reason(work, entry)
+    if blocked:
+        return None, blocked
     doi = str(work.get('DOI') or '').strip().lower()
     if not DOI_RE.fullmatch(doi):
         return None, 'invalid_doi'
@@ -241,6 +323,30 @@ def classify_crossref_error(exc):
     return None, 'crossref_parse_error'
 
 
+
+def count_issn_results(entry, *, since_date, until_date, fetcher, mailto=None,
+                       deadline=None, clock=time.monotonic, call_counter=None):
+    """One cheap Crossref call: ISSN + date window, no DOI prefix query."""
+    mailto = mailto or resolve_mailto()
+    issn_filter = ','.join(f'issn:{issn}' for issn in entry['issns'])
+    params = {
+        'filter': f'{issn_filter},from-pub-date:{since_date},until-pub-date:{until_date}',
+        'rows': 0,
+        'select': 'DOI',
+        'mailto': mailto,
+    }
+    if deadline is not None and clock() >= deadline:
+        raise CrossrefBudgetExceeded()
+    if call_counter is not None:
+        call_counter[0] += 1
+    payload = fetcher(params)
+    msg = payload.get('message') if isinstance(payload, dict) else None
+    if not isinstance(msg, dict):
+        raise ValueError('Invalid Crossref response payload')
+    total = msg.get('total-results')
+    return total if isinstance(total, int) else None
+
+
 def fetch_journal_works(entry, *, since_date, until_date, fetcher=request_crossref_page,
                         mailto=None, max_pages=MAX_PAGES, rows=ROWS_PER_PAGE,
                         pause=PAUSE_SECONDS, sleep=time.sleep, deadline=None, clock=time.monotonic,
@@ -249,11 +355,13 @@ def fetch_journal_works(entry, *, since_date, until_date, fetcher=request_crossr
     mailto = mailto or resolve_mailto()
     issn_filter = ','.join(f'issn:{issn}' for issn in entry['issns'])
     base_filter = f'{issn_filter},from-pub-date:{since_date},until-pub-date:{until_date}'
+    prefix_query = doi_prefix_query(entry) if entry.get('queryDoiPrefixes') else None
     cursor = '*'
     raw_items = []
     api_calls = 0
     pages_fetched = 0
     seen_raw = 0
+    total_results = None
     for page in range(max_pages):
         if deadline is not None and clock() >= deadline:
             raise CrossrefBudgetExceeded()
@@ -268,6 +376,8 @@ def fetch_journal_works(entry, *, since_date, until_date, fetcher=request_crossr
             'select': SELECT_FIELDS,
             'mailto': mailto,
         }
+        if prefix_query:
+            params['query'] = prefix_query
         api_calls += 1
         if call_counter is not None:
             call_counter[0] += 1
@@ -280,13 +390,15 @@ def fetch_journal_works(entry, *, since_date, until_date, fetcher=request_crossr
         raw_items.extend(batch)
         seen_raw += len(batch)
         total = msg.get('total-results')
+        if total_results is None and isinstance(total, int):
+            total_results = total
         next_cursor = msg.get('next-cursor')
         if not batch or not next_cursor or next_cursor == cursor:
             break
         if isinstance(total, int) and seen_raw >= total:
             break
         cursor = next_cursor
-    return raw_items, api_calls, pages_fetched
+    return raw_items, api_calls, pages_fetched, total_results
 
 
 def _previous_items_by_journal(previous_crossref):
@@ -302,13 +414,16 @@ def _previous_items_by_journal(previous_crossref):
 
 def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
         clock=time.monotonic, time_budget=DEFAULT_TIME_BUDGET, window_days=WINDOW_DAYS,
-        config_path=None, health_path=None, output_path=None, mailto=None, network=None):
+        config_path=None, health_path=None, output_path=None, mailto=None, network=None,
+        dry_run=False, force_allowlist=False, max_pages=None, write=True):
     root = Path(root)
     now = now or datetime.datetime.now(datetime.timezone.utc)
     checked_at = now.isoformat()
     today = now.astimezone(datetime.timezone.utc).date()
     since_date = (today - datetime.timedelta(days=window_days)).isoformat()
     until_date = today.isoformat()
+    if dry_run:
+        write = False
     allowlist = load_allowlist(config_path or (root / 'config/crossref_fallback.json'))
     health_file = Path(health_path) if health_path else root / 'data/source-health.json'
     out_file = Path(output_path) if output_path else root / 'data/crossref.json'
@@ -336,7 +451,9 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
     for entry in allowlist:
         jkey = journal_key(entry['journal'])
         alias_keys = {jkey} | {journal_key(a) for a in entry.get('aliases', [])}
-        triggered = entry['enabled'] and any(k in failed_publishers for k in alias_keys)
+        triggered = entry['enabled'] and (
+            force_allowlist or any(k in failed_publishers for k in alias_keys)
+        )
         if not triggered:
             journal_reports.append({
                 'journal': entry['journal'],
@@ -392,7 +509,26 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
 
         call_counter = [0]
         try:
-            raw_works, api_calls, pages_fetched = fetch_journal_works(
+            unfiltered_total = None
+            if dry_run:
+                unfiltered_total = count_issn_results(
+                    entry,
+                    since_date=since_date,
+                    until_date=until_date,
+                    fetcher=fetcher,
+                    mailto=mailto,
+                    deadline=deadline,
+                    clock=clock,
+                    call_counter=call_counter,
+                )
+                if PAUSE_SECONDS > 0:
+                    if deadline is not None and clock() + PAUSE_SECONDS > deadline:
+                        raise CrossrefBudgetExceeded()
+                    sleep(PAUSE_SECONDS)
+            fetch_kwargs = {}
+            if max_pages is not None:
+                fetch_kwargs['max_pages'] = max_pages
+            raw_works, api_calls, pages_fetched, total_results = fetch_journal_works(
                 entry,
                 since_date=since_date,
                 until_date=until_date,
@@ -402,6 +538,7 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
                 clock=clock,
                 sleep=sleep,
                 call_counter=call_counter,
+                **fetch_kwargs,
             )
             total_api_calls += api_calls
             total_pages += pages_fetched
@@ -434,18 +571,33 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
             continue
 
         kept = []
-        imprecise_excluded = 0
-        outside_window = 0
+        excluded_counts = {
+            'excludedImpreciseDate': 0,
+            'excludedOutsideWindow': 0,
+            'excludedType': 0,
+            'excludedMeetingAbstract': 0,
+            'excludedComponent': 0,
+            'excludedDoiPrefix': 0,
+            'excludedOther': 0,
+        }
+        reason_map = {
+            'imprecise_date': 'excludedImpreciseDate',
+            'outside_window': 'excludedOutsideWindow',
+            'excluded_type': 'excludedType',
+            'meeting_abstract': 'excludedMeetingAbstract',
+            'excluded_component': 'excludedComponent',
+            'excluded_doi_prefix': 'excludedDoiPrefix',
+        }
         for work in raw_works:
             item, reason = normalize_crossref_work(
                 work, entry, checked_at=checked_at, today=today, window_days=window_days
             )
             if item is not None:
                 kept.append(item)
-            elif reason == 'imprecise_date':
-                imprecise_excluded += 1
-            elif reason == 'outside_window':
-                outside_window += 1
+            elif reason in reason_map:
+                excluded_counts[reason_map[reason]] += 1
+            elif reason:
+                excluded_counts['excludedOther'] += 1
         all_items.extend(kept)
         journal_reports.append({
             'journal': entry['journal'],
@@ -455,11 +607,13 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
             'apiCalls': api_calls,
             'pagesFetched': pages_fetched,
             'rawItems': len(raw_works),
+            'totalResults': total_results,
             'observedItems': len(kept),
-            'excludedImpreciseDate': imprecise_excluded,
-            'excludedOutsideWindow': outside_window,
             'checkedAt': checked_at,
+            **excluded_counts,
         })
+        if unfiltered_total is not None:
+            journal_reports[-1]['unfilteredTotalResults'] = unfiltered_total
 
     out_payload = {
         'updatedAt': checked_at,
@@ -472,8 +626,9 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
         'journalReports': journal_reports,
         'items': all_items,
     }
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-    out_file.write_text(json.dumps(out_payload, ensure_ascii=False, indent=2), encoding='utf-8')
+    if write:
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        out_file.write_text(json.dumps(out_payload, ensure_ascii=False, indent=2), encoding='utf-8')
 
     if not triggered_journals:
         overall_status = 'skipped'
@@ -514,8 +669,9 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
             if fb:
                 row['crossrefFallback'] = fb
 
-    health_file.parent.mkdir(parents=True, exist_ok=True)
-    write_json_js(health_file, 'SOURCE_HEALTH', health)
+    if write:
+        health_file.parent.mkdir(parents=True, exist_ok=True)
+        write_json_js(health_file, 'SOURCE_HEALTH', health)
     return out_payload
 
 
@@ -523,9 +679,30 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--offline', action='store_true', help='Skip network calls and reuse cached crossref.json if any')
     parser.add_argument('--time-budget', type=float, default=DEFAULT_TIME_BUDGET)
+    parser.add_argument('--window-days', type=int, default=WINDOW_DAYS)
+    parser.add_argument('--max-pages', type=int, default=None)
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Fetch and report counts without writing data/crossref.json or source-health')
+    parser.add_argument('--force-allowlist', action='store_true',
+                        help='Query every enabled allowlisted journal, even if the publisher RSS did not fail')
+    parser.add_argument('--report', default='',
+                        help='Optional path for the dry-run JSON report (not written under data/ by default)')
     args = parser.parse_args(argv)
-    payload = run(ROOT, network=False if args.offline else None, time_budget=args.time_budget)
-    print(json.dumps({k: v for k, v in payload.items() if k != 'items'}, ensure_ascii=False))
+    payload = run(
+        ROOT,
+        network=False if args.offline else None,
+        time_budget=args.time_budget,
+        window_days=args.window_days,
+        dry_run=args.dry_run,
+        force_allowlist=args.force_allowlist,
+        max_pages=args.max_pages,
+    )
+    summary = {k: v for k, v in payload.items() if k != 'items'}
+    if args.report:
+        report_path = Path(args.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(json.dumps(summary, ensure_ascii=False))
     return 0
 
 

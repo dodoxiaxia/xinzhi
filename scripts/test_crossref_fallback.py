@@ -248,7 +248,7 @@ class CrossrefFallbackTests(OfflineTestCase):
                 'id': 'aim-pub',
                 'name': 'Annals of Internal Medicine',
                 'url': 'https://www.acpjournals.org/action/showFeed?type=etoc&feed=rss&jc=aim',
-                'status': 'filtered_empty',
+                'status': 'ok',
             },
         ]
         with tempfile.TemporaryDirectory() as tmp:
@@ -261,12 +261,15 @@ class CrossrefFallbackTests(OfflineTestCase):
                 fetcher=lambda params: calls.append(params) or {'message': {'total-results': 0, 'items': []}},
                 sleep=lambda _: None,
             )
-            self.assertEqual(calls, [])
-            self.assertEqual(out['apiCalls'], 0)
-            self.assertEqual(out['journals'], [])
+            # Circulation is now allowlisted and filtered_empty is a trigger; others are not called.
+            self.assertEqual(len(calls), 1)
+            self.assertIn('issn:0009-7322', calls[0]['filter'])
+            self.assertIn('issn:1524-4539', calls[0]['filter'])
+            self.assertIn('CIRCULATIONAHA', calls[0]['query'])
+            self.assertEqual(out['journals'], ['Circulation'])
+            self.assertGreater(out['apiCalls'], 0)
             health = json.loads((root / 'data/source-health.json').read_text(encoding='utf-8'))
-            self.assertEqual(health['crossrefFetch']['status'], 'skipped')
-            self.assertEqual(health['crossrefFetch']['apiCalls'], 0)
+            self.assertEqual(health['crossrefFetch']['status'], 'ok')
 
     def test_http_429_and_timeout_degrade_without_failing_and_cap_pages_at_3(self):
         sources = [
@@ -354,6 +357,214 @@ class CrossrefFallbackTests(OfflineTestCase):
             self.assertEqual(page_calls, ['*', 'cursor-1', 'cursor-2'])
             self.assertEqual(out_pages['pagesFetched'], 3)
             self.assertEqual(out_pages['apiCalls'], 3)
+
+    def test_stale_feed_triggers_and_meeting_abstracts_are_filtered(self):
+        works = [
+            {
+                'DOI': '10.1161/circulationaha.126.012345',
+                'title': ['A randomized clinical trial of a cardiovascular therapy'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 11, 20]]},
+                'container-title': ['Circulation'],
+            },
+            {
+                'DOI': '10.1161/cir.0000000000001384',
+                'title': ['2026 AHA Scientific Statement on heart failure'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 11, 18]]},
+                'container-title': ['Circulation'],
+            },
+            {
+                'DOI': '10.1161/circ.154.suppl_1.4361093',
+                'title': ['Abstract 4361093: Session findings from AHA 2026'],
+                'type': 'journal-article',
+                'issue': 'Suppl_1',
+                'published-online': {'date-parts': [[2026, 11, 8]]},
+                'container-title': ['Circulation'],
+            },
+            {
+                'DOI': '10.1161/circ.154.suppl_1.4000001',
+                'title': ['Something presented at sessions'],
+                'type': 'journal-article',
+                'issue': 'Supplement_1',
+                'published-online': {'date-parts': [[2026, 11, 8]]},
+                'container-title': ['Circulation'],
+            },
+            {
+                'DOI': '10.1161/jaha.126.999999',
+                'title': ['Wrong-prefix article that must not leak into Circulation'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 11, 21]]},
+                'container-title': ['Circulation'],
+            },
+        ]
+        sources = [{
+            'id': 'circ',
+            'name': 'Circulation',
+            'url': 'https://www.ahajournals.org/action/showFeed?type=axatoc&feed=rss&jc=circ',
+            'status': 'stale_feed',
+        }]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_min_root(root, sources)
+            calls = []
+            out = fcf.run(
+                root,
+                now=NOW,
+                fetcher=lambda params: calls.append(params) or {'message': {'total-results': len(works), 'items': works}},
+                sleep=lambda _: None,
+            )
+            self.assertTrue(calls)
+            self.assertIn('CIRCULATIONAHA', calls[0]['query'])
+            dois = {item['doi'] for item in out['items']}
+            self.assertEqual(dois, {
+                '10.1161/circulationaha.126.012345',
+                '10.1161/cir.0000000000001384',
+            })
+            report = next(r for r in out['journalReports'] if r['journal'] == 'Circulation')
+            self.assertEqual(report['excludedMeetingAbstract'], 2)
+            self.assertEqual(report['excludedDoiPrefix'], 1)
+            self.assertEqual(report['observedItems'], 2)
+
+    def test_jacc_bts_components_are_filtered_on_alias_and_issn(self):
+        works = [
+            {
+                'DOI': '10.1016/j.jacbts.2026.10.001',
+                'title': ['A translational science clinical investigation'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 11, 12]]},
+                'container-title': ['JACC: Basic to Translational Science'],
+            },
+            {
+                'DOI': '10.1016/s2452-302x(26)00321-0',
+                'title': ['Full Issue PDF'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 11, 23]]},
+                'container-title': ['JACC: Basic to Translational Science'],
+            },
+            {
+                'DOI': '10.1016/s2452-302x(26)00322-2',
+                'title': ['Editorial Board'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 11, 23]]},
+                'container-title': ['JACC: Basic to Translational Science'],
+            },
+            {
+                'DOI': '10.1016/j.jacbts.2026.10.001.s001',
+                'title': ['Supplementary appendix'],
+                'type': 'component',
+                'published-online': {'date-parts': [[2026, 11, 12]]},
+                'container-title': ['JACC: Basic to Translational Science'],
+            },
+        ]
+        sources = [{
+            'id': 'jacbts',
+            'name': 'JACC: BTS',
+            'url': 'https://www.jacc.org/action/showFeed?type=axatoc&feed=rss&jc=jaccbts',
+            'status': 'filtered_empty',
+        }]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_min_root(root, sources)
+            calls = []
+            out = fcf.run(
+                root,
+                now=NOW,
+                fetcher=lambda params: calls.append(params) or {'message': {'total-results': len(works), 'items': works}},
+                sleep=lambda _: None,
+            )
+            self.assertTrue(calls)
+            self.assertNotIn('query', calls[0])
+            self.assertEqual({item['doi'] for item in out['items']}, {'10.1016/j.jacbts.2026.10.001'})
+            self.assertEqual(out['journals'], ['JACC: Basic to Translational Science'])
+            report = next(r for r in out['journalReports'] if r['journal'] == 'JACC: Basic to Translational Science')
+            self.assertEqual(report['excludedComponent'], 2)
+            self.assertEqual(report['excludedType'], 1)
+            self.assertEqual(report['observedItems'], 1)
+
+    def test_dry_run_reports_unfiltered_counts_and_does_not_write(self):
+        prior_crossref = '{"version": 1, "items": []}'
+        sources = [{
+            'id': 'circ',
+            'name': 'Circulation',
+            'url': 'https://www.ahajournals.org/action/showFeed?type=axatoc&feed=rss&jc=circ',
+            'status': 'ok',
+        }]
+        works = [{
+            'DOI': '10.1161/circulationaha.126.012345',
+            'title': ['A randomized clinical trial of a cardiovascular therapy'],
+            'type': 'journal-article',
+            'published-online': {'date-parts': [[2026, 11, 20]]},
+            'container-title': ['Circulation'],
+        }]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_min_root(root, sources)
+            health_path = root / 'data/source-health.json'
+            crossref_path = root / 'data/crossref.json'
+            health_before = health_path.read_text(encoding='utf-8')
+            crossref_path.write_text(prior_crossref, encoding='utf-8')
+            calls = []
+
+            def fake_fetch(params):
+                calls.append(params)
+                if params.get('rows') == 0:
+                    return {'message': {'total-results': 4625, 'items': []}}
+                return {'message': {'total-results': 136, 'items': works}}
+
+            out = fcf.run(
+                root,
+                now=NOW,
+                fetcher=fake_fetch,
+                sleep=lambda _: None,
+                dry_run=True,
+                force_allowlist=True,
+            )
+            self.assertGreaterEqual(len(calls), 2)
+            self.assertTrue(any(c.get('rows') == 0 and 'query' not in c for c in calls))
+            self.assertTrue(any(c.get('query') and 'CIRCULATIONAHA' in c['query'] for c in calls))
+            circ = next(r for r in out['journalReports'] if r['journal'] == 'Circulation')
+            self.assertEqual(circ['unfilteredTotalResults'], 4625)
+            self.assertEqual(circ['totalResults'], 136)
+            self.assertEqual(circ['observedItems'], 1)
+            self.assertEqual(health_path.read_text(encoding='utf-8'), health_before)
+            self.assertEqual(crossref_path.read_text(encoding='utf-8'), prior_crossref)
+            self.assertFalse((root / 'data/crossref.json.js').exists())
+
+    def test_exclusion_reason_covers_abstract_title_and_statements(self):
+        circ = {
+            'journal': 'Circulation',
+            'issns': ['0009-7322', '1524-4539'],
+            'includeDoiPrefixes': ['10.1161/circulationaha.', '10.1161/cir.000000000000'],
+        }
+        self.assertEqual(fcf.exclusion_reason({
+            'DOI': '10.1161/circ.154.suppl_1.1',
+            'title': ['Not an abstract-looking title'],
+            'type': 'journal-article',
+            'issue': 'Suppl_1',
+        }, circ), 'meeting_abstract')
+        self.assertEqual(fcf.exclusion_reason({
+            'DOI': '10.1161/circulationaha.126.1',
+            'title': ['Abstract 12: A sessions abstract'],
+            'type': 'journal-article',
+        }, circ), 'meeting_abstract')
+        self.assertEqual(fcf.exclusion_reason({
+            'DOI': '10.1161/cir.0000000000001384',
+            'title': ['AHA Scientific Statement'],
+            'type': 'journal-article',
+        }, circ), '')
+        self.assertEqual(fcf.exclusion_reason({
+            'DOI': '10.1016/s2452-302x(26)00321-0',
+            'title': ['Full Issue PDF'],
+            'type': 'journal-article',
+        }), 'excluded_component')
+        self.assertEqual(fcf.exclusion_reason({
+            'DOI': '10.1000/abc',
+            'title': ['A book chapter'],
+            'type': 'book-chapter',
+        }), 'excluded_type')
+
+
 
 
     def test_nejm_ai_is_in_crossref_fallback_allowlist_and_triggers_on_rss_failure(self):
