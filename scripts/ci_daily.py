@@ -28,7 +28,7 @@ REQUIRED = [
     ['scripts/fetch_crossref_fallback.py'],
     ['scripts/merge_candidates.py'],
 ]
-LIGHT_OPTIONAL = [(['scripts/media_signals.py'], 300), (['scripts/auto_picks.py'], 120)]
+LIGHT_OPTIONAL = [(['scripts/media_signals.py'], 300), (['scripts/auto_picks.py'], 120), (['scripts/reconcile_priority_journal_tasks.py'], 120)]
 FULL_OPTIONAL = [  # (argv, timeout seconds); enrich before generating quicklooks
     (['scripts/fetch_archive.py', '--incremental'], 1500),
     (['scripts/archive_details.py', '--fill'], 1800),

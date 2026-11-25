@@ -13,6 +13,12 @@
       "issns": ["0003-4819"],
       "category": "综合医学",
       "enabled": true
+    },
+    {
+      "journal": "NEJM AI",
+      "issns": ["2836-9386"],
+      "category": "AI医疗",
+      "enabled": true
     }
   ]
 }
