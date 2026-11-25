@@ -341,7 +341,7 @@ def public_abstract_sources(weekly, catalogue, candidates):
 
 def public_health(source, pubmed, now, pubmed_fetch=None):
     from refresh_feeds import safe_url as sanitized_url
-    from source_fallbacks import apply_pubmed_fetch, coverage, public_crossref_fallback
+    from source_fallbacks import apply_pubmed_fetch, coverage, public_crossref_fallback, public_stale_feed
     out={k:v for k,v in source.items() if k in SOURCE_FIELDS}
     if 'responseUrl' in out:out['responseUrl']=sanitized_url(safe_url(out['responseUrl']))
     if 'excludedItems' in out:
@@ -350,6 +350,8 @@ def public_health(source, pubmed, now, pubmed_fetch=None):
     out['pubmedFallback']=apply_pubmed_fetch(coverage(source,pubmed,now), pubmed_fetch)
     crossref_fb=public_crossref_fallback(source.get('crossrefFallback'))
     if crossref_fb:out['crossrefFallback']=crossref_fb
+    stale_fb=public_stale_feed(source.get('staleFeed'))
+    if stale_fb:out['staleFeed']=stale_fb
     return out
 
 def make_archive(candidates,library):

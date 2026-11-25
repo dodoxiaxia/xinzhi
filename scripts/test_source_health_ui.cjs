@@ -115,3 +115,10 @@ assert(nodes.sourcesHealthMeta.textContent.includes('HTTP 400'));
 assert(nodes.sourcesHealthGrid.innerHTML.includes('pubmed_upstream_timeout'));
 assert(nodes.sourcesHealthGrid.innerHTML.includes('HTTP 400'));
 console.log('PubMed fetch failure is visible in source-health with status code and fixed category.');
+
+const staleRow = {name:'Circulation', url:'https://example.org/circ', status:'stale_feed', staleFeed:{latestItemDate:'2026-11-03', alternativeSource:'PubMed', alternativeLatestDate:'2026-11-23'}};
+assert(details(staleRow).includes('2026-11-03') && details(staleRow).includes('PubMed') && details(staleRow).includes('2026-11-23'));
+c.HEALTH.sources = [staleRow];
+c.state.search = '';
+c.renderSourcesHealth();
+assert(nodes.sourcesHealthGrid.innerHTML.includes('订阅源停更'));
