@@ -392,8 +392,27 @@ def cmd_requeue(args):
     return emit(payload, 0 if rc == 0 else rc)
 
 
+def strip_composite_doi_suffix(value):
+    """Take the article DOI before an @-joined issue DOI (NEJM AI etoc RSS).
+
+    Example: 10.1056/AI-S2601250@10.1056/ai_2026.3.issue-11 -> 10.1056/AI-S2601250.
+    Only strips when the right-hand side itself looks like a DOI (starts with 10.).
+    """
+    if not isinstance(value, str) or "@" not in value:
+        return value
+    stem, _, rest = value.partition("@")
+    if stem and rest.lower().startswith("10."):
+        return stem
+    return value
+
+
 def register_doi(value):
-    """与网站 libraryDoi 同一套归一化：去 doi.org / doi: 前缀，百分号解码，转小写。"""
+    """与网站 libraryDoi 同一套归一化：去 doi.org / doi: 前缀，百分号解码，转小写。
+
+    Composite etoc DOIs are reduced to the stem before @, then validated. The
+    website libraryDoi still rejects a raw composite string; callers POST the
+    cleaned stem, so edge/ does not need to change.
+    """
     if not isinstance(value, str) or len(value) > 500:
         return ""
     doi = re.sub(r"^(?:https?://(?:dx\.)?doi\.org/|doi:\s*)", "", value.strip(), flags=re.I)
@@ -402,7 +421,7 @@ def register_doi(value):
         doi = unquote(doi, errors="strict")
     except UnicodeDecodeError:
         return ""
-    doi = doi.lower()
+    doi = strip_composite_doi_suffix(doi).lower()
     if not REGISTER_DOI_RE.fullmatch(doi) or re.search(r"[<>?#@\\]", doi):
         return ""
     return doi

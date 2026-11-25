@@ -96,6 +96,12 @@ def load_allowlist(path=None):
             prefix = str(raw or '').strip().lower()
             if prefix:
                 prefixes.append(prefix)
+        window_override = row.get('windowDays')
+        if window_override is not None and (type(window_override) is not int or window_override < WINDOW_DAYS):
+            raise ValueError(f'crossref_fallback.json windowDays must be >= {WINDOW_DAYS} for {journal!r}')
+        complement = row.get('complement')
+        if complement is not None and complement not in (True, False):
+            raise ValueError(f'crossref_fallback.json complement must be a boolean for {journal!r}')
         entries.append({
             'journal': journal,
             'issns': issns,
@@ -107,6 +113,8 @@ def load_allowlist(path=None):
             # Elsevier stems such as 10.1016/j.jacbts it can return 0 hits.
             'queryDoiPrefixes': row.get('queryDoiPrefixes') is True,
             'enabled': row.get('enabled') is True,
+            'windowDays': window_override,
+            'complement': complement is True,
         })
     return entries
 
@@ -184,6 +192,23 @@ def failed_publisher_sources(health):
         if key:
             failed.setdefault(key, []).append(row)
     return failed
+
+
+def ok_publisher_sources(health):
+    """Map journal_key -> successful non-PubMed publisher source rows (status ok)."""
+    ok = {}
+    for row in (health or {}).get('sources', []):
+        if not isinstance(row, dict):
+            continue
+        if is_pubmed_hosted(row.get('url', '')):
+            continue
+        if row.get('status') != 'ok':
+            continue
+        name = row.get('name') or row.get('source') or ''
+        key = journal_key(name)
+        if key:
+            ok.setdefault(key, []).append(row)
+    return ok
 
 
 def extract_crossref_publication_date(work):
@@ -420,7 +445,6 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
     now = now or datetime.datetime.now(datetime.timezone.utc)
     checked_at = now.isoformat()
     today = now.astimezone(datetime.timezone.utc).date()
-    since_date = (today - datetime.timedelta(days=window_days)).isoformat()
     until_date = today.isoformat()
     if dry_run:
         write = False
@@ -435,6 +459,7 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
     previous_crossref = load_previous(out_file)
     prev_by_journal = _previous_items_by_journal(previous_crossref)
     failed_publishers = failed_publisher_sources(health)
+    ok_publishers = ok_publisher_sources(health)
 
     if network is None:
         network = os.environ.get('XINZHI_CROSSREF_FALLBACK', '1') != '0'
@@ -451,8 +476,12 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
     for entry in allowlist:
         jkey = journal_key(entry['journal'])
         alias_keys = {jkey} | {journal_key(a) for a in entry.get('aliases', [])}
+        journal_window = entry.get('windowDays') or window_days
+        since_date = (today - datetime.timedelta(days=journal_window)).isoformat()
         triggered = entry['enabled'] and (
-            force_allowlist or any(k in failed_publishers for k in alias_keys)
+            force_allowlist
+            or any(k in failed_publishers for k in alias_keys)
+            or (entry.get('complement') is True and any(k in ok_publishers for k in alias_keys))
         )
         if not triggered:
             journal_reports.append({
@@ -465,6 +494,7 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
                 'pagesFetched': 0,
                 'observedItems': 0,
                 'excludedImpreciseDate': 0,
+                'windowDays': journal_window,
             })
             continue
 
@@ -590,7 +620,7 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
         }
         for work in raw_works:
             item, reason = normalize_crossref_work(
-                work, entry, checked_at=checked_at, today=today, window_days=window_days
+                work, entry, checked_at=checked_at, today=today, window_days=journal_window
             )
             if item is not None:
                 kept.append(item)
@@ -610,6 +640,7 @@ def run(root=ROOT, *, now=None, fetcher=request_crossref_page, sleep=time.sleep,
             'totalResults': total_results,
             'observedItems': len(kept),
             'checkedAt': checked_at,
+            'windowDays': journal_window,
             **excluded_counts,
         })
         if unfiltered_total is not None:

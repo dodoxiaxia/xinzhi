@@ -20,7 +20,9 @@ import xml.etree.ElementTree as ET
 
 from build_data import classify
 from abstract_quality import abstract_fields, normalize_paper
+from machine_client import strip_composite_doi_suffix
 from scope_filter import scope_decision
+from source_fallbacks import public_window_days
 from text_hygiene import clean_inline, clean_markup
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -224,7 +226,7 @@ def feed_identifiers(entry):
                 out['pmid'] = m.group(1)
             m = re.fullmatch(r'doi:\s*(10\.\d{4,9}/\S+)', value, re.I)
             if m:
-                out['doi'] = m.group(1).lower()
+                out['doi'] = strip_composite_doi_suffix(m.group(1).lower())
         elif name == 'creator' and value and len(authors) < 50:
             authors.append(clean_inline(value))
     if authors:
@@ -249,11 +251,12 @@ def extract_doi(link, entry):
     for child in entry:
         if local(child.tag) == 'doi':
             value = ''.join(child.itertext()).strip().lower()
-            return re.sub(r'^https?://(?:dx\.)?doi\.org/', '', value)
+            value = re.sub(r'^https?://(?:dx\.)?doi\.org/', '', value)
+            return strip_composite_doi_suffix(value)
     parsed = urlsplit(link)
     path = unquote(parsed.path)
     if parsed.hostname in ('doi.org', 'dx.doi.org'):
-        return path.lstrip('/').lower()
+        return strip_composite_doi_suffix(path.lstrip('/').lower())
     if parsed.hostname in ('nature.com', 'www.nature.com') and path.startswith('/articles/'):
         slug = path.split('/')[2]
         return '10.1038/' + slug.lower() if re.fullmatch(r'[a-z0-9-]+', slug) else ''
@@ -261,7 +264,7 @@ def extract_doi(link, entry):
     value = match.group(0).rstrip('.,') if match else ''
     if parsed.hostname == 'academic.oup.com':
         value = re.sub(r'/\d+$', '', value)
-    return value.lower()
+    return strip_composite_doi_suffix(value.lower())
 
 
 def _diagnostic_text(raw):
@@ -779,7 +782,8 @@ def eligible(item, now):
     age = (now - datetime.datetime.fromisoformat(value)).total_seconds() / 86400
     if age < -1:
         return False, 'future'
-    if age > WINDOW_DAYS:
+    window = public_window_days(item.get('journal', ''), default=WINDOW_DAYS, path=ROOT / 'config/crossref_fallback.json')
+    if age > window:
         return False, 'olderThan14Days'
     return True, None
 

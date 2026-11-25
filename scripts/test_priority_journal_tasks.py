@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import merge_candidates
 import pdf_identity
 import reconcile_priority_journal_tasks as rpjt
+import refresh_feeds
 
 NOW = datetime.datetime(2026, 11, 24, 18, 0, tzinfo=datetime.timezone.utc)
 
@@ -28,6 +29,11 @@ def write_fixture_root(root, *, config_data=None, public_papers=None, private_ro
     else:
         (root / 'config/priority_journal_tasks.json').write_text(
             json.dumps(config_data, ensure_ascii=False, indent=2), encoding='utf-8'
+        )
+    fallback_src = rpjt.ROOT / 'config/crossref_fallback.json'
+    if fallback_src.is_file():
+        (root / 'config/crossref_fallback.json').write_text(
+            fallback_src.read_text(encoding='utf-8'), encoding='utf-8'
         )
     (root / 'editorial/public_library_snapshot.json').write_text(
         json.dumps({'papers': public_papers or []}, ensure_ascii=False), encoding='utf-8'
@@ -68,12 +74,15 @@ class PriorityJournalTaskTests(OfflineTestCase):
     def test_config_enforces_45_day_minimum_and_cap_bounds(self):
         cfg = rpjt.load_config(rpjt.CONFIG_PATH)
         self.assertGreaterEqual(cfg['reconcileWindowDays'], 45)
+        self.assertEqual(cfg['reconcileWindowDays'], 75)
         self.assertLessEqual(cfg['dailyCap'], 20)
         self.assertEqual(cfg['defaultAllowedTypes'], ['research', 'review'])
         nejm = next(j for j in cfg['journals'] if j['journal'] == 'NEJM AI')
         self.assertEqual(nejm['issns'], ['2836-9386'])
         self.assertTrue(nejm['enabled'])
-        self.assertGreaterEqual(nejm['reconcileWindowDays'], 45)
+        self.assertEqual(nejm['reconcileWindowDays'], 75)
+        self.assertEqual(nejm['doiPrefixTypes'].get('10.1056/ai-s'), 'other')
+        self.assertNotIn('10.1056/aix', nejm['doiPrefixTypes'])
 
         with tempfile.TemporaryDirectory() as tmp:
             bad = Path(tmp) / 'bad.json'
@@ -89,7 +98,7 @@ class PriorityJournalTaskTests(OfflineTestCase):
             with self.assertRaisesRegex(ValueError, 'dailyCap'):
                 rpjt.load_config(bad)
 
-    def test_45_day_window_is_separate_from_14_day_public_feed_window(self):
+    def test_75_day_reconcile_window_covers_previous_issue_and_stays_journal_scoped(self):
         works = [
             {
                 'DOI': '10.1056/AIoa2600112',
@@ -99,16 +108,22 @@ class PriorityJournalTaskTests(OfflineTestCase):
             },
             {
                 'DOI': '10.1056/AIoa2600537',
-                'title': ['Older research paper at day 33 within 45-day window'],
+                'title': ['Older research paper at day 33, previously only in the 45-day window'],
                 'type': 'journal-article',
                 'published-print': {'date-parts': [[2026, 10, 22]]},
                 'issued': {'date-parts': [[2026, 10, 22]]},
             },
             {
                 'DOI': '10.1056/AIoa2500999',
-                'title': ['Expired paper at day 60 outside 45-day window'],
+                'title': ['Previous-issue research at day 61, inside the 75-day window'],
                 'type': 'journal-article',
-                'published-online': {'date-parts': [[2026, 9, 25]]},
+                'published-online': {'date-parts': [[2026, 9, 24]]},
+            },
+            {
+                'DOI': '10.1056/AIoa2500888',
+                'title': ['Expired paper at day 80 outside the 75-day window'],
+                'type': 'journal-article',
+                'published-online': {'date-parts': [[2026, 9, 5]]},
             },
         ]
         with tempfile.TemporaryDirectory() as tmp:
@@ -127,7 +142,7 @@ class PriorityJournalTaskTests(OfflineTestCase):
                 },
                 {
                     'id': 'rss-2',
-                    'title': 'Older research paper at day 33 within 45-day window',
+                    'title': 'Older research paper at day 33, previously only in the 45-day window',
                     'url': 'https://ai.nejm.org/doi/full/10.1056/AIoa2600537',
                     'doi': '10.1056/AIoa2600537',
                     'journal': 'NEJM AI',
@@ -153,7 +168,11 @@ class PriorityJournalTaskTests(OfflineTestCase):
                   patch('subprocess.run')):
                 merge_candidates.main()
             public_merged = json.loads((root / 'data/candidates.json').read_text(encoding='utf-8'))
-            self.assertEqual([row['doi'] for row in public_merged['items']], ['10.1056/AIoa2600112'])
+            # NEJM AI public catch-up is 75 days; default journals remain 14.
+            self.assertEqual(
+                [row['doi'] for row in public_merged['items']],
+                ['10.1056/AIoa2600112', '10.1056/AIoa2600537'],
+            )
 
             calls = []
             report = rpjt.reconcile(
@@ -162,9 +181,13 @@ class PriorityJournalTaskTests(OfflineTestCase):
                 crossref_fetcher=lambda params: calls.append(params) or {'message': {'items': works}},
                 sleep=lambda _: None,
             )
-            self.assertIn('from-pub-date:2026-10-10', calls[0]['filter'])
+            self.assertIn('from-pub-date:2026-09-10', calls[0]['filter'])
             selected_dois = {item['doi'] for item in report['registerItems']}
-            self.assertEqual(selected_dois, {'10.1056/aioa2600112', '10.1056/aioa2600537'})
+            self.assertEqual(
+                selected_dois,
+                {'10.1056/aioa2600112', '10.1056/aioa2600537', '10.1056/aioa2500999'},
+            )
+            self.assertNotIn('10.1056/aioa2500888', selected_dois)
 
     def test_idempotency_across_tasks_public_library_and_private_index(self):
         works = [
@@ -298,7 +321,13 @@ class PriorityJournalTaskTests(OfflineTestCase):
             )
             got = {item['doi'] for item in report['registerItems']}
             self.assertEqual(got, {'10.1056/aioa2600590', '10.1056/aira2600064', '10.1056/aioa2608888'})
-            self.assertGreaterEqual(report['summary']['invalidDoiOrTitle'], 1)
+            self.assertNotIn('10.1056/ai-s2601250', got)
+            self.assertEqual(report['summary']['invalidDoiOrTitle'], 0)
+            sponsor = next(d for d in report['decisions'] if d['doi'] == '10.1056/ai-s2601250')
+            self.assertEqual(sponsor['articleType'], 'other')
+            self.assertEqual(sponsor['typeSource'], 'journal_doi_prefix')
+            self.assertEqual(sponsor['action'], 'skipped')
+            self.assertEqual(sponsor['reason'], 'excluded_type')
 
             # Per-journal override: allow case_study in addition to research & review.
             cfg = json.loads(rpjt.CONFIG_PATH.read_text(encoding='utf-8'))
@@ -443,7 +472,7 @@ class PriorityJournalTaskTests(OfflineTestCase):
             self.assertEqual(report['registerItems'], [])
 
 
-    def test_live_rss_parser_and_malformed_issue_doi_handling(self):
+    def test_live_rss_parser_strips_composite_issue_doi_and_skips_sponsor(self):
         rss_xml = b'''<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
@@ -460,6 +489,13 @@ class PriorityJournalTaskTests(OfflineTestCase):
     </item>
   </channel>
 </rss>'''
+        import xml.etree.ElementTree as ET
+        item = ET.fromstring(rss_xml).find('channel/item')
+        link = item.find('link').text
+        self.assertEqual(
+            refresh_feeds.extract_doi(link, item),
+            '10.1056/ai-s2601250',
+        )
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_fixture_root(root)
@@ -473,6 +509,11 @@ class PriorityJournalTaskTests(OfflineTestCase):
             )
             self.assertFalse(report['summary']['degraded'])
             self.assertEqual([row['doi'] for row in report['registerItems']], ['10.1056/aioa2607777'])
+            sponsor = next(d for d in report['decisions'] if d['doi'] == '10.1056/ai-s2601250')
+            self.assertEqual(sponsor['articleType'], 'other')
+            self.assertEqual(sponsor['action'], 'skipped')
+            self.assertEqual(sponsor['reason'], 'excluded_type')
+            self.assertEqual(report['summary']['invalidDoiOrTitle'], 0)
 
 
 if __name__ == '__main__':

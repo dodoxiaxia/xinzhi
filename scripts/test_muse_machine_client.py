@@ -427,5 +427,18 @@ class RegisterRetryTests(ClientTestCase):
         self.assertEqual((len(h.calls), self.pauses), (1, []))
 
 
+class CompositeDoiTests(unittest.TestCase):
+    def test_register_doi_keeps_the_stem_before_an_issue_doi_suffix(self):
+        raw = "10.1056/AI-S2601250@10.1056/ai_2026.3.issue-11"
+        encoded = "10.1056/AI-S2601250%4010.1056/ai_2026.3.issue-11"
+        linked = "https://doi.org/10.1056/AI-S2601250%4010.1056/ai_2026.3.issue-11"
+        for value in (raw, encoded, linked):
+            self.assertEqual(mc.register_doi(value), "10.1056/ai-s2601250", value)
+        self.assertEqual(mc.strip_composite_doi_suffix(raw), "10.1056/AI-S2601250")
+        self.assertEqual(mc.register_doi("10.1056/AIoa2600590"), "10.1056/aioa2600590")
+        # An @ that is not followed by another DOI is still rejected.
+        self.assertEqual(mc.register_doi("10.1056/aioa2600590@example.com"), "")
+
+
 if __name__ == "__main__":
     unittest.main()
