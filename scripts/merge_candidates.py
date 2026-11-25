@@ -5,6 +5,8 @@ from pathlib import Path
 from publication_dates import canonical_publication_date
 import resolve_dois
 from scope_filter import scope_decision
+from source_fallbacks import detect_stale_feeds
+from refresh_feeds import write_json_js
 ROOT=Path(__file__).resolve().parents[1]
 # Same title identity as resolve_dois: RSS titles such as "[Articles] X" must match PubMed's "X".
 def titlekey(t):return resolve_dois.title_key(t)
@@ -40,6 +42,8 @@ def main():
  for name,prefix in [('candidates.json',''),('candidates.js','window.FEEDS=')]:
   (ROOT/'data'/name).write_text(prefix+json.dumps(feed,ensure_ascii=False).replace('</', '<\\/')+(';' if prefix else ''))
  health=json.loads((ROOT/'data/source-health.json').read_text())
+ if detect_stale_feeds(health,pub,crossref,now=now):
+  write_json_js(ROOT/'data/source-health.json','SOURCE_HEALTH',health)
  opml=ET.Element('opml',version='2.0');ET.SubElement(ET.SubElement(opml,'head'),'title').text='心知已验证 RSS'
  body=ET.SubElement(opml,'body')
  for s in health['sources']:

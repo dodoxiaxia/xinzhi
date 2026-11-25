@@ -33,6 +33,9 @@
       if (p.queryScope === 'cardiovascular_or_ai' && p.configured) parts.push('备用检索限心血管或 AI 主题。');
       if (p.queryTruncated && p.configured) parts.push('备用检索达到结果上限，不能据此判断完整覆盖。');
     }
+    if (s.staleFeed && s.staleFeed.latestItemDate && s.staleFeed.alternativeSource && s.staleFeed.alternativeLatestDate) {
+      parts.push(`RSS 最新条目为 ${s.staleFeed.latestItemDate}（已超 14 天），同刊替代来源 ${s.staleFeed.alternativeSource} 已有 ${s.staleFeed.alternativeLatestDate} 新文。`);
+    }
     return parts.join(' ');
   }
 
@@ -91,7 +94,7 @@
       const heading = group === isOk ? '' : `<h3 class="source-group-title">${isOk ? '获取成功' : '需要关注'} <span>${shown.filter(x => successful(x) === isOk).length}</span></h3>`;
       group = isOk;
       const statusLabel = s.status === 'empty_feed' ? '有效空源' : s.status === 'filtered_empty' ? '获取成功 · 暂无入选' : isOk ? '获取成功' :
-        s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'not_checked_host_blocked' ? '同主机暂停检查' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
+        s.status === 'stale_feed' ? '订阅源停更' : s.status === 'not_feed' ? '返回非订阅内容' : s.status === 'not_checked_host_blocked' ? '同主机暂停检查' : s.status === 'parse_error' ? '订阅格式异常' : s.status === 'http_error' ? `来源 HTTP ${s.httpStatus || '错误'}` : '获取异常';
       return heading + `
         <article class="source-item${isOk ? '' : ' source-needs-attention'}">
           <div class="source-item-head">

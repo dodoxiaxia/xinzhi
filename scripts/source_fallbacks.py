@@ -228,3 +228,126 @@ def public_crossref_fetch(record):
         journals = [public_crossref_fallback(row) for row in record['journals']]
         out['journals'] = [row for row in journals if row]
     return out
+
+
+STALE_FEED_DAYS = 14
+STALE_ELIGIBLE_STATUSES = {'ok', 'empty_feed', 'filtered_empty', 'stale_feed'}
+
+
+def _parse_iso_day(value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    if not re.match(r'^\d{4}-\d{2}-\d{2}', text):
+        return None
+    try:
+        return datetime.date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def _alternative_latest_dates(items, today, *, days=STALE_FEED_DAYS, use_abbrev=False):
+    latest = {}
+    for row in items or ():
+        if not isinstance(row, dict):
+            continue
+        precision = row.get('datePrecision')
+        if precision is not None and precision != 'day':
+            continue
+        day = _parse_iso_day(row.get('date'))
+        if day is None:
+            continue
+        age = (today - day).days
+        if not 0 <= age <= days:
+            continue
+        keys = {journal_key(row.get('journal'))}
+        if use_abbrev:
+            keys.add(journal_key(row.get('journalAbbreviation')))
+        keys.discard('')
+        for key in keys:
+            prev = latest.get(key)
+            if prev is None or day > prev:
+                latest[key] = day
+    return latest
+
+
+def public_stale_feed(record):
+    """Allowlisted stale_feed metadata for source-health."""
+    if not isinstance(record, dict):
+        return None
+    latest = record.get('latestItemDate')
+    alt_source = record.get('alternativeSource')
+    alt_date = record.get('alternativeLatestDate')
+    if _parse_iso_day(latest) is None or _parse_iso_day(alt_date) is None:
+        return None
+    if alt_source not in {'PubMed', 'Crossref'}:
+        return None
+    out = {
+        'latestItemDate': latest[:10],
+        'alternativeSource': alt_source,
+        'alternativeLatestDate': alt_date[:10],
+    }
+    age = record.get('ageDays')
+    if type(age) is int and age > 0:
+        out['ageDays'] = age
+    return out
+
+
+def detect_stale_feeds(health, pubmed, crossref=None, *, now=None, stale_days=STALE_FEED_DAYS):
+    """Mark RSS sources whose latest item is >14d old while PubMed or Crossref has <=14d items.
+
+    Never disables any feed; observational status only. Returns count of marked sources.
+    """
+    from collections import Counter
+    from urllib.parse import urlsplit
+
+    if not isinstance(health, dict) or not isinstance(health.get('sources'), list):
+        return 0
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    today = now.astimezone(datetime.timezone.utc).date()
+    pm_latest = _alternative_latest_dates((pubmed or {}).get('items'), today, days=stale_days, use_abbrev=True)
+    cr_latest = _alternative_latest_dates((crossref or {}).get('items'), today, days=stale_days, use_abbrev=False)
+
+    marked = 0
+    for row in health['sources']:
+        if not isinstance(row, dict):
+            continue
+        try:
+            host = (urlsplit(str(row.get('url') or '')).hostname or '').lower()
+        except ValueError:
+            host = ''
+        if host == 'pubmed.ncbi.nlm.nih.gov':
+            continue
+        if row.get('status') not in STALE_ELIGIBLE_STATUSES:
+            continue
+        rss_day = _parse_iso_day(row.get('latestPublishedAt'))
+        if rss_day is None:
+            continue
+        age_days = (today - rss_day).days
+        if age_days <= stale_days:
+            continue
+        name = row.get('name') or row.get('source') or ''
+        journal = clean_journal_name(ALIASES.get(name, name))
+        key = journal_key(journal)
+        if not key:
+            continue
+        pm_day = pm_latest.get(key)
+        cr_day = cr_latest.get(key)
+        if pm_day is None and cr_day is None:
+            continue
+        if pm_day is not None and (cr_day is None or pm_day >= cr_day):
+            alt_source, alt_day = 'PubMed', pm_day
+        else:
+            alt_source, alt_day = 'Crossref', cr_day
+        row['status'] = 'stale_feed'
+        row['staleFeed'] = {
+            'latestItemDate': rss_day.isoformat(),
+            'alternativeSource': alt_source,
+            'alternativeLatestDate': alt_day.isoformat(),
+            'ageDays': age_days,
+        }
+        marked += 1
+
+    if marked:
+        health['summary'] = dict(Counter(r.get('status') for r in health['sources'] if isinstance(r, dict) and r.get('status')))
+    return marked
