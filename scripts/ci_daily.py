@@ -25,6 +25,7 @@ REQUIRED = [
     ['scripts/apply_public_library.py'],
     ['scripts/refresh_feeds.py', '--all'],
     ['scripts/fetch_pubmed.py'],
+    ['scripts/fetch_crossref_fallback.py'],
     ['scripts/merge_candidates.py'],
 ]
 LIGHT_OPTIONAL = [(['scripts/media_signals.py'], 300), (['scripts/auto_picks.py'], 120)]

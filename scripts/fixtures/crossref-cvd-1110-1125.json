@@ -1,0 +1,2810 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "total-results": 11,
+    "items": [
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T18:24:31Z",
+          "timestamp": 1794421471076
+        },
+        "DOI": "10.1186/s12933-026-03437-0",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T18:18:42Z",
+          "timestamp": 1794421122000
+        },
+        "title": [
+          "OTUD5 protects against diabetic cardiomyopathy by preventing cardiomyocyte apoptosis through deubiquitination and stabilization of FOXO3a"
+        ],
+        "author": [
+          {
+            "given": "Yanhong",
+            "family": "Jin",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zhiyue",
+            "family": "Tang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Tao",
+            "family": "Lin",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Yingjie",
+            "family": "Liao",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zhihan",
+            "family": "Jia",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zhaozheng",
+            "family": "Zheng",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jiaji",
+            "family": "Chen",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Qingqing",
+            "family": "Zhao",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Peiren",
+            "family": "Shan",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Xiang",
+            "family": "Hu",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Naijin",
+            "family": "Zhang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zeping",
+            "family": "Zhang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Bozhi",
+            "family": "Ye",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "ORCID": "https://orcid.org/0009-0005-1603-3223",
+            "authenticated-orcid": false,
+            "given": "Guang",
+            "family": "Liang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ],
+          "date-time": "2026-11-19T11:22:38Z",
+          "timestamp": 1795087358019
+        },
+        "DOI": "10.1186/s12933-026-03436-1",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ],
+          "date-time": "2026-11-19T10:54:23Z",
+          "timestamp": 1795085663000
+        },
+        "title": [
+          "Patient-derived iPSC cardiomyocytes reveal mitochondrial abnormalities and altered Ca²⁺ handling in Fabry disease"
+        ],
+        "author": [
+          {
+            "given": "Fahimeh",
+            "family": "Varzideh",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Stanislovas S.",
+            "family": "Jankauskas",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Thaddeus",
+            "family": "Gagaring",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Urna",
+            "family": "Kansakar",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Pasquale",
+            "family": "Mone",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Guido",
+            "family": "Iaccarino",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Eleonora",
+            "family": "Riccio",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Shivangi",
+            "family": "Pande",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Antonio",
+            "family": "Pisani",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Antonio",
+            "family": "De Luca",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Enrico",
+            "family": "Volpe",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jessica",
+            "family": "Gambardella",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Gaetano",
+            "family": "Santulli",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              23
+            ]
+          ],
+          "date-time": "2026-11-23T18:25:44Z",
+          "timestamp": 1795458344599
+        },
+        "DOI": "10.1186/s12933-026-03442-3",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              23
+            ]
+          ],
+          "date-time": "2026-11-23T17:46:41Z",
+          "timestamp": 1795456001000
+        },
+        "title": [
+          "Risk factors of all-cause mortality after major lower extremity amputation in individuals with diabetes in Austria: a contemporary retrospective analysis of Austrian Health Insurance database"
+        ],
+        "author": [
+          {
+            "given": "Kehkishan",
+            "family": "Azhar",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Faisal",
+            "family": "Aziz",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Caren",
+            "family": "Sourij",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Berthold",
+            "family": "Reichardt",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Friederike",
+            "family": "von Lewinski",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Susanne",
+            "family": "Kaser",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Thomas",
+            "family": "Gary",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Nicolas",
+            "family": "Verheyen",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Petra",
+            "family": "Jones",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Hans-Peter",
+            "family": "Dimai",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Harald",
+            "family": "Sourij",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              23
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              23
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              23
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T22:02:18Z",
+          "timestamp": 1794434538813
+        },
+        "DOI": "10.1186/s12933-026-03408-5",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T16:54:37Z",
+          "timestamp": 1794416077000
+        },
+        "title": [
+          "Prediagnostic plasma proteomic patterns and protein signature for incident peripheral artery disease in type 2 diabetes"
+        ],
+        "author": [
+          {
+            "given": "Wenxin",
+            "family": "Zhao",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "ORCID": "https://orcid.org/0009-0003-9688-0929",
+            "authenticated-orcid": false,
+            "given": "Xiaolu",
+            "family": "Li",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Yifan",
+            "family": "Cao",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Bowen",
+            "family": "Zhang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Yixuan",
+            "family": "Wang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zhiyuan",
+            "family": "Wu",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Shuping",
+            "family": "Tan",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jiyang",
+            "family": "Wang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Yaping",
+            "family": "Feng",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zuoguan",
+            "family": "Chen",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Yongjun",
+            "family": "Li",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Yongpeng",
+            "family": "Diao",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              13
+            ]
+          ],
+          "date-time": "2026-11-13T09:26:35Z",
+          "timestamp": 1794561995237
+        },
+        "abstract": "<jats:title>Abstract</jats:title>\n                  <jats:sec>\n                    <jats:title>Background</jats:title>\n                    <jats:p>Diabetes mellitus (DM) is a well-established risk factor for adverse cardiovascular outcomes after percutaneous coronary intervention (PCI). However, research assessing the magnitude and the timing of clinical events over the long term in patients with DM undergoing PCI with a drug-eluting stent (DES) is limited.</jats:p>\n                  </jats:sec>\n                  <jats:sec>\n                    <jats:title>Methods</jats:title>\n                    <jats:p>The data of patients treated with DES in five randomized controlled trials with available 10-year follow-up were pooled. Patients were grouped according their DM diagnosis at baseline. The primary endpoint was all-cause death. The secondary endpoints were cardiovascular death, myocardial infarction (MI), definite stent thrombosis (ST), target lesion revascularization (TLR), target vessel revascularization (TVR) and non-target vessel revascularization (nTVR). All-cause death was estimated using the Kaplan–Meier method, whereas cumulative incidence functions accounting for the competing risk of death were calculated for secondary endpoints. Associations were evaluated using both cause-specific Cox regression, yielding cause-specific hazard ratios (HRs), and Fine-Gray regression, yielding subdistribution hazard ratios (sHRs). Multivariable analyses with adjustment for relevant variables and subgroup analyses were performed.</jats:p>\n                  </jats:sec>\n                  <jats:sec>\n                    <jats:title>Results</jats:title>\n                    <jats:p>\n                      Among 9,699 patients, 2,298 had DM at baseline. Compared with patients without DM, patients with DM had a higher risk of all-cause death (adjusted hazard ratio [HR\n                      <jats:sub>adj</jats:sub>\n                      ] 1.68 [95% confidence interval 1.59–1.78]) and cardiovascular death (HR\n                      <jats:sub>adj</jats:sub>\n                      1.74 [1.63–1.87]) up to 10 years. The risks of definite ST (HR\n                      <jats:sub>adj</jats:sub>\n                      1.55 [1.18–2.04]), TLR (HR\n                      <jats:sub>adj</jats:sub>\n                      1.35 [1.21–1.51]), TVR (HR\n                      <jats:sub>adj</jats:sub>\n                      1.28 [1.14–1.43]), and nTVR (HR\n                      <jats:sub>adj</jats:sub>\n                      1.23 [1.09–1.40]) were significantly increased in patients with DM. Landmark analyses showed endpoint-specific temporal patterns: the excess MI risk was predominantly observed within the first month, whereas the excess definite ST risk was detected between 30 days and 1 year. Notably, the association between DM at baseline and clinical outcomes varied across subgroups defined by age, sex, clinical presentation, and DES-generation (all P\n                      <jats:sub>interaction</jats:sub>\n                      &lt;0.001). Insulin-treated patients represent the higher risk phenotype.\n                    </jats:p>\n                  </jats:sec>\n                  <jats:sec>\n                    <jats:title>Conclusions</jats:title>\n                    <jats:p>DM was associated with distinct temporal patterns of adverse outcomes after PCI with DES, with an early associations with MI and definite ST, as well as an increased risk of death and repeat revascularisation in the longer term. These findings further emphasize the need for intensified secondary prevention and provide a long-term benchmark against which novel management strategies should be evaluated in patients with DM undergoing PCI.</jats:p>\n                  </jats:sec>",
+        "DOI": "10.1186/s12933-026-03434-3",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T12:05:28Z",
+          "timestamp": 1794398728000
+        },
+        "title": [
+          "Diabetes mellitus and 10-year clinical outcomes after percutaneous coronary intervention with drug-eluting stents: insights from the DECADE cooperation"
+        ],
+        "author": [
+          {
+            "ORCID": "https://orcid.org/0000-0002-0454-7332",
+            "authenticated-orcid": false,
+            "given": "Maddalena",
+            "family": "Immobile Molaro",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Tobias",
+            "family": "Lenz",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Lorenz",
+            "family": "Räber",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "J. J.",
+            "family": "Coughlan",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Salvatore",
+            "family": "Brugaletta",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Fiorenzo",
+            "family": "Simonetti",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Luis",
+            "family": "Ortega-Paz",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Karl-Ludwig",
+            "family": "Laugwitz",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Lisette Okkels",
+            "family": "Jensen",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Dik",
+            "family": "Heg",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Kevin Kris Warnakula",
+            "family": "Olesen",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Stephan",
+            "family": "Windecker",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Manel",
+            "family": "Sabaté",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Michael",
+            "family": "Maeng",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Adnan",
+            "family": "Kastrati",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Salvatore",
+            "family": "Cassese",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              13
+            ]
+          ],
+          "date-time": "2026-11-13T06:26:35Z",
+          "timestamp": 1794551195545
+        },
+        "abstract": "<jats:title>Abstract</jats:title>\n                  <jats:sec>\n                    <jats:title>Background</jats:title>\n                    <jats:p>Apolipoprotein CIII (apoCIII) is a key regulator of triglyceride metabolism and an emerging biomarker of cardiometabolic risk. Although elevated total apoCIII concentrations have been associated with type 2 diabetes (T2D) and cardiovascular disease, individual apoCIII proteoforms may exert distinct metabolic effects. We investigated the prospective associations between apoCIII proteoforms and incident T2D in adults at high cardiometabolic risk, as well as their associations with dietary intake.</jats:p>\n                  </jats:sec>\n                  <jats:sec>\n                    <jats:title>Methods</jats:title>\n                    <jats:p>This nested case-control study included 594 incident T2D cases and 594 controls matched for age, sex, intervention group, body mass index, fasting glucose and triglyceride concentrations. Seven apoCIII proteoforms were measured using mass spectrometry-based immunoassay, and total apoCIII concentrations were measured using an immunoturbidimetric assay. Associations between apoCIII proteoforms and metabolic traits, dietary factors, and incident T2D were evaluated using multivariable-adjusted regression models.</jats:p>\n                  </jats:sec>\n                  <jats:sec>\n                    <jats:title>Results</jats:title>\n                    <jats:p>ApoCIII proteoforms showed heterogeneous associations with metabolic risk and incident T2D. Higher CIII2d/CIII1, CIII2/CIII1, and CIII0f/CIII1 ratios were associated with more favourable lipid and glycaemic profiles and lower odds of incident T2D per 1-SD increase (CIII2d/CIII1 OR = 0.77, 95% CI: 0.61–0.97; CIII2/CIII1 OR = 0.81, 95% CI: 0.69–0.96; CIII0f/CIII1 OR = 0.73, 95% CI: 0.55–0.97). Exploratory analyses identified several nominal associations between dietary intake and apoCIII proteoform ratios; however, none remained statistically significant after FDR correction.</jats:p>\n                  </jats:sec>\n                  <jats:sec>\n                    <jats:title>Conclusions</jats:title>\n                    <jats:p>Higher CIII2d/CIII1, CIII2/CIII1, and CIII0f/CIII1 proteoform ratios were associated with healthier lipid and glucose metabolic profiles and lower odds of incident T2D. These findings support further investigation of apoCIII proteoform profiling as a potential biomarker of incident T2D risk.</jats:p>\n                  </jats:sec>",
+        "DOI": "10.1186/s12933-026-03445-0",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              13
+            ]
+          ],
+          "date-time": "2026-11-13T05:36:22Z",
+          "timestamp": 1794548182000
+        },
+        "title": [
+          "Specific apoCIII proteoform ratios are associated with a healthier cardiometabolic phenotype and lower incidence of type 2 diabetes: a nested case-control study"
+        ],
+        "author": [
+          {
+            "given": "Helena",
+            "family": "Banús",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jesús Francisco",
+            "family": "García-Gavilán",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Pere",
+            "family": "Rehues",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Miguel Ángel",
+            "family": "Martínez-González",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Dolores",
+            "family": "Corella",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Montserrat",
+            "family": "Fitó",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "J. Alfredo",
+            "family": "Martínez",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Ángel M.",
+            "family": "Alonso-Gómez",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Julia",
+            "family": "Wärnberg",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jesús",
+            "family": "Vioque",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Dora",
+            "family": "Romaguera",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "José",
+            "family": "López-Miranda",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Ramon",
+            "family": "Estruch",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Francisco J.",
+            "family": "Tinahones",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Víctor",
+            "family": "Urbano-Fernández",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Lluís",
+            "family": "Serra-Majem",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Aurora",
+            "family": "Bueno-Cavanillas",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Josep A.",
+            "family": "Tur",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Vicente Martín",
+            "family": "Sánchez",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Xavier",
+            "family": "Pintó",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Miguel",
+            "family": "Delgado-Rodríguez",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Pilar",
+            "family": "Matía-Martín",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Josep",
+            "family": "Vidal",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Clotilde",
+            "family": "Vázquez",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Lidia",
+            "family": "Daimiel",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Emili",
+            "family": "Ros",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Miguel",
+            "family": "Ruiz-Canela",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Josefa",
+            "family": "Girona",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Eva M.",
+            "family": "Asensio",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Albert",
+            "family": "Goday",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Antonio",
+            "family": "Garcia-Rios",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Laura",
+            "family": "Torres-Collado",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Napoleón",
+            "family": "Pérez-Farinós",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Diego",
+            "family": "Martínez-Urbistondo",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Miquel",
+            "family": "Fiol",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Rosa",
+            "family": "Casas",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "M. Angeles",
+            "family": "Castillo-Hermoso",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Lucas",
+            "family": "Tojal-Sierra",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Víctor José",
+            "family": "Simón-Frapolli",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Nuria",
+            "family": "Goñi",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Carolina",
+            "family": "Ortega-Azorín",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Olga",
+            "family": "Castañer",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jose David",
+            "family": "Torres-Peña",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Concepción",
+            "family": "Barceló",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Estefania",
+            "family": "Toledo",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Montse",
+            "family": "Guardiola",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Helmut",
+            "family": "Schröder",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jordi",
+            "family": "Salas-Salvadó",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Josep",
+            "family": "Ribalta",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              13
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              13
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              13
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              17
+            ]
+          ],
+          "date-time": "2026-11-17T11:19:16Z",
+          "timestamp": 1794914356533
+        },
+        "DOI": "10.1186/s12933-026-03439-y",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              17
+            ]
+          ],
+          "date-time": "2026-11-17T10:44:59Z",
+          "timestamp": 1794912299000
+        },
+        "title": [
+          "Associations between distinct low-fat diets and risk of ischemic stroke and ischemic heart disease among individuals with type 2 diabetes"
+        ],
+        "author": [
+          {
+            "given": "Kun",
+            "family": "Xu",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jinke",
+            "family": "Xiang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Xinyi",
+            "family": "Zhang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Ting",
+            "family": "Wang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Shengsheng",
+            "family": "Jiang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Changchang",
+            "family": "Liu",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Pengfei",
+            "family": "Xia",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Rui",
+            "family": "Li",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Tianyu",
+            "family": "Guo",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Zijun",
+            "family": "Tang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Jiajing",
+            "family": "Che",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Tingting",
+            "family": "Geng",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "An",
+            "family": "Pan",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Gang",
+            "family": "Liu",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              17
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              17
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              17
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ],
+          "date-time": "2026-11-19T17:24:17Z",
+          "timestamp": 1795109057974
+        },
+        "abstract": "<jats:title>Abstract</jats:title>\n                  <jats:p>A patient-linked in-vitro model system to investigate the interplay of cardiac and vascular cells offers opportunities to understand pathogenesis. Here we establish that novel 3D structure of iPSC-derived vascularised cardiac organoids (VCO), originated from donors with type 2 diabetes mellitus (T2DM) demonstrate pronounced mechanistic, cellular and mitochondrial dysfunction when compared to non-diabetic counterparts. Integrated RNA sequencing, functional assays, and RT-PCR analyses identified novel molecular signatures indicative of mitochondrial dysfunction and impaired mitophagy. Notably, these analyses demonstrated a significant upregulation of TINF2, a telomeric protein and key components of the shelterin complex. To our knowledge, the involvement of TINF2 has not previously been reported in cardiac or vascular-specific cell types, nor altered in T2DM. Transgenic targeting of TINF2 was associated with reversing of the targets of T2DM-related mitochondrial dysfunction and was associated with restoring of mitophagy. Our findings reveal the potentially vital role of the TINF2 protein in T2DM-associated mitochondrial dysfunction and the potential for re-targeting mitophagy for the treatment of T2DM.</jats:p>",
+        "DOI": "10.1186/s12933-026-03441-4",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ],
+          "date-time": "2026-11-19T17:05:09Z",
+          "timestamp": 1795107909000
+        },
+        "title": [
+          "Increased expression of TINF2 is associated with impaired cardiac mitophagy and mitochondrial dysfunction in type 2 diabetes revealed by donor-derived vascularised cardiac organoids"
+        ],
+        "author": [
+          {
+            "given": "Refik",
+            "family": "Kuburas",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Wiwit Ananda Wahyu",
+            "family": "Setyaningsih",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Asim Jamalabdalnaser A.",
+            "family": "Tashkandi",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Abigail",
+            "family": "Gorman",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Konstantinos",
+            "family": "Theofilatos",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Anna",
+            "family": "Zampetaki",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Noemi",
+            "family": "Lois",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Alan W.",
+            "family": "Stitt",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "David J.",
+            "family": "Grieve",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Andriana",
+            "family": "Margariti",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              19
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              24
+            ]
+          ],
+          "date-time": "2026-11-24T12:10:34Z",
+          "timestamp": 1795522234001
+        },
+        "DOI": "10.1186/s12933-026-03451-2",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              24
+            ]
+          ],
+          "date-time": "2026-11-24T11:15:29Z",
+          "timestamp": 1795518929000
+        },
+        "title": [
+          "Current glycemic level and incident cardiovascular disease across the cardiovascular–kidney–metabolic spectrum: limited incremental value of prior HbA1c in harmonized aging cohorts"
+        ],
+        "author": [
+          {
+            "given": "Zhengyang",
+            "family": "Zhu",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Kejun",
+            "family": "Ren",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Dong",
+            "family": "Wang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Wang",
+            "family": "Dong",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              24
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              24
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              24
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T17:23:49Z",
+          "timestamp": 1794417829735
+        },
+        "DOI": "10.1186/s12933-026-03403-w",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ],
+          "date-time": "2026-11-11T16:53:35Z",
+          "timestamp": 1794416015000
+        },
+        "title": [
+          "Epicardial adipose tissue imaging as a cardiometabolic biomarker in diabetes: from pathophysiology to clinical translation"
+        ],
+        "author": [
+          {
+            "ORCID": "https://orcid.org/0000-0002-7106-5595",
+            "authenticated-orcid": false,
+            "given": "Rocco",
+            "family": "Mollace",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              },
+              {
+                "role": "corresponding-author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Valentina",
+            "family": "Bernardini",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Matteo",
+            "family": "Nardin",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Davide",
+            "family": "Cao",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Giacomo",
+            "family": "Piciucchi",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Alessandro",
+            "family": "Nucera",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Gianluigi",
+            "family": "Ferrazza",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Marina",
+            "family": "Cardellini",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Susanna",
+            "family": "Longo",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Annamaria",
+            "family": "Tavernese",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Valeria",
+            "family": "Cammalleri",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Gian Paolo",
+            "family": "Ussia",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Francesco",
+            "family": "Barillà",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Micaela",
+            "family": "Gliozzi",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Cristina",
+            "family": "Carresi",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Roberta",
+            "family": "Macrì",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Vincenzo",
+            "family": "Musolino",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Erika",
+            "family": "Bertella",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Giulio",
+            "family": "Stefanini",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Gianluigi",
+            "family": "Condorelli",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          },
+          {
+            "given": "Massimo",
+            "family": "Federici",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "role": "author",
+                "vocabulary": "crossref"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              11
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              10
+            ]
+          ],
+          "date-time": "2026-11-10T12:27:19Z",
+          "timestamp": 1794313639365
+        },
+        "DOI": "10.1186/s12933-026-03438-z",
+        "type": "journal-article",
+        "created": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              10
+            ]
+          ],
+          "date-time": "2026-11-10T12:20:20Z",
+          "timestamp": 1794313220000
+        },
+        "title": [
+          "Associations of cumulative C-reactive protein–triglyceride glucose index and cumulative functional limitation burden with incident cardiovascular disease among individuals with stages 0–3 cardiovascular–kidney–metabolic syndrome: a nationwide prospective cohort study"
+        ],
+        "author": [
+          {
+            "given": "Zhenxing",
+            "family": "Yu",
+            "sequence": "first",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "given": "Zhipeng",
+            "family": "Zhang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "given": "Jing",
+            "family": "Zha",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "given": "Yuhan",
+            "family": "Xiong",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "given": "Haijun",
+            "family": "Chen",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "given": "Lei",
+            "family": "Deng",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          },
+          {
+            "given": "Xianbin",
+            "family": "Zhang",
+            "sequence": "additional",
+            "affiliation": [],
+            "role": [
+              {
+                "vocabulary": "crossref",
+                "role": "author"
+              }
+            ]
+          }
+        ],
+        "published-online": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              10
+            ]
+          ]
+        },
+        "container-title": [
+          "Cardiovascular Diabetology"
+        ],
+        "issued": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              10
+            ]
+          ]
+        },
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              11,
+              10
+            ]
+          ]
+        }
+      }
+    ],
+    "items-per-page": 50,
+    "query": {
+      "start-index": 0,
+      "search-terms": null
+    }
+  }
+}

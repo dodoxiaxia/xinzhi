@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "description": "Crossref 期刊增量备用源一期显式白名单：仅在同刊出版社 RSS 源本轮失败时触发。",
+  "journals": [
+    {
+      "journal": "Cardiovascular Diabetology",
+      "issns": ["1475-2840"],
+      "category": "心血管",
+      "enabled": true
+    },
+    {
+      "journal": "Annals of Internal Medicine",
+      "issns": ["0003-4819"],
+      "category": "综合医学",
+      "enabled": true
+    }
+  ]
+}
