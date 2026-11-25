@@ -159,3 +159,72 @@ def apply_pubmed_fetch(fallback, pubmed_fetch):
     if public.get('reusedPrevious') is True:
         out['reusedPrevious'] = True
     return out
+
+
+CROSSREF_FETCH_STATUSES = {'ok', 'degraded', 'skipped', 'failed'}
+CROSSREF_ERROR_CATEGORIES = {
+    'crossref_http_429',
+    'crossref_http_5xx',
+    'crossref_http_error',
+    'crossref_timeout',
+    'crossref_network_error',
+    'crossref_parse_error',
+    'crossref_time_budget_exceeded',
+    'crossref_network_disabled',
+}
+
+
+def public_crossref_fallback(record):
+    """Allowlisted per-journal Crossref fallback metrics for source-health."""
+    if not isinstance(record, dict):
+        return None
+    status = record.get('status')
+    if status not in CROSSREF_FETCH_STATUSES:
+        return None
+    out = {'provider': 'Crossref', 'status': status}
+    if isinstance(record.get('journal'), str) and record['journal'].strip():
+        out['journal'] = record['journal'].strip()
+    if isinstance(record.get('issns'), list):
+        issns = [str(x).strip() for x in record['issns'] if isinstance(x, str) and x.strip()]
+        if issns:
+            out['issns'] = issns
+    if isinstance(record.get('triggered'), bool):
+        out['triggered'] = record['triggered']
+    for key in ('apiCalls', 'pagesFetched', 'observedItems', 'excludedImpreciseDate'):
+        val = record.get(key)
+        if type(val) is int and val >= 0:
+            out[key] = val
+    if isinstance(record.get('checkedAt'), str) and record['checkedAt'].strip():
+        out['checkedAt'] = record['checkedAt']
+    if record.get('errorCategory') in CROSSREF_ERROR_CATEGORIES:
+        out['errorCategory'] = record['errorCategory']
+    http_status = record.get('httpStatus')
+    if type(http_status) is int and 100 <= http_status <= 599:
+        out['httpStatus'] = http_status
+    if record.get('reusedPrevious') is True:
+        out['reusedPrevious'] = True
+    return out
+
+
+def public_crossref_fetch(record):
+    """Allowlisted top-level Crossref fallback call summary for source-health."""
+    if not isinstance(record, dict):
+        return None
+    status = record.get('status')
+    if status not in CROSSREF_FETCH_STATUSES:
+        return None
+    out = {'status': status}
+    if isinstance(record.get('checkedAt'), str) and record['checkedAt'].strip():
+        out['checkedAt'] = record['checkedAt']
+    for key in ('apiCalls', 'pagesFetched', 'itemsFetched'):
+        val = record.get(key)
+        if type(val) is int and val >= 0:
+            out[key] = val
+    if isinstance(record.get('degraded'), bool):
+        out['degraded'] = record['degraded']
+    if isinstance(record.get('triggeredJournals'), list):
+        out['triggeredJournals'] = [str(j) for j in record['triggeredJournals'] if isinstance(j, str) and j.strip()]
+    if isinstance(record.get('journals'), list):
+        journals = [public_crossref_fallback(row) for row in record['journals']]
+        out['journals'] = [row for row in journals if row]
+    return out

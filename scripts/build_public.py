@@ -341,13 +341,15 @@ def public_abstract_sources(weekly, catalogue, candidates):
 
 def public_health(source, pubmed, now, pubmed_fetch=None):
     from refresh_feeds import safe_url as sanitized_url
-    from source_fallbacks import apply_pubmed_fetch, coverage
+    from source_fallbacks import apply_pubmed_fetch, coverage, public_crossref_fallback
     out={k:v for k,v in source.items() if k in SOURCE_FIELDS}
     if 'responseUrl' in out:out['responseUrl']=sanitized_url(safe_url(out['responseUrl']))
     if 'excludedItems' in out:
         out['excludedItems']={k:v for k,v in out['excludedItems'].items()
                               if k in {'undated','future','olderThan14Days','unclassifiedOrInvalid'} and type(v) is int and v>=0}
     out['pubmedFallback']=apply_pubmed_fetch(coverage(source,pubmed,now), pubmed_fetch)
+    crossref_fb=public_crossref_fallback(source.get('crossrefFallback'))
+    if crossref_fb:out['crossrefFallback']=crossref_fb
     return out
 
 def make_archive(candidates,library):
@@ -569,10 +571,12 @@ def main():
     candidates={'updatedAt':c.get('updatedAt'),'windowDays':c.get('windowDays',14),'items':[public_paper(p,editorial_drafts) for p in c['items']]}
     pubmed=load('data/pubmed.json') if (ROOT/'data/pubmed.json').is_file() else {}
     now=datetime.datetime.now(datetime.timezone.utc)
-    from source_fallbacks import public_pubmed_fetch
+    from source_fallbacks import public_crossref_fetch, public_pubmed_fetch
     pubmed_fetch=public_pubmed_fetch(h.get('pubmedFetch'))
+    crossref_fetch=public_crossref_fetch(h.get('crossrefFetch'))
     health={'checkedAt':h.get('checkedAt'),'sources':[public_health(s,pubmed,now,h.get('pubmedFetch')) for s in h['sources']]}
     if pubmed_fetch:health['pubmedFetch']=pubmed_fetch
+    if crossref_fetch:health['crossrefFetch']=crossref_fetch
     tz=json.loads((ROOT/'data/translations.json').read_text()) if (ROOT/'data/translations.json').exists() else {}
     corrections=load_corrections(ROOT)
     from week_precompute import editorial_title
