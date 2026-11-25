@@ -652,6 +652,41 @@ def main():
             if key in ql:
                 try:validate_week_task('quicklook',ql[key],row)
                 except ValueError:ql.pop(key)  # Preserve original cache; hide stale evidence from this board.
+    from title_translation_hold import (load_ledger, save_ledger, partition, paper_key,
+                                        seen_times, weekly_coverage, HOLD_HOURS)
+    times={**seen_times(c['items']), **seen_times(l['papers'])}
+    ledger=load_ledger(ROOT)
+    candidates['items'],held_c,fallback_c,ledger=partition(candidates['items'],now,ledger,times)
+    library_keys={paper_key(p) for p in library['papers'] if paper_key(p)}
+    library['papers'],held_l,fallback_l,ledger=partition(library['papers'],now,ledger,times,legacy_keys=library_keys)
+    library['pdfIds']=pdf_identity.downloadable_ids(library['papers'],pdf_keys,set(library_quality['pdfBindingHoldIds']))
+    held_w,fallback_w,held_cat,fallback_cat,held_r,fallback_r=[],[],[],[],[],[]
+    if weekly:
+        weekly['items'],held_w,fallback_w,ledger=partition(weekly['items'],now,ledger,times)
+        weekly['coverage']=weekly_coverage(weekly['items'])
+    if editorial_catalog:
+        editorial_catalog['items'],held_cat,fallback_cat,ledger=partition(editorial_catalog['items'],now,ledger,times)
+        editorial_catalog['coverage']=weekly_coverage(editorial_catalog['items'])
+    prepared=pregenerated_map(editorial_catalog)
+    prepared.update(pregenerated_map(weekly))
+    if radar and radar.get('rows'):
+        zhmap=radar.get('zh') or {}
+        radar_papers=[{'pmid':row[0],'doi':row[1],'date':row[2],'title':row[8],'titleZh':zhmap.get(str(row[0])) or ''} for row in radar['rows']]
+        kept_r,held_r,fallback_r,ledger=partition(radar_papers,now,ledger,times)
+        kept_pmids={str(p.get('pmid') or '') for p in kept_r}
+        radar['rows']=[row for row in radar['rows'] if str(row[0]) in kept_pmids]
+        radar['zh']={str(r[0]):zhmap[str(r[0])] for r in radar['rows'] if str(r[0]) in zhmap}
+    save_ledger(ROOT,ledger)
+    def _hold_keys(rows):
+        return {paper_key(p) for p in rows if paper_key(p)}
+    held_keys=_hold_keys(held_c)|_hold_keys(held_l)|_hold_keys(held_w)|_hold_keys(held_cat)|_hold_keys(held_r)
+    fallback_keys=_hold_keys(fallback_c)|_hold_keys(fallback_l)|_hold_keys(fallback_w)|_hold_keys(fallback_cat)|_hold_keys(fallback_r)
+    if held_keys:
+        print('holding %s papers without a qualified Chinese title for up to %s hours'%(len(held_keys),HOLD_HOURS))
+    if fallback_keys:
+        sample=', '.join(sorted(fallback_keys)[:12])
+        print('publishing %s papers in English after title-translation wait: %s'%(len(fallback_keys),sample))
+    title_hold_counts={'titles_held':len(held_keys),'titles_fallback_english':len(fallback_keys),'title_hold_hours':HOLD_HOURS}
     built_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
     status=content_status(candidates,health,archive,ql,built_at)
     metrics=public_registry(ROOT)
@@ -790,7 +825,7 @@ def main():
     # The receipt describes the bytes we constructed and validated, never replacements.
     manifest=[{'path':name,'bytes':len(content),'sha256':hashlib.sha256(content).hexdigest()} for name,content in sorted(payloads.items())]
     assert PUBLIC<={p['path'] for p in manifest}==set(payloads)
-    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'assetLimit':{**thresholds,'warnings':size_warnings},'contentStatus':status,'counts':{'radar':len(c['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {},'deep_readings':len(readings['items']),'deep_readings_today':sum(p.get('publishedOn')==datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date().isoformat() for p in readings['items'])},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
+    meta={'release':RELEASE,'createdAt':built_at,'files':manifest,'assetLimit':{**thresholds,'warnings':size_warnings},'contentStatus':status,'counts':{'radar':len(candidates['items']),'library':len(library['papers']),'checked_guides':len(archive),'ai_quicklooks_unchecked':len(ql),'radar_archive_titles':len(radar['rows']) if radar else 0,'titles_zh':len(tz),'weekly_board':len(weekly['items']) if weekly else 0,'weekly_precomputed':weekly['coverage'] if weekly else {},'deep_readings':len(readings['items']),'deep_readings_today':sum(p.get('publishedOn')==datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date().isoformat() for p in readings['items']),**title_hold_counts},'excludes':['PDFs','local paths','private notes','database','credentials'],'deployed':False}
     # curated-archive is both input and sanitized output; record its final bytes.
     build_after=provenance(ROOT)
     expected_inputs=dict(inputs_before)

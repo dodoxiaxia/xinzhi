@@ -99,6 +99,10 @@ def main():
     have = rj(OUT, {})
     invalid_cached = {key for key, value in have.items() if not translated_title(value)}
     todo = [(k, t) for k, t in collect() if k not in have or k in invalid_cached]
+    # Held public-list keys first so a timed batch unblocks today's shelves.
+    from title_translation_hold import load_ledger
+    held_keys = set((load_ledger(ROOT).get('entries') or {}))
+    todo = [row for row in todo if row[0] in held_keys] + [row for row in todo if row[0] not in held_keys]
     if not a.run:
         print(json.dumps({'cached': len(have) - len(invalid_cached), 'invalid_cached': len(invalid_cached),
                           'missing': len(todo), 'calls_needed': -(-len(todo) // BATCH)}))
