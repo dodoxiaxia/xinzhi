@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Crossref 期刊增量备用源一期显式白名单：仅在同刊出版社 RSS 源本轮失败时触发。",
+  "description": "Crossref 期刊增量备用源显式白名单：仅在同刊出版社 RSS 源本轮失败，或状态为 stale_feed / filtered_empty（源停滞或14天窗内无条目）时触发。会议摘要与期刊组分/整期 PDF 不会进入公开订阅包。",
   "journals": [
     {
       "journal": "Cardiovascular Diabetology",
@@ -19,6 +19,29 @@
       "issns": ["2836-9386"],
       "category": "AI医疗",
       "enabled": true
+    },
+    {
+      "journal": "Circulation",
+      "issns": ["0009-7322", "1524-4539"],
+      "category": "心血管",
+      "enabled": true,
+      "includeDoiPrefixes": [
+        "10.1161/circulationaha.",
+        "10.1161/cir.000000000000"
+      ],
+      "queryDoiPrefixes": true
+    },
+    {
+      "journal": "JACC: Basic to Translational Science",
+      "issns": ["2452-302X"],
+      "aliases": [
+        "JACC: BTS"
+      ],
+      "category": "心血管",
+      "enabled": true,
+      "includeDoiPrefixes": [
+        "10.1016/j.jacbts."
+      ]
     }
   ]
 }
