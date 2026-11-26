@@ -323,8 +323,12 @@ class LongTitleChecks:
         self.assertLessEqual(m["doc"][0], width + 1)
         self.assert_inside(title, row)
         self.assertLessEqual(title["sw"], title["cw"] + 1)
+        if surface in ("S1", "S2", "S3", "S4"):
+            self.assertEqual(title["clamp"], "2")
         if subtitle and subtitle["display"] != "none":
             self.assert_inside(subtitle, row)
+            if surface in ("S3", "S4"):
+                self.assertEqual(subtitle["clamp"], "2")
         if m["clip"]:
             self.assertLessEqual(m["clip"]["sw"], m["clip"]["cw"] + 1)
         if m["panel"]:
@@ -342,25 +346,22 @@ class LongTitleChecks:
             self.assertGreaterEqual(control["height"], 32, control)
             self.assertLessEqual(control["sw"], control["cw"] + 1, control)
             self.assertLessEqual(control["sh"], control["ch"] + 1, control)
+            if surface in ("S1", "S3", "S4"):
+                overlap_width = min(title["right"], control["right"]) - max(title["x"], control["x"])
+                overlap_height = min(title["bottom"], control["bottom"]) - max(title["y"], control["y"])
+                self.assertFalse(overlap_width > 1 and overlap_height > 1, {"title": title, "control": control})
 
     def assert_native_titles(self, surface, key, m, zh, en):
         title, subtitle = m["title"], m["subtitle"]
         clipped = title["sh"] > title["ch"] + 1
-        if surface == "S1":
-            self.assertEqual(title["title"], combined_title(zh, en))
-            self.assertFalse(clipped)
-        elif surface == "S2":
-            if key not in ("T5", "T6"):
+        if surface in ("S1", "S2", "S3", "S4"):
+            self.assertIn(zh or en, title["text"])
+            if surface in ("S1", "S4"):
                 self.assertEqual(title["title"], combined_title(zh, en))
-            if clipped:
-                self.assertEqual(title["clamp"], "2")
+            elif surface == "S2" and (key not in ("T5", "T6") or clipped):
                 self.assertEqual(title["title"], combined_title(zh, en))
-            if key == "T4":  # This fixture must genuinely overflow two lines at all widths.
+            if surface == "S2" and key == "T4":  # This fixture must genuinely overflow two lines at all widths.
                 self.assertTrue(clipped)
-        elif surface == "S4":
-            self.assertEqual(title["title"], combined_title(zh, en))
-            if clipped:
-                self.assertEqual(title["clamp"], "2")
         else:
             self.assertFalse(clipped)
         if subtitle and subtitle["display"] != "none":
@@ -460,16 +461,16 @@ class LongTitleChecks:
                 with self.subTest(surface=surface):
                     page.set_viewport_size({"width": 390, "height": 844})
                     rows = mount(page, surface, {"T2": FIXTURES["T2"]})
-                    expected_display = ("none", "block")
+                    expected_display = "none"
                     if surface in ("S3", "S4"):
-                        expect(rows.first.locator(".article-title-en")).to_have_css("display", expected_display[0])
+                        expect(rows.first.locator(".article-title-en")).to_have_css("display", expected_display)
                     elif surface == "S1":
                         expect(rows.first.locator(".weekly-deep-badge")).to_have_css("display", "flex")
                     else:
                         expect(rows.first).to_have_css("padding-top", "12px")
                     page.set_viewport_size({"width": 1280, "height": 800})
                     if surface in ("S3", "S4"):
-                        expect(rows.first.locator(".article-title-en")).to_have_css("display", expected_display[1])
+                        expect(rows.first.locator(".article-title-en")).not_to_have_css("display", expected_display)
                     elif surface == "S1":
                         expect(rows.first.locator(".weekly-deep-badge")).to_have_css("display", "inline-flex")
                     else:

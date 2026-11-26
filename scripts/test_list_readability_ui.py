@@ -93,20 +93,11 @@ def check(browser, base, width, height):
             expect(subtitle).to_be_hidden()
         else:
             expect(subtitle).to_be_visible()
-            toggle = subtitle.get_by_role('button')
-            expect(toggle).to_be_visible()
-            assert subtitle.evaluate("""e=>getComputedStyle(e).textOverflow!=='ellipsis' &&
-                e.scrollWidth<=e.clientWidth+1 && e.firstChild.scrollHeight>e.firstChild.clientHeight+1""")
-            for method in ['keyboard', 'touch']:
-                if method == 'keyboard':
-                    toggle.press('Enter')
-                else:
-                    toggle.tap()
-                expect(toggle).to_have_attribute('aria-expanded', 'true')
-                expect(subtitle.locator('span')).to_have_text(TITLE.strip())
-                assert subtitle.locator('span').evaluate('e=>e.scrollHeight<=e.clientHeight+1')
-                toggle.press('Enter')
-                expect(toggle).to_have_attribute('aria-expanded', 'false')
+            expect(subtitle.get_by_role('button')).to_have_count(0)
+            expect(subtitle).to_have_attribute('title', TITLE.strip())
+            expect(subtitle).to_contain_text(TITLE.strip())
+            assert subtitle.evaluate("""e=>getComputedStyle(e).webkitLineClamp==='2' &&
+                e.scrollWidth<=e.clientWidth+1 && e.clientHeight<=2*parseFloat(getComputedStyle(e).lineHeight)+1""")
         assert plain.bounding_box()['height'] == plain_height
     # Use the fixture's current board rather than the issue-boundary clock.
     page.close()
