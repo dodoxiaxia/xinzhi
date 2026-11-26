@@ -2827,6 +2827,11 @@ async function handleMuseUpload(request, env) {
     return json({ok:true,job:musePublicJob(verifying),verified:false,archive:libraryArchiveStatus()});
   } catch (error) { return museError(error); }
 }
+// A machine upload that only matched through the DOI registry title (machineRegistryTitleRetry) is verified against that
+// same title; every other task keeps the catalogue title.
+function museReviewTitle(job, paper) {
+  return ['crossref','datacite'].includes(job.identityTitleSource) && libraryText(job.identityTitle) ? libraryText(job.identityTitle) : paper.title;
+}
 async function handleMuseReview(request, env) {
   try {
     if (request.method !== 'POST' || new URL(request.url).search) return json({ok:false,error:'muse_bad_request',protocolVersion:3},405);
@@ -2867,7 +2872,7 @@ async function handleMuseReview(request, env) {
       await libraryPut(env.QL_KV,MUSE_REVIEW_PREFIX + job.id,JSON.stringify({doi:job.doi,id:job.id}),{expirationTtl:604800});
       const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
       if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
-      return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
+      return json({ok:true,task:{taskId:job.id,doi:job.doi,title:museReviewTitle(job,paper),sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId}});
     }
     if (input.action === 'claim') {
       if (Object.keys(input).length !== 1) libraryFail('muse_bad_request',400);
@@ -2883,7 +2888,7 @@ async function handleMuseReview(request, env) {
         const observed = museRecord(await libraryGet(env.QL_KV,MUSE_JOB_PREFIX + job.doi),job.doi);
         if (observed?.reviewLeaseId !== claimed.reviewLeaseId) libraryFail('muse_sync_pending',503);
         const release = await museReleaseProof(env,job);
-        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:paper.title,sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId,...(release ? {release} : {})}});
+        return json({ok:true,task:{taskId:job.id,doi:job.doi,title:museReviewTitle(job,paper),sha256:job.sha256,bytes:job.bytes,leaseId:claimed.reviewLeaseId,...(release ? {release} : {})}});
       }
       return json({ok:true,task:null});
     }
@@ -5590,7 +5595,11 @@ async function handleMachineUpload(request, env) {
     }
     if (paper.fulltextStatus === 'review') libraryFail('library_identity', 409);
     // X-Machine-Replace already has a verified PDF; keep mismatched DOI at 409 so it never overwrites the done job with an identity hold.
-    const identity = await machineIdentity(bytes, paper.doi, paper.title, {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:!replacing});
+    const identityOptions = {allowTitleOnly:true, scanAllPages:true, holdForeignDoi:!replacing};
+    let identity = await machineIdentity(bytes, paper.doi, paper.title, identityOptions);
+    // A record registered while the DOI lookup failed keeps the submitted (often shortened RSS) title. Only when the readable
+    // page already shows the claimed DOI and that title is missing, compare once more with the registry title of the same DOI.
+    if (!fresh) identity = await machineRegistryTitleRetry(bytes, paper, identity, identityOptions);
     if (identity.verdict !== 'ok') throw new MachineIdentityFailure(identity.verdict === 'invalid' ? 'machine_identity' : 'machine_identity_mismatch', identity.reason, identity.checks);
     const attempt = await libraryGet(env.QL_KV, 'library:attempt:' + doi);
     if (attempt && attempt.paused) libraryFail('library_paused', 423);
@@ -5608,7 +5617,7 @@ async function handleMachineUpload(request, env) {
     if (fresh) await librarySave(env.QL_KV, fresh, null, 'library_manual_needed');
     await machineConsume(env, caller, 'upload', 1);
     const replace = replacing ? {by:caller.id,at:Date.now(),oldSha256:decision.oldSha,newSha256:sha256,previous:existing && existing.state === 'available' ? existing : null} : null;
-    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(identity.hold ? {hold:true} : {}),...(replace ? {replace} : {})});
+    const job = await museIntake(env, doi, bytes, caller.id, existing || null, {identityLevel:identity.level,...(identity.registryTitle ? {identityTitle:identity.registryTitle,identityTitleSource:identity.checks.titleSource} : {}),...(identity.hold ? {hold:true} : {}),...(replace ? {replace} : {})});
     return json({ok:true,idempotent:false,task:{...machineListItem(job),caller:caller.id,sha256,identity:identity.level,...(replace ? {replace:machineReplacePublic(replace)} : {})}}, 202);
   } catch (error) {
     if (caller && error instanceof LibraryFailure && error.status === 409) {
@@ -5616,6 +5625,24 @@ async function handleMachineUpload(request, env) {
     }
     return machineError(error);
   }
+}
+const MACHINE_IDENTITY_LOOKUP_MS = 5000;
+// Second identity pass with the DOI registry title (Crossref, or DataCite when Crossref has no record). Runs only after a
+// mismatch whose checks show the claimed DOI read from the page text (checks.doi === 'page') and no title match at all.
+// It must reach 'full' again (DOI and the registry title both on the page); a failed or empty lookup keeps the original
+// mismatch. checks.titleSource says the title matched through the registry, and the job keeps that title for the verifier.
+async function machineRegistryTitleRetry(bytes, paper, identity, options) {
+  if (identity.verdict !== 'mismatch' || identity.reason !== 'title_not_found' || !identity.checks || identity.checks.doi !== 'page' || identity.checks.title !== '') return identity;
+  let metadata = null;
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), MACHINE_IDENTITY_LOOKUP_MS);
+  try { metadata = await libraryMetadata(paper.doi, {signal:controller.signal}); }
+  catch { return identity; }
+  finally { clearTimeout(timer); }
+  const registryTitle = metadata && metadata.doi === paper.doi ? libraryText(metadata.title) : '';
+  if (machineNormalize(registryTitle).length < 5 || machineNormalize(registryTitle) === machineNormalize(paper.title)) return identity;
+  const retry = await machineIdentity(bytes, paper.doi, registryTitle, options);
+  if (retry.verdict !== 'ok' || retry.level !== 'full' || !retry.checks || retry.checks.doi !== 'page' || retry.checks.title !== 'page') return identity;
+  return {...retry, registryTitle, checks:{...retry.checks, titleSource:metadata.titleSource === 'datacite' ? 'datacite' : 'crossref'}};
 }
 function machineStatusDetail(input, allowed) {
   if (!Object.hasOwn(input, 'detail')) return undefined;
