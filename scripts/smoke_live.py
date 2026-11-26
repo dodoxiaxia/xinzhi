@@ -620,16 +620,23 @@ class BrowserChecks:
         return '; '.join(evidence)
 
     def shortlist_share(self):
+        from playwright.sync_api import TimeoutError as PlaywrightTimeout
+
         storage = """() => Object.fromEntries(Object.keys(localStorage)
             .filter(key => key.startsWith('xinzhi_huddle_')).sort().map(key => [key, localStorage.getItem(key)]))"""
         with ExitStack() as stack:
             page = self.page(stack)
             self.go(page)
             self.mode_ready(page, 'curated')
-            page.locator('#articlesStream [data-paper-id] .title-open').first.wait_for()
-            ids = page.locator('#articlesStream [data-paper-id]:has(.title-open)').evaluate_all(
-                '(rows) => [...new Set(rows.map(row => row.dataset.paperId))].slice(0, 2)')
-            require(len(ids) == 2, 'two distinct public paper IDs', len(ids))
+            rows = page.locator('#articlesStream [data-paper-id]:has(.title-open)')
+            try:
+                rows.first.wait_for()
+            except PlaywrightTimeout:
+                ids = []
+            else:
+                ids = rows.evaluate_all('(rows) => [...new Set(rows.map(row => row.dataset.paperId))].slice(0, 2)')
+            if len(ids) < 2:
+                raise WaitCheck(f'{len(ids)} distinct public paper IDs; waiting for curated data refresh')
             page.evaluate("""() => {
                 localStorage.setItem('xinzhi_huddle_ids', '["smoke-local-only"]');
                 localStorage.setItem('xinzhi_huddle_snap', '{"smoke-local-only":{"title":"Local test entry"}}');
