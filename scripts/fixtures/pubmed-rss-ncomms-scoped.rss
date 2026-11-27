@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <title>Nature Communications cardiovascular or clinical medical AI</title>
+    <link>https://pubmed.ncbi.nlm.nih.gov/</link>
+    <description>Offline PubMed RSS fixture for the scoped Nature Communications feed</description>
+    <item>
+      <title>Benefits and harms of antihypertensive treatment in hypertension: a modelling study in 5.5 million electronic health records</title>
+      <link>https://pubmed.ncbi.nlm.nih.gov/43064729/?utm_source=Other&amp;utm_medium=rss&amp;ff=20261127000000</link>
+      <description>Modelling of antihypertensive treatment benefits and harms in routine electronic health records.</description>
+      <pubDate>Fri, 20 Nov 2026 00:00:00 -0500</pubDate>
+      <dc:identifier>pmid:43064729</dc:identifier>
+      <dc:identifier>doi:10.1038/s41467-026-79283-1</dc:identifier>
+    </item>
+    <item>
+      <title>The accuracy-safety trade-off of large reasoning models in clinical diagnostics</title>
+      <link>https://pubmed.ncbi.nlm.nih.gov/99900001/?utm_source=Other&amp;utm_medium=rss&amp;ff=20261127000000</link>
+      <description>Large reasoning models were evaluated for accuracy and safety in clinical diagnostics.</description>
+      <pubDate>Thu, 29 Oct 2026 00:00:00 -0400</pubDate>
+      <dc:identifier>pmid:99900001</dc:identifier>
+      <dc:identifier>doi:10.1038/s41467-026-78520-x</dc:identifier>
+    </item>
+    <item>
+      <title>Adjuvant nivolumab in resected melanoma: phase 3 randomized trial</title>
+      <link>https://pubmed.ncbi.nlm.nih.gov/99900002/?utm_source=Other&amp;utm_medium=rss&amp;ff=20261127000000</link>
+      <description>Patients with resected melanoma received adjuvant nivolumab.</description>
+      <pubDate>Thu, 29 Oct 2026 00:00:00 -0400</pubDate>
+      <dc:identifier>pmid:99900002</dc:identifier>
+      <dc:identifier>doi:10.1038/s41467-026-00000-0</dc:identifier>
+    </item>
+  </channel>
+</rss>
